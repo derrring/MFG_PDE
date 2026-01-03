@@ -211,7 +211,8 @@ class HamiltonianMixin:
             has_time = "t" in sig.parameters or "time" in sig.parameters
 
         for i in range(num_intervals + 1):
-            x_i = spatial_grid[i]
+            # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
+            x_i = float(spatial_grid[i, 0])
             if has_time:
                 self.f_potential[i] = potential_func(x_i, 0.0)
             else:
@@ -797,7 +798,8 @@ class ConditionsMixin:
         num_intervals = self._get_num_intervals() or 0
 
         for i in range(num_intervals + 1):
-            x_i = spatial_grid[i]
+            # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
+            x_i = float(spatial_grid[i, 0])
             self.m_init[i] = max(initial_func(x_i), 0.0)
 
     def _setup_custom_final_value(self) -> None:
@@ -811,14 +813,17 @@ class ConditionsMixin:
         if self.dimension == 1 and num_intervals is not None:
             spatial_grid = self._get_spatial_grid_internal()
             for i in range(num_intervals + 1):
-                x_i = spatial_grid[i]
+                # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
+                x_i = float(spatial_grid[i, 0])
                 self.u_fin[i] = final_func(x_i)
         elif hasattr(self, "geometry") and self.geometry is not None:
             spatial_grid = self.geometry.get_spatial_grid()
             num_points = spatial_grid.shape[0]
+            ndim = spatial_grid.shape[1] if spatial_grid.ndim > 1 else 1
 
             for i in range(num_points):
-                x_i = spatial_grid[i]
+                # Extract point coordinates properly
+                x_i = float(spatial_grid[i, 0]) if ndim == 1 else spatial_grid[i]
                 self.u_fin.flat[i] = final_func(x_i)
         else:
             import warnings
