@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.linalg import lstsq
-from scipy.spatial.distance import cdist
 
 # BC types for BoundaryCapable protocol implementation (Issue #527)
+from scipy.optimize import approx_fprime
+from scipy.spatial.distance import cdist
+
 from mfg_pde.geometry.boundary import BCType, DiscretizationType
-from mfg_pde.utils.numerical.differential_utils import (
-    compute_dH_dp,
-)
 
 # Legacy operator for backward compatibility (deprecated)
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
@@ -127,6 +126,12 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         rbf_kernel: str = "phs3",  # For RBF-FD: "phs3", "phs5", "gaussian"
         rbf_poly_degree: int = 2,  # Polynomial augmentation degree for RBF-FD
         use_new_infrastructure: bool = True,  # Use new Strategy Pattern (recommended)
+        # Local Coordinate Rotation for boundary accuracy (Issue #531)
+        use_local_coordinate_rotation: bool = False,
+        # Ghost Nodes for Neumann BC enforcement (Issue #531 - Terminal BC compatibility)
+        use_ghost_nodes: bool = False,
+        # Wind-Dependent BC for viscosity solution compatibility
+        use_wind_dependent_bc: bool = False,
     ):
         """
         Initialize the GFDM HJB solver.
@@ -136,7 +141,7 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             collocation_points: (N_points, d) array of collocation points
             delta: Neighborhood radius for collocation
             taylor_order: Order of Taylor expansion (1 or 2)
-            weight_function: Weight function type ("gaussian", "inverse_distance", "uniform")
+            weight_function: Weight function type ("wendland", "cubic_spline", "gaussian", "inverse_distance", "uniform")
             weight_scale: Scale parameter for weight function
             max_newton_iterations: Maximum Newton iterations (new parameter name)
             newton_tolerance: Newton convergence tolerance (new parameter name)
@@ -189,6 +194,28 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             use_new_infrastructure: Use new Strategy Pattern infrastructure (default True).
                 When True, uses TaylorOperator/LocalRBFOperator + DirectCollocationHandler.
                 When False, uses legacy GFDMOperator (deprecated, for backward compatibility).
+            use_local_coordinate_rotation: Enable Local Coordinate Rotation (LCR) for
+                boundary stencils (default False, Issue #531). When True, rotates
+                neighbor offsets at boundary points to align with the boundary normal,
+                improving numerical conditioning for normal derivative computation.
+                Recommended for domains with complex boundaries or when boundary
+                stencils show poor conditioning. Only affects boundary points.
+            use_ghost_nodes: Enable Ghost Nodes method for Neumann boundary conditions
+                (default False, Issue #531 - Terminal BC compatibility). When True,
+                creates mirrored "ghost" neighbors outside the domain for boundary points,
+                enforcing ∂u/∂n = 0 structurally through symmetric stencils rather than
+                via row replacement. This eliminates terminal cost/BC incompatibility issues
+                in MFG problems. Recommended when terminal cost violates Neumann BC
+                (e.g., g(x) = ||x - x_exit||² with Neumann BC at walls). Mutually exclusive
+                with use_local_coordinate_rotation (ghost nodes take precedence).
+            use_wind_dependent_bc: Enable wind-dependent boundary conditions (default False).
+                When True (requires use_ghost_nodes=True), ghost nodes are only enforced
+                when characteristics flow INTO the boundary (∇u·n > 0). When flow is OUT
+                (∇u·n < 0), uses extrapolation instead. This implements the viscosity solution
+                approach where BCs are weak constraints, only enforced when the PDE solution
+                "wants" to violate them. Recommended for evacuation/exit problems where agents
+                need to cross boundaries. Based on Lions & Souganidis theory of discontinuous
+                viscosity solutions.
         """
         super().__init__(problem)
 
@@ -358,6 +385,44 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         self._rbf_kernel = rbf_kernel
         self._rbf_poly_degree = rbf_poly_degree
 
+        # Local Coordinate Rotation for boundary accuracy (Issue #531)
+        self._use_local_coordinate_rotation = use_local_coordinate_rotation
+
+        # Ghost Nodes for Neumann BC enforcement (Issue #531 - Terminal BC compatibility)
+        self._use_ghost_nodes = use_ghost_nodes
+
+        # Wind-Dependent BC for viscosity solution compatibility
+        self._use_wind_dependent_bc = use_wind_dependent_bc
+
+        # Hyperviscosity parameter for wind-dependent BC stabilization
+        # epsilon > 0 adds damping: u_ghost = 2u_b - u_m - epsilon*(u_b - u_m)
+        # Recommended: 0.0 (no damping) to 0.3 (moderate damping)
+        self._wind_bc_hyperviscosity = 0.0  # Default: no hyperviscosity
+
+        # Check for mutual exclusivity (ghost nodes takes precedence)
+        if self._use_ghost_nodes and self._use_local_coordinate_rotation:
+            import warnings
+
+            warnings.warn(
+                "Both use_ghost_nodes and use_local_coordinate_rotation are enabled. "
+                "Ghost nodes take precedence and LCR will be disabled for boundary points.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        # Wind-dependent BC requires ghost nodes
+        if self._use_wind_dependent_bc and not self._use_ghost_nodes:
+            raise ValueError(
+                "use_wind_dependent_bc=True requires use_ghost_nodes=True. "
+                "Wind-dependent BC is a modification of the ghost nodes method."
+            )
+
+        # DEBUG: Print wind-BC configuration once at initialization
+        if self._use_wind_dependent_bc:
+            import sys
+
+            print(f"\n[Wind-BC INIT] Enabled with {len(boundary_indices)} boundary points", flush=True, file=sys.stderr)
+
         # Create differential operator using Strategy Pattern (recommended)
         # or legacy GFDMOperator (for backward compatibility)
         if use_new_infrastructure:
@@ -429,6 +494,16 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         # Build neighborhood structure - uses GFDMOperator's neighborhoods as base,
         # only extends for points needing adaptive delta enlargement
         self._build_neighborhood_structure()
+
+        # Apply Ghost Nodes for Neumann BC enforcement (Issue #531 - Terminal BC compatibility)
+        # Ghost nodes take precedence over LCR if both are enabled
+        # This must be called BEFORE Taylor matrices are built, since it augments neighborhoods
+        if self._use_ghost_nodes:
+            self._apply_ghost_nodes_to_neighborhoods()
+        elif self._use_local_coordinate_rotation:
+            # Apply Local Coordinate Rotation for boundary stencils (Issue #531)
+            # This modifies neighborhoods by adding rotated_offsets for better normal derivatives
+            self._apply_local_coordinate_rotation()
 
         # Build reverse neighborhood map for sparse Jacobian (point j -> rows affected)
         self._build_reverse_neighborhoods()
@@ -636,12 +711,503 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         return bc_weights
 
+    def _count_deep_neighbors(self, point_idx: int, neighbor_points: np.ndarray, min_depth: float) -> int:
+        """
+        Count neighbors with sufficient depth in the inward normal direction.
+
+        For boundary points, "deep" neighbors are those that lie sufficiently
+        into the interior (in the direction opposite to the outward normal).
+        This ensures the stencil can capture normal derivatives accurately.
+
+        Args:
+            point_idx: Index of the center point
+            neighbor_points: Array of neighbor coordinates, shape (n_neighbors, dim)
+            min_depth: Minimum required depth (projection onto inward normal)
+
+        Returns:
+            Number of neighbors with depth >= min_depth
+        """
+        center = self.collocation_points[point_idx]
+        outward_normal = self._compute_outward_normal(point_idx)
+
+        # Inward normal (direction into the domain)
+        inward_normal = -outward_normal
+
+        # Compute depth: projection of (neighbor - center) onto inward normal
+        offsets = neighbor_points - center  # shape: (n_neighbors, dim)
+        depths = offsets @ inward_normal  # shape: (n_neighbors,)
+
+        return int(np.sum(depths >= min_depth))
+
+    def _build_rotation_matrix(self, normal: np.ndarray) -> np.ndarray:
+        """
+        Build rotation matrix that aligns first axis with the given normal vector.
+
+        For Local Coordinate Rotation (LCR) at boundary points, this rotation
+        transforms neighbor offsets so that:
+        - First axis (x') aligns with outward normal
+        - Remaining axes (y', z', ...) are tangential to boundary
+
+        This improves numerical conditioning for normal derivative computation.
+
+        Args:
+            normal: Unit outward normal vector, shape (dimension,)
+
+        Returns:
+            Rotation matrix R, shape (dimension, dimension).
+            To transform: x_rotated = R @ x_original
+        """
+        dim = len(normal)
+
+        if dim == 1:
+            # 1D: trivial - just sign
+            return np.array([[np.sign(normal[0]) if abs(normal[0]) > 1e-10 else 1.0]])
+
+        elif dim == 2:
+            # 2D: Rotation matrix that maps e_x to normal
+            # R = [n_x, -n_y]
+            #     [n_y,  n_x]
+            # where n = (n_x, n_y) is the normal
+            # Verification: R @ e_x = R @ [1,0]^T = [n_x, n_y]^T = n
+            n_x, n_y = normal
+            return np.array([[n_x, -n_y], [n_y, n_x]])
+
+        elif dim == 3:
+            # 3D: Use Rodrigues' rotation formula
+            # Rotate from e_x = (1,0,0) to normal
+            e_x = np.array([1.0, 0.0, 0.0])
+
+            # Check if normal is already aligned with e_x
+            dot = np.dot(e_x, normal)
+            if abs(dot - 1.0) < 1e-10:
+                return np.eye(3)
+            if abs(dot + 1.0) < 1e-10:
+                # Opposite direction: rotate 180° around y-axis
+                return np.diag([1.0, -1.0, -1.0])
+
+            # General case: Rodrigues' formula
+            v = np.cross(e_x, normal)
+            s = np.linalg.norm(v)
+            c = dot
+
+            v_skew = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+            R = np.eye(3) + v_skew + v_skew @ v_skew * (1 - c) / (s * s)
+            return R
+
+        else:
+            # Higher dimensions: Use Householder reflection
+            # Maps e_1 to normal
+            e_1 = np.zeros(dim)
+            e_1[0] = 1.0
+
+            if np.allclose(normal, e_1):
+                return np.eye(dim)
+            if np.allclose(normal, -e_1):
+                R = np.eye(dim)
+                R[0, 0] = -1.0
+                return R
+
+            # Householder: R = I - 2*v*v^T / (v^T*v) where v = e_1 - normal
+            v = e_1 - normal
+            v = v / np.linalg.norm(v)
+            return np.eye(dim) - 2.0 * np.outer(v, v)
+
+    def _apply_local_coordinate_rotation(self) -> None:
+        """
+        Apply Local Coordinate Rotation (LCR) to boundary point stencils.
+
+        For each boundary point, rotates the neighbor offsets to align with
+        the boundary normal before computing Taylor expansion weights.
+        This improves accuracy for normal derivatives at boundaries.
+
+        Must be called after _build_neighborhood_structure() and before
+        derivative computations.
+
+        Issue #531: GFDM boundary stencil degeneracy fix (part 2).
+        """
+        if len(self.boundary_indices) == 0:
+            return
+
+        # Store rotation matrices for boundary points
+        self._boundary_rotations: dict[int, np.ndarray] = {}
+
+        boundary_set = set(self.boundary_indices)
+
+        for i in boundary_set:
+            normal = self._compute_outward_normal(i)
+
+            # Skip if normal is zero (shouldn't happen for proper boundary points)
+            if np.linalg.norm(normal) < 1e-10:
+                continue
+
+            # Build rotation matrix
+            R = self._build_rotation_matrix(normal)
+            self._boundary_rotations[i] = R
+
+            # Get neighborhood
+            neighborhood = self.neighborhoods[i]
+            neighbor_points = neighborhood["points"]
+            center = self.collocation_points[i]
+
+            # Rotate neighbor offsets
+            offsets = neighbor_points - center
+            rotated_offsets = (R @ offsets.T).T  # shape: (n_neighbors, dim)
+
+            # Store rotated neighbor points (for Taylor matrix computation)
+            # The rotated points are: center + rotated_offset
+            # But since Taylor expansion only uses offsets, we can store
+            # the rotated offsets directly or update the neighborhood
+            neighborhood["rotated_offsets"] = rotated_offsets
+            neighborhood["rotation_matrix"] = R
+
+    def _rotate_derivatives_back(
+        self, derivatives: dict[tuple[int, ...], float], R: np.ndarray
+    ) -> dict[tuple[int, ...], float]:
+        """
+        Rotate derivatives from rotated frame back to original coordinates.
+
+        For LCR boundary points, derivatives are computed in a rotated frame
+        where the first axis aligns with the boundary normal. This method
+        transforms them back to the original coordinate frame.
+
+        Args:
+            derivatives: Dictionary mapping multi-indices to derivative values
+            R: Rotation matrix used for the forward transformation
+
+        Returns:
+            Rotated derivatives dictionary
+
+        Mathematical transformation:
+        - First derivatives (gradient): grad_orig = R^T @ grad_rotated
+        - Second derivatives (Hessian): H_orig = R^T @ H_rotated @ R
+        """
+        if self.dimension != 2:
+            # Only 2D transformation is implemented for now
+            # Higher dimensions would need more complex Hessian transformation
+            return derivatives
+
+        rotated = dict(derivatives)
+        R_T = R.T
+
+        # Extract first derivatives (gradient)
+        u_xp = derivatives.get((1, 0), 0.0)  # ∂u/∂x' (rotated frame)
+        u_yp = derivatives.get((0, 1), 0.0)  # ∂u/∂y' (rotated frame)
+
+        # Transform gradient: [u_x, u_y] = R^T @ [u_x', u_y']
+        grad_rotated = np.array([u_xp, u_yp])
+        grad_orig = R_T @ grad_rotated
+        rotated[(1, 0)] = float(grad_orig[0])
+        rotated[(0, 1)] = float(grad_orig[1])
+
+        # Extract second derivatives (Hessian in rotated frame)
+        u_xxp = derivatives.get((2, 0), 0.0)
+        u_xyp = derivatives.get((1, 1), 0.0)
+        u_yyp = derivatives.get((0, 2), 0.0)
+
+        # Hessian in rotated frame
+        H_rotated = np.array([[u_xxp, u_xyp], [u_xyp, u_yyp]])
+
+        # Transform Hessian: H_orig = R^T @ H_rotated @ R
+        H_orig = R_T @ H_rotated @ R
+        rotated[(2, 0)] = float(H_orig[0, 0])
+        rotated[(1, 1)] = float(H_orig[0, 1])  # = H_orig[1, 0] by symmetry
+        rotated[(0, 2)] = float(H_orig[1, 1])
+
+        return rotated
+
+    def _create_ghost_neighbors(
+        self, point_idx: int, neighbor_points: np.ndarray, neighbor_indices: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Create ghost neighbors for a boundary point to enforce Neumann BC structurally.
+
+        For Neumann boundary conditions (∂u/∂n = 0), ghost nodes provide a structural
+        enforcement by creating mirror-image neighbors outside the domain. This avoids
+        terminal cost/BC incompatibility issues.
+
+        Method (Method of Images):
+        1. Identify the boundary point's outward normal n
+        2. For each interior neighbor, reflect it across the boundary plane
+        3. Ghost point position: p_ghost = p_interior - 2*(p_interior - p_boundary)·n * n
+        4. During solution, enforce u(p_ghost) = u(p_interior_mirror)
+
+        Args:
+            point_idx: Index of boundary point
+            neighbor_points: Array of neighbor coordinates (n_neighbors, dim)
+            neighbor_indices: Array of neighbor point indices (n_neighbors,)
+
+        Returns:
+            Tuple of (ghost_points, ghost_indices, mirror_indices):
+            - ghost_points: Coordinates of ghost neighbors (n_ghosts, dim)
+            - ghost_indices: Indices for ghost points (negative to distinguish from real points)
+            - mirror_indices: Indices of real points that mirror to each ghost
+
+        Issue #531: Terminal BC compatibility via structural Neumann enforcement
+        """
+        center = self.collocation_points[point_idx]
+        normal = self._compute_outward_normal(point_idx)
+
+        # For each neighbor, check if it's inside the domain (positive normal component)
+        # and create a corresponding ghost outside
+        offsets = neighbor_points - center
+        normal_components = offsets @ normal  # Projection onto normal
+
+        # Select neighbors with positive normal component (interior side)
+        # NOTE: For boundary points, normal points OUTWARD, so interior neighbors
+        # have NEGATIVE projection (pointing inward, opposite to normal)
+        interior_mask = normal_components < -1e-10  # Interior = opposite to outward normal
+        interior_offsets = offsets[interior_mask]
+        interior_indices = neighbor_indices[interior_mask]
+
+        if len(interior_offsets) == 0:
+            # No interior neighbors to mirror (shouldn't happen for valid boundary points)
+            return np.zeros((0, self.dimension)), np.array([]), np.array([])
+
+        # Create ghost points by reflecting across boundary plane
+        # Reflection formula: offset_ghost = offset - 2*(offset·n)*n
+        projections = interior_offsets @ normal  # Shape: (n_interior,)
+        ghost_offsets = interior_offsets - 2 * projections[:, np.newaxis] * normal[np.newaxis, :]
+        ghost_points = center + ghost_offsets
+
+        # Assign negative indices to ghost points (distinguishes from real points)
+        # Use -(point_idx * 10000 + i) to ensure uniqueness
+        n_ghosts = len(ghost_points)
+        ghost_indices = -(point_idx * 10000 + np.arange(n_ghosts))
+
+        return ghost_points, ghost_indices, interior_indices
+
+    def _apply_ghost_nodes_to_neighborhoods(self) -> None:
+        """
+        Apply ghost nodes method to boundary point neighborhoods.
+
+        For each boundary point with Neumann BC, augments the neighborhood with
+        ghost neighbors that enforce ∂u/∂n = 0 structurally through symmetry.
+
+        Must be called after _build_neighborhood_structure() and before
+        Taylor matrix construction.
+
+        Issue #531: Terminal BC compatibility fix.
+        """
+        if len(self.boundary_indices) == 0:
+            return
+
+        # Storage for ghost node mappings
+        self._ghost_node_map: dict[int, dict] = {}
+
+        # Get global BC type (MFG_PDE currently supports uniform BC)
+        bc_type_val = self._get_boundary_condition_property("type", None)
+
+        # If type not found, try to infer from BoundaryConditions object
+        if bc_type_val is None and hasattr(self.boundary_conditions, "default_bc"):
+            from mfg_pde.geometry.boundary import BCType
+
+            default_bc = self.boundary_conditions.default_bc
+            if isinstance(default_bc, BCType):
+                bc_type = default_bc.value.lower()
+            else:
+                bc_type = str(default_bc).lower()
+        elif bc_type_val is not None:
+            bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else "neumann"
+        else:
+            # Default to neumann for MFG problems
+            bc_type = "neumann"
+
+        # Ghost nodes only apply to Neumann BC
+        if bc_type not in ("neumann", "no_flux"):
+            return
+
+        boundary_set = set(self.boundary_indices)
+
+        for i in boundary_set:
+            # Get existing neighborhood
+            neighborhood = self.neighborhoods[i]
+            neighbor_points = neighborhood["points"]
+            neighbor_indices = neighborhood["indices"]
+
+            # Create ghost neighbors
+            ghost_points, ghost_indices, mirror_indices = self._create_ghost_neighbors(
+                i, neighbor_points, neighbor_indices
+            )
+
+            if len(ghost_points) == 0:
+                continue
+
+            # Augment neighborhood with ghost points
+            augmented_points = np.vstack([neighbor_points, ghost_points])
+            augmented_indices = np.concatenate([neighbor_indices, ghost_indices])
+
+            # Recompute distances for augmented neighborhood
+            center = self.collocation_points[i]
+            augmented_distances = np.linalg.norm(augmented_points - center, axis=1)
+
+            # Update neighborhood
+            neighborhood["points"] = augmented_points
+            neighborhood["indices"] = augmented_indices
+            neighborhood["distances"] = augmented_distances
+            neighborhood["size"] = len(augmented_points)
+            neighborhood["has_ghost"] = True  # Flag to trigger slow path with ghost handling
+            neighborhood["ghost_count"] = len(ghost_points)
+
+            # Store ghost node mapping for later symmetry enforcement
+            # Build index map: ghost_idx -> mirror_idx
+            ghost_to_mirror = {}
+            for ghost_idx, mirror_idx in zip(ghost_indices, mirror_indices, strict=True):
+                ghost_to_mirror[int(ghost_idx)] = int(mirror_idx)
+
+            self._ghost_node_map[i] = {
+                "ghost_indices": ghost_indices,
+                "mirror_indices": mirror_indices,
+                "ghost_to_mirror": ghost_to_mirror,
+                "n_ghosts": len(ghost_points),
+            }
+
+    def _get_values_with_ghosts(
+        self, u_values: np.ndarray, neighbor_indices: np.ndarray, point_idx: int | None = None
+    ) -> np.ndarray:
+        """
+        Get u values for neighbors, mapping ghost indices to mirror values.
+
+        Ghost points (negative indices) get their values from corresponding mirror points
+        (positive indices) to enforce ∂u/∂n = 0 symmetrically.
+
+        If wind-dependent BC is enabled, ghost mirroring only occurs when flow is INTO
+        the boundary (∇u·n > 0). When flow is OUT (∇u·n < 0), extrapolates from interior.
+
+        Args:
+            u_values: Solution vector at all collocation points
+            neighbor_indices: Array of neighbor indices (may include negative ghost indices)
+            point_idx: Index of the point whose neighbors are being queried (for wind-dependent BC)
+
+        Returns:
+            Array of u values at neighbor locations (ghosts mapped to mirrors or extrapolated)
+        """
+        if not self._use_ghost_nodes or not hasattr(self, "_ghost_node_map"):
+            # No ghost nodes, just return direct indexing
+            return u_values[neighbor_indices]
+
+        # Build combined mapping from all boundary points
+        ghost_to_mirror_global = {}
+        for ghost_info in self._ghost_node_map.values():
+            ghost_to_mirror_global.update(ghost_info["ghost_to_mirror"])
+
+        # Check if wind-dependent BC and point is boundary
+        use_wind_check = self._use_wind_dependent_bc and point_idx is not None and point_idx in self._ghost_node_map
+
+        # Compute flow direction if needed
+        if use_wind_check:
+            # Compute gradient at boundary point
+            grad_u = self._compute_gradient_at_point(u_values, point_idx)
+            # Get outward normal
+            normal = self._compute_outward_normal(point_idx)
+            # Characteristic direction: ∇u · n
+            # For Hamilton-Jacobi, characteristics move as v = -∇u
+            # Characteristics cross boundary outward when v·n < 0, i.e., -∇u·n < 0, i.e., ∇u·n > 0
+            # We enforce BC only when characteristics come FROM outside (∇u·n < 0)
+            grad_dot_normal = np.dot(grad_u, normal)
+            # Decide whether to enforce BC
+            enforce_bc = grad_dot_normal < 0  # Only enforce if characteristics entering FROM outside
+        else:
+            enforce_bc = True  # Default: always enforce
+
+        # Get values, mapping ghosts to mirrors (conditionally if wind-dependent)
+        u_neighbors = np.zeros(len(neighbor_indices))
+        for i, idx in enumerate(neighbor_indices):
+            if idx < 0:
+                # Ghost index
+                if enforce_bc:
+                    # Flow INTO boundary or standard ghost nodes: use mirror
+                    mirror_idx = ghost_to_mirror_global.get(int(idx))
+                    if mirror_idx is not None:
+                        u_neighbors[i] = u_values[mirror_idx]
+                    else:
+                        # Shouldn't happen, but fallback to zero
+                        u_neighbors[i] = 0.0
+                else:
+                    # Flow OUT OF boundary: LINEAR EXTRAPOLATION (transparent BC)
+                    # u_ghost = 2*u_boundary - u_mirror - epsilon*(u_boundary - u_mirror)
+                    # where epsilon is hyperviscosity parameter (0 = no damping, 1 = full reflection)
+                    # This maintains the interior gradient through the boundary,
+                    # effectively creating a one-sided stencil without restructuring
+                    mirror_idx = ghost_to_mirror_global.get(int(idx))
+                    if mirror_idx is not None:
+                        u_boundary = u_values[point_idx]
+                        u_mirror = u_values[mirror_idx]
+
+                        # Apply hyperviscosity if enabled
+                        epsilon = getattr(self, "_wind_bc_hyperviscosity", 0.0)
+                        if epsilon > 0:
+                            # Damped extrapolation: blend toward boundary value
+                            u_neighbors[i] = (2.0 - epsilon) * u_boundary - (1.0 - epsilon) * u_mirror
+                        else:
+                            # Standard linear extrapolation
+                            u_neighbors[i] = 2.0 * u_boundary - u_mirror
+                    else:
+                        # Fallback
+                        u_neighbors[i] = u_values[point_idx]
+            else:
+                # Regular index
+                u_neighbors[i] = u_values[int(idx)]
+
+        return u_neighbors
+
+    def _compute_gradient_at_point(self, u_values: np.ndarray, point_idx: int) -> np.ndarray:
+        """
+        Compute gradient ∇u at a single point using GFDM weights.
+
+        Args:
+            u_values: Solution vector at all collocation points
+            point_idx: Index of point where gradient is computed
+
+        Returns:
+            Gradient vector ∇u, shape (dimension,)
+        """
+        # Get neighborhood for this point
+        neighborhood = self.neighborhoods[point_idx]
+        neighbor_indices = neighborhood["indices"]
+
+        # Get Taylor weights for derivatives
+        weights = neighborhood["weights"]
+
+        # Extract gradient weights (first-order derivatives: columns 1 to dimension+1)
+        # weights structure: [u, u_x, u_y, u_xx, u_xy, u_yy, ...] for 2D
+        grad_weights = weights[:, 1 : 1 + self.dimension]  # Shape: (n_neighbors, dimension)
+
+        # Get neighbor values (using standard ghost mirroring, no wind-dependent check)
+        # This avoids circular dependency: we need gradient to check wind direction,
+        # but we can't check wind direction while computing the gradient!
+        # Solution: use standard ghosts here, wind-dependent BC applies at derivative computation
+        if self._use_ghost_nodes and hasattr(self, "_ghost_node_map"):
+            # Standard ghost mirroring
+            ghost_to_mirror = {}
+            for ghost_info in self._ghost_node_map.values():
+                ghost_to_mirror.update(ghost_info["ghost_to_mirror"])
+
+            u_neighbors_list = []
+            for idx in neighbor_indices:
+                if idx < 0:
+                    mirror_idx = ghost_to_mirror.get(int(idx))
+                    u_neighbors_list.append(u_values[mirror_idx] if mirror_idx is not None else 0.0)
+                else:
+                    u_neighbors_list.append(u_values[int(idx)])
+            u_neighbors = np.array(u_neighbors_list)
+        else:
+            u_neighbors = u_values[neighbor_indices]
+
+        # Compute gradient: ∇u = Σ w_i * u_i for each component
+        grad_u = grad_weights.T @ u_neighbors  # Shape: (dimension,)
+
+        return grad_u
+
     def _build_neighborhood_structure(self):
         """
         Build δ-neighborhood structure for all collocation points.
 
         Uses GFDMOperator's neighborhoods (without ghost particles - pure one-sided stencils)
         and only extends for points needing adaptive delta enlargement.
+
+        For boundary points, also ensures sufficient "deep" neighbors exist
+        (neighbors with adequate depth in the normal direction) to prevent
+        degenerate "pancake" stencils that cannot capture normal derivatives.
         """
         self.neighborhoods = {}
 
@@ -651,16 +1217,39 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         else:
             distances = None
 
+        # Parameters for deep neighbor check (Issue #531: GFDM boundary stencil degeneracy)
+        # Minimum depth: fraction of delta that neighbors must extend into interior
+        min_depth_fraction = 0.3  # Neighbors must be at least 0.3*delta into interior
+        # Minimum number of deep neighbors required for boundary points
+        k_deep = max(2, self.dimension)  # At least 2 (or dimension) deep neighbors
+
+        # Pre-compute boundary set for fast lookup
+        boundary_set = set(self.boundary_indices) if len(self.boundary_indices) > 0 else set()
+
         for i in range(self.n_points):
             # Start with GFDMOperator's neighborhood (pure one-sided stencils, no ghost particles)
             base_neighborhood = self._gfdm_operator.get_neighborhood(i)
             n_neighbors = base_neighborhood["size"]
 
-            # Check if adaptive delta enlargement is needed
-            needs_adaptation = self.adaptive_neighborhoods and n_neighbors < self.k_min and distances is not None
+            # Check if this is a boundary point
+            is_boundary = i in boundary_set
+
+            # For boundary points, also check depth quality
+            needs_depth_adaptation = False
+            if is_boundary and self.adaptive_neighborhoods and distances is not None:
+                min_depth = min_depth_fraction * self.delta
+                deep_count = self._count_deep_neighbors(i, base_neighborhood["points"], min_depth)
+                needs_depth_adaptation = deep_count < k_deep
+
+            # Check if adaptive delta enlargement is needed (count OR depth insufficient)
+            needs_adaptation = (
+                self.adaptive_neighborhoods
+                and distances is not None
+                and (n_neighbors < self.k_min or needs_depth_adaptation)
+            )
 
             if needs_adaptation:
-                # Adaptive delta enlargement for insufficient neighbors
+                # Adaptive delta enlargement for insufficient neighbors or depth
                 neighbor_indices = base_neighborhood["indices"].copy()
                 neighbor_points = base_neighborhood["points"].copy()
                 neighbor_distances = base_neighborhood["distances"].copy()
@@ -673,7 +1262,17 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                 was_adapted = False
                 max_delta = self.delta * self.max_delta_multiplier
 
-                while real_neighbor_count < self.k_min and delta_current < max_delta:
+                # Track deep neighbor count for boundary points
+                deep_count = 0
+                if is_boundary:
+                    min_depth = min_depth_fraction * delta_current
+                    deep_count = self._count_deep_neighbors(i, neighbor_points, min_depth)
+
+                # Continue expanding if count OR depth is insufficient
+                count_ok = real_neighbor_count >= self.k_min
+                depth_ok = (not is_boundary) or (deep_count >= k_deep)
+
+                while (not count_ok or not depth_ok) and delta_current < max_delta:
                     # Enlarge delta by 20% increments
                     delta_multiplier *= 1.2
                     delta_current = self.delta * delta_multiplier
@@ -683,6 +1282,16 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                     neighbor_indices = np.where(neighbor_mask)[0]
                     real_neighbor_count = len(neighbor_indices)
                     was_adapted = True
+
+                    # Recompute deep neighbors for boundary points
+                    if is_boundary:
+                        neighbor_points_temp = self.collocation_points[neighbor_indices]
+                        min_depth = min_depth_fraction * delta_current
+                        deep_count = self._count_deep_neighbors(i, neighbor_points_temp, min_depth)
+
+                    # Update loop conditions
+                    count_ok = real_neighbor_count >= self.k_min
+                    depth_ok = (not is_boundary) or (deep_count >= k_deep)
 
                 # Update neighborhood data for enlarged delta
                 if was_adapted:
@@ -715,17 +1324,28 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                             "adapted_delta": delta_current,
                             "delta_multiplier": delta_multiplier,
                             "n_neighbors": len(neighbor_indices),
+                            "is_boundary": is_boundary,
+                            "deep_neighbors": deep_count if is_boundary else None,
                         }
                     )
 
-                # Warn if still insufficient neighbors
-                if real_neighbor_count < self.k_min:
-                    import warnings as _warnings
+                # Warn if still insufficient neighbors or depth
+                import warnings as _warnings
 
+                if real_neighbor_count < self.k_min:
                     _warnings.warn(
                         f"Point {i}: Could not find {self.k_min} neighbors even with "
                         f"delta={delta_current:.4f} ({delta_multiplier:.2f}x base). "
                         f"Only found {real_neighbor_count} neighbors. GFDM approximation may be poor.",
+                        UserWarning,
+                        stacklevel=3,
+                    )
+                elif is_boundary and deep_count < k_deep:
+                    _warnings.warn(
+                        f"Boundary point {i}: Only {deep_count}/{k_deep} deep neighbors "
+                        f"(depth >= {min_depth_fraction}*delta) even with "
+                        f"delta={delta_current:.4f} ({delta_multiplier:.2f}x base). "
+                        f"Normal derivative approximation may be inaccurate.",
                         UserWarning,
                         stacklevel=3,
                     )
@@ -836,8 +1456,10 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                 continue
 
             # Check if we can reuse GFDMOperator's Taylor matrices
-            # (only if neighborhood wasn't adapted)
-            if not neighborhood.get("adapted", False):
+            # (only if neighborhood wasn't adapted AND no LCR rotation applied)
+            # For LCR boundary points, we need to rebuild with rotated offsets
+            has_lcr_rotation = "rotated_offsets" in neighborhood and self._use_local_coordinate_rotation
+            if not neighborhood.get("adapted", False) and not has_lcr_rotation:
                 base_taylor = self._gfdm_operator.get_taylor_data(i)
                 if base_taylor is not None:
                     # Compute condition number safely
@@ -868,8 +1490,16 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             center_point = self.collocation_points[i]
             neighbor_points = neighborhood["points"]
 
+            # For LCR-enabled boundary points, use rotated offsets for better conditioning
+            # of normal derivative computation (Issue #531)
+            use_rotated = "rotated_offsets" in neighborhood and self._use_local_coordinate_rotation
+            rotated_offsets = neighborhood.get("rotated_offsets") if use_rotated else None
+
             for j, neighbor_point in enumerate(neighbor_points):  # type: ignore[var-annotated,arg-type]
-                delta_x = neighbor_point - center_point
+                if rotated_offsets is not None:
+                    delta_x = rotated_offsets[j]
+                else:
+                    delta_x = neighbor_point - center_point
 
                 for k, beta in enumerate(self.multi_indices):
                     # Compute (x - x_center)^β / β!
@@ -954,8 +1584,15 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         Compute weights based on distance and weight function using smoothing kernels.
 
         Uses the unified kernel API from mfg_pde.utils.numerical.kernels.
+
+        For QP optimization (monotonicity constraints), prefer:
+        - 'cubic_spline': Compact support with good weight distribution
+        - 'wendland': Compact support with C^4 smoothness
+        Avoid 'gaussian' for QP - weights decay too fast, causing distant neighbors
+        to have near-zero weight which can re-introduce singularity issues.
         """
         from mfg_pde.utils.numerical.kernels import (
+            CubicSplineKernel,
             GaussianKernel,
             WendlandKernel,
         )
@@ -979,11 +1616,91 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             # Support radius = delta (neighborhood size)
             return kernel(distances, h=self.delta)
 
+        elif self.weight_function == "cubic_spline":
+            # Cubic B-spline (M4) kernel - good for QP optimization
+            # Compact support (2h) with smoother profile than Wendland
+            # Better weight distribution for distant neighbors vs gaussian
+            kernel = CubicSplineKernel(dimension=self.dimension)
+            return kernel(distances, h=self.delta / 2)  # Support radius = 2h, so h = delta/2
+
         else:
             raise ValueError(
                 f"Unknown weight function: {self.weight_function}. "
-                f"Available options: 'gaussian', 'inverse_distance', 'uniform', 'wendland'"
+                f"Available options: 'gaussian', 'inverse_distance', 'uniform', 'wendland', 'cubic_spline'"
             )
+
+    def _compute_derivative_weights_from_taylor(self, point_idx: int) -> dict | None:
+        """
+        Compute derivative weights from our Taylor matrices for a single point.
+
+        Used for LCR boundary points where we need weights computed from
+        LCR-rotated Taylor matrices rather than from GFDMOperator.
+
+        Args:
+            point_idx: Index of collocation point
+
+        Returns:
+            Dictionary with neighbor_indices, grad_weights, lap_weights,
+            or None if Taylor matrix is unavailable.
+        """
+        taylor_data = self.taylor_matrices.get(point_idx)
+        if taylor_data is None:
+            return None
+
+        neighborhood = self.neighborhoods[point_idx]
+        neighbor_indices = neighborhood["indices"]
+        n_neighbors = len(neighbor_indices)
+
+        # Get SVD components for pseudoinverse
+        if not taylor_data.get("use_svd", False):
+            return None
+
+        sqrt_W = taylor_data["sqrt_W"]
+        U = taylor_data["U"]
+        S = taylor_data["S"]
+        Vt = taylor_data["Vt"]
+
+        # Compute pseudoinverse: (A^T W A)^{-1} A^T W = V S^{-1} U^T sqrt(W)
+        # Each column of this matrix gives weights for one derivative coefficient
+        # We need the weights that multiply (u_neighbor - u_center) to get derivatives
+
+        # The derivative operator: coeffs = pinv(sqrt_W @ A) @ sqrt_W @ b
+        # where b = u_neighbors - u_center
+        # So weights_matrix = V @ diag(1/S) @ U^T @ sqrt_W
+        S_inv = 1.0 / S
+        weights_matrix = Vt.T @ np.diag(S_inv) @ U.T @ sqrt_W  # shape: (n_derivs, n_neighbors)
+
+        # Extract gradient weights (first-order derivatives)
+        grad_weights = np.zeros((self.dimension, n_neighbors))
+        for k, beta in enumerate(self.multi_indices):
+            if sum(beta) == 1:  # First-order derivative
+                for d in range(self.dimension):
+                    if beta[d] == 1:
+                        grad_weights[d, :] = weights_matrix[k, :]
+
+        # Extract Laplacian weights (sum of second-order pure derivatives)
+        lap_weights = np.zeros(n_neighbors)
+        for k, beta in enumerate(self.multi_indices):
+            if sum(beta) == 2:  # Second-order derivative
+                for d in range(self.dimension):
+                    if beta[d] == 2:  # Pure second derivative ∂²/∂x_d²
+                        lap_weights += weights_matrix[k, :]
+
+        # For LCR boundary points, rotate gradient weights back to original frame
+        if (
+            self._use_local_coordinate_rotation
+            and hasattr(self, "_boundary_rotations")
+            and point_idx in self._boundary_rotations
+        ):
+            R = self._boundary_rotations[point_idx]
+            # grad_weights_orig = R^T @ grad_weights_rotated
+            grad_weights = R.T @ grad_weights
+
+        return {
+            "neighbor_indices": neighbor_indices,
+            "grad_weights": grad_weights,
+            "lap_weights": lap_weights,
+        }
 
     def _build_differentiation_matrices(self) -> None:
         """
@@ -1008,8 +1725,18 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         D_grad_lil = [lil_matrix((n, n)) for _ in range(d)]
         D_lap_lil = lil_matrix((n, n))
 
+        # Pre-compute LCR boundary points set for fast lookup
+        lcr_boundary_set = set()
+        if self._use_local_coordinate_rotation and hasattr(self, "_boundary_rotations"):
+            lcr_boundary_set = set(self._boundary_rotations.keys())
+
         for i in range(n):
-            weights = self._gfdm_operator.get_derivative_weights(i)
+            # For LCR boundary points, use our Taylor matrices with rotation
+            if i in lcr_boundary_set:
+                weights = self._compute_derivative_weights_from_taylor(i)
+            else:
+                weights = self._gfdm_operator.get_derivative_weights(i)
+
             if weights is None:
                 continue
 
@@ -1059,6 +1786,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         grad_u = np.column_stack([D @ u for D in self._D_grad])
         lap_u = self._D_lap @ u
 
+        # Note: LCR rotation is now applied in _compute_derivative_weights_from_taylor()
+        # so gradients are already in the original coordinate frame
+
         return grad_u, lap_u
 
     def approximate_derivatives(self, u_values: np.ndarray, point_idx: int) -> dict[tuple[int, ...], float]:
@@ -1090,38 +1820,42 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         taylor_data = self.taylor_matrices[point_idx]
 
-        # Extract function values at neighborhood points, handling ghost particles
+        # Extract function values at neighborhood points, handling ghost nodes/particles
         neighbor_indices = neighborhood["indices"]
         u_center = u_values[point_idx]
 
-        # Handle ghost particles based on BC type
-        # - Neumann/no-flux: u_ghost = u_center (mirror value)
-        # - Dirichlet: u_ghost = BC value (if available)
-        bc_type = self._get_boundary_condition_property("type", "neumann")
-        bc_values = self._get_boundary_condition_property("values", None)
+        # Use ghost-aware value retrieval if ghost nodes method is active
+        if self._use_ghost_nodes:
+            u_neighbors = self._get_values_with_ghosts(u_values, neighbor_indices, point_idx=point_idx)
+        else:
+            # Handle legacy ghost particles based on BC type
+            # - Neumann/no-flux: u_ghost = u_center (mirror value)
+            # - Dirichlet: u_ghost = BC value (if available)
+            bc_type = self._get_boundary_condition_property("type", "neumann")
+            bc_values = self._get_boundary_condition_property("values", None)
 
-        u_neighbors = []
-        for idx in neighbor_indices:  # type: ignore[attr-defined]
-            if idx >= 0:
-                # Regular neighbor
-                u_neighbors.append(u_values[idx])
-            else:
-                # Ghost particle: value depends on BC type
-                if bc_type == "dirichlet" and bc_values is not None:
-                    # Dirichlet BC: use prescribed value
-                    # Note: bc_values may be scalar, array, or callable
-                    if callable(bc_values):
-                        x_pos = self.collocation_points[point_idx]
-                        u_neighbors.append(bc_values(x_pos))
-                    elif hasattr(bc_values, "__getitem__"):
-                        # Array-like: use value at this point
-                        u_neighbors.append(bc_values[point_idx] if point_idx < len(bc_values) else 0.0)
-                    else:
-                        # Scalar
-                        u_neighbors.append(float(bc_values))
+            u_neighbors = []
+            for idx in neighbor_indices:  # type: ignore[attr-defined]
+                if idx >= 0:
+                    # Regular neighbor
+                    u_neighbors.append(u_values[idx])
                 else:
-                    # Neumann/no-flux: mirror u_center
-                    u_neighbors.append(u_center)
+                    # Legacy ghost particle: value depends on BC type
+                    if bc_type == "dirichlet" and bc_values is not None:
+                        # Dirichlet BC: use prescribed value
+                        # Note: bc_values may be scalar, array, or callable
+                        if callable(bc_values):
+                            x_pos = self.collocation_points[point_idx]
+                            u_neighbors.append(bc_values(x_pos))
+                        elif hasattr(bc_values, "__getitem__"):
+                            # Array-like: use value at this point
+                            u_neighbors.append(bc_values[point_idx] if point_idx < len(bc_values) else 0.0)
+                        else:
+                            # Scalar
+                            u_neighbors.append(float(bc_values))
+                    else:
+                        # Neumann/no-flux: mirror u_center
+                        u_neighbors.append(u_center)
 
         u_neighbors = np.array(u_neighbors)  # type: ignore[assignment]
 
@@ -1204,6 +1938,15 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         derivatives = {}
         for k, beta in enumerate(self.multi_indices):
             derivatives[beta] = derivative_coeffs[k]
+
+        # Apply inverse rotation for LCR boundary points (Issue #531)
+        # Derivatives were computed in rotated frame, need to rotate back
+        if (
+            self._use_local_coordinate_rotation
+            and hasattr(self, "_boundary_rotations")
+            and point_idx in self._boundary_rotations
+        ):
+            derivatives = self._rotate_derivatives_back(derivatives, self._boundary_rotations[point_idx])
 
         return derivatives
 
@@ -1315,6 +2058,11 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         H_total = H_kinetic + H_potential + H_interaction
 
+        # Running cost term L(x) if provided
+        # This implements: H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)
+        if hasattr(self, "_running_cost") and self._running_cost is not None:
+            H_total = H_total + self._running_cost
+
         # Diffusion term: (sigma^2 / 2) * Laplacian
         sigma = getattr(self.problem, "diffusion", 0.0) or getattr(self.problem, "sigma", 0.0)
         diffusion_term = 0.5 * sigma**2 * lap_u
@@ -1388,6 +2136,11 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             laplacian = p_derivs.laplacian or 0.0
 
             H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs, x_position=x_pos)
+
+            # Add running cost L(x) if provided
+            if hasattr(self, "_running_cost") and self._running_cost is not None:
+                H = H + self._running_cost[i]
+
             sigma_val = self._get_sigma_value(i)
             diffusion_term = 0.5 * sigma_val**2 * laplacian
             residual[i] = -u_t[i] + H - diffusion_term
@@ -1538,7 +2291,25 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
             elif bc_type in ("neumann", "no_flux"):
                 # Neumann: du/dn = g
-                weights = self._gfdm_operator.get_derivative_weights(i)
+                # Skip row replacement if ghost nodes are active - BC is enforced structurally
+                if self._use_ghost_nodes and hasattr(self, "_ghost_node_map") and i in self._ghost_node_map:
+                    # Ghost nodes enforce Neumann BC through symmetric stencils
+                    # Keep the original PDE row (already set in Jacobian)
+                    # Restore the row from the original Jacobian (undo the clearing above)
+                    jac_lil[i, :] = jacobian_sparse[i, :].toarray().flatten()
+                    # Residual also stays as-is (PDE residual)
+                    continue
+
+                # For LCR boundary points, use our LCR-corrected weights (Issue #531)
+                if (
+                    self._use_local_coordinate_rotation
+                    and hasattr(self, "_boundary_rotations")
+                    and i in self._boundary_rotations
+                ):
+                    weights = self._compute_derivative_weights_from_taylor(i)
+                else:
+                    weights = self._gfdm_operator.get_derivative_weights(i)
+
                 if weights is None:
                     jac_lil[i, i] = 1.0
                     residual_bc[i] = 0.0
@@ -1636,6 +2407,7 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         U_coupling_prev: np.ndarray | None = None,
         show_progress: bool = True,
         diffusion_field: float | np.ndarray | None = None,
+        running_cost: np.ndarray | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: np.ndarray | None = None,
         U_final_condition_at_T: np.ndarray | None = None,
@@ -1649,6 +2421,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             U_terminal: (*spatial_shape,) terminal condition u(T,x)
             U_coupling_prev: (Nt, *spatial_shape) previous coupling iteration estimate
             show_progress: Whether to display progress bar for timesteps
+            running_cost: (n_points,) time-independent running cost L(x) at collocation points.
+                This is added to the Hamiltonian at each backward time step:
+                H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)
             diffusion_field: Optional diffusion coefficient override
 
         Returns:
@@ -1709,15 +2484,37 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         # Store original spatial shape for reshaping output
         self._output_spatial_shape = M_density.shape[1:]
 
-        # For GFDM, we work directly with collocation points
-        # Map grid data to collocation points
-        # Output shape: (n_time_points, n_points) - same as input
-        U_solution_collocation = np.zeros((n_time_points, self.n_points))
-        M_collocation = self._map_grid_to_collocation_batch(M_density)
-        U_prev_collocation = self._map_grid_to_collocation_batch(U_coupling_prev)
+        # Store running cost for use in residual computation
+        # Running cost L(x) is added to Hamiltonian at each backward step
+        if running_cost is not None:
+            if running_cost.shape[0] != self.n_points:
+                raise ValueError(
+                    f"running_cost must have shape (n_points,) = ({self.n_points},), got shape {running_cost.shape}"
+                )
+            self._running_cost = running_cost.copy()
+        else:
+            self._running_cost = None
 
-        # Set final condition at t=T (last time index = n_time_points - 1)
-        U_solution_collocation[n_time_points - 1, :] = self._map_grid_to_collocation(U_terminal.flatten())
+        # Detect if input is already in collocation format (pure meshfree mode)
+        # Grid format: M_density.shape = (Nt, Nx, Ny, ...)
+        # Collocation format: M_density.shape = (Nt, n_points)
+        is_meshfree_input = M_density.ndim == 2 and M_density.shape[1] == self.n_points
+
+        # For GFDM, we work directly with collocation points
+        U_solution_collocation = np.zeros((n_time_points, self.n_points))
+
+        if is_meshfree_input:
+            # Pure meshfree mode: input already at collocation points
+            M_collocation = M_density.copy()
+            U_prev_collocation = U_coupling_prev.copy()
+            # U_terminal should also be at collocation points
+            U_solution_collocation[n_time_points - 1, :] = U_terminal.copy()
+        else:
+            # Hybrid mode: map grid data to collocation points
+            M_collocation = self._map_grid_to_collocation_batch(M_density)
+            U_prev_collocation = self._map_grid_to_collocation_batch(U_coupling_prev)
+            # Set final condition at t=T (last time index = n_time_points - 1)
+            U_solution_collocation[n_time_points - 1, :] = self._map_grid_to_collocation(U_terminal.flatten())
 
         # Backward time stepping: Nt steps from index (n_time_points-2) down to 0
         # This covers all Nt intervals in the backward direction
@@ -1746,9 +2543,14 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
                 if postfix:
                     timestep_range.set_postfix(**postfix)
 
-        # Map back to grid
-        U_solution = self._map_collocation_to_grid_batch(U_solution_collocation)
-        return U_solution
+        # Return format depends on input mode
+        if is_meshfree_input:
+            # Pure meshfree: return collocation data directly
+            return U_solution_collocation
+        else:
+            # Hybrid mode: map back to grid
+            U_solution = self._map_collocation_to_grid_batch(U_solution_collocation)
+            return U_solution
 
     def _solve_timestep(
         self,
@@ -1902,21 +2704,19 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             if not is_custom:
                 return p / lambda_val
 
-        # Fallback: finite differences for custom Hamiltonians
+        # Fallback: finite differences for custom Hamiltonians using scipy
         x_pos = self.collocation_points[point_idx]
+        hess = derivs.hess if derivs.hess is not None else np.zeros((len(p), len(p)))
 
-        def H_wrapper(x_idx, m, derivs):
-            return self.problem.H(x_idx, m, derivs=derivs, x_position=x_pos)
+        def H_of_p(p_vec: np.ndarray) -> float:
+            """Hamiltonian as function of momentum p only."""
+            from mfg_pde.core.derivatives import DerivativeTensors
 
-        hess = derivs.hess
+            d = DerivativeTensors.from_arrays(grad=p_vec, hess=hess)
+            return self.problem.H(point_idx, m_at_x, derivs=d, x_position=x_pos)
 
-        return compute_dH_dp(
-            H_func=H_wrapper,
-            x_idx=point_idx,
-            m=m_at_x,
-            p=p,
-            hess=hess,
-        )
+        # Use scipy's approx_fprime for gradient computation
+        return approx_fprime(p, H_of_p, epsilon=1e-7)
 
     def _compute_hjb_jacobian_analytic(
         self,

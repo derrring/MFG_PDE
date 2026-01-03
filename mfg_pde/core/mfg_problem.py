@@ -136,6 +136,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         sigma: float | NDArray[np.floating] | Callable | None = None,  # Legacy alias (deprecated)
         drift: float | NDArray[np.floating] | Callable | None = None,  # Optional drift field
         coupling_coefficient: float = 0.5,
+        # MFG coupling parameters
+        lambda_: float | None = None,  # Control cost (H uses |p|²/(2λ))
+        gamma: float = 1.0,  # Density coupling strength (H uses -γm²)
         # Advanced
         components: MFGComponents | None = None,
         suppress_warnings: bool = False,
@@ -388,7 +391,15 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         elif mode == "geometry":
             # Mode 3: Complex geometry
             self._init_geometry(
-                final_hjb_geometry, obstacles, T, Nt, sigma_scalar, coupling_coefficient, suppress_warnings
+                final_hjb_geometry,
+                obstacles,
+                T,
+                Nt,
+                sigma_scalar,
+                coupling_coefficient,
+                lambda_,
+                gamma,
+                suppress_warnings,
             )
             # For dual geometry mode, store both geometries explicitly
             if self.geometry_projector is not None:
@@ -397,7 +408,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         elif mode == "network":
             # Mode 4: Network MFG
-            self._init_network(network, T, Nt, sigma_scalar, coupling_coefficient)
+            self._init_network(network, T, Nt, sigma_scalar, coupling_coefficient, lambda_, gamma)
 
         elif mode == "default":
             # Default: 1D with default parameters
@@ -736,6 +747,8 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         Nt: int,
         sigma: float,
         coupling_coefficient: float,
+        lambda_: float | None,
+        gamma: float,
         suppress_warnings: bool,
     ) -> None:
         """
@@ -749,6 +762,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             obstacles: List of obstacle geometries (for domain geometries)
             T, Nt: Time domain parameters
             sigma, coupling_coefficient: Physical parameters
+            lambda_, gamma: MFG coupling parameters
             suppress_warnings: Suppress warnings
         """
         # Import geometry protocol
@@ -784,6 +798,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Physical parameters
         self.sigma = sigma  # Already sigma_scalar from __init__ dispatch
         self.coupling_coefficient = coupling_coefficient
+
+        # MFG coupling parameters (for custom Hamiltonians)
+        self.lambda_ = lambda_
+        self.gamma = gamma
 
         # Initialize spatial discretization based on geometry type
         from mfg_pde.geometry import GeometryType
@@ -856,6 +874,8 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         Nt: int,
         sigma: float,
         coupling_coefficient: float,
+        lambda_: float | None,
+        gamma: float,
     ) -> None:
         """
         Initialize problem on network/graph.
@@ -907,6 +927,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Physical parameters
         self.sigma = sigma  # Already sigma_scalar from __init__ dispatch
         self.coupling_coefficient = coupling_coefficient
+
+        # MFG coupling parameters (for custom Hamiltonians)
+        self.lambda_ = lambda_
+        self.gamma = gamma
 
         # Spatial discretization (nodes)
         self.spatial_shape = (self.num_nodes,)
@@ -1738,9 +1762,11 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 # 1D default functions (original behavior)
                 spatial_grid = self._get_spatial_grid_internal()
                 for i in range(self.spatial_shape[0]):
-                    self.f_potential[i] = self._potential(spatial_grid[i])
-                    self.u_fin[i] = self._u_final(spatial_grid[i])
-                    self.m_init[i] = self._m_initial(spatial_grid[i])
+                    # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
+                    x_i = float(spatial_grid[i, 0])
+                    self.f_potential[i] = self._potential(x_i)
+                    self.u_fin[i] = self._u_final(x_i)
+                    self.m_init[i] = self._m_initial(x_i)
             else:
                 # n-D default functions (simple defaults)
                 # Potential: zero (can be customized later)
@@ -1786,7 +1812,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             # 1D: Use original default
             spatial_grid = self._get_spatial_grid_internal()
             for i in range(self.spatial_shape[0]):
-                self.m_init[i] = self._m_initial(spatial_grid[i])
+                # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
+                x_i = float(spatial_grid[i, 0])
+                self.m_init[i] = self._m_initial(x_i)
         elif self.dimension == "network":
             # Network/graph: uniform density on all nodes
             self.m_init[:] = 1.0 / self.num_nodes

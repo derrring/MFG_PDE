@@ -74,6 +74,8 @@ class FPGFDMSolver(BaseFPSolver):
         boundary_indices: set[int] | np.ndarray | None = None,
         domain_bounds: list[tuple[float, float]] | None = None,
         boundary_type: str | None = None,
+        upwind_scheme: str = "none",
+        upwind_strength: float = 0.5,
     ):
         """
         Initialize GFDM-based FP solver.
@@ -88,6 +90,8 @@ class FPGFDMSolver(BaseFPSolver):
             boundary_indices: Set/array of indices of boundary points (optional)
             domain_bounds: List of (min, max) tuples for each dimension (optional)
             boundary_type: Type of boundary condition ("no_flux" or None)
+            upwind_scheme: Upwind stabilization scheme ("none", "exponential", "linear")
+            upwind_strength: Upwind bias parameter β (typically 0.3-1.0)
         """
         super().__init__(problem)
         self.fp_method_name = "GFDM"
@@ -117,6 +121,10 @@ class FPGFDMSolver(BaseFPSolver):
             boundary_type=boundary_type,
         )
 
+        # Store upwind parameters
+        self.upwind_scheme = upwind_scheme
+        self.upwind_strength = upwind_strength
+
     def _compute_adaptive_delta(self) -> float:
         """Compute adaptive delta based on point spacing."""
         if self.n_points <= 1:
@@ -129,6 +137,173 @@ class FPGFDMSolver(BaseFPSolver):
         distances, _ = tree.query(self.collocation_points, k=2)
         # Use 2x median nearest neighbor distance
         return 2.0 * float(np.median(distances[:, 1]))
+
+    def _compute_upwind_divergence(
+        self,
+        drift_field: np.ndarray,
+        density: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Compute div(m * α) with streamline-biased weighted finite differences.
+
+        ACTUAL Implementation (径向有限差分 + 流线加权):
+        =========================================================
+        This is NOT full GFDM Taylor expansion - it's a simplified approach:
+
+        1. Use radial finite differences: div F ≈ (F_j - F_i) · r_ij / ||r_ij||²
+        2. Weight each neighbor by:
+           - Distance: w_dist = 1 / ||r_ij||  (inverse distance)
+           - Streamline bias: w_upwind = exp(β cos θ)  where cos θ = (α · r) / (||α|| · ||r||)
+        3. Compute: div F = Σ_j [w_dist * w_upwind * (F_j - F_i) · r_ij / ||r_ij||²] / Σ_j w_total
+
+        Why NOT Full GFDM Taylor Expansion:
+        ------------------------------------
+        Full GFDM would require:
+        1. Build weighted LS matrix: A_ij = [1, r_x, r_y, r_x², r_xy, r_y², ...]
+        2. Solve: (A^T W A) c = A^T W b  → get derivative coefficients
+        3. Use coefficients to compute ∇·F
+
+        Problem: Modifying weights requires rebuilding operator for EACH point
+        at EACH time step → computationally expensive.
+
+        Current Approach (Simplified):
+        -------------------------------
+        - Uses SPH-style radial gradient: (F_j - F_i) · r_ij / ||r_ij||²
+        - Faster than full GFDM rebuild
+        - Still maintains key property: streamline-biased weighting
+        - Accuracy: lower than full GFDM Taylor (O(h) vs O(h²)), but stable
+
+        Weight Formula:
+        ---------------
+        w_combined = w_distance * w_upwind
+
+        where:
+        - w_distance = 1 / ||r_ij||  (closer neighbors → higher weight)
+        - w_upwind = exp(β cos θ)  (downstream → exp(+β·cos), upstream → exp(-β·|cos|))
+        - cos θ = (α · r) / (||α|| · ||r||)  (streamline alignment)
+        - β = upwind_strength  (typically 0.5-1.0)
+
+        Key Properties:
+        ---------------
+        ✓ No dimension splitting (single unified computation)
+        ✓ Rotation invariant (no grid orientation effect)
+        ✓ All neighbors kept (no hard selection → stable)
+        ✓ Streamline-aware (not axis-aware)
+
+        ✗ Lower order accuracy than full GFDM (O(h) radial FD vs O(h²) Taylor)
+        ✗ Not using precomputed GFDM operator (rebuilds each call)
+
+        Args:
+            drift_field: Drift α = -∇U at each point, shape (N, d)
+            density: Density m at each point, shape (N,)
+
+        Returns:
+            divergence: div(m*α) with streamline-biased weighting, shape (N,)
+
+        References:
+            - SPH radial gradient: Monaghan (2005), Rep. Prog. Phys.
+            - Streamline upwinding: Oñate et al. (1996), FPM
+        """
+        N = len(self.collocation_points)
+        divergence = np.zeros(N)
+
+        # Compute flux: F = m * α
+        flux = density[:, np.newaxis] * drift_field  # Shape: (N, d)
+
+        # For each point, compute div(F) with streamline-biased weights
+        for i in range(N):
+            neighborhood = self.gfdm_operator.neighborhoods[i]
+            neighbors = neighborhood["indices"]
+
+            # Filter ghost particles
+            real_neighbors = neighbors[neighbors >= 0]
+            if len(real_neighbors) == 0:
+                divergence[i] = 0.0
+                continue
+
+            drift_i = drift_field[i]
+            drift_norm = np.linalg.norm(drift_i)
+
+            # Compute streamline-biased weights for neighbors
+            upwind_weights = []
+            neighbor_points = []
+
+            for j in real_neighbors:
+                r_ij = self.collocation_points[j] - self.collocation_points[i]
+                r_norm = np.linalg.norm(r_ij)
+
+                if r_norm < 1e-12:
+                    continue  # Skip coincident points
+
+                # Streamline alignment: cos θ = (α · r) / (||α|| · ||r||)
+                cos_theta = np.dot(drift_i, r_ij) / (drift_norm * r_norm)
+
+                # Upwind weight modification
+                if self.upwind_scheme == "exponential":
+                    # Scharfetter-Gummel style: exp(β cos θ)
+                    # Upstream (cos<0): weight < 1
+                    # Downstream (cos>0): weight > 1
+                    weight_factor = np.exp(self.upwind_strength * cos_theta)
+                elif self.upwind_scheme == "linear":
+                    # Linear bias: 1 + β*cos θ
+                    weight_factor = 1.0 + self.upwind_strength * cos_theta
+                else:
+                    weight_factor = 1.0
+
+                upwind_weights.append(weight_factor)
+                neighbor_points.append(j)
+
+            if len(neighbor_points) == 0:
+                divergence[i] = 0.0
+                continue
+
+            upwind_weights = np.array(upwind_weights)
+            neighbor_points = np.array(neighbor_points)
+
+            # Build local GFDM operator with modified weights
+            # We need to manually compute divergence using upwind-weighted Taylor expansion
+
+            # Get neighbor positions and flux values
+            X_neighbors = self.collocation_points[neighbor_points]  # Shape: (K, d)
+            F_neighbors = flux[neighbor_points]  # Shape: (K, d)
+            F_i = flux[i]  # Shape: (d,)
+
+            # Relative positions
+            dX = X_neighbors - self.collocation_points[i]  # Shape: (K, d)
+
+            # Build weighted least-squares system for divergence
+            # We want: div(F) ≈ Σ_k w_k * ∇·F|_k
+            # Using finite differences: ∇·F ≈ (F_k - F_i) · r_k / ||r_k||²
+
+            div_i = 0.0
+            total_weight = 0.0
+
+            for idx, _j in enumerate(neighbor_points):
+                r_ij = dX[idx]
+                r_norm_sq = np.dot(r_ij, r_ij)
+
+                if r_norm_sq < 1e-12:
+                    continue
+
+                # Flux difference
+                dF = F_neighbors[idx] - F_i
+
+                # Divergence approximation: (dF · r) / ||r||²
+                div_contrib = np.dot(dF, r_ij) / r_norm_sq
+
+                # Weight by distance (GFDM-style) AND upwind bias
+                dist_weight = 1.0 / (np.sqrt(r_norm_sq) + 1e-12)
+                combined_weight = dist_weight * upwind_weights[idx]
+
+                div_i += combined_weight * div_contrib
+                total_weight += combined_weight
+
+            if total_weight > 1e-12:
+                divergence[i] = div_i / total_weight
+            else:
+                divergence[i] = 0.0
+
+        return divergence
 
     def solve_fp_system(
         self,
@@ -197,7 +372,12 @@ class FPGFDMSolver(BaseFPSolver):
             drift = -grad_U  # Shape: (N, d)
 
             # Advection term: div(m * alpha)
-            advection = self.gfdm_operator.divergence(drift, m_current)
+            if self.upwind_scheme != "none":
+                # Use upwind-stabilized divergence
+                advection = self._compute_upwind_divergence(drift, m_current)
+            else:
+                # Use standard GFDM divergence (central differences)
+                advection = self.gfdm_operator.divergence(drift, m_current)
 
             # Diffusion term: D * Laplacian(m)
             laplacian = self.gfdm_operator.laplacian(m_current)

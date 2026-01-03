@@ -2,7 +2,12 @@
 
 **Created**: 2025-12-18
 **Status**: Active reference document
-**Related**: Issue #527 (BC Infrastructure Integration)
+**Related**:
+- Issue #527 (BC Infrastructure Integration)
+- Issue #535 (BC Framework Enhancement: L-S Validation, Boundary Matrices, Neural Interface)
+- Issue #536 (Particle Absorbing BC)
+- [boundary_framework_implementation_design.md](./boundary_framework_implementation_design.md) (implementation roadmap)
+- [boundary_framework_mathematical_foundation.md](../theory/boundary_framework_mathematical_foundation.md) (theory)
 
 ---
 

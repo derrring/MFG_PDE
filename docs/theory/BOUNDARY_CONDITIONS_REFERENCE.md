@@ -1,8 +1,10 @@
 # Boundary Conditions Reference
 
 **Status**: Canonical Reference Document
-**Last Updated**: 2025-12-16
+**Last Updated**: 2025-01-03
 **Consolidates**: `boundary_conditions_and_geometry.md`, `BC_UNIFICATION_TECHNICAL_REPORT.md`, `GEOMETRY_DOMAIN_BC_ARCHITECTURE.md`
+**See Also**: [Mathematical Foundation](./boundary_framework_mathematical_foundation.md) (L-S theory, Lagrangian submanifolds)
+**Enhancement Tracking**: [Issue #535](https://github.com/derrring/MFG_PDE/issues/535)
 
 ---
 
@@ -420,34 +422,57 @@ Rigorous BC validation requires MMS:
 
 ## 8. Future Plans
 
-### 8.1 Phase 1: HJB Solver BC Wiring (Priority: High)
+> **See [Issue #535](https://github.com/derrring/MFG_PDE/issues/535) for detailed tracking.**
+> **See [Mathematical Foundation](./boundary_framework_mathematical_foundation.md) for theory.**
+
+### 8.1 Phase 1: Particle Absorbing BC (Priority: Critical)
+
+Enable `FPParticleSolver` to interpret `DIRICHLET` segments as absorbing:
+
+- [ ] Add segment-aware logic to `_apply_boundary_conditions_nd()`
+- [ ] Query `bc.get_bc_at_point()` for particles at boundary
+- [ ] Interpret `DIRICHLET` → absorb (remove particle)
+- [ ] Track absorbed particle counts per exit region
+- [ ] Add smoke test with multi-exit geometry
+
+**Key insight**: No new `BCType` needed. `DIRICHLET` semantics are solver-dependent:
+- Field solver: set density value
+- Particle solver: absorb particles (achieving density → target value)
+
+### 8.2 Phase 2: Stability Analysis Layer (Priority: High)
+
+Add Lopatinski-Shapiro validation to catch ill-posed BC combinations:
+
+- [ ] Create `mfg_pde/geometry/boundary/analysis.py`
+- [ ] Implement `PDESymbol` enum (ELLIPTIC, HYPERBOLIC, PARABOLIC)
+- [ ] Implement basic L-S checks for common BC combinations
+- [ ] Integrate stability check into solver initialization (warning mode)
+
+### 8.3 Phase 3: Boundary Operator Matrices (Priority: Medium)
+
+Expose BC as linear operators for implicit solvers:
+
+- [ ] Add `LinearOperatorCapable` protocol to `applicator_base.py`
+- [ ] Implement `get_boundary_operator()` in `FDMApplicator`
+- [ ] Enable direct Ax=b assembly for time-implicit schemes
+- [ ] Add Calderón-like projector for optimization constraints
+
+### 8.4 Phase 4: Neural Interface (Priority: Medium)
+
+Support PINN/DGM boundary loss computation:
+
+- [ ] Add `sample_boundary_points()` to `BoundaryConditions`
+- [ ] Add `compute_boundary_residual()` for loss terms
+- [ ] Integrate with existing DGM solver
+
+### 8.5 Legacy: HJB/FP Solver BC Wiring
 
 - [ ] Wire `HJB WENO` to use ghost cell infrastructure
 - [ ] Wire `HJB FDM` nD path to use ghost cells
-- [ ] Implement high-order ghost cell formulas for WENO-5
-- [ ] Add `bc_strict_mode` option for explicit BC requirement
-
-### 8.2 Phase 2: FP Solver Mixed BC Support (Priority: High)
-
 - [ ] Safe BC type accessor for mixed BCs in `fp_fdm.py`
 - [ ] Per-boundary BC handling in `fp_fdm_operators.py`
-- [ ] Unit tests for matrix mass conservation (column sums = 0)
-- [ ] Mixed BC support for particle methods
 
-### 8.3 Phase 3: Advanced Features (Priority: Low)
-
-- [ ] Time-dependent BC values: $g(x, t)$
-- [ ] State-dependent BCs: $g(x, u)$
-- [ ] Adaptive ghost depth based on local Peclet number
-- [ ] Numba/Cython acceleration for ghost cell loops
-
-### 8.4 Neural/Variational Paradigm BCs (Priority: Medium)
-
-- [ ] Physics-Informed Neural Networks (PINNs): BC loss terms
-- [ ] Deep Galerkin Method (DGM): Boundary sampling
-- [ ] Actor-Critic RL: State space truncation
-
-### 8.5 Utility Function (Recommended Approach)
+### 8.6 Utility Function (Recommended Approach)
 
 Instead of a base class, use a shared utility function:
 
@@ -467,7 +492,7 @@ def get_boundary_conditions(
 
 Each solver calls this and implements its own padding. Code review ensures consistency.
 
-### 8.6 Canceled: BoundaryAwareSolver Base Class
+### 8.7 Canceled: BoundaryAwareSolver Base Class
 
 > **Status**: Canceled (2025-12-16)
 >
@@ -480,7 +505,7 @@ Each solver calls this and implements its own padding. Code review ensures consi
 >
 > See issue #486 for discussion.
 
-### 8.7 Implementation Checklist
+### 8.8 Implementation Checklist
 
 | Task | Status | Notes |
 |:-----|:-------|:------|

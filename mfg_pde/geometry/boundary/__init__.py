@@ -166,13 +166,18 @@ from .applicator_graph import (
 )
 
 # =============================================================================
-# Meshfree Applicator (particle and collocation methods)
+# Meshfree Applicator (geometry-based, for collocation methods)
 # =============================================================================
 from .applicator_meshfree import (
     MeshfreeApplicator,
     ParticleReflector,
     SDFParticleBCHandler,
 )
+
+# =============================================================================
+# Particle Applicator (BC-segment-based, for Lagrangian particle solvers)
+# =============================================================================
+from .applicator_particle import ParticleApplicator
 
 # Unified BoundaryConditions class and factory functions
 from .conditions import (
@@ -323,10 +328,12 @@ __all__ = [
     # Helper functions
     "get_bc_class",
     "get_manager_class",
-    # Meshfree Applicator
+    # Meshfree Applicator (geometry-based)
     "MeshfreeApplicator",
     "ParticleReflector",
     "SDFParticleBCHandler",
+    # Particle Applicator (BC-segment-based)
+    "ParticleApplicator",
     # Graph Applicator
     "GraphApplicator",
     "GraphBCConfig",

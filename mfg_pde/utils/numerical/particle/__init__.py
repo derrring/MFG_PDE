@@ -87,6 +87,7 @@ from mfg_pde.utils.numerical.particle.sampling import (
     MCConfig,
     MCResult,
     MCSampler,
+    PoissonDiskSampler,
     QuasiMCSampler,
     StratifiedMCSampler,
     UniformMCSampler,
@@ -94,6 +95,7 @@ from mfg_pde.utils.numerical.particle.sampling import (
     estimate_expectation,
     integrate_gaussian_quadrature_mc,
     monte_carlo_integrate,
+    sample_from_density,
 )
 
 __all__ = [
@@ -121,11 +123,13 @@ __all__ = [
     "StratifiedMCSampler",
     "QuasiMCSampler",
     "ImportanceMCSampler",
+    "PoissonDiskSampler",
     "ControlVariates",
     "monte_carlo_integrate",
     "adaptive_monte_carlo",
     "integrate_gaussian_quadrature_mc",
     "estimate_expectation",
+    "sample_from_density",
     # MCMC
     "MCMCConfig",
     "MCMCResult",

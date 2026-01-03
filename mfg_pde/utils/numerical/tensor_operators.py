@@ -1,21 +1,35 @@
 """
 Tensor Diffusion Operators for Anisotropic PDEs.
 
-This module implements finite difference operators for tensor diffusion:
-    ∇ · (Σ ∇m)
-where Σ is a d×d symmetric positive semi-definite diffusion tensor.
+.. deprecated:: 0.18.0
+    This module is deprecated. Use ``tensor_calculus`` instead:
 
-Key Features:
+    Migration Guide::
+
+        # Old
+        from mfg_pde.utils.numerical.tensor_operators import (
+            divergence_tensor_diffusion_2d,
+            divergence_tensor_diffusion_nd,
+        )
+
+        # New
+        from mfg_pde.utils.numerical.tensor_calculus import tensor_diffusion
+
+        # tensor_diffusion() auto-dispatches to 1D/2D/nD implementations
+
+    The new ``tensor_calculus`` module provides:
+    - Unified API for all differential operators
+    - Consistent BC handling across operators
+    - Complete tensor calculus: gradient, divergence, laplacian, hessian, advection
+
+This module is kept for backward compatibility and will be removed in v1.0.
+
+Original Features (still available via tensor_calculus.tensor_diffusion):
 - Supports constant and spatially-varying tensors
 - Handles periodic, Dirichlet, and no-flux boundary conditions
 - Optimized diagonal case for efficiency
 - Full anisotropic and cross-diffusion support
 - Optional Numba JIT compilation for 10-50x speedup
-
-Performance Notes:
-- JIT compilation triggers on first call (1-2s compilation time)
-- Subsequent calls are 10-50x faster than pure NumPy
-- Use USE_NUMBA=True to enable (default: auto-detect)
 """
 
 from __future__ import annotations

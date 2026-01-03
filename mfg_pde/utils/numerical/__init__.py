@@ -2,14 +2,22 @@
 Numerical utilities for MFG computations.
 
 This module provides numerical algorithms and helper functions commonly needed
-in MFG research projects, including kernel functions, GFDM operators, RBF operators,
-particle interpolation, signed distance functions, and computational utilities.
+in MFG research projects, including differential operators, kernel functions,
+GFDM operators, particle interpolation, and signed distance functions.
 
-Submodules:
+Primary Submodules:
+- tensor_calculus: Complete discrete tensor calculus for regular grids
+  (gradient, divergence, laplacian, hessian, tensor_diffusion, advection)
+- gfdm_strategies: Differential operators for scattered points (GFDM/RBF-FD)
 - kernels: Kernel functions (Gaussian, Wendland, B-spline) for GFDM, KDE, SPH
-- gfdm_operators: GFDM differential operators (GFDMOperator class)
-- kernel_rbf_operators: RBF-based differential operators using kernel infrastructure
+- nonlinear_solvers: Newton, fixed-point, policy iteration solvers
 - particle: Particle-based methods (Monte Carlo, MCMC, interpolation)
+
+Deprecated Submodules:
+- grid_operators: Use tensor_calculus instead (v0.18.0)
+- tensor_operators: Use tensor_calculus instead (v0.18.0)
+- gfdm_operators: Use gfdm_strategies instead (v0.17.0)
+- differential_utils: Use scipy.optimize or tensor_calculus (v0.18.0)
 """
 
 # Flux diagnostics for mass conservation analysis
@@ -89,10 +97,31 @@ from mfg_pde.utils.numerical.sdf_utils import (
     sdf_union,
 )
 
+# Tensor Calculus - Primary differential operators for regular grids
+from mfg_pde.utils.numerical.tensor_calculus import (
+    advection,
+    diffusion,
+    divergence,
+    gradient,
+    gradient_simple,
+    hessian,
+    laplacian,
+    tensor_diffusion,
+)
+
 __all__ = [
-    # GFDM operators (legacy)
+    # Tensor Calculus (primary - regular grids)
+    "gradient",
+    "gradient_simple",
+    "divergence",
+    "laplacian",
+    "hessian",
+    "diffusion",
+    "tensor_diffusion",
+    "advection",
+    # GFDM operators (legacy, use gfdm_strategies)
     "GFDMOperator",
-    # GFDM Strategy Pattern (modular)
+    # GFDM Strategy Pattern (scattered points)
     "DifferentialOperator",
     "BoundaryHandler",
     "TaylorOperator",

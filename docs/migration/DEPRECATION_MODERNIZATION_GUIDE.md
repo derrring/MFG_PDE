@@ -1,7 +1,7 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2025-12-18
-**Current Version**: v0.16.12
+**Last Updated**: 2026-01-04
+**Current Version**: v0.18.0
 **Target**: v1.0.0 (deprecated patterns will be removed)
 **Status**: ✅ Migration complete, v0.10-v0.15 deprecations removed
 
@@ -17,9 +17,10 @@ This guide documents deprecated usage patterns in MFG_PDE and provides migration
 
 | Version | Milestone |
 |:--------|:----------|
-| v0.16.x | Current - deprecation warnings active |
-| **v0.17.0** | **Consolidate deprecations, stricter warnings** |
-| v0.18.x | Final warning period |
+| v0.16.x | Previous - deprecation warnings active |
+| v0.17.0 | Consolidate deprecations, stricter warnings |
+| **v0.18.0** | **Tensor calculus unification, numerical utils cleanup** |
+| v0.19.x | Final warning period |
 | v1.0.0 | Remove all deprecated patterns |
 
 ---
@@ -67,6 +68,61 @@ from mfg_pde.geometry.boundary import BoundaryConditions1DFDM
 # New (preferred)
 from mfg_pde.geometry.boundary import BoundaryConditions, neumann_bc
 bc = neumann_bc(dimension=1)
+```
+
+---
+
+## v0.18.0 Deprecation Summary (Tensor Calculus Unification)
+
+### New Deprecations in v0.18.0
+
+#### 19. Numerical Utilities Consolidation (tensor_calculus.py)
+
+The differential operators have been unified into `tensor_calculus.py`:
+
+| Old Module | New Module | Status |
+|:-----------|:-----------|:-------|
+| `grid_operators.py` | `tensor_calculus.py` | Deprecated |
+| `tensor_operators.py` | `tensor_calculus.py` | Deprecated |
+| `differential_utils.py` | `scipy.optimize` + `tensor_calculus` | Deprecated |
+
+**Why unified**: These modules had overlapping functionality for differential operators on regular grids. The new `tensor_calculus.py` provides a complete, mathematically coherent set of operators.
+
+**New Operators Available**:
+
+| Operator | Type | Description |
+|:---------|:-----|:------------|
+| `gradient(u)` | scalar → vector | ∇u with scheme selection |
+| `divergence(F)` | vector → scalar | ∇·F |
+| `laplacian(u)` | scalar → scalar | Δu = ∇·∇u |
+| `hessian(u)` | scalar → tensor | ∇²u = [∂²u/∂xᵢ∂xⱼ] |
+| `diffusion(u, σ)` | scalar → scalar | σ²Δu (isotropic) |
+| `tensor_diffusion(u, Σ)` | scalar → scalar | ∇·(Σ∇u) (anisotropic) |
+| `advection(m, v)` | scalar → scalar | v·∇m or ∇·(vm) |
+
+**Migration**:
+```python
+# Old (deprecated)
+from mfg_pde.utils.numerical.grid_operators import gradient, laplacian
+from mfg_pde.utils.numerical.tensor_operators import divergence_tensor_diffusion_2d
+from mfg_pde.utils.numerical.differential_utils import gradient_fd
+
+# New (preferred)
+from mfg_pde.utils.numerical.tensor_calculus import (
+    gradient, laplacian, tensor_diffusion,
+)
+from scipy.optimize import approx_fprime  # For function gradients
+```
+
+**Module Organization After v0.18.0**:
+```
+mfg_pde/utils/numerical/
+├── tensor_calculus.py      # Regular grids (NEW - primary)
+├── gfdm_strategies.py      # Scattered points (GFDM/RBF-FD)
+├── grid_operators.py       # DEPRECATED → tensor_calculus
+├── tensor_operators.py     # DEPRECATED → tensor_calculus
+├── differential_utils.py   # DEPRECATED → scipy.optimize
+└── ...
 ```
 
 ---
@@ -649,6 +705,11 @@ geometry.plot(mode='quality')
 | Geometry | `show_edges`, `show_quality` | `mode='edges'/'quality'` | Low | v0.16 |
 | Viz | `legacy_myplot3d()` etc. | Modern viz system | Low | v0.15 |
 | Deps | `feature='...'` | `purpose='...'` | Low | v0.16 |
+| Numerical | `grid_operators.gradient` | `tensor_calculus.gradient` | Medium | v0.18 |
+| Numerical | `grid_operators.laplacian` | `tensor_calculus.laplacian` | Medium | v0.18 |
+| Numerical | `tensor_operators.divergence_*` | `tensor_calculus.tensor_diffusion` | Medium | v0.18 |
+| Numerical | `differential_utils.gradient_fd` | `scipy.optimize.approx_fprime` | Medium | v0.18 |
+| Numerical | `differential_utils.gradient_grid_nd` | `tensor_calculus.gradient_simple` | Medium | v0.18 |
 
 ---
 
@@ -681,20 +742,21 @@ pytest tests/unit/your_test_file.py
 
 ## Tracking Progress
 
-**Current Status** (as of 2025-12-18):
+**Current Status** (as of 2026-01-04):
 - ✅ Modern API fully implemented
 - ✅ Dimension-agnostic boundary handler (PR #305, #306)
 - ✅ Geometry-first unification complete (Issue #435, PRs #436-#443)
 - ✅ Legacy attributes converted to computed properties (PR #443)
 - ✅ Convergence module reorganized with renamed classes (PR #457)
 - ✅ BC Topology/Calculator composition (PR #520, Issue #516)
-- ✅ **Comprehensive deprecation audit** (38 patterns documented)
+- ✅ **Tensor calculus unification** (v0.18.0)
+- ✅ **Comprehensive deprecation audit** (43 patterns documented)
 - ✅ **Test file migration complete** (55 files in MFG_PDE)
 - ✅ **Example migration complete** (examples/, benchmarks/, tutorials/)
 - ✅ **mfg-research migration complete** (8 files)
 - ⏳ v1.0.0 enforcement: Not yet implemented
 
-**Deprecation Counts by Version** (updated 2025-12-18):
+**Deprecation Counts by Version** (updated 2026-01-04):
 | Version | Category | Count | Status |
 |:--------|:---------|:------|:-------|
 | ~~v0.10~~ | ~~Backend~~ | ~~1~~ | **REMOVED in v0.16.12** |
@@ -702,8 +764,9 @@ pytest tests/unit/your_test_file.py
 | v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | Active |
 | v0.16.11 | BC Calculators | 4 | Active |
 | v0.17.x | Convergence, Gradient Notation | 7 | Active |
+| v0.18.x | Numerical Utils (tensor_calculus) | 5 | Active |
 
-**Total Active**: 31 patterns (down from 38)
+**Total Active**: 36 patterns
 
 **Removed in v0.16.12**:
 - `get_legacy_backend_list()` → Use `get_available_backends()` (v0.10)
@@ -713,8 +776,9 @@ pytest tests/unit/your_test_file.py
 **Deprecation Timeline**:
 - v0.16.x deprecations → Remove in v0.19 or v1.0.0
 - v0.17.x deprecations → Remove in v0.20 or v1.0.0
+- v0.18.x deprecations → Remove in v1.0.0
 
-**Next Milestone**: v0.17.0 release with consolidated deprecation warnings
+**Next Milestone**: v0.19.0 release with final warning period
 
 ---
 
