@@ -11,8 +11,9 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import BoundaryConditions, MFGProblem
+from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+from mfg_pde.geometry import TensorProductGrid, neumann_bc
 
 
 class TestRotationMatrixCorrectness:
@@ -21,20 +22,24 @@ class TestRotationMatrixCorrectness:
     @pytest.fixture
     def solver(self):
         """Create a minimal GFDM solver for testing rotation matrices."""
-        # Create simple 2D problem
-        problem = MFGProblem(
+        # Create simple 2D geometry
+        geometry = TensorProductGrid(
             dimension=2,
-            x_min=np.array([0.0, 0.0]),
-            x_max=np.array([10.0, 10.0]),
-            n_grid=np.array([11, 11]),
-            t_max=1.0,
-            n_time_steps=10,
-            boundary_conditions=BoundaryConditions(bc_type="neumann"),
+            bounds=[(0.0, 10.0), (0.0, 10.0)],
+            Nx=[11, 11],
+            boundary_conditions=neumann_bc(dimension=2),
         )
+
+        # Create problem with geometry
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+
+        # Get collocation points from geometry
+        collocation_points = geometry.get_spatial_grid()
 
         # Create solver with LCR enabled
         solver = HJBGFDMSolver(
             problem,
+            collocation_points=collocation_points,
             delta=1.5,
             use_local_coordinate_rotation=True,
         )
@@ -151,17 +156,21 @@ class TestDerivativeRotationBackTransform:
     @pytest.fixture
     def solver(self):
         """Create a minimal GFDM solver for testing."""
-        problem = MFGProblem(
+        geometry = TensorProductGrid(
             dimension=2,
-            x_min=np.array([0.0, 0.0]),
-            x_max=np.array([10.0, 10.0]),
-            n_grid=np.array([11, 11]),
-            t_max=1.0,
-            n_time_steps=10,
-            boundary_conditions=BoundaryConditions(bc_type="neumann"),
+            bounds=[(0.0, 10.0), (0.0, 10.0)],
+            Nx=[11, 11],
+            boundary_conditions=neumann_bc(dimension=2),
         )
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+        collocation_points = geometry.get_spatial_grid()
 
-        solver = HJBGFDMSolver(problem, delta=1.5, use_local_coordinate_rotation=True)
+        solver = HJBGFDMSolver(
+            problem,
+            collocation_points=collocation_points,
+            delta=1.5,
+            use_local_coordinate_rotation=True,
+        )
         return solver
 
     def test_gradient_rotation_identity(self, solver):
@@ -229,18 +238,22 @@ def test_smoke_rotation_matrix():
     """Quick smoke test that can run without pytest."""
     print("Testing rotation matrix correctness...")
 
-    # Create simple problem
-    problem = MFGProblem(
+    # Create simple geometry and problem
+    geometry = TensorProductGrid(
         dimension=2,
-        x_min=np.array([0.0, 0.0]),
-        x_max=np.array([10.0, 10.0]),
-        n_grid=np.array([11, 11]),
-        t_max=1.0,
-        n_time_steps=10,
-        boundary_conditions=BoundaryConditions(bc_type="neumann"),
+        bounds=[(0.0, 10.0), (0.0, 10.0)],
+        Nx=[11, 11],
+        boundary_conditions=neumann_bc(dimension=2),
     )
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+    collocation_points = geometry.get_spatial_grid()
 
-    solver = HJBGFDMSolver(problem, delta=1.5, use_local_coordinate_rotation=True)
+    solver = HJBGFDMSolver(
+        problem,
+        collocation_points=collocation_points,
+        delta=1.5,
+        use_local_coordinate_rotation=True,
+    )
 
     # Test key orientations
     test_normals = [

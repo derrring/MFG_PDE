@@ -467,9 +467,12 @@ class TestFPParticleSolverHelperMethods:
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_array = x_coords**2
 
-        gradient = solver._compute_gradient(U_array, dx, use_backend=False)
+        gradients = solver._compute_gradient_nd(U_array, [dx], use_backend=False)
 
-        # Should return finite gradient
+        # Should return list of gradient components (one per dimension)
+        assert isinstance(gradients, list)
+        assert len(gradients) == 1  # 1D case
+        gradient = gradients[0]
         assert np.all(np.isfinite(gradient))
         assert gradient.shape == U_array.shape
 
@@ -484,10 +487,13 @@ class TestFPParticleSolverHelperMethods:
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         U_array = x_coords**2
 
-        gradient = solver._compute_gradient(U_array, 0.0, use_backend=False)
+        gradients = solver._compute_gradient_nd(U_array, [0.0], use_backend=False)
 
-        # Should return zeros for zero Dx
-        assert np.allclose(gradient, 0.0)
+        # Should return list of gradient components (one per dimension)
+        assert isinstance(gradients, list)
+        assert len(gradients) == 1  # 1D case
+        # With zero spacing, gradient should be zeros
+        assert np.allclose(gradients[0], 0.0)
 
     def test_normalize_density_none(self):
         """Test density normalization with NONE strategy."""
