@@ -7,13 +7,12 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.linalg import lstsq
-from scipy.spatial.distance import cdist
 
 # BC types for BoundaryCapable protocol implementation (Issue #527)
+from scipy.optimize import approx_fprime
+from scipy.spatial.distance import cdist
+
 from mfg_pde.geometry.boundary import BCType, DiscretizationType
-from mfg_pde.utils.numerical.differential_utils import (
-    compute_dH_dp,
-)
 
 # Legacy operator for backward compatibility (deprecated)
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
@@ -2059,6 +2058,11 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         H_total = H_kinetic + H_potential + H_interaction
 
+        # Running cost term L(x) if provided
+        # This implements: H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)
+        if hasattr(self, "_running_cost") and self._running_cost is not None:
+            H_total = H_total + self._running_cost
+
         # Diffusion term: (sigma^2 / 2) * Laplacian
         sigma = getattr(self.problem, "diffusion", 0.0) or getattr(self.problem, "sigma", 0.0)
         diffusion_term = 0.5 * sigma**2 * lap_u
@@ -2132,6 +2136,11 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             laplacian = p_derivs.laplacian or 0.0
 
             H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs, x_position=x_pos)
+
+            # Add running cost L(x) if provided
+            if hasattr(self, "_running_cost") and self._running_cost is not None:
+                H = H + self._running_cost[i]
+
             sigma_val = self._get_sigma_value(i)
             diffusion_term = 0.5 * sigma_val**2 * laplacian
             residual[i] = -u_t[i] + H - diffusion_term
@@ -2398,6 +2407,7 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
         U_coupling_prev: np.ndarray | None = None,
         show_progress: bool = True,
         diffusion_field: float | np.ndarray | None = None,
+        running_cost: np.ndarray | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: np.ndarray | None = None,
         U_final_condition_at_T: np.ndarray | None = None,
@@ -2411,6 +2421,9 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             U_terminal: (*spatial_shape,) terminal condition u(T,x)
             U_coupling_prev: (Nt, *spatial_shape) previous coupling iteration estimate
             show_progress: Whether to display progress bar for timesteps
+            running_cost: (n_points,) time-independent running cost L(x) at collocation points.
+                This is added to the Hamiltonian at each backward time step:
+                H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)
             diffusion_field: Optional diffusion coefficient override
 
         Returns:
@@ -2470,6 +2483,17 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
 
         # Store original spatial shape for reshaping output
         self._output_spatial_shape = M_density.shape[1:]
+
+        # Store running cost for use in residual computation
+        # Running cost L(x) is added to Hamiltonian at each backward step
+        if running_cost is not None:
+            if running_cost.shape[0] != self.n_points:
+                raise ValueError(
+                    f"running_cost must have shape (n_points,) = ({self.n_points},), got shape {running_cost.shape}"
+                )
+            self._running_cost = running_cost.copy()
+        else:
+            self._running_cost = None
 
         # Detect if input is already in collocation format (pure meshfree mode)
         # Grid format: M_density.shape = (Nt, Nx, Ny, ...)
@@ -2680,21 +2704,19 @@ class HJBGFDMSolver(MonotonicityMixin, BaseHJBSolver):
             if not is_custom:
                 return p / lambda_val
 
-        # Fallback: finite differences for custom Hamiltonians
+        # Fallback: finite differences for custom Hamiltonians using scipy
         x_pos = self.collocation_points[point_idx]
+        hess = derivs.hess if derivs.hess is not None else np.zeros((len(p), len(p)))
 
-        def H_wrapper(x_idx, m, derivs):
-            return self.problem.H(x_idx, m, derivs=derivs, x_position=x_pos)
+        def H_of_p(p_vec: np.ndarray) -> float:
+            """Hamiltonian as function of momentum p only."""
+            from mfg_pde.core.derivatives import DerivativeTensors
 
-        hess = derivs.hess
+            d = DerivativeTensors.from_arrays(grad=p_vec, hess=hess)
+            return self.problem.H(point_idx, m_at_x, derivs=d, x_position=x_pos)
 
-        return compute_dH_dp(
-            H_func=H_wrapper,
-            x_idx=point_idx,
-            m=m_at_x,
-            p=p,
-            hess=hess,
-        )
+        # Use scipy's approx_fprime for gradient computation
+        return approx_fprime(p, H_of_p, epsilon=1e-7)
 
     def _compute_hjb_jacobian_analytic(
         self,
