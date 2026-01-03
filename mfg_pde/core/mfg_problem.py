@@ -1762,9 +1762,11 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 # 1D default functions (original behavior)
                 spatial_grid = self._get_spatial_grid_internal()
                 for i in range(self.spatial_shape[0]):
-                    self.f_potential[i] = self._potential(spatial_grid[i])
-                    self.u_fin[i] = self._u_final(spatial_grid[i])
-                    self.m_init[i] = self._m_initial(spatial_grid[i])
+                    # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
+                    x_i = float(spatial_grid[i, 0])
+                    self.f_potential[i] = self._potential(x_i)
+                    self.u_fin[i] = self._u_final(x_i)
+                    self.m_init[i] = self._m_initial(x_i)
             else:
                 # n-D default functions (simple defaults)
                 # Potential: zero (can be customized later)
