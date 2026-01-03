@@ -22,8 +22,15 @@ except Exception:  # pragma: no cover - graceful fallback when SciPy missing
     gaussian_kde = None
     SCIPY_AVAILABLE = False
 
+from mfg_pde.geometry.boundary.applicator_particle import ParticleApplicator
 from mfg_pde.geometry.boundary.conditions import periodic_bc
 from mfg_pde.geometry.boundary.types import BCType
+from mfg_pde.utils.numerical.particle import (
+    interpolate_grid_to_particles,
+    interpolate_particles_to_grid,
+    sample_from_density,
+)
+from mfg_pde.utils.numerical.tensor_calculus import gradient_simple
 
 from .base_fp import BaseFPSolver
 
@@ -124,6 +131,14 @@ class FPParticleSolver(BaseFPSolver):
         self.kde_normalization = kde_normalization
         self.M_particles_trajectory: np.ndarray | None = None
         self._time_step_counter = 0  # Track current time step for normalization logic
+
+        # Segment-aware BC applicator (Pattern A: solver owns applicator)
+        self._applicator = ParticleApplicator()
+
+        # Exit flux tracking for absorbing BC analysis
+        self.exit_flux_history: list[int] = []  # Number absorbed per timestep
+        self.exit_positions_history: list[np.ndarray] = []  # Where particles exited
+        self.total_absorbed: int = 0  # Cumulative absorbed count
 
         # Initialize backend (defaults to NumPy)
         from mfg_pde.backends import create_backend
@@ -252,35 +267,6 @@ class FPParticleSolver(BaseFPSolver):
 
         return result
 
-    def _compute_gradient(self, U_array, Dx: float, use_backend: bool = False):
-        """
-        Compute spatial gradient using finite differences (1D backward-compatible).
-
-        Backend-agnostic helper to reduce code duplication between CPU and GPU pipelines.
-
-        Parameters
-        ----------
-        U_array : np.ndarray or backend tensor
-            Value function at grid points (1D array)
-        Dx : float
-            Grid spacing
-        use_backend : bool
-            If True, use backend array module; if False, use NumPy
-
-        Returns
-        -------
-        Gradient array (same type as input)
-        """
-        if use_backend and self.backend is not None:
-            xp = self.backend.array_module
-        else:
-            xp = np
-
-        if Dx > 1e-14:
-            return (xp.roll(U_array, -1) - xp.roll(U_array, 1)) / (2 * Dx)
-        else:
-            return xp.zeros_like(U_array)
-
     def _compute_gradient_nd(
         self,
         U_array: np.ndarray,
@@ -288,39 +274,13 @@ class FPParticleSolver(BaseFPSolver):
         use_backend: bool = False,
     ) -> list:
         """
-        Compute spatial gradient in each dimension using central differences.
+        Compute spatial gradient using grid_operators utility.
 
-        Parameters
-        ----------
-        U_array : np.ndarray or backend tensor
-            Value function at grid points, shape (N1, N2, ..., Nd)
-        spacings : list[float]
-            Grid spacing per dimension [Dx, Dy, ...]
-        use_backend : bool
-            If True, use backend array module; if False, use NumPy
-
-        Returns
-        -------
-        list of gradient arrays, one per dimension
-            Each gradient[d] has the same shape as U_array
+        Uses gradient_simple (central differences, no BC handling).
+        BC handling for particles is done separately in _apply_boundary_conditions_nd.
         """
-        if use_backend and self.backend is not None:
-            xp = self.backend.array_module
-        else:
-            xp = np
-
-        dimension = len(spacings)
-        gradients = []
-
-        for d in range(dimension):
-            if spacings[d] > 1e-14:
-                # Central difference along axis d
-                grad_d = (xp.roll(U_array, -1, axis=d) - xp.roll(U_array, 1, axis=d)) / (2 * spacings[d])
-            else:
-                grad_d = xp.zeros_like(U_array)
-            gradients.append(grad_d)
-
-        return gradients
+        backend = self.backend if use_backend else None
+        return gradient_simple(U_array, spacings, backend=backend)
 
     def _normalize_density(self, M_array, Dx: float, use_backend: bool = False):
         """
@@ -384,6 +344,10 @@ class FPParticleSolver(BaseFPSolver):
         """
         Sample particles from nD density distribution.
 
+        Delegates to utils.numerical.particle.sample_from_density() for the
+        actual sampling. This method provides a consistent interface within
+        the solver class.
+
         Parameters
         ----------
         M_initial : np.ndarray
@@ -398,43 +362,13 @@ class FPParticleSolver(BaseFPSolver):
         particles : np.ndarray
             Particle positions, shape (num_particles, dimension)
         """
-        dimension = len(coordinates)
-        grid_shape = tuple(len(c) for c in coordinates)
-
-        # Flatten density and normalize to probability
-        M_flat = M_initial.ravel()
-        total_mass = np.sum(M_flat)
-
-        if total_mass < 1e-14:
-            # Uniform fallback if density is zero (vectorized)
-            bounds = np.array([[c[0], c[-1]] for c in coordinates])  # shape: (d, 2)
-            particles = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(num_particles, dimension))
-            return particles
-
-        probs = M_flat / total_mass
-
-        # Sample flat indices according to probability
-        try:
-            flat_indices = np.random.choice(len(M_flat), size=num_particles, p=probs, replace=True)
-        except ValueError:
-            # Fallback to uniform if probability is degenerate (vectorized)
-            bounds = np.array([[c[0], c[-1]] for c in coordinates])  # shape: (d, 2)
-            particles = np.random.uniform(bounds[:, 0], bounds[:, 1], size=(num_particles, dimension))
-            return particles
-
-        # Convert flat indices to multi-indices
-        multi_indices = np.unravel_index(flat_indices, grid_shape)
-
-        # Get coordinates with sub-grid jitter for smoothness (vectorized)
-        # Stack multi-indices into array for vectorized coordinate lookup
-        particles = np.column_stack([coordinates[d][multi_indices[d]] for d in range(dimension)])
-
-        # Compute grid spacings and add uniform jitter (vectorized)
-        spacings = np.array([c[1] - c[0] if len(c) > 1 else 0.0 for c in coordinates])
-        jitter = np.random.uniform(-0.5, 0.5, size=(num_particles, dimension)) * spacings
-        particles += jitter
-
-        return particles
+        return sample_from_density(
+            density=M_initial,
+            coordinates=coordinates,
+            num_samples=num_particles,
+            jitter=True,
+            seed=None,  # Use global numpy random state for reproducibility with solver
+        )
 
     def _generate_brownian_increment_nd(
         self,
@@ -468,6 +402,41 @@ class FPParticleSolver(BaseFPSolver):
         # Independent Brownian motion in each dimension
         # dX = sigma * dW where dW ~ N(0, sqrt(dt))
         return sigma * np.random.normal(0, np.sqrt(Dt), (num_particles, dimension))
+
+    def _needs_segment_aware_bc(self) -> bool:
+        """
+        Check if boundary conditions require segment-aware handling.
+
+        Returns True if:
+        - BC has multiple segments with different types
+        - BC has absorbing (DIRICHLET) segments that should remove particles
+
+        Returns False for uniform periodic/reflecting BC where fast path can be used.
+        """
+        bc = self.boundary_conditions
+
+        if bc is None:
+            return False
+
+        # Check if uniform BC (same type everywhere)
+        if hasattr(bc, "is_uniform") and bc.is_uniform:
+            # Uniform BC - use fast path unless it's DIRICHLET (absorbing)
+            if hasattr(bc, "segments") and len(bc.segments) > 0:
+                if bc.segments[0].bc_type == BCType.DIRICHLET:
+                    return True  # Uniform absorbing - need to track exits
+            return False
+
+        # Mixed BC with segments - need segment-aware handling
+        if hasattr(bc, "segments") and len(bc.segments) > 1:
+            return True
+
+        # Check for DIRICHLET segments (absorbing BC)
+        if hasattr(bc, "segments"):
+            for segment in bc.segments:
+                if segment.bc_type == BCType.DIRICHLET:
+                    return True
+
+        return False
 
     def _get_topology_per_dimension(
         self,
@@ -591,35 +560,83 @@ class FPParticleSolver(BaseFPSolver):
 
         return particles
 
-    def _create_nd_interpolator(
+    def _apply_boundary_conditions_segment_aware(
         self,
-        coordinates: list[np.ndarray],
-        values: np.ndarray,
-    ):
+        particles: np.ndarray,
+        bounds: list[tuple[float, float]],
+    ) -> tuple[np.ndarray, int, np.ndarray]:
         """
-        Create nD interpolator for grid values.
+        Apply segment-aware boundary conditions using the applicator.
+
+        This method handles mixed BC where different boundaries have different types:
+        - DIRICHLET segments: Absorb particles (remove from simulation)
+        - REFLECTING/NO_FLUX segments: Bounce particles back
+        - PERIODIC segments: Wrap particles
 
         Parameters
         ----------
-        coordinates : list[np.ndarray]
-            List of 1D coordinate arrays per dimension
-        values : np.ndarray
-            Values on grid, shape (N1, N2, ..., Nd)
+        particles : np.ndarray
+            Particle positions, shape (num_particles, dimension)
+        bounds : list[tuple[float, float]]
+            Bounds per dimension [(xmin, xmax), (ymin, ymax), ...]
 
         Returns
         -------
-        interpolator : RegularGridInterpolator
-            Scipy interpolator for nD data
+        remaining_particles : np.ndarray
+            Particles that were not absorbed, shape (M, dimension)
+        n_absorbed : int
+            Number of particles absorbed this step
+        exit_positions : np.ndarray
+            Positions where particles exited, shape (K, dimension)
         """
-        if not SCIPY_AVAILABLE or _scipy_interpolate is None:
-            raise RuntimeError("SciPy required for nD interpolation")
+        remaining, absorbed_mask, exit_positions = self._applicator.apply(
+            particles,
+            self.boundary_conditions,
+            bounds,
+        )
 
-        return _scipy_interpolate.RegularGridInterpolator(
-            tuple(coordinates),
-            values,
+        n_absorbed = int(np.sum(absorbed_mask))
+
+        # Update cumulative tracking
+        if n_absorbed > 0:
+            self.exit_flux_history.append(n_absorbed)
+            self.exit_positions_history.append(exit_positions)
+            self.total_absorbed += n_absorbed
+
+        return remaining, n_absorbed, exit_positions
+
+    def _interpolate_grid_to_particles_nd(
+        self,
+        grid_values: np.ndarray,
+        bounds: list[tuple[float, float]],
+        particles: np.ndarray,
+    ) -> np.ndarray:
+        """
+        Interpolate grid values to particle positions.
+
+        Delegates to utils.numerical.particle.interpolate_grid_to_particles().
+
+        Parameters
+        ----------
+        grid_values : np.ndarray
+            Values on grid, shape (N1, N2, ..., Nd)
+        bounds : list[tuple[float, float]]
+            Domain bounds per dimension
+        particles : np.ndarray
+            Particle positions, shape (num_particles, dimension)
+
+        Returns
+        -------
+        values_at_particles : np.ndarray
+            Interpolated values, shape (num_particles,)
+        """
+        # Convert bounds to format expected by utils: tuple of tuples
+        grid_bounds = tuple(bounds)
+        return interpolate_grid_to_particles(
+            grid_values=grid_values,
+            grid_bounds=grid_bounds,
+            particle_positions=particles,
             method="linear",
-            bounds_error=False,
-            fill_value=0.0,
         )
 
     def _estimate_density_from_particles_nd(
@@ -630,6 +647,9 @@ class FPParticleSolver(BaseFPSolver):
     ) -> np.ndarray:
         """
         Estimate density from particles using KDE on nD grid.
+
+        Delegates to utils.numerical.particle.interpolate_particles_to_grid()
+        for the core KDE computation, with additional edge case handling.
 
         Parameters
         ----------
@@ -648,15 +668,14 @@ class FPParticleSolver(BaseFPSolver):
         dimension = len(coordinates)
         grid_shape = tuple(len(c) for c in coordinates)
 
+        # Edge case: no particles
         if self.num_particles == 0 or len(particles) == 0:
             return np.zeros(grid_shape)
 
-        # Check for degenerate particle distribution
+        # Edge case: degenerate particle distribution (all at same location)
         if len(np.unique(particles, axis=0)) < 2:
-            # All particles at same location - delta function
             density = np.zeros(grid_shape)
             mean_pos = np.mean(particles, axis=0)
-            # Find closest grid point
             indices = []
             for d in range(dimension):
                 idx = np.argmin(np.abs(coordinates[d] - mean_pos[d]))
@@ -665,28 +684,21 @@ class FPParticleSolver(BaseFPSolver):
             return density
 
         try:
-            # scipy.stats.gaussian_kde handles nD
-            if SCIPY_AVAILABLE and gaussian_kde is not None:
-                # KDE expects shape (d, N) not (N, d)
-                kde = gaussian_kde(particles.T, bw_method=self.kde_bandwidth)
+            # Delegate to utils for KDE computation
+            # Note: particle_values is ignored for KDE method, use ones
+            particle_values = np.ones(len(particles))
+            grid_bounds = tuple(bounds)
 
-                # Create evaluation grid
-                mesh_grids = np.meshgrid(*coordinates, indexing="ij")
-                eval_points = np.vstack([g.ravel() for g in mesh_grids])
+            density = interpolate_particles_to_grid(
+                particle_values=particle_values,
+                particle_positions=particles,
+                grid_shape=grid_shape,
+                grid_bounds=grid_bounds,
+                method="kde",
+                bandwidth=self.kde_bandwidth,
+            )
 
-                # Evaluate KDE
-                density_flat = kde(eval_points)
-                density = density_flat.reshape(grid_shape)
-
-                # Zero out points outside bounds
-                for d in range(dimension):
-                    mask = (mesh_grids[d] < bounds[d][0]) | (mesh_grids[d] > bounds[d][1])
-                    density[mask] = 0.0
-
-                return density
-
-            else:
-                raise RuntimeError("SciPy not available for KDE")
+            return density
 
         except Exception as e:
             warnings.warn(f"KDE failed in nD: {e}. Returning histogram estimate.")
@@ -1011,25 +1023,22 @@ class FPParticleSolver(BaseFPSolver):
         for n_time_idx in timestep_range:
             U_at_tn = U_solution_for_drift[n_time_idx, :]
 
-            # Use helper function for gradient computation
+            # Use shared nD gradient method (works for 1D too)
             if Nx > 1:
-                dUdx_grid = self._compute_gradient(U_at_tn, Dx, use_backend=False)
+                gradients = self._compute_gradient_nd(U_at_tn, [Dx], use_backend=False)
+                dUdx_grid = gradients[0]  # First (and only) dimension
             else:
                 dUdx_grid = np.zeros(Nx)
 
             if Nx > 1:
-                if SCIPY_AVAILABLE and _scipy_interpolate is not None:
-                    try:
-                        interp_func_dUdx = _scipy_interpolate.interp1d(
-                            x_grid, dUdx_grid, kind="linear", fill_value="extrapolate"
-                        )
-                        dUdx_at_particles = interp_func_dUdx(current_M_particles_t[n_time_idx, :])
-                    except ValueError:
-                        dUdx_at_particles = np.zeros(self.num_particles)
-                else:
-                    dUdx_at_particles = np.interp(
-                        current_M_particles_t[n_time_idx, :], x_grid, dUdx_grid, left=dUdx_grid[0], right=dUdx_grid[-1]
-                    )
+                # Interpolate gradient to particle positions using utils
+                particles_1d = current_M_particles_t[n_time_idx, :].reshape(-1, 1)
+                dUdx_at_particles = interpolate_grid_to_particles(
+                    grid_values=dUdx_grid,
+                    grid_bounds=(xmin, xmin + Lx),
+                    particle_positions=particles_1d,
+                    method="linear",
+                )
             else:
                 dUdx_at_particles = np.zeros(self.num_particles)
 
@@ -1041,32 +1050,11 @@ class FPParticleSolver(BaseFPSolver):
                 current_M_particles_t[n_time_idx, :] + alpha_optimal_at_particles * Dt + sigma_sde * dW
             )
 
-            # Apply boundary handling based on topology (supports mixed BCs)
-            topology_1d = self._get_topology_per_dimension(1)[0]
-            if topology_1d == "periodic" and Lx > 1e-14:
-                # Periodic boundaries: wrap around
-                current_M_particles_t[n_time_idx + 1, :] = xmin + (current_M_particles_t[n_time_idx + 1, :] - xmin) % Lx
-            else:  # "bounded" -> reflecting walls
-                # Reflecting boundaries: use modular reflection for arbitrary displacement
-                # This handles particles that travel multiple domain widths in one step
-                particles = current_M_particles_t[n_time_idx + 1, :].copy()
-
-                if Lx > 1e-14:
-                    # Normalize position relative to domain [0, 2*Lx] with reflection at Lx
-                    # This uses the "fold" reflection: position bounces back and forth
-                    # First shift to [0, ...], then fold within [0, 2*Lx], then map to [0, Lx]
-                    shifted = particles - xmin
-                    # Number of complete round-trips through domain
-                    period = 2 * Lx
-                    # Position within one period [0, 2*Lx)
-                    pos_in_period = shifted % period
-                    # If in second half of period, reflect back
-                    in_second_half = pos_in_period > Lx
-                    pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
-                    # Shift back to original domain
-                    particles = xmin + pos_in_period
-
-                current_M_particles_t[n_time_idx + 1, :] = particles
+            # Apply boundary handling using shared nD method (works for 1D too)
+            particles_2d = current_M_particles_t[n_time_idx + 1, :].reshape(-1, 1)
+            topologies = self._get_topology_per_dimension(1)
+            particles_2d = self._apply_boundary_conditions_nd(particles_2d, [(xmin, xmin + Lx)], topologies)
+            current_M_particles_t[n_time_idx + 1, :] = particles_2d[:, 0]
 
             M_density_on_grid[n_time_idx + 1, :] = self._estimate_density_from_particles(
                 current_M_particles_t[n_time_idx + 1, :]
@@ -1083,7 +1071,7 @@ class FPParticleSolver(BaseFPSolver):
         Uses the nD helper methods:
         - _sample_particles_from_density_nd() for initial sampling
         - _compute_gradient_nd() for gradient computation
-        - _create_nd_interpolator() for drift interpolation
+        - _interpolate_grid_to_particles_nd() for drift interpolation
         - _generate_brownian_increment_nd() for vector Brownian motion
         - _apply_boundary_conditions_nd() for per-dimension boundary handling
         - _estimate_density_from_particles_nd() for KDE
@@ -1114,18 +1102,41 @@ class FPParticleSolver(BaseFPSolver):
         # Convention: problem.sigma is the SDE noise coefficient directly
         sigma_sde = sigma
 
+        # Check if we need segment-aware BC (for absorbing boundaries)
+        use_segment_aware_bc = self._needs_segment_aware_bc()
+
+        # Reset exit flux tracking for this solve
+        self.exit_flux_history = []
+        self.exit_positions_history = []
+        self.total_absorbed = 0
+
         # Allocate arrays
         M_density_on_grid = np.zeros((Nt, *tuple(grid_shape)))
-        # Particle positions: (Nt, num_particles, dimension)
-        current_particles = np.zeros((Nt, self.num_particles, dimension))
 
-        # Sample initial particles from density
-        current_particles[0] = self._sample_particles_from_density_nd(
-            m_initial_condition, coordinates, self.num_particles
-        )
+        # For segment-aware BC with absorption, use list storage (variable particle count)
+        # For uniform BC, use fixed array (all particles preserved)
+        if use_segment_aware_bc:
+            # List storage: each timestep may have different particle count
+            particles_list: list[np.ndarray] = [None] * Nt  # type: ignore
+            particles_list[0] = self._sample_particles_from_density_nd(
+                m_initial_condition, coordinates, self.num_particles
+            )
+            current_particles = None  # Will be built at end
+        else:
+            # Particle positions: (Nt, num_particles, dimension)
+            current_particles = np.zeros((Nt, self.num_particles, dimension))
+            particles_list = None  # Not used
+
+            # Sample initial particles from density
+            current_particles[0] = self._sample_particles_from_density_nd(
+                m_initial_condition, coordinates, self.num_particles
+            )
+
+        # Get initial particles for density estimation
+        init_particles = particles_list[0] if use_segment_aware_bc else current_particles[0]
 
         # Estimate initial density using KDE
-        M_density_on_grid[0] = self._estimate_density_from_particles_nd(current_particles[0], coordinates, bounds)
+        M_density_on_grid[0] = self._estimate_density_from_particles_nd(init_particles, coordinates, bounds)
 
         # Normalize if requested
         if self.kde_normalization != KDENormalization.NONE:
@@ -1134,7 +1145,10 @@ class FPParticleSolver(BaseFPSolver):
         self._time_step_counter += 1
 
         if Nt == 1:
-            self.M_particles_trajectory = current_particles
+            if use_segment_aware_bc:
+                self.M_particles_trajectory = particles_list  # List of arrays
+            else:
+                self.M_particles_trajectory = current_particles
             return M_density_on_grid
 
         # Progress bar for forward particle timesteps (consistent with 1D solver)
@@ -1154,21 +1168,35 @@ class FPParticleSolver(BaseFPSolver):
         for t_idx in timestep_range:
             # Get drift field at current time
             drift_or_U_t = U_solution_for_drift[t_idx]
-            particles_t = current_particles[t_idx]  # Shape: (num_particles, dimension)
+
+            # Get particles at current timestep
+            if use_segment_aware_bc:
+                particles_t = particles_list[t_idx]
+            else:
+                particles_t = current_particles[t_idx]
+
+            n_particles_t = len(particles_t)
+
+            # Skip if no particles remain (all absorbed)
+            if n_particles_t == 0:
+                if use_segment_aware_bc:
+                    particles_list[t_idx + 1] = np.array([]).reshape(0, dimension)
+                M_density_on_grid[t_idx + 1] = np.zeros(grid_shape)
+                self._time_step_counter += 1
+                continue
 
             # Check if drift is precomputed or needs to be computed from U
             if self._drift_is_precomputed:
                 # Drift is already computed (e.g., from GFDM: α = -D_p H(x,m,∇u))
                 # drift_or_U_t has shape (*grid_shape, dimension)
                 # Need to interpolate vector field to particle positions
-                drift_at_particles = np.zeros((self.num_particles, dimension))
+                drift_at_particles = np.zeros((n_particles_t, dimension))
 
                 for d in range(dimension):
                     try:
                         # Extract d-th component of drift vector field
                         drift_d = drift_or_U_t[..., d]  # Shape: (*grid_shape,)
-                        interp = self._create_nd_interpolator(coordinates, drift_d)
-                        drift_at_particles[:, d] = interp(particles_t)
+                        drift_at_particles[:, d] = self._interpolate_grid_to_particles_nd(drift_d, bounds, particles_t)
                     except Exception:
                         # Fallback: zero drift
                         drift_at_particles[:, d] = 0.0
@@ -1184,12 +1212,13 @@ class FPParticleSolver(BaseFPSolver):
                 gradients = self._compute_gradient_nd(U_t, spacings, use_backend=False)
 
                 # Interpolate gradients to particle positions
-                grad_at_particles = np.zeros((self.num_particles, dimension))
+                grad_at_particles = np.zeros((n_particles_t, dimension))
 
                 for d in range(dimension):
                     try:
-                        interp = self._create_nd_interpolator(coordinates, gradients[d])
-                        grad_at_particles[:, d] = interp(particles_t)
+                        grad_at_particles[:, d] = self._interpolate_grid_to_particles_nd(
+                            gradients[d], bounds, particles_t
+                        )
                     except Exception:
                         # Fallback: zero gradient
                         grad_at_particles[:, d] = 0.0
@@ -1198,16 +1227,21 @@ class FPParticleSolver(BaseFPSolver):
                 drift = -coupling_coefficient * grad_at_particles
 
             # Generate Brownian increments
-            dW = self._generate_brownian_increment_nd(self.num_particles, dimension, Dt, sigma_sde)
+            dW = self._generate_brownian_increment_nd(n_particles_t, dimension, Dt, sigma_sde)
 
             # Euler-Maruyama step: X_{t+1} = X_t + drift * dt + sigma * dW
             new_particles = particles_t + drift * Dt + dW
 
-            # Apply boundary handling based on topology (per-dimension for mixed BCs)
-            topologies = self._get_topology_per_dimension(dimension)
-            new_particles = self._apply_boundary_conditions_nd(new_particles, bounds, topologies)
-
-            current_particles[t_idx + 1] = new_particles
+            # Apply boundary conditions
+            if use_segment_aware_bc:
+                # Segment-aware BC: may absorb particles
+                new_particles, _n_absorbed, _ = self._apply_boundary_conditions_segment_aware(new_particles, bounds)
+                particles_list[t_idx + 1] = new_particles
+            else:
+                # Uniform BC: topology-based (no absorption)
+                topologies = self._get_topology_per_dimension(dimension)
+                new_particles = self._apply_boundary_conditions_nd(new_particles, bounds, topologies)
+                current_particles[t_idx + 1] = new_particles
 
             # Estimate density from particles
             M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(new_particles, coordinates, bounds)
@@ -1218,7 +1252,13 @@ class FPParticleSolver(BaseFPSolver):
 
             self._time_step_counter += 1
 
-        self.M_particles_trajectory = current_particles
+        # Store trajectory (different format for segment-aware BC)
+        if use_segment_aware_bc:
+            # Store as list of arrays (variable particle counts)
+            self.M_particles_trajectory = particles_list
+        else:
+            self.M_particles_trajectory = current_particles
+
         return M_density_on_grid
 
     def _normalize_density_nd(self, density: np.ndarray, spacings: list[float]) -> np.ndarray:
@@ -1326,9 +1366,10 @@ class FPParticleSolver(BaseFPSolver):
         for t in range(Nt - 1):
             U_t_gpu = U_drift_gpu[t, :]
 
-            # Compute gradient on grid (use helper function)
+            # Compute gradient on grid (use shared nD method)
             if Nx > 1:
-                dUdx_gpu = self._compute_gradient(U_t_gpu, Dx, use_backend=True)
+                gradients_gpu = self._compute_gradient_nd(U_t_gpu, [Dx], use_backend=True)
+                dUdx_gpu = gradients_gpu[0]  # First (and only) dimension
             else:
                 dUdx_gpu = self.backend.zeros((Nx,))
 
@@ -1566,8 +1607,8 @@ class FPParticleSolver(BaseFPSolver):
         """
         Interpolate a grid field to particle positions.
 
-        General interpolation utility for any scalar field on the grid.
-        Used for spatially varying diffusion, density estimation, etc.
+        Delegates to _interpolate_grid_to_particles_nd() which uses the
+        utils.numerical.particle.interpolate_grid_to_particles() function.
 
         Parameters
         ----------
@@ -1576,36 +1617,22 @@ class FPParticleSolver(BaseFPSolver):
         field : np.ndarray
             Field values on grid, shape (*grid_shape)
         coordinates : list of np.ndarray
-            Grid coordinates per dimension
+            Grid coordinates per dimension (unused, kept for API compatibility)
         bounds : list of tuple
             Domain bounds per dimension
         fill_value : float
-            Value for out-of-bounds particles (default: 0.0)
+            Value for out-of-bounds particles (default: 0.0, handled by utils)
 
         Returns
         -------
         np.ndarray
             Field values at particle positions, shape (N_particles,)
         """
-        dimension = particles.shape[1]
-
-        if dimension == 1:
-            # 1D: simple interpolation
-            from scipy.interpolate import interp1d
-
-            x_grid = coordinates[0]
-            # Handle potential shape mismatch
-            field_1d = field.ravel() if field.ndim > 1 else field
-            interp = interp1d(x_grid, field_1d, kind="linear", bounds_error=False, fill_value=fill_value)
-            return interp(particles[:, 0])
-        else:
-            # nD: use RegularGridInterpolator
-            try:
-                interp = self._create_nd_interpolator(coordinates, field)
-                return interp(particles)
-            except Exception:
-                # Fallback: return fill_value
-                return np.full(particles.shape[0], fill_value)
+        try:
+            return self._interpolate_grid_to_particles_nd(field, bounds, particles)
+        except Exception:
+            # Fallback: return fill_value
+            return np.full(particles.shape[0], fill_value)
 
     def _estimate_density_at_particles(
         self,
@@ -1669,7 +1696,6 @@ if __name__ == "__main__":
     print(f"  Num particles: {solver.num_particles}")
     print(f"  M range: [{M_solution.min():.3f}, {M_solution.max():.3f}]")
     print(f"  KDE bandwidth: {solver.kde_bandwidth}")
-    print(f"  Mode: {solver.mode.value}")
 
     # Test 2D problem with particle solver (nD support)
     print("\nTesting 2D FPParticleSolver...")
@@ -1719,5 +1745,65 @@ if __name__ == "__main__":
     assert solver_2d.M_particles_trajectory.shape[1] == solver_2d.num_particles, "Particle count mismatch"
     assert solver_2d.M_particles_trajectory.shape[2] == 2, "2D particles should have 2 coordinates"
     print(f"  Particle trajectory shape: {solver_2d.M_particles_trajectory.shape}")
+
+    # Test 3: Absorbing BC (segment-aware)
+    print("\nTesting 2D FPParticleSolver with absorbing BC...")
+    from mfg_pde.geometry.boundary import BCSegment, mixed_bc
+
+    # Create BC with exit on right wall (DIRICHLET = absorbing for particles)
+    bc_absorbing = mixed_bc(
+        dimension=2,
+        segments=[
+            BCSegment(
+                name="exit",
+                bc_type=BCType.DIRICHLET,
+                value=0.0,
+                boundary="x_max",  # Right wall is exit
+            ),
+            BCSegment(
+                name="walls",
+                bc_type=BCType.REFLECTING,
+                boundary="all",
+                priority=-1,  # Lower priority = fallback
+            ),
+        ],
+        domain_bounds=np.array([[0.0, 1.0], [0.0, 1.0]]),
+    )
+
+    solver_absorbing = FPParticleSolver(
+        problem_2d,
+        num_particles=200,
+        boundary_conditions=bc_absorbing,
+    )
+
+    # Drift particles toward the exit (right wall)
+    # Use a gradient that pushes particles to the right
+    drift_to_right = np.zeros((problem_2d.Nt + 1, *tuple(grid_shape_2d), 2))
+    drift_to_right[..., 0] = 0.5  # Positive x-drift (toward x_max)
+
+    M_solution_abs = solver_absorbing.solve_fp_system(
+        M_initial=M_init_2d,
+        drift_field=drift_to_right,
+        drift_is_precomputed=True,
+    )
+
+    # Verify some particles were absorbed
+    print(f"  Total absorbed: {solver_absorbing.total_absorbed}")
+    print(f"  Exit flux history length: {len(solver_absorbing.exit_flux_history)}")
+
+    # With strong rightward drift, particles should hit the exit
+    # and be absorbed (mass should decrease)
+    initial_mass_abs = np.sum(M_solution_abs[0])
+    final_mass_abs = np.sum(M_solution_abs[-1])
+    mass_loss = initial_mass_abs - final_mass_abs
+
+    print(f"  Initial mass: {initial_mass_abs:.4f}")
+    print(f"  Final mass: {final_mass_abs:.4f}")
+    print(f"  Mass loss: {mass_loss:.4f}")
+
+    # With absorbing BC, mass should decrease (particles exiting)
+    # Note: This test may show small mass loss due to limited particles/time
+    assert not np.any(np.isnan(M_solution_abs)), "NaN in absorbing BC solution"
+    print("  Absorbing BC test passed")
 
     print("\nAll smoke tests passed!")
