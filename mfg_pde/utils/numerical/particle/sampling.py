@@ -759,3 +759,185 @@ def estimate_expectation(samples: NDArray, weights: NDArray | None = None) -> tu
     standard_error = np.sqrt(variance / len(samples))
 
     return expectation, standard_error
+
+
+def sample_from_density(
+    density: NDArray,
+    coordinates: list[NDArray],
+    num_samples: int,
+    jitter: bool = True,
+    seed: int | None = None,
+) -> NDArray:
+    """
+    Sample particle positions from a density field on a regular grid.
+
+    Uses inverse CDF sampling: treats the density as a probability distribution
+    over grid cells, samples cell indices, then optionally adds sub-grid jitter
+    for smoothness.
+
+    This is the complement of KDE: given particles, KDE estimates density on grid;
+    given density on grid, this function samples particles.
+
+    Parameters
+    ----------
+    density : ndarray
+        Density values on regular grid, shape (N1, N2, ..., Nd).
+        Must be non-negative. Will be normalized internally.
+    coordinates : list of ndarray
+        1D coordinate arrays for each dimension, e.g. [x_coords, y_coords].
+        Each array has length matching the corresponding density dimension.
+    num_samples : int
+        Number of particle samples to generate.
+    jitter : bool, default=True
+        If True, add uniform sub-grid jitter for smoothness.
+        If False, return exact grid cell centers.
+    seed : int or None, default=None
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    particles : ndarray
+        Sampled particle positions, shape (num_samples, dimension).
+
+    Examples
+    --------
+    1D sampling from Gaussian density:
+
+    >>> x = np.linspace(0, 1, 51)
+    >>> density = np.exp(-20 * (x - 0.5)**2)
+    >>> particles = sample_from_density(density, [x], num_samples=1000)
+    >>> # particles will cluster around x=0.5
+
+    2D sampling:
+
+    >>> x = np.linspace(0, 1, 31)
+    >>> y = np.linspace(0, 1, 31)
+    >>> X, Y = np.meshgrid(x, y, indexing='ij')
+    >>> density = np.exp(-10 * ((X - 0.5)**2 + (Y - 0.5)**2))
+    >>> particles = sample_from_density(density, [x, y], num_samples=500)
+    >>> # particles will cluster around (0.5, 0.5)
+
+    Notes
+    -----
+    - If density is all zeros, falls back to uniform sampling over the domain.
+    - Sub-grid jitter prevents aliasing artifacts in visualization and improves
+      the smoothness of subsequent KDE density estimation.
+    """
+    rng = np.random.RandomState(seed)
+    dimension = len(coordinates)
+    grid_shape = tuple(len(c) for c in coordinates)
+
+    # Validate density shape
+    if density.shape != grid_shape:
+        raise ValueError(f"Density shape {density.shape} does not match coordinates shape {grid_shape}")
+
+    # Flatten density and normalize to probability
+    density_flat = density.ravel()
+    total_mass = np.sum(density_flat)
+
+    if total_mass < 1e-14:
+        # Uniform fallback if density is zero
+        bounds = np.array([[c[0], c[-1]] for c in coordinates])  # shape: (d, 2)
+        particles = rng.uniform(bounds[:, 0], bounds[:, 1], size=(num_samples, dimension))
+        return particles
+
+    probs = density_flat / total_mass
+
+    # Sample flat indices according to probability
+    try:
+        flat_indices = rng.choice(len(density_flat), size=num_samples, p=probs, replace=True)
+    except ValueError:
+        # Fallback to uniform if probability is degenerate
+        bounds = np.array([[c[0], c[-1]] for c in coordinates])
+        particles = rng.uniform(bounds[:, 0], bounds[:, 1], size=(num_samples, dimension))
+        return particles
+
+    # Convert flat indices to multi-indices
+    multi_indices = np.unravel_index(flat_indices, grid_shape)
+
+    # Get coordinates at sampled grid points (vectorized)
+    particles = np.column_stack([coordinates[d][multi_indices[d]] for d in range(dimension)])
+
+    # Add sub-grid jitter for smoothness
+    if jitter:
+        spacings = np.array([c[1] - c[0] if len(c) > 1 else 0.0 for c in coordinates])
+        jitter_offsets = rng.uniform(-0.5, 0.5, size=(num_samples, dimension)) * spacings
+        particles += jitter_offsets
+
+    return particles
+
+
+# =============================================================================
+# SMOKE TEST
+# =============================================================================
+
+if __name__ == "__main__":
+    """Quick smoke test for sampling utilities."""
+    print("Testing sampling utilities...")
+
+    # Test 1: sample_from_density 1D
+    print("\n1. Testing sample_from_density (1D)...")
+    x = np.linspace(0, 1, 51)
+    density_1d = np.exp(-20 * (x - 0.5) ** 2)  # Gaussian at 0.5
+
+    particles_1d = sample_from_density(density_1d, [x], num_samples=1000, seed=42)
+    assert particles_1d.shape == (1000, 1), f"Expected (1000, 1), got {particles_1d.shape}"
+    mean_1d = np.mean(particles_1d)
+    assert 0.4 < mean_1d < 0.6, f"Mean should be near 0.5, got {mean_1d:.3f}"
+    print(f"  1D: mean = {mean_1d:.3f} (expected ~0.5)")
+
+    # Test 2: sample_from_density 2D
+    print("\n2. Testing sample_from_density (2D)...")
+    x2 = np.linspace(0, 1, 31)
+    y2 = np.linspace(0, 1, 31)
+    X, Y = np.meshgrid(x2, y2, indexing="ij")
+    density_2d = np.exp(-10 * ((X - 0.5) ** 2 + (Y - 0.5) ** 2))
+
+    particles_2d = sample_from_density(density_2d, [x2, y2], num_samples=500, seed=42)
+    assert particles_2d.shape == (500, 2), f"Expected (500, 2), got {particles_2d.shape}"
+    mean_x = np.mean(particles_2d[:, 0])
+    mean_y = np.mean(particles_2d[:, 1])
+    assert 0.4 < mean_x < 0.6, f"Mean x should be near 0.5, got {mean_x:.3f}"
+    assert 0.4 < mean_y < 0.6, f"Mean y should be near 0.5, got {mean_y:.3f}"
+    print(f"  2D: mean = ({mean_x:.3f}, {mean_y:.3f}) (expected ~(0.5, 0.5))")
+
+    # Test 3: sample_from_density with zero density (uniform fallback)
+    print("\n3. Testing zero density fallback...")
+    zero_density = np.zeros((21,))
+    particles_zero = sample_from_density(zero_density, [np.linspace(0, 1, 21)], num_samples=100, seed=42)
+    assert particles_zero.shape == (100, 1)
+    # Should be uniformly distributed
+    mean_zero = np.mean(particles_zero)
+    assert 0.3 < mean_zero < 0.7, f"Uniform mean should be near 0.5, got {mean_zero:.3f}"
+    print(f"  Zero density fallback: mean = {mean_zero:.3f}")
+
+    # Test 4: sample_from_density without jitter
+    print("\n4. Testing no-jitter mode...")
+    particles_no_jitter = sample_from_density(density_1d, [x], num_samples=100, jitter=False, seed=42)
+    # Without jitter, particles should be exactly on grid points
+    spacings = x[1] - x[0]
+    # Check that all particles are within grid bounds
+    assert np.all(particles_no_jitter >= x[0]), "Particles should be >= domain min"
+    assert np.all(particles_no_jitter <= x[-1]), "Particles should be <= domain max"
+    print("  No-jitter mode works correctly")
+
+    # Test 5: PoissonDiskSampler
+    print("\n5. Testing PoissonDiskSampler...")
+    domain = [(0.0, 1.0), (0.0, 1.0)]
+    config = MCConfig(seed=42)
+    sampler = PoissonDiskSampler(domain, config, min_distance=0.05)
+    poisson_points = sampler.sample(200)
+    assert poisson_points.shape[1] == 2, "Should be 2D points"
+    assert len(poisson_points) > 50, "Should generate reasonable number of points"
+    print(f"  PoissonDiskSampler: generated {len(poisson_points)} points")
+
+    # Verify minimum distance constraint
+    from scipy.spatial import distance_matrix
+
+    dist_matrix = distance_matrix(poisson_points, poisson_points)
+    np.fill_diagonal(dist_matrix, np.inf)
+    min_dist = np.min(dist_matrix)
+    assert min_dist >= 0.04, f"Minimum distance should be ~0.05, got {min_dist:.3f}"
+    print(f"  Minimum point separation: {min_dist:.3f}")
+
+    print("\nAll smoke tests passed!")
