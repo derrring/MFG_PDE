@@ -1,53 +1,54 @@
 """
-Quick validation of Hamiltonian derivative sign fix.
+Test validation of Hamiltonian derivative sign.
 
-Default Hamiltonian: H = 0.5*c*|p|² - V(x) - m²
+Default Hamiltonian: H = 0.5*c*|p|^2 - V(x) - m^2
 Correct derivative: dH/dm = -2m
 """
 
-import sys
-from pathlib import Path
+import pytest
 
 import numpy as np
-
-sys.path.insert(0, str(Path(__file__).parent))
 
 from mfg_pde import MFGProblem
 from mfg_pde.core.derivatives import DerivativeTensors
 from mfg_pde.geometry import TensorProductGrid
 
-# Create simple problem
-geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[10])
-problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
-# Test dH_dm at various m values
-test_values = [0.0, 0.5, 1.0, 2.0, -1.0]
+@pytest.fixture
+def simple_problem():
+    """Create a simple 1D MFG problem for testing."""
+    geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[10])
+    return MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
-# Create dummy derivatives (not needed for dH/dm but required by API)
-dummy_derivs = DerivativeTensors.from_arrays(grad=np.array([0.0]))
 
-print("Hamiltonian Derivative Validation")
-print("=" * 60)
-print("Default H = 0.5*c*|p|² - V(x) - m²")
-print("Expected dH/dm = -2m")
-print("=" * 60)
+@pytest.fixture
+def dummy_derivs():
+    """Create dummy derivatives required by the dH_dm API."""
+    return DerivativeTensors.from_arrays(grad=np.array([0.0]))
 
-all_correct = True
-for m in test_values:
-    dH_dm = problem.dH_dm(x_idx=0, m_at_x=m, derivs=dummy_derivs)
-    expected = -2.0 * m
-    diff = abs(dH_dm - expected)
 
-    status = "✓" if diff < 1e-10 else "✗"
-    if diff >= 1e-10:
-        all_correct = False
+class TestHamiltonianDerivative:
+    """Tests for Hamiltonian derivative dH/dm correctness."""
 
-    print(f"{status} m = {m:6.2f}  →  dH/dm = {dH_dm:8.4f}  (expected: {expected:8.4f}, error: {diff:.2e})")
+    @pytest.mark.parametrize("m_value", [0.0, 0.5, 1.0, 2.0, -1.0])
+    def test_dH_dm_returns_correct_value(self, simple_problem, dummy_derivs, m_value):
+        """Verify dH/dm = -2m for default Hamiltonian H = 0.5*c*|p|^2 - V(x) - m^2."""
+        dH_dm = simple_problem.dH_dm(x_idx=0, m_at_x=m_value, derivs=dummy_derivs)
+        expected = -2.0 * m_value
 
-print("=" * 60)
-if all_correct:
-    print("✓ All tests PASSED - dH/dm sign is CORRECT")
-    sys.exit(0)
-else:
-    print("✗ Tests FAILED - dH/dm has incorrect sign or value")
-    sys.exit(1)
+        assert abs(dH_dm - expected) < 1e-10, f"dH/dm incorrect at m={m_value}: got {dH_dm}, expected {expected}"
+
+    def test_dH_dm_sign_is_negative_for_positive_m(self, simple_problem, dummy_derivs):
+        """Verify dH/dm is negative when m > 0."""
+        dH_dm = simple_problem.dH_dm(x_idx=0, m_at_x=1.0, derivs=dummy_derivs)
+        assert dH_dm < 0, f"dH/dm should be negative for m=1.0, got {dH_dm}"
+
+    def test_dH_dm_sign_is_positive_for_negative_m(self, simple_problem, dummy_derivs):
+        """Verify dH/dm is positive when m < 0."""
+        dH_dm = simple_problem.dH_dm(x_idx=0, m_at_x=-1.0, derivs=dummy_derivs)
+        assert dH_dm > 0, f"dH/dm should be positive for m=-1.0, got {dH_dm}"
+
+    def test_dH_dm_is_zero_at_m_zero(self, simple_problem, dummy_derivs):
+        """Verify dH/dm = 0 when m = 0."""
+        dH_dm = simple_problem.dH_dm(x_idx=0, m_at_x=0.0, derivs=dummy_derivs)
+        assert abs(dH_dm) < 1e-10, f"dH/dm should be zero at m=0, got {dH_dm}"
