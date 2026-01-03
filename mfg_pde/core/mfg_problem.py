@@ -1812,7 +1812,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             # 1D: Use original default
             spatial_grid = self._get_spatial_grid_internal()
             for i in range(self.spatial_shape[0]):
-                self.m_init[i] = self._m_initial(spatial_grid[i])
+                # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
+                x_i = float(spatial_grid[i, 0])
+                self.m_init[i] = self._m_initial(x_i)
         elif self.dimension == "network":
             # Network/graph: uniform density on all nodes
             self.m_init[:] = 1.0 / self.num_nodes

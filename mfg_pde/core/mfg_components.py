@@ -234,7 +234,8 @@ class HamiltonianMixin:
                 num_intervals = self._get_num_intervals() or 0
                 spatial_grid = self._get_spatial_grid_internal()
                 for i in range(num_intervals + 1):
-                    x_i = spatial_grid[i]
+                    # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
+                    x_i = float(spatial_grid[i, 0])
                     potential_at_t[i] = self.components.potential_func(x_i, current_time)
 
                 return potential_at_t
