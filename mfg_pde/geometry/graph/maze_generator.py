@@ -790,9 +790,9 @@ def generate_maze(
     """
     alg_enum = MazeAlgorithm(algorithm)
     generator = MazeGeometry(rows, cols, alg_enum)
-    grid = generator.generate(seed=seed)
+    generator.generate(seed=seed)
 
-    verification = verify_perfect_maze(grid)
+    verification = verify_perfect_maze(generator.grid)
     if not verification["is_perfect"]:
         raise RuntimeError(f"Generated maze is not perfect: {verification}")
 

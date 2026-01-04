@@ -371,11 +371,8 @@ class VariationalMFGProblem:
 
             result = kinetic_hamiltonian + interaction_term
             # Ensure scalar return for scalar inputs
-            if hasattr(result, "ndim"):
-                if getattr(result, "ndim", None) == 0:
-                    return float(result)
-                elif hasattr(result, "item"):
-                    return float(getattr(result, "item", lambda: result)())
+            if isinstance(result, np.ndarray) and result.ndim == 0:
+                return float(result.item())
             return float(result)
 
         def hamiltonian_dp(x: float, p: float, m: float, t: float = 0.0) -> float:
@@ -430,11 +427,8 @@ class VariationalMFGProblem:
         total_action = running_cost + terminal_cost
 
         # Ensure scalar return
-        if hasattr(total_action, "ndim"):
-            if getattr(total_action, "ndim", None) == 0:
-                return float(total_action)
-            elif hasattr(total_action, "item"):
-                return float(getattr(total_action, "item", lambda: total_action)())
+        if isinstance(total_action, np.ndarray) and total_action.ndim == 0:
+            return float(total_action.item())
         return float(total_action)
 
     def _interpolate_density(self, density_field: NDArray, x: float) -> float:

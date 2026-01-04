@@ -295,12 +295,13 @@ class JITSolverFactory:
 
         # Estimate problem size
         if hasattr(problem, "geometry") and hasattr(problem, "Nt"):
-            import numpy as np
-
             grid_shape = problem.geometry.get_grid_shape()
             problem_size = int(np.prod(grid_shape)) * problem.Nt
         else:
-            problem_size = 1000  # Default
+            raise ValueError(
+                "Cannot infer problem size: problem must have 'geometry' and 'Nt'. "
+                "Provide an explicit PerformanceProfile if using a custom problem type."
+            )
 
         # Select backend based on size
         if problem_size > 10000:
@@ -375,12 +376,13 @@ def create_optimized_solver(
 
     # Create performance profile
     if hasattr(problem, "geometry") and hasattr(problem, "Nt"):
-        import numpy as np
-
         grid_shape = problem.geometry.get_grid_shape()
         problem_size = int(np.prod(grid_shape)) * problem.Nt
     else:
-        problem_size = 1000
+        raise ValueError(
+            "Cannot create optimized solver: problem missing 'geometry' or 'Nt'. "
+            "Optimization requires explicit problem size metrics."
+        )
 
     profile = PerformanceProfile(
         problem_size=problem_size,
@@ -411,10 +413,21 @@ def jit_optimize(backend: str = "auto", optimization_level: str = "balanced"):
 
                 # Create performance profile if not exists
                 if not hasattr(solver, "_optimization_profile"):
-                    if hasattr(solver, "problem"):
-                        problem_size = getattr(solver.problem, "Nx", 100) * getattr(solver.problem, "Nt", 100)
+                    # Optimization profile requires a valid problem with size metrics
+                    if not hasattr(solver, "problem"):
+                        raise AttributeError("Optimization failed: solver missing 'problem' attribute.")
+
+                    # Try to get problem size explicitly or via modern attributes
+                    if hasattr(solver.problem, "geometry") and hasattr(solver.problem, "Nt"):
+                        grid_shape = solver.problem.geometry.get_grid_shape()
+                        problem_size = int(np.prod(grid_shape)) * solver.problem.Nt
+                    elif hasattr(solver.problem, "Nx") and hasattr(solver.problem, "Nt"):
+                        # Support legacy 1D for now but raise if missing
+                        problem_size = solver.problem.Nx * solver.problem.Nt
                     else:
-                        problem_size = 1000
+                        raise ValueError(
+                            "Cannot determine problem size for JIT optimization. Problem must have 'geometry' and 'Nt'."
+                        )
 
                     solver._optimization_profile = PerformanceProfile(
                         problem_size=problem_size,

@@ -129,25 +129,28 @@ class NetworkData:
         """Validate network data consistency."""
         # Validate adjacency matrix
         adjacency = self.adjacency_matrix
-        assert adjacency.shape[0] == adjacency.shape[1], "Adjacency matrix must be square"
-        assert adjacency.shape[0] == self.num_nodes, (
-            f"Adjacency matrix size {adjacency.shape[0]} != num_nodes {self.num_nodes}"
-        )
+        if adjacency.shape[0] != adjacency.shape[1]:
+            raise ValueError("Adjacency matrix must be square")
+        if adjacency.shape[0] != self.num_nodes:
+            raise ValueError(f"Adjacency matrix size {adjacency.shape[0]} != num_nodes {self.num_nodes}")
 
         # Validate node positions with explicit type narrowing
         node_positions = self.node_positions
         if node_positions is not None:
-            assert node_positions.shape[0] == self.num_nodes, "Node positions must match number of nodes"
+            if node_positions.shape[0] != self.num_nodes:
+                raise ValueError("Node positions must match number of nodes")
 
         # Validate edge weights with explicit type narrowing
         edge_weights = self.edge_weights
         if edge_weights is not None:
-            assert len(edge_weights) == self.num_edges, "Edge weights must match number of edges"
+            if len(edge_weights) != self.num_edges:
+                raise ValueError("Edge weights must match number of edges")
 
         # Validate node weights with explicit type narrowing
         node_weights = self.node_weights
         if node_weights is not None:
-            assert len(node_weights) == self.num_nodes, "Node weights must match number of nodes"
+            if len(node_weights) != self.num_nodes:
+                raise ValueError("Node weights must match number of nodes")
 
     def _compute_derived_matrices(self):
         """Compute graph Laplacian and other derived matrices."""

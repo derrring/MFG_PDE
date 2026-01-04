@@ -130,6 +130,8 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         use_ghost_nodes: bool = False,
         # Wind-Dependent BC for viscosity solution compatibility
         use_wind_dependent_bc: bool = False,
+        # Congestion mode for Hamiltonian coupling
+        congestion_mode: str = "additive",
     ):
         """
         Initialize the GFDM HJB solver.
@@ -214,6 +216,12 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
                 "wants" to violate them. Recommended for evacuation/exit problems where agents
                 need to cross boundaries. Based on Lions & Souganidis theory of discontinuous
                 viscosity solutions.
+            congestion_mode: Mode for density-velocity coupling (default "additive"):
+                - "additive": H = |p|²/(2λ) + γm (standard separable form)
+                - "multiplicative": H = (1 + γ|Ω|m)|p|²/(2λ) (velocity reduction by congestion)
+                The multiplicative form models agents slowing down in crowded areas, where
+                γ|Ω|m ≈ γ × (local_density / average_density). This makes γ dimensionless
+                and O(1) for observable effects, unlike additive form where γ ~ 1/|Ω|.
         """
         super().__init__(problem)
 
@@ -306,6 +314,9 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         self.qp_solver = qp_solver
         self.qp_warm_start = qp_warm_start
         self.qp_constraint_mode = qp_constraint_mode
+
+        # Congestion mode for Hamiltonian coupling
+        self.congestion_mode = congestion_mode
 
         # Initialize unified QP solver from qp_utils
         # Map qp_solver parameter to QPSolver backend
@@ -554,6 +565,26 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         mins = self.collocation_points.min(axis=0)  # shape: (d,)
         maxs = self.collocation_points.max(axis=0)  # shape: (d,)
         return list(zip(mins.astype(float).tolist(), maxs.astype(float).tolist(), strict=True))
+
+    def _compute_domain_volume(self) -> float:
+        """Compute the volume (area in 2D) of the domain.
+
+        Used for normalizing density in multiplicative congestion mode,
+        where H = (1 + γ|Ω|m)|p|²/(2λ). The |Ω|m factor makes γ dimensionless.
+
+        Returns:
+            Domain volume/area as a scalar.
+        """
+        if hasattr(self, "_domain_volume"):
+            return self._domain_volume
+
+        bounds = self.domain_bounds
+        volume = 1.0
+        for d_min, d_max in bounds:
+            volume *= d_max - d_min
+
+        self._domain_volume = volume
+        return volume
 
     # =========================================================================
     # Boundary Methods: Provided by GFDMBoundaryMixin (gfdm_boundary_mixin.py)
@@ -946,15 +977,14 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         u_t = (u_n_plus_1 - u_current) / dt
 
         # Compute Hamiltonian for all points
-        # For standard LQ: H = |grad_u|^2 / (2*lambda) + V + gamma*m
+        # Two modes supported:
+        # - additive:       H = |p|²/(2λ) + V + γm (standard separable form)
+        # - multiplicative: H = (1 + γ|Ω|m)|p|²/(2λ) + V (velocity reduction by congestion)
         lambda_val = self._get_lambda_value()
         gamma_val = getattr(self.problem, "gamma", 0.0)
 
         # |grad_u|^2 for all points
         grad_norm_sq = np.sum(grad_u**2, axis=1)
-
-        # Kinetic term: |p|^2 / (2*lambda)
-        H_kinetic = grad_norm_sq / (2 * lambda_val)
 
         # Potential term (if exists)
         if hasattr(self.problem, "f_potential") and self.problem.f_potential is not None:
@@ -963,10 +993,30 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         else:
             H_potential = np.zeros(self.n_points)
 
-        # Interaction term: gamma * m
-        H_interaction = gamma_val * m_n_plus_1
-
-        H_total = H_kinetic + H_potential + H_interaction
+        # Congestion mode determines how density couples with velocity
+        if self.congestion_mode == "multiplicative":
+            # Multiplicative (congestion aversion): H = |p|²/(2λ(1 + γ|Ω|m))
+            #
+            # Legendre transform gives Lagrangian: L = (λ/2)(1 + γ|Ω|m)|v|²
+            # - High density m → HIGH running cost (congestion aversion)
+            # - Optimal velocity v* = -∇u/[λ(1 + γ|Ω|m)] → slower in crowds
+            #
+            # The |Ω| normalization makes γ dimensionless and O(1)
+            domain_volume = self._compute_domain_volume()
+            congestion_factor = 1.0 + gamma_val * domain_volume * m_n_plus_1
+            H_kinetic = grad_norm_sq / (2 * lambda_val * congestion_factor)
+            H_total = H_kinetic + H_potential
+        else:
+            # Additive: density-dependent running cost in HJB equation
+            # HJB: -∂u/∂t + |∇u|²/(2λ) + γ|Ω|m - (σ²/2)Δu = 0
+            #
+            # The +γ|Ω|m term increases u in high-density regions,
+            # which agents minimize → congestion avoidance (queuing cost)
+            # The |Ω| normalization makes γ dimensionless and O(1)
+            domain_volume = self._compute_domain_volume()
+            H_kinetic = grad_norm_sq / (2 * lambda_val)
+            H_interaction = gamma_val * domain_volume * m_n_plus_1
+            H_total = H_kinetic + H_potential + H_interaction
 
         # Running cost term L(x) if provided
         # This implements: H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)

@@ -429,6 +429,11 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             self.hjb_geometry = getattr(self, "geometry", None)
             self.fp_geometry = getattr(self, "geometry", None)
 
+        # Ensure has_obstacles is initialized (default to False if not set by specific init methods)
+        if not hasattr(self, "has_obstacles"):
+            self.has_obstacles = False
+            self.obstacles = []
+
         # Store custom components if provided
         self.components = components
         self.is_custom = components is not None
@@ -1396,7 +1401,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         """
         # Use geometry for spatial info, not deprecated attrs
         geom_type = type(self.geometry).__name__ if self.geometry else "None"
-        dim = self.dimension if hasattr(self, "dimension") else "?"
+        dim = self.dimension
 
         return f"MFGProblem(geometry={geom_type}, dim={dim}, T={self.T}, Nt={self.Nt}, sigma={self.sigma})"
 
@@ -1475,9 +1480,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         dim = self.dimension if isinstance(self.dimension, int) else None
 
         # FDM: Requires regular grid, no complex geometry, works best for dim <= 3
-        if (is_grid and not hasattr(self, "has_obstacles")) or (
-            hasattr(self, "has_obstacles") and not self.has_obstacles
-        ):
+        if is_grid and not self.has_obstacles:
             compatible.append("fdm")
             if dim and dim <= 2:
                 recommendations["fast"] = "fdm"
@@ -1492,7 +1495,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # GFDM: Works with grids and complex geometry (particle collocation)
         if is_grid or is_implicit:
             compatible.append("gfdm")
-            if is_implicit or (hasattr(self, "has_obstacles") and self.has_obstacles):
+            if is_implicit or self.has_obstacles:
                 recommendations["obstacles"] = "gfdm"
                 recommendations["complex_geometry"] = "gfdm"
 
@@ -1560,7 +1563,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 f"Problem Configuration:\n"
                 f"  Domain type: {self.domain_type}\n"
                 f"  Dimension: {self.dimension}\n"
-                f"  Has obstacles: {getattr(self, 'has_obstacles', False)}\n\n"
+                f"  Has obstacles: {self.has_obstacles}\n\n"
                 f"Reason: {reason}\n\n"
                 f"Compatible solvers: {self.solver_compatible}\n\n"
                 f"Suggestion: {suggestion}"
@@ -1647,7 +1650,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             "recommendations": self.solver_recommendations,
             "dimension": self.dimension,
             "domain_type": self.domain_type,
-            "has_obstacles": getattr(self, "has_obstacles", False),
+            "has_obstacles": self.has_obstacles,
             "complexity": self._estimate_complexity(),
             "default_solver": self.solver_recommendations.get("default", None),
         }

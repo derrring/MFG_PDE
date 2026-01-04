@@ -157,10 +157,18 @@ print("Convergence: ‖u - u_prev‖ < 1e-6")
 
 **Emoji usage**: ✅ Markdown docs | ❌ Python files, output, docstrings
 
+### **Fail Fast & Surface Problems** ⚠️ **CRITICAL**
+Prioritize surfacing problems early during development:
+- ✅ **Let problems emerge**: Allow exceptions to propagate rather than catching and silencing them.
+- ❌ **NO silent fallbacks**: Do not provide default values or fallbacks for failed operations without explicit permission.
+- ❌ **NO over-defensive programming**: Avoid excessive null checks or safety guards that mask logic errors.
+- ❌ **NO `hasattr()`**: Use explicit interfaces or handle `AttributeError` instead of checking for attribute existence.
+- ❌ **NO ambiguous returns**: Do not return `None`, `0`, or `1` to indicate failure without a reasonable following action or error propagation.
+
 ### **Development Documentation** ⚠️ **CRITICAL**
 Always document significant changes:
 
-1. **Roadmap**: Update `STRATEGIC_DEVELOPMENT_ROADMAP_2026.md` for major features
+1. **Roadmap**: Update the strategic development roadmap for major features
 2. **Changes**: Document architecture changes in `ARCHITECTURAL_CHANGES.md`
 3. **Theory**: Create notes for mathematical features with code references
 
@@ -248,7 +256,7 @@ MFG_PDE uses a **hybrid testing approach** optimized for research code that evol
 - Should be maintained as API stabilizes
 - Located in `tests/unit/` and `tests/integration/`
 
-**Current state**: 172 unit test files covering stable framework APIs ✅
+**Current state**: Comprehensive unit test suite covering stable framework APIs ✅
 
 ### **2. Smoke Tests (`if __name__ == "__main__"`) - For Development**
 
@@ -325,7 +333,7 @@ python mfg_pde/alg/numerical/hjb_solvers/my_solver.py
 | Visualization | Sometimes | Yes | Smoke tests ✅ |
 | Utility function | No | Internal | Unit tests OR smoke tests |
 
-### **Rationale**
+### Rationale
 
 Research code evolves quickly. Inline smoke tests:
 - ✅ Reduce maintenance burden on rapidly changing algorithms
@@ -337,11 +345,6 @@ Unit tests remain essential for:
 - ✅ Public APIs that users depend on
 - ✅ Numerical correctness that must not regress
 - ✅ Core infrastructure that rarely changes
-
-### **Current Target**
-
-- **Unit tests**: 172 files (stable, keep as-is) ✅
-- **Smoke tests**: 10 files → **50-60 files** (add to algorithms/utils) 🎯
 
 ---
 
@@ -387,15 +390,7 @@ git merge chore/fix-unused-variables --no-ff
 # Keep child alive for more work OR delete if complete
 ```
 
-### **Branch Management** ⚠️ **ADAPTIVE**
-
-**Context-Aware Limits**:
-
-| Project Phase | Max Branches | Lifetime | Merge Cadence |
-|:--------------|:-------------|:---------|:--------------|
-| Maintenance | 3-5 | 1-3 days | Daily |
-| Active Development | 5-8 | 3-7 days | Weekly |
-| Major Refactor | 8-12 | 1-2 weeks | Bi-weekly |
+### Branch Management ⚠️ **ADAPTIVE**
 
 **Branch Count Guidelines**:
 - **< 5**: Healthy
@@ -461,8 +456,6 @@ gh pr create --title "Title" --body "Fixes #[issue_number]" \
 
 ### **Ruff Version Management** ⚠️ **IMPORTANT**
 **Strategy**: Pin with periodic automated updates
-
-**Current**: `ruff==0.13.1` (Updated: 2025-10-07)
 
 **Why pin**: Consistent formatting, reproducible, no surprise CI failures, controlled review
 
@@ -637,8 +630,6 @@ Enforce with GitHub branch protection rules on `main`.
 
 ---
 
-**Last Updated**: 2025-11-01
-**Repository Version**: Complete MFG framework with modern typing standards
+**Last Updated**: 2026-01-05
+**Repository Version**: v0.16.14 (Pre-1.0.0)
 **Claude Code**: Always reference this file for MFG_PDE conventions
-
-**Current Status**: Production-ready framework with comprehensive solver ecosystem, advanced API design, and strategic development roadmap through 2027. See `docs/development/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md` for current priorities.
