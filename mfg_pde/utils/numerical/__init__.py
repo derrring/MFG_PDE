@@ -47,9 +47,6 @@ from mfg_pde.utils.numerical.hjb_policy_iteration import (
     policy_iteration_hjb,
 )
 
-# Deprecated: Use LocalRBFOperator instead (v0.17.0)
-from mfg_pde.utils.numerical.kernel_rbf_operators import RBFOperator, create_rbf_operator
-
 # Kernels - general numerical functions (not particle-specific)
 from mfg_pde.utils.numerical.kernels import (
     CubicSplineKernel,
@@ -135,9 +132,6 @@ __all__ = [
     "MonotonicityStats",
     "verify_m_matrix_property",
     "get_m_matrix_diagnostic_string",
-    # RBF operators (deprecated v0.17.0 - use LocalRBFOperator)
-    "RBFOperator",
-    "create_rbf_operator",
     # HJB policy iteration
     "HJBPolicyProblem",
     "create_lq_policy_problem",

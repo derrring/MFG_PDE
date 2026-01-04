@@ -2,15 +2,17 @@
 """
 Benchmark tensor diffusion operators with and without Numba JIT.
 
-Measures performance of:
-1. divergence_tensor_diffusion_2d (full tensor)
-2. divergence_diagonal_diffusion_2d (diagonal optimized)
+Measures performance of tensor diffusion via tensor_calculus.diffusion():
+- Full tensor diffusion
+- Diagonal diffusion (optimized path)
 
 Compares:
 - Pure NumPy baseline
 - Numba JIT compiled versions
 - Different grid sizes (50x50, 100x100, 200x200)
 - Constant vs spatially-varying tensors
+
+Note: Migrated from tensor_operators.py to tensor_calculus as of v0.17.0.
 """
 
 import time
@@ -20,12 +22,11 @@ import numpy as np
 
 from mfg_pde.geometry.boundary import no_flux_bc
 
-# Import to check Numba availability
-from mfg_pde.utils.numerical.tensor_operators import (
+# Import unified diffusion API and Numba flags
+from mfg_pde.utils.numerical.tensor_calculus import (
     NUMBA_AVAILABLE,
     USE_NUMBA,
-    divergence_diagonal_diffusion_2d,
-    divergence_tensor_diffusion_2d,
+    diffusion,
 )
 
 # ============================================================================
@@ -148,7 +149,7 @@ def benchmark_full_tensor_constant(Ny: int, Nx: int) -> dict:
     dx = dy = 1.0 / Nx
     bc = no_flux_bc(dimension=2)
 
-    stats = benchmark_function(divergence_tensor_diffusion_2d, m, Sigma, dx, dy, bc)
+    stats = benchmark_function(diffusion, m, Sigma, [dx, dy], bc=bc)
 
     return {
         "scenario": "Full Tensor (Constant)",
@@ -164,7 +165,7 @@ def benchmark_full_tensor_varying(Ny: int, Nx: int) -> dict:
     dx = dy = 1.0 / Nx
     bc = no_flux_bc(dimension=2)
 
-    stats = benchmark_function(divergence_tensor_diffusion_2d, m, Sigma, dx, dy, bc)
+    stats = benchmark_function(diffusion, m, Sigma, [dx, dy], bc=bc)
 
     return {
         "scenario": "Full Tensor (Spatially Varying)",
@@ -180,7 +181,9 @@ def benchmark_diagonal_constant(Ny: int, Nx: int) -> dict:
     dx = dy = 1.0 / Nx
     bc = no_flux_bc(dimension=2)
 
-    stats = benchmark_function(divergence_diagonal_diffusion_2d, m, sigma_diag, dx, dy, bc)
+    # Convert to full tensor for unified API
+    sigma_tensor = np.diag(sigma_diag)
+    stats = benchmark_function(diffusion, m, sigma_tensor, [dx, dy], bc=bc)
 
     return {
         "scenario": "Diagonal (Constant)",
@@ -196,7 +199,11 @@ def benchmark_diagonal_varying(Ny: int, Nx: int) -> dict:
     dx = dy = 1.0 / Nx
     bc = no_flux_bc(dimension=2)
 
-    stats = benchmark_function(divergence_diagonal_diffusion_2d, m, sigma_diag, dx, dy, bc)
+    # Convert diagonal arrays to full tensor format (Ny, Nx, 2, 2)
+    Sigma = np.zeros((Ny, Nx, 2, 2))
+    Sigma[:, :, 0, 0] = sigma_diag[:, :, 0]
+    Sigma[:, :, 1, 1] = sigma_diag[:, :, 1]
+    stats = benchmark_function(diffusion, m, Sigma, [dx, dy], bc=bc)
 
     return {
         "scenario": "Diagonal (Spatially Varying)",

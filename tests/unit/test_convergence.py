@@ -18,12 +18,17 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numerical.convergence import (
+# Use the new import path (old path mfg_pde.utils.numerical.convergence is deprecated)
+from mfg_pde.utils.convergence import (
+    # Deprecated aliases (for testing backward compatibility)
     AdaptiveConvergenceWrapper,
     AdvancedConvergenceMonitor,
+    # Canonical class names
     DistributionComparator,
+    DistributionConvergenceMonitor,
     OscillationDetector,
     ParticleMethodDetector,
+    RollingConvergenceMonitor,
     StochasticConvergenceMonitor,
     calculate_l2_convergence_metrics,
     create_default_monitor,
@@ -502,20 +507,24 @@ def test_adaptive_convergence_wrapper_particle_detection():
 
 @pytest.mark.unit
 def test_create_default_monitor():
-    """Test create_default_monitor factory function."""
+    """Test create_default_monitor factory function (deprecated)."""
+    # Note: create_default_monitor is deprecated, returns DistributionConvergenceMonitor
     monitor = create_default_monitor(wasserstein_tol=1e-5, u_magnitude_tol=1e-3, history_length=20)
 
-    assert isinstance(monitor, AdvancedConvergenceMonitor)
+    # Check for canonical type (AdvancedConvergenceMonitor is now a subclass)
+    assert isinstance(monitor, DistributionConvergenceMonitor)
     assert monitor.wasserstein_tol == 1e-5
     assert monitor.u_magnitude_tol == 1e-3
 
 
 @pytest.mark.unit
 def test_create_stochastic_monitor():
-    """Test create_stochastic_monitor factory function."""
+    """Test create_stochastic_monitor factory function (deprecated)."""
+    # Note: create_stochastic_monitor is deprecated, returns RollingConvergenceMonitor
     monitor = create_stochastic_monitor(median_tolerance=1e-5, window_size=30, quantile=0.95)
 
-    assert isinstance(monitor, StochasticConvergenceMonitor)
+    # Check for canonical type (StochasticConvergenceMonitor is now a subclass)
+    assert isinstance(monitor, RollingConvergenceMonitor)
     assert monitor.median_tolerance == 1e-5
     assert monitor.window_size == 30
 
@@ -944,7 +953,7 @@ def test_adaptive_convergence_wrapper_get_detection_info():
 def test_adaptive_convergence_decorator_usage():
     """Test using adaptive_convergence as decorator."""
 
-    from mfg_pde.utils.numerical.convergence import adaptive_convergence
+    from mfg_pde.utils.convergence import adaptive_convergence
 
     @adaptive_convergence(classical_tol=1e-4, verbose=False)
     class TestSolver:
@@ -969,7 +978,7 @@ def test_wrap_solver_with_adaptive_convergence():
     """Test wrap_solver_with_adaptive_convergence function."""
     from unittest.mock import Mock
 
-    from mfg_pde.utils.numerical.convergence import (
+    from mfg_pde.utils.convergence import (
         wrap_solver_with_adaptive_convergence,
     )
 
@@ -988,7 +997,7 @@ def test_test_particle_detection_function():
     """Test test_particle_detection utility function."""
     from unittest.mock import Mock
 
-    from mfg_pde.utils.numerical.convergence import test_particle_detection
+    from mfg_pde.utils.convergence import test_particle_detection
 
     solver = Mock()
     solver.num_particles = 500
@@ -1005,7 +1014,7 @@ def test_test_particle_detection_function():
 def test_adaptive_convergence_decorator_with_parameters():
     """Test adaptive_convergence decorator with custom parameters."""
 
-    from mfg_pde.utils.numerical.convergence import adaptive_convergence
+    from mfg_pde.utils.convergence import adaptive_convergence
 
     @adaptive_convergence(
         classical_tol=1e-5,

@@ -29,9 +29,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde.geometry.boundary.conditions import no_flux_bc
-from mfg_pde.utils.numerical.tensor_operators import (
-    divergence_tensor_diffusion_2d,
-)
+from mfg_pde.utils.numerical.tensor_calculus import diffusion
 
 
 def create_corridor_diffusion_tensor(
@@ -206,7 +204,7 @@ def test_tensor_diffusion_evolution():
             time_values.append(k * dt)
 
         # Compute diffusion term: ∇·(Σ ∇m)
-        diffusion_term = divergence_tensor_diffusion_2d(m, Sigma, dx, dy, bc)
+        diffusion_term = diffusion(m, Sigma, [dx, dy], bc=bc)
 
         # Forward Euler timestep
         m = m + dt * diffusion_term
@@ -265,7 +263,7 @@ def test_tensor_diffusion_evolution():
     sigma_iso = np.sqrt(0.15 * 0.03) * np.eye(2)  # Geometric mean
 
     for k in range(Nt):
-        diffusion_term_iso = divergence_tensor_diffusion_2d(m_iso, sigma_iso, dx, dy, bc)
+        diffusion_term_iso = diffusion(m_iso, sigma_iso, [dx, dy], bc=bc)
         m_iso = m_iso + dt * diffusion_term_iso
         m_iso = np.maximum(m_iso, 0)
         m_iso /= np.sum(m_iso) * dx * dy

@@ -24,6 +24,7 @@ Hierarchy:
 
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -565,8 +566,25 @@ class ZeroGradientCalculator:
         return "ZeroGradientCalculator()"
 
 
-# Backward compatibility alias
-NoFluxCalculator = ZeroGradientCalculator
+# Backward compatibility alias (with deprecation warning)
+class NoFluxCalculator(ZeroGradientCalculator):
+    """
+    Deprecated alias for ZeroGradientCalculator.
+
+    .. deprecated:: 0.16.11
+        Use :class:`ZeroGradientCalculator` instead for du/dn = 0.
+        For mass-conserving flux BC (J·n = 0), use :class:`ZeroFluxCalculator`.
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "NoFluxCalculator is deprecated since v0.16.11. "
+            "Use ZeroGradientCalculator for du/dn = 0 (edge extension), "
+            "or ZeroFluxCalculator for J·n = 0 (mass conservation).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
 
 class LinearExtrapolationCalculator:
@@ -728,8 +746,23 @@ class ZeroFluxCalculator:
         return f"ZeroFluxCalculator(drift={self._drift}, D={self._diffusion})"
 
 
-# Backward compatibility alias
-FPNoFluxCalculator = ZeroFluxCalculator
+# Backward compatibility alias (with deprecation warning)
+class FPNoFluxCalculator(ZeroFluxCalculator):
+    """
+    Deprecated alias for ZeroFluxCalculator.
+
+    .. deprecated:: 0.16.11
+        Use :class:`ZeroFluxCalculator` instead for J·n = 0 (mass conservation).
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "FPNoFluxCalculator is deprecated since v0.16.11. "
+            "Use ZeroFluxCalculator instead for J·n = 0 (mass conservation).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
 
 
 # =============================================================================

@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.16.12"  # v0.16.12: Remove v0.10-v0.15 deprecations
+version = "0.16.14"  # v0.16.14: Deprecation cleanup, remove kernel_rbf_operators
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

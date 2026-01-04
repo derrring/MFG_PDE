@@ -774,14 +774,89 @@ def test_particle_detection(solver: MFGSolver) -> dict[str, Any]:
 
 
 # =============================================================================
-# BACKWARD COMPATIBILITY ALIASES
+# BACKWARD COMPATIBILITY ALIASES (with deprecation warnings)
 # =============================================================================
 
-# Renamed classes - keep old names for compatibility
-OscillationDetector = _ErrorHistoryTracker
-AdvancedConvergenceMonitor = DistributionConvergenceMonitor
-ParticleMethodDetector = SolverTypeDetector
-AdaptiveConvergenceWrapper = ConvergenceWrapper
 
-# Factory alias
-create_default_monitor = create_distribution_monitor
+class OscillationDetector(_ErrorHistoryTracker):
+    """
+    Deprecated alias for _ErrorHistoryTracker.
+
+    .. deprecated:: 0.17.0
+        Use :class:`_ErrorHistoryTracker` instead (or use external code
+        for oscillation detection).
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "OscillationDetector is deprecated since v0.17.0. Use _ErrorHistoryTracker instead (internal class).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
+
+
+class AdvancedConvergenceMonitor(DistributionConvergenceMonitor):
+    """
+    Deprecated alias for DistributionConvergenceMonitor.
+
+    .. deprecated:: 0.17.0
+        Use :class:`DistributionConvergenceMonitor` instead.
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "AdvancedConvergenceMonitor is deprecated since v0.17.0. Use DistributionConvergenceMonitor instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
+
+
+class ParticleMethodDetector(SolverTypeDetector):
+    """
+    Deprecated alias for SolverTypeDetector.
+
+    .. deprecated:: 0.17.0
+        Use :class:`SolverTypeDetector` instead.
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "ParticleMethodDetector is deprecated since v0.17.0. Use SolverTypeDetector instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
+
+
+class AdaptiveConvergenceWrapper(ConvergenceWrapper):
+    """
+    Deprecated alias for ConvergenceWrapper.
+
+    .. deprecated:: 0.17.0
+        Use :class:`ConvergenceWrapper` instead.
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "AdaptiveConvergenceWrapper is deprecated since v0.17.0. Use ConvergenceWrapper instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
+
+
+def create_default_monitor(*args, **kwargs) -> DistributionConvergenceMonitor:
+    """
+    Deprecated alias for create_distribution_monitor.
+
+    .. deprecated:: 0.17.0
+        Use :func:`create_distribution_monitor` instead.
+    """
+    warnings.warn(
+        "create_default_monitor is deprecated since v0.17.0. Use create_distribution_monitor instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return create_distribution_monitor(*args, **kwargs)

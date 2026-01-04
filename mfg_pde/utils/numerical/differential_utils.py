@@ -14,7 +14,7 @@ Migration Guide:
     #      grad = approx_fprime(x, f, epsilon=1e-7)
 
     # Old: from mfg_pde.utils.numerical.differential_utils import gradient_grid_nd
-    # New: from mfg_pde.utils.numerical.grid_operators import gradient_simple
+    # New: from mfg_pde.utils.numerical.tensor_calculus import gradient_simple
 
     # Old: from mfg_pde.utils.numerical.differential_utils import compute_dH_dp
     # New: Use scipy.optimize.approx_fprime directly in your solver
@@ -63,11 +63,11 @@ def gradient_grid_nd(
     DEPRECATED: Use mfg_pde.utils.numerical.grid_operators.gradient_simple instead.
     """
     warnings.warn(
-        "gradient_grid_nd is deprecated. Use mfg_pde.utils.numerical.grid_operators.gradient_simple instead.",
+        "gradient_grid_nd is deprecated. Use mfg_pde.utils.numerical.tensor_calculus.gradient_simple instead.",
         DeprecationWarning,
         stacklevel=2,
     )
-    from mfg_pde.utils.numerical.grid_operators import gradient_simple
+    from mfg_pde.utils.numerical.tensor_calculus import gradient_simple
 
     return gradient_simple(U, spacings, backend=backend)
 

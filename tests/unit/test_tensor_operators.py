@@ -1,12 +1,15 @@
 """
 Unit tests for tensor diffusion operators.
 
-Tests the anisotropic diffusion operators in tensor_operators.py:
+Tests the tensor diffusion via tensor_calculus.diffusion():
 - Diagonal tensor = scalar equivalence
 - Anisotropic 2D diffusion
 - Cross-diffusion terms
 - Boundary condition handling
 - PSD validation
+
+Note: Tests migrated from tensor_operators.py to use the unified
+tensor_calculus.diffusion() API as of v0.17.0.
 """
 
 from __future__ import annotations
@@ -18,11 +21,7 @@ from mfg_pde.geometry.boundary import (
     no_flux_bc,
     periodic_bc,
 )
-from mfg_pde.utils.numerical.tensor_operators import (
-    divergence_diagonal_diffusion_2d,
-    divergence_tensor_diffusion_2d,
-    divergence_tensor_diffusion_nd,
-)
+from mfg_pde.utils.numerical.tensor_calculus import diffusion
 
 
 class TestDiagonalTensorEqualsScalar:
@@ -50,7 +49,7 @@ class TestDiagonalTensorEqualsScalar:
         bc = dirichlet_bc(dimension=2)
 
         # Compute tensor diffusion
-        result_tensor = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result_tensor = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         # Compute analytical Laplacian
         # Δm = ∂²m/∂x² + ∂²m/∂y²
@@ -77,7 +76,9 @@ class TestDiagonalTensorEqualsScalar:
         sigma_diag = np.array([sigma_x, sigma_y])
         bc = periodic_bc(dimension=2)
 
-        result_diag = divergence_diagonal_diffusion_2d(m, sigma_diag, dx, dy, bc)
+        # Convert diagonal to full tensor for unified API
+        sigma_tensor = np.diag(sigma_diag)
+        result_diag = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         # Manually compute: ∂/∂x(σₓ² ∂m/∂x) + ∂/∂y(σᵧ² ∂m/∂y)
         # This should match the diagonal operator
@@ -101,7 +102,7 @@ class TestAnisotropic2D:
 
         bc = periodic_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         # Check basic properties
         assert result.shape == m.shape
@@ -123,7 +124,7 @@ class TestAnisotropic2D:
 
         bc = periodic_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
@@ -150,7 +151,7 @@ class TestCrossDiffusion:
 
         bc = periodic_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
@@ -177,7 +178,7 @@ class TestCrossDiffusion:
         dx, dy = 0.1, 0.1
         bc = periodic_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
@@ -195,7 +196,7 @@ class TestBoundaryConditions:
 
         bc = periodic_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         # Periodic BC should work without issues
         assert result.shape == m.shape
@@ -210,7 +211,7 @@ class TestBoundaryConditions:
 
         bc = dirichlet_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
@@ -224,7 +225,7 @@ class TestBoundaryConditions:
 
         bc = no_flux_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
@@ -237,15 +238,15 @@ class TestNDDispatcher:
         """Test 1D case falls back to scalar diffusion."""
         Nx = 20
         m = np.random.rand(Nx)
-        dx = (0.1,)
+        dx = [0.1]
 
         # 1D "tensor" is just a scalar
         sigma_tensor = 0.1
 
-        bc = periodic_bc(dimension=2)
+        bc = periodic_bc(dimension=1)
 
         # This should work (fallback to 1D laplacian)
-        result = divergence_tensor_diffusion_nd(m, sigma_tensor, dx, bc)
+        result = diffusion(m, sigma_tensor, dx, bc=bc)
 
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
@@ -254,12 +255,12 @@ class TestNDDispatcher:
         """Test 2D dispatch to optimized implementation."""
         Nx, Ny = 10, 10
         m = np.random.rand(Nx, Ny)
-        dx = (0.1, 0.1)
+        dx = [0.1, 0.1]
         sigma_tensor = 0.1 * np.eye(2)
 
         bc = periodic_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_nd(m, sigma_tensor, dx, bc)
+        result = diffusion(m, sigma_tensor, dx, bc=bc)
 
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
@@ -267,12 +268,12 @@ class TestNDDispatcher:
     def test_3d_tensor_diffusion(self):
         """Test that 3D tensor diffusion works (nD implementation)."""
         m = np.random.rand(5, 5, 5)
-        dx = (0.1, 0.1, 0.1)
+        dx = [0.1, 0.1, 0.1]
         sigma_tensor = 0.1 * np.eye(3)
 
         bc = periodic_bc(dimension=3)
 
-        result = divergence_tensor_diffusion_nd(m, sigma_tensor, dx, bc)
+        result = diffusion(m, sigma_tensor, dx, bc=bc)
         assert result.shape == m.shape
         assert np.all(np.isfinite(result))
 
@@ -297,7 +298,7 @@ class TestMassConservation:
 
         bc = periodic_bc(dimension=2)
 
-        diffusion_term = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        diffusion_term = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         # Integral of divergence should be zero (by divergence theorem)
         total_diffusion = np.sum(diffusion_term) * dx * dy
@@ -326,7 +327,7 @@ class TestNumericalAccuracy:
 
         bc = dirichlet_bc(dimension=2)
 
-        result = divergence_tensor_diffusion_2d(m, sigma_tensor, dx, dy, bc)
+        result = diffusion(m, sigma_tensor, [dx, dy], bc=bc)
 
         # Analytical: σ² Δm = 0.1 * 4 = 0.4 (constant)
         expected = 0.4 * np.ones_like(m)

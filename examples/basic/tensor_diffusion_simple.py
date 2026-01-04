@@ -18,7 +18,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from mfg_pde.geometry.boundary.conditions import BoundaryConditions, no_flux_bc
-from mfg_pde.utils.numerical.tensor_operators import divergence_tensor_diffusion_2d
+from mfg_pde.utils.numerical.tensor_calculus import diffusion
 
 
 def create_gaussian_initial_condition(
@@ -59,7 +59,7 @@ def evolve_tensor_diffusion(
 
     for n in range(Nt):
         # Compute diffusion term
-        diffusion_term = divergence_tensor_diffusion_2d(M_history[n], Sigma, dx, dy, boundary_conditions)
+        diffusion_term = diffusion(M_history[n], Sigma, [dx, dy], bc=boundary_conditions)
 
         # Explicit forward Euler
         M_history[n + 1] = M_history[n] + dt * diffusion_term

@@ -16,6 +16,7 @@ or any iterative PDE solver.
 
 from __future__ import annotations
 
+import warnings as _warnings
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -730,11 +731,37 @@ def create_moment_monitor(
 
 
 # =============================================================================
-# BACKWARD COMPATIBILITY ALIASES
+# BACKWARD COMPATIBILITY ALIASES (with deprecation warnings)
 # =============================================================================
 
-# Renamed class - keep old name for compatibility
-StochasticConvergenceMonitor = RollingConvergenceMonitor
 
-# Factory alias
-create_stochastic_monitor = create_rolling_monitor
+class StochasticConvergenceMonitor(RollingConvergenceMonitor):
+    """
+    Deprecated alias for RollingConvergenceMonitor.
+
+    .. deprecated:: 0.17.0
+        Use :class:`RollingConvergenceMonitor` instead.
+    """
+
+    def __init__(self, *args, **kwargs):
+        _warnings.warn(
+            "StochasticConvergenceMonitor is deprecated since v0.17.0. Use RollingConvergenceMonitor instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
+
+
+def create_stochastic_monitor(*args, **kwargs) -> RollingConvergenceMonitor:
+    """
+    Deprecated alias for create_rolling_monitor.
+
+    .. deprecated:: 0.17.0
+        Use :func:`create_rolling_monitor` instead.
+    """
+    _warnings.warn(
+        "create_stochastic_monitor is deprecated since v0.17.0. Use create_rolling_monitor instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return create_rolling_monitor(*args, **kwargs)
