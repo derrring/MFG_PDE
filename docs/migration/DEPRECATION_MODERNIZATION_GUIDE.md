@@ -125,6 +125,24 @@ mfg_pde/utils/numerical/
 └── ...
 ```
 
+#### 20. HJB GFDM Solver Mixin Refactoring
+
+The monolithic `HJBGFDMSolver` (3,208 lines) has been split into focused mixins:
+
+| Mixin | Lines | Responsibility |
+|:------|:------|:---------------|
+| `GFDMBoundaryMixin` | 679 | Boundary normals, LCR rotation, ghost nodes |
+| `GFDMStencilMixin` | 571 | Neighborhoods, Taylor matrices, weight functions |
+| `GFDMInterpolationMixin` | 245 | Grid↔collocation point mapping |
+| `HJBGFDMSolver` (main) | 1,927 | Core HJB solving logic |
+
+**Impact**: This is an internal refactoring with no API changes. The class MRO is now:
+```
+HJBGFDMSolver → GFDMInterpolationMixin → GFDMStencilMixin → GFDMBoundaryMixin → MonotonicityMixin → BaseHJBSolver
+```
+
+**No migration needed** - existing code continues to work unchanged.
+
 ---
 
 ## v0.17.0 Deprecation Summary
