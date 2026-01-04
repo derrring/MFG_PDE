@@ -1,9 +1,9 @@
 # Deprecation Modernization Guide
 
 **Last Updated**: 2026-01-04
-**Current Version**: v0.18.0
+**Current Version**: v0.16.14
 **Target**: v1.0.0 (deprecated patterns will be removed)
-**Status**: ✅ Migration complete, v0.10-v0.15 deprecations removed
+**Status**: ✅ Migration complete, v0.10-v0.17 deprecations removed
 
 ---
 
@@ -124,6 +124,13 @@ mfg_pde/utils/numerical/
 ├── differential_utils.py   # DEPRECATED → scipy.optimize
 └── ...
 ```
+
+**Internal Migration Status** (as of v0.17.0):
+- ✅ All internal usages migrated to `tensor_calculus.diffusion()`
+- ✅ Examples updated: `anisotropic_corridor.py`, `tensor_diffusion_simple.py`
+- ✅ Tests updated: `test_tensor_operators.py` (14 tests pass)
+- ✅ Benchmarks updated: `benchmark_tensor_operators.py`
+- Deprecated shim modules remain for external user compatibility until v0.18.0
 
 #### 20. HJB GFDM Solver Mixin Refactoring
 
@@ -778,7 +785,8 @@ pytest tests/unit/your_test_file.py
 | Version | Category | Count | Status |
 |:--------|:---------|:------|:-------|
 | ~~v0.10~~ | ~~Backend~~ | ~~1~~ | **REMOVED in v0.16.12** |
-| ~~v0.15.x~~ | ~~Problem, Factory, Legacy~~ | ~~6~~ | **REMOVED in v0.16.12** |
+| ~~v0.15.x~~ | ~~Problem, Factory, Legacy~~ | ~~4~~ | **REMOVED in v0.16.12** |
+| ~~v0.15.x~~ | ~~Utils (logging, bandwidth)~~ | ~~2~~ | **REMOVED in v0.17.0** |
 | v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | Active |
 | v0.16.11 | BC Calculators | 4 | Active |
 | v0.17.x | Convergence, Gradient Notation | 7 | Active |
@@ -790,6 +798,15 @@ pytest tests/unit/your_test_file.py
 - `get_legacy_backend_list()` → Use `get_available_backends()` (v0.10)
 - `Domain1D`, `Domain2D`, `Domain3D` → Use `TensorProductGrid`, `Mesh2D`, `Mesh3D` (v0.15)
 - `enable_profiling`, `verbose` params → Use `profiling_mode` enum (v0.15)
+
+**Removed in v0.17.0**:
+- `adaptive_bandwidth_selection` alias → Use `estimate_kde_bandwidth` (v0.15)
+- `from . import mfg_logging as logging` alias → Import from `mfg_pde.utils.mfg_logging` directly (v0.15)
+- Unconditional deprecation warnings that fired on every import of `mfg_pde.utils` (fixed)
+- Unconditional warning in `gradient_notation.py` → Warnings now fire when functions are called (fixed)
+- Updated internal code to use `mfg_pde.utils.convergence` instead of `mfg_pde.utils.numerical.convergence`
+- `kernel_rbf_operators.py` module → Use `LocalRBFOperator` from `gfdm_strategies.py` (v0.17)
+- `RBFOperator`, `create_rbf_operator` exports removed from `utils.numerical`
 
 **Deprecation Timeline**:
 - v0.16.x deprecations → Remove in v0.19 or v1.0.0

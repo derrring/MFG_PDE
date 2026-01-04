@@ -130,7 +130,7 @@ Pragmatic approach optimized for research:
 ```python
 from mfg_pde import MFGProblem, BoundaryConditions
 from mfg_pde.factory import create_fast_solver
-from mfg_pde.utils.logging import get_logger, configure_research_logging
+from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
 ```
 
 ### **Documentation Style**
@@ -186,7 +186,7 @@ Claude Code must proactively check at these triggers:
 
 ### **Logging and Progress Bars**
 ```python
-from mfg_pde.utils.logging import get_logger, configure_research_logging
+from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
 from mfg_pde.utils.progress import tqdm  # Uses rich (preferred) with tqdm fallback
 
 configure_research_logging("session_name", level="INFO")

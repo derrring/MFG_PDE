@@ -16,12 +16,8 @@ Organization:
 - data/: Data handling and validation
 """
 
-import warnings as _warnings
-
-# Backward compatibility alias for logging module rename (DEPRECATED - will be removed in v0.15.0)
-# The logging module was renamed to mfg_logging to avoid shadowing Python's stdlib logging
-from . import mfg_logging as logging  # noqa: F401
-
+# NOTE: The `logging` alias (from . import mfg_logging as logging) was removed in v0.17.0
+# Users should import from mfg_pde.utils.mfg_logging or use the re-exported functions directly
 # Core utility functions (non-plotting)
 from .aux_func import npart, ppart
 from .convergence import (
@@ -150,28 +146,8 @@ from .sparse_operations import (
     sparse_matmul,
 )
 
-# Backward compatibility alias (DEPRECATED - will be removed in v0.15.0)
-adaptive_bandwidth_selection = estimate_kde_bandwidth
-
-# Issue deprecation warning for adaptive_bandwidth_selection alias
-_warnings.warn(
-    "adaptive_bandwidth_selection is deprecated and will be removed in v0.15.0. "
-    "Please use estimate_kde_bandwidth directly:\n"
-    "  from mfg_pde.utils import estimate_kde_bandwidth",
-    DeprecationWarning,
-    stacklevel=2,
-)
-
-# Issue deprecation warning for logging module rename
-_warnings.warn(
-    "Importing from 'mfg_pde.utils.logging' is deprecated and will be removed in v0.15.0. "
-    "The module has been renamed to avoid shadowing Python's stdlib. Please update:\n"
-    "  from mfg_pde.utils.mfg_logging import get_logger, configure_logging\n"
-    "Or import from mfg_pde.utils directly:\n"
-    "  from mfg_pde.utils import get_logger, configure_logging",
-    DeprecationWarning,
-    stacklevel=2,
-)
+# NOTE: adaptive_bandwidth_selection alias was removed in v0.17.0
+# Use estimate_kde_bandwidth directly instead
 
 # Optional modules with graceful handling
 try:
@@ -356,7 +332,7 @@ __all__ = [
     "SolverResult",
     "SparseMatrixBuilder",
     "SparseSolver",
-    "adaptive_bandwidth_selection",
+    # NOTE: adaptive_bandwidth_selection was removed in v0.17.0, use estimate_kde_bandwidth
     "adaptive_convergence",
     "add_logging_to_class",
     "check_numerical_stability",

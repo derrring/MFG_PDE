@@ -25,7 +25,7 @@ Our codebase follows a strict organizational pattern:
 from mfg_pde import MFGProblem, BoundaryConditions
 from mfg_pde.factory import create_fast_solver
 from mfg_pde.config import create_fast_config
-from mfg_pde.utils.logging import get_logger, configure_research_logging
+from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
 ```
 
 ### Text and Symbol Standards
@@ -41,7 +41,7 @@ from mfg_pde.utils.logging import get_logger, configure_research_logging
 
 ### Logging Standards
 ```python
-from mfg_pde.utils.logging import get_logger, configure_research_logging
+from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
 
 configure_research_logging("session_name", level="INFO")
 logger = get_logger(__name__)

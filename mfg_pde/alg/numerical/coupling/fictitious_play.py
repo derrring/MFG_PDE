@@ -403,7 +403,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
             self.U = preserve_terminal_condition(self.U, U_terminal)
 
             # Calculate convergence metrics
-            from mfg_pde.utils.numerical.convergence import calculate_l2_convergence_metrics
+            from mfg_pde.utils.convergence import calculate_l2_convergence_metrics
 
             metrics = calculate_l2_convergence_metrics(self.U, U_old, self.M, M_old, grid_spacing, time_step)
             self.l2distu_abs[k] = metrics["l2distu_abs"]

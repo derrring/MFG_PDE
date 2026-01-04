@@ -57,14 +57,18 @@ import warnings
 
 import numpy as np
 
-# Module-level deprecation warning
-warnings.warn(
-    "mfg_pde.compat.gradient_notation is deprecated since v0.17.0. "
-    "Use mfg_pde.core.DerivativeTensors instead. "
-    "See docs/NAMING_CONVENTIONS.md for migration guide.",
-    DeprecationWarning,
-    stacklevel=2,
-)
+# NOTE: Module-level warning removed in v0.17.0 to avoid noise when internal code
+# imports this module. Individual functions emit warnings when called instead.
+# This module is still deprecated - use mfg_pde.core.DerivativeTensors instead.
+
+
+def _emit_deprecation_warning(func_name: str) -> None:
+    """Emit deprecation warning for a function in this module."""
+    warnings.warn(
+        f"gradient_notation.{func_name}() is deprecated since v0.17.0. Use mfg_pde.core.DerivativeTensors instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 def derivs_to_p_values_1d(derivs: dict[tuple[int], float]) -> dict[str, float]:
