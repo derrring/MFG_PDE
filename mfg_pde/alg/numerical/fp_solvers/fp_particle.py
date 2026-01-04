@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
+    from mfg_pde.geometry.implicit import ImplicitDomain
 
 try:  # pragma: no cover - optional SciPy dependency
     import scipy.interpolate as _scipy_interpolate
@@ -70,6 +71,7 @@ class FPParticleSolver(BaseFPSolver):
         kde_bandwidth: Any = "scott",
         kde_normalization: KDENormalization | str = KDENormalization.ALL,
         boundary_conditions: BoundaryConditions | None = None,
+        implicit_domain: ImplicitDomain | None = None,
         backend: str | None = None,
         # Deprecated parameters for backward compatibility
         normalize_kde_output: bool | None = None,
@@ -139,6 +141,10 @@ class FPParticleSolver(BaseFPSolver):
         self.exit_flux_history: list[int] = []  # Number absorbed per timestep
         self.exit_positions_history: list[np.ndarray] = []  # Where particles exited
         self.total_absorbed: int = 0  # Cumulative absorbed count
+
+        # Implicit domain for obstacle handling (Issue #533)
+        # When set, particles entering obstacles are reflected back
+        self._implicit_domain = implicit_domain
 
         # Initialize backend (defaults to NumPy)
         from mfg_pde.backends import create_backend
@@ -498,6 +504,41 @@ class FPParticleSolver(BaseFPSolver):
                     pass  # Keep default "bounded"
 
         return topologies
+
+    def _enforce_obstacle_boundary(self, particles: np.ndarray) -> np.ndarray:
+        """
+        Enforce obstacle boundaries via implicit domain geometry (Issue #533).
+
+        If an implicit domain with obstacles is defined, particles that have
+        entered obstacle regions (domain.contains() returns False) are projected
+        back to the valid domain using domain.project_to_domain().
+
+        Parameters
+        ----------
+        particles : np.ndarray
+            Particle positions, shape (num_particles, dimension)
+
+        Returns
+        -------
+        particles : np.ndarray
+            Updated particle positions with obstacle violations corrected
+        """
+        if self._implicit_domain is None:
+            return particles
+
+        # Check which particles are outside the valid domain (inside obstacles)
+        inside_valid = self._implicit_domain.contains(particles)
+
+        # Handle scalar return (single particle case)
+        if np.isscalar(inside_valid):
+            inside_valid = np.array([inside_valid])
+
+        # Project invalid particles back to domain
+        if not np.all(inside_valid):
+            outside_indices = np.where(~inside_valid)[0]
+            particles[outside_indices] = self._implicit_domain.project_to_domain(particles[outside_indices])
+
+        return particles
 
     def _apply_boundary_conditions_nd(
         self,
@@ -1232,6 +1273,9 @@ class FPParticleSolver(BaseFPSolver):
             # Euler-Maruyama step: X_{t+1} = X_t + drift * dt + sigma * dW
             new_particles = particles_t + drift * Dt + dW
 
+            # Enforce obstacle boundaries if implicit domain is set (Issue #533)
+            new_particles = self._enforce_obstacle_boundary(new_particles)
+
             # Apply boundary conditions
             if use_segment_aware_bc:
                 # Segment-aware BC: may absorb particles
@@ -1578,6 +1622,9 @@ class FPParticleSolver(BaseFPSolver):
             # Euler-Maruyama step
             new_particles = particles_t + drift * Dt + dW
 
+            # Enforce obstacle boundaries if implicit domain is set (Issue #533)
+            new_particles = self._enforce_obstacle_boundary(new_particles)
+
             # Apply boundary conditions
             topologies = self._get_topology_per_dimension(dimension)
             new_particles = self._apply_boundary_conditions_nd(new_particles, bounds, topologies)
@@ -1805,5 +1852,49 @@ if __name__ == "__main__":
     # Note: This test may show small mass loss due to limited particles/time
     assert not np.any(np.isnan(M_solution_abs)), "NaN in absorbing BC solution"
     print("  Absorbing BC test passed")
+
+    # Test 4: Obstacle geometry (Issue #533)
+    print("\nTesting 2D FPParticleSolver with obstacle (Issue #533)...")
+    from mfg_pde.geometry.implicit import DifferenceDomain, Hyperrectangle, Hypersphere
+
+    # Create 2D domain with circular obstacle
+    bounds_rect = np.array([[0.0, 1.0], [0.0, 1.0]])
+    base_domain = Hyperrectangle(bounds_rect)
+    obstacle = Hypersphere(center=[0.5, 0.5], radius=0.15)
+    domain_with_obstacle = DifferenceDomain(base_domain, obstacle)
+
+    # Solver with obstacle handling
+    solver_obstacle = FPParticleSolver(
+        problem_2d,
+        num_particles=500,
+        implicit_domain=domain_with_obstacle,
+    )
+
+    # Initial density near obstacle
+    M_near_obstacle = np.exp(-((X - 0.35) ** 2 + (Y - 0.5) ** 2) / 0.05)
+    M_near_obstacle = M_near_obstacle / np.sum(M_near_obstacle)
+
+    # Pure diffusion (no drift) - particles will diffuse toward obstacle
+    drift_zero = np.zeros((problem_2d.Nt + 1, *tuple(grid_shape_2d), 2))
+
+    M_solution_obs = solver_obstacle.solve_fp_system(
+        M_initial=M_near_obstacle,
+        drift_field=drift_zero,
+        drift_is_precomputed=True,
+        show_progress=False,
+    )
+
+    # Check final particle positions
+    final_particles = solver_obstacle.M_particles_trajectory[-1]
+    inside_valid = domain_with_obstacle.contains(final_particles)
+    pct_valid = 100.0 * np.sum(inside_valid) / len(final_particles)
+
+    print(f"  Particles in valid domain: {pct_valid:.1f}%")
+    print(f"  Particles inside obstacle: {len(final_particles) - np.sum(inside_valid)}")
+
+    # Most particles should be in valid domain (outside obstacle)
+    assert pct_valid > 95.0, f"Too many particles inside obstacle: {100 - pct_valid:.1f}%"
+    assert not np.any(np.isnan(M_solution_obs)), "NaN in obstacle solution"
+    print("  Obstacle geometry test passed")
 
     print("\nAll smoke tests passed!")
