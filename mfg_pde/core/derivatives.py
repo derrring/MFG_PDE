@@ -72,9 +72,11 @@ class DerivativeTensors:
     dimension: int
     tensors: dict[int, NDArray | float] = field(default_factory=dict)
 
-    def __getitem__(self, order: int) -> NDArray | float | None:
+    def __getitem__(self, order: int) -> NDArray | float:
         """Get derivative tensor of given order."""
-        return self.tensors.get(order)
+        if order in self.tensors:
+            return self.tensors[order]
+        raise AttributeError(f"Derivative tensor of order {order} missing.")
 
     def __setitem__(self, order: int, tensor: NDArray | float) -> None:
         """Set derivative tensor of given order."""
@@ -85,38 +87,46 @@ class DerivativeTensors:
         return order in self.tensors
 
     @property
-    def value(self) -> float | None:
+    def value(self) -> float:
         """Function value u (order 0)."""
-        return self.tensors.get(0)
+        if 0 in self.tensors:
+            return float(self.tensors[0])
+        raise AttributeError("Function value (order 0) missing.")
 
     @property
-    def grad(self) -> NDArray | None:
+    def grad(self) -> NDArray:
         """Gradient ∇u, shape (d,)."""
-        return self.tensors.get(1)
+        if 1 in self.tensors:
+            return self.tensors[1]
+        raise AttributeError("Gradient (order 1) missing.")
 
     @property
-    def hess(self) -> NDArray | None:
+    def hess(self) -> NDArray:
         """Hessian ∇²u, shape (d, d)."""
-        return self.tensors.get(2)
+        if 2 in self.tensors:
+            return self.tensors[2]
+        raise AttributeError("Hessian (order 2) missing.")
 
     @property
-    def third(self) -> NDArray | None:
+    def third(self) -> NDArray:
         """Third-order derivatives, shape (d, d, d)."""
-        return self.tensors.get(3)
+        if 3 in self.tensors:
+            return self.tensors[3]
+        raise AttributeError("Third-order derivatives (order 3) missing.")
 
     @property
-    def laplacian(self) -> float | None:
+    def laplacian(self) -> float:
         """Laplacian Δu = tr(∇²u) = Σᵢ ∂²u/∂xᵢ²."""
         if 2 in self.tensors:
             return float(np.trace(self.tensors[2]))
-        return None
+        raise AttributeError("Laplacian calculation failed: second-order derivatives (Hessian) missing.")
 
     @property
-    def grad_norm_squared(self) -> float | None:
+    def grad_norm_squared(self) -> float:
         """Squared gradient norm |∇u|² = Σᵢ (∂u/∂xᵢ)²."""
         if 1 in self.tensors:
             return float(np.sum(self.tensors[1] ** 2))
-        return None
+        raise AttributeError("Gradient norm calculation failed: first-order derivatives (gradient) missing.")
 
     @property
     def max_order(self) -> int:

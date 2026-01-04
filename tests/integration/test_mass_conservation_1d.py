@@ -63,6 +63,7 @@ class SimpleMFGProblem1D:
         self.Dt = T / Nt
         self.sigma = sigma
         self.congestion_strength = congestion_strength
+        self.dimension = 1  # Explicit dimension for solver detection
 
         # Grid
         self.xSpace = np.linspace(self.xmin, self.xmax, self.Nx + 1)

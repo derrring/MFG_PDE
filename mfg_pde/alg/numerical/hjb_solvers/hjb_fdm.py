@@ -205,16 +205,13 @@ class HJBFDMSolver(BaseHJBSolver):
         # Primary: Use geometry.dimension (standard for all modern problems)
         if hasattr(problem, "geometry") and hasattr(problem.geometry, "dimension"):
             return problem.geometry.dimension
+
         # Fallback: problem.dimension attribute
+        # Note: We prioritize explicit geometry protocol but allow problem.dimension
+        # if it's explicitly set (e.g. legacy 1D init sets self.dimension)
         if hasattr(problem, "dimension"):
             return problem.dimension
-        # Legacy: Infer from Nx/Ny/Nz attributes
-        if getattr(problem, "Nx", None) is not None:
-            if getattr(problem, "Nz", None) is not None:
-                return 3
-            if getattr(problem, "Ny", None) is not None:
-                return 2
-            return 1
+
         raise ValueError(
             "Cannot determine problem dimension. "
             "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
@@ -827,16 +824,17 @@ class HJBFDMSolver(BaseHJBSolver):
                     # Call problem Hamiltonian (try both interfaces)
                     if hasattr(self.problem, "hamiltonian"):
                         H_values[multi_idx] = self.problem.hamiltonian(x_coords, m_at_point, p, t=0.0)
-                    elif hasattr(self.problem, "H"):
-                        # Use new DerivativeTensors format, with legacy fallback
+                    else:
+                        # Use new DerivativeTensors format
+                        # Legacy support via explicit exception handling
                         try:
                             H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=derivs)
                         except TypeError:
                             # Legacy: convert to multi-index dict format
                             legacy_derivs = to_multi_index_dict(derivs)
                             H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=legacy_derivs)
-                    else:
-                        raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
+                        except AttributeError:
+                            raise AttributeError("Problem must have 'hamiltonian' or 'H' method") from None
                 finally:
                     # Restore original sigma
                     self.problem.sigma = original_sigma
@@ -945,11 +943,13 @@ class HJBFDMSolver(BaseHJBSolver):
                 # Signature: hamiltonian(x, m, p, t=0.0, sigma=...)
                 # This will raise TypeError if not vectorized
                 H_values_flat = self.problem.hamiltonian(x_grid, m_grid, p_grid, t=0.0, sigma=sigma_for_call)
-            elif hasattr(self.problem, "H"):
-                # Old interface - doesn't support vectorization
-                raise TypeError("Problem.H interface does not support vectorized evaluation")
             else:
-                raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
+                # Old interface - doesn't support vectorization
+                # If neither hamiltonian nor H exists, AttributeError will be raised by explicit access or calling
+                if hasattr(self.problem, "H"):
+                    raise TypeError("Problem.H interface does not support vectorized evaluation")
+                else:
+                    raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
 
         # Reshape back to grid shape
         H_values = H_values_flat.reshape(self.shape)

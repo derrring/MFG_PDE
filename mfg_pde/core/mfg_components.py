@@ -726,7 +726,7 @@ class HamiltonianMixin:
         U_n_current_guess_derivatives: dict[str, np.ndarray],
         x_idx: int,
         t_idx_n: int,
-    ) -> float | None:
+    ) -> float:
         """Optional coupling term for residual computation."""
         if self.is_custom and self.components is not None and self.components.coupling_func is not None:
             try:
@@ -741,6 +741,7 @@ class HamiltonianMixin:
                 import logging
 
                 logging.getLogger(__name__).warning(f"Coupling term computation failed: {e}")
+                return np.nan
 
         if not self.is_custom:
             m_val = M_density_at_n_plus_1[x_idx]
@@ -755,7 +756,7 @@ class HamiltonianMixin:
                 return np.nan
             return term
 
-        return None
+        return np.nan
 
 
 # ============================================================================
