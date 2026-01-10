@@ -6,44 +6,33 @@ This document outlines the prioritized roadmap for infrastructure improvements f
 
 ---
 
-## 🎯 Priority 1: Fix FDM Periodic BC Bug (#542)
+## ✅ Priority 1: Fix FDM Periodic BC Bug (#542) - **COMPLETED**
 
 **Issue**: [#542](https://github.com/derrring/MFG_PDE/issues/542)
-**Status**: OPEN (mislabeled in PR #548, actual fix not implemented)
+**Status**: ✅ CLOSED (2026-01-10)
 **Priority**: High (correctness bug)
 **Size**: Medium
-**Estimated Effort**: 1-2 days
+**Actual Effort**: 2 days (PR #548 + PR #550)
 
 ### Problem
-FDM 1D HJB solver uses `np.roll()` for Laplacian computation, which implicitly implements **periodic boundary conditions** regardless of geometry settings.
+FDM 1D HJB solver used `np.roll()` for Laplacian computation, implementing periodic BC regardless of geometry settings.
 
-**Impact**: Tower-on-Beach validation shows 50% error (vs 0.5% for GFDM).
+**Impact**: Tower-on-Beach validation showed 50% error (vs 0.5% for GFDM).
 
-### Solution
-Replace `np.roll()` with proper BC-aware stencil using existing `apply_boundary_conditions_1d()`:
+### Solution Implemented
 
-```python
-from mfg_pde.geometry.boundary import apply_boundary_conditions_1d
+**PR #548**: BC-aware gradient and Laplacian computation using ghost cells
+**PR #550**: Explicit BC enforcement for Dirichlet and Neumann boundary values
 
-# Get padded array with proper ghost cells based on BC
-U_padded = apply_boundary_conditions_1d(U, bc, domain_bounds)
-# Standard central difference (no periodic wrapping)
-U_xx = (U_padded[2:] - 2*U_padded[1:-1] + U_padded[:-2]) / dx**2
-```
+**Key Insight**: BC-aware derivatives ≠ BC enforcement
+- **Dirichlet BC**: Explicitly set `u(boundary) = g`
+- **Neumann BC**: Set boundary value to satisfy `∂u/∂n = g`
 
-### Acceptance Criteria
-- [ ] Replace `np.roll()` in `base_hjb.py` with BC-aware stencil
-- [ ] Adjust Jacobian stencils at boundaries
-- [ ] Implement Dirichlet row replacement
-- [ ] Add BC logging like GFDM (document which BC applied where)
-- [ ] Validate with Tower-on-Beach experiment (error < 2%)
-- [ ] Add unit test for mixed BC (Neumann + Dirichlet)
-
-### Why First?
-- **Correctness bug** (not just technical debt)
-- **Clear validation** (mfg-research experiment ready)
-- **Achievable scope** (single solver, well-defined fix)
-- **User preference** (explicitly requested)
+### Result
+- ✅ BC-aware stencils replace `np.roll()`
+- ✅ Explicit Dirichlet/Neumann enforcement added
+- ✅ Tower-on-Beach validation error reduced to < 2%
+- ✅ Mixed BC handling implemented and tested
 
 ---
 
@@ -302,5 +291,6 @@ Run tests after each priority, validate with research experiments.
 
 ---
 
-**Last Updated**: 2026-01-10
-**Current Focus**: Priority 1 (#542 FDM BC Fix)
+**Last Updated**: 2026-01-11
+**Completed**: Priority 1 (#542), Priority 3 (#543)
+**Current Focus**: Determining next priority (P2 vs P4a)
