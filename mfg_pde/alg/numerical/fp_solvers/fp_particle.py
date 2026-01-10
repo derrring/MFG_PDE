@@ -218,9 +218,12 @@ class FPParticleSolver(BaseFPSolver):
         For 1D backward compatibility, also includes:
             - Nx, Dx, xmin, xmax, Lx, xSpace (aliased from nD params)
         """
-        # Try geometry-first API
-        if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
+        # Try geometry-first API (Issue #543: use try/except instead of hasattr)
+        try:
             geom = self.problem.geometry
+            if geom is None:
+                raise AttributeError("geometry is None")
+
             grid_shape = tuple(geom.get_grid_shape())
             dimension = len(grid_shape)
 
@@ -228,29 +231,40 @@ class FPParticleSolver(BaseFPSolver):
             spacing = geom.get_grid_spacing()
             spacings = list(spacing) if spacing else [0.0] * dimension
 
-            # Get bounds per dimension
-            if hasattr(geom, "bounds") and geom.bounds is not None:
-                bounds = list(geom.bounds)
-            elif hasattr(geom, "xmin") and hasattr(geom, "xmax"):
-                # Legacy 1D geometry
-                bounds = [(geom.xmin, geom.xmax)]
-            elif hasattr(geom, "coordinates") and len(geom.coordinates) > 0:
-                bounds = [(coords[0], coords[-1]) for coords in geom.coordinates]
-            else:
-                bounds = [(0.0, 1.0)] * dimension
+            # Get bounds per dimension (with fallback chain for legacy interfaces)
+            try:
+                bounds = list(geom.bounds) if geom.bounds is not None else None
+                if bounds is None:
+                    raise AttributeError("bounds is None")
+            except AttributeError:
+                try:
+                    # Legacy 1D geometry
+                    bounds = [(geom.xmin, geom.xmax)]
+                except AttributeError:
+                    try:
+                        # Infer from coordinates
+                        if len(geom.coordinates) > 0:
+                            bounds = [(coords[0], coords[-1]) for coords in geom.coordinates]
+                        else:
+                            bounds = [(0.0, 1.0)] * dimension
+                    except AttributeError:
+                        bounds = [(0.0, 1.0)] * dimension
 
             # Get coordinate arrays per dimension
-            if hasattr(geom, "coordinates") and len(geom.coordinates) > 0:
-                coordinates = [np.array(c) for c in geom.coordinates]
-            else:
+            try:
+                if len(geom.coordinates) > 0:
+                    coordinates = [np.array(c) for c in geom.coordinates]
+                else:
+                    coordinates = [np.linspace(bounds[d][0], bounds[d][1], grid_shape[d]) for d in range(dimension)]
+            except AttributeError:
                 coordinates = [np.linspace(bounds[d][0], bounds[d][1], grid_shape[d]) for d in range(dimension)]
 
-        else:
+        except AttributeError as e:
             # Geometry is always available after MFGProblem initialization
             raise ValueError(
                 "FPParticleSolver requires a geometry object. "
                 "Create MFGProblem with geometry=TensorProductGrid(...) or with Nx=... parameter."
-            )
+            ) from e
 
         # Compute derived quantities
         total_points = int(np.prod(grid_shape))
@@ -348,11 +362,11 @@ class FPParticleSolver(BaseFPSolver):
         if use_backend and self.backend is not None:
             xp = self.backend.array_module
             mass = xp.sum(M_array) * Dx if Dx > 1e-14 else xp.sum(M_array)
-            # Handle PyTorch tensors
-            if hasattr(mass, "item"):
-                mass_val = mass.item()
-            else:
-                mass_val = float(mass)
+            # Handle PyTorch tensors (Issue #543: use try/except instead of hasattr)
+            try:
+                mass_val = mass.item()  # PyTorch tensor → scalar
+            except AttributeError:
+                mass_val = float(mass)  # NumPy or Python number
         else:
             xp = np
             mass_val = float(np.sum(M_array) * Dx) if Dx > 1e-14 else float(np.sum(M_array))
@@ -449,25 +463,20 @@ class FPParticleSolver(BaseFPSolver):
         if bc is None:
             return False
 
-        # Check if uniform BC (same type everywhere)
-        if hasattr(bc, "is_uniform") and bc.is_uniform:
+        # Check if uniform BC (same type everywhere) - Issue #543: use getattr instead of hasattr
+        is_uniform = getattr(bc, "is_uniform", False)
+        if is_uniform:
             # Uniform BC - use fast path unless it's DIRICHLET (absorbing)
-            if hasattr(bc, "segments") and len(bc.segments) > 0:
-                if bc.segments[0].bc_type == BCType.DIRICHLET:
-                    return True  # Uniform absorbing - need to track exits
-            return False
+            segments = getattr(bc, "segments", [])
+            return len(segments) > 0 and segments[0].bc_type == BCType.DIRICHLET
 
         # Mixed BC with segments - need segment-aware handling
-        if hasattr(bc, "segments") and len(bc.segments) > 1:
+        segments = getattr(bc, "segments", [])
+        if len(segments) > 1:
             return True
 
         # Check for DIRICHLET segments (absorbing BC)
-        if hasattr(bc, "segments"):
-            for segment in bc.segments:
-                if segment.bc_type == BCType.DIRICHLET:
-                    return True
-
-        return False
+        return any(segment.bc_type == BCType.DIRICHLET for segment in segments)
 
     def _get_topology_per_dimension(
         self,
@@ -503,30 +512,34 @@ class FPParticleSolver(BaseFPSolver):
         if bc is None:
             return topologies
 
-        # For uniform BCs, check if periodic
-        if hasattr(bc, "is_uniform") and bc.is_uniform:
+        # For uniform BCs, check if periodic - Issue #543: use getattr instead of hasattr
+        is_uniform = getattr(bc, "is_uniform", False)
+        if is_uniform:
             if bc.type == "periodic":
                 return ["periodic"] * dimension
             return topologies
 
         # For mixed BCs, check per dimension
         # Periodic requires BOTH min and max to be periodic (topological constraint)
-        if hasattr(bc, "get_bc_type_at_boundary"):
-            for d in range(dimension):
-                axis_prefix = _get_axis_prefix(d)
-                min_boundary = f"{axis_prefix}_min"
-                max_boundary = f"{axis_prefix}_max"
+        # Issue #543: use callable() for method existence check
+        if not callable(getattr(bc, "get_bc_type_at_boundary", None)):
+            return topologies  # Method doesn't exist, use default bounded
 
-                try:
-                    bc_min = bc.get_bc_type_at_boundary(min_boundary)
-                    bc_max = bc.get_bc_type_at_boundary(max_boundary)
+        for d in range(dimension):
+            axis_prefix = _get_axis_prefix(d)
+            min_boundary = f"{axis_prefix}_min"
+            max_boundary = f"{axis_prefix}_max"
 
-                    # Periodic topology requires both boundaries to be periodic
-                    if bc_min == BCType.PERIODIC and bc_max == BCType.PERIODIC:
-                        topologies[d] = "periodic"
-                    # All other cases: bounded topology (reflecting for particles)
-                except (KeyError, AttributeError):
-                    pass  # Keep default "bounded"
+            try:
+                bc_min = bc.get_bc_type_at_boundary(min_boundary)
+                bc_max = bc.get_bc_type_at_boundary(max_boundary)
+
+                # Periodic topology requires both boundaries to be periodic
+                if bc_min == BCType.PERIODIC and bc_max == BCType.PERIODIC:
+                    topologies[d] = "periodic"
+                # All other cases: bounded topology (reflecting for particles)
+            except (KeyError, AttributeError):
+                pass  # Keep default "bounded"
 
         return topologies
 
