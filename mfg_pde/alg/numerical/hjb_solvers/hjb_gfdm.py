@@ -11,6 +11,7 @@ from scipy.linalg import lstsq
 from scipy.optimize import approx_fprime
 
 from mfg_pde.alg.numerical.gfdm_components import (
+    BoundaryHandler,
     GridCollocationMapper,
     MonotonicityEnforcer,
 )
@@ -29,7 +30,6 @@ from mfg_pde.utils.numerical.gfdm_strategies import (
 from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
 
 from .base_hjb import BaseHJBSolver
-from .gfdm_boundary_mixin import GFDMBoundaryMixin
 from .gfdm_stencil_mixin import GFDMStencilMixin
 
 logger = get_logger(__name__)
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from mfg_pde.geometry import BoundaryConditions
 
 
-class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
+class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
     """
     Generalized Finite Difference Method (GFDM) solver for HJB equations using collocation.
 
@@ -462,11 +462,29 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
             # Initialize BC handler with Row Replacement pattern
             self._bc_handler = DirectCollocationHandler()
 
+            # Initialize BoundaryHandler component (Issue #545: composition over mixins)
+            # This component handles boundary normals, LCR, ghost nodes, etc.
+            self._boundary_handler = BoundaryHandler(
+                collocation_points=collocation_points,
+                dimension=self.dimension,
+                domain_bounds=self.domain_bounds,
+                boundary_indices=self.boundary_indices,
+                neighborhoods={},  # Will be populated by _build_neighborhood_structure
+                boundary_conditions=self.boundary_conditions,
+                use_ghost_nodes=self._use_ghost_nodes,
+                use_wind_dependent_bc=self._use_wind_dependent_bc,
+                gfdm_operator=self._gfdm_operator,
+                bc_property_getter=lambda prop, default=None: self._get_boundary_condition_property(prop) or default,
+                gradient_computer=None,  # Will be set later if needed
+            )
+
             # Compute boundary normals for Neumann BC
-            self._boundary_normals = self._compute_boundary_normals()
+            self._boundary_normals = self._boundary_handler.compute_boundary_normals()
+            # Store in handler for access by other components
+            self._boundary_handler.boundary_normals = self._boundary_normals
 
             # Create unified BC config (single source of truth)
-            self._bc_config = self._create_bc_config()
+            self._bc_config = self._boundary_handler.create_bc_config()
         else:
             # Legacy: GFDMOperator (deprecated, for backward compatibility)
             warnings.warn(
@@ -491,6 +509,7 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
             self._bc_handler = None
             self._boundary_normals = None
             self._bc_config = None
+            self._boundary_handler = None  # No boundary handler for legacy path
 
         # Get multi-indices from operator (both TaylorOperator and GFDMOperator have .multi_indices)
         self.multi_indices = self._gfdm_operator.multi_indices
@@ -512,15 +531,27 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
         # only extends for points needing adaptive delta enlargement
         self._build_neighborhood_structure()
 
+        # Update boundary handler neighborhoods reference (after they're built)
+        if self._boundary_handler is not None:
+            self._boundary_handler.neighborhoods = self.neighborhoods
+
         # Apply Ghost Nodes for Neumann BC enforcement (Issue #531 - Terminal BC compatibility)
         # Ghost nodes take precedence over LCR if both are enabled
         # This must be called BEFORE Taylor matrices are built, since it augments neighborhoods
         if self._use_ghost_nodes:
-            self._apply_ghost_nodes_to_neighborhoods()
+            if self._boundary_handler is not None:
+                self._boundary_handler.apply_ghost_nodes_to_neighborhoods()
+            else:
+                # Legacy fallback (shouldn't happen with new infrastructure)
+                self._apply_ghost_nodes_to_neighborhoods()
         elif self._use_local_coordinate_rotation:
             # Apply Local Coordinate Rotation for boundary stencils (Issue #531)
             # This modifies neighborhoods by adding rotated_offsets for better normal derivatives
-            self._apply_local_coordinate_rotation()
+            if self._boundary_handler is not None:
+                self._boundary_handler.apply_local_coordinate_rotation()
+            else:
+                # Legacy fallback (shouldn't happen with new infrastructure)
+                self._apply_local_coordinate_rotation()
 
         # Build reverse neighborhood map for sparse Jacobian (point j -> rows affected)
         self._build_reverse_neighborhoods()
@@ -884,10 +915,10 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
         # This avoids circular dependency: we need gradient to check wind direction,
         # but we can't check wind direction while computing the gradient!
         # Solution: use standard ghosts here, wind-dependent BC applies at derivative computation
-        if self._use_ghost_nodes and hasattr(self, "_ghost_node_map"):
+        if self._use_ghost_nodes and self._boundary_handler is not None:
             # Standard ghost mirroring
             ghost_to_mirror = {}
-            for ghost_info in self._ghost_node_map.values():
+            for ghost_info in self._boundary_handler.ghost_node_map.values():
                 ghost_to_mirror.update(ghost_info["ghost_to_mirror"])
 
             u_neighbors_list = []
@@ -931,8 +962,8 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
 
         # Pre-compute LCR boundary points set for fast lookup
         lcr_boundary_set = set()
-        if self._use_local_coordinate_rotation and hasattr(self, "_boundary_rotations"):
-            lcr_boundary_set = set(self._boundary_rotations.keys())
+        if self._use_local_coordinate_rotation and self._boundary_handler is not None:
+            lcr_boundary_set = set(self._boundary_handler.boundary_rotations.keys())
 
         for i in range(n):
             # For LCR boundary points, use our Taylor matrices with rotation
@@ -1030,7 +1061,13 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
 
         # Use ghost-aware value retrieval if ghost nodes method is active
         if self._use_ghost_nodes:
-            u_neighbors = self._get_values_with_ghosts(u_values, neighbor_indices, point_idx=point_idx)
+            if self._boundary_handler is not None:
+                u_neighbors = self._boundary_handler.get_values_with_ghosts(
+                    u_values, neighbor_indices, point_idx=point_idx
+                )
+            else:
+                # Legacy fallback
+                u_neighbors = self._get_values_with_ghosts(u_values, neighbor_indices, point_idx=point_idx)
         else:
             # Handle legacy ghost particles based on BC type
             # - Neumann/no-flux: u_ghost = u_center (mirror value)
@@ -1149,10 +1186,12 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
         # Derivatives were computed in rotated frame, need to rotate back
         if (
             self._use_local_coordinate_rotation
-            and hasattr(self, "_boundary_rotations")
-            and point_idx in self._boundary_rotations
+            and self._boundary_handler is not None
+            and point_idx in self._boundary_handler.boundary_rotations
         ):
-            derivatives = self._rotate_derivatives_back(derivatives, self._boundary_rotations[point_idx])
+            derivatives = self._boundary_handler.rotate_derivatives_back(
+                derivatives, self._boundary_handler.boundary_rotations[point_idx]
+            )
 
         return derivatives
 
@@ -1531,7 +1570,11 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
             elif bc_type in ("neumann", "no_flux"):
                 # Neumann: du/dn = g
                 # Skip row replacement if ghost nodes are active - BC is enforced structurally
-                if self._use_ghost_nodes and hasattr(self, "_ghost_node_map") and i in self._ghost_node_map:
+                if (
+                    self._use_ghost_nodes
+                    and self._boundary_handler is not None
+                    and i in self._boundary_handler.ghost_node_map
+                ):
                     # Ghost nodes enforce Neumann BC through symmetric stencils
                     # Keep the original PDE row (already set in Jacobian)
                     # Restore the row from the original Jacobian (undo the clearing above)
@@ -1542,8 +1585,8 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
                 # For LCR boundary points, use our LCR-corrected weights (Issue #531)
                 if (
                     self._use_local_coordinate_rotation
-                    and hasattr(self, "_boundary_rotations")
-                    and i in self._boundary_rotations
+                    and self._boundary_handler is not None
+                    and i in self._boundary_handler.boundary_rotations
                 ):
                     weights = self._compute_derivative_weights_from_taylor(i)
                 else:
@@ -1561,7 +1604,11 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
                 if normals is not None and local_idx < len(normals):
                     normal = normals[local_idx]
                 else:
-                    normal = self._compute_outward_normal(i)
+                    if self._boundary_handler is not None:
+                        normal = self._boundary_handler.compute_outward_normal(i)
+                    else:
+                        # Legacy fallback
+                        normal = self._compute_outward_normal(i)
 
                 # Normal derivative: du/dn = n . grad(u)
                 center_weight = 0.0
