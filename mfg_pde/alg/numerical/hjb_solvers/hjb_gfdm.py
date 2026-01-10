@@ -10,6 +10,7 @@ from scipy.linalg import lstsq
 # BC types for BoundaryCapable protocol implementation (Issue #527)
 from scipy.optimize import approx_fprime
 
+from mfg_pde.alg.numerical.gfdm_components import GridCollocationMapper
 from mfg_pde.geometry.boundary import BCType, DiscretizationType
 from mfg_pde.utils.mfg_logging import get_logger
 
@@ -26,7 +27,6 @@ from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
 
 from .base_hjb import BaseHJBSolver
 from .gfdm_boundary_mixin import GFDMBoundaryMixin
-from .gfdm_interpolation_mixin import GFDMInterpolationMixin
 from .gfdm_stencil_mixin import GFDMStencilMixin
 from .hjb_gfdm_monotonicity import MonotonicityMixin
 
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from mfg_pde.geometry import BoundaryConditions
 
 
-class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin, MonotonicityMixin, BaseHJBSolver):
+class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, MonotonicityMixin, BaseHJBSolver):
     """
     Generalized Finite Difference Method (GFDM) solver for HJB equations using collocation.
 
@@ -509,6 +509,13 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         # This is needed for _map_grid_to_collocation and _map_collocation_to_grid
         # get_grid_shape() returns node counts (Nx+1, Ny+1), not cell counts
         self._output_spatial_shape = tuple(self.problem.geometry.get_grid_shape())
+
+        # Initialize grid-collocation mapper (Issue #545: composition over mixins)
+        self._mapper = GridCollocationMapper(
+            collocation_points=collocation_points,
+            grid_shape=self._output_spatial_shape,
+            domain_bounds=self.domain_bounds,
+        )
 
         # Build neighborhood structure - uses GFDMOperator's neighborhoods as base,
         # only extends for points needing adaptive delta enlargement
@@ -1723,10 +1730,10 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
             U_solution_collocation[n_time_points - 1, :] = U_terminal.copy()
         else:
             # Hybrid mode: map grid data to collocation points
-            M_collocation = self._map_grid_to_collocation_batch(M_density)
-            U_prev_collocation = self._map_grid_to_collocation_batch(U_coupling_prev)
+            M_collocation = self._mapper.map_grid_to_collocation_batch(M_density)
+            U_prev_collocation = self._mapper.map_grid_to_collocation_batch(U_coupling_prev)
             # Set final condition at t=T (last time index = n_time_points - 1)
-            U_solution_collocation[n_time_points - 1, :] = self._map_grid_to_collocation(U_terminal.flatten())
+            U_solution_collocation[n_time_points - 1, :] = self._mapper.map_grid_to_collocation(U_terminal.flatten())
 
         # Backward time stepping: Nt steps from index (n_time_points-2) down to 0
         # This covers all Nt intervals in the backward direction
@@ -1761,7 +1768,7 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
             return U_solution_collocation
         else:
             # Hybrid mode: map back to grid
-            U_solution = self._map_collocation_to_grid_batch(U_solution_collocation)
+            U_solution = self._mapper.map_collocation_to_grid_batch(U_solution_collocation)
             return U_solution
 
     def _solve_timestep(
