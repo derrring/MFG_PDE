@@ -24,6 +24,10 @@ import psutil
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
+
+logger = get_logger(__name__)
+
 
 @dataclass
 class PerformanceMetrics:
@@ -247,10 +251,16 @@ class PerformanceMonitor:
 
                     return result
 
-                except Exception:
-                    # Still track failed execution time
+                except Exception as e:
+                    # Issue #547: Use logger instead of print for consistency
+                    # Still track failed execution time before re-raising
                     execution_time = time.time() - start_time
-                    print(f"WARNING:  Performance tracking: {name} failed after {execution_time:.2f}s")
+                    logger.warning(
+                        "Performance tracking for '%s' failed after %.2fs: %s",
+                        name,
+                        execution_time,
+                        e,
+                    )
                     raise
 
             return wrapper

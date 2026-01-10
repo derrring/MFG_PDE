@@ -191,8 +191,11 @@ def get_backend_info() -> dict[str, Any]:
                     }
                 )
 
-        except Exception:
-            info["torch_info"] = {"error": "PyTorch available but info retrieval failed"}
+        except (ImportError, AttributeError, RuntimeError) as e:
+            # Issue #547: Backend info retrieval can fail for various reasons
+            error_msg = f"PyTorch available but info retrieval failed: {type(e).__name__}"
+            info["torch_info"] = {"error": error_msg}
+            logger.debug("Failed to retrieve PyTorch backend info: %s", e)
 
     # Add JAX-specific info if available
     if available.get("jax", False):
@@ -205,8 +208,11 @@ def get_backend_info() -> dict[str, Any]:
                 "default_device": str(jax.devices()[0]),
                 "has_gpu": any("gpu" in str(d).lower() for d in jax.devices()),
             }
-        except Exception:
-            info["jax_info"] = {"error": "JAX available but info retrieval failed"}
+        except (ImportError, AttributeError, RuntimeError) as e:
+            # Issue #547: Backend info retrieval can fail for various reasons
+            error_msg = f"JAX available but info retrieval failed: {type(e).__name__}"
+            info["jax_info"] = {"error": error_msg}
+            logger.debug("Failed to retrieve JAX backend info: %s", e)
 
     return info
 

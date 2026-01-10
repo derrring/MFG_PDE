@@ -82,8 +82,12 @@ class MathematicalPlotter:
             rcParams["text.usetex"] = True
             rcParams["font.family"] = "serif"
             rcParams["font.serif"] = ["Computer Modern Roman"]
-        except Exception:
-            warnings.warn("LaTeX setup failed, falling back to mathtext", stacklevel=2)
+        except (OSError, RuntimeError, KeyError) as e:
+            # Issue #547: LaTeX setup can fail if LaTeX not installed or matplotlib config issues
+            warnings.warn(
+                f"LaTeX setup failed ({type(e).__name__}): {e}. Falling back to mathtext",
+                stacklevel=2,
+            )
             self.use_latex = False
 
     def plot_mathematical_function(
