@@ -92,12 +92,10 @@ def get_applicator_for_geometry(
         from .applicator_graph import GraphApplicator
 
         # Get node count from geometry
-        if hasattr(geometry, "num_nodes"):
-            num_nodes = geometry.num_nodes
-        elif hasattr(geometry, "num_spatial_points"):
-            num_nodes = geometry.num_spatial_points
-        else:
-            raise ValueError("Graph geometry must have num_nodes or num_spatial_points")
+        # Issue #543: Use getattr() to normalize attribute naming
+        num_nodes = getattr(geometry, "num_nodes", None) or getattr(geometry, "num_spatial_points", None)
+        if num_nodes is None:
+            raise ValueError("Graph geometry must have 'num_nodes' or 'num_spatial_points' attribute")
         return GraphApplicator(num_nodes=num_nodes)
 
     elif discretization == DiscretizationType.MESHFREE:
@@ -267,7 +265,8 @@ def validate_bc_compatibility(
     # Check BC type support by discretization
     from .types import BCType
 
-    bc_type = boundary_conditions.default_bc if hasattr(boundary_conditions, "default_bc") else None
+    # Issue #543: Use getattr() for optional attribute instead of hasattr
+    bc_type = getattr(boundary_conditions, "default_bc", None)
 
     if discretization == DiscretizationType.FDM:
         # FDM supports: Dirichlet, Neumann, Robin, Periodic, No-flux

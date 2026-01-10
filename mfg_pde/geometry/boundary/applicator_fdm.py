@@ -1856,8 +1856,9 @@ def bc_to_topology_calculator(
     elif bc_type == BCType.NO_FLUX:
         return BoundedTopology(dimension, shape), _get_no_flux_calculator()
     elif bc_type == BCType.ROBIN:
-        alpha = seg.alpha if hasattr(seg, "alpha") else 1.0
-        beta = seg.beta if hasattr(seg, "beta") else 0.0
+        # Issue #543: Use getattr() instead of hasattr for optional Robin BC coefficients
+        alpha = getattr(seg, "alpha", 1.0)
+        beta = getattr(seg, "beta", 0.0)
         rhs = seg.value if not callable(seg.value) else 0.0
         return BoundedTopology(dimension, shape), RobinCalculator(alpha, beta, float(rhs), grid_type)
     elif bc_type == BCType.EXTRAPOLATION_LINEAR:
@@ -2422,7 +2423,9 @@ class PreallocatedGhostBuffer:
 
         elif bc_type_str == "dirichlet":
             bc = self._boundary_conditions
-            v = bc.left_value if hasattr(bc, "left_value") and bc.left_value is not None else 0.0
+            # Issue #543: Use getattr() instead of hasattr for optional legacy attribute
+            v = getattr(bc, "left_value", None)
+            v = v if v is not None else 0.0
             for axis in range(d):
                 lo_ghost = [slice(None)] * d
                 lo_ghost[axis] = slice(0, g)
