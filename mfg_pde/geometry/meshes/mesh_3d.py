@@ -634,7 +634,8 @@ class Mesh3D(UnstructuredMesh):
 
     def export_mesh(self, format_type: str, filename: str):
         """Export mesh in specified format."""
-        if not hasattr(self, "_mesh_data") or self._mesh_data is None:
+        # Issue #543: Explicit None check instead of hasattr (initialized in __init__)
+        if self._mesh_data is None:
             self._mesh_data = self.generate_mesh()
 
         try:
@@ -659,7 +660,8 @@ class Mesh3D(UnstructuredMesh):
         except ImportError:
             raise ImportError("pyvista required for interactive visualization") from None
 
-        if not hasattr(self, "_mesh_data") or self._mesh_data is None:
+        # Issue #543: Explicit None check instead of hasattr (initialized in __init__)
+        if self._mesh_data is None:
             self._mesh_data = self.generate_mesh()
 
         # Create PyVista mesh
