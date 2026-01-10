@@ -1044,7 +1044,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             stacklevel=2,
         )
         # Check for stored value first (for backward compat with tests that set it)
-        if hasattr(self, "_xmin_override"):
+        if getattr(self, "_xmin_override", None) is not None:
             return self._xmin_override
         if self.geometry is not None and self.dimension == 1:
             bounds = self.geometry.get_bounds()
@@ -1079,7 +1079,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             DeprecationWarning,
             stacklevel=2,
         )
-        if hasattr(self, "_xmax_override"):
+        if getattr(self, "_xmax_override", None) is not None:
             return self._xmax_override
         if self.geometry is not None and self.dimension == 1:
             bounds = self.geometry.get_bounds()
@@ -1824,7 +1824,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         else:
             # n-D: Gaussian at center of domain
             # Use geometry interface instead of deprecated _grid
-            if hasattr(self, "geometry") and self.geometry is not None:
+            if self.geometry is not None:
                 # Get spatial grid from geometry (works for all geometry types)
                 spatial_grid = self.geometry.get_spatial_grid()
 
@@ -1879,10 +1879,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     def get_problem_info(self) -> dict[str, Any]:
         """Get information about the problem."""
         # Get domain info from geometry (modern API)
-        bounds = self.geometry.get_bounds() if self.geometry else None
+        bounds = self.geometry.get_bounds() if self.geometry is not None else None
         domain_info = {
             "dimension": self.dimension,
-            "num_spatial_points": self.geometry.num_spatial_points if self.geometry else None,
+            "num_spatial_points": self.geometry.num_spatial_points if self.geometry is not None else None,
         }
         if bounds is not None and self.dimension == 1:
             domain_info["xmin"] = float(bounds[0][0])
@@ -1971,7 +1971,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         config.picard.verbose = verbose
 
         # Create collocation points from problem domain
-        if hasattr(self, "geometry") and self.geometry is not None:
+        if self.geometry is not None:
             # Use geometry grid if available
             if hasattr(self.geometry, "get_spatial_grid"):
                 x = self.geometry.get_spatial_grid()

@@ -171,15 +171,8 @@ class GFDMInterpolationMixin:
                     interp_matrix[i, nearest_idx] = 1.0
 
             self._interp_matrix = interp_matrix.tocsr()
-        except Exception:
-            # Fallback: use dense nearest-neighbor matrix
-            from scipy.spatial import cKDTree
-
-            tree = cKDTree(self.collocation_points)
-            _, nearest_indices = tree.query(grid_points)
-            interp_matrix = np.zeros((n_grid, n_coll))
-            interp_matrix[np.arange(n_grid), nearest_indices] = 1.0
-            self._interp_matrix = interp_matrix
+        except Exception as e:
+            raise RuntimeError(f"Failed to build interpolation matrix: {e}") from e
 
     def _format_grid_bounds_for_interpolation(self) -> tuple:
         """Format domain_bounds for interpolation utility."""

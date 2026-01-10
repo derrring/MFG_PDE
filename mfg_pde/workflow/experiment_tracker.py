@@ -570,8 +570,8 @@ class Experiment:
             )
             if result.returncode == 0:
                 self.metadata.git_commit = result.stdout.strip()
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(f"Failed to capture git commit: {e}")
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the experiment."""

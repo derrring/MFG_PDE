@@ -14,7 +14,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical.integration import trapezoid
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -156,9 +159,9 @@ class MFGArrays(BaseModel):
                                 f"U solution may be non-smooth (max second diff: x={max_diff_x:.2e}, t={max_diff_t:.2e})",
                                 UserWarning,
                             )
-                except Exception:
-                    # Skip smoothness check if it fails
-                    pass
+                except Exception as e:
+                    # Skip smoothness check if it fails, but log it
+                    logger.warning(f"Smoothness check failed: {e}")
 
         return v
 
@@ -257,23 +260,20 @@ class MFGArrays(BaseModel):
 
             # Smoothness check (optional warning)
             if U_solution.size > 4 and U_solution.ndim == 2 and min(U_solution.shape) >= 3:
-                try:
-                    second_diff_x = np.diff(U_solution, n=2, axis=1)
-                    second_diff_t = np.diff(U_solution, n=2, axis=0)
+                second_diff_x = np.diff(U_solution, n=2, axis=1)
+                second_diff_t = np.diff(U_solution, n=2, axis=0)
 
-                    max_diff_x = np.max(np.abs(second_diff_x))
-                    max_diff_t = np.max(np.abs(second_diff_t))
+                max_diff_x = np.max(np.abs(second_diff_x))
+                max_diff_t = np.max(np.abs(second_diff_t))
 
-                    if (
-                        max_diff_x > validation_config.smoothness_threshold
-                        or max_diff_t > validation_config.smoothness_threshold
-                    ):
-                        warnings.warn(
-                            f"U solution may be non-smooth (max second diff: x={max_diff_x:.2e}, t={max_diff_t:.2e})",
-                            UserWarning,
-                        )
-                except Exception:
-                    pass
+                if (
+                    max_diff_x > validation_config.smoothness_threshold
+                    or max_diff_t > validation_config.smoothness_threshold
+                ):
+                    warnings.warn(
+                        f"U solution may be non-smooth (max second diff: x={max_diff_x:.2e}, t={max_diff_t:.2e})",
+                        UserWarning,
+                    )
 
         # === Validate M_solution ===
         if M_solution is not None and grid_config is not None:

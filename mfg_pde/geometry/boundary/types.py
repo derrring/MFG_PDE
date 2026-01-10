@@ -238,6 +238,11 @@ class BCSegment:
 
     priority: int = 0
 
+    # Flux-limited absorption (for DIRICHLET exits)
+    # Units: mass/time for density methods, particles/time for Lagrangian methods
+    # None = unlimited (instant absorption)
+    flux_capacity: float | None = None
+
     def matches_point(
         self,
         point: np.ndarray,

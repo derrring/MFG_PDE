@@ -27,12 +27,16 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+import logging
+
 import numpy as np
 import scipy.sparse as sparse
 from scipy.sparse.linalg import spsolve
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+
+logger = logging.getLogger(__name__)
 
 # Try to import JAX autodiff utilities
 _JAX_AVAILABLE = False
@@ -42,7 +46,7 @@ try:
 
     _JAX_AVAILABLE = HAS_JAX
 except ImportError:
-    pass
+    logger.debug("JAX acceleration utilities not available")
 
 
 class SolverInfo:

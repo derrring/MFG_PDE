@@ -36,7 +36,7 @@ if TYPE_CHECKING:
         import jax.numpy as jnp
         from jax import jit
     except ImportError:
-        pass
+        logger.debug("JAX not available for type checking")
 
     with contextlib.suppress(ImportError):
         from scipy.optimize import minimize

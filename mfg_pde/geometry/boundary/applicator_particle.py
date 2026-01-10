@@ -165,6 +165,114 @@ class ParticleApplicator:
 
         return remaining_particles, absorbed_mask, exit_positions
 
+    def apply_with_flux_limits(
+        self,
+        particles: NDArray[np.floating],
+        bc: BoundaryConditions,
+        bounds: list[tuple[float, float]],
+        flux_limits: dict[str, float],
+    ) -> tuple[NDArray[np.floating], NDArray[np.bool_], NDArray[np.floating], dict[str, int]]:
+        """
+        Apply segment-aware BC with flux-limited absorption at DIRICHLET exits.
+
+        When exit capacity is exceeded, particles are REFLECTED (queue) instead of
+        absorbed. This creates physical congestion at exits.
+
+        Args:
+            particles: Particle positions, shape (N, d)
+            bc: BoundaryConditions with segment definitions
+            bounds: Domain bounds per dimension [(xmin, xmax), ...]
+            flux_limits: Dict mapping segment name to max particles absorbed this step
+                         e.g., {"exit_A": 10, "exit_B": 15}
+
+        Returns:
+            Tuple of:
+            - remaining_particles: Particles not absorbed, shape (M, d)
+            - absorbed_mask: Boolean mask of absorbed particles, shape (N,)
+            - exit_positions: Positions where absorbed, shape (K, d)
+            - absorbed_per_segment: Dict mapping segment name to absorbed count
+        """
+        from .types import BCType
+
+        particles = np.atleast_2d(particles)
+        n_particles = len(particles)
+        dimension = particles.shape[1]
+
+        if n_particles == 0:
+            return particles, np.array([], dtype=bool), np.array([]).reshape(0, dimension), {}
+
+        bounds_arr = np.array(bounds)
+        domain_min = bounds_arr[:, 0]
+        domain_max = bounds_arr[:, 1]
+        domain_size = domain_max - domain_min
+
+        if bc.domain_bounds is None:
+            bc.domain_bounds = bounds_arr
+
+        # Find boundary particles
+        at_min = particles <= domain_min + self._boundary_tolerance
+        at_max = particles >= domain_max - self._boundary_tolerance
+        at_boundary = np.any(at_min | at_max, axis=1)
+
+        absorbed_mask = np.zeros(n_particles, dtype=bool)
+        exit_positions_list = []
+        result_particles = particles.copy()
+
+        # Track absorption per segment for flux limiting
+        absorbed_count: dict[str, int] = dict.fromkeys(flux_limits, 0)
+
+        # Process boundary particles
+        boundary_indices = np.where(at_boundary)[0]
+
+        for idx in boundary_indices:
+            particle = result_particles[idx]
+            boundary_id = self._get_boundary_id(particle, domain_min, domain_max, dimension)
+
+            segment = bc.get_bc_at_point(particle, boundary_id=boundary_id)
+
+            if segment is None:
+                result_particles[idx] = self._reflect_particle(particle, domain_min, domain_max, domain_size)
+                continue
+
+            if segment.bc_type == BCType.DIRICHLET:
+                seg_name = segment.name
+
+                # Check flux capacity
+                if seg_name in flux_limits:
+                    capacity = flux_limits[seg_name]
+                    current = absorbed_count.get(seg_name, 0)
+
+                    if current < capacity:
+                        # Capacity available - absorb
+                        absorbed_mask[idx] = True
+                        exit_positions_list.append(particle.copy())
+                        absorbed_count[seg_name] = current + 1
+                    else:
+                        # Capacity full - REFLECT (queue at exit)
+                        result_particles[idx] = self._reflect_particle(particle, domain_min, domain_max, domain_size)
+                else:
+                    # No flux limit for this segment - absorb immediately
+                    absorbed_mask[idx] = True
+                    exit_positions_list.append(particle.copy())
+
+            elif segment.bc_type in (BCType.REFLECTING, BCType.NO_FLUX, BCType.NEUMANN):
+                result_particles[idx] = self._reflect_particle(particle, domain_min, domain_max, domain_size)
+
+            elif segment.bc_type == BCType.PERIODIC:
+                result_particles[idx] = self._wrap_particle(particle, domain_min, domain_size)
+
+            else:
+                result_particles[idx] = self._reflect_particle(particle, domain_min, domain_max, domain_size)
+
+        if exit_positions_list:
+            exit_positions = np.array(exit_positions_list)
+        else:
+            exit_positions = np.array([]).reshape(0, dimension)
+
+        remaining_particles = result_particles[~absorbed_mask]
+
+        return remaining_particles, absorbed_mask, exit_positions, absorbed_count
+
     def _get_boundary_id(
         self,
         particle: NDArray[np.floating],
@@ -175,15 +283,22 @@ class ParticleApplicator:
         """
         Determine which boundary a particle is at.
 
-        Returns boundary ID like "x_min", "x_max", "y_min", etc.
+        Returns boundary ID using BCSegment convention:
+        - 2D: "left", "right", "bottom", "top"
+        - 3D: "left", "right", "bottom", "top", "front", "back"
+        - nD: "dim0_min", "dim0_max", etc. for d >= 3
         """
-        axis_names = ["x", "y", "z"] + [f"dim{i}" for i in range(3, dimension)]
+        # Standard boundary names for 2D/3D (matches BCSegment convention)
+        # 2D: x_min=left, x_max=right, y_min=bottom, y_max=top
+        # 3D: z_min=front, z_max=back
+        boundary_names_min = ["left", "bottom", "front"] + [f"dim{i}_min" for i in range(3, dimension)]
+        boundary_names_max = ["right", "top", "back"] + [f"dim{i}_max" for i in range(3, dimension)]
 
         for d in range(dimension):
             if particle[d] <= domain_min[d] + self._boundary_tolerance:
-                return f"{axis_names[d]}_min"
+                return boundary_names_min[d]
             if particle[d] >= domain_max[d] - self._boundary_tolerance:
-                return f"{axis_names[d]}_max"
+                return boundary_names_max[d]
 
         return None
 

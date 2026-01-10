@@ -22,6 +22,7 @@ These utilities are designed for MFG problems where:
 from __future__ import annotations
 
 import inspect
+import logging
 import warnings
 from collections import deque
 from functools import wraps
@@ -34,6 +35,7 @@ from .convergence_metrics import DistributionComparator
 if TYPE_CHECKING:
     from mfg_pde.alg.base_mfg_solver import MFGSolver  # type: ignore[import-not-found]
 
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # INTERNAL ERROR HISTORY TRACKER
@@ -414,8 +416,9 @@ class SolverTypeDetector:
                     detection_info["particle_components"].extend([f"param:{p}" for p in found_params])
                     detection_info["detection_methods"].append("parameter_inspection")
                     detection_info["confidence"] += 0.1
-            except Exception:
-                pass  # Ignore signature inspection errors
+            except Exception as e:
+                logger.warning(f"Failed to inspect solve method signature: {e}")
+                # Ignore signature inspection errors
 
         # Final decision based on confidence
         has_particles = detection_info["confidence"] > 0.3

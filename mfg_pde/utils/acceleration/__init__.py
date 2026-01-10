@@ -16,7 +16,10 @@ This replaces the old mfg_pde/accelerated/ directory with better organization.
 
 from __future__ import annotations
 
+import logging
 import warnings
+
+logger = logging.getLogger(__name__)
 
 # Check JAX availability
 try:
@@ -68,8 +71,8 @@ def get_acceleration_info():
                     "jax_gpu_available": HAS_GPU,
                 }
             )
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.debug(f"Could not retrieve JAX detailed info: {e}")
 
     if TORCH_UTILS_AVAILABLE:
         try:
@@ -82,8 +85,8 @@ def get_acceleration_info():
                     "torch_mps_available": HAS_MPS,
                 }
             )
-        except ImportError:
-            pass
+        except ImportError as e:
+            logger.debug(f"Could not retrieve PyTorch detailed info: {e}")
 
     return info
 

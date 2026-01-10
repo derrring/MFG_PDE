@@ -133,13 +133,13 @@ U, M, iterations, err_u, err_m = result
 
 ### 4. Progress Monitoring (`progress.py`)
 
-**Purpose**: Modern progress bars, timing, and performance monitoring.
+**Purpose**: Modern progress bars, timing, and performance monitoring using Rich.
 
 **Key Features**:
-- Beautiful progress bars with `tqdm` integration
+- Beautiful progress bars using Rich (v0.16.15+)
 - Precise timing utilities
-- Iteration progress tracking
-- Automatic fallback when tqdm unavailable
+- Iteration progress tracking with convergence monitoring
+- `tqdm` alias provided for backward compatibility (now points to `RichProgressBar`)
 
 **Main Components**:
 - `SolverTimer`: Context manager for timing operations
@@ -429,20 +429,20 @@ scipy>=1.7.0
 
 ### Optional Enhancements
 ```bash
-# For enhanced progress bars
-pip install tqdm
-
 # For YAML configuration support
 pip install PyYAML
 
-# For colored terminal output (recommended)
-pip install rich colorlog
+# For colored terminal output
+pip install colorlog
 ```
 
-### Development Dependencies
+### Required Dependencies
 ```bash
+# Rich is required for progress bars (v0.16.15+)
+pip install rich
+
 # For full feature set
-pip install tqdm PyYAML rich colorlog
+pip install PyYAML rich colorlog
 ```
 
 ## 📈 Performance Impact

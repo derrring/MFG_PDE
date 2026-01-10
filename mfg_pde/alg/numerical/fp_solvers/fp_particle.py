@@ -18,7 +18,7 @@ try:  # pragma: no cover - optional SciPy dependency
     from scipy.stats import gaussian_kde
 
     SCIPY_AVAILABLE = True
-except Exception:  # pragma: no cover - graceful fallback when SciPy missing
+except ImportError:  # pragma: no cover - graceful fallback when SciPy missing
     _scipy_interpolate = None
     gaussian_kde = None
     SCIPY_AVAILABLE = False
@@ -168,11 +168,7 @@ class FPParticleSolver(BaseFPSolver):
             self.boundary_conditions = boundary_conditions
         elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
             # Try to get BC from grid geometry (Phase 2 integration)
-            try:
-                self.boundary_conditions = problem.geometry.get_boundary_handler()
-            except Exception:
-                # Fallback if geometry BC retrieval fails
-                self.boundary_conditions = periodic_bc(dimension=1)
+            self.boundary_conditions = problem.geometry.get_boundary_handler()
         else:
             # Default to periodic boundaries for backward compatibility
             self.boundary_conditions = periodic_bc(dimension=1)
@@ -645,6 +641,55 @@ class FPParticleSolver(BaseFPSolver):
             self.total_absorbed += n_absorbed
 
         return remaining, n_absorbed, exit_positions
+
+    def _apply_boundary_conditions_with_flux_limits(
+        self,
+        particles: np.ndarray,
+        bounds: list[tuple[float, float]],
+        flux_limits: dict[str, float],
+    ) -> tuple[np.ndarray, int, np.ndarray, dict[str, int]]:
+        """
+        Apply segment-aware BC with flux-limited absorption.
+
+        Particles at DIRICHLET exits are absorbed only up to the flux capacity.
+        When capacity is exceeded, particles are REFLECTED (creating queues).
+
+        Parameters
+        ----------
+        particles : np.ndarray
+            Particle positions, shape (num_particles, dimension)
+        bounds : list[tuple[float, float]]
+            Bounds per dimension [(xmin, xmax), (ymin, ymax), ...]
+        flux_limits : dict[str, float]
+            Max particles to absorb per segment this step
+            e.g., {"exit_A": 10, "exit_B": 15}
+
+        Returns
+        -------
+        remaining_particles : np.ndarray
+            Particles not absorbed
+        n_absorbed : int
+            Total particles absorbed this step
+        exit_positions : np.ndarray
+            Positions where absorbed
+        absorbed_per_segment : dict[str, int]
+            Absorbed count per segment
+        """
+        remaining, absorbed_mask, exit_positions, absorbed_per_segment = self._applicator.apply_with_flux_limits(
+            particles,
+            self.boundary_conditions,
+            bounds,
+            flux_limits,
+        )
+
+        n_absorbed = int(np.sum(absorbed_mask))
+
+        if n_absorbed > 0:
+            self.exit_flux_history.append(n_absorbed)
+            self.exit_positions_history.append(exit_positions)
+            self.total_absorbed += n_absorbed
+
+        return remaining, n_absorbed, exit_positions, absorbed_per_segment
 
     def _interpolate_grid_to_particles_nd(
         self,
@@ -1234,13 +1279,9 @@ class FPParticleSolver(BaseFPSolver):
                 drift_at_particles = np.zeros((n_particles_t, dimension))
 
                 for d in range(dimension):
-                    try:
-                        # Extract d-th component of drift vector field
-                        drift_d = drift_or_U_t[..., d]  # Shape: (*grid_shape,)
-                        drift_at_particles[:, d] = self._interpolate_grid_to_particles_nd(drift_d, bounds, particles_t)
-                    except Exception:
-                        # Fallback: zero drift
-                        drift_at_particles[:, d] = 0.0
+                    # Extract d-th component of drift vector field
+                    drift_d = drift_or_U_t[..., d]  # Shape: (*grid_shape,)
+                    drift_at_particles[:, d] = self._interpolate_grid_to_particles_nd(drift_d, bounds, particles_t)
 
                 # Use precomputed drift directly (no coupling_coefficient multiplication)
                 drift = drift_at_particles
@@ -1256,13 +1297,7 @@ class FPParticleSolver(BaseFPSolver):
                 grad_at_particles = np.zeros((n_particles_t, dimension))
 
                 for d in range(dimension):
-                    try:
-                        grad_at_particles[:, d] = self._interpolate_grid_to_particles_nd(
-                            gradients[d], bounds, particles_t
-                        )
-                    except Exception:
-                        # Fallback: zero gradient
-                        grad_at_particles[:, d] = 0.0
+                    grad_at_particles[:, d] = self._interpolate_grid_to_particles_nd(gradients[d], bounds, particles_t)
 
                 # Compute drift: alpha = -coupling_coefficient * grad(U)
                 drift = -coupling_coefficient * grad_at_particles
@@ -1368,14 +1403,9 @@ class FPParticleSolver(BaseFPSolver):
 
         # Sample initial particles on GPU
         m_initial_gpu = self.backend.from_numpy(m_initial_condition)
-        try:
-            X_particles_gpu[0, :] = sample_from_density_gpu(
-                m_initial_gpu, x_grid_gpu, self.num_particles, self.backend, seed=None
-            )
-        except Exception:
-            # Fallback: uniform sampling
-            X_init_np = np.random.uniform(xmin, xmax, self.num_particles)
-            X_particles_gpu[0, :] = self.backend.from_numpy(X_init_np)
+        X_particles_gpu[0, :] = sample_from_density_gpu(
+            m_initial_gpu, x_grid_gpu, self.num_particles, self.backend, seed=None
+        )
 
         # Compute bandwidth for KDE (do this once on CPU)
         # Convert bandwidth parameter to absolute bandwidth value
@@ -1675,11 +1705,7 @@ class FPParticleSolver(BaseFPSolver):
         np.ndarray
             Field values at particle positions, shape (N_particles,)
         """
-        try:
-            return self._interpolate_grid_to_particles_nd(field, bounds, particles)
-        except Exception:
-            # Fallback: return fill_value
-            return np.full(particles.shape[0], fill_value)
+        return self._interpolate_grid_to_particles_nd(field, bounds, particles)
 
     def _estimate_density_at_particles(
         self,
@@ -1805,7 +1831,7 @@ if __name__ == "__main__":
                 name="exit",
                 bc_type=BCType.DIRICHLET,
                 value=0.0,
-                boundary="x_max",  # Right wall is exit
+                boundary="right",  # Right wall is exit (use direction name, not x_max)
             ),
             BCSegment(
                 name="walls",

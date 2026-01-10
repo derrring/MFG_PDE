@@ -48,6 +48,29 @@ Novel research, experimental algorithms, unpublished methods.
 ### **Migration Path: Research → Infrastructure**
 When research matures: Add tests, write docs, ensure API consistency, open PR in MFG_PDE.
 
+### **Bug Fixes from Research** ⚠️ **CRITICAL**
+When bugs are discovered and validated in mfg-research:
+
+**Requirements before modifying MFG_PDE**:
+1. GitHub issue created with quantified validation evidence
+2. Standalone validation experiment in mfg-research demonstrating the fix
+3. Discussion and approval of approach
+4. Reference to validation experiment in code comments
+
+**Code Comment Format**:
+```python
+# Issue #542 fix. Validated in:
+# mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
+# Achieves 23x error reduction (47.98% -> 2.06%) for Tower-on-Beach problem.
+```
+
+**Principles**:
+- ❌ Don't add legacy fallbacks - use mature utilities directly
+- ❌ Don't make broad changes without discussion
+- ✅ Keep changes minimal and focused
+- ✅ Run tests before and after changes
+- ✅ Verify by re-running research experiments
+
 ---
 
 ## 🎨 **API Design Principles** ⚠️ **CRITICAL**
@@ -165,6 +188,12 @@ Prioritize surfacing problems early during development:
 - ❌ **NO `hasattr()`**: Use explicit interfaces or handle `AttributeError` instead of checking for attribute existence.
 - ❌ **NO ambiguous returns**: Do not return `None`, `0`, or `1` to indicate failure without a reasonable following action or error propagation.
 
+### **File Path Anchoring** ⚠️ **CRITICAL**
+Always anchor output paths to **project root**, never to CWD:
+- ✅ `Path(__file__).resolve().parent.parent / "results"` — fixed to project structure
+- ✅ `${hydra:runtime.cwd}/results` — fixed to launch location (Hydra/OmegaConf)
+- ❌ `Path("results")` or `os.getcwd()` — changes with `cd`, causes recursive nesting
+
 ### **Development Documentation** ⚠️ **CRITICAL**
 Always document significant changes:
 
@@ -195,16 +224,19 @@ Claude Code must proactively check at these triggers:
 ### **Logging and Progress Bars**
 ```python
 from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
-from mfg_pde.utils.progress import tqdm  # Uses rich (preferred) with tqdm fallback
+from mfg_pde.utils.progress import solver_progress, RichProgressBar
 
 configure_research_logging("session_name", level="INFO")
 logger = get_logger(__name__)
 
-for iteration in tqdm(range(max_iterations), desc="Solving MFG"):
-    # solver logic
+# For solver iterations with error tracking (preferred)
+with solver_progress(max_iterations, "Solving MFG") as progress:
+    for iteration in range(max_iterations):
+        error = step()
+        progress.update(1, error=error)
 ```
 
-**Progress Bar Backend**: Rich only. No fallback - if rich is not installed, ImportError is raised.
+**Progress Bar Backend**: Rich only (v0.16.15+). External tqdm eliminated. The `tqdm` name kept as alias for `RichProgressBar` for backward compatibility.
 
 ---
 
@@ -235,6 +267,20 @@ benchmarks/reports/*.html # Tracked (exported reports)
 2. **Notebooks**: Track .ipynb with cleared outputs + exported HTML
 3. **Documentation**: Markdown preferred, notebooks for tutorials
 4. **Benchmarks**: Use notebooks in `benchmarks/notebooks/`, export HTML to `benchmarks/reports/`
+
+### **Incremental Data Saving** ⚠️ **CRITICAL**
+For long-running computations (GFDM solvers, Picard iterations, parameter sweeps):
+- ✅ **Save after each iteration**: Don't wait until experiment completes
+- ✅ **Use HDF5 with incremental writes**: Append results after each step
+- ✅ **Include metadata**: Config, timestamp, partial progress in file attrs
+- **Rationale**: Long experiments may crash. Incremental saves preserve progress.
+
+### **Heavy Computational Tasks** ⚠️ **CRITICAL**
+- ❌ **Never limit timeout** for long-running solvers (GFDM with high collocation, multi-parameter sweeps)
+- ✅ **Run in background**: Use `&` or `run_in_background` for tasks > 5 minutes
+- ✅ **Monitor via logs**: Check progress with `tail -f` rather than waiting inline
+- ✅ **Trust incremental saves**: If process crashes, partial results are preserved
+- **Rationale**: MFG computations can take hours. Arbitrary timeouts lose all progress.
 
 ---
 

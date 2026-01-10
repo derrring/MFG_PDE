@@ -25,6 +25,7 @@ Created: 2025-12-13
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import numpy as np
@@ -165,8 +166,12 @@ class MonotonicityMixin:
 
             return result_x
 
-        except Exception:
+        except Exception as e:
             # Fallback to unconstrained if any error occurs
+            warnings.warn(
+                f"QP constrained optimization failed at point {point_idx}: {e}. Falling back to unconstrained.",
+                RuntimeWarning,
+            )
             self.qp_stats["qp_fallbacks"] += 1
             elapsed = time.time() - t0
             self.qp_stats["qp_times"].append(elapsed)
@@ -652,52 +657,51 @@ class MonotonicityMixin:
             w: Array of finite difference weights [n_neighbors]
                 or None if computation fails
         """
-        try:
-            if taylor_data.get("use_svd"):
-                # Use SVD decomposition
-                # We have: sqrt(W) @ A = U @ diag(S) @ Vt
-                # Solution operator: D = (A^T W A)^{-1} A^T W @ b
-                #                      = Vt.T @ diag(1/S^2) @ Vt @ Vt.T @ diag(S) @ U.T @ sqrt(W) @ b
-                #                      = Vt.T @ diag(1/S) @ U.T @ sqrt(W) @ b
-                # Weights for derivative β are β-th row of: Vt.T @ diag(1/S) @ U.T @ sqrt(W)
+        if taylor_data.get("use_svd"):
+            # Use SVD decomposition
+            # We have: sqrt(W) @ A = U @ diag(S) @ Vt
+            # Solution operator: D = (A^T W A)^{-1} A^T W @ b
+            #                      = Vt.T @ diag(1/S^2) @ Vt @ Vt.T @ diag(S) @ U.T @ sqrt(W) @ b
+            #                      = Vt.T @ diag(1/S) @ U.T @ sqrt(W) @ b
+            # Weights for derivative β are β-th row of: Vt.T @ diag(1/S) @ U.T @ sqrt(W)
 
-                U = taylor_data["U"]
-                S = taylor_data["S"]
-                Vt = taylor_data["Vt"]
-                sqrt_W = taylor_data["sqrt_W"]
+            U = taylor_data["U"]
+            S = taylor_data["S"]
+            Vt = taylor_data["Vt"]
+            sqrt_W = taylor_data["sqrt_W"]
 
-                # Compute: weights_matrix = Vt.T @ diag(1/S) @ U.T @ sqrt(W)
-                # Shape: [n_derivs, n_neighbors]
-                weights_matrix = Vt.T @ np.diag(1.0 / S) @ U.T @ sqrt_W
+            # Compute: weights_matrix = Vt.T @ diag(1/S) @ U.T @ sqrt(W)
+            # Shape: [n_derivs, n_neighbors]
+            weights_matrix = Vt.T @ np.diag(1.0 / S) @ U.T @ sqrt_W
 
-                # Extract β-th row
-                weights = weights_matrix[derivative_idx, :]
-                return weights
+            # Extract β-th row
+            weights = weights_matrix[derivative_idx, :]
+            return weights
 
-            elif taylor_data.get("use_qr"):
-                # Use QR decomposition - fall back to normal equations
-                A = taylor_data["A"]
-                W = taylor_data["W"]
-                try:
-                    # Compute (A^T W A)^{-1} A^T W and extract row
-                    AtWA_inv = np.linalg.inv(A.T @ W @ A)
-                    weights_matrix = AtWA_inv @ A.T @ W
-                    weights = weights_matrix[derivative_idx, :]
-                    return weights
-                except np.linalg.LinAlgError:
-                    return None
-
-            elif taylor_data.get("AtWA_inv") is not None:
-                # Direct normal equations
-                AtWA_inv = taylor_data["AtWA_inv"]
-                W = taylor_data["W"]
-                A = taylor_data["A"]
+        elif taylor_data.get("use_qr"):
+            # Use QR decomposition - fall back to normal equations
+            A = taylor_data["A"]
+            W = taylor_data["W"]
+            try:
+                # Compute (A^T W A)^{-1} A^T W and extract row
+                AtWA_inv = np.linalg.inv(A.T @ W @ A)
                 weights_matrix = AtWA_inv @ A.T @ W
                 weights = weights_matrix[derivative_idx, :]
                 return weights
-
-            else:
+            except np.linalg.LinAlgError:
                 return None
 
-        except Exception:
-            return None
+        elif taylor_data.get("AtWA_inv") is not None:
+            # Direct normal equations
+            AtWA_inv = taylor_data["AtWA_inv"]
+            W = taylor_data["W"]
+            A = taylor_data["A"]
+            weights_matrix = AtWA_inv @ A.T @ W
+            weights = weights_matrix[derivative_idx, :]
+            return weights
+
+        else:
+            raise ValueError(
+                "taylor_data must contain one of: 'use_svd', 'use_qr', or 'AtWA_inv'. "
+                f"Got keys: {list(taylor_data.keys())}"
+            )

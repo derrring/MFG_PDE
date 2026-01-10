@@ -50,6 +50,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+# Logging
+from mfg_pde.utils.mfg_logging import get_logger
+
+logger = get_logger(__name__)
+
 # Import base class for inheritance
 from .applicator_base import (
     BaseStructuredApplicator,
@@ -643,6 +648,7 @@ def _evaluate_bc_value(
         try:
             return float(value(point, time))
         except TypeError:
+            # Not compatible with (point, time) signature
             pass
 
         # Convention 2: value(x, y, t) for 2D / value(x, t) for 1D
@@ -652,15 +658,18 @@ def _evaluate_bc_value(
             elif len(point) == 1:
                 return float(value(point[0], time))
         except TypeError:
+            # Not compatible with expanded coordinate signature
             pass
 
         # Convention 3: value(point) without time
         try:
             return float(value(point))
         except TypeError:
+            # Not compatible with (point,) signature
             pass
 
         # Last resort: return 0
+        logger.warning(f"Could not evaluate BC value function {value} with any known signature. returning 0.0")
         return 0.0
     else:
         return float(value)
