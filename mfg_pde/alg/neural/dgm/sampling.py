@@ -197,9 +197,13 @@ class QuasiMonteCarloSampler(HighDimSampler):
             sampler = QuasiMCSampler(spacetime_domain, self.mc_config, self.sequence_type)
             points = sampler.sample(num_points)
             return points
-        except Exception:
-            # Fallback to uniform sampling
-            logger.warning("Quasi-MC sampling failed, using uniform fallback")
+        except (ImportError, ValueError, NotImplementedError, RuntimeError) as e:
+            # Issue #547: Quasi-MC can fail if scipy.stats.qmc unavailable or sequence type not supported
+            logger.warning(
+                "Quasi-MC sampling failed (%s): %s. Using uniform fallback (performance may be degraded).",
+                type(e).__name__,
+                e,
+            )
             sampler = UniformMCSampler(spacetime_domain, self.mc_config)
             return sampler.sample(num_points)
 
