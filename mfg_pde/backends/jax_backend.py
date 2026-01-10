@@ -40,7 +40,12 @@ else:
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 from .base_backend import BaseBackend
+
+# Module logger
+logger = get_logger(__name__)
 
 
 class JAXBackend(BaseBackend):
@@ -335,7 +340,9 @@ class JAXBackend(BaseBackend):
                         "gpu_memory_percent": (used / total) * 100,
                     }
             return None
-        except Exception:
+        except (RuntimeError, AttributeError, OSError) as e:
+            # Issue #547: GPU memory query can fail for various reasons
+            logger.debug("Failed to get JAX GPU memory stats: %s", e)
             return None
 
     # Backend Capabilities (for auto-switching)
