@@ -11,6 +11,7 @@ from scipy.linalg import lstsq
 from scipy.optimize import approx_fprime
 
 from mfg_pde.geometry.boundary import BCType, DiscretizationType
+from mfg_pde.utils.mfg_logging import get_logger
 
 # Legacy operator for backward compatibility (deprecated)
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
@@ -28,6 +29,8 @@ from .gfdm_boundary_mixin import GFDMBoundaryMixin
 from .gfdm_interpolation_mixin import GFDMInterpolationMixin
 from .gfdm_stencil_mixin import GFDMStencilMixin
 from .hjb_gfdm_monotonicity import MonotonicityMixin
+
+logger = get_logger(__name__)
 
 # Optional QP solver imports
 CVXPY_AVAILABLE = importlib.util.find_spec("cvxpy") is not None
@@ -294,14 +297,21 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         self.l2errBoundNewton = newton_tolerance
 
         # Boundary condition parameters
-        self.boundary_indices = boundary_indices if boundary_indices is not None else np.array([])
-        # Get BC from parameter, or from problem if not provided
+        # Auto-detect boundary indices if not provided (Issue #542 fix)
+        if boundary_indices is not None:
+            self.boundary_indices = boundary_indices
+        else:
+            # Try to detect boundary points from domain bounds
+            self.boundary_indices = self._detect_boundary_indices(collocation_points)
+        # Get BC from parameter, or from problem geometry (Issue #542 fix)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
-        elif hasattr(self.problem, "get_boundary_conditions"):
-            self.boundary_conditions = self.problem.get_boundary_conditions() or {}
         else:
-            self.boundary_conditions = {}
+            # Access geometry.get_boundary_conditions() - None if not available
+            try:
+                self.boundary_conditions = self.problem.geometry.get_boundary_conditions()
+            except AttributeError:
+                self.boundary_conditions = None
         self.interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
 
         # QP optimization level (single source of truth for QP control)
@@ -525,46 +535,267 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         grid_shape = self.problem.geometry.get_grid_shape()
         return int(np.prod(grid_shape))
 
-    def _get_boundary_condition_property(self, property_name: str, default: Any = None) -> Any:
-        """Helper method to get boundary condition properties from either dict or dataclass."""
-        if hasattr(self.boundary_conditions, property_name):
-            # BoundaryConditions dataclass
+    def _get_boundary_condition_property(self, property_name: str) -> Any:
+        """Get boundary condition property - returns None if not available.
+
+        BC validation is deferred to solve time to allow testing internal mechanics
+        without requiring full BC specification.
+
+        For mixed BCs, returns None with a warning (allows fallback to per-point BC).
+        """
+        # No BC specified - return None (validation deferred to solve time)
+        if self.boundary_conditions is None:
+            return None
+
+        # Try dictionary access first (doesn't trigger property)
+        if isinstance(self.boundary_conditions, dict):
+            return self.boundary_conditions.get(property_name)
+
+        # Try attribute access (may raise ValueError for mixed BC properties)
+        try:
             return getattr(self.boundary_conditions, property_name)
-        elif isinstance(self.boundary_conditions, dict):
-            # Dictionary format
-            return self.boundary_conditions.get(property_name, default)
-        else:
-            return default
+        except AttributeError:
+            return None
+        except ValueError:
+            # Mixed BC - warn and return None to allow fallback to default_bc
+            # Per-point BC types are not yet supported in HJB GFDM solver.
+            # The solver will use default_bc for all boundary points.
+            if not getattr(self, "_mixed_bc_warned", False):
+                logger.info(
+                    f"Mixed BC detected: '{property_name}' is not uniform. "
+                    f"Per-point BC types will be applied (DIRICHLET at exits, NEUMANN at walls)."
+                )
+                self._mixed_bc_warned = True
+            return None
+
+    def _get_bc_type_for_point(self, point_idx: int) -> str:
+        """Determine BC type for a boundary collocation point.
+
+        For mixed BC (like multi-exit), determines if point is at:
+        - Exit (DIRICHLET): absorbing boundary
+        - Wall (NEUMANN/NO_FLUX): reflecting boundary
+
+        Args:
+            point_idx: Index of boundary collocation point
+
+        Returns:
+            BC type string: "dirichlet" or "neumann"
+        """
+        # Get global BC type from config (handles uniform BC case)
+        bc_type = self._bc_config.get("type") if self._bc_config else None
+
+        # Check if mixed BC - use try/except instead of hasattr
+        try:
+            is_mixed = self.boundary_conditions.is_mixed
+        except AttributeError:
+            # Not a BoundaryConditions object - use global type
+            if bc_type is None:
+                raise ValueError("BC type required but not specified in config.") from None
+            return bc_type
+
+        if not is_mixed:
+            if bc_type is None:
+                raise ValueError("BC type required but not specified in config.")
+            return bc_type
+
+        # Mixed BC - delegate to BCSegment.matches_point() for proper matching
+        # This supports rectangular, SDF-based, and normal-direction matching
+        point = self.collocation_points[point_idx]
+
+        # Prepare context for matching (Issue #542 fix - support general geometries)
+        domain_bounds = self._get_domain_bounds_array()
+        boundary_id = self._infer_boundary_id(point, domain_bounds)
+        domain_sdf = self._get_domain_sdf()
+
+        # Sort segments by priority (higher priority first)
+        sorted_segments = sorted(
+            self.boundary_conditions.segments,
+            key=lambda seg: seg.priority,
+            reverse=True,
+        )
+
+        # Find first matching segment
+        from mfg_pde.geometry.boundary import BCType
+
+        for segment in sorted_segments:
+            if segment.matches_point(
+                point=point,
+                boundary_id=boundary_id,
+                domain_bounds=domain_bounds,
+                domain_sdf=domain_sdf,
+            ):
+                # Map BCType to string for solver
+                if segment.bc_type == BCType.DIRICHLET:
+                    return "dirichlet"
+                elif segment.bc_type in (BCType.NEUMANN, BCType.NO_FLUX):
+                    return "neumann"
+                else:
+                    return segment.bc_type.value.lower()
+
+        # No segment match - use default BC
+        return self.boundary_conditions.default_bc.value.lower()
+
+    def _detect_boundary_indices(self, collocation_points: np.ndarray) -> np.ndarray:
+        """Auto-detect boundary point indices from collocation points and domain bounds.
+
+        Points are classified as boundary if they lie within tolerance of any domain boundary.
+
+        Args:
+            collocation_points: Array of shape (n_points, dimension) with collocation coordinates.
+
+        Returns:
+            Array of boundary point indices. Empty array if bounds cannot be determined.
+
+        Note:
+            Issue #542 fix - enables automatic BC enforcement without explicit boundary_indices.
+        """
+        # Get domain bounds
+        bounds = self._get_domain_bounds_for_detection()
+        if bounds is None or len(bounds) == 0:
+            return np.array([], dtype=int)
+
+        tol = 1e-6
+        boundary_mask = np.zeros(len(collocation_points), dtype=bool)
+
+        for d, (d_min, d_max) in enumerate(bounds):
+            if d < collocation_points.shape[1]:
+                # Points at min or max boundary in this dimension
+                at_min = np.abs(collocation_points[:, d] - d_min) < tol
+                at_max = np.abs(collocation_points[:, d] - d_max) < tol
+                boundary_mask |= at_min | at_max
+
+        return np.where(boundary_mask)[0]
+
+    def _get_domain_bounds_for_detection(self) -> list[tuple[float, float]] | None:
+        """Get domain bounds for boundary detection (before full initialization)."""
+        # Try geometry interface first
+        try:
+            geom = self.problem.geometry
+            if geom is not None:
+                try:
+                    bounds_result = geom.get_bounds()
+                    if bounds_result is not None:
+                        min_coords, max_coords = bounds_result
+                        return [(float(min_coords[d]), float(max_coords[d])) for d in range(len(min_coords))]
+                except AttributeError:
+                    pass
+                try:
+                    return list(geom.bounds)
+                except AttributeError:
+                    pass
+        except AttributeError:
+            pass
+        # Fallback to legacy xmin/xmax
+        try:
+            xmin = self.problem.xmin
+            xmax = self.problem.xmax
+            return [(float(xmin), float(xmax))]
+        except AttributeError:
+            return None
 
     def _get_domain_bounds(self) -> list[tuple[float, float]]:
         """Get domain bounds from geometry or legacy xmin/xmax attributes.
 
         Returns:
             List of (min, max) tuples for each dimension.
+
+        Note:
+            Issue #542 fix - removed hasattr/getattr, using try/except for clearer failure modes.
         """
-        # Prefer geometry (modern interface)
-        if hasattr(self.problem, "geometry") and self.problem.geometry is not None:
+        # Try geometry interface first (modern API)
+        try:
             geom = self.problem.geometry
-            # Use get_bounds() method which returns (min_coords, max_coords) arrays
-            if hasattr(geom, "get_bounds"):
-                bounds_result = geom.get_bounds()
-                if bounds_result is not None:
-                    min_coords, max_coords = bounds_result
-                    return [(float(min_coords[d]), float(max_coords[d])) for d in range(len(min_coords))]
-            # Fallback to .bounds property if available
-            if hasattr(geom, "bounds"):
-                return list(geom.bounds)
+            if geom is not None:
+                try:
+                    # Prefer get_bounds() method
+                    bounds_result = geom.get_bounds()
+                    if bounds_result is not None:
+                        min_coords, max_coords = bounds_result
+                        return [(float(min_coords[d]), float(max_coords[d])) for d in range(len(min_coords))]
+                except AttributeError:
+                    pass
+                try:
+                    # Fallback to .bounds property
+                    return list(geom.bounds)
+                except AttributeError:
+                    pass
+        except AttributeError:
+            pass
 
         # Fallback to legacy 1D xmin/xmax
-        xmin = getattr(self.problem, "xmin", None)
-        xmax = getattr(self.problem, "xmax", None)
-        if xmin is not None and xmax is not None:
+        try:
+            xmin = self.problem.xmin
+            xmax = self.problem.xmax
             return [(float(xmin), float(xmax))]
+        except AttributeError:
+            pass
 
-        # Last resort: infer from collocation points (vectorized)
-        mins = self.collocation_points.min(axis=0)  # shape: (d,)
-        maxs = self.collocation_points.max(axis=0)  # shape: (d,)
+        # Last resort: infer from collocation points
+        mins = self.collocation_points.min(axis=0)
+        maxs = self.collocation_points.max(axis=0)
         return list(zip(mins.astype(float).tolist(), maxs.astype(float).tolist(), strict=True))
+
+    def _get_domain_bounds_array(self) -> np.ndarray | None:
+        """Get domain bounds as numpy array for BCSegment.matches_point().
+
+        Returns:
+            Array of shape (dimension, 2) where bounds[i, 0] = min and bounds[i, 1] = max
+            for dimension i. Returns None if bounds cannot be determined.
+
+        Note:
+            Issue #542 fix - provides bounds in format expected by BCSegment.
+        """
+        bounds_list = self._get_domain_bounds()
+        if not bounds_list:
+            return None
+        return np.array(bounds_list, dtype=float)
+
+    def _infer_boundary_id(self, point: np.ndarray, domain_bounds: np.ndarray | None, tol: float = 1e-6) -> str | None:
+        """Infer boundary identifier for a point on rectangular domain boundary.
+
+        This is optional - BCSegment.matches_point() can work without boundary_id
+        using SDF or normal matching. For rectangular domains, providing boundary_id
+        enables efficient segment matching via the 'boundary' attribute.
+
+        Args:
+            point: Spatial coordinates (dimension,)
+            domain_bounds: Domain bounds array (dimension, 2) or None
+            tol: Tolerance for boundary detection
+
+        Returns:
+            Boundary identifier like "x_min", "y_max", or None if not on axis-aligned boundary.
+
+        Note:
+            Issue #542 fix - separated boundary inference from BC matching.
+            Returns None for non-rectangular domains or interior/corner points.
+        """
+        if domain_bounds is None:
+            return None
+
+        # Check each axis for boundary proximity
+        for axis_idx in range(min(len(point), len(domain_bounds))):
+            if abs(point[axis_idx] - domain_bounds[axis_idx, 0]) < tol:
+                axis_name = ["x", "y", "z"][axis_idx] if axis_idx < 3 else f"dim{axis_idx}"
+                return f"{axis_name}_min"
+            elif abs(point[axis_idx] - domain_bounds[axis_idx, 1]) < tol:
+                axis_name = ["x", "y", "z"][axis_idx] if axis_idx < 3 else f"dim{axis_idx}"
+                return f"{axis_name}_max"
+
+        return None
+
+    def _get_domain_sdf(self) -> callable | None:
+        """Get signed distance function from geometry if available.
+
+        Returns:
+            SDF callable or None if geometry doesn't provide one.
+
+        Note:
+            Issue #542 fix - enables BC matching on SDF-based geometries.
+        """
+        try:
+            return self.problem.geometry.sdf
+        except AttributeError:
+            return None
 
     def _compute_domain_volume(self) -> float:
         """Compute the volume (area in 2D) of the domain.
@@ -575,8 +806,10 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         Returns:
             Domain volume/area as a scalar.
         """
-        if hasattr(self, "_domain_volume"):
+        try:
             return self._domain_volume
+        except AttributeError:
+            pass
 
         bounds = self.domain_bounds
         volume = 1.0
@@ -772,8 +1005,8 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
             # Handle legacy ghost particles based on BC type
             # - Neumann/no-flux: u_ghost = u_center (mirror value)
             # - Dirichlet: u_ghost = BC value (if available)
-            bc_type = self._get_boundary_condition_property("type", "neumann")
-            bc_values = self._get_boundary_condition_property("values", None)
+            bc_type = self._get_boundary_condition_property("type")
+            bc_values = self._get_boundary_condition_property("values")
 
             u_neighbors = []
             for idx in neighbor_indices:  # type: ignore[attr-defined]
@@ -1230,12 +1463,23 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         residual_bc = residual.copy()
 
         # Apply BC directly on sparse matrix (avoid dense conversion)
-        bc_type = self._get_boundary_condition_property("type", "neumann")
-        bc_values = self._get_boundary_condition_property("values", {})
+        # For mixed BC, we use per-point BC types; for uniform BC, use global type
+        global_bc_type = self._get_boundary_condition_property("type")
+        try:
+            use_per_point_bc = self.boundary_conditions.is_mixed
+        except AttributeError:
+            use_per_point_bc = False
+        bc_values = self._get_boundary_condition_property("values")
         normals = self._bc_config.get("normals", None) if self._bc_config else None
         dimension = self.dimension
 
         for local_idx, i in enumerate(self.boundary_indices):
+            # Determine BC type for this point (per-point for mixed, global otherwise)
+            if use_per_point_bc:
+                bc_type = self._get_bc_type_for_point(i)
+            else:
+                bc_type = global_bc_type if global_bc_type else "neumann"
+
             # Clear row (LIL supports efficient row clearing)
             jac_lil[i, :] = 0.0
 
@@ -1424,6 +1668,14 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         if U_terminal is None:
             raise ValueError("U_terminal is required")
 
+        # Validate BC specification if boundary points exist
+        if len(self.boundary_indices) > 0 and (self._bc_config is None or self._bc_config.get("type") is None):
+            raise ValueError(
+                f"Boundary conditions required for solving but not specified. "
+                f"Found {len(self.boundary_indices)} boundary points. "
+                f"Pass boundary_conditions parameter to solver or set BC on problem.geometry."
+            )
+
         from mfg_pde.utils.progress import RichProgressBar
 
         # Determine n_time_points from available data or problem configuration
@@ -1563,8 +1815,9 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
             # Newton update using sparse solver
             try:
                 delta_u = spsolve(jacobian_bc, -residual_bc)
-            except Exception:
+            except Exception as e:
                 # Fallback to dense solver
+                logger.warning(f"Sparse solver failed in Newton iteration (using dense fallback): {e}")
                 delta_u = np.linalg.lstsq(jacobian_bc.toarray(), -residual_bc, rcond=None)[0]
 
             # Limit step size to prevent extreme updates
@@ -1809,29 +2062,43 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
         return jacobian
 
     def _apply_boundary_conditions_to_solution(self, u: np.ndarray, time_idx: int) -> np.ndarray:
-        """Apply boundary conditions directly to solution array."""
+        """Apply boundary conditions directly to solution array.
+
+        For mixed BC (per-point types), enforces Dirichlet at exit points only.
+        """
         if len(self.boundary_indices) == 0:
             return u
 
+        # Check if using per-point BC (mixed BC)
+        use_per_point_bc = hasattr(self.boundary_conditions, "is_mixed") and self.boundary_conditions.is_mixed
+
         # Use unified BC config (single source of truth) when using new infrastructure
         if self._use_new_infrastructure and self._bc_config is not None:
-            bc_type = self._bc_config["type"]
+            global_bc_type = self._bc_config["type"]
             bc_values = self._bc_config["values"]
         else:
-            # Legacy path: inconsistent defaults preserved for backward compatibility
-            bc_type_val = self._get_boundary_condition_property("type", "neumann")
-            bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else "neumann"
-            bc_values = self._get_boundary_condition_property("value", 0.0)
+            # Get BC type - will raise error if not specified
+            bc_type_val = self._get_boundary_condition_property("type")
+            global_bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else bc_type_val
+            bc_values = self._get_boundary_condition_property("value")
 
-        if bc_type == "dirichlet":
-            # For collocation points on boundaries, enforce Dirichlet values
+        # For per-point BC, apply Dirichlet only at exit points
+        if use_per_point_bc:
+            for i in self.boundary_indices:
+                bc_type = self._get_bc_type_for_point(i)
+                if bc_type == "dirichlet":
+                    if callable(bc_values):
+                        current_time = self.problem.T * time_idx / self.problem.Nt
+                        u[i] = bc_values(self.collocation_points[i], current_time)
+                    else:
+                        u[i] = float(bc_values) if bc_values else 0.0
+        elif global_bc_type == "dirichlet":
+            # Uniform Dirichlet: apply to all boundary points
             if callable(bc_values):
-                # Time-dependent or space-dependent BC
                 current_time = self.problem.T * time_idx / self.problem.Nt
                 for i in self.boundary_indices:
                     u[i] = bc_values(self.collocation_points[i], current_time)
             else:
-                # Constant BC value
                 u[self.boundary_indices] = bc_values
         # For Neumann: no direct solution modification (enforced via residual)
 
@@ -1863,9 +2130,9 @@ class HJBGFDMSolver(GFDMInterpolationMixin, GFDMStencilMixin, GFDMBoundaryMixin,
             )
             return jacobian_bc, residual_bc
 
-        # Legacy path (deprecated)
-        bc_type_val = self._get_boundary_condition_property("type", "neumann")
-        bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else "neumann"
+        # Legacy path (deprecated) - BC required if boundary points exist
+        bc_type_val = self._get_boundary_condition_property("type")
+        bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else bc_type_val
 
         if bc_type == "dirichlet":
             for i in self.boundary_indices:

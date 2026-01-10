@@ -10,6 +10,13 @@ import scipy.sparse as sparse
 from mfg_pde.alg.base_solver import BaseNumericalSolver
 from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, has_nan_or_inf
 from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
+
+if TYPE_CHECKING:
+    from mfg_pde.geometry.boundary import BoundaryConditions
+
+# BC-aware gradient computation (Issue #542 fix)
+# Validated in: mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
+from mfg_pde.utils.numerical.tensor_calculus import gradient as tensor_gradient
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
 
 logger = logging.getLogger(__name__)
@@ -23,6 +30,219 @@ if TYPE_CHECKING:
 
 # Clipping limit for p_values ONLY when using numerical FD for Jacobian H-part (fallback)
 P_VALUE_CLIP_LIMIT_FD_JAC = 1e6
+
+
+def _compute_gradient_array_1d(
+    U_array: np.ndarray,
+    Dx: float,
+    bc: BoundaryConditions | None = None,
+    upwind: bool = False,
+    time: float = 0.0,
+) -> np.ndarray:
+    """
+    Compute gradient for entire 1D array using BC-aware computation.
+
+    Uses tensor_calculus.gradient() with proper boundary condition handling.
+    Falls back to periodic BC if bc is None (backward compatibility).
+
+    Args:
+        U_array: Solution array of shape (Nx,)
+        Dx: Spatial grid spacing
+        bc: Boundary conditions. If None, uses periodic BC.
+        upwind: If True, use upwind scheme for HJB stability
+        time: Current time for time-dependent BCs
+
+    Returns:
+        Gradient array of shape (Nx,) with du/dx at each point
+
+    Note:
+        Issue #542 fix. Validated in:
+        mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
+        Achieves 23x error reduction (47.98% -> 2.06%) for Tower-on-Beach problem.
+    """
+    Nx = len(U_array)
+    if Nx <= 1 or abs(Dx) < 1e-14:
+        return np.zeros(Nx)
+
+    scheme = "upwind" if upwind else "central"
+    # tensor_gradient handles bc=None by using periodic BC
+    grads = tensor_gradient(U_array, spacings=[Dx], scheme=scheme, bc=bc, time=time)
+    return grads[0]  # First component for 1D
+
+
+def _compute_laplacian_1d(
+    U_array: np.ndarray,
+    Dx: float,
+    bc: BoundaryConditions | None = None,
+    domain_bounds: np.ndarray | None = None,
+    time: float = 0.0,
+) -> np.ndarray:
+    """
+    Compute Laplacian for entire 1D array using BC-aware ghost cell method.
+
+    Uses specialized ghost values for Laplacian stencil (different from gradient):
+    - Neumann (du/dx=g): ghost = U[1] - 2*Dx*g (reflection with flux offset)
+    - Dirichlet (u=g): ghost = 2*g - U[adjacent] (linear extrapolation)
+
+    Falls back to periodic BC if bc is None (backward compatibility).
+
+    Args:
+        U_array: Solution array of shape (Nx,)
+        Dx: Spatial grid spacing
+        bc: Boundary conditions. If None, uses periodic BC.
+        domain_bounds: Domain bounds for BC computation (optional, unused here)
+        time: Current time for time-dependent BCs
+
+    Returns:
+        Laplacian array of shape (Nx,) with d^2u/dx^2 at each point
+
+    Note:
+        Issue #542 fix. Validated in:
+        mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
+    """
+    Nx = len(U_array)
+    if Nx <= 1 or abs(Dx) < 1e-14:
+        return np.zeros(Nx)
+
+    if bc is not None:
+        # Compute ghost values specifically for Laplacian stencil
+        # These differ from gradient ghost values!
+        ghost_left, ghost_right = _compute_laplacian_ghost_values_1d(U_array, bc, Dx, time)
+
+        # Build padded array
+        U_padded = np.concatenate([[ghost_left], U_array, [ghost_right]])
+
+        # Standard 3-point Laplacian stencil
+        laplacian = (U_padded[:-2] - 2 * U_padded[1:-1] + U_padded[2:]) / (Dx**2)
+    else:
+        # Periodic BC when no BC specified (backward compatibility)
+        U_left = np.roll(U_array, 1)
+        U_right = np.roll(U_array, -1)
+        laplacian = (U_left - 2 * U_array + U_right) / (Dx**2)
+    return laplacian
+
+
+def _compute_laplacian_ghost_values_1d(
+    U_array: np.ndarray,
+    bc: BoundaryConditions,
+    Dx: float,
+    time: float = 0.0,
+) -> tuple[float, float]:
+    """
+    Compute ghost values for Laplacian stencil at left and right boundaries.
+
+    For second-derivative stencil (U[i-1] - 2*U[i] + U[i+1]) / dx^2:
+
+    Neumann BC (du/dx = g at boundary):
+        - For Laplacian symmetry at boundary, use reflection with flux:
+        - ghost = U[adjacent] - 2*dx*g (if g=0, ghost = U[adjacent])
+
+    Dirichlet BC (u = g at boundary):
+        - Linear extrapolation for second-order accuracy:
+        - ghost = 2*g - U[adjacent]
+
+    Args:
+        U_array: Solution array of shape (Nx,)
+        bc: Boundary conditions
+        Dx: Grid spacing
+        time: Current time for time-dependent BCs
+
+    Returns:
+        Tuple (ghost_left, ghost_right)
+    """
+    from mfg_pde.geometry.boundary.types import BCType
+
+    # Get BC types and values at each boundary
+    left_type, left_value = _get_bc_type_and_value_1d(bc, "left", time)
+    right_type, right_value = _get_bc_type_and_value_1d(bc, "right", time)
+
+    # Compute ghost for left boundary (x_min)
+    # For Laplacian, use standard FDM boundary stencils
+    if left_type == BCType.NEUMANN:
+        # For Neumann du/dx = g: ghost = U[0] + 2*dx*g (forward difference)
+        # This preserves the flux: (ghost - U[0])/(2*dx) ≈ g
+        # For g=0: ghost = U[0] (symmetric reflection)
+        ghost_left = U_array[0] + 2 * Dx * left_value
+    elif left_type == BCType.DIRICHLET:
+        # For Dirichlet u(0) = g: ghost = 2*g - U[0] (linear extrapolation)
+        ghost_left = 2 * left_value - U_array[0]
+    else:  # Periodic or unknown - fall back to periodic
+        ghost_left = U_array[-1]
+
+    # Compute ghost for right boundary (x_max)
+    if right_type == BCType.NEUMANN:
+        # For Neumann du/dx = g: ghost = U[-1] + 2*dx*g (backward difference)
+        # For g=0: ghost = U[-1] (symmetric reflection)
+        ghost_right = U_array[-1] + 2 * Dx * right_value
+    elif right_type == BCType.DIRICHLET:
+        # For Dirichlet u(L) = g: ghost = 2*g - U[-1] (linear extrapolation)
+        ghost_right = 2 * right_value - U_array[-1]
+    else:  # Periodic or unknown - fall back to periodic
+        ghost_right = U_array[0]
+
+    return ghost_left, ghost_right
+
+
+def _get_bc_type_and_value_1d(
+    bc: BoundaryConditions,
+    side: str,
+    time: float = 0.0,
+) -> tuple:
+    """
+    Extract BC type and value for a given side from BoundaryConditions.
+
+    Args:
+        bc: Boundary conditions object
+        side: "left" or "right"
+        time: Current time for time-dependent BCs
+
+    Returns:
+        Tuple (BCType, value)
+    """
+    from mfg_pde.geometry.boundary.types import BCType
+
+    # Handle unified BoundaryConditions
+    boundary_key = "x_min" if side == "left" else "x_max"
+
+    # Try to get BC info from the unified interface
+    if hasattr(bc, "get_boundary_type"):
+        bc_type = bc.get_boundary_type(boundary_key)
+        bc_value = bc.get_boundary_value(boundary_key, time=time)
+        if bc_value is None:
+            bc_value = 0.0
+        return bc_type, bc_value
+
+    # Try segment-based access for mixed BCs
+    if hasattr(bc, "segments"):
+        for seg in bc.segments:
+            if seg.boundary == boundary_key:
+                value = seg.value
+                if callable(value):
+                    value = value(time)
+                return seg.bc_type, value if value is not None else 0.0
+        # If no matching segment, use default
+        if hasattr(bc, "default_type"):
+            value = bc.default_value if hasattr(bc, "default_value") else 0.0
+            return bc.default_type, value
+
+    # Legacy interface fallback
+    if hasattr(bc, "type"):
+        bc_type_str = bc.type
+        if bc_type_str == "neumann":
+            bc_type = BCType.NEUMANN
+        elif bc_type_str == "dirichlet":
+            bc_type = BCType.DIRICHLET
+        else:
+            bc_type = BCType.PERIODIC
+
+        if side == "left":
+            value = getattr(bc, "left_value", 0.0)
+        else:
+            value = getattr(bc, "right_value", 0.0)
+        return bc_type, value if value is not None else 0.0
+
+    # Default to Neumann zero
+    return BCType.NEUMANN, 0.0
 
 
 class BaseHJBSolver(BaseNumericalSolver):
@@ -202,6 +422,7 @@ def _calculate_derivatives(
     clip: bool = False,
     clip_limit: float = P_VALUE_CLIP_LIMIT_FD_JAC,
     upwind: bool = False,
+    precomputed_gradient: np.ndarray | None = None,
 ) -> dict[tuple[int], float]:
     """
     Calculate derivatives using standard tuple multi-index notation.
@@ -222,6 +443,9 @@ def _calculate_derivatives(
         clip: Whether to clip derivative values
         clip_limit: Maximum absolute value for clipping
         upwind: If True, use Godunov upwind discretization for HJB stability
+        precomputed_gradient: Optional precomputed gradient array from _compute_gradient_array_1d.
+                              If provided, uses this instead of local computation.
+                              This enables BC-aware gradients (Issue #542 fix).
 
     Returns:
         Dictionary with tuple keys: {(0,): u, (1,): p}
@@ -243,6 +467,16 @@ def _calculate_derivatives(
     if abs(Dx) < 1e-14:
         return {(0,): u_i, (1,): np.nan}
 
+    # Use precomputed gradient if available (Issue #542 fix for BC-aware computation)
+    if precomputed_gradient is not None:
+        p_value = float(precomputed_gradient[i])
+        if np.isnan(p_value) or np.isinf(p_value):
+            return {(0,): u_i, (1,): np.nan}
+        if clip:
+            p_value = np.clip(p_value, -clip_limit, clip_limit)
+        return {(0,): u_i, (1,): p_value}
+
+    # Legacy path: compute derivatives locally with periodic BC (% Nx indexing)
     # Extract neighbor values
     if hasattr(U_array[(i + 1) % Nx], "item"):
         u_ip1 = U_array[(i + 1) % Nx].item()
@@ -340,6 +574,9 @@ def compute_hjb_residual(
     backend=None,  # Backend for MPS/CUDA support
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
+    bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
+    domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
+    current_time: float = 0.0,  # Current time for time-dependent BCs
 ) -> np.ndarray:
     Nx = problem.geometry.get_grid_shape()[0]
     dx = problem.geometry.get_grid_spacing()[0]
@@ -383,19 +620,17 @@ def compute_hjb_residual(
     if abs(dx) > 1e-14 and Nx > 1:
         # Use backend-aware roll operation
         if backend is not None and hasattr(U_n_current_newton_iterate, "roll"):
-            # PyTorch tensors have .roll() method
+            # PyTorch tensors have .roll() method (no BC support for GPU yet)
             U_xx = (
                 U_n_current_newton_iterate.roll(-1)
                 - 2 * U_n_current_newton_iterate
                 + U_n_current_newton_iterate.roll(1)
             ) / dx**2
         else:
-            # NumPy arrays use np.roll()
-            U_xx = (
-                np.roll(U_n_current_newton_iterate, -1)
-                - 2 * U_n_current_newton_iterate
-                + np.roll(U_n_current_newton_iterate, 1)
-            ) / dx**2
+            # NumPy: use BC-aware Laplacian (Issue #542 fix)
+            U_xx = _compute_laplacian_1d(
+                U_n_current_newton_iterate, dx, bc=bc, domain_bounds=domain_bounds, time=current_time
+            )
         if has_nan_or_inf(U_xx, backend):
             if backend is not None:
                 return backend.full((Nx,), float("nan"))
@@ -405,6 +640,14 @@ def compute_hjb_residual(
         # Apply diffusion term (NumPy broadcasts scalar automatically)
         # Works for both constant σ (scalar) and σ(x,t) (array)
         Phi_U += -(sigma**2 / 2.0) * U_xx
+
+    # Precompute BC-aware gradient for entire array (Issue #542 fix)
+    # This avoids repeated per-point computation with wrong BC
+    precomputed_grad = None
+    if bc is not None and backend is None:
+        precomputed_grad = _compute_gradient_array_1d(
+            U_n_current_newton_iterate, dx, bc=bc, upwind=use_upwind, time=current_time
+        )
 
     # For m-coupling term, original notebook passed gradUkn, gradUknim1 (from prev Picard iter)
     # but mdmH_withM itself didn't use them. We'll pass an empty dict for now.
@@ -419,7 +662,10 @@ def compute_hjb_residual(
         # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
         # Calculate derivatives using tuple notation (Phase 3 migration)
         # Use upwind for HJB FDM stability (Godunov upwind discretization)
-        derivs = _calculate_derivatives(U_n_current_newton_iterate, i, dx, Nx, clip=False, upwind=use_upwind)
+        # Pass precomputed_gradient for BC-aware computation (Issue #542 fix)
+        derivs = _calculate_derivatives(
+            U_n_current_newton_iterate, i, dx, Nx, clip=False, upwind=use_upwind, precomputed_gradient=precomputed_grad
+        )
 
         if np.any(np.isnan(list(derivs.values()))):
             Phi_U[i] = float("nan")
@@ -464,6 +710,9 @@ def compute_hjb_jacobian(
     backend=None,  # Backend for MPS/CUDA support
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
+    bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
+    domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
+    current_time: float = 0.0,  # Current time for time-dependent BCs
 ) -> sparse.csr_matrix:
     Nx = problem.geometry.get_grid_shape()[0]
     dx = problem.geometry.get_grid_spacing()[0]
@@ -525,6 +774,9 @@ def compute_hjb_jacobian(
         J_U += hamiltonian_jac_contrib.upper
     else:
         # Fallback to numerical Jacobian for H-part, using NumPy version
+        # Note: Numerical Jacobian uses local gradient computation for perturbed arrays.
+        # BC-aware gradient would require O(Nx^2) recomputation which is expensive.
+        # The analytical Jacobian path (above) is preferred for production use.
         for i in range(Nx):
             U_perturbed_p_i = U_n_np.copy()
             U_perturbed_p_i[i] += eps
@@ -669,6 +921,9 @@ def newton_hjb_step(
     backend=None,  # Add backend parameter for MPS/CUDA support
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
+    bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
+    domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
+    current_time: float = 0.0,  # Current time for time-dependent BCs
 ) -> tuple[np.ndarray, float]:
     dx = problem.geometry.get_grid_spacing()[0]
     dx_norm = dx if abs(dx) > 1e-12 else 1.0
@@ -685,6 +940,9 @@ def newton_hjb_step(
         backend,
         sigma_at_n,
         use_upwind,
+        bc=bc,
+        domain_bounds=domain_bounds,
+        current_time=current_time,
     )
     if has_nan_or_inf(residual_F_U, backend):
         return U_n_current_newton_iterate, np.inf
@@ -699,6 +957,9 @@ def newton_hjb_step(
         backend,
         sigma_at_n,
         use_upwind,
+        bc=bc,
+        domain_bounds=domain_bounds,
+        current_time=current_time,
     )
     if np.any(np.isnan(jacobian_J_U.data)) or np.any(np.isinf(jacobian_J_U.data)):
         return U_n_current_newton_iterate, np.inf
@@ -750,6 +1011,9 @@ def solve_hjb_timestep_newton(
     backend: BaseBackend | None = None,
     sigma_at_n: float | np.ndarray | None = None,  # Diffusion at time t_n
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
+    bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
+    domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
+    current_time: float = 0.0,  # Current time for time-dependent BCs
 ) -> np.ndarray:
     """
     Solve HJB timestep using Newton's method.
@@ -817,6 +1081,9 @@ def solve_hjb_timestep_newton(
             backend,  # Pass backend for MPS/CUDA support
             sigma_at_n,  # Pass diffusion field
             use_upwind,  # Pass advection scheme flag
+            bc=bc,
+            domain_bounds=domain_bounds,
+            current_time=current_time,
         )
 
         if has_nan_or_inf(U_n_next_newton_iterate, backend):
@@ -851,6 +1118,8 @@ def solve_hjb_system_backward(
     backend: BaseBackend | None = None,
     diffusion_field: float | np.ndarray | None = None,  # Diffusion field
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
+    bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
+    domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
 ) -> np.ndarray:
     """
     Solve HJB system backward in time using Newton's method.
@@ -944,6 +1213,9 @@ def solve_hjb_system_backward(
             if has_nan_or_inf(sigma_at_n, backend):
                 raise ValueError(f"Callable diffusion_field returned NaN/Inf at timestep {n_idx_hjb}")
 
+        # Compute current time for time-dependent BCs
+        current_time = n_idx_hjb * problem.dt
+
         U_new_n = solve_hjb_timestep_newton(
             U_n_plus_1_current_picard,  # U_new[n+1]
             U_n_prev_picard,  # U_k[n] (for Jacobian)
@@ -955,6 +1227,9 @@ def solve_hjb_system_backward(
             backend=backend,  # Pass backend for acceleration
             sigma_at_n=sigma_at_n,  # Pass diffusion at time n
             use_upwind=use_upwind,  # Pass advection scheme flag
+            bc=bc,  # Pass BC for Issue #542 fix
+            domain_bounds=domain_bounds,
+            current_time=current_time,
         )
         backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_new_n, backend)
 

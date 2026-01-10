@@ -334,7 +334,23 @@ class HJBFDMSolver(BaseHJBSolver):
                 )
 
         if self.dimension == 1:
-            # Use optimized 1D solver
+            # Extract BC from geometry for Issue #542 fix
+            # Direct attribute takes priority (user-set via geom.boundary_conditions = ...)
+            # Method accessor may return default BC when _boundary_conditions is None
+            bc = None
+            domain_bounds = None
+            if hasattr(self.problem, "geometry"):
+                geom = self.problem.geometry
+                if hasattr(geom, "boundary_conditions"):
+                    bc = geom.boundary_conditions
+                if bc is None and hasattr(geom, "get_boundary_conditions"):
+                    bc = geom.get_boundary_conditions()
+                if hasattr(geom, "get_bounds"):
+                    bounds = geom.get_bounds()
+                    # Convert to (1, 2) array for 1D
+                    domain_bounds = np.array([[bounds[0][0], bounds[1][0]]])
+
+            # Use optimized 1D solver with BC-aware computation (Issue #542 fix)
             return base_hjb.solve_hjb_system_backward(
                 M_density_from_prev_picard=M_density,
                 U_final_condition_at_T=U_terminal,
@@ -345,6 +361,8 @@ class HJBFDMSolver(BaseHJBSolver):
                 backend=self.backend,
                 diffusion_field=diffusion_field,
                 use_upwind=self.use_upwind,
+                bc=bc,
+                domain_bounds=domain_bounds,
             )
         else:
             # Use nD solver with centralized nonlinear solver
@@ -657,11 +675,17 @@ class HJBFDMSolver(BaseHJBSolver):
             return None
 
         # Check if geometry has boundary conditions
+        # Direct attribute takes priority (user-set via grid.boundary_conditions = ...)
+        # Method accessor may return default BC when _boundary_conditions is None
         bc = None
         if hasattr(self.grid, "boundary_conditions"):
             bc = self.grid.boundary_conditions
-        elif hasattr(self.problem, "boundary_conditions"):
+        if bc is None and hasattr(self.grid, "get_boundary_conditions"):
+            bc = self.grid.get_boundary_conditions()
+        if bc is None and hasattr(self.problem, "boundary_conditions"):
             bc = self.problem.boundary_conditions
+        if bc is None and hasattr(self.problem, "get_boundary_conditions"):
+            bc = self.problem.get_boundary_conditions()
 
         if bc is None:
             self._warn_no_bc_once("no boundary_conditions attribute")
