@@ -335,6 +335,16 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         self.obstacles = []
         self.geometry_projector = None  # Will be set if dual geometries provided
 
+        # Initialize legacy override attributes (Issue #543 - Step 2)
+        # These support deprecated parameter API and will be removed in #544
+        self._xmin_override = None
+        self._xmax_override = None
+        self._Lx_override = None
+        self._Nx_override = None
+        self._dx_override = None
+        self._xSpace_override = None
+        self._grid_override = None
+
         if hjb_geometry is not None and fp_geometry is not None:
             # Dual geometry mode: separate geometries for HJB and FP
             if geometry is not None:
@@ -1118,7 +1128,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             DeprecationWarning,
             stacklevel=2,
         )
-        if hasattr(self, "_Lx_override"):
+        if self._Lx_override is not None:
             return self._Lx_override
         if self.geometry is not None and self.dimension == 1:
             bounds = self.geometry.get_bounds()
@@ -1153,7 +1163,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             DeprecationWarning,
             stacklevel=2,
         )
-        if hasattr(self, "_Nx_override"):
+        if self._Nx_override is not None:
             return self._Nx_override
         if self.geometry is not None and self.dimension == 1:
             # Nx is number of intervals, num_spatial_points is number of points
@@ -1187,7 +1197,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             DeprecationWarning,
             stacklevel=2,
         )
-        if hasattr(self, "_dx_override"):
+        if self._dx_override is not None:
             return self._dx_override
         if self.geometry is not None and self.dimension == 1:
             from mfg_pde.geometry import TensorProductGrid
@@ -1230,7 +1240,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             DeprecationWarning,
             stacklevel=2,
         )
-        if hasattr(self, "_xSpace_override"):
+        if self._xSpace_override is not None:
             return self._xSpace_override
         if self.geometry is not None:
             return self.geometry.get_spatial_grid()
@@ -1263,7 +1273,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             DeprecationWarning,
             stacklevel=2,
         )
-        if hasattr(self, "_grid_override"):
+        if self._grid_override is not None:
             return self._grid_override
         return self.geometry
 
