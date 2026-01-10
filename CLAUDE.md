@@ -642,9 +642,22 @@ Self-governance for disciplined changes:
 1. **Propose in Issue**: Document reasoning in GitHub issue
 2. **Implement in PR**: Work in feature branch, submit PR
 3. **AI-Assisted Review**: Self-review with AI against standards
-4. **Merge on Pass**: Merge only after all checks pass
+4. **Verify Issue Completion**: Before closing an issue or creating PR, verify EVERY point mentioned in the issue has been solved/discussed/treated
+5. **Merge on Pass**: Merge only after all checks pass
 
 Enforce with GitHub branch protection rules on `main`.
+
+### **Issue Completion Verification** ⚠️ **CRITICAL**
+
+Before marking an issue as complete or creating a PR:
+
+1. **Read the original issue** - Don't rely on memory or commit messages
+2. **Check every acceptance criterion** - All checkboxes must be addressed
+3. **Verify all discussion points** - Each question answered or documented
+4. **Confirm scope completeness** - All subtasks, not just main objective
+5. **Document any deviations** - If scope changed, update issue before closing
+
+**Anti-pattern**: Closing issues based on commit messages without re-reading the original issue requirements.
 
 ---
 

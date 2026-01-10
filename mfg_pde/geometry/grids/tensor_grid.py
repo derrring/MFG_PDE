@@ -610,6 +610,32 @@ class TensorProductGrid(CartesianGrid):
         """
         return tuple(self._Nx_points)
 
+    def get_collocation_points(self) -> np.ndarray:
+        """
+        Get flattened grid points as collocation points.
+
+        Returns:
+            Array of shape (N, d) where N is total number of grid points
+            and d is the spatial dimension.
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[5])
+            >>> points = grid.get_collocation_points()
+            >>> points.shape
+            (5, 1)
+            >>> points[:,0]  # x-coordinates
+            array([0.  , 0.25, 0.5 , 0.75, 1.  ])
+        """
+        # Get spatial grid - already returns (N, d) for all dimensions
+        spatial_grid = self.get_spatial_grid()
+
+        # For 1D, ensure (N, 1) shape
+        if self.dimension == 1:
+            return spatial_grid.reshape(-1, 1)
+        else:
+            # For d>1, get_spatial_grid() already returns (N, d)
+            return spatial_grid
+
     # ============================================================================
     # Solver Operation Interface (NEW - from Geometry ABC)
     # ============================================================================
