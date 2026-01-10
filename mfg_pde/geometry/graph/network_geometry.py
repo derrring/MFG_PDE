@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from scipy.sparse import csr_matrix, diags
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -55,6 +57,9 @@ try:
 except ImportError:
     IGRAPH_AVAILABLE = False
     ig = None
+
+# Module logger
+logger = get_logger(__name__)
 
 
 class NetworkType(Enum):
@@ -1254,8 +1259,15 @@ def compute_network_statistics(network_data: NetworkData) -> dict[str, float]:
                     "largest_eigenvalue": eigenvals[-1],
                 }
             )
-    except Exception:
-        # Skip spectral analysis if it fails
-        pass
+    except (ValueError, np.linalg.LinAlgError, MemoryError) as e:
+        # Issue #547: Replace silent fallback with logged warning
+        # Spectral analysis can fail for large graphs or numerical issues
+        logger.warning(
+            "Spectral analysis failed for network with %d nodes: %s. "
+            "Spectral properties will be omitted from statistics.",
+            network_data.num_nodes,
+            e,
+        )
+        stats["spectral_analysis_failed"] = True
 
     return stats
