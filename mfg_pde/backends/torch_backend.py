@@ -17,7 +17,12 @@ from typing import Any
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 from .base_backend import BaseBackend
+
+# Module logger
+logger = get_logger(__name__)
 
 # PyTorch imports with graceful fallback
 try:
@@ -38,9 +43,12 @@ try:
             test_tensor = torch.tensor([1.0], device="mps")
             MPS_FUNCTIONAL = True
             del test_tensor
-        except Exception:
+        except (RuntimeError, TypeError) as e:
+            # Issue #547: MPS device creation can fail even when detected
             MPS_FUNCTIONAL = False
-            warnings.warn("MPS detected but not functional, falling back to CPU")
+            warnings.warn(
+                f"MPS device detected but not functional ({type(e).__name__}): {e}. Falling back to CPU.", stacklevel=2
+            )
     else:
         MPS_FUNCTIONAL = False
 
@@ -478,7 +486,14 @@ class TorchBackend(BaseBackend):
         if hasattr(torch, "vmap"):
             try:
                 return torch.vmap(func)
-            except Exception:
+            except (AttributeError, TypeError, RuntimeError) as e:
+                # Issue #547: vmap can fail for incompatible function signatures
+                logger.debug(
+                    "torch.vmap failed for function %s: %s. "
+                    "Using non-vectorized version (performance may be degraded).",
+                    getattr(func, "__name__", repr(func)),
+                    e,
+                )
                 return func
         return func
 

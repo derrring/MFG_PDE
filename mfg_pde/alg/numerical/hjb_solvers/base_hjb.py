@@ -987,8 +987,16 @@ def newton_hjb_step(
         else:
             l2_error_of_step = np.linalg.norm(delta_U) * np.sqrt(dx_norm)
 
-    except Exception:
-        pass
+    except (ValueError, RuntimeError) as e:
+        # Issue #547: Replace silent fallback with logged warning
+        # Sparse solver can fail due to singular matrix, shape mismatch, etc.
+        logger.warning(
+            "Newton iteration linear solve failed: %s. "
+            "Using zero update (delta_U = 0) for this step. "
+            "This may indicate numerical instability.",
+            e,
+        )
+        # delta_U already initialized to zeros above, l2_error_of_step = inf
 
     max_delta_u_norm = 1e2
     current_delta_u_norm = np.linalg.norm(delta_U) * np.sqrt(dx_norm)

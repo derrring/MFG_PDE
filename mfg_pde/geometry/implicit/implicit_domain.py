@@ -26,6 +26,10 @@ from numpy.typing import NDArray
 
 from mfg_pde.geometry.base import ImplicitGeometry
 from mfg_pde.geometry.protocol import GeometryType
+from mfg_pde.utils.mfg_logging import get_logger
+
+# Module logger
+logger = get_logger(__name__)
 
 
 class ImplicitDomain(ImplicitGeometry):
@@ -83,7 +87,14 @@ class ImplicitDomain(ImplicitGeometry):
             h = 0.1  # Typical mesh spacing
             n_points = int(volume / (h**self.dimension))
             return max(n_points, 100)  # Minimum of 100 points
-        except Exception:
+        except (ValueError, RuntimeError) as e:
+            # Issue #547: Volume computation can fail for complex implicit domains
+            logger.warning(
+                "Volume computation failed for %dD implicit domain: %s. "
+                "Using bounding box approximation (may overestimate point count).",
+                self.dimension,
+                e,
+            )
             # Fallback: use bounding box
             bounds = self.get_bounding_box()
             bbox_volume = np.prod(bounds[:, 1] - bounds[:, 0])
