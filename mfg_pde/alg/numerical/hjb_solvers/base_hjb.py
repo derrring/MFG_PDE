@@ -225,8 +225,9 @@ def _get_bc_type_and_value_1d(
             value = bc.default_value if hasattr(bc, "default_value") else 0.0
             return bc.default_type, value
 
-    # Legacy interface fallback
-    if hasattr(bc, "type"):
+    # Legacy interface fallback (only for uniform BC)
+    # Note: For mixed BC, bc.type raises ValueError - this is intentional design
+    try:
         bc_type_str = bc.type
         if bc_type_str == "neumann":
             bc_type = BCType.NEUMANN
@@ -240,6 +241,9 @@ def _get_bc_type_and_value_1d(
         else:
             value = getattr(bc, "right_value", 0.0)
         return bc_type, value if value is not None else 0.0
+    except (AttributeError, ValueError):
+        # Mixed BC or no type attribute - fall through to default
+        pass
 
     # Default to Neumann zero
     return BCType.NEUMANN, 0.0
