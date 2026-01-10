@@ -327,7 +327,12 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         else:
             xmax_normalized = None
 
-        # Handle dual geometry specification (Issue #257)
+        # Initialize geometry-related attributes explicitly (Issue #543 - fail-fast principle)
+        # These may be set by init methods, but should have explicit defaults
+        self.hjb_geometry = None  # type: GeometryProtocol | None
+        self.fp_geometry = None  # type: GeometryProtocol | None
+        self.has_obstacles = False
+        self.obstacles = []
         self.geometry_projector = None  # Will be set if dual geometries provided
 
         if hjb_geometry is not None and fp_geometry is not None:
@@ -424,15 +429,14 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         # Store dual geometries (Issue #257)
         # For unified mode, both point to self.geometry (set by init methods)
-        # For dual mode, these were already computed above
-        if not hasattr(self, "hjb_geometry"):
+        # For dual mode, these were already set above (lines 406-407)
+        # Issue #543: Explicit None check instead of hasattr
+        if self.hjb_geometry is None:
             self.hjb_geometry = getattr(self, "geometry", None)
             self.fp_geometry = getattr(self, "geometry", None)
 
-        # Ensure has_obstacles is initialized (default to False if not set by specific init methods)
-        if not hasattr(self, "has_obstacles"):
-            self.has_obstacles = False
-            self.obstacles = []
+        # Note: has_obstacles and obstacles already initialized explicitly (lines 334-335)
+        # Specialized init methods may override these defaults
 
         # Store custom components if provided
         self.components = components
