@@ -599,6 +599,88 @@ class Geometry(ABC):
 
         return regions
 
+    # =========================================================================
+    # Boundary Helper Methods (Added for Issue #545 - Unified BC Workflow)
+    # =========================================================================
+    # These methods provide convenient access to boundary information by
+    # wrapping the core boundary methods (is_on_boundary, get_boundary_normal).
+    # Default implementations work for all geometries - no need to override.
+    # =========================================================================
+
+    def get_boundary_indices(
+        self,
+        points: NDArray,
+        tolerance: float = 1e-10,
+    ) -> NDArray:
+        """
+        Get indices of points that lie on the domain boundary.
+
+        This is a convenience method that wraps `is_on_boundary()` and returns
+        indices instead of a boolean array. Simplifies solver BC detection workflow.
+
+        Args:
+            points: Array of shape (n, d) - points to check
+            tolerance: Distance tolerance for boundary detection
+
+        Returns:
+            Array of indices (1D integer array) of boundary points
+
+        Example:
+            >>> geometry = TensorGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=50, Ny=50)
+            >>> collocation_points = geometry.get_collocation_points()
+            >>> boundary_indices = geometry.get_boundary_indices(collocation_points)
+            >>> boundary_points = collocation_points[boundary_indices]
+
+        Added:
+            v0.16.17 for Issue #545 (Unified BC workflow)
+        """
+        on_boundary = self.is_on_boundary(points, tolerance)
+        return np.where(on_boundary)[0]
+
+    def get_boundary_info(
+        self,
+        points: NDArray,
+        tolerance: float = 1e-10,
+    ) -> tuple[NDArray, NDArray]:
+        """
+        Get boundary indices and outward normals in one call.
+
+        Convenience method combining `get_boundary_indices()` and
+        `get_boundary_normal()` for common solver workflow.
+
+        Args:
+            points: Array of shape (n, d) - points to check
+            tolerance: Distance tolerance for boundary detection
+
+        Returns:
+            Tuple of (boundary_indices, normals):
+            - boundary_indices: Array of shape (m,) - indices of boundary points
+            - normals: Array of shape (m, d) - outward unit normals at boundary points
+
+        Example:
+            >>> geometry = TensorGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=50, Ny=50)
+            >>> collocation_points = geometry.get_collocation_points()
+            >>> boundary_indices, normals = geometry.get_boundary_info(collocation_points)
+            >>>
+            >>> # Apply boundary reflection (particle solver)
+            >>> for idx, normal in zip(boundary_indices, normals):
+            ...     velocities[idx] = reflect_velocity(velocities[idx], normal)
+
+        Added:
+            v0.16.17 for Issue #545 (Unified BC workflow)
+        """
+        boundary_indices = self.get_boundary_indices(points, tolerance)
+
+        if len(boundary_indices) == 0:
+            # No boundary points - return empty arrays
+            return boundary_indices, np.array([], dtype=np.float64).reshape(0, self.dimension)
+
+        # Get normals for boundary points
+        boundary_points = points[boundary_indices]
+        normals = self.get_boundary_normal(boundary_points)
+
+        return boundary_indices, normals
+
 
 # ============================================================================
 # Intermediate Abstract Base Classes

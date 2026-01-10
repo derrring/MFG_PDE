@@ -257,6 +257,29 @@ class PointCloudGeometry:
         """
         return None
 
+    # Boundary Helper Methods (Added for Issue #545 - Unified BC Workflow)
+    def get_boundary_indices(
+        self,
+        points: NDArray[np.floating],
+        tolerance: float = 1e-10,
+    ) -> NDArray[np.intp]:
+        """Get indices of boundary points (default implementation)."""
+        on_boundary = self.is_on_boundary(points, tolerance)
+        return np.where(on_boundary)[0]
+
+    def get_boundary_info(
+        self,
+        points: NDArray[np.floating],
+        tolerance: float = 1e-10,
+    ) -> tuple[NDArray[np.intp], NDArray[np.floating]]:
+        """Get boundary indices and normals (default implementation)."""
+        boundary_indices = self.get_boundary_indices(points, tolerance)
+        if len(boundary_indices) == 0:
+            return boundary_indices, np.array([], dtype=np.float64).reshape(0, self.dimension)
+        boundary_points = points[boundary_indices]
+        normals = self.get_boundary_normal(boundary_points)
+        return boundary_indices, normals
+
     def get_collocation_points(self) -> NDArray[np.floating]:
         """
         Get collocation points (the point cloud itself).
