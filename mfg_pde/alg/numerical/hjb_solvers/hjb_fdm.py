@@ -522,6 +522,11 @@ class HJBFDMSolver(BaseHJBSolver):
                 stacklevel=2,
             )
 
+        # Enforce BC on solution (Issue #542 - nD extension)
+        # BC-aware gradients use ghost cells for derivatives, but boundary values must be explicitly set
+        # This extends the 1D fix from base_hjb.py to nD FDM solver path
+        U_solution = self._enforce_boundary_conditions(U_solution, time=time)
+
         return U_solution
 
     def _compute_gradients_nd(self, U: NDArray, time: float = 0.0) -> dict[int, NDArray]:
@@ -723,6 +728,168 @@ class HJBFDMSolver(BaseHJBSolver):
                 stacklevel=4,
             )
             self._bc_warning_emitted = True
+
+    def _enforce_boundary_conditions(self, U: NDArray, time: float = 0.0) -> NDArray:
+        """
+        Enforce boundary conditions on solution array (Issue #542 - nD extension).
+
+        BC-aware gradients use ghost cells for computing derivatives, but boundary
+        values themselves must be explicitly set to satisfy Dirichlet/Neumann conditions.
+
+        This extends the 1D fix from base_hjb.py:1109-1156 to nD FDM solver path.
+
+        Args:
+            U: Solution array to enforce BC on
+            time: Current time for time-dependent BC values
+
+        Returns:
+            Solution array with BC enforced at boundaries
+        """
+        # Try to get boundary conditions from geometry
+        # Check both self.grid (if set) and self.problem.geometry
+        bc = None
+        geometry = None
+
+        if hasattr(self, "grid") and self.grid is not None:
+            geometry = self.grid
+        elif hasattr(self, "problem") and hasattr(self.problem, "geometry"):
+            geometry = self.problem.geometry
+
+        if geometry is not None:
+            # Try to get BC via method or property
+            if hasattr(geometry, "get_boundary_conditions"):
+                bc = geometry.get_boundary_conditions()
+            elif hasattr(geometry, "boundary_conditions"):
+                bc = geometry.boundary_conditions
+            elif hasattr(geometry, "_boundary_conditions"):
+                bc = geometry._boundary_conditions
+
+        if bc is None:
+            # No BC to enforce (falls back to periodic or one-sided stencils)
+            return U
+
+        # Import BC types
+        from mfg_pde.geometry.boundary.types import BCType
+
+        # Enforce BC for each segment
+        for segment in bc.segments:
+            # Parse boundary identifier to get dimension and side
+            boundary_id = segment.boundary
+            if boundary_id is None:
+                continue
+
+            # Map boundary string to (dimension, side)
+            # e.g., "x_min" → (0, 'min'), "y_max" → (1, 'max')
+            dim, side = self._parse_boundary_identifier(boundary_id)
+            if dim is None:
+                continue  # Unrecognized boundary format
+
+            # Get BC value (time-dependent or constant)
+            if callable(segment.value):
+                bc_value = segment.value(time)
+            else:
+                bc_value = segment.value
+
+            # Get grid spacing for this dimension
+            h = self.spacing[dim]
+
+            # Enforce BC based on type
+            if segment.bc_type == BCType.DIRICHLET:
+                # Dirichlet: Set boundary values directly u(boundary) = g
+                self._apply_dirichlet_bc_nd(U, dim, side, bc_value)
+
+            elif segment.bc_type == BCType.NEUMANN:
+                # Neumann: Set boundary value to satisfy gradient constraint ∂u/∂n = g
+                self._apply_neumann_bc_nd(U, dim, side, bc_value, h)
+
+        return U
+
+    def _parse_boundary_identifier(self, boundary_id: str) -> tuple[int | None, str | None]:
+        """
+        Parse boundary identifier string to (dimension, side).
+
+        Examples:
+            "x_min" → (0, 'min')
+            "y_max" → (1, 'max')
+            "z_min" → (2, 'min')
+
+        Returns:
+            (dimension_index, 'min' or 'max') or (None, None) if unrecognized
+        """
+        if not isinstance(boundary_id, str):
+            return None, None
+
+        # Parse format: "{axis}_{side}" e.g., "x_min", "y_max"
+        parts = boundary_id.lower().split("_")
+        if len(parts) != 2:
+            return None, None
+
+        axis, side = parts
+
+        # Map axis to dimension index
+        axis_map = {"x": 0, "y": 1, "z": 2}
+        if axis not in axis_map:
+            return None, None
+
+        dim = axis_map[axis]
+
+        # Validate side
+        if side not in ["min", "max"]:
+            return None, None
+
+        return dim, side
+
+    def _apply_dirichlet_bc_nd(self, U: NDArray, dim: int, side: str, value: float) -> None:
+        """
+        Apply Dirichlet BC to nD array along specified dimension and side.
+
+        Sets U[boundary_slice] = value where boundary_slice selects the appropriate
+        boundary face (e.g., U[0, :, :] for x_min in 3D).
+
+        Args:
+            U: Solution array (modified in-place)
+            dim: Dimension index (0=x, 1=y, 2=z)
+            side: 'min' or 'max'
+            value: Dirichlet boundary value
+        """
+        # Create slice for boundary
+        slices = [slice(None)] * self.dimension
+        if side == "min":
+            slices[dim] = 0
+        else:  # max
+            slices[dim] = -1
+
+        U[tuple(slices)] = value
+
+    def _apply_neumann_bc_nd(self, U: NDArray, dim: int, side: str, grad_value: float, h: float) -> None:
+        """
+        Apply Neumann BC to nD array along specified dimension and side.
+
+        For Neumann BC ∂u/∂n = g, set boundary value to satisfy gradient constraint:
+        - min side: u[0] = u[1] - g*h  (forward difference)
+        - max side: u[-1] = u[-2] + g*h  (backward difference)
+
+        Args:
+            U: Solution array (modified in-place)
+            dim: Dimension index (0=x, 1=y, 2=z)
+            side: 'min' or 'max'
+            grad_value: Neumann BC gradient value
+            h: Grid spacing in this dimension
+        """
+        # Create slices for boundary and interior neighbor
+        boundary_slices = [slice(None)] * self.dimension
+        neighbor_slices = [slice(None)] * self.dimension
+
+        if side == "min":
+            # Left boundary: u[0, :, :] = u[1, :, :] - g*h
+            boundary_slices[dim] = 0
+            neighbor_slices[dim] = 1
+            U[tuple(boundary_slices)] = U[tuple(neighbor_slices)] - grad_value * h
+        else:  # max
+            # Right boundary: u[-1, :, :] = u[-2, :, :] + g*h
+            boundary_slices[dim] = -1
+            neighbor_slices[dim] = -2
+            U[tuple(boundary_slices)] = U[tuple(neighbor_slices)] + grad_value * h
 
     def _evaluate_hamiltonian_nd(
         self,
