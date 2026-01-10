@@ -131,5 +131,75 @@ class TestDeprecatedParameters:
             FPParticleSolver(problem, mode="unknown")
 
 
+class TestBoundaryConditionRequirements:
+    """Test BC requirement enforcement (Issue #545)."""
+
+    def test_fp_particle_requires_boundary_conditions(self):
+        """Test that FPParticleSolver fails fast without BCs."""
+        from unittest.mock import Mock
+
+        # Create minimal mock problem without geometry.get_boundary_conditions()
+        mock_geometry = Mock(spec=[])  # Empty spec - no methods
+        mock_problem = Mock()
+        mock_problem.geometry = mock_geometry
+        mock_problem.T = 1.0
+        mock_problem.Nt = 10
+        mock_problem.dimension = 1
+
+        # Should fail fast when geometry lacks get_boundary_conditions()
+        with pytest.raises(ValueError, match="requires explicit boundary conditions"):
+            FPParticleSolver(mock_problem, num_particles=100)
+
+    def test_fp_particle_with_geometry_bc(self):
+        """Test FPParticleSolver with geometry-provided BCs."""
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import dirichlet_bc
+
+        # Geometry with BCs
+        geometry = TensorProductGrid(
+            dimension=1,
+            bounds=[(0, 1)],
+            Nx_points=[11],
+            boundary_conditions=dirichlet_bc(dimension=1, value=0.0),
+        )
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+
+        # Should work
+        solver = FPParticleSolver(problem, num_particles=100)
+        assert solver.boundary_conditions is not None
+
+    def test_fp_particle_with_explicit_bc_parameter(self):
+        """Test FPParticleSolver with explicit BC parameter."""
+        from mfg_pde.geometry.boundary import periodic_bc
+
+        # Problem without geometry
+        problem = MFGProblem(T=1.0, Nt=10)
+
+        # Should work with explicit BC
+        bc = periodic_bc(dimension=1)
+        solver = FPParticleSolver(problem, num_particles=100, boundary_conditions=bc)
+        assert solver.boundary_conditions is bc
+
+    def test_fp_particle_bc_parameter_takes_priority(self):
+        """Test that explicit BC parameter overrides geometry BC."""
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import dirichlet_bc, periodic_bc
+
+        # Geometry with Dirichlet BC
+        geometry = TensorProductGrid(
+            dimension=1,
+            bounds=[(0, 1)],
+            Nx_points=[11],
+            boundary_conditions=dirichlet_bc(dimension=1, value=0.0),
+        )
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+
+        # Explicit periodic BC should take priority
+        bc = periodic_bc(dimension=1)
+        solver = FPParticleSolver(problem, num_particles=100, boundary_conditions=bc)
+        assert solver.boundary_conditions is bc
+        assert solver.boundary_conditions is not problem.geometry.get_boundary_conditions()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

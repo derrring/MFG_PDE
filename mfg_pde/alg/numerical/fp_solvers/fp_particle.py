@@ -24,7 +24,6 @@ except ImportError:  # pragma: no cover - graceful fallback when SciPy missing
     SCIPY_AVAILABLE = False
 
 from mfg_pde.geometry.boundary.applicator_particle import ParticleApplicator
-from mfg_pde.geometry.boundary.conditions import periodic_bc
 from mfg_pde.geometry.boundary.types import BCType
 from mfg_pde.utils.numerical.particle import (
     interpolate_grid_to_particles,
@@ -62,6 +61,22 @@ class FPParticleSolver(BaseFPSolver):
     using SDE dynamics, and reconstructs the density on a grid using KDE.
 
     For meshfree density evolution on collocation points, use FPGFDMSolver instead.
+
+    Boundary Conditions:
+        FPParticleSolver requires explicit boundary conditions. Provide via:
+        1. boundary_conditions parameter (direct), OR
+        2. problem.geometry.get_boundary_conditions() (from geometry)
+
+        No default fallback - explicit BCs required for correctness.
+        The solver will fail fast with a clear error message if BCs are missing.
+
+    Composition Pattern (Issue #545):
+        This solver uses composition instead of mixins:
+        - self._applicator = ParticleApplicator() for BC application
+        - self.geometry = problem.geometry for domain information
+        - Explicit dependencies, no implicit state sharing
+
+        Template for other solvers: See docs/development/PARTICLE_SOLVER_TEMPLATE.md
     """
 
     def __init__(
@@ -160,18 +175,32 @@ class FPParticleSolver(BaseFPSolver):
         self.strategy_selector = StrategySelector(profiling_mode="silent")
         self.current_strategy = None  # Will be set in solve_fp_system
 
-        # Boundary condition resolution hierarchy:
+        # Boundary condition resolution hierarchy (Issue #545):
         # 1. Explicit boundary_conditions parameter (highest priority)
-        # 2. Grid geometry boundary handler (if available)
-        # 3. Default periodic BC (fallback for backward compatibility)
+        # 2. Grid geometry boundary conditions (from geometry)
+        # 3. FAIL FAST - no silent fallback (CLAUDE.md principle)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
-        elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
-            # Try to get BC from grid geometry (Phase 2 integration)
-            self.boundary_conditions = problem.geometry.get_boundary_handler()
         else:
-            # Default to periodic boundaries for backward compatibility
-            self.boundary_conditions = periodic_bc(dimension=1)
+            # Try geometry BC (use try/except, not hasattr - Issue #543)
+            try:
+                self.boundary_conditions = problem.geometry.get_boundary_conditions()
+            except AttributeError as e:
+                # Fail fast - no silent fallback to periodic (CLAUDE.md principle)
+                raise ValueError(
+                    "FPParticleSolver requires explicit boundary conditions. "
+                    "Boundary conditions not provided via:\n"
+                    "  1. boundary_conditions=... parameter, OR\n"
+                    "  2. problem.geometry.get_boundary_conditions()\n\n"
+                    f"Original error: {e}"
+                ) from e
+
+            # Validate we got BCs (geometry method might return None)
+            if self.boundary_conditions is None:
+                raise ValueError(
+                    "FPParticleSolver requires boundary conditions. "
+                    "problem.geometry.get_boundary_conditions() returned None."
+                )
 
     def _get_grid_params(self) -> dict:
         """
