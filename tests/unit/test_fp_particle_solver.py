@@ -552,19 +552,26 @@ class TestFPParticleSolverCallableDrift:
 
     def test_constant_drift_callable_1d(self):
         """Test constant drift via callable function in 1D."""
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.5, Nt=25, diffusion=0.1)
-        solver = FPParticleSolver(problem, num_particles=1000)
+        # Set random seed for reproducible stochastic particle evolution
+        np.random.seed(42)
+
+        # Use stronger drift (0.5) and lower diffusion (0.05) for clearer signal
+        # Expected displacement: drift * T = 0.5 * 0.5 = 0.25
+        # With diffusion = 0.05, drift dominates (Peclet number ~ 10)
+        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=40, T=0.5, Nt=25, diffusion=0.05)
+        # Increase particles to reduce statistical variance
+        solver = FPParticleSolver(problem, num_particles=2000)
 
         Nx_points = problem.geometry.get_grid_shape()[0]
         bounds = problem.geometry.get_bounds()
 
         # Constant drift pushing right
         def constant_drift(t, x, m):
-            return 0.3 * np.ones_like(x)
+            return 0.5 * np.ones_like(x)
 
         # Initial condition (Gaussian centered at 0.3)
         x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
-        m_initial = np.exp(-((x_grid - 0.3) ** 2) / (2 * 0.1**2))
+        m_initial = np.exp(-((x_grid - 0.3) ** 2) / (2 * 0.05**2))
         m_initial /= np.sum(m_initial)
 
         # Solve with callable drift
@@ -572,10 +579,15 @@ class TestFPParticleSolverCallableDrift:
 
         assert M.shape[1] == Nx_points
         assert np.all(np.isfinite(M))
-        # Peak should move right
+
+        # Peak should move right with high confidence
         initial_peak = x_grid[np.argmax(M[0])]
         final_peak = x_grid[np.argmax(M[-1])]
-        assert final_peak > initial_peak
+
+        # Check displacement is positive and significant (at least half expected)
+        # Expected: ~0.25, require at least 0.10 to account for diffusion spread
+        displacement = final_peak - initial_peak
+        assert displacement > 0.10, f"Peak displacement {displacement:.3f} too small (expected ~0.25)"
 
     def test_constant_drift_callable_2d(self):
         """Test constant drift via callable function in 2D."""
