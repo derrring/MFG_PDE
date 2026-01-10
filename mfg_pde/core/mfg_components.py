@@ -878,13 +878,41 @@ class ConditionsMixin:
         if has_explicit_bc:
             return self.geometry.get_boundary_conditions()
 
-        # Priority 2: Components (legacy support)
+        # Priority 2: Components (legacy support) - DEPRECATED
         if self.is_custom and self.components is not None and self.components.boundary_conditions is not None:
+            import warnings
+
+            warnings.warn(
+                "Specifying boundary conditions via MFGComponents is deprecated. "
+                "Use the geometry-first API instead:\n\n"
+                "  from mfg_pde.geometry import TensorProductGrid\n"
+                "  from mfg_pde.geometry.boundary import BoundaryConditions, BCSegment\n\n"
+                "  bc = BoundaryConditions(segments=[...])\n"
+                "  grid = TensorProductGrid(..., boundary_conditions=bc)\n"
+                "  problem = MFGProblem(geometry=grid, ...)\n\n"
+                "Legacy BC support via components will be removed in v1.0.0. "
+                "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             return self.components.boundary_conditions
 
         # Priority 3: Geometry default (no-flux)
         if has_geometry_bc_method:
             return self.geometry.get_boundary_conditions()
 
-        # Priority 4: Default periodic BC
+        # Priority 4: Default periodic BC - IMPLICIT FALLBACK
+        import warnings
+
+        warnings.warn(
+            "No boundary conditions specified. Defaulting to periodic BC. "
+            "This implicit fallback is deprecated. "
+            "Explicitly specify boundary conditions via geometry:\n\n"
+            "  from mfg_pde.geometry.boundary import periodic_bc\n"
+            "  bc = periodic_bc(dimension=...)\n"
+            "  grid = TensorProductGrid(..., boundary_conditions=bc)\n\n"
+            "Implicit periodic BC default will be removed in v1.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return periodic_bc(dimension=self.dimension)
