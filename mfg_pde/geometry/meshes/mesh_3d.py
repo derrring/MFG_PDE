@@ -13,6 +13,9 @@ import numpy as np
 
 from mfg_pde.geometry.base import UnstructuredMesh
 from mfg_pde.geometry.meshes.mesh_data import MeshData
+from mfg_pde.utils.mfg_logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class Mesh3D(UnstructuredMesh):
@@ -170,9 +173,11 @@ class Mesh3D(UnstructuredMesh):
                 try:
                     gmsh.model.addPhysicalGroup(2, [surface_map[boundary_id]], boundary_id)
                     gmsh.model.setPhysicalName(2, boundary_id, boundary_names[boundary_id - 1])
-                except Exception:
+                except Exception as e:
                     # Surface might not exist or physical group might already be defined
-                    pass
+                    logger.warning(
+                        f"Failed to tag boundary surface '{boundary_names[boundary_id - 1]}' (id={boundary_id}): {e}"
+                    )
 
         # If not all surfaces were mapped, it might be due to tolerance issues
         # In this case, just assign all surfaces to a single physical group
@@ -181,8 +186,8 @@ class Mesh3D(UnstructuredMesh):
             try:
                 gmsh.model.addPhysicalGroup(2, surface_tags, 1)
                 gmsh.model.setPhysicalName(2, 1, "boundary")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to assign fallback boundary group: {e}")
 
     def _create_sphere_gmsh(self):
         """Create sphere geometry in Gmsh."""

@@ -314,16 +314,11 @@ class FPNetworkSolver(BaseFPSolver):
 
         # Solve linear system
         A = A.tocsr()
-        try:
-            m_next = spsolve(A, b)
-            # Ensure result is numpy array
-            if hasattr(m_next, "toarray"):
-                m_next = m_next.toarray().flatten()
-            m_next = np.asarray(m_next)
-        except Exception:
-            # Fallback to explicit if implicit solve fails
-            print("Warning: Implicit solve failed, falling back to explicit")
-            m_next = self._explicit_step(m_current, u_current, t)
+        m_next = spsolve(A, b)
+        # Ensure result is numpy array
+        if hasattr(m_next, "toarray"):
+            m_next = m_next.toarray().flatten()
+        m_next = np.asarray(m_next)
 
         return m_next
 

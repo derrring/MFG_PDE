@@ -830,37 +830,29 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # For general Hamiltonians, use numerical optimization
             def hamiltonian_objective(p):
                 derivs = {(0,): 0.0, (1,): p}
-                try:
-                    bounds = self.problem.geometry.get_bounds()
-                    xmin = bounds[0][0]
-                    Nx = self.problem.geometry.get_grid_shape()[0] - 1
-                    x_idx = int((x_scalar - xmin) / self.dx)
-                    x_idx = np.clip(x_idx, 0, Nx)
-                    return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
-                except Exception:
-                    return np.inf
+                bounds = self.problem.geometry.get_bounds()
+                xmin = bounds[0][0]
+                Nx = self.problem.geometry.get_grid_shape()[0] - 1
+                x_idx = int((x_scalar - xmin) / self.dx)
+                x_idx = np.clip(x_idx, 0, Nx)
+                return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
 
-            try:
-                if self.optimization_method == "brent":
-                    result = minimize_scalar(
-                        hamiltonian_objective,
-                        bounds=(-10.0, 10.0),
-                        method="bounded",
-                        options={"xatol": self.tolerance},
-                    )
-                else:
-                    result = minimize_scalar(
-                        hamiltonian_objective,
-                        bounds=(-10.0, 10.0),
-                        method="golden",
-                        options={"xtol": self.tolerance},
-                    )
+            if self.optimization_method == "brent":
+                result = minimize_scalar(
+                    hamiltonian_objective,
+                    bounds=(-10.0, 10.0),
+                    method="bounded",
+                    options={"xatol": self.tolerance},
+                )
+            else:
+                result = minimize_scalar(
+                    hamiltonian_objective,
+                    bounds=(-10.0, 10.0),
+                    method="golden",
+                    options={"xtol": self.tolerance},
+                )
 
-                return result.x if result.success else 0.0
-
-            except Exception as e:
-                logger.debug(f"Optimization failed at x={x_scalar}: {e}")
-                return 0.0
+            return result.x if result.success else 0.0
 
         else:
             # nD optimal control
@@ -872,19 +864,15 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # Objective: minimize H(x, p, m) over p ∈ ℝ^d
             def hamiltonian_objective(p_vec):
                 """Objective function for vector optimization: H(x, p, m)"""
-                try:
-                    # Call problem's Hamiltonian function if available
-                    if hasattr(self.problem, "hamiltonian"):
-                        t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
-                        return self.problem.hamiltonian(x, m, p_vec, t_value)
-                    else:
-                        # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
-                        p_norm_sq = np.sum(p_vec**2)
-                        coef_CT = getattr(self.problem, "coupling_coefficient", 0.5)
-                        return 0.5 * p_norm_sq + coef_CT * m
-                except Exception:
-                    # Fallback: quadratic in p
-                    return 0.5 * np.sum(p_vec**2)
+                # Call problem's Hamiltonian function if available
+                if hasattr(self.problem, "hamiltonian"):
+                    t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
+                    return self.problem.hamiltonian(x, m, p_vec, t_value)
+                else:
+                    # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
+                    p_norm_sq = np.sum(p_vec**2)
+                    coef_CT = getattr(self.problem, "coupling_coefficient", 0.5)
+                    return 0.5 * p_norm_sq + coef_CT * m
 
             # Initial guess: zero vector
             p0 = np.zeros(self.dimension)
@@ -1208,8 +1196,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     x_vec = np.atleast_1d(x)
                     p_vec = np.atleast_1d(p)
                     return self.problem.hamiltonian(x_vec, m, p_vec, t_value)
-            except Exception:
-                pass
+            except Exception as legacy_err:
+                logger.debug(f"Legacy Hamiltonian signature failed: {legacy_err}")
             return self._default_hamiltonian(derivs, m)
 
         except Exception as e:

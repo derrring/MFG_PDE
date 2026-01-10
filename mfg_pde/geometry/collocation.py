@@ -152,7 +152,7 @@ class BaseCollocationStrategy(ABC):
     def sample_interior(
         self,
         n_points: int,
-        method: Literal["poisson_disk", "sobol", "uniform"] = "poisson_disk",
+        method: Literal["lloyd", "poisson_disk", "sobol", "uniform"] = "lloyd",
         seed: int | None = None,
     ) -> NDArray:
         """
@@ -160,7 +160,11 @@ class BaseCollocationStrategy(ABC):
 
         Args:
             n_points: Number of interior points to sample
-            method: Sampling method
+            method: Sampling method:
+                - "lloyd" (recommended): CVT/Lloyd relaxation for quasi-uniform
+                - "poisson_disk": Blue noise (poor for non-convex domains)
+                - "sobol": Quasi-random sequence
+                - "uniform": Pure random
             seed: Random seed for reproducibility
 
         Returns:
@@ -218,14 +222,33 @@ class CartesianGridCollocation(BaseCollocationStrategy):
     def sample_interior(
         self,
         n_points: int,
-        method: Literal["poisson_disk", "sobol", "uniform"] = "poisson_disk",
+        method: Literal["lloyd", "poisson_disk", "sobol", "uniform"] = "lloyd",
         seed: int | None = None,
+        refine_steps: int = 20,
     ) -> NDArray:
-        """Sample interior points from grid or using specified method."""
+        """Sample interior points using specified method.
+
+        Args:
+            n_points: Number of points to generate
+            method: Sampling method:
+                - "lloyd": CVT/Lloyd relaxation (best quasi-uniform)
+                - "poisson_disk": Blue noise with minimum spacing
+                - "sobol": Quasi-random low-discrepancy
+                - "uniform": Pure random
+            seed: Random seed
+            refine_steps: Lloyd iterations (only for method="lloyd")
+        """
         bounds = self._get_bounds()
         config = MCConfig(seed=seed)
 
-        if method == "poisson_disk":
+        if method == "lloyd":
+            # Initialize with Sobol, then apply Lloyd relaxation
+            sampler = QuasiMCSampler(bounds, config, "sobol")
+            points = sampler.sample(n_points)
+            if refine_steps > 0 and len(points) > 1:
+                points = self._refine_lloyd_cartesian(points, bounds, refine_steps)
+            return points
+        elif method == "poisson_disk":
             sampler = PoissonDiskSampler(bounds, config)
         elif method == "sobol":
             sampler = QuasiMCSampler(bounds, config, "sobol")
@@ -233,6 +256,66 @@ class CartesianGridCollocation(BaseCollocationStrategy):
             sampler = UniformMCSampler(bounds, config)
 
         return sampler.sample(n_points)
+
+    def _refine_lloyd_cartesian(
+        self,
+        points: NDArray,
+        bounds: list[tuple[float, float]],
+        steps: int = 20,
+    ) -> NDArray:
+        """Lloyd/CVT relaxation for Cartesian domains (no SDF needed)."""
+        from scipy.spatial import cKDTree
+
+        N, d = points.shape
+        current = points.copy()
+
+        bbox_volume = np.prod([b[1] - b[0] for b in bounds])
+        target_spacing = (bbox_volume / N) ** (1.0 / d)
+        interaction_radius = 2.5 * target_spacing
+
+        for step in range(steps):
+            forces = np.zeros_like(current)
+            tree = cKDTree(current)
+            pairs = tree.query_pairs(r=interaction_radius)
+
+            for i, j in pairs:
+                diff = current[i] - current[j]
+                dist = np.linalg.norm(diff)
+                if dist < 1e-10:
+                    diff = np.random.randn(d) * 0.01 * target_spacing
+                    dist = np.linalg.norm(diff)
+                force_mag = 1.0 / (dist**2 + 0.01 * target_spacing**2)
+                force_vec = (diff / dist) * force_mag
+                forces[i] += force_vec
+                forces[j] -= force_vec
+
+            # Boundary repulsion for Cartesian box
+            for dim in range(d):
+                lo, hi = bounds[dim]
+                margin = target_spacing * 1.5
+                # Near lower bound
+                near_lo = current[:, dim] < lo + margin
+                for i in np.where(near_lo)[0]:
+                    dist_to_wall = max(current[i, dim] - lo, 1e-10)
+                    forces[i, dim] += 0.5 / (dist_to_wall**2)
+                # Near upper bound
+                near_hi = current[:, dim] > hi - margin
+                for i in np.where(near_hi)[0]:
+                    dist_to_wall = max(hi - current[i, dim], 1e-10)
+                    forces[i, dim] -= 0.5 / (dist_to_wall**2)
+
+            # Adaptive time step with annealing
+            max_force = np.max(np.linalg.norm(forces, axis=1))
+            anneal = 1.0 - 0.5 * (step / steps)
+            dt = min(0.15 * anneal, 0.4 * target_spacing / (max_force + 1e-10))
+
+            current = current + forces * dt
+
+            # Clamp to bounds
+            for dim in range(d):
+                current[:, dim] = np.clip(current[:, dim], bounds[dim][0] + 1e-6, bounds[dim][1] - 1e-6)
+
+        return current
 
     def sample_boundary(
         self,
@@ -352,6 +435,20 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
     Collocation strategy for implicit domains defined by signed distance functions.
 
     Uses Newton projection to find boundary points on the zero level set.
+
+    Sampling Methods:
+        - "lloyd" (recommended): CVT/Lloyd relaxation via particle repulsion.
+          Best for non-convex domains. Achieves quasi-uniform coverage.
+        - "sobol": Quasi-random low-discrepancy sequence + rejection sampling.
+          Good for convex domains, may have gaps in non-convex regions.
+        - "poisson_disk": Blue noise with minimum spacing guarantee.
+          WARNING: Poor coverage in non-convex geometries (thin corridors,
+          regions separated by obstacles). Use "lloyd" instead.
+        - "uniform": Pure random sampling. Not recommended.
+
+    For non-convex domains (CSG with obstacles, L-shaped regions, etc.),
+    always use method="lloyd" which applies particle repulsion to fill
+    all regions uniformly regardless of geometry complexity.
     """
 
     def _get_dimension(self) -> int:
@@ -377,37 +474,59 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
     def sample_interior(
         self,
         n_points: int,
-        method: Literal["poisson_disk", "sobol", "uniform"] = "poisson_disk",
+        method: Literal["lloyd", "poisson_disk", "sobol", "uniform"] = "lloyd",
         seed: int | None = None,
         refine_steps: int = 20,
     ) -> NDArray:
         """
-        Sample interior points with particle repulsion refinement.
-
-        Two-phase approach for non-convex domains:
-        1. Initial: Generate points via rejection sampling (fast, approximate)
-        2. Refine: Apply particle repulsion to achieve uniform coverage
-
-        The particle repulsion step solves the "thin wall" problem where
-        Euclidean-based methods fail to fill regions separated by obstacles.
+        Sample interior points for implicit domain.
 
         Args:
             n_points: Number of points to generate
-            method: Initial sampling method (refined regardless)
-            seed: Random seed
-            refine_steps: Number of particle repulsion iterations (0 to disable)
+            method: Sampling method:
+                - "lloyd" (default, recommended): CVT/Lloyd relaxation via particle
+                  repulsion. Best quasi-uniform coverage for any geometry.
+                - "poisson_disk": Blue noise. WARNING: poor for non-convex domains.
+                - "sobol": Quasi-random sequence + rejection.
+                - "uniform": Pure random (not recommended).
+            seed: Random seed for reproducibility
+            refine_steps: Number of Lloyd/particle repulsion iterations.
+                For method="lloyd", this is the main algorithm (default 20).
+                For other methods, this refines the initial distribution.
+                Set to 0 to disable refinement (not recommended for non-convex).
+
+        Returns:
+            Interior points, shape (n_points, d)
+
+        Note:
+            For non-convex domains (obstacles, thin corridors, L-shapes),
+            use method="lloyd" which fills all regions uniformly via
+            particle repulsion regardless of geometry complexity.
         """
         bounds = self._get_bounds()
         rng = np.random.RandomState(seed)
 
-        # Phase 1: Initial sampling via rejection
-        points = self._sample_initial_rejection(n_points, bounds, rng)
+        if method == "lloyd":
+            # Lloyd/CVT: Initialize with rejection sampling, then heavy refinement
+            points = self._sample_initial_rejection(n_points, bounds, rng)
+            # Lloyd uses more iterations for better convergence
+            lloyd_steps = max(refine_steps, 30)
+            if len(points) > 1:
+                points = self._refine_lloyd_cvt(points, bounds, lloyd_steps)
+        else:
+            # Other methods: initial sampling + optional refinement
+            if method == "poisson_disk":
+                logger.warning(
+                    "Poisson disk may have poor coverage in non-convex domains. "
+                    "Consider method='lloyd' for better uniformity."
+                )
+            points = self._sample_initial_rejection(n_points, bounds, rng)
 
-        # Phase 2: Refine via particle repulsion (for well-spaced distribution)
-        if refine_steps > 0 and len(points) > 1:
-            points = self._refine_particle_repulsion(points, bounds, refine_steps)
+            # Refine via particle repulsion
+            if refine_steps > 0 and len(points) > 1:
+                points = self._refine_particle_repulsion(points, bounds, refine_steps)
 
-        logger.debug(f"ImplicitCollocation: {len(points)} points after {refine_steps} refinement steps")
+        logger.debug(f"ImplicitCollocation: {len(points)} points, method={method}")
         return points
 
     def _sample_initial_rejection(
@@ -512,6 +631,121 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
             # 6. Clamp to bounds
             for i in range(d):
                 current[:, i] = np.clip(current[:, i], bounds[i][0] + 1e-6, bounds[i][1] - 1e-6)
+
+        return current
+
+    def _refine_lloyd_cvt(
+        self,
+        points: NDArray,
+        bounds: list[tuple[float, float]],
+        steps: int = 30,
+    ) -> NDArray:
+        """
+        Lloyd/CVT relaxation for quasi-uniform point distribution.
+
+        This is the recommended method for non-convex domains. Uses particle
+        repulsion with adaptive parameters optimized for CVT convergence.
+
+        Algorithm:
+            1. Inter-particle repulsion (inverse-square kernel)
+            2. Boundary repulsion (keeps points inside domain)
+            3. Adaptive time stepping for stability
+            4. Project outside points back to domain
+
+        The result approximates a Centroidal Voronoi Tessellation (CVT) where
+        each point is at the centroid of its Voronoi cell, achieving optimal
+        quasi-uniform coverage.
+
+        Args:
+            points: Initial point positions, shape (N, d)
+            bounds: Bounding box [(min, max), ...] per dimension
+            steps: Number of Lloyd iterations (30 recommended for convergence)
+
+        Returns:
+            Refined points with quasi-uniform spacing, shape (N, d)
+
+        Reference:
+            Lloyd, S. (1982). "Least squares quantization in PCM."
+            Du, Faber, Gunzburger (1999). "Centroidal Voronoi Tessellations."
+        """
+        from scipy.spatial import cKDTree
+
+        N, d = points.shape
+        current = points.copy()
+
+        # Compute target spacing from point density
+        bbox_volume = np.prod([b[1] - b[0] for b in bounds])
+        target_spacing = (bbox_volume / N) ** (1.0 / d)
+
+        # Interaction radius: affects how far particles "see" each other
+        # Larger = smoother but slower; smaller = faster but may have gaps
+        interaction_radius = 2.5 * target_spacing
+
+        # Adaptive parameters for stable convergence
+        dt_base = 0.15  # Base time step
+        boundary_strength = 0.8  # Boundary repulsion strength
+
+        for step in range(steps):
+            forces = np.zeros_like(current)
+
+            # 1. Inter-particle repulsion via KDTree
+            tree = cKDTree(current)
+            pairs = tree.query_pairs(r=interaction_radius)
+
+            for i, j in pairs:
+                diff = current[i] - current[j]
+                dist = np.linalg.norm(diff)
+                if dist < 1e-10:
+                    # Identical points: apply random perturbation
+                    diff = np.random.randn(d) * 0.01 * target_spacing
+                    dist = np.linalg.norm(diff)
+
+                # Inverse-square repulsion (softer than 1/r^3)
+                force_mag = 1.0 / (dist**2 + 0.01 * target_spacing**2)
+                force_vec = (diff / dist) * force_mag
+                forces[i] += force_vec
+                forces[j] -= force_vec
+
+            # 2. Boundary repulsion using SDF
+            sdf = self.geometry.signed_distance(current)
+            grad_sdf = self._compute_sdf_gradient(current)
+
+            # Apply boundary repulsion when close to boundary
+            boundary_zone = target_spacing * 1.5
+            close_mask = np.abs(sdf) < boundary_zone
+
+            for i in np.where(close_mask)[0]:
+                boundary_dist = max(np.abs(sdf[i]), 1e-10)
+                # Repulsion strength increases near boundary
+                force_mag = boundary_strength / (boundary_dist**2)
+                # Push inward (opposite to SDF gradient)
+                forces[i] -= grad_sdf[i] * force_mag * np.sign(sdf[i])
+
+            # 3. Adaptive time step (decreases as we converge)
+            max_force = np.max(np.linalg.norm(forces, axis=1))
+            # Anneal dt: larger early, smaller late for fine-tuning
+            anneal_factor = 1.0 - 0.5 * (step / steps)
+            dt = min(dt_base * anneal_factor, 0.4 * target_spacing / (max_force + 1e-10))
+
+            # 4. Update positions
+            current = current + forces * dt
+
+            # 5. Project outside points back to domain interior
+            sdf_new = self.geometry.signed_distance(current)
+            outside = sdf_new >= 0
+
+            if np.any(outside):
+                grad = self._compute_sdf_gradient(current[outside])
+                grad_norm = np.linalg.norm(grad, axis=1, keepdims=True)
+                grad_norm = np.maximum(grad_norm, 1e-10)
+                # Project to boundary, then push slightly inside
+                push_dist = 0.02 * target_spacing
+                current[outside] -= (sdf_new[outside, np.newaxis] + push_dist) * grad / grad_norm
+
+            # 6. Clamp to bounding box
+            for dim in range(d):
+                margin = 1e-6
+                current[:, dim] = np.clip(current[:, dim], bounds[dim][0] + margin, bounds[dim][1] - margin)
 
         return current
 

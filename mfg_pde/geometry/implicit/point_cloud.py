@@ -235,6 +235,37 @@ class PointCloudGeometry:
 
         return regions
 
+    def get_grid_shape(self) -> tuple[int]:
+        """
+        Get discretization shape for point cloud.
+
+        Returns:
+            (N,) where N is the number of points in the cloud.
+
+        Notes:
+            Point clouds are unstructured, so shape is just (num_points,).
+        """
+        return (self.num_particles,)
+
+    def get_boundary_conditions(self):
+        """
+        Get boundary conditions for point cloud.
+
+        Returns:
+            None - point clouds don't have inherent boundary conditions.
+            BCs should be specified by the problem or solver.
+        """
+        return None
+
+    def get_collocation_points(self) -> NDArray[np.floating]:
+        """
+        Get collocation points (the point cloud itself).
+
+        Returns:
+            Array of shape (N, d) containing particle positions.
+        """
+        return self.positions
+
     def is_same_pointset(self, other: PointCloudGeometry, tol: float = 1e-10) -> bool:
         """
         Check if two point clouds represent the same particle set.

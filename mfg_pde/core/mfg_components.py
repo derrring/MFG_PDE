@@ -756,7 +756,8 @@ class HamiltonianMixin:
                 return np.nan
             return term
 
-        return np.nan
+        # Custom problem without coupling_func: no coupling term
+        return None
 
 
 # ============================================================================

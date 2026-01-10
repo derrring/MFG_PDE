@@ -1,7 +1,7 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2026-01-04
-**Current Version**: v0.16.14
+**Last Updated**: 2026-01-10
+**Current Version**: v0.16.15
 **Target**: v1.0.0 (deprecated patterns will be removed)
 **Status**: ✅ Migration complete, v0.10-v0.17 deprecations removed
 
@@ -19,9 +19,74 @@ This guide documents deprecated usage patterns in MFG_PDE and provides migration
 |:--------|:----------|
 | v0.16.x | Previous - deprecation warnings active |
 | v0.17.0 | Consolidate deprecations, stricter warnings |
+| **v0.16.15** | **Progress bars: tqdm eliminated, Rich-only** |
 | **v0.18.0** | **Tensor calculus unification, numerical utils cleanup** |
 | v0.19.x | Final warning period |
 | v1.0.0 | Remove all deprecated patterns |
+
+---
+
+## v0.16.15 Modernization: Progress Bars (tqdm → Rich)
+
+### ✅ COMPLETED: tqdm Dependency Eliminated
+
+The `tqdm` external dependency has been fully removed. All progress bars now use Rich exclusively.
+
+| Old (Removed) | New (Current) | Status |
+|:--------------|:--------------|:-------|
+| `from tqdm import tqdm` | `from mfg_pde.utils.progress import tqdm` | **COMPLETED** |
+| `from tqdm.auto import tqdm` | `from mfg_pde.utils.progress import tqdm` | **COMPLETED** |
+| External tqdm dependency | Rich-based `RichProgressBar` | **COMPLETED** |
+
+**What Changed**:
+
+1. **No external tqdm**: The `tqdm` package is no longer a dependency
+2. **Rich-only backend**: All progress bars use `rich.progress` exclusively
+3. **Backward-compatible alias**: `tqdm = RichProgressBar` preserved for existing code
+4. **Enhanced API**: New `solver_progress()`, `SolverTimer`, and `IterationProgress` utilities
+
+**Current Progress Bar API**:
+
+```python
+# Simple tqdm-like interface (backward compatible)
+from mfg_pde.utils.progress import tqdm, trange
+for i in tqdm(range(100), desc="Processing"):
+    ...
+
+# Preferred: Solver-specific utilities
+from mfg_pde.utils.progress import solver_progress, SolverTimer
+
+# For iterative solvers with convergence tracking
+with solver_progress(max_iterations, "Picard Iteration") as progress:
+    for i in range(max_iterations):
+        error = step()
+        progress.update(1, error=error)
+
+# For timing operations
+with SolverTimer("HJB Solve"):
+    result = solver.solve()
+
+# Advanced: Direct Rich components
+from mfg_pde.utils.progress import console, Progress, Panel, Table
+```
+
+**Migration Path**:
+
+```python
+# Old external tqdm (no longer supported)
+from tqdm import tqdm
+from tqdm.auto import tqdm
+
+# New MFG_PDE progress (use this)
+from mfg_pde.utils.progress import tqdm  # Alias for RichProgressBar
+from mfg_pde.utils.progress import solver_progress  # Preferred for solvers
+```
+
+**Benefits**:
+- ✅ Consistent Rich-based UI across all MFG_PDE tools
+- ✅ No fallback complexity (Rich is required, not optional)
+- ✅ Enhanced solver-specific utilities with error tracking
+- ✅ Unified console output with panels and tables
 
 ---
 
@@ -767,7 +832,7 @@ pytest tests/unit/your_test_file.py
 
 ## Tracking Progress
 
-**Current Status** (as of 2026-01-04):
+**Current Status** (as of 2026-01-10):
 - ✅ Modern API fully implemented
 - ✅ Dimension-agnostic boundary handler (PR #305, #306)
 - ✅ Geometry-first unification complete (Issue #435, PRs #436-#443)
@@ -779,14 +844,16 @@ pytest tests/unit/your_test_file.py
 - ✅ **Test file migration complete** (55 files in MFG_PDE)
 - ✅ **Example migration complete** (examples/, benchmarks/, tutorials/)
 - ✅ **mfg-research migration complete** (8 files)
+- ✅ **Progress bars: tqdm eliminated, Rich-only** (v0.16.15)
 - ⏳ v1.0.0 enforcement: Not yet implemented
 
-**Deprecation Counts by Version** (updated 2026-01-04):
+**Deprecation Counts by Version** (updated 2026-01-10):
 | Version | Category | Count | Status |
 |:--------|:---------|:------|:-------|
 | ~~v0.10~~ | ~~Backend~~ | ~~1~~ | **REMOVED in v0.16.12** |
 | ~~v0.15.x~~ | ~~Problem, Factory, Legacy~~ | ~~4~~ | **REMOVED in v0.16.12** |
 | ~~v0.15.x~~ | ~~Utils (logging, bandwidth)~~ | ~~2~~ | **REMOVED in v0.17.0** |
+| ~~v0.16.x~~ | ~~Progress (tqdm)~~ | ~~1~~ | **COMPLETED in v0.16.15** |
 | v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | Active |
 | v0.16.11 | BC Calculators | 4 | Active |
 | v0.17.x | Convergence, Gradient Notation | 7 | Active |
@@ -798,6 +865,11 @@ pytest tests/unit/your_test_file.py
 - `get_legacy_backend_list()` → Use `get_available_backends()` (v0.10)
 - `Domain1D`, `Domain2D`, `Domain3D` → Use `TensorProductGrid`, `Mesh2D`, `Mesh3D` (v0.15)
 - `enable_profiling`, `verbose` params → Use `profiling_mode` enum (v0.15)
+
+**Completed in v0.16.15**:
+- External `tqdm` dependency eliminated → Use `mfg_pde.utils.progress` (Rich-only)
+- `from tqdm import tqdm` → `from mfg_pde.utils.progress import tqdm` (alias for `RichProgressBar`)
+- Deprecated fallback logic removed → Rich is now required, no optional fallback
 
 **Removed in v0.17.0**:
 - `adaptive_bandwidth_selection` alias → Use `estimate_kde_bandwidth` (v0.15)

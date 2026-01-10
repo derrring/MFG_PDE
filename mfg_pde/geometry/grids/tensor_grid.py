@@ -610,6 +610,32 @@ class TensorProductGrid(CartesianGrid):
         """
         return tuple(self._Nx_points)
 
+    def get_collocation_points(self) -> np.ndarray:
+        """
+        Get flattened grid points as collocation points.
+
+        Returns:
+            Array of shape (N, d) where N is total number of grid points
+            and d is the spatial dimension.
+
+        Examples:
+            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[5])
+            >>> points = grid.get_collocation_points()
+            >>> points.shape
+            (5, 1)
+            >>> points[:,0]  # x-coordinates
+            array([0.  , 0.25, 0.5 , 0.75, 1.  ])
+        """
+        # Get spatial grid - already returns (N, d) for all dimensions
+        spatial_grid = self.get_spatial_grid()
+
+        # For 1D, ensure (N, 1) shape
+        if self.dimension == 1:
+            return spatial_grid.reshape(-1, 1)
+        else:
+            # For d>1, get_spatial_grid() already returns (N, d)
+            return spatial_grid
+
     # ============================================================================
     # Solver Operation Interface (NEW - from Geometry ABC)
     # ============================================================================
@@ -773,13 +799,17 @@ class TensorProductGrid(CartesianGrid):
 
     def get_boundary_handler(self, bc_type: str = "periodic", custom_conditions: dict | None = None):
         """
-        Create dimension-agnostic boundary condition handler.
+        Get or create dimension-agnostic boundary condition handler.
 
-        Automatically selects appropriate BC infrastructure based on grid dimension
-        without hard-coded if-elif chains. Extensible for arbitrary dimensions.
+        Resolution order:
+        1. Return stored BC if explicitly set via constructor or attribute
+        2. Create new BC from bc_type parameter
+
+        This ensures that custom BC (e.g., mixed BC with absorbing exits) are
+        properly propagated to solvers that call this method.
 
         Args:
-            bc_type: Standard boundary condition type:
+            bc_type: Standard boundary condition type (only used if no BC stored):
                 - "dirichlet_zero": Zero Dirichlet on all boundaries
                 - "neumann_zero": Zero Neumann (no-flux) on all boundaries
                 - "periodic": Periodic on all boundaries
@@ -792,16 +822,25 @@ class TensorProductGrid(CartesianGrid):
             Boundary condition handler appropriate for grid dimension
 
         Example:
-            >>> # Works for any dimension without code changes
-            >>> for D in [1, 2, 3, 4]:
-            ...     grid = TensorProductGrid(D, [(0, 1)] * D, [11] * D)
-            ...     bc = grid.get_boundary_handler("dirichlet_zero")
+            >>> # Stored BC takes priority
+            >>> grid = TensorProductGrid(2, [(0, 1), (0, 1)], [11, 11])
+            >>> grid.boundary_conditions = my_custom_bc
+            >>> grid.get_boundary_handler()  # Returns my_custom_bc
+
+            >>> # Falls back to bc_type if no BC stored
+            >>> grid2 = TensorProductGrid(2, [(0, 1), (0, 1)], [11, 11])
+            >>> grid2.get_boundary_handler("dirichlet_zero")  # Creates Dirichlet BC
 
         Note:
             Boundary regions indexed 0 to 2D-1:
             - Region 2i: x_i_min (left hyperface in dimension i)
             - Region 2i+1: x_i_max (right hyperface in dimension i)
         """
+        # Priority 1: Return stored BC if available
+        if self._boundary_conditions is not None:
+            return self._boundary_conditions
+
+        # Priority 2: Create BC from parameters
         # Special case: 1D uses different BC interface
         if self._dimension == 1:
             return self._create_bc_1d(bc_type, custom_conditions)

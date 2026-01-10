@@ -133,20 +133,22 @@ class GFDMBoundaryMixin:
             BC configuration dict with keys: type, values, normals
         """
         # Resolve BC type from boundary_conditions (single source of truth)
-        bc_type = self._get_boundary_condition_property("type", None)
+        # BC validation deferred to solve time - allow None during initialization
+        bc_type = self._get_boundary_condition_property("type")
 
         if bc_type is None:
-            # Infer from BC object or default to neumann for MFG
-            if hasattr(self.boundary_conditions, "default_bc"):
+            # Try to infer from BC object
+            try:
                 bc_type = self.boundary_conditions.default_bc.value.lower()
-            else:
-                bc_type = "neumann"  # Default for MFG (no-flux)
+            except AttributeError:
+                # No BC specified - return None (validation deferred to solve time)
+                return None
 
         if isinstance(bc_type, str):
             bc_type = bc_type.lower()
 
         # Get BC values (for Dirichlet or non-zero Neumann)
-        bc_value = self._get_boundary_condition_property("value", 0.0)
+        bc_value = self._get_boundary_condition_property("value")
 
         # Build values dict for per-point BC values
         if callable(bc_value):
@@ -492,23 +494,22 @@ class GFDMBoundaryMixin:
         # Storage for ghost node mappings
         self._ghost_node_map: dict[int, dict] = {}
 
-        # Get global BC type (MFG_PDE currently supports uniform BC)
-        bc_type_val = self._get_boundary_condition_property("type", None)
+        # Get global BC type - skip ghost nodes if BC not specified (validation deferred)
+        bc_type_val = self._get_boundary_condition_property("type")
 
-        # If type not found, try to infer from BoundaryConditions object
-        if bc_type_val is None and hasattr(self.boundary_conditions, "default_bc"):
-            from mfg_pde.geometry.boundary import BCType
-
-            default_bc = self.boundary_conditions.default_bc
-            if isinstance(default_bc, BCType):
-                bc_type = default_bc.value.lower()
-            else:
-                bc_type = str(default_bc).lower()
-        elif bc_type_val is not None:
-            bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else "neumann"
+        # Determine BC type
+        if bc_type_val is not None:
+            bc_type = bc_type_val.lower() if isinstance(bc_type_val, str) else str(bc_type_val).lower()
         else:
-            # Default to neumann for MFG problems
-            bc_type = "neumann"
+            # Try to infer from BoundaryConditions object
+            try:
+                from mfg_pde.geometry.boundary import BCType
+
+                default_bc = self.boundary_conditions.default_bc
+                bc_type = default_bc.value.lower() if isinstance(default_bc, BCType) else str(default_bc).lower()
+            except AttributeError:
+                # No BC specified - skip ghost node creation (validation deferred to solve time)
+                return
 
         # Ghost nodes only apply to Neumann BC
         if bc_type not in ("neumann", "no_flux"):

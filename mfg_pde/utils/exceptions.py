@@ -429,3 +429,53 @@ def check_numerical_stability(
         problematic_values=problematic_values,
         solver_name=solver_name,
     )
+
+
+# General library exceptions (Issue #546)
+# These are for non-solver errors (I/O, configuration, dependencies)
+
+
+class LibraryError(Exception):
+    """Base exception for general library errors (not solver-specific).
+
+    Use this for errors in:
+    - File I/O operations
+    - Configuration loading
+    - Dependency management
+    - General utilities
+
+    For solver-specific errors, use MFGSolverError hierarchy instead.
+    """
+
+
+class FileOperationError(LibraryError):
+    """Raised when file I/O operation fails.
+
+    Examples:
+        - Cannot read/write checkpoint file
+        - Invalid file format
+        - Permission denied
+    """
+
+
+class InvalidConfigurationError(LibraryError):
+    """Raised when configuration file or parameters are invalid.
+
+    This is for general configuration errors. For solver parameter
+    validation, use ConfigurationError (from MFGSolverError hierarchy).
+
+    Examples:
+        - Missing required configuration file
+        - Invalid YAML/JSON syntax
+        - Missing required configuration keys
+    """
+
+
+class DependencyMissingError(LibraryError):
+    """Raised when required dependency is unavailable.
+
+    Examples:
+        - JAX not installed when required
+        - Incompatible library version detected
+        - Missing optional dependency without fallback
+    """

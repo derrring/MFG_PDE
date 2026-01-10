@@ -134,6 +134,73 @@ class GeometryProtocol(Protocol):
         ...
 
     # =========================================================================
+    # Discretization and Boundary Conditions Methods
+    # =========================================================================
+
+    def get_grid_shape(self) -> tuple[int, ...]:
+        """
+        Get grid discretization shape.
+
+        Returns:
+            Tuple of grid sizes along each dimension: (N₁, N₂, ..., Nₐ)
+            where d is the spatial dimension.
+
+            - Structured grids: (Nx, Ny, Nz, ...) for arbitrary dimension d
+            - Unstructured/meshfree: (N,) where N is total number of points
+
+        Notes:
+            This method replaces legacy problem.Nx, problem.Ny attributes.
+            All solvers should use geometry.get_grid_shape() instead.
+
+        Examples:
+            >>> # 1D grid
+            >>> grid_1d.get_grid_shape()
+            (100,)
+            >>> # 3D grid
+            >>> grid_3d.get_grid_shape()
+            (50, 50, 50)
+        """
+        ...
+
+    def get_boundary_conditions(self):
+        """
+        Get boundary conditions for this geometry.
+
+        Returns:
+            BoundaryConditions object defining BC for this domain.
+            May return None if BCs are not yet specified (deferred to solve time).
+
+        Notes:
+            This is the standard method all solvers should use to access BCs.
+            Replaces inconsistent patterns like get_boundary_handler() and
+            direct attribute access.
+        """
+        ...
+
+    def get_collocation_points(self) -> NDArray[np.floating]:
+        """
+        Get collocation points for discretization.
+
+        Returns:
+            Array of shape (N, d) where:
+            - N: number of collocation points
+            - d: spatial dimension
+
+        Notes:
+            - For structured grids: returns flattened grid points
+            - For meshfree methods: returns scattered collocation points
+            - For GFDM/particle methods: primary discretization points
+
+        Examples:
+            >>> geometry.get_collocation_points()
+            array([[0.0, 0.0],
+                   [0.5, 0.0],
+                   [1.0, 0.0],
+                   ...])
+        """
+        ...
+
+    # =========================================================================
     # Boundary Methods (mandatory - every domain has boundary)
     # =========================================================================
 

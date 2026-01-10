@@ -440,6 +440,55 @@ class ImplicitDomain(ImplicitGeometry):
         sd = self.signed_distance(x)
         return np.abs(sd) < tol
 
+    # GeometryProtocol methods for solver interface
+    def get_grid_shape(self) -> tuple[int]:
+        """
+        Get discretization shape for implicit domain.
+
+        Returns:
+            (N,) where N is an estimated number of points based on volume.
+
+        Notes:
+            Implicit domains are continuous - they don't have inherent grid structure.
+            This method provides an estimate for compatibility with structured solvers.
+            For actual discretization, use sample_uniform() or meshfree methods.
+        """
+        # Return estimated point count as (N,) tuple
+        return (self.num_spatial_points,)
+
+    def get_boundary_conditions(self):
+        """
+        Get boundary conditions for implicit domain.
+
+        Returns:
+            None - implicit domains don't have inherent boundary conditions.
+            BCs should be specified by the problem or solver.
+
+        Notes:
+            Implicit domains support general BC via signed distance function.
+            Specify BCs through problem.boundary_conditions or solver configuration.
+        """
+        return None
+
+    def get_collocation_points(self) -> NDArray[np.float64]:
+        """
+        Get collocation points via uniform sampling of the domain.
+
+        Returns:
+            Array of shape (N, d) containing uniformly sampled points from domain.
+
+        Notes:
+            This samples the domain using the default number of points from
+            num_spatial_points. For explicit control over sampling density,
+            use sample_uniform(n_points) directly.
+
+        Example:
+            >>> rect = Hyperrectangle([[0, 1], [0, 1]])
+            >>> points = rect.get_collocation_points()
+            >>> points.shape  # (N, 2) where N ≈ volume / 0.1^2
+        """
+        return self.sample_uniform(self.num_spatial_points)
+
     def __repr__(self) -> str:
         """String representation of the domain."""
         return f"{self.__class__.__name__}(dimension={self.dimension})"

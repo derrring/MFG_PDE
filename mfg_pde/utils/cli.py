@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from mfg_pde.utils.exceptions import InvalidConfigurationError
+
 try:
     import yaml  # type: ignore[import-untyped]
 
@@ -325,6 +327,11 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
 
     Args:
         args: Parsed command line arguments
+
+    Raises:
+        ConfigurationError: If configuration loading or validation fails
+        DataError: If results cannot be saved
+        Exception: If solver execution fails
     """
     # Convert args to configuration
     config = args_to_config(args)
@@ -334,9 +341,8 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
         try:
             file_config = load_config_file(args.config)
             config = merge_configs(file_config, config)
-        except Exception as e:
-            print(f"ERROR: Error loading config file: {e}")
-            sys.exit(1)
+        except (FileNotFoundError, ValueError) as e:
+            raise InvalidConfigurationError(f"Failed to load config file: {e}") from e
 
     # Set up logging level
     if config["execution"]["verbose"]:
@@ -461,13 +467,10 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
         if config["io"]["save_config"]:
             save_config_file(config, config["io"]["save_config"])
 
-    except Exception as e:
-        print(f"ERROR: Error running solver: {e}")
-        if config["execution"]["verbose"]:
-            import traceback
-
-            traceback.print_exc()
-        sys.exit(1)
+    except Exception:
+        # Let exceptions propagate to caller
+        # Entry-point scripts should catch and convert to sys.exit()
+        raise
 
 
 def main():
@@ -510,12 +513,23 @@ def main():
                 config = load_config_file(args.config_file)
                 print(f"Configuration file is valid: {args.config_file}")
                 print(json.dumps(config, indent=2, default=str))
-            except Exception as e:
-                print(f"ERROR: Invalid configuration file: {e}")
-                sys.exit(1)
+            except (FileNotFoundError, ValueError) as e:
+                raise InvalidConfigurationError(f"Invalid configuration file: {e}") from e
     else:
         parser.print_help()
 
 
 if __name__ == "__main__":
-    main()
+    # Entry point: catch library exceptions and convert to exit codes
+    # This is the ONLY place sys.exit() should be called (Issue #546)
+    try:
+        main()
+    except InvalidConfigurationError as e:
+        print(f"Configuration error: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)

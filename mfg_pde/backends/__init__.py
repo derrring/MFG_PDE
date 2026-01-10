@@ -224,14 +224,16 @@ try:
 
     register_backend("torch", TorchBackend)
 except ImportError:
-    pass  # PyTorch is optional
+    logger.debug("PyTorch backend not available (optional)")
+    # PyTorch is optional
 
 try:
     from .jax_backend import JAXBackend
 
     register_backend("jax", JAXBackend)
 except ImportError:
-    pass  # JAX is optional
+    logger.debug("JAX backend not available (optional)")
+    # JAX is optional
 
 
 # Ensure essential backends are always available for compatibility

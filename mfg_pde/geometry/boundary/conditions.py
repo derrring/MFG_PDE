@@ -487,6 +487,77 @@ class BoundaryConditions:
 
         return None
 
+    # =========================================================================
+    # Flux-Limited Absorption (for DIRICHLET exits)
+    # =========================================================================
+
+    def has_flux_limits(self) -> bool:
+        """Check if any segment has flux capacity limits."""
+        return any(seg.flux_capacity is not None for seg in self.segments)
+
+    def get_flux_limits(self) -> dict[str, float]:
+        """
+        Get flux capacities for all segments that have limits.
+
+        Returns:
+            Dict mapping segment name to flux capacity (mass/time or particles/time).
+            Only includes segments with explicit flux_capacity set.
+
+        Example:
+            >>> bc = mixed_bc(segments=[
+            ...     BCSegment("exit_A", BCType.DIRICHLET, flux_capacity=0.1),
+            ...     BCSegment("exit_B", BCType.DIRICHLET, flux_capacity=0.2),
+            ...     BCSegment("walls", BCType.NO_FLUX),  # No flux limit
+            ... ], dimension=2)
+            >>> bc.get_flux_limits()
+            {'exit_A': 0.1, 'exit_B': 0.2}
+        """
+        return {seg.name: seg.flux_capacity for seg in self.segments if seg.flux_capacity is not None}
+
+    def get_flux_limit_for_segment(self, name: str) -> float | None:
+        """Get flux capacity for a specific segment by name."""
+        for seg in self.segments:
+            if seg.name == name:
+                return seg.flux_capacity
+        return None
+
+    def compute_particle_flux_limits(
+        self,
+        dt: float,
+        n_particles: int,
+        total_mass: float = 1.0,
+    ) -> dict[str, int]:
+        """
+        Convert mass-based flux capacities to particle counts for a timestep.
+
+        For particle methods, flux_capacity is in mass/time units.
+        This converts to max particles per timestep.
+
+        Args:
+            dt: Timestep duration
+            n_particles: Total number of particles in simulation
+            total_mass: Total mass represented by particles (default 1.0)
+
+        Returns:
+            Dict mapping segment name to max particles absorbed per timestep.
+
+        Example:
+            >>> # flux_capacity=0.1 means 10% of total mass can exit per unit time
+            >>> bc.compute_particle_flux_limits(dt=0.1, n_particles=1000, total_mass=1.0)
+            {'exit_A': 10}  # 0.1 * 0.1 * 1000 = 10 particles
+        """
+        mass_per_particle = total_mass / n_particles
+        limits = {}
+
+        for seg in self.segments:
+            if seg.flux_capacity is not None:
+                # flux_capacity * dt = mass that can exit this timestep
+                # Divide by mass_per_particle = max particles
+                max_particles = int(seg.flux_capacity * dt / mass_per_particle)
+                limits[seg.name] = max(1, max_particles)  # At least 1 if any capacity
+
+        return limits
+
     def validate_values(self) -> None:
         """
         Validate that required values are provided for boundary condition segments.

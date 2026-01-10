@@ -1007,11 +1007,7 @@ def solve_timestep_full_nd(
     b_rhs = m_flat / dt
 
     # Solve linear system
-    try:
-        m_next_flat = sparse.linalg.spsolve(A_matrix, b_rhs)
-    except Exception:
-        # If solver fails, keep current state
-        m_next_flat = m_flat.copy()
+    m_next_flat = sparse.linalg.spsolve(A_matrix, b_rhs)
 
     # Reshape back to multi-dimensional array
     m_next = m_next_flat.reshape(shape)

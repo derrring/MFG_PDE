@@ -1153,6 +1153,62 @@ class UnstructuredMesh(Geometry):
             "mean_volume": float(np.mean(volumes)),
         }
 
+    # ============================================================================
+    # GeometryProtocol methods for solver interface
+    # ============================================================================
+
+    def get_grid_shape(self) -> tuple[int]:
+        """
+        Get discretization shape for unstructured mesh.
+
+        Returns:
+            (N,) where N is the number of mesh vertices.
+
+        Notes:
+            Unstructured meshes don't have regular grid structure.
+            This returns the number of vertices as a 1D shape for compatibility.
+
+        Example:
+            >>> mesh = Mesh2D()
+            >>> mesh.generate_mesh()
+            >>> shape = mesh.get_grid_shape()
+            >>> shape  # (N,) where N is number of vertices
+        """
+        return (self.num_spatial_points,)
+
+    def get_boundary_conditions(self):
+        """
+        Get boundary conditions for unstructured mesh.
+
+        Returns:
+            Result of get_boundary_handler() if available, otherwise None.
+
+        Notes:
+            Mesh BCs are typically specified via boundary tags during mesh generation.
+            Use get_boundary_handler() for detailed BC configuration.
+        """
+        try:
+            return self.get_boundary_handler()
+        except (AttributeError, NotImplementedError):
+            return None
+
+    def get_collocation_points(self) -> NDArray:
+        """
+        Get collocation points (mesh vertices).
+
+        Returns:
+            Array of shape (N, d) containing mesh vertex coordinates.
+
+        Example:
+            >>> mesh = Mesh2D()
+            >>> mesh.generate_mesh()
+            >>> points = mesh.get_collocation_points()
+            >>> points.shape  # (N, 2) for 2D mesh
+        """
+        if self.mesh_data is None:
+            raise ValueError("Mesh not yet generated. Call generate_mesh() first.")
+        return self.mesh_data.vertices
+
 
 class ImplicitGeometry(Geometry):
     """
@@ -1700,3 +1756,55 @@ class GraphGeometry(Geometry):
         (nodes with fewer connections, or explicitly marked boundary nodes).
         """
         return {"type": "graph", "implementation": "none"}
+
+    # ============================================================================
+    # GeometryProtocol methods for solver interface
+    # ============================================================================
+
+    def get_grid_shape(self) -> tuple[int]:
+        """
+        Get discretization shape for graph.
+
+        Returns:
+            (N,) where N is the number of nodes in the graph.
+
+        Notes:
+            Graphs don't have regular grid structure.
+            This returns number of nodes for compatibility with solvers.
+        """
+        return (self.num_spatial_points,)
+
+    def get_boundary_conditions(self):
+        """
+        Get boundary conditions for graph.
+
+        Returns:
+            None - graphs don't have inherent spatial boundary conditions.
+
+        Notes:
+            For graphs, "boundary" typically refers to boundary nodes
+            (dead ends, exit nodes, or explicitly marked boundaries).
+            Specify via problem.boundary_conditions or node attributes.
+        """
+        return None
+
+    def get_collocation_points(self) -> NDArray:
+        """
+        Get collocation points (node positions or indices).
+
+        Returns:
+            Array of shape (N, d) for spatially embedded graphs, or
+            (N, 1) with node indices for abstract graphs.
+
+        Notes:
+            - Spatially embedded graphs (mazes): returns node (x,y) coordinates
+            - Abstract graphs: returns node indices [[0], [1], ..., [N-1]]
+        """
+        # For spatially embedded graphs with positions
+        if hasattr(self, "node_positions") and self.node_positions is not None:
+            return self.node_positions
+
+        # For abstract graphs without spatial embedding
+        # Return node indices as (N, 1) array
+        n_nodes = self.num_spatial_points
+        return np.arange(n_nodes).reshape(-1, 1).astype(np.float64)

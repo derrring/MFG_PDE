@@ -179,13 +179,7 @@ class FPFDMSolver(BaseFPSolver):
                 self.boundary_conditions = no_flux_bc(dimension=self.dimension)
         elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
             # Try to get BC from grid geometry (Phase 2 integration)
-            try:
-                self.boundary_conditions = problem.geometry.get_boundary_handler()
-            except Exception:
-                # Fallback if geometry BC retrieval fails
-                from mfg_pde.geometry.boundary import no_flux_bc
-
-                self.boundary_conditions = no_flux_bc(dimension=self.dimension)
+            self.boundary_conditions = problem.geometry.get_boundary_handler()
         else:
             # Default to no-flux boundaries for mass conservation
             from mfg_pde.geometry.boundary import no_flux_bc
@@ -862,17 +856,15 @@ class FPFDMSolver(BaseFPSolver):
                 m_next_step_raw = self.backend.zeros((Nx,))
             else:
                 m_next_step_raw = np.zeros(Nx, dtype=np.float64)
-            try:
-                if not A_matrix.nnz > 0 and Nx > 0:
-                    m_next_step_raw[:] = m[k_idx_fp, :]
-                else:
-                    solution = sparse.linalg.spsolve(A_matrix, b_rhs)
-                    m_next_step_raw[:] = solution
 
-                if has_nan_or_inf(m_next_step_raw, self.backend):
-                    m_next_step_raw[:] = m[k_idx_fp, :]
-            except Exception:
+            if not A_matrix.nnz > 0 and Nx > 0:
                 m_next_step_raw[:] = m[k_idx_fp, :]
+            else:
+                solution = sparse.linalg.spsolve(A_matrix, b_rhs)
+                m_next_step_raw[:] = solution
+
+            if has_nan_or_inf(m_next_step_raw, self.backend):
+                raise ValueError(f"Fokker-Planck solver produced NaNs at step {k_idx_fp}")
 
             m[k_idx_fp + 1, :] = m_next_step_raw
 
