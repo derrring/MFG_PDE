@@ -105,7 +105,18 @@ class DirichletBC3D(BoundaryCondition3D):
 
     def validate_mesh_compatibility(self, mesh: MeshData) -> bool:
         """Validate mesh has boundary markers."""
-        return hasattr(mesh, "boundary_markers") or hasattr(mesh, "vertex_markers")
+        # Issue #543: Use try/except instead of hasattr() for FEM mesh attributes
+        try:
+            _ = mesh.boundary_markers
+            return True
+        except AttributeError:
+            pass
+        try:
+            _ = mesh.vertex_markers
+            return True
+        except AttributeError:
+            pass
+        return False
 
 
 class NeumannBC3D(BoundaryCondition3D):
@@ -154,7 +165,18 @@ class NeumannBC3D(BoundaryCondition3D):
 
     def validate_mesh_compatibility(self, mesh: MeshData) -> bool:
         """Validate mesh has surface normal information."""
-        return hasattr(mesh, "boundary_normals") or hasattr(mesh, "face_normals")
+        # Issue #543: Use try/except instead of hasattr() for FEM mesh attributes
+        try:
+            _ = mesh.boundary_normals
+            return True
+        except AttributeError:
+            pass
+        try:
+            _ = mesh.face_normals
+            return True
+        except AttributeError:
+            pass
+        return False
 
 
 class RobinBC3D(BoundaryCondition3D):
@@ -286,7 +308,12 @@ class PeriodicBC3D(BoundaryCondition3D):
 
     def validate_mesh_compatibility(self, mesh: MeshData) -> bool:
         """Validate mesh has proper boundary identification."""
-        return hasattr(mesh, "boundary_markers")
+        # Issue #543: Use try/except instead of hasattr() for FEM mesh attributes
+        try:
+            _ = mesh.boundary_markers
+            return True
+        except AttributeError:
+            return False
 
     def _identify_boundary_vertices_for_pairing(
         self, mesh: MeshData, tolerance: float = 1e-10
@@ -421,10 +448,15 @@ class BoundaryConditionManager3D:
         boundary_vertices["z_min"] = np.where(np.abs(vertices[:, 2] - bounds[4]) < tolerance)[0]
         boundary_vertices["z_max"] = np.where(np.abs(vertices[:, 2] - bounds[5]) < tolerance)[0]
 
+        # Issue #543: Use try/except instead of hasattr() for FEM mesh attributes
         # For non-box geometries, use surface detection from boundary_faces
-        if hasattr(mesh, "boundary_faces") and mesh.boundary_faces is not None:
-            surface_vertices = self._detect_surface_vertices_from_boundary_faces(mesh)
-            boundary_vertices["surface"] = surface_vertices
+        try:
+            boundary_faces = mesh.boundary_faces
+            if boundary_faces is not None:
+                surface_vertices = self._detect_surface_vertices_from_boundary_faces(mesh)
+                boundary_vertices["surface"] = surface_vertices
+        except AttributeError:
+            pass
 
         return boundary_vertices
 
@@ -465,9 +497,14 @@ class BoundaryConditionManager3D:
 
             # Apply each condition for this region
             for condition in conditions:
+                # Issue #543: Use try/except instead of hasattr() for optional internal attribute
                 # Check for directly specified vertices (override region-based detection)
-                if hasattr(condition, "_direct_vertices") and condition._direct_vertices is not None:
-                    boundary_indices = condition._direct_vertices
+                try:
+                    direct_verts = condition._direct_vertices
+                    if direct_verts is not None:
+                        boundary_indices = direct_verts
+                except AttributeError:
+                    pass
 
                 # Skip if no boundary indices found (None check prevents TypeError)
                 # Empty array check prevents unnecessary processing
@@ -509,12 +546,17 @@ class BoundaryConditionManager3D:
 
     def _detect_surface_vertices_from_boundary_faces(self, mesh: MeshData) -> np.ndarray:
         """Detect surface vertices from boundary faces."""
-        if not hasattr(mesh, "boundary_faces") or mesh.boundary_faces is None:
+        # Issue #543: Use try/except instead of hasattr() for FEM mesh attributes
+        try:
+            boundary_faces = mesh.boundary_faces
+            if boundary_faces is None:
+                return np.array([])
+        except AttributeError:
             return np.array([])
 
         # Collect all vertices that appear in boundary faces
         surface_vertices = set()
-        for face in mesh.boundary_faces:
+        for face in boundary_faces:
             for vertex_idx in face:
                 surface_vertices.add(vertex_idx)
 

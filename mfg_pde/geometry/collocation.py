@@ -44,6 +44,9 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+# Issue #543: Runtime import for isinstance() checks
+from mfg_pde.geometry.protocol import GeometryProtocol
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -53,9 +56,6 @@ from mfg_pde.utils.numerical.particle.sampling import (
     QuasiMCSampler,
     UniformMCSampler,
 )
-
-if TYPE_CHECKING:
-    from mfg_pde.geometry.protocol import GeometryProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -205,19 +205,27 @@ class CartesianGridCollocation(BaseCollocationStrategy):
 
     def _get_dimension(self) -> int:
         """Get dimension from grid."""
-        if hasattr(self.geometry, "dimension"):
-            return self.geometry.dimension
-        elif hasattr(self.geometry, "bounds"):
-            return len(self.geometry.bounds)
-        raise ValueError("Cannot determine dimension from geometry")
+        # Issue #543: Use GeometryProtocol instead of hasattr()
+        if not isinstance(self.geometry, GeometryProtocol):
+            raise TypeError(
+                f"Geometry must implement GeometryProtocol, got {type(self.geometry).__name__}. "
+                f"All geometries must provide dimension property."
+            )
+        return self.geometry.dimension
 
     def _get_bounds(self) -> list[tuple[float, float]]:
         """Get domain bounds."""
-        if hasattr(self.geometry, "bounds"):
-            return list(self.geometry.bounds)
-        elif hasattr(self.geometry, "get_bounds"):
-            return list(self.geometry.get_bounds())
-        raise ValueError("Cannot determine bounds from geometry")
+        # Issue #543: Use GeometryProtocol.get_bounds() instead of hasattr()
+        if not isinstance(self.geometry, GeometryProtocol):
+            raise TypeError(f"Geometry must implement GeometryProtocol, got {type(self.geometry).__name__}")
+
+        bounds_tuple = self.geometry.get_bounds()
+        if bounds_tuple is None:
+            raise ValueError("Geometry does not have bounded domain (get_bounds() returned None)")
+
+        # Convert from (min_coords, max_coords) to list of (min, max) tuples
+        min_coords, max_coords = bounds_tuple
+        return [(float(min_coords[i]), float(max_coords[i])) for i in range(len(min_coords))]
 
     def sample_interior(
         self,
@@ -453,23 +461,24 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
 
     def _get_dimension(self) -> int:
         """Get dimension from implicit domain."""
-        if hasattr(self.geometry, "dimension"):
-            return self.geometry.dimension
-        raise ValueError("Cannot determine dimension from geometry")
+        # Issue #543: Use GeometryProtocol instead of hasattr()
+        if not isinstance(self.geometry, GeometryProtocol):
+            raise TypeError(f"Geometry must implement GeometryProtocol, got {type(self.geometry).__name__}")
+        return self.geometry.dimension
 
     def _get_bounds(self) -> list[tuple[float, float]]:
         """Get bounding box of implicit domain."""
-        if hasattr(self.geometry, "bounds"):
-            bounds = self.geometry.bounds
-            if isinstance(bounds, np.ndarray):
-                # Shape (d, 2): each row is [min, max]
-                return [(float(bounds[i, 0]), float(bounds[i, 1])) for i in range(bounds.shape[0])]
-            return list(bounds)
-        elif hasattr(self.geometry, "get_bounding_box"):
-            bbox = self.geometry.get_bounding_box()
-            # Shape (d, 2): each row is [min, max]
-            return [(float(bbox[i, 0]), float(bbox[i, 1])) for i in range(bbox.shape[0])]
-        raise ValueError("Cannot determine bounds from geometry")
+        # Issue #543: Use GeometryProtocol.get_bounds() instead of hasattr()
+        if not isinstance(self.geometry, GeometryProtocol):
+            raise TypeError(f"Geometry must implement GeometryProtocol, got {type(self.geometry).__name__}")
+
+        bounds_tuple = self.geometry.get_bounds()
+        if bounds_tuple is None:
+            raise ValueError("Implicit domain must have bounded domain for collocation")
+
+        # Convert from (min_coords, max_coords) to list of (min, max) tuples
+        min_coords, max_coords = bounds_tuple
+        return [(float(min_coords[i]), float(max_coords[i])) for i in range(len(min_coords))]
 
     def sample_interior(
         self,
@@ -897,9 +906,12 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
 
     def _compute_sdf_gradient(self, points: NDArray, eps: float = 1e-6) -> NDArray:
         """Compute SDF gradient using finite differences (fallback)."""
+        # Issue #543: Use try/except for optional method instead of hasattr()
         # Try analytical gradient first
-        if hasattr(self.geometry, "signed_distance_gradient"):
+        try:
             return self.geometry.signed_distance_gradient(points)
+        except AttributeError:
+            pass
 
         # Finite difference fallback
         d = points.shape[1]
@@ -955,30 +967,58 @@ class CollocationSampler:
 
     def _select_strategy(self) -> BaseCollocationStrategy:
         """Select appropriate strategy based on geometry type."""
+        # Issue #543: Use try/except and concrete types instead of hasattr()
         geom = self.geometry
 
-        # Check for TensorProductGrid
-        if hasattr(geom, "get_grid_points") or type(geom).__name__ == "TensorProductGrid":
+        # Check for TensorProductGrid by name (concrete type check)
+        if type(geom).__name__ == "TensorProductGrid":
             return CartesianGridCollocation(geom)
+
+        # Check for grid-like geometry (has get_grid_points method)
+        try:
+            _ = geom.get_grid_points
+            return CartesianGridCollocation(geom)
+        except AttributeError:
+            pass
 
         # Check for implicit domain (has signed_distance method)
-        if hasattr(geom, "signed_distance"):
-            # Check for CSG composite
-            if hasattr(geom, "domains") or hasattr(geom, "base_domain"):
+        try:
+            _ = geom.signed_distance
+            # Check for CSG composite (has domains or base_domain)
+            try:
+                _ = geom.domains
                 # TODO: Implement CSGDomainCollocation
                 return ImplicitDomainCollocation(geom)
+            except AttributeError:
+                try:
+                    _ = geom.base_domain
+                    # TODO: Implement CSGDomainCollocation
+                    return ImplicitDomainCollocation(geom)
+                except AttributeError:
+                    pass
             return ImplicitDomainCollocation(geom)
+        except AttributeError:
+            pass
 
         # Check for mesh (has vertices)
-        if hasattr(geom, "vertices"):
+        try:
+            _ = geom.vertices
             # TODO: Implement MeshCollocation
             raise NotImplementedError("MeshCollocation not yet implemented")
+        except AttributeError:
+            pass
 
-        # Fallback: try to treat as bounding box
-        if hasattr(geom, "bounds") or hasattr(geom, "get_bounds"):
-            return CartesianGridCollocation(geom)
+        # Fallback: use GeometryProtocol bounds
+        if isinstance(geom, GeometryProtocol):
+            bounds = geom.get_bounds()
+            if bounds is not None:
+                return CartesianGridCollocation(geom)
 
-        raise ValueError(f"Unsupported geometry type: {type(geom)}")
+        raise ValueError(
+            f"Unsupported geometry type: {type(geom).__name__}. "
+            f"Geometry must implement GeometryProtocol with valid bounds, "
+            f"or provide signed_distance, get_grid_points, or vertices methods."
+        )
 
     def sample_interior(
         self,

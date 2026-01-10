@@ -226,13 +226,25 @@ class GeometryProjector:
             hjb_is_grid = isinstance(self.hjb_geometry, CartesianGrid)
             fp_is_grid = isinstance(self.fp_geometry, CartesianGrid)
 
+            # Issue #543: Use try/except instead of hasattr() for optional attribute
             # Check for particle-like geometry (has num_particles attribute or is PointCloudGeometry)
-            hjb_is_particles = isinstance(self.hjb_geometry, PointCloudGeometry) or (
-                hasattr(self.hjb_geometry, "num_particles") and not hjb_is_grid
-            )
-            fp_is_particles = isinstance(self.fp_geometry, PointCloudGeometry) or (
-                hasattr(self.fp_geometry, "num_particles") and not fp_is_grid
-            )
+            hjb_has_particles = False
+            if not hjb_is_grid:
+                try:
+                    _ = self.hjb_geometry.num_particles
+                    hjb_has_particles = True
+                except AttributeError:
+                    pass
+            hjb_is_particles = isinstance(self.hjb_geometry, PointCloudGeometry) or hjb_has_particles
+
+            fp_has_particles = False
+            if not fp_is_grid:
+                try:
+                    _ = self.fp_geometry.num_particles
+                    fp_has_particles = True
+                except AttributeError:
+                    pass
+            fp_is_particles = isinstance(self.fp_geometry, PointCloudGeometry) or fp_has_particles
 
             if self._hjb_to_fp_func is None:
                 if hjb_is_particles and fp_is_particles:

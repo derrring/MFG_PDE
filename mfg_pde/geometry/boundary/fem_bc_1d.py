@@ -115,7 +115,18 @@ class DirichletBC1D(BoundaryCondition1D):
 
     def validate_mesh_compatibility(self, mesh: MeshData) -> bool:
         """Validate mesh has boundary markers."""
-        return hasattr(mesh, "boundary_markers") or hasattr(mesh, "vertex_markers")
+        # Issue #543: Use try/except instead of hasattr() for FEM mesh attributes
+        try:
+            _ = mesh.boundary_markers
+            return True
+        except AttributeError:
+            pass
+        try:
+            _ = mesh.vertex_markers
+            return True
+        except AttributeError:
+            pass
+        return False
 
 
 class NeumannBC1D(BoundaryCondition1D):
@@ -373,19 +384,24 @@ class BoundaryConditionManager1D:
         if region_id in self._region_indices and len(self._region_indices[region_id]) > 0:
             return self._region_indices[region_id]
 
+        # Issue #543: Use try/except instead of hasattr() for FEM mesh attributes
         # Try to get from mesh boundary markers
-        if hasattr(mesh, "boundary_markers"):
+        try:
             markers = mesh.boundary_markers
             if isinstance(region_id, int):
                 return np.where(markers == region_id)[0]
+        except AttributeError:
+            pass
 
         # Default: return endpoints for 1D mesh
-        if hasattr(mesh, "vertices"):
+        try:
             n_vertices = len(mesh.vertices)
             if region_id == 0 or region_id == "left":
                 return np.array([0])
             elif region_id == 1 or region_id == "right":
                 return np.array([n_vertices - 1])
+        except AttributeError:
+            pass
 
         return np.array([])
 

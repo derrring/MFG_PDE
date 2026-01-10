@@ -488,10 +488,11 @@ class NetworkGeometry(GraphGeometry):
         # Get adjacency matrix
         adjacency_matrix = backend.get_adjacency_matrix(backend_graph)
 
+        # Issue #543: Use try/except instead of hasattr() for optional backend method
         # Count edges (handle directed/undirected)
-        if hasattr(backend_graph, "is_directed"):
+        try:
             is_directed = backend_graph.is_directed()
-        else:
+        except AttributeError:
             # Check if matrix is symmetric
             is_directed = (adjacency_matrix != adjacency_matrix.T).nnz != 0
 

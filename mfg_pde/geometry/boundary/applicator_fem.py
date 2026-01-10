@@ -397,12 +397,17 @@ class BoundaryManager:
             region_nodes = np.where(region_mask)[0]
             self.boundary_nodes[region_id] = region_nodes
 
-            if hasattr(self.mesh_data, "boundary_faces") and self.mesh_data.boundary_faces is not None:
-                region_faces = []
-                for face in self.mesh_data.boundary_faces:
-                    if all(node in region_nodes for node in face):
-                        region_faces.append(face)
-                self.boundary_faces[region_id] = np.array(region_faces)
+            # Issue #543: Use try/except instead of hasattr() for FEM mesh attributes
+            try:
+                boundary_faces = self.mesh_data.boundary_faces
+                if boundary_faces is not None:
+                    region_faces = []
+                    for face in boundary_faces:
+                        if all(node in region_nodes for node in face):
+                            region_faces.append(face)
+                    self.boundary_faces[region_id] = np.array(region_faces)
+            except AttributeError:
+                pass
 
     def add_boundary_condition(
         self,

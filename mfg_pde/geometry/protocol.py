@@ -522,13 +522,16 @@ def detect_geometry_type(geometry: object) -> GeometryType:
         >>> detect_geometry_type(network)
         <GeometryType.NETWORK: 'network'>
     """
+    # Issue #543: Use try/except instead of hasattr() for optional attribute
     # Check for explicit geometry_type attribute
-    if hasattr(geometry, "geometry_type"):
+    try:
         geom_type = geometry.geometry_type
         if isinstance(geom_type, GeometryType):
             return geom_type
         elif isinstance(geom_type, str):
             return GeometryType(geom_type)
+    except AttributeError:
+        pass
 
     # Fall back to class name inspection
     class_name = type(geometry).__name__.lower()
