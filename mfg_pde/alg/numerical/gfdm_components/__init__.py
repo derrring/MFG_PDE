@@ -8,7 +8,7 @@ Components:
 - GridCollocationMapper: Bidirectional grid ↔ collocation interpolation
 - MonotonicityEnforcer: QP-constrained monotonicity enforcement
 - BoundaryHandler: Boundary operations, LCR, ghost nodes
-- (Future) NeighborhoodBuilder: Stencil construction, Taylor matrices
+- NeighborhoodBuilder: Stencil construction, Taylor matrices
 
 Benefits of Composition:
 ------------------------
@@ -24,9 +24,11 @@ See docs/development/PARTICLE_SOLVER_TEMPLATE.md for composition pattern guide.
 from .boundary_handler import BoundaryHandler
 from .grid_collocation_mapper import GridCollocationMapper
 from .monotonicity_enforcer import MonotonicityEnforcer
+from .neighborhood_builder import NeighborhoodBuilder
 
 __all__ = [
     "BoundaryHandler",
     "GridCollocationMapper",
     "MonotonicityEnforcer",
+    "NeighborhoodBuilder",
 ]

@@ -14,6 +14,7 @@ from mfg_pde.alg.numerical.gfdm_components import (
     BoundaryHandler,
     GridCollocationMapper,
     MonotonicityEnforcer,
+    NeighborhoodBuilder,
 )
 from mfg_pde.geometry.boundary import BCType, DiscretizationType
 from mfg_pde.utils.mfg_logging import get_logger
@@ -30,7 +31,6 @@ from mfg_pde.utils.numerical.gfdm_strategies import (
 from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
 
 from .base_hjb import BaseHJBSolver
-from .gfdm_stencil_mixin import GFDMStencilMixin
 
 logger = get_logger(__name__)
 
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from mfg_pde.geometry import BoundaryConditions
 
 
-class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
+class HJBGFDMSolver(BaseHJBSolver):
     """
     Generalized Finite Difference Method (GFDM) solver for HJB equations using collocation.
 
@@ -95,6 +95,66 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
     def discretization_type(self) -> DiscretizationType:
         """Discretization method (BoundaryCapable protocol)."""
         return DiscretizationType.GFDM
+
+    # Explicitly initialize _neighborhood_builder to None (avoids hasattr)
+    _neighborhood_builder: NeighborhoodBuilder | None = None
+
+    @property
+    def neighborhoods(self) -> dict:
+        """Get neighborhoods from NeighborhoodBuilder or legacy mixin."""
+        if self._neighborhood_builder is not None:
+            return self._neighborhood_builder.neighborhoods
+        # Legacy fallback: direct attribute access
+        try:
+            return self._neighborhoods
+        except AttributeError:
+            return {}
+
+    @neighborhoods.setter
+    def neighborhoods(self, value: dict) -> None:
+        """Set neighborhoods in NeighborhoodBuilder or legacy storage."""
+        if self._neighborhood_builder is not None:
+            self._neighborhood_builder.neighborhoods = value
+        else:
+            self._neighborhoods = value
+
+    @property
+    def taylor_matrices(self) -> dict:
+        """Get Taylor matrices from NeighborhoodBuilder or legacy mixin."""
+        if self._neighborhood_builder is not None:
+            return self._neighborhood_builder.taylor_matrices
+        # Legacy fallback: direct attribute access
+        try:
+            return self._taylor_matrices
+        except AttributeError:
+            return {}
+
+    @taylor_matrices.setter
+    def taylor_matrices(self, value: dict) -> None:
+        """Set Taylor matrices in NeighborhoodBuilder or legacy storage."""
+        if self._neighborhood_builder is not None:
+            self._neighborhood_builder.taylor_matrices = value
+        else:
+            self._taylor_matrices = value
+
+    @property
+    def adaptive_stats(self) -> dict:
+        """Get adaptive neighborhood statistics from NeighborhoodBuilder or legacy mixin."""
+        if self._neighborhood_builder is not None:
+            return self._neighborhood_builder.adaptive_stats
+        # Legacy fallback: direct attribute access
+        try:
+            return self._adaptive_stats
+        except AttributeError:
+            return {"n_adapted": 0, "adaptive_enlargements": [], "max_delta_used": 0.0}
+
+    @adaptive_stats.setter
+    def adaptive_stats(self, value: dict) -> None:
+        """Set adaptive stats in NeighborhoodBuilder or legacy storage."""
+        if self._neighborhood_builder is not None:
+            self._neighborhood_builder.adaptive_stats = value
+        else:
+            self._adaptive_stats = value
 
     def __init__(
         self,
@@ -382,13 +442,6 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
             else:
                 self.k_min = k_min
 
-        # Initialize adaptive neighborhood statistics
-        self.adaptive_stats = {
-            "n_adapted": 0,
-            "adaptive_enlargements": [],
-            "max_delta_used": delta,
-        }
-
         # Store new infrastructure parameters
         self._use_new_infrastructure = use_new_infrastructure
         self._derivative_method = derivative_method
@@ -485,6 +538,26 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
 
             # Create unified BC config (single source of truth)
             self._bc_config = self._boundary_handler.create_bc_config()
+
+            # Initialize NeighborhoodBuilder component (Issue #545: composition over mixins)
+            # This component handles stencil construction, Taylor matrices, weight functions
+            self._neighborhood_builder = NeighborhoodBuilder(
+                collocation_points=collocation_points,
+                dimension=self.dimension,
+                delta=delta,
+                taylor_order=taylor_order,
+                weight_function=weight_function,
+                weight_scale=weight_scale,
+                k_min=self.k_min,
+                adaptive_neighborhoods=adaptive_neighborhoods,
+                max_delta_multiplier=max_delta_multiplier,
+                boundary_indices=self.boundary_indices,
+                n_derivatives=0,  # Will be set after multi_indices are determined
+                multi_indices=[],  # Will be populated after operator initialization
+                gfdm_operator=self._gfdm_operator,
+                use_local_coordinate_rotation=self._use_local_coordinate_rotation,
+                boundary_handler=self._boundary_handler,
+            )
         else:
             # Legacy: GFDMOperator (deprecated, for backward compatibility)
             warnings.warn(
@@ -510,10 +583,16 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
             self._boundary_normals = None
             self._bc_config = None
             self._boundary_handler = None  # No boundary handler for legacy path
+            self._neighborhood_builder = None  # No neighborhood builder for legacy path
 
         # Get multi-indices from operator (both TaylorOperator and GFDMOperator have .multi_indices)
         self.multi_indices = self._gfdm_operator.multi_indices
         self.n_derivatives = len(self.multi_indices)
+
+        # Update neighborhood builder with multi_indices (for new infrastructure)
+        if self._neighborhood_builder is not None:
+            self._neighborhood_builder.multi_indices = self.multi_indices
+            self._neighborhood_builder.n_derivatives = self.n_derivatives
 
         # Store spatial shape for grid<->collocation interpolation
         # This is needed for _map_grid_to_collocation and _map_collocation_to_grid
@@ -529,7 +608,11 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
 
         # Build neighborhood structure - uses GFDMOperator's neighborhoods as base,
         # only extends for points needing adaptive delta enlargement
-        self._build_neighborhood_structure()
+        if self._neighborhood_builder is not None:
+            self._neighborhood_builder.build_neighborhood_structure()
+        else:
+            # Legacy fallback
+            self._build_neighborhood_structure()
 
         # Update boundary handler neighborhoods reference (after they're built)
         if self._boundary_handler is not None:
@@ -554,10 +637,18 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
                 self._apply_local_coordinate_rotation()
 
         # Build reverse neighborhood map for sparse Jacobian (point j -> rows affected)
-        self._build_reverse_neighborhoods()
+        if self._neighborhood_builder is not None:
+            self._neighborhood_builder.build_reverse_neighborhoods()
+        else:
+            # Legacy fallback
+            self._build_reverse_neighborhoods()
 
         # Build Taylor matrices for extended neighborhoods
-        self._build_taylor_matrices()
+        if self._neighborhood_builder is not None:
+            self._neighborhood_builder.build_taylor_matrices()
+        else:
+            # Legacy fallback
+            self._build_taylor_matrices()
 
         # Initialize MonotonicityEnforcer component (Issue #545: composition over mixins)
         # Only create enforcer if QP optimization is enabled
@@ -968,7 +1059,12 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
         for i in range(n):
             # For LCR boundary points, use our Taylor matrices with rotation
             if i in lcr_boundary_set:
-                weights = self._compute_derivative_weights_from_taylor(i)
+                if self._neighborhood_builder is not None:
+                    boundary_rotations = self._boundary_handler.boundary_rotations if self._boundary_handler else None
+                    weights = self._neighborhood_builder.compute_derivative_weights_from_taylor(i, boundary_rotations)
+                else:
+                    # Legacy fallback
+                    weights = self._compute_derivative_weights_from_taylor(i)
             else:
                 weights = self._gfdm_operator.get_derivative_weights(i)
 
@@ -1588,7 +1684,16 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
                     and self._boundary_handler is not None
                     and i in self._boundary_handler.boundary_rotations
                 ):
-                    weights = self._compute_derivative_weights_from_taylor(i)
+                    if self._neighborhood_builder is not None:
+                        boundary_rotations = (
+                            self._boundary_handler.boundary_rotations if self._boundary_handler else None
+                        )
+                        weights = self._neighborhood_builder.compute_derivative_weights_from_taylor(
+                            i, boundary_rotations
+                        )
+                    else:
+                        # Legacy fallback
+                        weights = self._compute_derivative_weights_from_taylor(i)
                 else:
                     weights = self._gfdm_operator.get_derivative_weights(i)
 
@@ -2129,7 +2234,11 @@ class HJBGFDMSolver(GFDMStencilMixin, BaseHJBSolver):
                 u_plus[j] += eps
 
                 # Get rows affected by perturbing u[j] (j and its neighbors)
-                affected_rows = self._get_affected_rows(j)
+                if self._neighborhood_builder is not None:
+                    affected_rows = self._neighborhood_builder.get_affected_rows(j)
+                else:
+                    # Legacy fallback
+                    affected_rows = self._get_affected_rows(j)
 
                 # Compute residual only at affected points
                 residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
