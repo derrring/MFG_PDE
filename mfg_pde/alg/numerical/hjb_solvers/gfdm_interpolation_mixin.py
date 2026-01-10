@@ -145,32 +145,72 @@ class GFDMInterpolationMixin:
         # Build interpolation matrix using Delaunay triangulation
         # Each grid point is expressed as weighted sum of collocation points
         try:
-            tri = Delaunay(self.collocation_points)
-            simplex_indices = tri.find_simplex(grid_points)
+            # Special handling for 1D: Delaunay doesn't work for 1D points
+            if ndim == 1:
+                # For 1D, use linear interpolation weights
+                from scipy.sparse import lil_matrix
 
-            # Build sparse matrix
-            from scipy.sparse import lil_matrix
+                interp_matrix = lil_matrix((n_grid, n_coll))
 
-            interp_matrix = lil_matrix((n_grid, n_coll))
+                # Sort collocation points for 1D interpolation
+                coll_x = self.collocation_points[:, 0]
+                sort_idx = np.argsort(coll_x)
+                coll_x_sorted = coll_x[sort_idx]
+                grid_x = grid_points[:, 0]
 
-            for i, (pt, simplex_idx) in enumerate(zip(grid_points, simplex_indices, strict=True)):
-                if simplex_idx >= 0:
-                    # Point inside triangulation - use barycentric coords
-                    simplex = tri.simplices[simplex_idx]
-                    b = tri.transform[simplex_idx, :ndim].dot(pt - tri.transform[simplex_idx, ndim])
-                    bary = np.append(b, 1 - b.sum())
-                    for j, weight in zip(simplex, bary, strict=True):
-                        interp_matrix[i, j] = weight
-                else:
-                    # Point outside - use nearest neighbor
-                    from scipy.spatial import cKDTree
+                # For each grid point, find surrounding collocation points and compute weights
+                for i, x in enumerate(grid_x):
+                    # Find where x would be inserted to maintain sorted order
+                    idx_right = np.searchsorted(coll_x_sorted, x)
 
-                    if not hasattr(self, "_coll_tree"):
-                        self._coll_tree = cKDTree(self.collocation_points)
-                    _, nearest_idx = self._coll_tree.query(pt)
-                    interp_matrix[i, nearest_idx] = 1.0
+                    if idx_right == 0:
+                        # x is before all collocation points - use nearest
+                        interp_matrix[i, sort_idx[0]] = 1.0
+                    elif idx_right == n_coll:
+                        # x is after all collocation points - use nearest
+                        interp_matrix[i, sort_idx[-1]] = 1.0
+                    else:
+                        # x is between two collocation points - use linear interpolation
+                        idx_left = idx_right - 1
+                        x_left = coll_x_sorted[idx_left]
+                        x_right = coll_x_sorted[idx_right]
 
-            self._interp_matrix = interp_matrix.tocsr()
+                        # Linear interpolation weights
+                        weight_right = (x - x_left) / (x_right - x_left)
+                        weight_left = 1.0 - weight_right
+
+                        interp_matrix[i, sort_idx[idx_left]] = weight_left
+                        interp_matrix[i, sort_idx[idx_right]] = weight_right
+
+                self._interp_matrix = interp_matrix.tocsr()
+            else:
+                # For 2D+, use Delaunay triangulation
+                tri = Delaunay(self.collocation_points)
+                simplex_indices = tri.find_simplex(grid_points)
+
+                # Build sparse matrix
+                from scipy.sparse import lil_matrix
+
+                interp_matrix = lil_matrix((n_grid, n_coll))
+
+                for i, (pt, simplex_idx) in enumerate(zip(grid_points, simplex_indices, strict=True)):
+                    if simplex_idx >= 0:
+                        # Point inside triangulation - use barycentric coords
+                        simplex = tri.simplices[simplex_idx]
+                        b = tri.transform[simplex_idx, :ndim].dot(pt - tri.transform[simplex_idx, ndim])
+                        bary = np.append(b, 1 - b.sum())
+                        for j, weight in zip(simplex, bary, strict=True):
+                            interp_matrix[i, j] = weight
+                    else:
+                        # Point outside - use nearest neighbor
+                        from scipy.spatial import cKDTree
+
+                        if not hasattr(self, "_coll_tree"):
+                            self._coll_tree = cKDTree(self.collocation_points)
+                        _, nearest_idx = self._coll_tree.query(pt)
+                        interp_matrix[i, nearest_idx] = 1.0
+
+                self._interp_matrix = interp_matrix.tocsr()
         except Exception as e:
             raise RuntimeError(f"Failed to build interpolation matrix: {e}") from e
 
