@@ -36,28 +36,41 @@ FDM 1D HJB solver used `np.roll()` for Laplacian computation, implementing perio
 
 ---
 
-## 🎯 Priority 2: Eliminate Silent Fallbacks (#547)
+## ✅ Priority 2: Eliminate Silent Fallbacks (#547) - **COMPLETED**
 
 **Issue**: [#547](https://github.com/derrring/MFG_PDE/issues/547)
+**Status**: ✅ CLOSED (2026-01-11)
 **Priority**: Medium
 **Size**: Medium
-**Estimated Effort**: 2-3 days
+**Actual Effort**: 2 days (PR #555 + PR #556)
 
 ### Problem
 Code catches broad exceptions and silently falls back to lower-fidelity methods without warning users. This masks configuration errors and performance degradation.
 
-### Solution
-1. Audit all `except Exception:` and bare `except:` patterns
-2. Replace with specific exception types
-3. Add `logger.warning()` for silent fallbacks
-4. Document fallback behavior in docstrings
+### Solution Implemented
 
-### Acceptance Criteria
-- [ ] Audit all broad exception handlers
-- [ ] Replace with specific exceptions (ImportError, ValueError, etc.)
-- [ ] Add logging for all fallbacks
-- [ ] Document fallback behavior
-- [ ] (Optional) Add `--strict` mode for CI
+**Two-Phase Implementation**:
+1. **PR #555** - High/Medium priority (9/13 fixes)
+   - High: Newton solver failures, spectral analysis failures
+   - Medium: Backend detection, GPU memory stats, volume computation, vmap fallback
+2. **PR #556** - Low priority cosmetic (4/13 fixes)
+   - Backend info retrieval, LaTeX setup, Quasi-MC fallback, performance monitoring
+
+**Patterns Established**:
+- Critical user-facing warnings: Specific exceptions + `logger.warning()` with fallback implications
+- Diagnostic debug logging: Specific exceptions + `logger.debug()` for non-critical info
+- Initialization warnings: Specific exceptions + `warnings.warn()` for module setup
+- Re-raise with context: Broad exception OK when immediately re-raising with added logging
+
+### Result
+- ✅ 100% completion (13/13 fixes)
+- ✅ All broad `except Exception:` replaced with specific exception types
+- ✅ Comprehensive logging with context throughout
+- ✅ Consistent MFG_PDE logging infrastructure
+- ✅ All fallback behavior preserved for robustness
+- ✅ Critical bugs (Newton solver) now surface instead of silently failing
+
+**Documentation**: `docs/development/SILENT_FALLBACK_AUDIT_547.md`, `docs/development/SILENT_FALLBACK_COMPLETION_547.md`
 
 ### Why Second?
 - **Aligns with Fail Fast principle** (CLAUDE.md core value)
@@ -292,5 +305,5 @@ Run tests after each priority, validate with research experiments.
 ---
 
 **Last Updated**: 2026-01-11
-**Completed**: Priority 1 (#542), Priority 3 (#543)
-**Current Focus**: Determining next priority (P2 vs P4a)
+**Completed**: Priority 1 (#542), Priority 2 (#547), Priority 3 (#543)
+**Current Focus**: Determining next priority (P4a vs P5)
