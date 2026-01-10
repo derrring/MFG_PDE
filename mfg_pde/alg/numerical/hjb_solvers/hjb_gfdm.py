@@ -10,7 +10,10 @@ from scipy.linalg import lstsq
 # BC types for BoundaryCapable protocol implementation (Issue #527)
 from scipy.optimize import approx_fprime
 
-from mfg_pde.alg.numerical.gfdm_components import GridCollocationMapper
+from mfg_pde.alg.numerical.gfdm_components import (
+    GridCollocationMapper,
+    MonotonicityEnforcer,
+)
 from mfg_pde.geometry.boundary import BCType, DiscretizationType
 from mfg_pde.utils.mfg_logging import get_logger
 
@@ -28,7 +31,6 @@ from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
 from .base_hjb import BaseHJBSolver
 from .gfdm_boundary_mixin import GFDMBoundaryMixin
 from .gfdm_stencil_mixin import GFDMStencilMixin
-from .hjb_gfdm_monotonicity import MonotonicityMixin
 
 logger = get_logger(__name__)
 
@@ -42,7 +44,7 @@ if TYPE_CHECKING:
     from mfg_pde.geometry import BoundaryConditions
 
 
-class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, MonotonicityMixin, BaseHJBSolver):
+class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, BaseHJBSolver):
     """
     Generalized Finite Difference Method (GFDM) solver for HJB equations using collocation.
 
@@ -328,9 +330,8 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, MonotonicityMixin, Base
         # Congestion mode for Hamiltonian coupling
         self.congestion_mode = congestion_mode
 
-        # Initialize unified QP solver from qp_utils
+        # Initialize QP components (will be fully initialized after neighborhoods are built)
         # Map qp_solver parameter to QPSolver backend
-        # Use "auto" to allow fallback to scipy when OSQP not installed
         qp_backend = "auto" if qp_solver == "osqp" else "scipy-slsqp"
         self._qp_cache = QPCache(max_size=1000)
         self._qp_solver_instance = QPSolver(
@@ -342,21 +343,11 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, MonotonicityMixin, Base
         # Legacy warm-start cache (kept for backward compatibility, but unused)
         self._qp_warm_start_cache: dict[int, tuple[np.ndarray, np.ndarray | None]] = {}
 
-        # Initialize QP diagnostic statistics (extended from QPSolver.stats)
-        # These are GFDM-specific stats not covered by QPSolver
-        self.qp_stats = {
-            "total_qp_solves": 0,
-            "qp_times": [],
-            "violations_detected": 0,
-            "points_checked": 0,
-            "qp_successes": 0,
-            "qp_failures": 0,
-            "qp_fallbacks": 0,
-            "slsqp_solves": 0,
-            "lbfgsb_solves": 0,
-            "osqp_solves": 0,
-            "osqp_failures": 0,
-        }
+        # Placeholder for MonotonicityEnforcer - will be initialized after neighborhoods built
+        self._monotonicity_enforcer: MonotonicityEnforcer | None = None
+
+        # QP stats placeholder (will be aliased to enforcer.stats after initialization)
+        self.qp_stats: dict[str, Any] = {}
         self._current_point_idx = 0
 
         # Adaptive neighborhood parameters
@@ -536,6 +527,38 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, MonotonicityMixin, Base
 
         # Build Taylor matrices for extended neighborhoods
         self._build_taylor_matrices()
+
+        # Initialize MonotonicityEnforcer component (Issue #545: composition over mixins)
+        # Only create enforcer if QP optimization is enabled
+        if self.qp_optimization_level != "none":
+            self._monotonicity_enforcer = MonotonicityEnforcer(
+                qp_solver=self._qp_solver_instance,
+                qp_constraint_mode=self.qp_constraint_mode,
+                collocation_points=self.collocation_points,
+                neighborhoods=self.neighborhoods,
+                multi_indices=self.multi_indices,
+                domain_bounds=self.domain_bounds,
+                delta=self.delta,
+                sigma_function=self._get_sigma_value,
+            )
+            # Alias qp_stats to enforcer.stats for backward compatibility
+            self.qp_stats = self._monotonicity_enforcer.stats
+        else:
+            self._monotonicity_enforcer = None
+            # Initialize empty qp_stats for "none" level
+            self.qp_stats = {
+                "total_qp_solves": 0,
+                "qp_times": [],
+                "violations_detected": 0,
+                "points_checked": 0,
+                "qp_successes": 0,
+                "qp_failures": 0,
+                "qp_fallbacks": 0,
+                "slsqp_solves": 0,
+                "lbfgsb_solves": 0,
+                "osqp_solves": 0,
+                "osqp_failures": 0,
+            }
 
     def _compute_n_spatial_grid_points(self) -> int:
         """Compute total number of spatial grid points from geometry."""
@@ -1047,20 +1070,22 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, MonotonicityMixin, Base
 
         if qp_level == "always":
             # "always" level: Force QP at every point without checking M-matrix
-            derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
+            derivative_coeffs = self._monotonicity_enforcer.solve_constrained_qp(taylor_data, b, point_idx)  # type: ignore[union-attr]
         elif qp_level == "auto":
             # "auto" level: Adaptive QP with M-matrix checking
             # First try unconstrained solution to check if constraints are needed
-            unconstrained_coeffs = self._solve_unconstrained_fallback(taylor_data, b)  # type: ignore[arg-type]
+            unconstrained_coeffs = self._monotonicity_enforcer._solve_unconstrained_fallback(taylor_data, b)  # type: ignore[union-attr]
 
             # Check if unconstrained solution violates monotonicity (M-matrix property)
             self.qp_stats["points_checked"] += 1
-            needs_constraints = self._check_monotonicity_violation(unconstrained_coeffs, point_idx)
+            needs_constraints = self._monotonicity_enforcer.check_monotonicity_violation(
+                unconstrained_coeffs, point_idx
+            )  # type: ignore[union-attr]
 
             if needs_constraints:
                 # Apply constrained QP to enforce monotonicity
                 self.qp_stats["violations_detected"] += 1
-                derivative_coeffs = self._solve_monotone_constrained_qp(taylor_data, b, point_idx)  # type: ignore[arg-type]
+                derivative_coeffs = self._monotonicity_enforcer.solve_constrained_qp(taylor_data, b, point_idx)  # type: ignore[union-attr]
             else:
                 # Use faster unconstrained solution
                 derivative_coeffs = unconstrained_coeffs
@@ -1180,10 +1205,13 @@ class HJBGFDMSolver(GFDMStencilMixin, GFDMBoundaryMixin, MonotonicityMixin, Base
             if saved_qp_level is not None:
                 self.qp_optimization_level = saved_qp_level
 
-    # Note: _solve_monotone_constrained_qp moved to MonotonicityMixin
-    # Note: _solve_unconstrained_fallback moved to MonotonicityMixin
-    # Note: print_qp_diagnostics moved to MonotonicityMixin
-    # Note: _compute_fd_weights_from_taylor moved to MonotonicityMixin
+    # Note: QP methods moved to MonotonicityEnforcer component (Issue #545)
+    # - solve_constrained_qp() (was _solve_monotone_constrained_qp)
+    # - _solve_unconstrained_fallback()
+    # - check_monotonicity_violation() (was _check_monotonicity_violation)
+    # - check_m_matrix() (was _check_m_matrix_property)
+    # - print_diagnostics() (was print_qp_diagnostics)
+    # - compute_fd_weights_from_taylor() (was _compute_fd_weights_from_taylor)
 
     def _approximate_all_derivatives_cached(self, u: np.ndarray) -> dict[int, dict[tuple[int, ...], float]]:
         """Compute all derivatives at once (for caching between residual/Jacobian)."""

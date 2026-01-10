@@ -6,9 +6,9 @@ This package provides modular components for GFDM solvers,extracted from the ori
 Components:
 -----------
 - GridCollocationMapper: Bidirectional grid ↔ collocation interpolation
+- MonotonicityEnforcer: QP-constrained monotonicity enforcement
 - (Future) BoundaryHandler: Boundary operations, LCR, ghost nodes
 - (Future) NeighborhoodBuilder: Stencil construction, Taylor matrices
-- (Future) MonotonicityEnforcer: QP-constrained monotonicity
 
 Benefits of Composition:
 ------------------------
@@ -22,7 +22,9 @@ See docs/development/PARTICLE_SOLVER_TEMPLATE.md for composition pattern guide.
 """
 
 from .grid_collocation_mapper import GridCollocationMapper
+from .monotonicity_enforcer import MonotonicityEnforcer
 
 __all__ = [
     "GridCollocationMapper",
+    "MonotonicityEnforcer",
 ]
