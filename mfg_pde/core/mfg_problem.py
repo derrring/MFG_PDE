@@ -11,6 +11,9 @@ from mfg_pde.core.mfg_components import (
     MFGComponents,
 )
 
+# Issue #543: Runtime import for isinstance() checks
+from mfg_pde.geometry.protocol import GeometryProtocol
+
 # Use unified nD-capable BoundaryConditions from conditions.py
 
 if TYPE_CHECKING:
@@ -18,7 +21,6 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-    from mfg_pde.geometry.protocol import GeometryProtocol
     from mfg_pde.types.pde_coefficients import DiffusionField, DriftField
 
 
@@ -1991,25 +1993,20 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         config.picard.verbose = verbose
 
         # Create collocation points from problem domain
-        if self.geometry is not None:
-            # Use geometry grid if available
-            # NOTE (Issue #543): hasattr() used for protocol duck typing
-            # Will be replaced with proper GeometryProtocol in Issue #544
-            if hasattr(self.geometry, "get_spatial_grid"):
-                x = self.geometry.get_spatial_grid()
-                collocation_points = np.atleast_2d(x).T if x.ndim == 1 else x
-            elif hasattr(self.geometry, "interior_points"):
-                collocation_points = self.geometry.interior_points
-            else:
-                # Fallback to grid-based points
-                bounds = self.geometry.get_bounds()
-                if bounds is not None:
-                    x = np.linspace(bounds[0][0], bounds[1][0], self.geometry.num_spatial_points)
-                    collocation_points = x.reshape(-1, 1)
-                else:
-                    raise ValueError("Cannot create collocation points: geometry has no bounds")
-        else:
-            raise ValueError("Cannot create collocation points: geometry is required")
+        if self.geometry is None:
+            raise ValueError("Variational solver requires geometry to be specified")
+
+        # Issue #543: Use GeometryProtocol instead of hasattr() duck typing
+        if not isinstance(self.geometry, GeometryProtocol):
+            raise TypeError(
+                f"Variational solver requires GeometryProtocol-compliant geometry, "
+                f"got {type(self.geometry).__name__}. "
+                f"All geometries must implement get_spatial_grid() and other required methods."
+            )
+
+        # get_spatial_grid() is required by GeometryProtocol
+        x = self.geometry.get_spatial_grid()
+        collocation_points = np.atleast_2d(x).T if x.ndim == 1 else x
 
         # Create component solvers
         hjb_solver = HJBGFDMSolver(self, collocation_points)
