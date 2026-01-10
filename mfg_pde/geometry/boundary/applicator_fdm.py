@@ -50,12 +50,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-# Logging
 from mfg_pde.utils.mfg_logging import get_logger
 
-logger = get_logger(__name__)
-
-# Import base class for inheritance
 from .applicator_base import (
     BaseStructuredApplicator,
     BoundaryCalculator,
@@ -72,12 +68,10 @@ from .applicator_base import (
     ZeroGradientCalculator,
 )
 from .conditions import BoundaryConditions
-
-# Legacy import for backward compatibility
 from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
-
-# Import unified BoundaryConditions class (supports both uniform and mixed BCs)
 from .types import BCType
+
+logger = get_logger(__name__)
 
 # Backward compatibility alias
 LegacyBoundaryConditions1D = BoundaryConditions1DFDM
@@ -1588,6 +1582,177 @@ class FDMApplicator(BaseStructuredApplicator):
     ) -> NDArray[np.floating]:
         """Static method for nD BC application."""
         return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, config)
+
+    def enforce_values(
+        self,
+        field: NDArray[np.floating],
+        boundary_conditions: BoundaryConditions,
+        spacing: tuple[float, ...] | NDArray[np.floating],
+        time: float = 0.0,
+    ) -> NDArray[np.floating]:
+        """
+        Enforce boundary condition values on solution array (Issue #542).
+
+        This method sets boundary values to satisfy Dirichlet/Neumann BC specifications.
+        Complements ghost cell application (which enables derivative computation).
+
+        **Distinction**:
+        - `apply()`: Returns padded array with ghost cells for computing ∇u
+        - `enforce_values()`: Sets boundary values to satisfy BC (u(boundary) = g)
+
+        Args:
+            field: Solution array to enforce BC on (shape: (N1, N2, ..., Nd))
+            boundary_conditions: BC specification (must be BoundaryConditions, not legacy)
+            spacing: Grid spacing for each dimension (needed for Neumann BC)
+            time: Current time for time-dependent BC values
+
+        Returns:
+            Solution array with BC enforced at boundaries (modified in-place, also returned)
+
+        Example:
+            >>> applicator = FDMApplicator(dimension=2)
+            >>> U = solver.solve_timestep(...)
+            >>> U = applicator.enforce_values(U, bc, grid.spacing, time=0.5)
+        """
+        if not isinstance(boundary_conditions, BoundaryConditions):
+            raise TypeError(
+                f"enforce_values() requires BoundaryConditions, got {type(boundary_conditions).__name__}. "
+                f"Legacy BC types should be converted first."
+            )
+
+        # Convert spacing to tuple if needed
+        if isinstance(spacing, np.ndarray):
+            spacing_tuple = tuple(spacing)
+        else:
+            spacing_tuple = spacing
+
+        # Import BC types
+        from mfg_pde.geometry.boundary.types import BCType
+
+        # Enforce BC for each segment
+        for segment in boundary_conditions.segments:
+            # Parse boundary identifier to get dimension and side
+            boundary_id = segment.boundary
+            if boundary_id is None:
+                continue
+
+            # Map boundary string to (dimension, side)
+            dim, side = self._parse_boundary_identifier(boundary_id)
+            if dim is None:
+                continue  # Unrecognized boundary format
+
+            # Get BC value (time-dependent or constant)
+            if callable(segment.value):
+                bc_value = segment.value(time)
+            else:
+                bc_value = segment.value
+
+            # Get grid spacing for this dimension
+            h = spacing_tuple[dim] if dim < len(spacing_tuple) else 1.0
+
+            # Enforce BC based on type
+            if segment.bc_type == BCType.DIRICHLET:
+                # Dirichlet: Set boundary values directly u(boundary) = g
+                self._apply_dirichlet_enforcement(field, dim, side, bc_value)
+
+            elif segment.bc_type == BCType.NEUMANN:
+                # Neumann: Set boundary value to satisfy gradient constraint ∂u/∂n = g
+                self._apply_neumann_enforcement(field, dim, side, bc_value, h)
+
+        return field
+
+    def _parse_boundary_identifier(self, boundary_id: str) -> tuple[int | None, str | None]:
+        """
+        Parse boundary identifier string to (dimension, side).
+
+        Supports standard tensor-product grid boundary naming:
+        - "x_min", "x_max" → (0, 'min'), (0, 'max')
+        - "y_min", "y_max" → (1, 'min'), (1, 'max')
+        - "z_min", "z_max" → (2, 'min'), (2, 'max')
+
+        Args:
+            boundary_id: Boundary identifier string
+
+        Returns:
+            (dimension_index, 'min' or 'max') or (None, None) if unrecognized
+        """
+        if not isinstance(boundary_id, str):
+            return None, None
+
+        # Parse format: "{axis}_{side}" e.g., "x_min", "y_max"
+        parts = boundary_id.lower().split("_")
+        if len(parts) != 2:
+            return None, None
+
+        axis, side = parts
+
+        # Map axis to dimension index
+        axis_map = {"x": 0, "y": 1, "z": 2}
+        if axis not in axis_map:
+            return None, None
+
+        dim = axis_map[axis]
+
+        # Validate side
+        if side not in ["min", "max"]:
+            return None, None
+
+        return dim, side
+
+    def _apply_dirichlet_enforcement(self, field: NDArray[np.floating], dim: int, side: str, value: float) -> None:
+        """
+        Apply Dirichlet BC enforcement to nD array along specified dimension and side.
+
+        Sets field[boundary_slice] = value where boundary_slice selects the appropriate
+        boundary face (e.g., field[0, :, :] for x_min in 3D).
+
+        Args:
+            field: Solution array (modified in-place)
+            dim: Dimension index (0=x, 1=y, 2=z)
+            side: 'min' or 'max'
+            value: Dirichlet boundary value
+        """
+        ndim = field.ndim
+        slices = [slice(None)] * ndim
+
+        if side == "min":
+            slices[dim] = 0
+        else:  # max
+            slices[dim] = -1
+
+        field[tuple(slices)] = value
+
+    def _apply_neumann_enforcement(
+        self, field: NDArray[np.floating], dim: int, side: str, grad_value: float, h: float
+    ) -> None:
+        """
+        Apply Neumann BC enforcement to nD array along specified dimension and side.
+
+        For Neumann BC ∂u/∂n = g, set boundary value to satisfy gradient constraint:
+        - min side: u[0] = u[1] - g*h  (forward difference)
+        - max side: u[-1] = u[-2] + g*h  (backward difference)
+
+        Args:
+            field: Solution array (modified in-place)
+            dim: Dimension index (0=x, 1=y, 2=z)
+            side: 'min' or 'max'
+            grad_value: Neumann BC gradient value
+            h: Grid spacing in this dimension
+        """
+        ndim = field.ndim
+        boundary_slices = [slice(None)] * ndim
+        neighbor_slices = [slice(None)] * ndim
+
+        if side == "min":
+            # Left boundary: u[0, :, :] = u[1, :, :] - g*h
+            boundary_slices[dim] = 0
+            neighbor_slices[dim] = 1
+            field[tuple(boundary_slices)] = field[tuple(neighbor_slices)] - grad_value * h
+        else:  # max
+            # Right boundary: u[-1, :, :] = u[-2, :, :] + g*h
+            boundary_slices[dim] = -1
+            neighbor_slices[dim] = -2
+            field[tuple(boundary_slices)] = field[tuple(neighbor_slices)] + grad_value * h
 
 
 # =============================================================================
