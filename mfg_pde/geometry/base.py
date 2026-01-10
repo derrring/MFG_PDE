@@ -1801,8 +1801,10 @@ class GraphGeometry(Geometry):
             - Abstract graphs: returns node indices [[0], [1], ..., [N-1]]
         """
         # For spatially embedded graphs with positions
-        if hasattr(self, "node_positions") and self.node_positions is not None:
-            return self.node_positions
+        # Issue #543: Use getattr() for optional attribute instead of hasattr
+        node_pos = getattr(self, "node_positions", None)
+        if node_pos is not None:
+            return node_pos
 
         # For abstract graphs without spatial embedding
         # Return node indices as (N, 1) array

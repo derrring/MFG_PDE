@@ -793,12 +793,13 @@ def create_maze_applicator(
         >>> applicator = create_maze_applicator(maze, auto_detect_exits=True)
     """
     # Get number of nodes from geometry
-    if hasattr(maze_geometry, "num_nodes"):
-        num_nodes = maze_geometry.num_nodes
-    elif hasattr(maze_geometry, "n_nodes"):
-        num_nodes = maze_geometry.n_nodes
-    else:
-        raise ValueError("Cannot determine number of nodes from maze geometry")
+    # Issue #543: Use getattr() to normalize attribute naming (num_nodes vs n_nodes)
+    num_nodes = getattr(maze_geometry, "num_nodes", None) or getattr(maze_geometry, "n_nodes", None)
+    if num_nodes is None:
+        raise ValueError(
+            "Cannot determine number of nodes from maze geometry. "
+            "Geometry must have 'num_nodes' or 'n_nodes' attribute."
+        )
 
     applicator = GraphApplicator(num_nodes)
 
