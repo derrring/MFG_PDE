@@ -350,6 +350,14 @@ class HJBFDMSolver(BaseHJBSolver):
                     # Convert to (1, 2) array for 1D
                     domain_bounds = np.array([[bounds[0][0], bounds[1][0]]])
 
+            # Debug: Log BC being passed (Issue #542 investigation)
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(f"[DEBUG Issue #542] BC passed to solve_hjb_system_backward: {bc}")
+            if bc is not None and hasattr(bc, "segments"):
+                logger.info(f"[DEBUG Issue #542] BC has {len(bc.segments)} segments")
+
             # Use optimized 1D solver with BC-aware computation (Issue #542 fix)
             return base_hjb.solve_hjb_system_backward(
                 M_density_from_prev_picard=M_density,

@@ -20,6 +20,7 @@ from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import BCSegment, BoundaryConditions
+from mfg_pde.geometry.boundary.types import BCType
 
 
 def test_neumann_bc():
@@ -30,8 +31,8 @@ def test_neumann_bc():
 
     bc = BoundaryConditions(
         segments=[
-            BCSegment(name="neumann_left", bc_type="neumann", value=0.0, boundary="x_min"),
-            BCSegment(name="neumann_right", bc_type="neumann", value=0.0, boundary="x_max"),
+            BCSegment(name="neumann_left", bc_type=BCType.NEUMANN, value=0.0, boundary="x_min"),
+            BCSegment(name="neumann_right", bc_type=BCType.NEUMANN, value=0.0, boundary="x_max"),
         ]
     )
     grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=bc)
@@ -41,12 +42,14 @@ def test_neumann_bc():
     U = solver.solve()
 
     # Check gradient at boundaries (should be ~0 for Neumann BC)
+    # Use intermediate time (not terminal time which has g(x)=5)
+    t_check = U.shape[0] // 2  # Middle of time evolution
     dx = grid.spacing[0]
-    grad_left = (U[-1, 1] - U[-1, 0]) / dx
-    grad_right = (U[-1, -1] - U[-1, -2]) / dx
+    grad_left = (U[t_check, 1] - U[t_check, 0]) / dx
+    grad_right = (U[t_check, -1] - U[t_check, -2]) / dx
 
-    print(f"Gradient at left boundary:  {grad_left:.6f} (should be ~0)")
-    print(f"Gradient at right boundary: {grad_right:.6f} (should be ~0)")
+    print(f"Gradient at left boundary (t={t_check}):  {grad_left:.6f} (should be ~0)")
+    print(f"Gradient at right boundary (t={t_check}): {grad_right:.6f} (should be ~0)")
 
     if abs(grad_left) < 0.1 and abs(grad_right) < 0.1:
         print("✅ PASS: Neumann BC correctly applied")
@@ -64,8 +67,8 @@ def test_dirichlet_bc():
 
     bc = BoundaryConditions(
         segments=[
-            BCSegment(name="dirichlet_left", bc_type="dirichlet", value=1.0, boundary="x_min"),
-            BCSegment(name="dirichlet_right", bc_type="dirichlet", value=2.0, boundary="x_max"),
+            BCSegment(name="dirichlet_left", bc_type=BCType.DIRICHLET, value=1.0, boundary="x_min"),
+            BCSegment(name="dirichlet_right", bc_type=BCType.DIRICHLET, value=2.0, boundary="x_max"),
         ]
     )
     grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=bc)
@@ -74,12 +77,13 @@ def test_dirichlet_bc():
     solver = HJBFDMSolver(problem)
     U = solver.solve()
 
-    # Check values at boundaries
-    value_left = U[-1, 0]
-    value_right = U[-1, -1]
+    # Check values at boundaries (use intermediate time, not terminal)
+    t_check = U.shape[0] // 2  # Middle of time evolution
+    value_left = U[t_check, 0]
+    value_right = U[t_check, -1]
 
-    print(f"Value at left boundary:  {value_left:.6f} (should be ~1.0)")
-    print(f"Value at right boundary: {value_right:.6f} (should be ~2.0)")
+    print(f"Value at left boundary (t={t_check}):  {value_left:.6f} (should be ~1.0)")
+    print(f"Value at right boundary (t={t_check}): {value_right:.6f} (should be ~2.0)")
 
     if abs(value_left - 1.0) < 0.1 and abs(value_right - 2.0) < 0.1:
         print("✅ PASS: Dirichlet BC correctly applied")
@@ -97,8 +101,8 @@ def test_mixed_bc():
 
     bc = BoundaryConditions(
         segments=[
-            BCSegment(name="neumann_left", bc_type="neumann", value=0.0, boundary="x_min"),
-            BCSegment(name="dirichlet_right", bc_type="dirichlet", value=1.0, boundary="x_max"),
+            BCSegment(name="neumann_left", bc_type=BCType.NEUMANN, value=0.0, boundary="x_min"),
+            BCSegment(name="dirichlet_right", bc_type=BCType.DIRICHLET, value=1.0, boundary="x_max"),
         ]
     )
     grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=bc)
@@ -107,13 +111,14 @@ def test_mixed_bc():
     solver = HJBFDMSolver(problem)
     U = solver.solve()
 
-    # Check mixed BC
+    # Check mixed BC (use intermediate time, not terminal)
+    t_check = U.shape[0] // 2  # Middle of time evolution
     dx = grid.spacing[0]
-    grad_left = (U[-1, 1] - U[-1, 0]) / dx
-    value_right = U[-1, -1]
+    grad_left = (U[t_check, 1] - U[t_check, 0]) / dx
+    value_right = U[t_check, -1]
 
-    print(f"Gradient at left boundary (Neumann): {grad_left:.6f} (should be ~0)")
-    print(f"Value at right boundary (Dirichlet): {value_right:.6f} (should be ~1.0)")
+    print(f"Gradient at left boundary (Neumann, t={t_check}): {grad_left:.6f} (should be ~0)")
+    print(f"Value at right boundary (Dirichlet, t={t_check}): {value_right:.6f} (should be ~1.0)")
 
     if abs(grad_left) < 0.1 and abs(value_right - 1.0) < 0.1:
         print("✅ PASS: Mixed BC correctly applied")

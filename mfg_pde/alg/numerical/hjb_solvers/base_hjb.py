@@ -1106,6 +1106,54 @@ def solve_hjb_timestep_newton(
     if not converged and max_newton_iterations > 0 and not (np.isnan(final_l2_error) or np.isinf(final_l2_error)):
         pass
 
+    # Enforce BC on solution (Issue #542)
+    # BC-aware Laplacian uses ghost cells for derivatives, but boundary values must be explicitly set
+    if bc is not None:
+        from mfg_pde.geometry.boundary.types import BCType
+
+        # Compute grid spacing for Neumann BC enforcement
+        if domain_bounds is not None:
+            Nx = len(U_n_current_newton_iterate)
+            # domain_bounds is shape (1, 2) for 1D: [[x_min, x_max]]
+            if domain_bounds.ndim == 2:
+                dx = (domain_bounds[0, 1] - domain_bounds[0, 0]) / Nx
+            else:
+                dx = (domain_bounds[1] - domain_bounds[0]) / Nx
+        else:
+            dx = 1.0  # Fallback (should not happen in practice)
+
+        # Left boundary
+        left_type, left_value = _get_bc_type_and_value_1d(bc, "left", current_time)
+        if left_type == BCType.DIRICHLET:
+            # Dirichlet: Set boundary value directly
+            if backend is not None:
+                U_n_current_newton_iterate[0] = backend.array([left_value])[0]
+            else:
+                U_n_current_newton_iterate[0] = left_value
+        elif left_type == BCType.NEUMANN:
+            # Neumann: Set boundary value to satisfy gradient constraint
+            # Forward difference: (u[1] - u[0]) / dx = g  =>  u[0] = u[1] - g*dx
+            if backend is not None:
+                U_n_current_newton_iterate[0] = U_n_current_newton_iterate[1] - backend.array([left_value * dx])[0]
+            else:
+                U_n_current_newton_iterate[0] = U_n_current_newton_iterate[1] - left_value * dx
+
+        # Right boundary
+        right_type, right_value = _get_bc_type_and_value_1d(bc, "right", current_time)
+        if right_type == BCType.DIRICHLET:
+            # Dirichlet: Set boundary value directly
+            if backend is not None:
+                U_n_current_newton_iterate[-1] = backend.array([right_value])[0]
+            else:
+                U_n_current_newton_iterate[-1] = right_value
+        elif right_type == BCType.NEUMANN:
+            # Neumann: Set boundary value to satisfy gradient constraint
+            # Backward difference: (u[-1] - u[-2]) / dx = g  =>  u[-1] = u[-2] + g*dx
+            if backend is not None:
+                U_n_current_newton_iterate[-1] = U_n_current_newton_iterate[-2] + backend.array([right_value * dx])[0]
+            else:
+                U_n_current_newton_iterate[-1] = U_n_current_newton_iterate[-2] + right_value * dx
+
     return U_n_current_newton_iterate
 
 
