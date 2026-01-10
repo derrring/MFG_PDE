@@ -200,6 +200,11 @@ class HJBFDMSolver(BaseHJBSolver):
                     jacobian=None,  # Use automatic finite differences
                 )
 
+            # Create BC applicator for enforcing boundary values (Issue #542)
+            from mfg_pde.geometry.boundary.applicator_fdm import FDMApplicator
+
+            self.bc_applicator = FDMApplicator(dimension=self.dimension)
+
     def _detect_dimension(self, problem) -> int:
         """Detect spatial dimension from geometry (unified interface)."""
         # Primary: Use geometry.dimension (standard for all modern problems)
@@ -349,6 +354,14 @@ class HJBFDMSolver(BaseHJBSolver):
                     bounds = geom.get_bounds()
                     # Convert to (1, 2) array for 1D
                     domain_bounds = np.array([[bounds[0][0], bounds[1][0]]])
+
+            # Debug: Log BC being passed (Issue #542 investigation)
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(f"[DEBUG Issue #542] BC passed to solve_hjb_system_backward: {bc}")
+            if bc is not None and hasattr(bc, "segments"):
+                logger.info(f"[DEBUG Issue #542] BC has {len(bc.segments)} segments")
 
             # Use optimized 1D solver with BC-aware computation (Issue #542 fix)
             return base_hjb.solve_hjb_system_backward(
@@ -512,6 +525,19 @@ class HJBFDMSolver(BaseHJBSolver):
                 f"{self.solver_type} did not converge (residual: {info.residual:.2e})",
                 UserWarning,
                 stacklevel=2,
+            )
+
+        # Enforce BC on solution (Issue #542 - nD extension)
+        # BC-aware gradients use ghost cells for derivatives, but boundary values must be explicitly set
+        # This extends the 1D fix from base_hjb.py to nD FDM solver path
+        # Refactored to use FDMApplicator.enforce_values() for proper separation of concerns
+        bc = self.problem.geometry.get_boundary_conditions()
+        if bc is not None:
+            U_solution = self.bc_applicator.enforce_values(
+                field=U_solution,
+                boundary_conditions=bc,
+                spacing=self.spacing,
+                time=time,
             )
 
         return U_solution
