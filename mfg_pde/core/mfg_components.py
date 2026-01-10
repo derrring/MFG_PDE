@@ -11,6 +11,7 @@ the logic in separate, focused modules.
 
 from __future__ import annotations
 
+import contextlib
 import inspect
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -262,7 +263,7 @@ class HamiltonianMixin:
         flat_idx: int | None = None
 
         if isinstance(x_idx, tuple):
-            if hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
+            if self.spatial_shape is not None and len(self.spatial_shape) > 1:
                 # Multi-dimensional tuple index - convert to flat
                 # Use mode='clip' to avoid ValueError, then check bounds
                 try:
@@ -362,8 +363,8 @@ class HamiltonianMixin:
         # Compute x_position and current_time if not provided
         if x_position is None:
             if isinstance(x_idx, tuple):
-                if hasattr(self, "geometry") and self.geometry is not None:
-                    if hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
+                if self.geometry is not None:
+                    if self.spatial_shape is not None and len(self.spatial_shape) > 1:
                         flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
                         spatial_grid = self.geometry.get_spatial_grid()
                         x_position = spatial_grid[flat_idx]
@@ -426,8 +427,11 @@ class HamiltonianMixin:
         else:
             # Legacy path: compute from dict (for backward compatibility)
             dimension = getattr(self, "dimension", 1)
-            if hasattr(self, "geometry") and hasattr(self.geometry, "dimension"):
-                dimension = self.geometry.dimension
+            if self.geometry is not None:
+                # Intentional: Not all geometry types have dimension attribute
+                # Use default dimension from self if geometry.dimension not available
+                with contextlib.suppress(AttributeError):
+                    dimension = self.geometry.dimension
 
             p_norm_sq = 0.0
             if dimension == 1:
@@ -529,8 +533,8 @@ class HamiltonianMixin:
         # Compute x_position and current_time if not provided
         if x_position is None:
             if isinstance(x_idx, tuple):
-                if hasattr(self, "geometry") and self.geometry is not None:
-                    if hasattr(self, "spatial_shape") and len(self.spatial_shape) > 1:
+                if self.geometry is not None:
+                    if self.spatial_shape is not None and len(self.spatial_shape) > 1:
                         flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
                         spatial_grid = self.geometry.get_spatial_grid()
                         x_position = spatial_grid[flat_idx]
@@ -745,7 +749,8 @@ class HamiltonianMixin:
 
         if not self.is_custom:
             m_val = M_density_at_n_plus_1[x_idx]
-            m_val = m_val.item() if hasattr(m_val, "item") else float(m_val)
+            # Convert numpy scalar or array to Python float
+            m_val = float(np.asarray(m_val))
             if np.isnan(m_val) or np.isinf(m_val):
                 return np.nan
             try:
@@ -819,7 +824,7 @@ class ConditionsMixin:
                 # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
                 x_i = float(spatial_grid[i, 0])
                 self.u_fin[i] = final_func(x_i)
-        elif hasattr(self, "geometry") and self.geometry is not None:
+        elif self.geometry is not None:
             spatial_grid = self.geometry.get_spatial_grid()
             num_points = spatial_grid.shape[0]
             ndim = spatial_grid.shape[1] if spatial_grid.ndim > 1 else 1
@@ -853,14 +858,21 @@ class ConditionsMixin:
         """
         from mfg_pde.geometry.boundary.conditions import periodic_bc
 
-        # Check geometry
-        has_geometry = hasattr(self, "geometry") and self.geometry is not None
-        has_geometry_bc_method = has_geometry and hasattr(self.geometry, "get_boundary_conditions")
-        has_explicit_bc = (
-            has_geometry
-            and hasattr(self.geometry, "has_explicit_boundary_conditions")
-            and self.geometry.has_explicit_boundary_conditions()
-        )
+        # Check geometry availability and capabilities
+        has_geometry = self.geometry is not None
+
+        # Use contextlib.suppress for protocol duck typing (Issue #543 - geometry methods)
+        has_geometry_bc_method = False
+        has_explicit_bc = False
+
+        if has_geometry:
+            # Intentional: Protocol duck typing - not all geometries have BC methods
+            with contextlib.suppress(AttributeError):
+                has_geometry_bc_method = callable(getattr(self.geometry, "get_boundary_conditions", None))
+
+            # Intentional: Protocol duck typing - not all geometries have explicit BC support
+            with contextlib.suppress(AttributeError):
+                has_explicit_bc = self.geometry.has_explicit_boundary_conditions()
 
         # Priority 1: Geometry with explicit BC (SSOT)
         if has_explicit_bc:

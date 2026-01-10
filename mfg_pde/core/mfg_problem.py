@@ -329,11 +329,15 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         # Initialize geometry-related attributes explicitly (Issue #543 - fail-fast principle)
         # These may be set by init methods, but should have explicit defaults
+        self.geometry = None  # type: GeometryProtocol | None
         self.hjb_geometry = None  # type: GeometryProtocol | None
         self.fp_geometry = None  # type: GeometryProtocol | None
+        self.spatial_shape = None  # type: tuple[int, ...] | None
         self.has_obstacles = False
         self.obstacles = []
         self.geometry_projector = None  # Will be set if dual geometries provided
+        self.solver_compatible = {}  # type: dict[str, bool]
+        self.solver_recommendations = {}  # type: dict[str, str]
 
         # Initialize legacy override attributes (Issue #543 - Step 2)
         # These support deprecated parameter API and will be removed in #544
@@ -1563,9 +1567,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             This method is called by solver constructors to provide early
             error detection with helpful messages.
         """
-        if not hasattr(self, "solver_compatible"):
-            # Compatibility not yet detected (shouldn't happen if __init__ called)
-            self._detect_solver_compatibility()
+        # Compatibility should already be detected in __init__
+        # If empty, initialization failed - raise explicit error
+        if not self.solver_compatible:
+            raise RuntimeError("Solver compatibility not detected. This indicates __init__ didn't complete properly.")
 
         if solver_type not in self.solver_compatible:
             # Build helpful error message
@@ -1656,8 +1661,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             - domain_type: Type of spatial domain
             - complexity: Estimated computational complexity
         """
-        if not hasattr(self, "solver_compatible"):
-            self._detect_solver_compatibility()
+        # Compatibility should already be detected in __init__
+        if not self.solver_compatible:
+            raise RuntimeError("Solver compatibility not detected. This indicates __init__ didn't complete properly.")
 
         return {
             "compatible": self.solver_compatible,
@@ -1987,6 +1993,8 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Create collocation points from problem domain
         if self.geometry is not None:
             # Use geometry grid if available
+            # NOTE (Issue #543): hasattr() used for protocol duck typing
+            # Will be replaced with proper GeometryProtocol in Issue #544
             if hasattr(self.geometry, "get_spatial_grid"):
                 x = self.geometry.get_spatial_grid()
                 collocation_points = np.atleast_2d(x).T if x.ndim == 1 else x

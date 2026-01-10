@@ -136,6 +136,10 @@ class StochasticMFGProblem(MFGProblem):
         self.conditional_terminal_cost = conditional_terminal_cost
         self.theta_initial = theta_initial
 
+        # Normalize terminal cost attribute names (Issue #543 - eliminate hasattr)
+        # Support both 'g' (MFGProblem standard) and 'terminal_cost' (simplified API)
+        self._terminal_cost_normalized = getattr(self, "terminal_cost", None) or getattr(self, "g", None)
+
         # Validate configuration
         if noise_process is not None and conditional_hamiltonian is None:
             raise ValueError("If noise_process is provided, conditional_hamiltonian must also be specified")
@@ -228,11 +232,9 @@ class StochasticMFGProblem(MFGProblem):
         """
         if self.conditional_terminal_cost is None:
             # Default: no dependence on terminal noise
-            # Support both g (MFGProblem attribute) and terminal_cost (simplified API)
-            if hasattr(self, "terminal_cost"):
-                return self.terminal_cost(x)
-            elif hasattr(self, "g"):
-                return self.g(x)
+            # Use normalized terminal cost attribute (set in __init__)
+            if self._terminal_cost_normalized is not None:
+                return self._terminal_cost_normalized(x)
             else:
                 # No terminal cost defined - use zero
                 return 0.0
