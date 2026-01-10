@@ -270,41 +270,56 @@ class GraphApplicator(BaseGraphApplicator):
     @staticmethod
     def _detect_leaf_nodes(geometry) -> list[int]:
         """Detect leaf nodes (degree 1) in the graph."""
-        if hasattr(geometry, "network_data") and geometry.network_data is not None:
-            adj = geometry.network_data.adjacency_matrix
-            if adj is not None:
-                degrees = np.array(adj.sum(axis=1)).flatten()
-                return list(np.where(degrees == 1)[0])
+        # Issue #543: Use try/except instead of hasattr() for optional attribute
+        try:
+            network_data = geometry.network_data
+            if network_data is not None:
+                adj = network_data.adjacency_matrix
+                if adj is not None:
+                    degrees = np.array(adj.sum(axis=1)).flatten()
+                    return list(np.where(degrees == 1)[0])
+        except AttributeError:
+            pass
         return []
 
     @staticmethod
     def _detect_low_degree_nodes(geometry, threshold: int) -> list[int]:
         """Detect nodes with degree <= threshold."""
-        if hasattr(geometry, "network_data") and geometry.network_data is not None:
-            adj = geometry.network_data.adjacency_matrix
-            if adj is not None:
-                degrees = np.array(adj.sum(axis=1)).flatten()
-                return list(np.where(degrees <= threshold)[0])
+        # Issue #543: Use try/except instead of hasattr() for optional attribute
+        try:
+            network_data = geometry.network_data
+            if network_data is not None:
+                adj = network_data.adjacency_matrix
+                if adj is not None:
+                    degrees = np.array(adj.sum(axis=1)).flatten()
+                    return list(np.where(degrees <= threshold)[0])
+        except AttributeError:
+            pass
         return []
 
     @staticmethod
     def _detect_spatial_boundary_nodes(geometry, tolerance: float = 1e-6) -> list[int]:
         """Detect nodes on spatial bounding box (for spatially-embedded networks)."""
-        if hasattr(geometry, "network_data") and geometry.network_data is not None:
-            positions = geometry.network_data.node_positions
-            if positions is not None:
-                min_coords = np.min(positions, axis=0)
-                max_coords = np.max(positions, axis=0)
+        # Issue #543: Use try/except instead of hasattr() for optional attribute
+        try:
+            network_data = geometry.network_data
+            if network_data is not None:
+                positions = network_data.node_positions
+                if positions is not None:
+                    min_coords = np.min(positions, axis=0)
+                    max_coords = np.max(positions, axis=0)
 
-                boundary_nodes = []
-                for i, pos in enumerate(positions):
-                    # Check if on any boundary face
-                    on_boundary = np.any(np.abs(pos - min_coords) < tolerance) or np.any(
-                        np.abs(pos - max_coords) < tolerance
-                    )
-                    if on_boundary:
-                        boundary_nodes.append(i)
-                return boundary_nodes
+                    boundary_nodes = []
+                    for i, pos in enumerate(positions):
+                        # Check if on any boundary face
+                        on_boundary = np.any(np.abs(pos - min_coords) < tolerance) or np.any(
+                            np.abs(pos - max_coords) < tolerance
+                        )
+                        if on_boundary:
+                            boundary_nodes.append(i)
+                    return boundary_nodes
+        except AttributeError:
+            pass
         return []
 
     # =========================================================================
