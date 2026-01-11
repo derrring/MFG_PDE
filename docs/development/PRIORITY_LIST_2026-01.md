@@ -314,7 +314,7 @@ Run tests after each priority, validate with research experiments.
 |:---------|:------|:------------|:-----|
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large |
 | MEDIUM | #535 | BC framework enhancement | Large |
-| MEDIUM | #527 | BC dispatch.py integration | Large |
+| MEDIUM | #527 | BC Infrastructure (Phase 1-3 ✅, Phase 4 ⏳) | Large |
 | MEDIUM | #492 | Newton family solvers | Large |
 | MEDIUM | #489 | Direct particle query for coupling | Large |
 | LOW | #523 | MMS validation suite for BC | Medium |
