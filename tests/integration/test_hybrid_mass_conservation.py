@@ -19,7 +19,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import no_flux_bc
+from mfg_pde.geometry import TensorProductGrid, no_flux_bc
 
 
 def compute_total_mass(density: np.ndarray, dx: float) -> float:
@@ -51,10 +51,9 @@ class TestHybridMassConservation:
         - Diffusion: σ = 0.1
         - No-flux Neumann BC
         """
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 2.0)], Nx_points=[51])  # Nx=50 -> 51 points
         return MFGProblem(
-            xmin=0.0,
-            xmax=2.0,
-            Nx=50,  # Moderate resolution
+            geometry=geometry,
             T=1.0,
             Nt=20,
             diffusion=0.1,
@@ -196,7 +195,8 @@ class TestHybridMassConservationFast:
         """
         Quick smoke test: verify hybrid solver runs and produces reasonable output.
         """
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.5, Nt=10, diffusion=0.1)
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])  # Nx=20 -> 21 points
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.1)
 
         bc = no_flux_bc(dimension=1)
         problem.boundary_conditions = bc

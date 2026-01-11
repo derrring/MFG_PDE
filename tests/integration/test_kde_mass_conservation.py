@@ -7,13 +7,14 @@ import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver as ParticleFPSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import no_flux_bc
+from mfg_pde.geometry import TensorProductGrid, no_flux_bc
 
 
 def test_kde_normalization():
     print("=== Testing KDE Mass Conservation ===")
 
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=20, T=0.1, Nt=5, diffusion=1.0, coupling_coefficient=0.5)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])  # Nx=20 -> 21 points
+    problem = MFGProblem(geometry=geometry, T=0.1, Nt=5, diffusion=1.0, coupling_coefficient=0.5)
 
     bc = no_flux_bc(dimension=1)
 

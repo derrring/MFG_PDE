@@ -22,6 +22,7 @@ import warnings
 import pytest
 
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
 
 class TestLegacy1DMode:
@@ -410,7 +411,6 @@ class TestCustomComponentExceptionPropagation:
     def test_custom_hamiltonian_exception_propagates(self):
         """Test that exceptions in custom Hamiltonian propagate to caller."""
         from mfg_pde.core.mfg_problem import MFGComponents
-        from mfg_pde.geometry import TensorProductGrid
 
         # Custom Hamiltonian that raises an exception
         def broken_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
@@ -440,7 +440,6 @@ class TestCustomComponentExceptionPropagation:
     def test_custom_hamiltonian_dm_exception_propagates(self):
         """Test that exceptions in custom dH/dm propagate to caller."""
         from mfg_pde.core.mfg_problem import MFGComponents
-        from mfg_pde.geometry import TensorProductGrid
 
         def working_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
             return 0.0

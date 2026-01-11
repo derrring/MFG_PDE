@@ -14,6 +14,7 @@ Run:
 """
 
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
 
 def demo_simple_usage():
@@ -43,7 +44,9 @@ def demo_custom_parameters():
     print("Demo 2: Custom Parameters")
     print("=" * 60)
 
-    problem = MFGProblem(Nx=80, Nt=30, T=1.0)
+    # Geometry-First API: create grid, then problem
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[81])
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
     # Custom solve parameters
     result = problem.solve(
@@ -65,7 +68,8 @@ def demo_factory_api():
 
     from mfg_pde.factory import create_standard_solver
 
-    problem = MFGProblem(Nx=50, Nt=20, T=1.0)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=20)
 
     # Factory API for more control
     solver = create_standard_solver(problem, "fixed_point")
@@ -86,7 +90,8 @@ def demo_direct_solver():
     from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
     from mfg_pde.config.core import SolverConfig
 
-    problem = MFGProblem(Nx=50, Nt=20, T=1.0)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=20)
 
     # Create solvers directly
     hjb_solver = HJBFDMSolver(problem)

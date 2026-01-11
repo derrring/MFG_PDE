@@ -7,14 +7,15 @@ import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import no_flux_bc
+from mfg_pde.geometry import TensorProductGrid, no_flux_bc
 
 
 def test_weight_functions():
     print("=== Testing Different Weight Functions in GFDM ===")
 
     # Simple problem
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=10, T=0.02, Nt=2, diffusion=0.1, coupling_coefficient=0.1)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry, T=0.02, Nt=2, diffusion=0.1, coupling_coefficient=0.1)
 
     num_collocation_points = 5
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)

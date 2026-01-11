@@ -318,17 +318,14 @@ class TestGetSpatialGrid:
 
     def test_legacy_api_1d(self):
         """Test grid extraction with legacy API (1D)."""
-        # Suppress deprecation warnings for this test
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, diffusion=0.1)
+        # This test now uses Geometry-First API instead of deprecated legacy API
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1)
 
         grid = get_spatial_grid(problem)
 
         assert isinstance(grid, np.ndarray)
-        assert len(grid) == 51  # Nx + 1
+        assert len(grid) == 51  # 51 grid points
         np.testing.assert_array_almost_equal(grid, np.linspace(0, 1, 51))
 
     def test_missing_geometry_raises_error(self):

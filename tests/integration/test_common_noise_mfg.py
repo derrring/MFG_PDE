@@ -10,6 +10,7 @@ import pytest
 import numpy as np
 
 from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
 
 @pytest.mark.slow
@@ -26,10 +27,9 @@ class TestCommonNoiseMFGSolver:
         def simple_hamiltonian(x, p, m, theta):
             return 0.5 * p**2 + 0.1 * m
 
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])  # Nx=21 -> 22 points
         problem = StochasticMFGProblem(
-            xmin=0.0,
-            xmax=1.0,
-            Nx=21,  # Small for fast test
+            geometry=geometry,
             T=0.5,
             Nt=11,
             noise_process=noise_process,
@@ -49,7 +49,8 @@ class TestCommonNoiseMFGSolver:
         from mfg_pde.core import MFGProblem
 
         # Regular MFG problem without noise
-        problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=21, T=0.5, Nt=11)
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])  # Nx=21 -> 22 points
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=11)
 
         # Should raise ValueError
         with pytest.raises(ValueError, match="must have common noise"):
@@ -64,10 +65,9 @@ class TestCommonNoiseMFGSolver:
         def simple_hamiltonian(x, p, m, theta):
             return 0.5 * p**2
 
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])  # Nx=21 -> 22 points
         problem = StochasticMFGProblem(
-            xmin=0.0,
-            xmax=1.0,
-            Nx=21,
+            geometry=geometry,
             T=0.5,
             Nt=11,
             noise_process=noise_process,
