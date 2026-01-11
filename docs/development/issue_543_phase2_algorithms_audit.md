@@ -294,11 +294,49 @@ if isinstance(backend, BackendProtocol):
 
 ## Progress Tracking
 
-**Phase 2A**: ❌ Not started
+**Phase 2A**: ✅ COMPLETE (2026-01-11)
 **Phase 2B**: ❌ Not started
 **Phase 2C**: ❌ Not started (deferred)
 
-**Total Eliminated**: 0/149 (0%)
+**Total Eliminated**: 24/149 (16% - Phase 2A only)
+
+### Phase 2A Completion Summary (2026-01-11)
+
+**Commits**:
+- `ae12ce2` - fictitious_play.py refactoring
+- `62da835` - fixed_point_iterator.py refactoring
+- `a025e9c` - hybrid_fp_particle_hjb_fdm.py refactoring
+
+**Results**:
+- **fictitious_play.py**: 15 → 2 documented (87% reduction)
+  - Centralized `_get_initial_and_terminal_conditions()` helper (8 hasattr → 1 method)
+  - Cached solver signatures in `__init__` (4 hasattr → signature cache)
+  - Documented 2 progress bar hasattr as acceptable (tqdm/rich interface)
+
+- **fixed_point_iterator.py**: 10 → 2 documented (80% reduction)
+  - Applied same patterns as fictitious_play.py
+  - Centralized initial/terminal condition retrieval
+  - Cached solver signatures
+  - Documented 2 progress bar hasattr as acceptable
+
+- **hybrid_fp_particle_hjb_fdm.py**: 3 → 0 (100% reduction)
+  - Replaced problem method hasattr with try/except
+  - Initialized U_solution/M_solution to None (eliminated hasattr in get_results())
+
+**Infrastructure Created**:
+- **HJBSolverProtocol** and **FPSolverProtocol** in `mfg_pde/types/protocols.py`
+- Reusable `_get_initial_and_terminal_conditions()` pattern
+- Signature caching pattern for solver method detection
+
+**Metrics**:
+```
+Before Phase 2A:  149 hasattr in alg/
+After Phase 2A:   124 hasattr in alg/
+Reduction:        25 violations (17%)
+  - Eliminated:   24 violations
+  - Documented:   4 violations (progress bar interface checks)
+  - Remaining:    ~120 violations (FP solvers, RL algorithms)
+```
 
 ## Testing Strategy
 
