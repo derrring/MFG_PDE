@@ -41,9 +41,12 @@ Usage:
 """
 
 # =============================================================================
-# Base Classes and Protocols (applicator hierarchy)
+# Solver BC Protocol (Issue #545 - Unified BC handling across all solvers)
 # =============================================================================
 
+# =============================================================================
+# Base Classes and Protocols (applicator hierarchy)
+# =============================================================================
 from .applicator_base import (
     # Base classes
     BaseBCApplicator,
@@ -207,6 +210,11 @@ from .dispatch import (
 # 1D FDM boundary conditions (simple left/right specification)
 # DEPRECATED: Use conditions.BoundaryConditions with dimension=1 instead
 from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
+from .handler_protocol import (
+    AdvancedBoundaryHandler,
+    BoundaryHandler,
+    validate_boundary_handler,
+)
 
 # =============================================================================
 # Core Types (dimension-agnostic BC specification)
@@ -221,6 +229,10 @@ from .types import (
 LegacyBoundaryConditions1D = BoundaryConditions1DFDM
 
 __all__ = [
+    # Solver BC Protocol (Issue #545)
+    "BoundaryHandler",
+    "AdvancedBoundaryHandler",
+    "validate_boundary_handler",
     # Base classes and protocols
     "DiscretizationType",
     "GridType",
