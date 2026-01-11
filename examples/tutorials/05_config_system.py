@@ -15,6 +15,7 @@ This tutorial wraps up the series and points you toward more advanced topics.
 import numpy as np
 
 from mfg_pde import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
 # ==============================================================================
 # Step 1: Problem Setup
@@ -46,10 +47,9 @@ results_sigma = {}
 
 for sigma in sigma_values:
     print(f"Solving with sigma={sigma}...")
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
     problem = MFGProblem(
-        xmin=0.0,
-        xmax=1.0,
-        Nx=50,
+        geometry=geometry,
         T=1.0,
         Nt=50,
         sigma=sigma,
@@ -78,10 +78,9 @@ results_coupling = {}
 
 for coupling in coupling_values:
     print(f"Solving with coupling={coupling}...")
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
     problem = MFGProblem(
-        xmin=0.0,
-        xmax=1.0,
-        Nx=50,
+        geometry=geometry,
         T=1.0,
         Nt=50,
         sigma=0.15,
@@ -110,10 +109,9 @@ results_grid = {}
 
 for Nx in Nx_values:
     print(f"Solving with Nx={Nx} grid points...")
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1])
     problem = MFGProblem(
-        xmin=0.0,
-        xmax=1.0,
-        Nx=Nx,
+        geometry=geometry,
         T=1.0,
         Nt=Nx,  # Keep dt/dx ratio constant
         diffusion=0.15,
@@ -148,7 +146,8 @@ print()
 print("Mass Conservation Check (sigma variations):")
 for sigma, result in results_sigma.items():
     # Create a problem with matching grid to get dx
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, diffusion=sigma)
+    ref_geom = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    problem = MFGProblem(geometry=ref_geom, T=1.0, Nt=50, diffusion=sigma)
     dx = problem.geometry.get_grid_spacing()[0]
     initial_mass = np.sum(result.M[0, :]) * dx
     final_mass = np.sum(result.M[-1, :]) * dx
@@ -187,7 +186,8 @@ try:
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     # Create reference problem for grid
-    ref_problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=50, diffusion=0.15)
+    ref_geom = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    ref_problem = MFGProblem(geometry=ref_geom, T=1.0, Nt=50, diffusion=0.15)
 
     # Plot 1: Diffusion comparison (final density)
     for sigma, result in results_sigma.items():
