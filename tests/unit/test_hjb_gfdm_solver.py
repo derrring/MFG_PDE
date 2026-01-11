@@ -199,7 +199,7 @@ class TestHJBGFDMSolverWeightFunctions:
     """Test weight function computation."""
 
     def test_weight_function_wendland(self, standard_problem):
-        """Test Wendland weight function."""
+        """Test Wendland weight function integration with solver."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
         x_coords = np.linspace(bounds[0][0], bounds[1][0], 10)
@@ -207,8 +207,9 @@ class TestHJBGFDMSolverWeightFunctions:
 
         solver = HJBGFDMSolver(problem, collocation_points, weight_function="wendland")
 
+        # Access component through solver (post-refactoring)
         distances = np.array([0.0, 0.05, 0.1, 0.15, 0.2])
-        weights = solver._compute_weights(distances)
+        weights = solver._neighborhood_builder.compute_weights(distances)
 
         # Wendland weights should decay with distance
         assert weights[0] >= weights[1] >= weights[2]
@@ -216,7 +217,7 @@ class TestHJBGFDMSolverWeightFunctions:
         assert weights[-1] < weights[0] * 0.1
 
     def test_weight_function_gaussian(self, standard_problem):
-        """Test Gaussian weight function."""
+        """Test Gaussian weight function integration with solver."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
         x_coords = np.linspace(bounds[0][0], bounds[1][0], 10)
@@ -224,8 +225,9 @@ class TestHJBGFDMSolverWeightFunctions:
 
         solver = HJBGFDMSolver(problem, collocation_points, weight_function="gaussian")
 
+        # Access component through solver (post-refactoring)
         distances = np.array([0.0, 0.1, 0.2, 0.3])
-        weights = solver._compute_weights(distances)
+        weights = solver._neighborhood_builder.compute_weights(distances)
 
         # Gaussian weights should decay with distance
         assert np.all(np.diff(weights) <= 0)  # Monotone decreasing
@@ -233,7 +235,7 @@ class TestHJBGFDMSolverWeightFunctions:
         assert np.isclose(weights[0], 1.0)
 
     def test_weight_function_uniform(self, standard_problem):
-        """Test uniform weight function."""
+        """Test uniform weight function integration with solver."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
         x_coords = np.linspace(bounds[0][0], bounds[1][0], 10)
@@ -241,8 +243,9 @@ class TestHJBGFDMSolverWeightFunctions:
 
         solver = HJBGFDMSolver(problem, collocation_points, weight_function="uniform")
 
+        # Access component through solver (post-refactoring)
         distances = np.array([0.0, 0.1, 0.2, 0.3])
-        weights = solver._compute_weights(distances)
+        weights = solver._neighborhood_builder.compute_weights(distances)
 
         # Uniform weights should all be 1
         assert np.allclose(weights, 1.0)
@@ -321,7 +324,7 @@ class TestHJBGFDMSolverMappingMethods:
     """Test grid-collocation mapping methods."""
 
     def test_map_grid_to_collocation(self, standard_problem):
-        """Test mapping from grid to collocation points."""
+        """Test mapping from grid to collocation points (integration test)."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
         (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
@@ -330,9 +333,10 @@ class TestHJBGFDMSolverMappingMethods:
 
         solver = HJBGFDMSolver(problem, collocation_points)
 
+        # Access component through solver (post-refactoring)
         # Test with simple function
         u_grid = np.sin(x_coords)
-        u_collocation = solver._map_grid_to_collocation(u_grid)
+        u_collocation = solver._mapper.map_grid_to_collocation(u_grid)
 
         # Should preserve values when grid == collocation
         assert u_collocation.shape == (Nx_points,)
@@ -361,7 +365,7 @@ class TestHJBGFDMSolverMappingMethods:
         assert np.allclose(u_grid, u_collocation)
 
     def test_batch_mapping_consistency(self, standard_problem):
-        """Test that batch mapping is consistent with single mapping."""
+        """Test that batch mapping is consistent with single mapping (integration test)."""
         problem = standard_problem
         bounds = problem.geometry.get_bounds()
         (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
@@ -374,12 +378,13 @@ class TestHJBGFDMSolverMappingMethods:
         Nt = 10
         U_grid = np.random.rand(Nt, Nx_points)
 
+        # Access component through solver (post-refactoring)
         # Batch mapping
-        U_collocation_batch = solver._map_grid_to_collocation_batch(U_grid)
+        U_collocation_batch = solver._mapper.map_grid_to_collocation_batch(U_grid)
 
         # Single mapping
         for n in range(Nt):
-            u_single = solver._map_grid_to_collocation(U_grid[n, :])
+            u_single = solver._mapper.map_grid_to_collocation(U_grid[n, :])
             assert np.allclose(U_collocation_batch[n, :], u_single)
 
 

@@ -206,11 +206,11 @@ class TestGFDMHJBSolver:
             pytest.skip(f"Solver failed: {e}")
 
     def test_weight_functions(self):
-        """Test different weight functions for GFDM weighting."""
+        """Test different weight functions for GFDM weighting (integration test)."""
         distances = np.array([0.0, 0.1, 0.2, 0.3])
 
-        # Test default weight function (wendland)
-        weights = self.solver._compute_weights(distances)
+        # Test default weight function (wendland) via component
+        weights = self.solver._neighborhood_builder.compute_weights(distances)
         assert len(weights) == len(distances)
         # Distance 0 should give max weight
         assert weights[0] >= weights[-1], "Weight should decrease with distance"
@@ -223,17 +223,18 @@ class TestGFDMHJBSolver:
             delta=0.3,
             weight_function="uniform",
         )
-        weights_uniform = solver_uniform._compute_weights(distances)
+        weights_uniform = solver_uniform._neighborhood_builder.compute_weights(distances)
         assert np.all(weights_uniform == 1.0), "Uniform weights should all be 1.0"
 
     def test_grid_collocation_mapping(self):
-        """Test mapping between grid and collocation points."""
+        """Test mapping between grid and collocation points (integration test)."""
         # Test when sizes match
         u_grid = np.ones(10)
-        u_collocation = self.solver._map_grid_to_collocation(u_grid)
+        # Access component through solver (post-refactoring)
+        u_collocation = self.solver._mapper.map_grid_to_collocation(u_grid)
         assert len(u_collocation) == 10
 
-        u_grid_back = self.solver._map_collocation_to_grid(u_collocation)
+        u_grid_back = self.solver._mapper.map_collocation_to_grid(u_collocation)
         assert len(u_grid_back) == 10
 
         # Verify round-trip preserves values
