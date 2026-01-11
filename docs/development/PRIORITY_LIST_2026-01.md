@@ -305,5 +305,19 @@ Run tests after each priority, validate with research experiments.
 ---
 
 **Last Updated**: 2026-01-11
-**Completed**: Priority 1 (#542), Priority 2 (#547), Priority 3 (#543)
-**Current Focus**: Determining next priority (P4a vs P5)
+**Completed**: Priority 1 (#542), Priority 2 (#547), Priority 3 (#543), Priority 4 (#545), Priority 7 (#544)
+**Current Focus**: All infrastructure priorities complete! Next: BC framework or Algorithm features
+
+## Remaining Open Issues (by priority)
+
+| Priority | Issue | Description | Size |
+|:---------|:------|:------------|:-----|
+| MEDIUM | #549 | BC framework for non-tensor geometries | Large |
+| MEDIUM | #535 | BC framework enhancement | Large |
+| MEDIUM | #527 | BC dispatch.py integration | Large |
+| MEDIUM | #492 | Newton family solvers | Large |
+| MEDIUM | #489 | Direct particle query for coupling | Large |
+| LOW | #523 | MMS validation suite for BC | Medium |
+| LOW | #521 | 3D corner handling | Large |
+| LOW | #517 | Semantic dispatch factory | Medium |
+| LOW | Others | Various infrastructure/features | Large |
