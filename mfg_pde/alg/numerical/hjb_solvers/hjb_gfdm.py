@@ -972,12 +972,10 @@ class HJBGFDMSolver(BaseHJBSolver):
         return volume
 
     # =========================================================================
-    # Boundary Methods: Provided by GFDMBoundaryMixin (gfdm_boundary_mixin.py)
-    # _compute_outward_normal, _compute_boundary_normals, _create_bc_config
-    # _build_neumann_bc_weights, _count_deep_neighbors, _build_rotation_matrix
-    # _apply_local_coordinate_rotation, _rotate_derivatives_back
-    # _create_ghost_neighbors, _apply_ghost_nodes_to_neighborhoods
-    # _get_values_with_ghosts
+    # Boundary Methods: Provided by BoundaryHandler component (Issue #545)
+    # compute_boundary_normals, build_rotation_matrix, apply_local_coordinate_rotation
+    # rotate_derivatives_back, apply_ghost_nodes_to_neighborhoods
+    # build_neumann_bc_weights
     # =========================================================================
 
     def _compute_gradient_at_point(self, u_values: np.ndarray, point_idx: int) -> np.ndarray:
