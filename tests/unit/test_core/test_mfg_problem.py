@@ -17,6 +17,7 @@ import pytest
 import numpy as np
 
 from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
 # Unified BC from conditions.py (current API)
 from mfg_pde.geometry.boundary.conditions import BoundaryConditions
@@ -108,7 +109,8 @@ def test_mfg_problem_default_initialization():
 @pytest.mark.unit
 def test_mfg_problem_custom_domain():
     """Test MFGProblem with custom domain parameters."""
-    problem = MFGProblem(xmin=-1.0, xmax=2.0, Nx=100)
+    geometry = TensorProductGrid(dimension=1, bounds=[(-1.0, 2.0)], Nx_points=[101])  # Nx=100 intervals
+    problem = MFGProblem(geometry=geometry)
 
     assert problem.xmin == -1.0
     assert problem.xmax == 2.0
@@ -141,7 +143,8 @@ def test_mfg_problem_custom_coefficients():
 @pytest.mark.unit
 def test_mfg_problem_spatial_grid():
     """Test MFGProblem spatial grid generation."""
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=10)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry)
 
     assert problem.geometry.get_grid_shape()[0] == 11  # Nx+1 points
     assert problem.xSpace[0] == 0.0
@@ -172,7 +175,8 @@ def test_mfg_problem_temporal_grid():
 @pytest.mark.unit
 def test_mfg_problem_default_potential():
     """Test default potential function is initialized."""
-    problem = MFGProblem(Nx=10)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry)
 
     assert hasattr(problem, "f_potential")
     assert isinstance(problem.f_potential, np.ndarray)
@@ -184,7 +188,8 @@ def test_mfg_problem_default_potential():
 @pytest.mark.unit
 def test_mfg_problem_default_final_value():
     """Test default final value function is initialized."""
-    problem = MFGProblem(Nx=10)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry)
 
     assert hasattr(problem, "u_fin")
     assert isinstance(problem.u_fin, np.ndarray)
@@ -196,7 +201,8 @@ def test_mfg_problem_default_final_value():
 @pytest.mark.unit
 def test_mfg_problem_default_initial_density():
     """Test default initial density function is initialized."""
-    problem = MFGProblem(Nx=10)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry)
 
     assert hasattr(problem, "m_init")
     assert isinstance(problem.m_init, np.ndarray)
@@ -219,8 +225,9 @@ def test_mfg_problem_with_custom_potential():
     def custom_potential(x, t):
         return x**2
 
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     components = MFGComponents(potential_func=custom_potential)
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=10, components=components)
+    problem = MFGProblem(geometry=geometry, components=components)
 
     assert problem.is_custom is True
     assert problem.components is not None
@@ -237,8 +244,9 @@ def test_mfg_problem_with_custom_initial_density():
     def custom_initial(x):
         return np.exp(-10 * (x - 0.5) ** 2)
 
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     components = MFGComponents(initial_density_func=custom_initial)
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=10, components=components)
+    problem = MFGProblem(geometry=geometry, components=components)
 
     assert problem.is_custom is True
     # Check initial density was set using custom function and normalized
@@ -257,8 +265,9 @@ def test_mfg_problem_with_custom_final_value():
     def custom_final(x):
         return np.sin(x * np.pi)
 
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     components = MFGComponents(final_value_func=custom_final)
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=10, components=components)
+    problem = MFGProblem(geometry=geometry, components=components)
 
     assert problem.is_custom is True
     # Check final value was set using custom function
@@ -275,7 +284,8 @@ def test_mfg_problem_with_custom_final_value():
 @pytest.mark.unit
 def test_hamiltonian_h_default():
     """Test default Hamiltonian H computation."""
-    problem = MFGProblem(Nx=10, diffusion=1.0, coupling_coefficient=0.5)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry, diffusion=1.0, coupling_coefficient=0.5)
 
     x_idx = 5
     m_at_x = 1.0
@@ -292,7 +302,8 @@ def test_hamiltonian_h_default():
 @pytest.mark.unit
 def test_hamiltonian_dh_dm_default():
     """Test default Hamiltonian derivative dH/dm."""
-    problem = MFGProblem(Nx=10)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry)
 
     x_idx = 5
     m_at_x = 1.0
@@ -371,7 +382,8 @@ def test_get_boundary_conditions_custom():
 @pytest.mark.unit
 def test_get_potential_at_time():
     """Test get_potential_at_time returns array."""
-    problem = MFGProblem(Nx=10, Nt=20)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry, Nt=20)
 
     potential = problem.get_potential_at_time(t_idx=5)
 
@@ -384,7 +396,8 @@ def test_get_potential_at_time():
 @pytest.mark.unit
 def test_get_final_u():
     """Test get_final_u returns final value function."""
-    problem = MFGProblem(Nx=10)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry)
 
     u_final = problem.get_final_u()
 
@@ -396,7 +409,8 @@ def test_get_final_u():
 @pytest.mark.unit
 def test_get_initial_m():
     """Test get_initial_m returns initial density."""
-    problem = MFGProblem(Nx=10)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    problem = MFGProblem(geometry=geometry)
 
     m_initial = problem.get_initial_m()
 
@@ -408,7 +422,8 @@ def test_get_initial_m():
 @pytest.mark.unit
 def test_get_problem_info():
     """Test get_problem_info returns comprehensive info dict."""
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100, diffusion=0.5, coupling_coefficient=0.8)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])  # Nx=50 intervals
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, diffusion=0.5, coupling_coefficient=0.8)
 
     info = problem.get_problem_info()
 
@@ -597,7 +612,8 @@ def test_dual_geometry_with_1d_grids():
 def test_dual_geometry_legacy_mode_compatibility():
     """Test that legacy 1D mode sets hjb_geometry and fp_geometry correctly."""
     # Legacy mode creates its own grid internally
-    problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, T=1.0, Nt=50)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])  # Nx=100 intervals
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
     # Check that hjb_geometry and fp_geometry are set (to the same unified geometry)
     assert problem.hjb_geometry is not None

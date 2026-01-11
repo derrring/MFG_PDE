@@ -16,6 +16,7 @@ import numpy as np
 # Import main package components
 from mfg_pde import MFGProblem
 from mfg_pde.config import MFGSolverConfig
+from mfg_pde.geometry import TensorProductGrid
 
 # =============================================================================
 # Test Configuration
@@ -71,37 +72,43 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture
 def tiny_problem():
     """Very small problem for quick tests."""
-    return MFGProblem(Nx=5, Nt=3, T=0.1)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[6])  # Nx=5 -> 6 points
+    return MFGProblem(geometry=geometry, Nt=3, T=0.1)
 
 
 @pytest.fixture
 def small_problem():
     """Small problem for unit tests."""
-    return MFGProblem(Nx=10, Nt=5, T=0.5)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 -> 11 points
+    return MFGProblem(geometry=geometry, Nt=5, T=0.5)
 
 
 @pytest.fixture
 def medium_problem():
     """Medium problem for integration tests."""
-    return MFGProblem(Nx=25, Nt=12, T=1.0)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[26])  # Nx=25 -> 26 points
+    return MFGProblem(geometry=geometry, Nt=12, T=1.0)
 
 
 @pytest.fixture
 def large_problem():
     """Large problem for performance tests."""
-    return MFGProblem(Nx=50, Nt=25, T=2.0)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])  # Nx=50 -> 51 points
+    return MFGProblem(geometry=geometry, Nt=25, T=2.0)
 
 
 @pytest.fixture(
     params=[
-        {"Nx": 10, "Nt": 5, "T": 0.5},
-        {"Nx": 15, "Nt": 8, "T": 1.0},
-        {"Nx": 20, "Nt": 10, "T": 1.5},
+        {"Nx_points": 11, "Nt": 5, "T": 0.5},  # Nx=10 -> 11 points
+        {"Nx_points": 16, "Nt": 8, "T": 1.0},  # Nx=15 -> 16 points
+        {"Nx_points": 21, "Nt": 10, "T": 1.5},  # Nx=20 -> 21 points
     ]
 )
 def parametrized_problem(request):
     """Parametrized problem fixture for testing multiple configurations."""
-    return MFGProblem(**request.param)
+    params = request.param
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[params["Nx_points"]])
+    return MFGProblem(geometry=geometry, Nt=params["Nt"], T=params["T"])
 
 
 @pytest.fixture(params=[0.1, 0.5, 1.0, 2.0])
