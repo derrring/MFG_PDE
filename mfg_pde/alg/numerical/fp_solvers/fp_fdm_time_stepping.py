@@ -80,16 +80,17 @@ def _get_bc_type(boundary_conditions: Any) -> str | None:
     if boundary_conditions is None:
         return None
 
+    # Issue #543 Phase 2: Replace hasattr with try/except
     # Unified BC: has is_uniform property and type property
-    if hasattr(boundary_conditions, "is_uniform"):
-        try:
-            return boundary_conditions.type
-        except ValueError:
-            # Mixed BC - type property raises ValueError
-            return None
-
-    # Legacy BC: type is a direct attribute
-    return getattr(boundary_conditions, "type", None)
+    try:
+        # Try accessing type - may raise ValueError for mixed BC
+        return boundary_conditions.type
+    except ValueError:
+        # Mixed BC - type property raises ValueError
+        return None
+    except AttributeError:
+        # Legacy BC: type is a direct attribute (shouldn't happen but fallback)
+        return getattr(boundary_conditions, "type", None)
 
 
 def _get_bc_value(boundary_conditions: Any, boundary: str) -> float:
@@ -107,15 +108,16 @@ def _get_bc_value(boundary_conditions: Any, boundary: str) -> float:
     Returns:
         BC value at the specified boundary
     """
-    # Unified BC: has get_bc_value_at_boundary method
-    if hasattr(boundary_conditions, "get_bc_value_at_boundary"):
+    # Issue #543 Phase 2: Replace hasattr with try/except
+    # Try unified BC first (modern API)
+    try:
         return boundary_conditions.get_bc_value_at_boundary(boundary)
-
-    # Legacy BC: use left_value/right_value
-    if boundary == "x_min":
-        return getattr(boundary_conditions, "left_value", 0.0)
-    elif boundary == "x_max":
-        return getattr(boundary_conditions, "right_value", 0.0)
+    except AttributeError:
+        # Fall back to legacy BC: use left_value/right_value
+        if boundary == "x_min":
+            return getattr(boundary_conditions, "left_value", 0.0)
+        elif boundary == "x_max":
+            return getattr(boundary_conditions, "right_value", 0.0)
 
     return 0.0
 
@@ -850,11 +852,12 @@ def solve_timestep_full_nd(
         is_boundary = is_boundary_point(multi_idx, shape, ndim)
 
         # Determine BC type - for mixed BC, default to no-flux behavior
-        # Handle both legacy BC interface and new BoundaryConditionManager2D
-        if hasattr(boundary_conditions, "is_uniform") and hasattr(boundary_conditions, "type"):
+        # Issue #543 Phase 2: Replace hasattr with try/except
+        # Try modern BC interface first
+        try:
             is_no_flux = boundary_conditions.is_uniform and boundary_conditions.type == "no_flux"
             is_uniform = boundary_conditions.is_uniform
-        else:
+        except AttributeError:
             # For BoundaryConditionManager2D or unknown types, default to no-flux
             is_no_flux = True
             is_uniform = False

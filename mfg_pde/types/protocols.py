@@ -124,3 +124,88 @@ class SolverConfig(Protocol):
     def get_parameter(self, name: str, default: Any = None) -> Any:
         """Get a configuration parameter."""
         ...
+
+
+# =============================================================================
+# Subsystem Solver Protocols (Issue #543 Phase 2)
+# =============================================================================
+
+
+@runtime_checkable
+class HJBSolverProtocol(Protocol):
+    """
+    Protocol for Hamilton-Jacobi-Bellman (HJB) equation solvers.
+
+    This protocol defines the interface that HJB solvers must implement
+    for use in coupling algorithms (Fictitious Play, Fixed Point Iteration).
+
+    Issue #543 Phase 2: Eliminates hasattr checks like:
+        if hasattr(self.hjb_solver, "solve_hjb_system"):
+
+    Methods:
+        solve(...): Main solve method (preferred modern API)
+        solve_hjb_system(...): Legacy solve method (for backward compatibility)
+
+    Note: Solvers should implement at least one of these methods.
+    """
+
+    def solve(
+        self,
+        m: NDArray,
+        dt: float | None = None,
+        **kwargs,
+    ) -> NDArray:
+        """
+        Solve HJB equation given density m.
+
+        Args:
+            m: Density field m(t, x) at all time steps
+            dt: Time step (optional, can be inferred from problem)
+            **kwargs: Additional solver parameters
+
+        Returns:
+            Value function u(t, x) at all time steps
+
+        Note: Modern API. Preferred over solve_hjb_system().
+        """
+        ...
+
+
+@runtime_checkable
+class FPSolverProtocol(Protocol):
+    """
+    Protocol for Fokker-Planck (FP) equation solvers.
+
+    This protocol defines the interface that FP solvers must implement
+    for use in coupling algorithms (Fictitious Play, Fixed Point Iteration).
+
+    Issue #543 Phase 2: Eliminates hasattr checks like:
+        if hasattr(self.fp_solver, "solve_fp_system"):
+
+    Methods:
+        solve(...): Main solve method (preferred modern API)
+        solve_fp_system(...): Legacy solve method (for backward compatibility)
+
+    Note: Solvers should implement at least one of these methods.
+    """
+
+    def solve(
+        self,
+        u: NDArray,
+        dt: float | None = None,
+        **kwargs,
+    ) -> NDArray:
+        """
+        Solve Fokker-Planck equation given value function u.
+
+        Args:
+            u: Value function u(t, x) at all time steps
+            dt: Time step (optional, can be inferred from problem)
+            **kwargs: Additional solver parameters
+
+        Returns:
+            Density field m(t, x) at all time steps
+
+        Note: Modern API. Preferred over solve_fp_system().
+        """
+        ...

@@ -30,14 +30,23 @@ from .callable_protocols import (
     PotentialCallable,
 )
 from .pde_coefficients import DiffusionCallable, DiffusionField, DriftCallable, DriftField
-from .protocols import MFGProblem, MFGResult, MFGSolver, SolverConfig
+from .protocols import (
+    FPSolverProtocol,
+    HJBSolverProtocol,
+    MFGProblem,
+    MFGResult,
+    MFGSolver,
+    SolverConfig,
+)
 from .solver_types import HamiltonianJacobians, SolverReturnTuple
 from .state import ConvergenceInfo, SpatialTemporalState
 
 __all__ = [
     # Core types
     "ConvergenceInfo",
+    "FPSolverProtocol",
     "HamiltonianJacobians",
+    "HJBSolverProtocol",
     "MFGProblem",
     "MFGResult",
     "MFGSolver",

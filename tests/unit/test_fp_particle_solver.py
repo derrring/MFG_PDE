@@ -29,7 +29,8 @@ class TestFPParticleSolverInitialization:
         assert solver.num_particles == 5000
         assert solver.kde_bandwidth == "scott"
         assert solver.kde_normalization == KDENormalization.ALL
-        assert solver.boundary_conditions.type == "periodic"
+        # Default BC comes from geometry (TensorProductGrid), which is "no_flux"
+        assert solver.boundary_conditions.type == "no_flux"
 
     def test_custom_num_particles(self):
         """Test initialization with custom number of particles."""

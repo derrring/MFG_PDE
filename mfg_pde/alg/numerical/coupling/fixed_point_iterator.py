@@ -121,16 +121,108 @@ class FixedPointIterator(BaseMFGSolver):
         self._cache_solver_signatures()
 
     def _cache_solver_signatures(self) -> None:
-        """Cache solver method signatures to avoid repeated inspect calls."""
+        """
+        Cache solver method signatures to avoid repeated inspect calls.
+
+        Issue #543 Phase 2: Eliminates hasattr checks for solver methods.
+        """
         import inspect
 
-        if hasattr(self.hjb_solver, "solve_hjb_system"):
+        # Try to get HJB solver signature
+        try:
             sig = inspect.signature(self.hjb_solver.solve_hjb_system)
             self._hjb_sig_params = set(sig.parameters.keys())
+        except AttributeError:
+            # Solver doesn't have solve_hjb_system method
+            self._hjb_sig_params = None
 
-        if hasattr(self.fp_solver, "solve_fp_system"):
+        # Try to get FP solver signature
+        try:
             sig = inspect.signature(self.fp_solver.solve_fp_system)
             self._fp_sig_params = set(sig.parameters.keys())
+        except AttributeError:
+            # Solver doesn't have solve_fp_system method
+            self._fp_sig_params = None
+
+    def _get_initial_and_terminal_conditions(self, shape: tuple) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Retrieve initial density and terminal value function from problem.
+
+        Issue #543 Phase 2: Centralizes initial/terminal condition retrieval
+        with 4-priority cascade (eliminates 8 hasattr checks).
+
+        Args:
+            shape: Spatial grid shape
+
+        Returns:
+            (M_initial, U_terminal): Initial density and terminal value function
+
+        Priority order:
+            1. get_m_init() / get_u_fin() methods (preferred modern API)
+            2. m_init / u_fin attributes (legacy direct access)
+            3. get_initial_m() / get_final_u() methods (alternate modern API)
+            4. initial_density() / terminal_cost() callables (functional API)
+        """
+        # Priority 1: get_m_init() / get_u_fin() methods
+        try:
+            M_initial = self.problem.get_m_init()
+            if M_initial.shape != shape:
+                M_initial = M_initial.reshape(shape)
+
+            try:
+                U_terminal = self.problem.get_u_fin()
+            except AttributeError:
+                # No terminal condition - use zeros
+                U_terminal = np.zeros(shape)
+
+            if U_terminal.shape != shape:
+                U_terminal = U_terminal.reshape(shape)
+
+            return M_initial, U_terminal
+        except AttributeError:
+            pass  # Try next priority
+
+        # Priority 2: m_init / u_fin attributes
+        try:
+            M_initial = self.problem.m_init
+            if M_initial is not None:
+                if M_initial.shape != shape:
+                    M_initial = M_initial.reshape(shape)
+
+                try:
+                    U_terminal = self.problem.u_fin
+                except AttributeError:
+                    U_terminal = np.zeros(shape)
+
+                if U_terminal.shape != shape:
+                    U_terminal = U_terminal.reshape(shape)
+
+                return M_initial, U_terminal
+        except AttributeError:
+            pass  # Try next priority
+
+        # Priority 3: get_initial_m() / get_final_u() methods
+        try:
+            M_initial = self.problem.get_initial_m()
+            U_terminal = self.problem.get_final_u()
+            return M_initial, U_terminal
+        except AttributeError:
+            pass  # Try next priority
+
+        # Priority 4: initial_density() / terminal_cost() callables
+        try:
+            x_grid = self.problem.geometry.get_spatial_grid()
+            M_initial = self.problem.initial_density(x_grid).reshape(shape)
+            U_terminal = self.problem.terminal_cost(x_grid).reshape(shape)
+            return M_initial, U_terminal
+        except AttributeError as e:
+            raise ValueError(
+                "Problem must provide initial/terminal conditions via one of:\n"
+                "  1. get_m_init()/get_u_fin() methods (preferred)\n"
+                "  2. m_init/u_fin attributes\n"
+                "  3. get_initial_m()/get_final_u() methods\n"
+                "  4. initial_density()/terminal_cost() callables"
+            ) from e
 
     def solve(
         self,
@@ -177,10 +269,16 @@ class FixedPointIterator(BaseMFGSolver):
         # Detect problem shape using geometry API
         from mfg_pde.geometry.base import CartesianGrid
 
-        if not hasattr(self.problem, "geometry") or self.problem.geometry is None:
-            raise ValueError("Problem must have geometry attribute")
+        # Issue #543 Phase 2: Replace hasattr with try/except
+        try:
+            geometry = self.problem.geometry
+        except AttributeError as e:
+            raise ValueError("Problem must have 'geometry' attribute") from e
 
-        if not isinstance(self.problem.geometry, CartesianGrid):
+        if geometry is None:
+            raise ValueError("Problem geometry cannot be None")
+
+        if not isinstance(geometry, CartesianGrid):
             raise ValueError("Problem geometry must be CartesianGrid (TensorProductGrid)")
 
         shape = tuple(self.problem.geometry.get_grid_shape())
@@ -201,38 +299,8 @@ class FixedPointIterator(BaseMFGSolver):
                 self.M = np.zeros((num_time_steps, *shape))
 
             # Get initial density and terminal condition
-            # Priority: get_m_init/get_u_fin (modern) > m_init/u_fin (attributes) > legacy
-            if hasattr(self.problem, "get_m_init") and callable(self.problem.get_m_init):
-                # Modern nD interface: get_m_init() / get_u_fin()
-                M_initial = self.problem.get_m_init()
-                U_terminal = self.problem.get_u_fin() if hasattr(self.problem, "get_u_fin") else np.zeros(shape)
-                # Reshape if needed
-                if M_initial.shape != shape:
-                    M_initial = M_initial.reshape(shape)
-                if U_terminal.shape != shape:
-                    U_terminal = U_terminal.reshape(shape)
-            elif hasattr(self.problem, "m_init") and self.problem.m_init is not None:
-                # Attribute-based interface: m_init / u_fin
-                M_initial = self.problem.m_init
-                U_terminal = self.problem.u_fin if hasattr(self.problem, "u_fin") else np.zeros(shape)
-                # Reshape if needed
-                if M_initial.shape != shape:
-                    M_initial = M_initial.reshape(shape)
-                if U_terminal.shape != shape:
-                    U_terminal = U_terminal.reshape(shape)
-            elif hasattr(self.problem, "get_initial_m") and callable(self.problem.get_initial_m):
-                # Legacy 1D interface: get_initial_m() / get_final_u()
-                M_initial = self.problem.get_initial_m()
-                U_terminal = self.problem.get_final_u()
-            elif hasattr(self.problem, "initial_density") and callable(self.problem.initial_density):
-                # Legacy nD interface: initial_density() / terminal_cost()
-                x_grid = self.problem.geometry.get_spatial_grid()
-                M_initial = self.problem.initial_density(x_grid).reshape(shape)
-                U_terminal = self.problem.terminal_cost(x_grid).reshape(shape)
-            else:
-                raise ValueError(
-                    "Problem must have get_m_init()/get_u_fin() methods, m_init/u_fin attributes, or legacy interface"
-                )
+            # Issue #543 Phase 2: Use centralized helper (eliminates 8 hasattr checks)
+            M_initial, U_terminal = self._get_initial_and_terminal_conditions(shape)
 
             if num_time_steps > 0:
                 # Set boundary conditions
@@ -281,10 +349,11 @@ class FixedPointIterator(BaseMFGSolver):
             M_old = self.M.copy()
 
             # 1. Solve HJB backward with current M (disable inner progress bar when verbose)
+            # Issue #543 Phase 2: Use cached signature instead of hasattr
             show_hjb_progress = not verbose
-            if hasattr(self.hjb_solver, "solve_hjb_system"):
-                # Use cached signature info (computed once in __init__)
-                params = self._hjb_sig_params or set()
+            if self._hjb_sig_params is not None:
+                # Method exists and signature is cached
+                params = self._hjb_sig_params
                 kwargs = {}
                 if "show_progress" in params:
                     kwargs["show_progress"] = show_hjb_progress
@@ -293,13 +362,15 @@ class FixedPointIterator(BaseMFGSolver):
 
                 U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
             else:
+                # No signature cached - use basic call
                 U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
 
             # 2. Solve FP forward with new U (disable inner progress bar when verbose)
+            # Issue #543 Phase 2: Use cached signature instead of hasattr
             show_fp_progress = not verbose
-            if hasattr(self.fp_solver, "solve_fp_system"):
-                # Use cached signature info (computed once in __init__)
-                params = self._fp_sig_params or set()
+            if self._fp_sig_params is not None:
+                # Method exists and signature is cached
+                params = self._fp_sig_params
                 kwargs = {}
                 if "show_progress" in params:
                     kwargs["show_progress"] = show_fp_progress
@@ -329,6 +400,7 @@ class FixedPointIterator(BaseMFGSolver):
                     # Legacy interface: second positional arg is U for drift
                     M_new = self.fp_solver.solve_fp_system(M_initial, effective_drift, **kwargs)
             else:
+                # No signature cached - use basic call
                 M_new = self.fp_solver.solve_fp_system(M_initial, U_new)
 
             # 3. Apply damping or Anderson acceleration
@@ -363,6 +435,7 @@ class FixedPointIterator(BaseMFGSolver):
             self.iterations_run = iiter + 1
 
             # Update progress bar with convergence metrics
+            # hasattr acceptable here: checking external library (tqdm/rich) interface
             if verbose and hasattr(picard_range, "set_postfix"):
                 accel_tag = "A" if self.use_anderson else ""
                 picard_range.set_postfix(
@@ -388,6 +461,7 @@ class FixedPointIterator(BaseMFGSolver):
             )
 
             if converged:
+                # hasattr acceptable here: checking external library (tqdm/rich) interface
                 if verbose and hasattr(picard_range, "write"):
                     picard_range.write(convergence_reason)
                 elif not verbose:

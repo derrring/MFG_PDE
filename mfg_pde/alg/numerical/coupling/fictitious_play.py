@@ -183,16 +183,28 @@ class FictitiousPlayIterator(BaseMFGSolver):
         self._cache_solver_signatures()
 
     def _cache_solver_signatures(self) -> None:
-        """Cache solver method signatures to avoid repeated inspect calls."""
+        """
+        Cache solver method signatures to avoid repeated inspect calls.
+
+        Issue #543 Phase 2: Eliminates hasattr checks for solver methods.
+        """
         import inspect
 
-        if hasattr(self.hjb_solver, "solve_hjb_system"):
+        # Try to get HJB solver signature
+        try:
             sig = inspect.signature(self.hjb_solver.solve_hjb_system)
             self._hjb_sig_params = set(sig.parameters.keys())
+        except AttributeError:
+            # Solver doesn't have solve_hjb_system method
+            self._hjb_sig_params = None
 
-        if hasattr(self.fp_solver, "solve_fp_system"):
+        # Try to get FP solver signature
+        try:
             sig = inspect.signature(self.fp_solver.solve_fp_system)
             self._fp_sig_params = set(sig.parameters.keys())
+        except AttributeError:
+            # Solver doesn't have solve_fp_system method
+            self._fp_sig_params = None
 
     def get_learning_rate(self, iteration: int) -> float:
         """
@@ -212,6 +224,86 @@ class FictitiousPlayIterator(BaseMFGSolver):
         alpha = max(alpha, self.min_learning_rate)
 
         return alpha
+
+    def _get_initial_and_terminal_conditions(self, shape: tuple) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Retrieve initial density and terminal value function from problem.
+
+        Issue #543 Phase 2: Centralizes initial/terminal condition retrieval
+        with 4-priority cascade (eliminates 8 hasattr checks).
+
+        Args:
+            shape: Spatial grid shape
+
+        Returns:
+            (M_initial, U_terminal): Initial density and terminal value function
+
+        Priority order:
+            1. get_m_init() / get_u_fin() methods (preferred modern API)
+            2. m_init / u_fin attributes (legacy direct access)
+            3. get_initial_m() / get_final_u() methods (alternate modern API)
+            4. initial_density() / terminal_cost() callables (functional API)
+        """
+        # Priority 1: get_m_init() / get_u_fin() methods
+        try:
+            M_initial = self.problem.get_m_init()
+            if M_initial.shape != shape:
+                M_initial = M_initial.reshape(shape)
+
+            try:
+                U_terminal = self.problem.get_u_fin()
+            except AttributeError:
+                # No terminal condition - use zeros
+                U_terminal = np.zeros(shape)
+
+            if U_terminal.shape != shape:
+                U_terminal = U_terminal.reshape(shape)
+
+            return M_initial, U_terminal
+        except AttributeError:
+            pass  # Try next priority
+
+        # Priority 2: m_init / u_fin attributes
+        try:
+            M_initial = self.problem.m_init
+            if M_initial is not None:
+                if M_initial.shape != shape:
+                    M_initial = M_initial.reshape(shape)
+
+                try:
+                    U_terminal = self.problem.u_fin
+                except AttributeError:
+                    U_terminal = np.zeros(shape)
+
+                if U_terminal.shape != shape:
+                    U_terminal = U_terminal.reshape(shape)
+
+                return M_initial, U_terminal
+        except AttributeError:
+            pass  # Try next priority
+
+        # Priority 3: get_initial_m() / get_final_u() methods
+        try:
+            M_initial = self.problem.get_initial_m()
+            U_terminal = self.problem.get_final_u()
+            return M_initial, U_terminal
+        except AttributeError:
+            pass  # Try next priority
+
+        # Priority 4: initial_density() / terminal_cost() callables
+        try:
+            x_grid = self.problem.geometry.get_spatial_grid()
+            M_initial = self.problem.initial_density(x_grid).reshape(shape)
+            U_terminal = self.problem.terminal_cost(x_grid).reshape(shape)
+            return M_initial, U_terminal
+        except AttributeError as e:
+            raise ValueError(
+                "Problem must provide initial/terminal conditions via one of:\n"
+                "  1. get_m_init()/get_u_fin() methods (preferred)\n"
+                "  2. m_init/u_fin attributes\n"
+                "  3. get_initial_m()/get_final_u() methods\n"
+                "  4. initial_density()/terminal_cost() callables"
+            ) from e
 
     def solve(
         self,
@@ -255,10 +347,16 @@ class FictitiousPlayIterator(BaseMFGSolver):
         # Detect problem shape using geometry API
         from mfg_pde.geometry.base import CartesianGrid
 
-        if not hasattr(self.problem, "geometry") or self.problem.geometry is None:
-            raise ValueError("Problem must have geometry attribute")
+        # Issue #543 Phase 2: Replace hasattr with try/except
+        try:
+            geometry = self.problem.geometry
+        except AttributeError as e:
+            raise ValueError("Problem must have 'geometry' attribute") from e
 
-        if not isinstance(self.problem.geometry, CartesianGrid):
+        if geometry is None:
+            raise ValueError("Problem geometry cannot be None")
+
+        if not isinstance(geometry, CartesianGrid):
             raise ValueError("Problem geometry must be CartesianGrid (TensorProductGrid)")
 
         shape = tuple(self.problem.geometry.get_grid_shape())
@@ -279,31 +377,8 @@ class FictitiousPlayIterator(BaseMFGSolver):
                 self.M = np.zeros((num_time_steps, *shape))
 
             # Get initial density and terminal condition
-            if hasattr(self.problem, "get_m_init") and callable(self.problem.get_m_init):
-                M_initial = self.problem.get_m_init()
-                U_terminal = self.problem.get_u_fin() if hasattr(self.problem, "get_u_fin") else np.zeros(shape)
-                if M_initial.shape != shape:
-                    M_initial = M_initial.reshape(shape)
-                if U_terminal.shape != shape:
-                    U_terminal = U_terminal.reshape(shape)
-            elif hasattr(self.problem, "m_init") and self.problem.m_init is not None:
-                M_initial = self.problem.m_init
-                U_terminal = self.problem.u_fin if hasattr(self.problem, "u_fin") else np.zeros(shape)
-                if M_initial.shape != shape:
-                    M_initial = M_initial.reshape(shape)
-                if U_terminal.shape != shape:
-                    U_terminal = U_terminal.reshape(shape)
-            elif hasattr(self.problem, "get_initial_m") and callable(self.problem.get_initial_m):
-                M_initial = self.problem.get_initial_m()
-                U_terminal = self.problem.get_final_u()
-            elif hasattr(self.problem, "initial_density") and callable(self.problem.initial_density):
-                x_grid = self.problem.geometry.get_spatial_grid()
-                M_initial = self.problem.initial_density(x_grid).reshape(shape)
-                U_terminal = self.problem.terminal_cost(x_grid).reshape(shape)
-            else:
-                raise ValueError(
-                    "Problem must have get_m_init()/get_u_fin() methods, m_init/u_fin attributes, or legacy interface"
-                )
+            # Issue #543 Phase 2: Use centralized helper (eliminates 8 hasattr checks)
+            M_initial, U_terminal = self._get_initial_and_terminal_conditions(shape)
 
             if num_time_steps > 0:
                 if len(shape) == 1:
@@ -350,9 +425,11 @@ class FictitiousPlayIterator(BaseMFGSolver):
             self.learning_rate_history.append(alpha)
 
             # 1. Solve HJB backward - FULL best response (no damping on U)
+            # Issue #543 Phase 2: Use cached signature instead of hasattr
             show_hjb_progress = not verbose
-            if hasattr(self.hjb_solver, "solve_hjb_system"):
-                params = self._hjb_sig_params or set()
+            if self._hjb_sig_params is not None:
+                # Method exists and signature is cached
+                params = self._hjb_sig_params
                 hjb_kwargs: dict[str, Any] = {}
                 if "show_progress" in params:
                     hjb_kwargs["show_progress"] = show_hjb_progress
@@ -362,12 +439,15 @@ class FictitiousPlayIterator(BaseMFGSolver):
                 # Solve HJB with current averaged M
                 U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **hjb_kwargs)
             else:
+                # No signature cached - use basic call
                 U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
 
             # 2. Solve FP forward with new U
+            # Issue #543 Phase 2: Use cached signature instead of hasattr
             show_fp_progress = not verbose
-            if hasattr(self.fp_solver, "solve_fp_system"):
-                params = self._fp_sig_params or set()
+            if self._fp_sig_params is not None:
+                # Method exists and signature is cached
+                params = self._fp_sig_params
                 fp_kwargs: dict[str, Any] = {}
                 if "show_progress" in params:
                     fp_kwargs["show_progress"] = show_fp_progress
@@ -384,6 +464,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
                 else:
                     M_candidate = self.fp_solver.solve_fp_system(M_initial, effective_drift, **fp_kwargs)
             else:
+                # No signature cached - use basic call
                 M_candidate = self.fp_solver.solve_fp_system(M_initial, U_new)
 
             # 3. Fictitious Play update: average M with decaying learning rate
@@ -415,6 +496,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
             self.iterations_run = k + 1
 
             # Update progress bar
+            # hasattr acceptable here: checking external library (tqdm/rich) interface
             if verbose and hasattr(iter_range, "set_postfix"):
                 iter_range.set_postfix(
                     U_err=f"{self.l2distu_rel[k]:.2e}",
@@ -438,6 +520,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
             )
 
             if converged:
+                # hasattr acceptable here: checking external library (tqdm/rich) interface
                 if verbose and hasattr(iter_range, "write"):
                     iter_range.write(convergence_reason)
                 elif not verbose:

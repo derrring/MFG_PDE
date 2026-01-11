@@ -105,9 +105,10 @@ def add_interior_entries_divergence_centered(
     D = sigma**2 / 2.0
 
     # Check for periodic BC
-    if hasattr(boundary_conditions, "is_uniform") and hasattr(boundary_conditions, "type"):
+    # Issue #543 Phase 2: Replace hasattr with try/except
+    try:
         is_periodic = boundary_conditions.is_uniform and boundary_conditions.type == "periodic"
-    else:
+    except AttributeError:
         is_periodic = False
 
     # For each dimension, add flux-based advection + diffusion contributions

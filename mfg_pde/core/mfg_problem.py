@@ -883,12 +883,15 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             self.domain_type = str(geometry.geometry_type.value)
 
         else:
-            # Generic GeometryProtocol object - use spatial grid
-            self.num_spatial_points = geometry.num_spatial_points
+            # Generic GeometryProtocol object - extract config
+            # Issue #557 fix: Extract spatial_bounds from get_problem_config()
+            # to support geometries like PointCloudGeometry that provide bounds
+            config = geometry.get_problem_config()
+            self.num_spatial_points = config["num_spatial_points"]
             self.collocation_points = geometry.get_spatial_grid()
-            self.spatial_shape = (self.num_spatial_points,)
-            self.spatial_bounds = None
-            self.spatial_discretization = None
+            self.spatial_shape = config["spatial_shape"]
+            self.spatial_bounds = config.get("spatial_bounds")
+            self.spatial_discretization = config.get("spatial_discretization")
 
             self.domain_type = str(geometry.geometry_type.value)
 
