@@ -1,0 +1,388 @@
+"""
+MFG System Residual Computation.
+
+Issue #492 Phase 1: Foundation for Newton family solvers.
+
+Computes the residual F(U, M) of the coupled MFG system:
+    F_HJB(U, M) = HJB_solve(M) - U
+    F_FP(U, M) = FP_solve(U) - M
+
+At a fixed point (equilibrium), F(U, M) = 0.
+
+Usage:
+    residual_computer = MFGResidual(problem, hjb_solver, fp_solver)
+    F = residual_computer.compute_residual(U, M)  # Returns flattened residual
+    ||F|| < tol indicates convergence
+
+References:
+    - Achdou & Capuzzo-Dolcetta (2010): Mean field games: Numerical methods
+    - Nocedal & Wright (2006): Numerical Optimization
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+    from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+    from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
+    from mfg_pde.core.mfg_problem import MFGProblem
+
+logger = logging.getLogger(__name__)
+
+
+class MFGResidual:
+    """
+    Computes residuals of the coupled MFG system.
+
+    The MFG system at equilibrium satisfies:
+        U = HJB_solve(M)  (value function solves HJB given density)
+        M = FP_solve(U)   (density solves FP given value function)
+
+    The residual measures deviation from this fixed point:
+        F(U, M) = [HJB_solve(M) - U, FP_solve(U) - M]
+
+    Attributes:
+        problem: MFG problem definition
+        hjb_solver: HJB solver instance
+        fp_solver: FP solver instance
+        M_initial: Initial density condition
+        U_terminal: Terminal value function
+
+    Example:
+        >>> residual_computer = MFGResidual(problem, hjb_solver, fp_solver)
+        >>> U, M = initial_guess(problem)
+        >>> F = residual_computer.compute_residual(U, M)
+        >>> print(f"Residual norm: {np.linalg.norm(F):.2e}")
+    """
+
+    def __init__(
+        self,
+        problem: MFGProblem,
+        hjb_solver: BaseHJBSolver,
+        fp_solver: BaseFPSolver,
+        *,
+        diffusion_field: float | NDArray | Any | None = None,
+        drift_field: NDArray | Any | None = None,
+    ):
+        """
+        Initialize MFG residual computer.
+
+        Args:
+            problem: MFG problem definition
+            hjb_solver: HJB solver instance
+            fp_solver: FP solver instance
+            diffusion_field: Optional diffusion override (Phase 2.3)
+            drift_field: Optional drift override for non-MFG problems
+        """
+        self.problem = problem
+        self.hjb_solver = hjb_solver
+        self.fp_solver = fp_solver
+        self.diffusion_field = diffusion_field
+        self.drift_field = drift_field
+
+        # Cache problem dimensions
+        self.num_time_steps = problem.Nt + 1
+        self.spatial_shape = tuple(problem.geometry.get_grid_shape())
+        self.solution_shape = (self.num_time_steps, *self.spatial_shape)
+
+        # Cache initial/terminal conditions
+        self.M_initial: NDArray | None = None
+        self.U_terminal: NDArray | None = None
+        self._initialize_conditions()
+
+        # Cache solver method signatures for parameter passing
+        self._hjb_sig_params: set[str] | None = None
+        self._fp_sig_params: set[str] | None = None
+        self._cache_solver_signatures()
+
+        # Evaluation counter for diagnostics
+        self.residual_evaluations = 0
+
+    def _initialize_conditions(self) -> None:
+        """Initialize initial density and terminal value from problem."""
+        shape = self.spatial_shape
+
+        # Try to get initial density
+        try:
+            self.M_initial = self.problem.get_m_init()
+            if self.M_initial.shape != shape:
+                self.M_initial = self.M_initial.reshape(shape)
+        except AttributeError:
+            try:
+                self.M_initial = self.problem.m_init
+                if self.M_initial is not None and self.M_initial.shape != shape:
+                    self.M_initial = self.M_initial.reshape(shape)
+            except AttributeError:
+                # Default: uniform density
+                self.M_initial = np.ones(shape) / np.prod(shape)
+                logger.warning("No initial density found, using uniform")
+
+        # Try to get terminal value
+        try:
+            self.U_terminal = self.problem.get_u_fin()
+            if self.U_terminal.shape != shape:
+                self.U_terminal = self.U_terminal.reshape(shape)
+        except AttributeError:
+            try:
+                self.U_terminal = self.problem.u_fin
+                if self.U_terminal is not None and self.U_terminal.shape != shape:
+                    self.U_terminal = self.U_terminal.reshape(shape)
+            except AttributeError:
+                # Default: zero terminal cost
+                self.U_terminal = np.zeros(shape)
+
+    def _cache_solver_signatures(self) -> None:
+        """Cache solver method signatures for parameter passing."""
+        import inspect
+
+        try:
+            sig = inspect.signature(self.hjb_solver.solve_hjb_system)
+            self._hjb_sig_params = set(sig.parameters.keys())
+        except AttributeError:
+            self._hjb_sig_params = None
+
+        try:
+            sig = inspect.signature(self.fp_solver.solve_fp_system)
+            self._fp_sig_params = set(sig.parameters.keys())
+        except AttributeError:
+            self._fp_sig_params = None
+
+    def compute_hjb_output(self, M: NDArray, U_prev: NDArray) -> NDArray:
+        """
+        Compute HJB solver output for given density.
+
+        Args:
+            M: Current density field (Nt+1, *spatial_shape)
+            U_prev: Previous value function (for Newton linearization)
+
+        Returns:
+            U_new: Value function from HJB solve
+        """
+        kwargs: dict[str, Any] = {}
+
+        if self._hjb_sig_params is not None:
+            if "show_progress" in self._hjb_sig_params:
+                kwargs["show_progress"] = False
+            if "diffusion_field" in self._hjb_sig_params and self.diffusion_field is not None:
+                kwargs["diffusion_field"] = self.diffusion_field
+
+        return self.hjb_solver.solve_hjb_system(M, self.U_terminal, U_prev, **kwargs)
+
+    def compute_fp_output(self, U: NDArray) -> NDArray:
+        """
+        Compute FP solver output for given value function.
+
+        Args:
+            U: Current value function (Nt+1, *spatial_shape)
+
+        Returns:
+            M_new: Density field from FP solve
+        """
+        kwargs: dict[str, Any] = {}
+
+        if self._fp_sig_params is not None:
+            if "show_progress" in self._fp_sig_params:
+                kwargs["show_progress"] = False
+
+            # Determine drift
+            effective_drift = self.drift_field if self.drift_field is not None else U
+
+            if "drift_field" in self._fp_sig_params:
+                kwargs["drift_field"] = effective_drift
+                if "diffusion_field" in self._fp_sig_params and self.diffusion_field is not None:
+                    kwargs["diffusion_field"] = self.diffusion_field
+                return self.fp_solver.solve_fp_system(self.M_initial, **kwargs)
+            else:
+                # Legacy interface
+                return self.fp_solver.solve_fp_system(self.M_initial, effective_drift, **kwargs)
+        else:
+            # Basic call
+            return self.fp_solver.solve_fp_system(self.M_initial, U)
+
+    def compute_residual(
+        self,
+        U: NDArray,
+        M: NDArray,
+        *,
+        return_components: bool = False,
+    ) -> NDArray | tuple[NDArray, NDArray, NDArray]:
+        """
+        Compute MFG system residual F(U, M).
+
+        The residual is defined as:
+            F_HJB = HJB_solve(M) - U
+            F_FP = FP_solve(U) - M
+            F = [F_HJB, F_FP]  (flattened)
+
+        Args:
+            U: Value function (Nt+1, *spatial_shape)
+            M: Density field (Nt+1, *spatial_shape)
+            return_components: If True, return (F, F_HJB, F_FP) tuple
+
+        Returns:
+            F: Flattened residual vector (2 * total_size,)
+            Or tuple (F, F_HJB, F_FP) if return_components=True
+        """
+        self.residual_evaluations += 1
+
+        # Compute solver outputs
+        U_new = self.compute_hjb_output(M, U)
+        M_new = self.compute_fp_output(U)
+
+        # Compute residuals (difference from fixed point)
+        F_HJB = U_new - U
+        F_FP = M_new - M
+
+        # Flatten for Newton solver
+        F = np.concatenate([F_HJB.flatten(), F_FP.flatten()])
+
+        if return_components:
+            return F, F_HJB, F_FP
+        return F
+
+    def compute_residual_norm(
+        self,
+        U: NDArray,
+        M: NDArray,
+        *,
+        norm_type: str = "l2",
+    ) -> float:
+        """
+        Compute norm of MFG residual.
+
+        Args:
+            U: Value function
+            M: Density field
+            norm_type: 'l2', 'linf', or 'relative'
+
+        Returns:
+            Residual norm
+        """
+        F = self.compute_residual(U, M)
+
+        if norm_type == "l2":
+            return float(np.linalg.norm(F))
+        elif norm_type == "linf":
+            return float(np.max(np.abs(F)))
+        elif norm_type == "relative":
+            state_norm = np.linalg.norm(np.concatenate([U.flatten(), M.flatten()]))
+            return float(np.linalg.norm(F) / (state_norm + 1e-10))
+        else:
+            raise ValueError(f"Unknown norm_type: {norm_type}")
+
+    def pack_state(self, U: NDArray, M: NDArray) -> NDArray:
+        """
+        Pack (U, M) into a single flattened state vector.
+
+        Args:
+            U: Value function (Nt+1, *spatial_shape)
+            M: Density field (Nt+1, *spatial_shape)
+
+        Returns:
+            x: Flattened state vector [U_flat, M_flat]
+        """
+        return np.concatenate([U.flatten(), M.flatten()])
+
+    def unpack_state(self, x: NDArray) -> tuple[NDArray, NDArray]:
+        """
+        Unpack flattened state vector into (U, M).
+
+        Args:
+            x: Flattened state vector [U_flat, M_flat]
+
+        Returns:
+            (U, M): Reshaped value function and density
+        """
+        total_size = np.prod(self.solution_shape)
+        U_flat = x[:total_size]
+        M_flat = x[total_size:]
+
+        U = U_flat.reshape(self.solution_shape)
+        M = M_flat.reshape(self.solution_shape)
+
+        return U, M
+
+    def residual_function(self, x: NDArray) -> NDArray:
+        """
+        Residual function in form suitable for Newton solver.
+
+        Args:
+            x: Flattened state [U_flat, M_flat]
+
+        Returns:
+            F(x): Flattened residual
+        """
+        U, M = self.unpack_state(x)
+        return self.compute_residual(U, M)
+
+    def get_initial_guess(self) -> NDArray:
+        """
+        Get initial guess for Newton iteration.
+
+        Returns cold start initialization: U = U_terminal, M = M_initial
+        propagated through time.
+
+        Returns:
+            x0: Flattened initial state
+        """
+        U = np.zeros(self.solution_shape)
+        M = np.zeros(self.solution_shape)
+
+        # Set boundary conditions
+        if self.U_terminal is not None:
+            U[-1] = self.U_terminal
+        if self.M_initial is not None:
+            M[0] = self.M_initial
+
+        return self.pack_state(U, M)
+
+    def reset_evaluation_count(self) -> None:
+        """Reset residual evaluation counter."""
+        self.residual_evaluations = 0
+
+
+if __name__ == "__main__":
+    """Quick smoke test for development."""
+    print("Testing MFGResidual...")
+
+    from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+    from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+    from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry import TensorProductGrid
+
+    # Create simple 1D problem
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+    problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.1)
+
+    # Create solvers
+    hjb_solver = HJBFDMSolver(problem)
+    fp_solver = FPFDMSolver(problem)
+
+    # Create residual computer
+    residual = MFGResidual(problem, hjb_solver, fp_solver)
+
+    print(f"  Solution shape: {residual.solution_shape}")
+    print(f"  State size: {2 * np.prod(residual.solution_shape)}")
+
+    # Get initial guess
+    x0 = residual.get_initial_guess()
+    print(f"  Initial guess shape: {x0.shape}")
+
+    # Compute residual
+    F = residual.residual_function(x0)
+    print(f"  Initial residual norm: {np.linalg.norm(F):.2e}")
+    print(f"  Residual evaluations: {residual.residual_evaluations}")
+
+    # Test pack/unpack
+    U, M = residual.unpack_state(x0)
+    x_repacked = residual.pack_state(U, M)
+    assert np.allclose(x0, x_repacked), "Pack/unpack should be identity"
+    print("  Pack/unpack: OK")
+
+    print("MFGResidual smoke tests passed!")
