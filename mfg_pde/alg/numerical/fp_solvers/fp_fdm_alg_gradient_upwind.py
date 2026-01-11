@@ -114,10 +114,10 @@ def add_interior_entries_gradient_upwind(
         multi_idx_minus[d] = multi_idx[d] - 1
 
         # Handle boundary wrapping for periodic BC
-        # Handle both legacy BC interface and new BoundaryConditionManager2D
-        if hasattr(boundary_conditions, "is_uniform") and hasattr(boundary_conditions, "type"):
+        # Issue #543 Phase 2: Replace hasattr with try/except
+        try:
             is_periodic = boundary_conditions.is_uniform and boundary_conditions.type == "periodic"
-        else:
+        except AttributeError:
             # For BoundaryConditionManager2D or unknown types, default to non-periodic
             is_periodic = False
 
