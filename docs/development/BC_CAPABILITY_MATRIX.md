@@ -55,7 +55,7 @@ This document maps boundary condition support across all numerical solvers in MF
 | Phase 1 | BoundaryCapable protocol, dispatch.py, documentation | ✅ Complete |
 | Phase 2 | Central application point (`BaseMFGSolver.get_boundary_conditions()`) | ✅ Complete |
 | Phase 3 | Solver delegation to base class BC methods | ✅ Complete (all numerical solvers) |
-| Phase 4 | Advanced BC types (Robin, Mixed, High-order) | ❌ Not started |
+| Phase 4 | Advanced BC types (Robin, Mixed, High-order) | ⏳ Infrastructure ready, waiting for use cases |
 
 **Inheritance Change (2026-01-11)**:
 - `BaseFPSolver` now inherits from `BaseNumericalSolver`
