@@ -3,6 +3,14 @@ Base solver classes for the new algorithm structure.
 
 This module defines the foundational classes that all algorithm paradigms inherit from,
 ensuring consistent interfaces while allowing paradigm-specific customization.
+
+BC Integration (Issue #527):
+    All solvers access boundary conditions via self.problem.geometry.boundary_conditions.
+    Each paradigm has helper methods for paradigm-appropriate BC handling:
+    - Numerical: apply_boundary_conditions() -> field operations
+    - Neural: sample_boundary_points(), compute_boundary_loss() -> training
+    - RL: _configure_environment_boundaries() -> environment setup
+    - Optimization: get_domain_constraints() -> constraint generation
 """
 
 from __future__ import annotations
@@ -10,9 +18,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
     from mfg_pde.config import BaseConfig
     from mfg_pde.core import MFGProblem
+    from mfg_pde.geometry.boundary import BoundaryConditions
 
 
 class BaseMFGSolver(ABC):
@@ -67,9 +80,34 @@ class BaseMFGSolver(ABC):
             raise RuntimeError("Solver has not been run. Call solve() first.")
         return self._solution
 
+    def get_boundary_conditions(self) -> BoundaryConditions | None:
+        """
+        Access boundary conditions from problem geometry.
+
+        Returns:
+            BoundaryConditions object or None if not available.
+
+        Note:
+            This is the single source of truth for BC information.
+            All paradigms should access BCs through this method.
+            Subclasses may override or cache boundary conditions as attributes.
+        """
+        # Check for instance attribute first (solvers may cache BCs)
+        if hasattr(self, "_boundary_conditions") and self._boundary_conditions is not None:
+            return self._boundary_conditions
+
+        # Otherwise get from geometry
+        try:
+            return self.problem.geometry.boundary_conditions
+        except AttributeError:
+            return None
+
 
 class BaseNumericalSolver(BaseMFGSolver):
     """Base class for numerical methods (FDM, FEM, spectral, etc.)."""
+
+    # Subclasses should override with their discretization type
+    discretization_type: str = "FDM"
 
     def __init__(self, problem: MFGProblem, config: BaseConfig) -> None:
         super().__init__(problem, config)
@@ -78,6 +116,42 @@ class BaseNumericalSolver(BaseMFGSolver):
     @abstractmethod
     def discretize(self) -> None:
         """Set up the spatial and temporal discretization."""
+
+    def apply_boundary_conditions(
+        self,
+        field: NDArray[np.floating],
+        time: float = 0.0,
+    ) -> NDArray[np.floating]:
+        """
+        Apply boundary conditions to a field using unified dispatch.
+
+        This method provides a standard way for numerical solvers to apply BCs.
+        It delegates to the geometry/boundary/dispatch.py infrastructure.
+
+        Args:
+            field: Field array to apply BCs to (interior values)
+            time: Time for time-dependent BCs (default: 0.0)
+
+        Returns:
+            Field with BCs applied (may be padded for FDM methods)
+
+        Note:
+            Solvers can override this method for custom BC handling,
+            but using the unified dispatch is recommended.
+        """
+        bc = self.get_boundary_conditions()
+        if bc is None:
+            return field  # No BCs to apply
+
+        from mfg_pde.geometry.boundary.dispatch import apply_bc
+
+        return apply_bc(
+            geometry=self.problem.geometry,
+            field=field,
+            boundary_conditions=bc,
+            time=time,
+            discretization=self.discretization_type,
+        )
 
     def get_convergence_info(self) -> dict[str, Any]:
         """Get convergence information."""
@@ -114,6 +188,69 @@ class BaseOptimizationSolver(BaseMFGSolver):
     def compute_gradient(self, variables: Any) -> Any:
         """Compute the gradient of the objective function."""
 
+    def get_domain_constraints(self) -> list[dict[str, Any]]:
+        """
+        Generate optimization constraints from boundary conditions.
+
+        Translates BoundaryConditions into constraint dictionaries that can
+        be used by optimization solvers (scipy.optimize, cvxpy, etc.).
+
+        Returns:
+            List of constraint dictionaries with keys:
+            - type: "eq" (equality), "ineq" (inequality), "grad" (gradient)
+            - bc_type: Original BC type (Dirichlet, Neumann, etc.)
+            - region: Boundary region identifier
+            - value: Target value or function
+
+        Example usage with scipy:
+            constraints = solver.get_domain_constraints()
+            for c in constraints:
+                if c["type"] == "eq":
+                    # Add equality constraint u(boundary) = value
+                    scipy_constraints.append({"type": "eq", "fun": ...})
+        """
+        bc = self.get_boundary_conditions()
+        if bc is None:
+            return []
+
+        from mfg_pde.geometry.boundary import BCType
+
+        constraints = []
+
+        # Handle segments if available
+        segments = getattr(bc, "segments", [])
+        for segment in segments:
+            bc_type = segment.bc_type
+            constraint = {
+                "region": getattr(segment, "region", "boundary"),
+                "value": getattr(segment, "value", 0.0),
+                "bc_type": bc_type,
+            }
+
+            if bc_type == BCType.DIRICHLET:
+                constraint["type"] = "eq"  # u(x_b) = g
+            elif bc_type in (BCType.NEUMANN, BCType.NO_FLUX):
+                constraint["type"] = "grad"  # du/dn = g
+            elif bc_type == BCType.ROBIN:
+                constraint["type"] = "mixed"  # alpha*u + beta*du/dn = g
+            else:
+                constraint["type"] = "other"
+
+            constraints.append(constraint)
+
+        # If no segments, create constraint from default BC
+        if not constraints and hasattr(bc, "default_bc"):
+            bc_type = bc.default_bc
+            constraint = {
+                "region": "all",
+                "value": getattr(bc, "value", 0.0),
+                "bc_type": bc_type,
+                "type": "eq" if bc_type == BCType.DIRICHLET else "grad",
+            }
+            constraints.append(constraint)
+
+        return constraints
+
 
 class BaseNeuralSolver(BaseMFGSolver):
     """Base class for neural network methods (PINN, neural operators, etc.)."""
@@ -133,6 +270,83 @@ class BaseNeuralSolver(BaseMFGSolver):
     @abstractmethod
     def train_step(self) -> dict[str, float]:
         """Perform one training step."""
+
+    def sample_boundary_points(self, n_points: int) -> NDArray[np.floating]:
+        """
+        Sample points on domain boundary for BC loss computation.
+
+        Args:
+            n_points: Number of boundary points to sample
+
+        Returns:
+            Array of shape (n_points, dimension) with boundary coordinates
+
+        Note:
+            Uses geometry.sample_boundary_points() if available,
+            otherwise falls back to uniform sampling on boundary faces.
+        """
+        geometry = self.problem.geometry
+
+        # Try geometry method first
+        try:
+            return geometry.sample_boundary_points(n_points)
+        except AttributeError:
+            pass
+
+        # Fallback: sample on domain boundary
+        bounds = geometry.get_bounds()
+        if bounds is None:
+            raise ValueError("Cannot sample boundary: geometry has no bounds")
+
+        min_coords, max_coords = bounds
+        dim = geometry.dimension
+
+        # Sample uniformly on boundary faces
+        points_per_face = n_points // (2 * dim)
+        boundary_points = []
+
+        for d in range(dim):
+            for is_max in [False, True]:
+                face_points = np.random.uniform(min_coords, max_coords, size=(points_per_face, dim))
+                # Fix one coordinate to boundary
+                face_points[:, d] = max_coords[d] if is_max else min_coords[d]
+                boundary_points.append(face_points)
+
+        return np.vstack(boundary_points)
+
+    def get_boundary_target_values(
+        self,
+        boundary_points: NDArray[np.floating],
+        time: float = 0.0,
+    ) -> NDArray[np.floating] | None:
+        """
+        Get target BC values at given boundary points.
+
+        Args:
+            boundary_points: Points on domain boundary
+            time: Time for time-dependent BCs
+
+        Returns:
+            Target values at boundary points, or None if BC has no explicit values
+        """
+        bc = self.get_boundary_conditions()
+        if bc is None:
+            return None
+
+        # Try to get values from BoundaryConditions
+        try:
+            return bc.get_value_at_points(boundary_points, time)
+        except (AttributeError, NotImplementedError):
+            pass
+
+        # Try scalar value
+        try:
+            value = bc.value
+            if callable(value):
+                return np.array([value(p, time) for p in boundary_points])
+            return np.full(len(boundary_points), value)
+        except AttributeError:
+            return None
 
 
 class BaseRLSolver(BaseMFGSolver):
@@ -166,3 +380,49 @@ class BaseRLSolver(BaseMFGSolver):
             return self.solution
         # Default implementation - should be overridden by specific solvers
         return self.solution
+
+    def get_environment_boundary_config(self) -> dict[str, Any]:
+        """
+        Get environment boundary configuration from problem BCs.
+
+        Returns a config dict that environments can use to handle boundaries:
+        - bounds: Domain bounds (low, high)
+        - boundary_mode: How to handle boundary crossings
+            - "wrap": Periodic (wrap around)
+            - "reflect": Elastic bounce (reflecting)
+            - "clip": Clip to bounds (default)
+            - "absorb": Episode ends at boundary
+
+        Returns:
+            Dictionary with boundary configuration for environment setup
+        """
+        config: dict[str, Any] = {}
+
+        # Get domain bounds
+        bounds = self.problem.geometry.get_bounds()
+        if bounds is not None:
+            min_coords, max_coords = bounds
+            config["bounds"] = {
+                "low": min_coords,
+                "high": max_coords,
+            }
+
+        # Map BC type to environment behavior
+        bc = self.get_boundary_conditions()
+        if bc is not None:
+            from mfg_pde.geometry.boundary import BCType
+
+            bc_type = getattr(bc, "default_bc", None)
+
+            if bc_type == BCType.PERIODIC:
+                config["boundary_mode"] = "wrap"
+            elif bc_type in (BCType.REFLECTING, BCType.NO_FLUX, BCType.NEUMANN):
+                config["boundary_mode"] = "reflect"
+            elif bc_type == BCType.DIRICHLET:
+                config["boundary_mode"] = "absorb"
+            else:
+                config["boundary_mode"] = "clip"
+        else:
+            config["boundary_mode"] = "clip"
+
+        return config
