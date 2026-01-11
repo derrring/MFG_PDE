@@ -153,8 +153,9 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         self.name = f"Hybrid(FP-Particle[{num_particles}]_HJB-FDM)"
 
         # Solution storage
-        self.U_solution: np.ndarray
-        self.M_solution: np.ndarray
+        # Issue #543 Phase 2: Initialize to None instead of relying on hasattr
+        self.U_solution: np.ndarray | None = None
+        self.M_solution: np.ndarray | None = None
         self.convergence_history: list[dict[str, Any]] = []
 
     def _initialize_solvers(self) -> None:
@@ -252,14 +253,15 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             M_current = np.zeros((Nt, Nx))
 
         # Get boundary conditions
-        if hasattr(self.problem, "get_final_u"):
+        # Issue #543 Phase 2: Replace hasattr with try/except
+        try:
             terminal_condition = self.problem.get_final_u()
-        else:
+        except AttributeError:
             terminal_condition = np.zeros(Nx)
 
-        if hasattr(self.problem, "get_initial_m"):
+        try:
             initial_density = self.problem.get_initial_m()
-        else:
+        except AttributeError:
             dx = self.problem.geometry.get_grid_spacing()[0]
             Lx = self.problem.geometry.get_bounds()[1][0] - self.problem.geometry.get_bounds()[0][0]
             initial_density = np.ones(Nx) / Lx if dx > 1e-14 else np.ones(Nx)
@@ -385,7 +387,8 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
 
     def get_results(self) -> tuple[np.ndarray, np.ndarray]:
         """Get the computed U and M solutions."""
-        if not hasattr(self, "U_solution") or not hasattr(self, "M_solution"):
+        # Issue #543 Phase 2: Check for None instead of hasattr
+        if self.U_solution is None or self.M_solution is None:
             raise ValueError("No solution available. Call solve() first.")
         return self.U_solution, self.M_solution
 
