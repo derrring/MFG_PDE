@@ -205,22 +205,75 @@ class HJBFDMSolver(BaseHJBSolver):
 
             self.bc_applicator = FDMApplicator(dimension=self.dimension)
 
+        # Initialize warning flags (Issue #545 - NO hasattr pattern)
+        self._bc_warning_emitted: bool = False
+
     def _detect_dimension(self, problem) -> int:
         """Detect spatial dimension from geometry (unified interface)."""
         # Primary: Use geometry.dimension (standard for all modern problems)
-        if hasattr(problem, "geometry") and hasattr(problem.geometry, "dimension"):
+        # Issue #545: Use try/except instead of hasattr
+        try:
             return problem.geometry.dimension
+        except AttributeError:
+            pass
 
         # Fallback: problem.dimension attribute
         # Note: We prioritize explicit geometry protocol but allow problem.dimension
         # if it's explicitly set (e.g. legacy 1D init sets self.dimension)
-        if hasattr(problem, "dimension"):
+        try:
             return problem.dimension
+        except AttributeError:
+            pass
 
         raise ValueError(
             "Cannot determine problem dimension. "
             "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
         )
+
+    def _get_boundary_conditions(self):
+        """
+        Retrieve boundary conditions from geometry or problem.
+
+        Centralized BC retrieval logic to avoid hasattr cascade duplication.
+        Issue #545: Use try/except instead of hasattr.
+
+        Returns:
+            BoundaryConditions object or None if not available.
+        """
+        # Priority 1: geometry.boundary_conditions (direct attribute)
+        try:
+            bc = self.problem.geometry.boundary_conditions
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 2: geometry.get_boundary_conditions() (method accessor)
+        try:
+            bc = self.problem.geometry.get_boundary_conditions()
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 3: problem.boundary_conditions (direct attribute)
+        try:
+            bc = self.problem.boundary_conditions
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 4: problem.get_boundary_conditions() (method accessor)
+        try:
+            bc = self.problem.get_boundary_conditions()
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # No BC found
+        return None
 
     def solve_hjb_system(
         self,
@@ -340,28 +393,28 @@ class HJBFDMSolver(BaseHJBSolver):
 
         if self.dimension == 1:
             # Extract BC from geometry for Issue #542 fix
-            # Direct attribute takes priority (user-set via geom.boundary_conditions = ...)
-            # Method accessor may return default BC when _boundary_conditions is None
-            bc = None
+            # Issue #545: Use centralized _get_boundary_conditions() method
+            bc = self._get_boundary_conditions()
+
+            # Extract domain bounds from geometry
             domain_bounds = None
-            if hasattr(self.problem, "geometry"):
-                geom = self.problem.geometry
-                if hasattr(geom, "boundary_conditions"):
-                    bc = geom.boundary_conditions
-                if bc is None and hasattr(geom, "get_boundary_conditions"):
-                    bc = geom.get_boundary_conditions()
-                if hasattr(geom, "get_bounds"):
-                    bounds = geom.get_bounds()
-                    # Convert to (1, 2) array for 1D
-                    domain_bounds = np.array([[bounds[0][0], bounds[1][0]]])
+            try:
+                bounds = self.problem.geometry.get_bounds()
+                # Convert to (1, 2) array for 1D
+                domain_bounds = np.array([[bounds[0][0], bounds[1][0]]])
+            except AttributeError:
+                pass
 
             # Debug: Log BC being passed (Issue #542 investigation)
             import logging
+            from contextlib import suppress
 
             logger = logging.getLogger(__name__)
             logger.info(f"[DEBUG Issue #542] BC passed to solve_hjb_system_backward: {bc}")
-            if bc is not None and hasattr(bc, "segments"):
-                logger.info(f"[DEBUG Issue #542] BC has {len(bc.segments)} segments")
+            # Log segment count if BC has segments attribute (Issue #545: use contextlib.suppress)
+            if bc is not None:
+                with suppress(AttributeError):
+                    logger.info(f"[DEBUG Issue #542] BC has {len(bc.segments)} segments")
 
             # Use optimized 1D solver with BC-aware computation (Issue #542 fix)
             return base_hjb.solve_hjb_system_backward(
@@ -696,22 +749,18 @@ class HJBFDMSolver(BaseHJBSolver):
             or None if geometry doesn't have boundary conditions.
         """
         # Try to get boundary conditions from geometry
-        if not hasattr(self, "grid") or self.grid is None:
+        # Issue #545: self.grid initialized in __init__ for nD, check directly
+        try:
+            if self.grid is None:
+                self._warn_no_bc_once("grid not available")
+                return None
+        except AttributeError:
+            # 1D case: self.grid doesn't exist
             self._warn_no_bc_once("grid not available")
             return None
 
-        # Check if geometry has boundary conditions
-        # Direct attribute takes priority (user-set via grid.boundary_conditions = ...)
-        # Method accessor may return default BC when _boundary_conditions is None
-        bc = None
-        if hasattr(self.grid, "boundary_conditions"):
-            bc = self.grid.boundary_conditions
-        if bc is None and hasattr(self.grid, "get_boundary_conditions"):
-            bc = self.grid.get_boundary_conditions()
-        if bc is None and hasattr(self.problem, "boundary_conditions"):
-            bc = self.problem.boundary_conditions
-        if bc is None and hasattr(self.problem, "get_boundary_conditions"):
-            bc = self.problem.get_boundary_conditions()
+        # Issue #545: Use centralized _get_boundary_conditions() method
+        bc = self._get_boundary_conditions()
 
         if bc is None:
             self._warn_no_bc_once("no boundary_conditions attribute")
@@ -727,9 +776,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
     def _warn_no_bc_once(self, reason: str) -> None:
         """Emit warning about missing BC (once per solver instance)."""
-        if not hasattr(self, "_bc_warning_emitted"):
-            self._bc_warning_emitted = False
-
+        # Issue #545: _bc_warning_emitted initialized in __init__, no hasattr needed
         if not self._bc_warning_emitted:
             import warnings
 
@@ -872,9 +919,10 @@ class HJBFDMSolver(BaseHJBSolver):
 
                 try:
                     # Call problem Hamiltonian (try both interfaces)
-                    if hasattr(self.problem, "hamiltonian"):
+                    # Issue #545: Use try/except instead of hasattr
+                    try:
                         H_values[multi_idx] = self.problem.hamiltonian(x_coords, m_at_point, p, t=0.0)
-                    else:
+                    except AttributeError:
                         # Use new DerivativeTensors format
                         # Legacy support via explicit exception handling
                         try:
@@ -988,18 +1036,21 @@ class HJBFDMSolver(BaseHJBSolver):
 
             # Call problem.hamiltonian with vectorized inputs
             # Try both possible signatures
-            if hasattr(self.problem, "hamiltonian"):
+            # Issue #545: Use try/except instead of hasattr
+            try:
                 # Try calling with vectorized inputs
                 # Signature: hamiltonian(x, m, p, t=0.0, sigma=...)
                 # This will raise TypeError if not vectorized
                 H_values_flat = self.problem.hamiltonian(x_grid, m_grid, p_grid, t=0.0, sigma=sigma_for_call)
-            else:
+            except AttributeError:
                 # Old interface - doesn't support vectorization
-                # If neither hamiltonian nor H exists, AttributeError will be raised by explicit access or calling
-                if hasattr(self.problem, "H"):
+                # If neither hamiltonian nor H exists, raise clear error
+                try:
+                    # Check if H exists to provide specific error
+                    _ = self.problem.H
                     raise TypeError("Problem.H interface does not support vectorized evaluation")
-                else:
-                    raise AttributeError("Problem must have 'hamiltonian' or 'H' method")
+                except AttributeError:
+                    raise AttributeError("Problem must have 'hamiltonian' or 'H' method") from None
 
         # Reshape back to grid shape
         H_values = H_values_flat.reshape(self.shape)
