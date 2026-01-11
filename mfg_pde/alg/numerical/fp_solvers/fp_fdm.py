@@ -472,9 +472,15 @@ class FPFDMSolver(BaseFPSolver):
             effective_sigma = diffusion_field
         elif callable(diffusion_field):
             # State-dependent diffusion - Phase 2.2/2.4
-            # For 1D with conservative=False, use legacy callable solver
-            # For 1D with conservative=True or nD, use unified nD solver
-            if self.dimension == 1 and not self.conservative:
+            # Route based on same logic as use_nd_path to ensure consistency
+            # Issue #562: Previously callable path bypassed the BC-based routing
+            bc_type = _get_bc_type(self.boundary_conditions)
+            use_legacy_1d_callable = (
+                self.dimension == 1
+                and not self.conservative
+                and bc_type not in ("no_flux", "neumann")  # These work better in nD solver
+            )
+            if use_legacy_1d_callable:
                 return self._solve_fp_1d_with_callable(
                     m_initial_condition=M_initial,
                     drift_field=effective_U,
@@ -482,7 +488,7 @@ class FPFDMSolver(BaseFPSolver):
                     show_progress=show_progress,
                 )
             else:
-                # nD or 1D conservative: use unified nD solver with callable diffusion
+                # nD or 1D with no_flux/neumann/conservative: use unified nD solver
                 effective_sigma = diffusion_field
         else:
             raise TypeError(
