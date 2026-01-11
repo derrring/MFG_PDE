@@ -12,6 +12,14 @@ Note: Particle-collocation methods have been removed from core package.
 """
 
 from .base_mfg import BaseMFGSolver
+
+# Block iterators (Issue #492 Phase 2)
+from .block_iterators import (
+    BlockGaussSeidelIterator,
+    BlockIterator,
+    BlockJacobiIterator,
+    BlockMethod,
+)
 from .fictitious_play import FictitiousPlayIterator
 
 # Coupling iterators
@@ -39,6 +47,11 @@ __all__ = [
     "FixedPointIterator",
     "FictitiousPlayIterator",
     "HybridFPParticleHJBFDM",
+    # Block iterators (Issue #492 Phase 2)
+    "BlockIterator",
+    "BlockJacobiIterator",
+    "BlockGaussSeidelIterator",
+    "BlockMethod",
     # Newton family (Issue #492)
     "MFGResidual",
     "NewtonMFGSolver",
@@ -57,6 +70,13 @@ FIXED_POINT_SOLVERS = [
     "FictitiousPlayIterator",  # Fictitious play with decaying learning rate
 ]
 
+# Block iterators (Issue #492 Phase 2)
+BLOCK_SOLVERS = [
+    "BlockIterator",  # Unified block iterator (Jacobi or Gauss-Seidel)
+    "BlockJacobiIterator",  # Block Jacobi (parallel updates)
+    "BlockGaussSeidelIterator",  # Block Gauss-Seidel (sequential updates)
+]
+
 # Newton family solvers (Issue #492)
 NEWTON_SOLVERS = [
     "NewtonMFGSolver",  # Newton's method for MFG coupling
@@ -71,4 +91,4 @@ HYBRID_SOLVERS = [
 # JAX-accelerated solvers (optional)
 JAX_SOLVERS: list[str] = []
 
-ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + NEWTON_SOLVERS + HYBRID_SOLVERS + JAX_SOLVERS
+ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + BLOCK_SOLVERS + NEWTON_SOLVERS + HYBRID_SOLVERS + JAX_SOLVERS
