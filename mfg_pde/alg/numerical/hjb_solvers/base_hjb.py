@@ -191,6 +191,8 @@ def _get_bc_type_and_value_1d(
     """
     Extract BC type and value for a given side from BoundaryConditions.
 
+    Issue #527: Replace hasattr with try/except per CLAUDE.md guidelines.
+
     Args:
         bc: Boundary conditions object
         side: "left" or "right"
@@ -204,16 +206,18 @@ def _get_bc_type_and_value_1d(
     # Handle unified BoundaryConditions
     boundary_key = "x_min" if side == "left" else "x_max"
 
-    # Try to get BC info from the unified interface
-    if hasattr(bc, "get_boundary_type"):
+    # Priority 1: Try unified interface (get_boundary_type method)
+    try:
         bc_type = bc.get_boundary_type(boundary_key)
         bc_value = bc.get_boundary_value(boundary_key, time=time)
         if bc_value is None:
             bc_value = 0.0
         return bc_type, bc_value
+    except AttributeError:
+        pass  # No unified interface, try segment-based
 
-    # Try segment-based access for mixed BCs
-    if hasattr(bc, "segments"):
+    # Priority 2: Try segment-based access for mixed BCs
+    try:
         for seg in bc.segments:
             if seg.boundary == boundary_key:
                 value = seg.value
@@ -221,11 +225,15 @@ def _get_bc_type_and_value_1d(
                     value = value(time)
                 return seg.bc_type, value if value is not None else 0.0
         # If no matching segment, use default
-        if hasattr(bc, "default_type"):
-            value = bc.default_value if hasattr(bc, "default_value") else 0.0
-            return bc.default_type, value
+        try:
+            default_value = bc.default_value
+        except AttributeError:
+            default_value = 0.0
+        return bc.default_type, default_value
+    except AttributeError:
+        pass  # No segments attribute, try legacy interface
 
-    # Legacy interface fallback (only for uniform BC)
+    # Priority 3: Legacy interface fallback (only for uniform BC)
     # Note: For mixed BC, bc.type raises ValueError - this is intentional design
     try:
         bc_type_str = bc.type
@@ -236,10 +244,11 @@ def _get_bc_type_and_value_1d(
         else:
             bc_type = BCType.PERIODIC
 
-        if side == "left":
-            value = getattr(bc, "left_value", 0.0)
-        else:
-            value = getattr(bc, "right_value", 0.0)
+        # Get side-specific value
+        try:
+            value = bc.left_value if side == "left" else bc.right_value
+        except AttributeError:
+            value = 0.0
         return bc_type, value if value is not None else 0.0
     except (AttributeError, ValueError):
         # Mixed BC or no type attribute - fall through to default
@@ -271,18 +280,15 @@ class BaseHJBSolver(BaseNumericalSolver):
         (Phase 3.1 unified interface) and validates compatibility if available.
         For older problems without this feature, validation is skipped.
         """
-        # Only validate if problem has the new unified interface
-        if not hasattr(self.problem, "validate_solver_type"):
-            return  # Backward compatibility: skip validation for old problems
-
-        # Get solver type identifier from subclass
-        solver_type = self._get_solver_type_id()
-        if solver_type is None:
-            return  # Solver doesn't specify type, skip validation
-
-        # Validate compatibility
+        # Issue #543 Phase 2: Replace hasattr with try/except
         try:
-            self.problem.validate_solver_type(solver_type)
+            # Get solver type identifier from subclass
+            solver_type = self._get_solver_type_id()
+            if solver_type is not None:
+                self.problem.validate_solver_type(solver_type)
+        except AttributeError:
+            # Backward compatibility: problem doesn't have validate_solver_type
+            return
         except ValueError as e:
             # Re-raise with solver class information
             raise ValueError(f"Cannot use {self.__class__.__name__} with this problem.\n\n{e!s}") from e

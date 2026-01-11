@@ -230,51 +230,6 @@ class HJBFDMSolver(BaseHJBSolver):
             "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
         )
 
-    def _get_boundary_conditions(self):
-        """
-        Retrieve boundary conditions from geometry or problem.
-
-        Centralized BC retrieval logic to avoid hasattr cascade duplication.
-        Issue #545: Use try/except instead of hasattr.
-
-        Returns:
-            BoundaryConditions object or None if not available.
-        """
-        # Priority 1: geometry.boundary_conditions (direct attribute)
-        try:
-            bc = self.problem.geometry.boundary_conditions
-            if bc is not None:
-                return bc
-        except AttributeError:
-            pass
-
-        # Priority 2: geometry.get_boundary_conditions() (method accessor)
-        try:
-            bc = self.problem.geometry.get_boundary_conditions()
-            if bc is not None:
-                return bc
-        except AttributeError:
-            pass
-
-        # Priority 3: problem.boundary_conditions (direct attribute)
-        try:
-            bc = self.problem.boundary_conditions
-            if bc is not None:
-                return bc
-        except AttributeError:
-            pass
-
-        # Priority 4: problem.get_boundary_conditions() (method accessor)
-        try:
-            bc = self.problem.get_boundary_conditions()
-            if bc is not None:
-                return bc
-        except AttributeError:
-            pass
-
-        # No BC found
-        return None
-
     def solve_hjb_system(
         self,
         M_density: NDArray | None = None,
@@ -393,8 +348,8 @@ class HJBFDMSolver(BaseHJBSolver):
 
         if self.dimension == 1:
             # Extract BC from geometry for Issue #542 fix
-            # Issue #545: Use centralized _get_boundary_conditions() method
-            bc = self._get_boundary_conditions()
+            # Issue #527: Use centralized get_boundary_conditions() from BaseMFGSolver
+            bc = self.get_boundary_conditions()
 
             # Extract domain bounds from geometry
             domain_bounds = None
@@ -580,11 +535,11 @@ class HJBFDMSolver(BaseHJBSolver):
                 stacklevel=2,
             )
 
-        # Enforce BC on solution (Issue #542 - nD extension)
+        # Enforce BC on solution (Issue #542 - nD extension, Issue #527 - centralized BC access)
         # BC-aware gradients use ghost cells for derivatives, but boundary values must be explicitly set
         # This extends the 1D fix from base_hjb.py to nD FDM solver path
         # Refactored to use FDMApplicator.enforce_values() for proper separation of concerns
-        bc = self.problem.geometry.get_boundary_conditions()
+        bc = self.get_boundary_conditions()
         if bc is not None:
             U_solution = self.bc_applicator.enforce_values(
                 field=U_solution,
@@ -759,8 +714,8 @@ class HJBFDMSolver(BaseHJBSolver):
             self._warn_no_bc_once("grid not available")
             return None
 
-        # Issue #545: Use centralized _get_boundary_conditions() method
-        bc = self._get_boundary_conditions()
+        # Issue #527: Use centralized get_boundary_conditions() from BaseMFGSolver
+        bc = self.get_boundary_conditions()
 
         if bc is None:
             self._warn_no_bc_once("no boundary_conditions attribute")

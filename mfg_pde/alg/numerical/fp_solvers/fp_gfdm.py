@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry.boundary import BoundaryConditions
 
 
 class FPGFDMSolver(BaseFPSolver):
@@ -74,6 +75,7 @@ class FPGFDMSolver(BaseFPSolver):
         boundary_indices: set[int] | np.ndarray | None = None,
         domain_bounds: list[tuple[float, float]] | None = None,
         boundary_type: str | None = None,
+        boundary_conditions: BoundaryConditions | None = None,
         upwind_scheme: str = "none",
         upwind_strength: float = 0.5,
     ):
@@ -89,9 +91,19 @@ class FPGFDMSolver(BaseFPSolver):
             weight_function: Weight function type ("wendland", "gaussian", "uniform")
             boundary_indices: Set/array of indices of boundary points (optional)
             domain_bounds: List of (min, max) tuples for each dimension (optional)
-            boundary_type: Type of boundary condition ("no_flux" or None)
+            boundary_type: Type of boundary condition ("no_flux" or None).
+                Deprecated: Use boundary_conditions parameter instead.
+            boundary_conditions: BoundaryConditions object from geometry.boundary
+                infrastructure. Takes precedence over boundary_type string.
             upwind_scheme: Upwind stabilization scheme ("none", "exponential", "linear")
             upwind_strength: Upwind bias parameter β (typically 0.3-1.0)
+
+        BC Resolution Order:
+            1. Explicit boundary_conditions parameter
+            2. problem.geometry.boundary_conditions
+            3. problem.geometry.get_boundary_conditions()
+            4. boundary_type string (legacy, deprecated)
+            5. None (no BC enforcement)
         """
         super().__init__(problem)
         self.fp_method_name = "GFDM"
@@ -109,6 +121,13 @@ class FPGFDMSolver(BaseFPSolver):
             delta = self._compute_adaptive_delta()
         self.delta = delta
 
+        # Resolve boundary conditions using unified infrastructure
+        # Issue #527: Integrate with geometry.boundary infrastructure
+        resolved_bc_type = self._resolve_boundary_type(
+            boundary_conditions=boundary_conditions,
+            boundary_type_str=boundary_type,
+        )
+
         # Create GFDM operator with optional boundary condition support
         # GFDMOperator handles ghost particles for no-flux BC
         self.gfdm_operator = GFDMOperator(
@@ -118,12 +137,59 @@ class FPGFDMSolver(BaseFPSolver):
             weight_function=weight_function,
             boundary_indices=boundary_indices,
             domain_bounds=domain_bounds,
-            boundary_type=boundary_type,
+            boundary_type=resolved_bc_type,
         )
 
         # Store upwind parameters
         self.upwind_scheme = upwind_scheme
         self.upwind_strength = upwind_strength
+
+    def _resolve_boundary_type(
+        self,
+        boundary_conditions: BoundaryConditions | None,
+        boundary_type_str: str | None,
+    ) -> str | None:
+        """
+        Resolve boundary type from unified BC infrastructure.
+
+        Maps BCType enum to string that GFDMOperator expects.
+
+        Args:
+            boundary_conditions: BoundaryConditions object (preferred)
+            boundary_type_str: Legacy string parameter (deprecated)
+
+        Returns:
+            String boundary type for GFDMOperator ("no_flux" or None)
+
+        Note:
+            Uses inherited get_boundary_conditions() from BaseNumericalSolver
+            for unified BC resolution. Falls back to legacy boundary_type_str.
+        """
+        from mfg_pde.geometry.boundary import BCType
+
+        # Priority 1: Explicit boundary_conditions parameter
+        # Priority 2-5: Use inherited unified BC resolution
+        bc = boundary_conditions
+        if bc is None:
+            bc = self.get_boundary_conditions()
+
+        # Map BoundaryConditions to string for GFDMOperator
+        if bc is not None:
+            try:
+                default_bc = bc.default_bc
+                if default_bc == BCType.NO_FLUX:
+                    return "no_flux"
+                elif default_bc == BCType.NEUMANN:
+                    return "no_flux"  # Neumann with value=0 is equivalent
+                elif default_bc == BCType.PERIODIC:
+                    return "periodic"  # GFDMOperator may support this in future
+                # Other BC types not yet supported by GFDMOperator
+                return None
+            except AttributeError:
+                pass
+
+        # Priority: Legacy boundary_type string
+        return boundary_type_str
 
     def _compute_adaptive_delta(self) -> float:
         """Compute adaptive delta based on point spacing."""

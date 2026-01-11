@@ -120,7 +120,10 @@ def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False
     duplicates = defaultdict(list)
 
     # Group by normalized topic
+    # Exclude README.md files - they are expected per-directory navigation files, not content duplicates
     for doc in active_docs:
+        if doc.name.lower() == "readme.md":
+            continue  # Skip READMEs from duplicate detection
         topic = normalize_topic(doc.stem)
         if topic:  # Ignore empty topics
             duplicates[topic].append(doc)
@@ -189,7 +192,9 @@ def check_docs_structure(docs_dir: Path, fix: bool = False, report: bool = False
         )
 
     # Check 4: Duplicate concepts (heuristic: similar filenames)
-    stems = [f.stem.lower().replace("_", " ").replace("-", " ") for f in active_docs]
+    # Exclude README files - they are expected per-directory
+    non_readme_docs = [f for f in active_docs if f.name.lower() != "readme.md"]
+    stems = [f.stem.lower().replace("_", " ").replace("-", " ") for f in non_readme_docs]
     duplicates = [name for name, count in Counter(stems).items() if count > 1]
 
     if duplicates:

@@ -40,25 +40,34 @@ This document maps boundary condition support across all numerical solvers in MF
 
 | Solver | Uses `geometry/boundary/` | BoundaryCapable | Implementation | Integration Gap |
 |--------|:-------------------------:|:---------------:|----------------|-----------------|
-| **HJB FDM** | ✅ `get_ghost_values_nd` | ❌ | Ghost cells via PreallocatedGhostBuffer | Low |
-| **HJB GFDM** | ⚠️ Type annotations only | ✅ | Custom normal-based weights | **Medium** |
+| **HJB FDM** | ✅ `get_ghost_values_nd` | ✅ | Ghost cells via PreallocatedGhostBuffer | Low |
+| **HJB GFDM** | ✅ `get_boundary_conditions()` | ✅ | Custom normal-based weights | Low |
 | **HJB Semi-Lagrangian** | ⚠️ `periodic_bc` only | ❌ | Characteristic clamping | Medium |
 | **HJB WENO** | ✅ `PreallocatedGhostBuffer` | ❌ | Ghost cells (depth=2) | Low |
-| **FP FDM** | ✅ Factory functions | ❌ | Delegates to `fp_fdm_time_stepping` | Low |
+| **FP FDM** | ✅ Factory functions | ✅ | Delegates to `fp_fdm_time_stepping` | Low |
 | **FP Particle** | ⚠️ `periodic_bc` factory | ❌ | Custom particle reflection | Medium |
-| **FP GFDM** | ❌ None | ❌ | Custom `boundary_type` string | **High** |
+| **FP GFDM** | ✅ `get_boundary_conditions()` | ✅ | Maps BCType to GFDMOperator string | Low |
 
 ### Integration Status (Issue #527)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | BoundaryCapable protocol, dispatch.py, documentation | ✅ Complete |
-| Phase 2 | Central application point (`Geometry.apply_bc()`) | ❌ Not started |
-| Phase 3 | GFDM/Solver delegation to applicators | ❌ Not started |
-| Phase 4 | Advanced BC types (Robin, Mixed, High-order) | ❌ Not started |
+| Phase 2 | Central application point (`BaseMFGSolver.get_boundary_conditions()`) | ✅ Complete |
+| Phase 3 | Solver delegation to base class BC methods | ✅ Complete (all numerical solvers) |
+| Phase 4 | Advanced BC types (Robin, Mixed, High-order) | ⏳ Infrastructure ready, waiting for use cases |
 
-**Note**: `dispatch.py` contains `apply_bc()`, `get_applicator_for_geometry()` but these are
-not yet wired into solvers. Phase 2-4 will complete the integration.
+**Inheritance Change (2026-01-11)**:
+- `BaseFPSolver` now inherits from `BaseNumericalSolver`
+- All FP solvers have access to unified `get_boundary_conditions()` method
+- Eliminated duplicate BC resolution code across FP solvers
+
+**Note**: As of 2026-01-11, all base solver classes have unified BC access:
+- `BaseMFGSolver.get_boundary_conditions()` - 5-level resolution hierarchy
+- `BaseNumericalSolver.apply_boundary_conditions()` - delegates to `dispatch.apply_bc()`
+- `BaseNeuralSolver.sample_boundary_points()` + `get_boundary_target_values()`
+- `BaseRLSolver.get_environment_boundary_config()`
+- `BaseOptimizationSolver.get_domain_constraints()`
 
 ---
 
@@ -271,13 +280,65 @@ bc = mixed_bc(dimension=2, segments=[
 
 ### Priority Gaps to Address
 
-| Priority | Solver | Gap | Solution |
-|----------|--------|-----|----------|
-| **High** | HJB GFDM | Custom BC, no applicator | Integrate `MeshfreeApplicator` |
-| **High** | FP GFDM | No BC infrastructure | Add `BoundaryConditions` support |
-| **Medium** | FP Particle | Custom reflection | Use `ParticleReflector` |
-| **Medium** | HJB Semi-Lag | Clamping only | Add characteristic reflection |
-| **Low** | All | Robin BC unused | Enable in FP solvers |
+| Priority | Solver | Gap | Solution | Status |
+|----------|--------|-----|----------|--------|
+| ~~High~~ | ~~FP GFDM~~ | ~~No BC infrastructure~~ | ~~Add `BoundaryConditions` support~~ | ✅ Resolved |
+| **Medium** | HJB GFDM | Custom BC, no applicator | Integrate `MeshfreeApplicator` | Open |
+| **Medium** | FP Particle | Custom reflection | Use `ParticleReflector` | Open |
+| **Medium** | HJB Semi-Lag | Clamping only | Add characteristic reflection | Open |
+| **Low** | All | Robin BC unused | Enable in FP solvers | Open |
+
+---
+
+## Unified BC Access Pattern (Phase 2-3)
+
+All solver paradigms now access BCs through a unified base class method:
+
+```python
+# In any solver (inherits from BaseMFGSolver)
+bc = self.get_boundary_conditions()  # Returns BoundaryConditions or None
+```
+
+### Resolution Hierarchy
+
+The `get_boundary_conditions()` method checks in order:
+1. `self._boundary_conditions` - Instance attribute (cached BCs)
+2. `self.problem.geometry.boundary_conditions` - Direct attribute
+3. `self.problem.geometry.get_boundary_conditions()` - Method accessor
+4. `self.problem.boundary_conditions` - Direct on problem
+5. `self.problem.get_boundary_conditions()` - Method on problem
+
+### Paradigm-Specific Helpers
+
+Each paradigm base class provides appropriate BC helpers:
+
+| Base Class | Helper Method | Purpose |
+|------------|--------------|---------|
+| `BaseNumericalSolver` | `apply_boundary_conditions(field, time)` | Apply BCs to field values |
+| `BaseNeuralSolver` | `sample_boundary_points(n_points)` | Sample for BC loss |
+| `BaseNeuralSolver` | `get_boundary_target_values(points, time)` | Target values for loss |
+| `BaseRLSolver` | `get_environment_boundary_config()` | Configure environment bounds |
+| `BaseOptimizationSolver` | `get_domain_constraints()` | Generate optimization constraints |
+
+### Example: Adding BC Support to New Solver
+
+```python
+from mfg_pde.alg.base_solver import BaseNumericalSolver
+
+class MyNewSolver(BaseNumericalSolver):
+    discretization_type = "FDM"  # or "GFDM", "FEM"
+
+    def solve(self):
+        # Get BCs using unified method
+        bc = self.get_boundary_conditions()
+
+        # Apply BCs during solve loop
+        for timestep in range(self.problem.Nt):
+            u = self.step(u)
+            u = self.apply_boundary_conditions(u, time=timestep * self.dt)
+
+        return u
+```
 
 ---
 
@@ -286,3 +347,5 @@ bc = mixed_bc(dimension=2, segments=[
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-12-18 | Initial capability matrix |
+| 1.1 | 2026-01-11 | Updated Phase 2-3 status, added unified BC access section |
+| 1.2 | 2026-01-11 | Phase 3 complete: BaseFPSolver inherits BaseNumericalSolver, FP GFDM integrated |

@@ -35,12 +35,12 @@ class TestFPFDMSolverInitialization:
     """Test FPFDMSolver initialization and setup."""
 
     def test_basic_initialization(self, standard_problem):
-        """Test basic solver initialization inheriting BC from geometry."""
+        """Test basic solver initialization with default BC."""
         solver = FPFDMSolver(standard_problem)
 
         assert solver.fp_method_name == "FDM"
-        # Solver inherits BC from problem geometry (which is periodic in fixture)
-        assert solver.boundary_conditions.type == "periodic"
+        # Default BC is no_flux when geometry doesn't specify BC
+        assert solver.boundary_conditions.type == "no_flux"
         assert solver.problem is standard_problem
 
     def test_initialization_with_periodic_bc(self, standard_problem):
@@ -270,8 +270,14 @@ class TestFPFDMSolverWithDrift:
         assert np.all(m_result >= -1e-10)
 
     def test_solve_with_quadratic_value_function(self, standard_problem):
-        """Test solution with quadratic value function."""
-        solver = FPFDMSolver(standard_problem)
+        """Test solution with quadratic value function and periodic BC.
+
+        Uses periodic BC to allow density to evolve under drift from quadratic
+        value function U(t,x) = x^2, which creates linear drift = -2x.
+        """
+        # Explicit periodic BC to ensure density evolution under drift
+        bc = BoundaryConditions(type="periodic")
+        solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         (Nx_points,) = standard_problem.geometry.get_grid_shape()
         Nt_points = standard_problem.Nt + 1
@@ -285,7 +291,7 @@ class TestFPFDMSolverWithDrift:
 
         m_result = solver.solve_fp_system(m_initial, U_solution)
 
-        # Solution should evolve
+        # Solution should evolve (periodic BC allows mass flow)
         assert not np.allclose(m_result[-1, :], m_result[0, :])
         # Should remain non-negative
         assert np.all(m_result >= -1e-10)

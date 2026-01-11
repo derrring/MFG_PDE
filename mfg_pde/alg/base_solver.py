@@ -91,16 +91,55 @@ class BaseMFGSolver(ABC):
             This is the single source of truth for BC information.
             All paradigms should access BCs through this method.
             Subclasses may override or cache boundary conditions as attributes.
-        """
-        # Check for instance attribute first (solvers may cache BCs)
-        if hasattr(self, "_boundary_conditions") and self._boundary_conditions is not None:
-            return self._boundary_conditions
 
-        # Otherwise get from geometry
+        Resolution Order:
+            1. Instance attribute `_boundary_conditions` (cached BCs)
+            2. `geometry.boundary_conditions` (attribute access)
+            3. `geometry.get_boundary_conditions()` (method accessor)
+            4. `problem.boundary_conditions` (direct on problem)
+            5. `problem.get_boundary_conditions()` (method on problem)
+        """
+        # Priority 1: Check for instance attribute (solvers may cache BCs)
         try:
-            return self.problem.geometry.boundary_conditions
+            if self._boundary_conditions is not None:
+                return self._boundary_conditions
         except AttributeError:
-            return None
+            pass
+
+        # Priority 2: geometry.boundary_conditions (direct attribute)
+        try:
+            bc = self.problem.geometry.boundary_conditions
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 3: geometry.get_boundary_conditions() (method accessor)
+        try:
+            bc = self.problem.geometry.get_boundary_conditions()
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 4: problem.boundary_conditions (direct attribute)
+        try:
+            bc = self.problem.boundary_conditions
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 5: problem.get_boundary_conditions() (method accessor)
+        try:
+            bc = self.problem.get_boundary_conditions()
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # No BC found
+        return None
 
 
 class BaseNumericalSolver(BaseMFGSolver):

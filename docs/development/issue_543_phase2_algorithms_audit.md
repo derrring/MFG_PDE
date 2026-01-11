@@ -391,6 +391,13 @@ Total Reduction:  37 violations (25%)
   - Remaining:    ~112 violations (mostly RL algorithms: ~80, HJB solvers, other)
 ```
 
+### Additional Fixes (PR #561)
+
+**Commit**: `8f81990` (Issue #527 Phase 3)
+- **base_hjb.py**: 1 → 0 (100% reduction)
+  - Replaced `hasattr(self.problem, "validate_solver_type")` with try/except pattern
+  - Aligns with base_fp.py pattern for problem compatibility validation
+
 ## Testing Strategy
 
 **Unit Tests**:
