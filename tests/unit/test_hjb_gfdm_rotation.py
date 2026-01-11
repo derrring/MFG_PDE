@@ -68,7 +68,7 @@ class TestRotationMatrixCorrectness:
         e_x = np.array([1.0, 0.0])
 
         for normal, description in test_cases:
-            R = solver._build_rotation_matrix(normal)
+            R = solver._boundary_handler.build_rotation_matrix(normal)
             result = R @ e_x
 
             assert np.allclose(result, normal, atol=1e-10), (
@@ -87,7 +87,7 @@ class TestRotationMatrixCorrectness:
         expected_norm = np.linalg.norm(test_vector)
 
         for normal in test_normals:
-            R = solver._build_rotation_matrix(normal)
+            R = solver._boundary_handler.build_rotation_matrix(normal)
             rotated = R @ test_vector
             actual_norm = np.linalg.norm(rotated)
 
@@ -104,7 +104,7 @@ class TestRotationMatrixCorrectness:
         ]
 
         for normal in test_normals:
-            R = solver._build_rotation_matrix(normal)
+            R = solver._boundary_handler.build_rotation_matrix(normal)
             product = R.T @ R
 
             assert np.allclose(product, np.eye(2), atol=1e-10), f"R^T @ R != I for normal {normal}. Got:\n{product}"
@@ -118,7 +118,7 @@ class TestRotationMatrixCorrectness:
         ]
 
         for normal in test_normals:
-            R = solver._build_rotation_matrix(normal)
+            R = solver._boundary_handler.build_rotation_matrix(normal)
             det = np.linalg.det(R)
 
             assert np.allclose(det, 1.0, atol=1e-10), f"det(R) = {det}, expected 1.0 for normal {normal}"
@@ -136,14 +136,14 @@ class TestRotationMatrixCorrectness:
         e_x = np.array([1.0, 0.0])
 
         # Bottom wall: normal = (0, -1)
-        R_bottom = solver._build_rotation_matrix(np.array([0.0, -1.0]))
+        R_bottom = solver._boundary_handler.build_rotation_matrix(np.array([0.0, -1.0]))
         result_bottom = R_bottom @ e_x
         assert np.allclose(result_bottom, [0.0, -1.0], atol=1e-10), (
             f"Bottom wall regression: R @ e_x = {result_bottom}, expected [0, -1]"
         )
 
         # Top wall: normal = (0, +1)
-        R_top = solver._build_rotation_matrix(np.array([0.0, 1.0]))
+        R_top = solver._boundary_handler.build_rotation_matrix(np.array([0.0, 1.0]))
         result_top = R_top @ e_x
         assert np.allclose(result_top, [0.0, 1.0], atol=1e-10), (
             f"Top wall regression: R @ e_x = {result_top}, expected [0, +1]"
@@ -180,7 +180,7 @@ class TestDerivativeRotationBackTransform:
 
         # Rotation matrix (arbitrary normal)
         normal = np.array([1.0, 1.0]) / np.sqrt(2)
-        R = solver._build_rotation_matrix(normal)
+        R = solver._boundary_handler.build_rotation_matrix(normal)
 
         # Rotate gradient to normal-aligned frame: grad' = R @ grad
         grad_rotated = R @ grad_orig
@@ -192,7 +192,7 @@ class TestDerivativeRotationBackTransform:
         }
 
         # Rotate back
-        derivs_back = solver._rotate_derivatives_back(derivs_rotated, R)
+        derivs_back = solver._boundary_handler.rotate_derivatives_back(derivs_rotated, R)
 
         # Check recovery
         grad_back = np.array([derivs_back[(1, 0)], derivs_back[(0, 1)]])
@@ -211,7 +211,7 @@ class TestDerivativeRotationBackTransform:
 
         # Rotation matrix
         normal = np.array([0.0, 1.0])
-        R = solver._build_rotation_matrix(normal)
+        R = solver._boundary_handler.build_rotation_matrix(normal)
 
         # Rotate Hessian: H' = R @ H @ R^T
         H_rotated = R @ H_orig @ R.T
@@ -226,7 +226,7 @@ class TestDerivativeRotationBackTransform:
         }
 
         # Rotate back
-        derivs_back = solver._rotate_derivatives_back(derivs_rotated, R)
+        derivs_back = solver._boundary_handler.rotate_derivatives_back(derivs_rotated, R)
 
         # Compute Laplacian from rotated-back derivatives
         lap_back = derivs_back[(2, 0)] + derivs_back[(0, 2)]
@@ -268,7 +268,7 @@ def test_smoke_rotation_matrix():
     all_passed = True
 
     for normal, label in test_normals:
-        R = solver._build_rotation_matrix(normal)
+        R = solver._boundary_handler.build_rotation_matrix(normal)
         result = R @ e_x
 
         if np.allclose(result, normal, atol=1e-10):
