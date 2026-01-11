@@ -442,8 +442,10 @@ def dispatch_solver(problem: TypedMFGProblem, method_preference: NumericalMethod
 if __name__ == "__main__":
     # Create a typed problem
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry import TensorProductGrid
 
-    problem = MFGProblem(xmin=0, xmax=1, T=1.0, Nx=100, Nt=50)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
     typed_problem = create_typed_problem(problem, QUADRATIC_MFG_TYPE)
 
     print(f"Problem type: {typed_problem.mfg_type}")

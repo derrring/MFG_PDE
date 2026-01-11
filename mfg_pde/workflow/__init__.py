@@ -182,9 +182,11 @@ def performance_benchmark_workflow(problem_sizes: list[tuple], solver_types: lis
         import time
 
         from mfg_pde import MFGProblem
+        from mfg_pde.geometry import TensorProductGrid
 
         Nx, Nt = params["problem_size"]
-        problem = MFGProblem(Nx=Nx, Nt=Nt, T=1.0)
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1])
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=Nt)
 
         # Use problem.solve() API
         start_time = time.time()

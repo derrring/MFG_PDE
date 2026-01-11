@@ -1784,9 +1784,11 @@ if __name__ == "__main__":
     print("Testing FPParticleSolver...")
 
     from mfg_pde import MFGProblem
+    from mfg_pde.geometry import TensorProductGrid
 
     # Test 1D problem with particle solver
-    problem = MFGProblem(Nx=30, Nt=20, T=1.0, diffusion=0.1)
+    geometry_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
     solver = FPParticleSolver(problem, num_particles=1000)
 
     # Test solver initialization

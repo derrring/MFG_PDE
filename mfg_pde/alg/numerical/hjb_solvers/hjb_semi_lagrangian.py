@@ -1612,10 +1612,12 @@ if __name__ == "__main__":
     print("Testing HJBSemiLagrangianSolver...")
 
     from mfg_pde import MFGProblem
+    from mfg_pde.geometry import TensorProductGrid
 
     # Test 1: Solver initialization
     print("\n1. Testing solver initialization...")
-    problem = MFGProblem(Nx=50, Nt=100, T=1.0, diffusion=0.1)
+    geometry_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=100, diffusion=0.1)
     solver = HJBSemiLagrangianSolver(problem, interpolation_method="linear", optimization_method="brent")
 
     assert solver.dimension == 1

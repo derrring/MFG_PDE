@@ -1063,8 +1063,10 @@ if __name__ == "__main__":
 
     # Test 1D problem
     from mfg_pde import MFGProblem
+    from mfg_pde.geometry import TensorProductGrid
 
-    problem_1d = MFGProblem(Nx=30, Nt=20, T=1.0, diffusion=0.1)
+    geometry_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+    problem_1d = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
     solver_1d = HJBFDMSolver(problem_1d, solver_type="newton")
 
     # Test solver initialization
