@@ -21,7 +21,7 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 ### **For Researchers**
 - **[Theory Documentation](theory/)** - Mathematical foundations and algorithms
   - **[Reinforcement Learning](theory/reinforcement_learning/)** - RL for MFG, continuous actions
-  - **[Numerical Methods](theory/numerical_methods/)** - Semi-Lagrangian, Lagrangian methods
+  - **[Semi-Lagrangian Methods](theory/semi_lagrangian_methods_for_hjb.md)** - Semi-Lagrangian HJB solvers
   - **[Mathematical Background](theory/foundations/mathematical_background.md)** - Core MFG theory
 - **[Advanced Examples](../examples/advanced/)** - Research-grade demonstrations
 - **[Interactive Notebooks](../examples/notebooks/)** - Jupyter-based exploration
@@ -110,9 +110,7 @@ docs/
 │   │   ├── evacuation_mfg_mathematical_formulation.md
 │   │   ├── coordination_games_mfg.md
 │   │   └── spatial_competition_mfg.md
-│   ├── numerical_methods/             # Numerical methods
-│   │   ├── semi_lagrangian_methods.md
-│   │   └── lagrangian_formulation.md
+│   ├── semi_lagrangian_methods_for_hjb.md  # Semi-Lagrangian HJB methods
 │   ├── network_mfg/                   # Network MFG (1 file)
 │   │   └── network_mfg_mathematical_formulation.md
 │   ├── continuous_control/            # Continuous control (1 file)
@@ -150,10 +148,6 @@ docs/
 │   ├── architecture/                  # Architecture documentation
 │   ├── strategy/                      # Strategic planning
 │   └── maintenance/                   # Maintenance procedures
-│
-├── migration/                         # 🔄 MIGRATION GUIDES
-│   ├── DEPRECATION_MODERNIZATION_GUIDE.md  # Deprecation patterns
-│   └── GEOMETRY_FIRST_API_GUIDE.md    # Geometry API migration
 │
 └── archive/                           # 📦 HISTORICAL CONTENT
     └── [Track B GPU acceleration history]
@@ -237,9 +231,9 @@ config = create_fast_config(
 - **Reports**: Quality assessments and status reports
 - **Governance**: Priority setting and decision-making
 
-#### **[Migration](migration/)**
-- **API Evolution**: Deprecated patterns and modern alternatives
-- **Geometry API**: Transitioning to geometry-first patterns
+#### **Migration Guides** (in user/)
+- **[Geometry-First API Guide](user/GEOMETRY_FIRST_API_GUIDE.md)** - Transitioning to geometry-first patterns
+- **[Deprecation Guide](user/DEPRECATION_MODERNIZATION_GUIDE.md)** - Deprecated patterns and modern alternatives
 
 ---
 
@@ -279,10 +273,9 @@ Aggressive cleanup and reorganization:
 1. **foundations/** - General theory, notation, convergence (6 files)
 2. **stochastic/** - Stochastic MFG, common noise (4 files)
 3. **applications/** - Domain-specific formulations (4 files)
-4. **numerical_methods/** - Semi-Lagrangian, finite differences
-5. **network_mfg/** - Network/graph MFG (1 file)
-6. **continuous_control/** - Variational MFG (1 file)
-7. **reinforcement_learning/** - RL for MFG (13 files)
+4. **network_mfg/** - Network/graph MFG (1 file)
+5. **continuous_control/** - Variational MFG (1 file)
+6. **reinforcement_learning/** - RL for MFG (13 files)
 
 ### **🏆 Strategic Typing Excellence Documentation**
 Complete framework documentation for achieving 100% type safety in scientific computing:
