@@ -365,15 +365,15 @@ class HJBGFDMSolver(BaseHJBSolver):
         else:
             # Try to detect boundary points from domain bounds
             self.boundary_indices = self._detect_boundary_indices(collocation_points)
-        # Get BC from parameter, or from problem geometry (Issue #542 fix)
+        # Get BC from parameter, or from problem geometry (Issue #542 fix, Issue #527 centralized BC)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
         else:
-            # Access geometry.get_boundary_conditions() - None if not available
-            try:
-                self.boundary_conditions = self.problem.geometry.get_boundary_conditions()
-            except AttributeError:
-                self.boundary_conditions = None
+            # Use centralized BC resolution from BaseMFGSolver (Issue #527)
+            # Checks: cached _boundary_conditions, geometry.boundary_conditions,
+            # geometry.get_boundary_conditions(), problem.boundary_conditions,
+            # problem.get_boundary_conditions()
+            self.boundary_conditions = self.get_boundary_conditions()
         self.interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
 
         # QP optimization level (single source of truth for QP control)
@@ -2259,7 +2259,11 @@ class HJBGFDMSolver(BaseHJBSolver):
             return u
 
         # Check if using per-point BC (mixed BC)
-        use_per_point_bc = hasattr(self.boundary_conditions, "is_mixed") and self.boundary_conditions.is_mixed
+        # Issue #527: Replace hasattr with try/except per CLAUDE.md guidelines
+        try:
+            use_per_point_bc = self.boundary_conditions.is_mixed
+        except AttributeError:
+            use_per_point_bc = False
 
         # Use unified BC config (single source of truth) when using new infrastructure
         if self._use_new_infrastructure and self._bc_config is not None:

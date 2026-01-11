@@ -164,10 +164,13 @@ class FPFDMSolver(BaseFPSolver):
 
         # Boundary condition resolution hierarchy:
         # Issue #543 Phase 2: Replace hasattr with try/except cascade
+        # Issue #527: Align with centralized BC resolution from BaseMFGSolver
         # 1. Explicit boundary_conditions parameter (highest priority)
         # 2. Problem components BC (if available and not None)
-        # 3. Grid geometry boundary handler (if available)
-        # 4. Default no-flux BC (fallback)
+        # 3. geometry.boundary_conditions (attribute) - standard path
+        # 4. geometry.get_boundary_conditions() (method accessor)
+        # 5. Grid geometry boundary handler (legacy, if available)
+        # 6. Default no-flux BC (fallback)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
         else:
@@ -181,13 +184,33 @@ class FPFDMSolver(BaseFPSolver):
             except AttributeError:
                 pass  # No components attribute, continue to next option
 
-            # Try geometry BC handler if not found in components
+            # Try geometry.boundary_conditions (standard path - Issue #527)
+            if not bc_found:
+                try:
+                    bc = problem.geometry.boundary_conditions
+                    if bc is not None:
+                        self.boundary_conditions = bc
+                        bc_found = True
+                except AttributeError:
+                    pass  # No boundary_conditions attribute
+
+            # Try geometry.get_boundary_conditions() (method accessor - Issue #527)
+            if not bc_found:
+                try:
+                    bc = problem.geometry.get_boundary_conditions()
+                    if bc is not None:
+                        self.boundary_conditions = bc
+                        bc_found = True
+                except AttributeError:
+                    pass  # No get_boundary_conditions method
+
+            # Try geometry BC handler (legacy support)
             if not bc_found:
                 try:
                     self.boundary_conditions = problem.geometry.get_boundary_handler()
                     bc_found = True
                 except AttributeError:
-                    pass  # No geometry BC handler, use default
+                    pass  # No geometry BC handler
 
             # Default to no-flux if no BC found
             if not bc_found:
