@@ -242,20 +242,28 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Raises:
             ValueError: If dimension cannot be determined
         """
-        # Try geometry.dimension first (unified interface)
-        if hasattr(problem, "geometry") and hasattr(problem.geometry, "dimension"):
+        # Issue #545: Use try/except instead of hasattr
+        # Priority 1: geometry.dimension
+        try:
             return problem.geometry.dimension
+        except AttributeError:
+            pass
 
-        # Fall back to problem.dimension
-        if hasattr(problem, "dimension"):
+        # Priority 2: problem.dimension
+        try:
             return problem.dimension
+        except AttributeError:
+            pass
 
         # Legacy 1D detection
         if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
             return 1
 
         # If we can't determine dimension, raise error
-        raise ValueError("Cannot determine problem dimension. Use MFGProblem with spatial_bounds for nD support.")
+        raise ValueError(
+            "Cannot determine problem dimension. "
+            "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
+        )
 
     def _compute_gradient(self, u_values: np.ndarray, check_cfl: bool = True) -> np.ndarray | tuple[np.ndarray, ...]:
         """
@@ -381,6 +389,89 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             )
 
         return cfl, n_substeps, dt_substep
+
+    def _get_boundary_conditions(self):
+        """
+        Retrieve BC from geometry or problem.
+
+        Priority order:
+        1. geometry.boundary_conditions (attribute)
+        2. geometry.get_boundary_conditions() (method)
+        3. problem.boundary_conditions (attribute)
+        4. problem.get_boundary_conditions() (method)
+
+        Returns:
+            BoundaryConditions object or None if not available
+
+        Note:
+            Issue #545: Centralized BC retrieval (NO hasattr pattern).
+            Consolidates duplicate BC detection logic from lines 935-940, 1066-1069.
+        """
+        # Priority 1: geometry.boundary_conditions
+        try:
+            bc = self.problem.geometry.boundary_conditions
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 2: geometry.get_boundary_conditions()
+        try:
+            bc = self.problem.geometry.get_boundary_conditions()
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 3: problem.boundary_conditions
+        try:
+            bc = self.problem.boundary_conditions
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 4: problem.get_boundary_conditions()
+        try:
+            bc = self.problem.get_boundary_conditions()
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        return None
+
+    def _get_bc_type_string(self, bc) -> str | None:
+        """
+        Extract BC type string from BoundaryConditions object.
+
+        Args:
+            bc: BoundaryConditions object or None
+
+        Returns:
+            BC type string ("periodic", "dirichlet", "neumann") or None
+
+        Note:
+            Issue #545: Replace hasattr pattern for BCType enum value extraction.
+            Used in characteristic tracing and diffusion term computation.
+        """
+        if bc is None:
+            return None
+
+        # Try to get default_bc attribute
+        try:
+            bc_type_enum = bc.default_bc
+            if bc_type_enum is None:
+                return None
+
+            # Try to get .value attribute (BCType enum)
+            try:
+                return bc_type_enum.value
+            except AttributeError:
+                # Fall back to string conversion
+                return str(bc_type_enum)
+        except AttributeError:
+            return None
 
     def solve_hjb_system(
         self,
@@ -823,9 +914,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # 1D optimal control
             x_scalar = float(x) if np.ndim(x) > 0 else x
 
-            # For standard MFG problems, analytical solution
-            if hasattr(self.problem, "coupling_coefficient"):
-                return 0.0
+            # For standard MFG problems with quadratic Hamiltonian, analytical solution is p* = 0
+            # Issue #545: Use try/except instead of hasattr
+            try:
+                _ = self.problem.coupling_coefficient
+                return 0.0  # Standard quadratic Hamiltonian H = |p|²/2 + C*m
+            except AttributeError:
+                pass  # Continue to numerical optimization
 
             # For general Hamiltonians, use numerical optimization
             def hamiltonian_objective(p):
@@ -857,18 +952,23 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         else:
             # nD optimal control
             # For standard quadratic Hamiltonian: H = |p|²/2 + ..., optimal p* = 0
-            if hasattr(self.problem, "coupling_coefficient"):
-                return np.zeros(self.dimension)
+            # Issue #545: Use try/except instead of hasattr
+            try:
+                _ = self.problem.coupling_coefficient
+                return np.zeros(self.dimension)  # Standard quadratic Hamiltonian
+            except AttributeError:
+                pass  # Continue to vector optimization
 
             # Vector optimization using scipy.optimize.minimize
             # Objective: minimize H(x, p, m) over p ∈ ℝ^d
             def hamiltonian_objective(p_vec):
                 """Objective function for vector optimization: H(x, p, m)"""
+                # Issue #545: Use try/except instead of hasattr
                 # Call problem's Hamiltonian function if available
-                if hasattr(self.problem, "hamiltonian"):
+                try:
                     t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
                     return self.problem.hamiltonian(x, m, p_vec, t_value)
-                else:
+                except AttributeError:
                     # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
                     p_norm_sq = np.sum(p_vec**2)
                     coef_CT = getattr(self.problem, "coupling_coefficient", 0.5)
@@ -931,13 +1031,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             )
 
             # Apply boundary conditions
-            bc_type = None
-            if hasattr(self.problem, "get_boundary_conditions"):
-                bc = self.problem.get_boundary_conditions()
-                if bc is not None and hasattr(bc, "default_bc"):
-                    bc_type_enum = bc.default_bc
-                    if bc_type_enum is not None:
-                        bc_type = bc_type_enum.value if hasattr(bc_type_enum, "value") else str(bc_type_enum)
+            # Issue #545: Use centralized BC retrieval (NO hasattr)
+            bc = self._get_boundary_conditions()
+            bc_type = self._get_bc_type_string(bc)
 
             bounds = self.problem.geometry.get_bounds()
             xmin, xmax = bounds[0][0], bounds[1][0]
@@ -1062,11 +1158,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 return 0.0
 
             # Handle boundary points - get BC type once
-            bc_type = None
-            if hasattr(self.problem, "get_boundary_conditions"):
-                bc = self.problem.get_boundary_conditions()
-                if bc is not None and hasattr(bc, "default_bc") and bc.default_bc is not None:
-                    bc_type = bc.default_bc.value if hasattr(bc.default_bc, "value") else str(bc.default_bc)
+            # Issue #545: Use centralized BC retrieval (NO hasattr)
+            bc = self._get_boundary_conditions()
+            bc_type = self._get_bc_type_string(bc)
 
             if i == 0:
                 if bc_type == "periodic":
@@ -1176,33 +1270,29 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         # Compute time value
         t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
 
+        # Issue #545: Use try/except instead of hasattr for Hamiltonian interface detection
+        # Priority 1: problem.H() with DerivativeTensors (preferred)
         try:
-            # Try problem.H() with DerivativeTensors (preferred)
-            if hasattr(self.problem, "H"):
-                return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
+            return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
+        except AttributeError:
+            pass
 
-            # Try problem.hamiltonian() with derivs kwarg
-            elif hasattr(self.problem, "hamiltonian"):
-                return self.problem.hamiltonian(x_idx, m, derivs=derivs, t=t_value)
+        # Priority 2: problem.hamiltonian() with derivs kwarg
+        try:
+            return self.problem.hamiltonian(x_idx, m, derivs=derivs, t=t_value)
+        except (AttributeError, TypeError):
+            pass
 
-            else:
-                # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
-                return self._default_hamiltonian(derivs, m)
+        # Priority 3: Legacy signature hamiltonian(x, m, p, t)
+        try:
+            x_vec = np.atleast_1d(x)
+            p_vec = np.atleast_1d(p)
+            return self.problem.hamiltonian(x_vec, m, p_vec, t_value)
+        except (AttributeError, TypeError) as e:
+            logger.debug(f"Legacy Hamiltonian signature failed: {e}")
 
-        except TypeError:
-            # Hamiltonian doesn't accept derivs kwarg, try legacy signature
-            try:
-                if hasattr(self.problem, "hamiltonian"):
-                    x_vec = np.atleast_1d(x)
-                    p_vec = np.atleast_1d(p)
-                    return self.problem.hamiltonian(x_vec, m, p_vec, t_value)
-            except Exception as legacy_err:
-                logger.debug(f"Legacy Hamiltonian signature failed: {legacy_err}")
-            return self._default_hamiltonian(derivs, m)
-
-        except Exception as e:
-            logger.debug(f"Hamiltonian evaluation failed: {e}, using fallback")
-            return self._default_hamiltonian(derivs, m)
+        # Fallback: Default quadratic Hamiltonian H = |p|²/2 + C*m
+        return self._default_hamiltonian(derivs, m)
 
     def _build_derivative_tensors(self, p: np.ndarray | float) -> DerivativeTensors:
         """
@@ -1235,11 +1325,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             Grid index (int for 1D, tuple for nD)
         """
         # Get bounds from geometry (preferred) or legacy xmin/xmax
-        bounds = (
-            self.problem.geometry.bounds
-            if hasattr(self.problem, "geometry") and self.problem.geometry is not None
-            else None
-        )
+        # Issue #545: Use try/except instead of hasattr
+        try:
+            bounds = self.problem.geometry.bounds if self.problem.geometry is not None else None
+        except AttributeError:
+            bounds = None
         grid_shape = self.problem.geometry.get_grid_shape() if bounds is not None else None
 
         if self.dimension == 1:
@@ -1400,6 +1490,107 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         U_new = U_star + dt * sigma_sq_half * laplacian
         return U_new
 
+    # ═══════════════════════════════════════════════════════════════════
+    # BoundaryHandler Protocol (Issue #545)
+    # ═══════════════════════════════════════════════════════════════════
+
+    def get_boundary_indices(self) -> np.ndarray:
+        """
+        Identify boundary points in solver's discretization.
+
+        Returns:
+            Array of integer indices identifying boundary grid points.
+
+        Note:
+            For Semi-Lagrangian method, boundary points are those on the
+            domain boundary where characteristic tracing requires clamping.
+
+        Implementation:
+            - 1D: First and last grid points [0, N-1]
+            - nD: All points on boundary faces (any coordinate at min/max)
+        """
+        if self.dimension == 1:
+            # 1D: First and last grid points
+            Nx = len(self.x_grid)
+            return np.array([0, Nx - 1], dtype=np.int64)
+        else:
+            # nD: All grid points on boundary faces
+            # For tensor grid: point is on boundary if any coordinate is at min/max
+            boundary_mask = np.zeros(self._grid_shape, dtype=bool)
+
+            # Mark boundary faces in each dimension
+            for d in range(self.dimension):
+                # Lower boundary face (index 0 along dimension d)
+                slices_lower = [slice(None)] * self.dimension
+                slices_lower[d] = 0
+                boundary_mask[tuple(slices_lower)] = True
+
+                # Upper boundary face (index -1 along dimension d)
+                slices_upper = [slice(None)] * self.dimension
+                slices_upper[d] = -1
+                boundary_mask[tuple(slices_upper)] = True
+
+            # Return flat indices of boundary points
+            return np.flatnonzero(boundary_mask.ravel())
+
+    def apply_boundary_conditions(
+        self,
+        values: np.ndarray,
+        bc,  # BoundaryConditions type hint omitted to avoid circular import
+        time: float = 0.0,
+    ) -> np.ndarray:
+        """
+        Apply boundary conditions to solution values.
+
+        For Semi-Lagrangian method, BC enforcement is handled during
+        characteristic tracing (clamping departure points to domain).
+        This method is a no-op adapter for protocol compliance.
+
+        Args:
+            values: Solution values at all grid points
+            bc: Boundary conditions object (from mfg_pde.geometry.boundary)
+            time: Current time (unused for Semi-Lagrangian)
+
+        Returns:
+            Solution values (unchanged, BC enforced during characteristic tracing)
+
+        Note:
+            Semi-Lagrangian enforces BCs during characteristic tracing via
+            hjb_sl_characteristics.apply_boundary_conditions_1d/nd(), not as
+            a post-processing step. This method exists for protocol compliance.
+        """
+        # Semi-Lagrangian enforces BCs during characteristic tracing,
+        # not as a post-processing step. Return values unchanged.
+        return values
+
+    def get_bc_type_for_point(self, point_idx: int) -> str:
+        """
+        Determine BC type for a specific grid point.
+
+        Args:
+            point_idx: Index of grid point
+
+        Returns:
+            BC type string: "periodic", "dirichlet", "neumann", or "none"
+
+        Note:
+            For Semi-Lagrangian solver with uniform BCs, returns the same
+            BC type for all boundary points. Mixed BC support would require
+            querying BC segments based on point spatial coordinates.
+        """
+        bc = self._get_boundary_conditions()
+        if bc is None:
+            return "none"
+
+        # For uniform BC (most common case)
+        bc_type_str = self._get_bc_type_string(bc)
+        if bc_type_str is not None:
+            return bc_type_str
+
+        # For mixed BC, would need to query BC segments
+        # (Semi-Lagrangian typically uses uniform BC)
+        return "none"
+
     def get_solver_info(self) -> dict[str, Any]:
         """Return solver configuration information."""
         return {
@@ -1466,7 +1657,7 @@ if __name__ == "__main__":
     solver_2d = HJBSemiLagrangianSolver(problem_2d, interpolation_method="linear")
 
     assert solver_2d.dimension == 2
-    assert hasattr(solver_2d, "_adi_compatible")
+    # Issue #545: Direct attribute access in test code (will raise AttributeError if missing)
     assert solver_2d._adi_compatible  # Scalar sigma should be ADI compatible
     print(f"   ADI compatible: {solver_2d._adi_compatible}")
     print("   2D solver initialization: OK")
@@ -1494,7 +1685,7 @@ if __name__ == "__main__":
 
     # Test 5: ADI preserves mass (integral)
     print("\n5. Testing ADI mass conservation...")
-    dx_2d = solver_2d.spacing
+    dx_2d = solver_2d.dx  # Grid spacing array
     mass_before = np.sum(U_2d_test) * dx_2d[0] * dx_2d[1]
     mass_after = np.sum(U_2d_diffused) * dx_2d[0] * dx_2d[1]
     mass_error = abs(mass_after - mass_before) / mass_before
@@ -1518,5 +1709,39 @@ if __name__ == "__main__":
     assert solver_2d_aniso._adi_compatible  # Diagonal is ADI compatible
     print(f"   Anisotropic ADI compatible: {solver_2d_aniso._adi_compatible}")
     print("   Anisotropic sigma: OK")
+
+    # Test 7: BoundaryHandler protocol compliance (Issue #545)
+    print("\n7. Testing BoundaryHandler protocol...")
+    from mfg_pde.geometry.boundary import validate_boundary_handler
+
+    # Validate protocol compliance
+    assert validate_boundary_handler(solver), "1D solver should implement BoundaryHandler"
+    assert validate_boundary_handler(solver_2d), "2D solver should implement BoundaryHandler"
+    print("   Protocol validation: OK")
+
+    # Test get_boundary_indices()
+    boundary_indices_1d = solver.get_boundary_indices()
+    assert len(boundary_indices_1d) == 2, "1D should have 2 boundary points"
+    assert boundary_indices_1d[0] == 0, "First boundary point should be 0"
+    assert boundary_indices_1d[-1] == 50, "Last boundary point should be Nx-1"
+    print(f"   1D boundary indices: {boundary_indices_1d}")
+
+    boundary_indices_2d = solver_2d.get_boundary_indices()
+    assert len(boundary_indices_2d) > 0, "2D should have boundary points"
+    print(f"   2D boundary count: {len(boundary_indices_2d)}")
+
+    # Test get_bc_type_for_point()
+    bc_type = solver.get_bc_type_for_point(0)
+    valid_bc_types = ["periodic", "dirichlet", "neumann", "no_flux", "robin", "none"]
+    assert bc_type in valid_bc_types, f"Invalid BC type: {bc_type}"
+    print(f"   BC type for point 0: {bc_type}")
+
+    # Test apply_boundary_conditions() (no-op adapter)
+    U_test_1d = np.ones(51)
+    U_result = solver.apply_boundary_conditions(U_test_1d, None)
+    assert np.array_equal(U_result, U_test_1d), "apply_boundary_conditions should be no-op for Semi-Lagrangian"
+    print("   apply_boundary_conditions (no-op): OK")
+
+    print("   BoundaryHandler protocol: OK")
 
     print("\nAll smoke tests passed!")
