@@ -165,30 +165,35 @@ class FPFDMSolver(BaseFPSolver):
         # Boundary condition resolution hierarchy:
         # Issue #543 Phase 2: Replace hasattr with try/except cascade
         # 1. Explicit boundary_conditions parameter (highest priority)
-        # 2. Problem components BC (if available)
+        # 2. Problem components BC (if available and not None)
         # 3. Grid geometry boundary handler (if available)
         # 4. Default no-flux BC (fallback)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
         else:
+            bc_found = False
+
             # Try components BC
             try:
                 if problem.components is not None and problem.components.boundary_conditions is not None:
                     self.boundary_conditions = problem.components.boundary_conditions
-                else:
-                    # Components exist but no BC - use default
-                    from mfg_pde.geometry.boundary import no_flux_bc
-
-                    self.boundary_conditions = no_flux_bc(dimension=self.dimension)
+                    bc_found = True
             except AttributeError:
-                # No components - try geometry BC handler
+                pass  # No components attribute, continue to next option
+
+            # Try geometry BC handler if not found in components
+            if not bc_found:
                 try:
                     self.boundary_conditions = problem.geometry.get_boundary_handler()
+                    bc_found = True
                 except AttributeError:
-                    # No geometry BC handler - use default
-                    from mfg_pde.geometry.boundary import no_flux_bc
+                    pass  # No geometry BC handler, use default
 
-                    self.boundary_conditions = no_flux_bc(dimension=self.dimension)
+            # Default to no-flux if no BC found
+            if not bc_found:
+                from mfg_pde.geometry.boundary import no_flux_bc
+
+                self.boundary_conditions = no_flux_bc(dimension=self.dimension)
 
     def _detect_dimension(self, problem: Any) -> int:
         """
