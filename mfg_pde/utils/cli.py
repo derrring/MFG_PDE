@@ -356,9 +356,14 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
 
         # Create problem instance
         # This is a simplified example - in practice, you'd load from problem_file
+        from mfg_pde.geometry import TensorProductGrid
+
         class CLIMFGProblem(MFGProblem):
             def __init__(self, T, Nt, xmin, xmax, Nx):
-                super().__init__(T=T, Nt=Nt, xmin=xmin, xmax=xmax, Nx=Nx)
+                # Convert legacy params to Geometry-First API
+                # Nx = intervals, so Nx_points = Nx + 1
+                geometry = TensorProductGrid(dimension=1, bounds=[(xmin, xmax)], Nx_points=[Nx + 1])
+                super().__init__(geometry=geometry, T=T, Nt=Nt)
 
             def g(self, x):
                 return 0.5 * (x - 0.5) ** 2
@@ -407,15 +412,13 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
             # Add other solver-specific parameters
         }
 
-        # Add progress/timing control
-        if hasattr(solver, "enable_progress"):
-            enable_progress = getattr(solver, "enable_progress", None)
-            if callable(enable_progress):
-                enable_progress(exec_config["progress"])
-        if hasattr(solver, "enable_timing"):
-            enable_timing = getattr(solver, "enable_timing", None)
-            if callable(enable_timing):
-                enable_timing(exec_config["timing"])
+        # Add progress/timing control (optional solver features)
+        import contextlib
+
+        with contextlib.suppress(AttributeError):
+            solver.enable_progress(exec_config["progress"])
+        with contextlib.suppress(AttributeError):
+            solver.enable_timing(exec_config["timing"])
 
         if exec_config["verbose"]:
             print("Solving MFG problem...")
