@@ -163,32 +163,38 @@ class FPFDMSolver(BaseFPSolver):
         self.dimension = self._detect_dimension(problem)
 
         # Boundary condition resolution hierarchy:
+        # Issue #543 Phase 2: Replace hasattr with try/except cascade
         # 1. Explicit boundary_conditions parameter (highest priority)
         # 2. Problem components BC (if available)
         # 3. Grid geometry boundary handler (if available)
         # 4. Default no-flux BC (fallback)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
-        elif hasattr(problem, "components") and problem.components is not None:
-            if problem.components.boundary_conditions is not None:
-                self.boundary_conditions = problem.components.boundary_conditions
-            else:
-                # No BC in components, use default
-                from mfg_pde.geometry.boundary import no_flux_bc
-
-                self.boundary_conditions = no_flux_bc(dimension=self.dimension)
-        elif hasattr(problem, "geometry") and hasattr(problem.geometry, "get_boundary_handler"):
-            # Try to get BC from grid geometry (Phase 2 integration)
-            self.boundary_conditions = problem.geometry.get_boundary_handler()
         else:
-            # Default to no-flux boundaries for mass conservation
-            from mfg_pde.geometry.boundary import no_flux_bc
+            # Try components BC
+            try:
+                if problem.components is not None and problem.components.boundary_conditions is not None:
+                    self.boundary_conditions = problem.components.boundary_conditions
+                else:
+                    # Components exist but no BC - use default
+                    from mfg_pde.geometry.boundary import no_flux_bc
 
-            self.boundary_conditions = no_flux_bc(dimension=self.dimension)
+                    self.boundary_conditions = no_flux_bc(dimension=self.dimension)
+            except AttributeError:
+                # No components - try geometry BC handler
+                try:
+                    self.boundary_conditions = problem.geometry.get_boundary_handler()
+                except AttributeError:
+                    # No geometry BC handler - use default
+                    from mfg_pde.geometry.boundary import no_flux_bc
+
+                    self.boundary_conditions = no_flux_bc(dimension=self.dimension)
 
     def _detect_dimension(self, problem: Any) -> int:
         """
         Detect the dimension of the problem.
+
+        Issue #543 Phase 2: Replace hasattr with try/except cascade.
 
         Returns
         -------
@@ -196,12 +202,16 @@ class FPFDMSolver(BaseFPSolver):
             Problem dimension (1, 2, 3, ...)
         """
         # Try geometry.dimension first (unified interface)
-        if hasattr(problem, "geometry") and hasattr(problem.geometry, "dimension"):
+        try:
             return problem.geometry.dimension
+        except AttributeError:
+            pass  # Try next method
 
         # Fall back to problem.dimension
-        if hasattr(problem, "dimension"):
+        try:
             return problem.dimension
+        except AttributeError:
+            pass  # Try legacy detection
 
         # Legacy 1D detection
         if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
@@ -347,10 +357,11 @@ class FPFDMSolver(BaseFPSolver):
         # Handle drift_field parameter
         if drift_field is None:
             # Zero drift (pure diffusion): create zero U field for internal use
-            if hasattr(self.problem, "Nt"):
+            # Issue #543 Phase 2: Replace hasattr with try/except
+            try:
                 Nt = self.problem.Nt + 1
-            else:
-                raise ValueError("Cannot infer time steps. Ensure problem has Nt attribute.")
+            except AttributeError as e:
+                raise ValueError("Cannot infer time steps. Ensure problem has Nt attribute.") from e
 
             # Create zero U field with appropriate shape
             if self.dimension == 1:
