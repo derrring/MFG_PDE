@@ -280,18 +280,15 @@ class BaseHJBSolver(BaseNumericalSolver):
         (Phase 3.1 unified interface) and validates compatibility if available.
         For older problems without this feature, validation is skipped.
         """
-        # Only validate if problem has the new unified interface
-        if not hasattr(self.problem, "validate_solver_type"):
-            return  # Backward compatibility: skip validation for old problems
-
-        # Get solver type identifier from subclass
-        solver_type = self._get_solver_type_id()
-        if solver_type is None:
-            return  # Solver doesn't specify type, skip validation
-
-        # Validate compatibility
+        # Issue #543 Phase 2: Replace hasattr with try/except
         try:
-            self.problem.validate_solver_type(solver_type)
+            # Get solver type identifier from subclass
+            solver_type = self._get_solver_type_id()
+            if solver_type is not None:
+                self.problem.validate_solver_type(solver_type)
+        except AttributeError:
+            # Backward compatibility: problem doesn't have validate_solver_type
+            return
         except ValueError as e:
             # Re-raise with solver class information
             raise ValueError(f"Cannot use {self.__class__.__name__} with this problem.\n\n{e!s}") from e

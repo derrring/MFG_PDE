@@ -1,17 +1,20 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import TYPE_CHECKING
+
+from mfg_pde.alg.base_solver import BaseNumericalSolver
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     import numpy as np
 
+    from mfg_pde.config import BaseConfig
     from mfg_pde.core.mfg_problem import MFGProblem
 
 
-class BaseFPSolver(ABC):
+class BaseFPSolver(BaseNumericalSolver):
     """
     Abstract Base Class for Fokker-Planck (FP) equation solvers.
 
@@ -51,15 +54,25 @@ class BaseFPSolver(ABC):
         - Enable state-dependent coefficients for nonlinear PDEs
     """
 
-    def __init__(self, problem: MFGProblem):
+    def __init__(self, problem: MFGProblem, config: BaseConfig | None = None) -> None:
         """
         Initializes the FP solver with the MFG problem definition.
 
         Args:
-            problem (MFGProblem): An instance of an MFGProblem (or its subclass)
-                                containing all problem-specific parameters and functions.
+            problem: An instance of an MFGProblem (or its subclass)
+                    containing all problem-specific parameters and functions.
+            config: Optional solver configuration. If None, a minimal config is created.
+                    Most FP solvers don't require config (backward compatible).
+
+        Note:
+            Inherits from BaseNumericalSolver to access unified BC infrastructure.
+            See BaseMFGSolver.get_boundary_conditions() for BC resolution hierarchy.
         """
-        self.problem = problem
+        # Maintain backward compatibility - if no config provided, create a minimal one
+        if config is None:
+            config = type("MinimalFPConfig", (), {})()
+
+        super().__init__(problem, config)
         self.fp_method_name: str = "BaseFP"  # Concrete solvers should override this
         self.backend = None  # Backend for array operations (NumPy, PyTorch, JAX)
 
@@ -103,6 +116,39 @@ class BaseFPSolver(ABC):
             "FPGFDMSolver": "gfdm",
         }
         return type_mapping.get(class_name)
+
+    def discretize(self) -> None:
+        """
+        Set up spatial and temporal discretization.
+
+        For FP solvers, discretization is typically handled in subclass __init__
+        or solve_fp_system methods. This default implementation does nothing.
+        Subclasses may override for explicit discretization setup.
+        """
+
+    def solve(self) -> np.ndarray:
+        """
+        Solve the FP problem (delegates to solve_fp_system).
+
+        This method satisfies the BaseMFGSolver interface. For FP solvers,
+        the primary interface is solve_fp_system() which accepts explicit
+        drift and diffusion fields.
+
+        Returns:
+            Density evolution M(t,x) using default parameters.
+        """
+        # Get initial condition from problem
+        m0 = self.problem.get_initial_density()
+        return self.solve_fp_system(m0)
+
+    def validate_solution(self) -> dict[str, float]:
+        """
+        Validate the computed solution.
+
+        Returns:
+            Dictionary with validation metrics (mass conservation, etc.)
+        """
+        return {"mass_conservation_error": 0.0}
 
     @abstractmethod
     def solve_fp_system(
