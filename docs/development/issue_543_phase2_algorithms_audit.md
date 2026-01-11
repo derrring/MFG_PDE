@@ -295,10 +295,10 @@ if isinstance(backend, BackendProtocol):
 ## Progress Tracking
 
 **Phase 2A**: ✅ COMPLETE (2026-01-11)
-**Phase 2B**: ❌ Not started
+**Phase 2B**: ✅ COMPLETE (2026-01-11)
 **Phase 2C**: ❌ Not started (deferred)
 
-**Total Eliminated**: 24/149 (16% - Phase 2A only)
+**Total Eliminated**: 37/149 (25% - Phase 2A+2B complete)
 
 ### Phase 2A Completion Summary (2026-01-11)
 
@@ -331,11 +331,64 @@ if isinstance(backend, BackendProtocol):
 **Metrics**:
 ```
 Before Phase 2A:  149 hasattr in alg/
-After Phase 2A:   124 hasattr in alg/
-Reduction:        25 violations (17%)
+After Phase 2A:   125 hasattr in alg/
+Reduction:        24 violations (16%)
   - Eliminated:   24 violations
   - Documented:   4 violations (progress bar interface checks)
-  - Remaining:    ~120 violations (FP solvers, RL algorithms)
+  - Remaining:    ~125 violations (FP solvers, RL algorithms)
+```
+
+### Phase 2B Completion Summary (2026-01-11)
+
+**Commits**:
+- `37ee74f` - fp_fdm.py refactoring
+- `a0a1b25` - fp_fdm_time_stepping.py refactoring
+- `5425eae` - fp_fdm_alg_*.py refactoring (4 files)
+- `8b0258b` - base_fp.py refactoring
+
+**Results**:
+- **fp_fdm.py**: 5 → 0 (100% reduction)
+  - Replaced BC API detection with try/except cascade
+  - Replaced dimension detection with try/except cascade
+  - Maintained backward compatibility with legacy problem interfaces
+
+- **fp_fdm_time_stepping.py**: 3 → 0 (100% reduction)
+  - Created `_get_bc_type()` helper with try/except
+  - Created `_get_bc_value()` helper with try/except
+  - Handles both modern and legacy BC APIs
+
+- **fp_fdm_alg_divergence_upwind.py**: 1 → 0 (100% reduction)
+- **fp_fdm_alg_gradient_centered.py**: 1 → 0 (100% reduction)
+- **fp_fdm_alg_divergence_centered.py**: 1 → 0 (100% reduction)
+- **fp_fdm_alg_gradient_upwind.py**: 1 → 0 (100% reduction)
+  - All 4 files: Replaced identical BC periodicity check pattern
+
+- **base_fp.py**: 1 → 0 (100% reduction)
+  - Replaced problem validation API check with try/except
+  - Consolidated validation logic into single try block
+
+**Patterns Applied**:
+- **Try/except cascade**: Replace hasattr(obj, "attr") with try/except AttributeError
+- **Helper functions**: Centralize BC retrieval logic with fallback handling
+- **Multi-exception handling**: Handle both AttributeError (missing method) and ValueError (validation failure)
+
+**Metrics**:
+```
+Before Phase 2B:  ~125 hasattr in alg/
+After Phase 2B:   ~112 hasattr in alg/
+Reduction:        13 violations (10%)
+  - Eliminated:   13 violations
+  - Remaining:    ~112 violations (RL algorithms, HJB solvers, other modules)
+```
+
+**Overall Phase 2A+2B**:
+```
+Before:           149 hasattr in alg/
+After:            ~112 hasattr in alg/
+Total Reduction:  37 violations (25%)
+  - Eliminated:   37 violations
+  - Documented:   4 violations (progress bar checks)
+  - Remaining:    ~112 violations (mostly RL algorithms: ~80, HJB solvers, other)
 ```
 
 ## Testing Strategy
@@ -366,4 +419,4 @@ Reduction:        25 violations (17%)
 ---
 
 **Last Updated**: 2026-01-11
-**Status**: Audit complete, ready to start Phase 2A
+**Status**: Phase 2A+2B complete (37 violations eliminated, 25% reduction)
