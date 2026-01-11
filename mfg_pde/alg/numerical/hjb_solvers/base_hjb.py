@@ -1317,8 +1317,10 @@ if __name__ == "__main__":
 
     # Test that BaseHJBSolver is abstract
     from mfg_pde import MFGProblem
+    from mfg_pde.geometry import TensorProductGrid
 
-    problem = MFGProblem(Nx=10, Nt=5, T=1.0, diffusion=0.1)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=5, diffusion=0.1)
 
     try:
         base_solver = BaseHJBSolver(problem)

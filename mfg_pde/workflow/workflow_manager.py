@@ -622,8 +622,10 @@ class WorkflowManager:
 
         def example_solve(sigma, Nx=20, Nt=10):
             from mfg_pde import MFGProblem
+            from mfg_pde.geometry import TensorProductGrid
 
-            problem = MFGProblem(Nx=Nx, Nt=Nt, diffusion=sigma)
+            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1])
+            problem = MFGProblem(geometry=geometry, diffusion=sigma, Nt=Nt)
             result = problem.solve()
             return {
                 "converged": getattr(result, "converged", False),

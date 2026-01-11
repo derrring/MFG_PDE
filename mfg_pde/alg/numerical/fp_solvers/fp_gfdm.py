@@ -408,10 +408,12 @@ if __name__ == "__main__":
     print("Testing FPGFDMSolver...")
 
     from mfg_pde import MFGProblem
+    from mfg_pde.geometry import TensorProductGrid
 
     # Test 1D problem
     print("\n[1D] Testing 1D GFDM FP solver...")
-    problem = MFGProblem(Nx=30, Nt=20, T=1.0, diffusion=0.1)
+    geometry_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
 
     # Create 1D collocation points
     points_1d = np.linspace(0, 1, 50).reshape(-1, 1)

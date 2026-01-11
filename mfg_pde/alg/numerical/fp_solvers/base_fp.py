@@ -228,8 +228,10 @@ if __name__ == "__main__":
 
     # Test that BaseFPSolver is abstract (cannot be instantiated)
     from mfg_pde import MFGProblem
+    from mfg_pde.geometry import TensorProductGrid
 
-    problem = MFGProblem(Nx=20, Nt=10, T=1.0, diffusion=0.1)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
     try:
         # This should fail because BaseFPSolver is abstract
