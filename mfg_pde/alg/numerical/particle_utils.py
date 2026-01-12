@@ -282,6 +282,7 @@ def sample_from_density_gpu(density, grid, N: int, backend: "BaseBackend", seed:
     4. Use searchsorted for fast inversion
     """
     xp = backend.array_module
+    is_torch_backend = backend.__class__.__name__ == "TorchBackend"
 
     # Ensure density is normalized
     dx = grid[1] - grid[0]
@@ -293,19 +294,29 @@ def sample_from_density_gpu(density, grid, N: int, backend: "BaseBackend", seed:
     pdf = density_norm * dx
 
     # PyTorch cumsum requires dim argument, NumPy doesn't
-    if hasattr(pdf, "dim"):  # PyTorch tensor
-        cdf = xp.cumsum(pdf, dim=0)
-    else:  # NumPy array or JAX
-        cdf = xp.cumsum(pdf)
+    pdf_flat = pdf.flatten()
+    if is_torch_backend:
+        cdf = xp.cumsum(pdf_flat, dim=0)
+    else:
+        cdf = xp.cumsum(pdf_flat)
 
     # Prepend 0 to CDF for proper inversion
-    cdf_with_zero = xp.concatenate([xp.zeros(1), cdf])
+    # Ensure zeros tensor matches cdf device and dtype for PyTorch
+    if is_torch_backend:
+        zeros = xp.zeros(1, device=cdf.device, dtype=cdf.dtype)
+    else:
+        zeros = xp.zeros(1)
+    cdf_with_zero = xp.concatenate([zeros, cdf])
 
     # Sample uniform random numbers
-    if seed is not None and hasattr(xp, "manual_seed"):
+    if seed is not None and is_torch_backend:
         xp.manual_seed(seed)
 
-    U = xp.rand(N) if hasattr(xp, "rand") else backend.from_numpy(np.random.rand(N))
+    # Create U on same device as cdf for PyTorch compatibility
+    if is_torch_backend:
+        U = xp.rand(N, device=cdf.device, dtype=cdf.dtype)
+    else:
+        U = backend.from_numpy(np.random.rand(N))
 
     # Inverse transform: find x such that CDF(x) = U
     indices = xp.searchsorted(cdf_with_zero, U)

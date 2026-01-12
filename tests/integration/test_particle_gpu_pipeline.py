@@ -45,7 +45,7 @@ class TestParticleGPUPipeline:
         )
 
         # Initial condition: Gaussian
-        x = problem.xSpace
+        x = problem.xSpace.squeeze()  # Flatten (N, 1) to (N,) for 1D
         m_initial = np.exp(-((x - 0.5) ** 2) / 0.1)
         dx = problem.geometry.get_grid_spacing()[0]
         m_initial = m_initial / (np.sum(m_initial) * dx)
@@ -111,7 +111,7 @@ class TestParticleGPUPipeline:
             sigma=0.2,
         )
 
-        m_initial = np.exp(-(problem.xSpace**2) / 0.2)
+        m_initial = np.exp(-(problem.xSpace.squeeze() ** 2) / 0.2)
         dx = problem.geometry.get_grid_spacing()[0]
         m_initial = m_initial / (np.sum(m_initial) * dx)
 
@@ -191,7 +191,7 @@ class TestGPUPerformance:
             sigma=0.1,
         )
 
-        m_initial = np.exp(-((problem.xSpace - 0.5) ** 2) / 0.1)
+        m_initial = np.exp(-((problem.xSpace.squeeze() - 0.5) ** 2) / 0.1)
         dx = problem.geometry.get_grid_spacing()[0]
         m_initial = m_initial / (np.sum(m_initial) * dx)
 

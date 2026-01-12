@@ -228,12 +228,17 @@ def gradient_simple(
         Gradient components per dimension.
     """
     xp = backend.array_module if backend is not None else np
+    is_torch_backend = backend is not None and backend.__class__.__name__ == "TorchBackend"
 
     gradients = []
     for d in range(u.ndim):
         h = spacings[d]
         if h > 1e-14:
-            grad_d = (xp.roll(u, -1, axis=d) - xp.roll(u, 1, axis=d)) / (2 * h)
+            # PyTorch uses 'dims', NumPy uses 'axis'
+            if is_torch_backend:
+                grad_d = (xp.roll(u, -1, dims=d) - xp.roll(u, 1, dims=d)) / (2 * h)
+            else:
+                grad_d = (xp.roll(u, -1, axis=d) - xp.roll(u, 1, axis=d)) / (2 * h)
         else:
             grad_d = xp.zeros_like(u)
         gradients.append(grad_d)
