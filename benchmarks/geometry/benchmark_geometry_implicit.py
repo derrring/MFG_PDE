@@ -1,7 +1,9 @@
 """
 Performance benchmarks for implicit domain geometry infrastructure.
 
-Run with: python -m pytest tests/unit/geometry/test_geometry_benchmarks.py -v --benchmark-only
+Run with: python -m pytest benchmarks/geometry/benchmark_geometry_implicit.py -v --benchmark-only
+
+Requires: pytest-benchmark (pip install pytest-benchmark)
 """
 
 import pytest
