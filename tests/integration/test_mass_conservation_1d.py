@@ -289,7 +289,8 @@ class TestMassConservation1D:
         m_solution = result.M  # Shape: (Nt+1, Nx+1)
 
         # DEBUG: Print actual shape and mass calculation
-        Nt_points_expected, Nx_points_expected = problem.geometry.get_grid_shape()
+        (Nx_points_expected,) = problem.geometry.get_grid_shape()  # Spatial grid points
+        Nt_points_expected = problem.Nt + 1  # Temporal grid points
         print("\nDEBUG test_fp_particle_hjb_fdm:")
         print(f"  result.M shape = {result.M.shape}, expected ({Nt_points_expected}, {Nx_points_expected})")
         dx = problem.geometry.get_grid_spacing()[0]
@@ -300,7 +301,7 @@ class TestMassConservation1D:
         print(f"  sum(m_solution[0]) * Dx = {np.sum(m_solution[0]) * dx:.6f}")
 
         # Compute mass at each time step
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt + 1  # Temporal grid points
         masses = []
         for t_idx in range(Nt_points):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
@@ -384,7 +385,7 @@ class TestMassConservation1D:
 
         # Compute mass at each time step
         dx = problem.geometry.get_grid_spacing()[0]
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt + 1  # Temporal grid points, not spatial
         masses = []
         for t_idx in range(Nt_points):
             mass_t = compute_total_mass(m_solution[t_idx, :], dx)
@@ -450,7 +451,7 @@ class TestMassConservation1D:
 
         # Compute masses for both methods
         dx = problem.geometry.get_grid_spacing()[0]
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt + 1  # Temporal grid points, not spatial
         masses_fdm = []
         masses_gfdm = []
 
@@ -505,7 +506,7 @@ class TestMassConservation1D:
 
         # Compute masses
         dx = problem.geometry.get_grid_spacing()[0]
-        Nt_points = problem.geometry.get_grid_shape()[0]
+        Nt_points = problem.Nt + 1  # Temporal grid points, not spatial
         masses = []
         for t_idx in range(Nt_points):
             mass_t = compute_total_mass(result.M[t_idx, :], dx)
@@ -569,7 +570,7 @@ class TestMassConservation1D:
 
             # Check mass conservation
             dx = problem.geometry.get_grid_spacing()[0]
-            Nt_points = problem.geometry.get_grid_shape()[0]
+            Nt_points = problem.Nt + 1  # Temporal grid points, not spatial
             masses = [compute_total_mass(result.M[t, :], dx) for t in range(Nt_points)]
             max_error = np.max(np.abs(np.array(masses) - 1.0))
 

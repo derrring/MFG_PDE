@@ -168,7 +168,7 @@ class TestHybridMassConservation:
 
         # Compute masses
         dx = simple_1d_problem.geometry.get_grid_spacing()[0]
-        Nt_points = simple_1d_problem.geometry.get_grid_shape()[0]
+        Nt_points = simple_1d_problem.Nt + 1  # Temporal grid points, not spatial
         masses = np.array([compute_total_mass(M[t, :], dx) for t in range(Nt_points)])
 
         initial_mass = masses[0]

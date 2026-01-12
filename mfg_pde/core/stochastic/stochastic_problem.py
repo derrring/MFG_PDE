@@ -119,16 +119,27 @@ class StochasticMFGProblem(MFGProblem):
             ValueError: If noise_process provided but conditional_hamiltonian is None
         """
         # Initialize base MFG problem
-        super().__init__(
-            xmin=xmin,
-            xmax=xmax,
-            Nx=Nx,
-            T=T,
-            Nt=Nt,
-            sigma=sigma,
-            components=components,
-            **kwargs,
-        )
+        # If geometry is provided in kwargs, don't pass legacy xmin/xmax/Nx
+        # to avoid ambiguous initialization (Issue #543 compliance)
+        if "geometry" in kwargs:
+            super().__init__(
+                T=T,
+                Nt=Nt,
+                sigma=sigma,
+                components=components,
+                **kwargs,
+            )
+        else:
+            super().__init__(
+                xmin=xmin,
+                xmax=xmax,
+                Nx=Nx,
+                T=T,
+                Nt=Nt,
+                sigma=sigma,
+                components=components,
+                **kwargs,
+            )
 
         # Stochastic-specific attributes
         self.noise_process = noise_process
