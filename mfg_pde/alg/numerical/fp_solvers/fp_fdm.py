@@ -79,6 +79,11 @@ class FPFDMSolver(BaseFPSolver):
         - Supports periodic, Dirichlet, and no-flux boundary conditions
     """
 
+    # Scheme family trait for duality validation (Issue #580)
+    from mfg_pde.alg.base_solver import SchemeFamily
+
+    _scheme_family = SchemeFamily.FDM
+
     def __init__(
         self,
         problem: Any,

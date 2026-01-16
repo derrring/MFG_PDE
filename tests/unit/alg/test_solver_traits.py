@@ -260,6 +260,130 @@ class TestTraitImportability:
         assert HJBFDMSolver._scheme_family == SchemeFamily.FDM
 
 
+class TestFPSolverTraits:
+    """Test _scheme_family trait annotations on FP solvers."""
+
+    def test_fp_fdm_has_fdm_trait(self):
+        """Test that FPFDMSolver has FDM scheme family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+
+        assert hasattr(FPFDMSolver, "_scheme_family")
+        assert FPFDMSolver._scheme_family == SchemeFamily.FDM
+
+    def test_fp_sl_has_sl_trait(self):
+        """Test that FPSLSolver has SL scheme family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLSolver
+
+        assert hasattr(FPSLSolver, "_scheme_family")
+        assert FPSLSolver._scheme_family == SchemeFamily.SL
+
+    def test_fp_sl_adjoint_has_sl_trait(self):
+        """Test that FPSLAdjointSolver has SL scheme family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import (
+            FPSLAdjointSolver,
+        )
+
+        assert hasattr(FPSLAdjointSolver, "_scheme_family")
+        assert FPSLAdjointSolver._scheme_family == SchemeFamily.SL
+
+    def test_fp_gfdm_has_gfdm_trait(self):
+        """Test that FPGFDMSolver has GFDM scheme family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
+
+        assert hasattr(FPGFDMSolver, "_scheme_family")
+        assert FPGFDMSolver._scheme_family == SchemeFamily.GFDM
+
+    def test_fp_particle_has_generic_trait(self):
+        """Test that FPParticleSolver has GENERIC scheme family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+
+        assert hasattr(FPParticleSolver, "_scheme_family")
+        assert FPParticleSolver._scheme_family == SchemeFamily.GENERIC
+
+    def test_all_fp_solvers_have_trait(self):
+        """Test that all FP solvers have _scheme_family trait."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import (
+            FPSLAdjointSolver,
+        )
+
+        fp_solvers = [
+            FPFDMSolver,
+            FPSLSolver,
+            FPSLAdjointSolver,
+            FPGFDMSolver,
+            FPParticleSolver,
+        ]
+
+        for solver_class in fp_solvers:
+            assert hasattr(solver_class, "_scheme_family"), f"{solver_class.__name__} missing _scheme_family"
+            assert isinstance(solver_class._scheme_family, SchemeFamily), (
+                f"{solver_class.__name__}._scheme_family is not SchemeFamily enum"
+            )
+
+    def test_fp_sl_variants_both_sl(self):
+        """Test that both SL and SL Adjoint solvers have SL family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import (
+            FPSLAdjointSolver,
+        )
+
+        # Both should be SL family (backward and forward variants)
+        assert FPSLSolver._scheme_family == SchemeFamily.SL
+        assert FPSLAdjointSolver._scheme_family == SchemeFamily.SL
+
+
+class TestHJBFPPairing:
+    """Test that HJB and FP solvers have matching traits for duality."""
+
+    def test_fdm_hjb_fp_match(self):
+        """Test that FDM HJB and FP solvers have matching families."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+
+        assert HJBFDMSolver._scheme_family == FPFDMSolver._scheme_family
+        assert HJBFDMSolver._scheme_family == SchemeFamily.FDM
+
+    def test_sl_hjb_fp_match(self):
+        """Test that SL HJB and FP solvers have matching families."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLSolver
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
+            HJBSemiLagrangianSolver,
+        )
+
+        assert HJBSemiLagrangianSolver._scheme_family == FPSLSolver._scheme_family
+        assert HJBSemiLagrangianSolver._scheme_family == SchemeFamily.SL
+
+    def test_gfdm_hjb_fp_match(self):
+        """Test that GFDM HJB and FP solvers have matching families."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+
+        assert HJBGFDMSolver._scheme_family == FPGFDMSolver._scheme_family
+        assert HJBGFDMSolver._scheme_family == SchemeFamily.GFDM
+
+    def test_duality_pairing_simulation(self):
+        """Simulate the pairing logic that will be in Phase 2 factory."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+
+        # FDM pairing: Same family, discrete duality
+        assert HJBFDMSolver._scheme_family == FPFDMSolver._scheme_family
+        assert HJBFDMSolver._scheme_family == SchemeFamily.FDM
+
+        # GFDM pairing: Same family, continuous duality only
+        assert HJBGFDMSolver._scheme_family == FPGFDMSolver._scheme_family
+        assert HJBGFDMSolver._scheme_family == SchemeFamily.GFDM
+
+        # Mixed pairing: Different families, not dual
+        assert HJBFDMSolver._scheme_family != FPGFDMSolver._scheme_family
+
+
 if __name__ == "__main__":
     # Smoke test - run basic checks
     print("Running solver trait smoke tests...")

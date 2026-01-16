@@ -79,6 +79,11 @@ class FPParticleSolver(BaseFPSolver):
         Template for other solvers: See docs/development/PARTICLE_SOLVER_TEMPLATE.md
     """
 
+    # Scheme family trait for duality validation (Issue #580)
+    from mfg_pde.alg.base_solver import SchemeFamily
+
+    _scheme_family = SchemeFamily.GENERIC  # Particle methods don't fit standard families
+
     def __init__(
         self,
         problem: MFGProblem,
