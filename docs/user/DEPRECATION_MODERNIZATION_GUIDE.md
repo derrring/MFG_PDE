@@ -137,6 +137,55 @@ bc = neumann_bc(dimension=1)
 
 ---
 
+## v0.16.16 Deprecation Summary (Ghost Cell Consolidation)
+
+### New Deprecations in v0.16.16 (Issue #577)
+
+Function-based ghost cell APIs are deprecated in favor of concrete alternatives:
+
+| Deprecated Function | Replacement | Status |
+|:-------------------|:------------|:-------|
+| `apply_boundary_conditions_1d()` | `pad_array_with_ghosts()` | Deprecated |
+| `apply_boundary_conditions_2d()` | `pad_array_with_ghosts()` | Deprecated |
+| `apply_boundary_conditions_3d()` | `pad_array_with_ghosts()` | Deprecated |
+| `apply_boundary_conditions_nd()` | `pad_array_with_ghosts()` | Deprecated |
+| `get_ghost_values_nd()` | `PreallocatedGhostBuffer` | Deprecated |
+| `pad_with_ghost_cells()` | `pad_array_with_ghosts()` | Deprecated |
+
+**Why deprecated**: Multiple implementations led to inconsistent behavior and O(h^1) bugs. The new API provides:
+- Clear, concrete function name: `pad_array_with_ghosts()`
+- Zero-allocation option: `PreallocatedGhostBuffer` for time-stepping loops
+- Correct O(h^2) reflection formula for Neumann BC
+- Extended coordinate arrays via `get_padded_coordinates()`
+- Single source of truth for all solvers
+
+**Migration**:
+```python
+# Old (deprecated) - abstract name
+from mfg_pde.geometry.boundary import apply_boundary_conditions_nd
+u_padded = apply_boundary_conditions_nd(u, bc, domain_bounds)
+
+# New (preferred) - simple one-time use
+from mfg_pde.geometry.boundary import pad_array_with_ghosts, neumann_bc
+bc = neumann_bc(dimension=1)
+u_padded = pad_array_with_ghosts(u, bc)
+
+# New (preferred) - zero-allocation for time-stepping
+from mfg_pde.geometry.boundary import PreallocatedGhostBuffer
+ghost_buffer = PreallocatedGhostBuffer(
+    interior_shape=u.shape,
+    boundary_conditions=bc,
+    ghost_depth=1,
+)
+ghost_buffer.interior[:] = u  # Work on interior view
+ghost_buffer.update_ghosts()  # Update ghosts in-place
+u_padded = ghost_buffer.padded  # Access full array
+```
+
+**Removal**: v0.19.0 (after paper publication)
+
+---
+
 ## v0.18.0 Deprecation Summary (Tensor Calculus Unification)
 
 ### New Deprecations in v0.18.0
@@ -778,6 +827,9 @@ geometry.plot(mode='quality')
 | BC | `FPNoFluxCalculator` | `ZeroFluxCalculator` | Low | v0.16.11 |
 | BC | `BoundaryConditions1DFDM` | `BoundaryConditions` | Low | v0.16.11 |
 | BC | `LegacyBoundaryConditions1D` | `BoundaryConditions` | Low | v0.16.11 |
+| BC | `apply_boundary_conditions_*()` | `PreallocatedGhostBuffer` | Medium | v0.16.16 |
+| BC | `get_ghost_values_nd()` | `PreallocatedGhostBuffer` | Medium | v0.16.16 |
+| BC | `pad_with_ghost_cells()` | `PreallocatedGhostBuffer` | Medium | v0.16.16 |
 | Neural | `use_batch_norm`, `use_layer_norm` | `normalization=...` | Low | v0.16 |
 | Neural | `enable_curriculum/multiscale/refinement` | `training_mode=...` | Low | v0.16 |
 | Neural | `use_control_variates/importance_sampling` | `variance_reduction=...` | Low | v0.16 |
@@ -847,7 +899,7 @@ pytest tests/unit/your_test_file.py
 - ✅ **Progress bars: tqdm eliminated, Rich-only** (v0.16.15)
 - ⏳ v1.0.0 enforcement: Not yet implemented
 
-**Deprecation Counts by Version** (updated 2026-01-10):
+**Deprecation Counts by Version** (updated 2026-01-15):
 | Version | Category | Count | Status |
 |:--------|:---------|:------|:-------|
 | ~~v0.10~~ | ~~Backend~~ | ~~1~~ | **REMOVED in v0.16.12** |
@@ -856,10 +908,11 @@ pytest tests/unit/your_test_file.py
 | ~~v0.16.x~~ | ~~Progress (tqdm)~~ | ~~1~~ | **COMPLETED in v0.16.15** |
 | v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | Active |
 | v0.16.11 | BC Calculators | 4 | Active |
+| v0.16.16 | Ghost Cell Functions (Issue #577) | 6 | Active |
 | v0.17.x | Convergence, Gradient Notation | 7 | Active |
 | v0.18.x | Numerical Utils (tensor_calculus) | 5 | Active |
 
-**Total Active**: 36 patterns
+**Total Active**: 42 patterns
 
 **Removed in v0.16.12**:
 - `get_legacy_backend_list()` → Use `get_available_backends()` (v0.10)

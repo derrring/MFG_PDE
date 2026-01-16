@@ -45,6 +45,7 @@ Usage:
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -139,7 +140,18 @@ def apply_boundary_conditions_2d(
     Raises:
         ValueError: If domain_bounds missing for mixed BC, or invalid input
         TypeError: If boundary_conditions is unknown type
+
+    .. deprecated::
+        This function-based API will be removed in v0.19.0.
+        Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
+        See issue #577 for migration guide.
     """
+    warnings.warn(
+        "apply_boundary_conditions_2d is deprecated and will be removed in v0.19.0. "
+        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # Input validation
     _validate_field_2d(field)
 
@@ -230,7 +242,24 @@ def _apply_uniform_bc_2d(
             return padded
 
     elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
-        return np.pad(field, 1, mode="edge")
+        # Issue #542 fix: For Neumann BC with central difference gradient stencil,
+        # we need reflection (ghost = u[next_interior]), not edge (ghost = u[adjacent])
+        Ny, Nx = field.shape
+        if Ny < 2 or Nx < 2:
+            return np.pad(field, 1, mode="edge")  # Fallback for trivial case
+        padded = np.pad(field, 1, mode="constant", constant_values=0.0)
+        padded[1:-1, 1:-1] = field
+        # Faces: use reflection
+        padded[0, 1:-1] = field[1, :]  # Top ghost = row 1 (reflection)
+        padded[-1, 1:-1] = field[-2, :]  # Bottom ghost = row -2 (reflection)
+        padded[1:-1, 0] = field[:, 1]  # Left ghost = col 1 (reflection)
+        padded[1:-1, -1] = field[:, -2]  # Right ghost = col -2 (reflection)
+        # Corners: average of adjacent edge ghosts
+        padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
+        padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
+        padded[-1, 0] = 0.5 * (padded[-1, 1] + padded[-2, 0])
+        padded[-1, -1] = 0.5 * (padded[-1, -2] + padded[-2, -1])
+        return padded
 
     elif bc_type == BCType.ROBIN:
         alpha = seg.alpha if seg.alpha is not None else 1.0
@@ -252,11 +281,23 @@ def _apply_uniform_bc_2d(
             padded[-1, 0] = 2 * g_eff - field[-1, 0]
             padded[-1, -1] = 2 * g_eff - field[-1, -1]
             return padded
-        elif abs(alpha) < 1e-14:
-            return np.pad(field, 1, mode="edge")
         else:
-            # General Robin - use edge as approximation
-            return np.pad(field, 1, mode="edge")
+            # General Robin or pure Neumann - use reflection
+            # Issue #542 fix: mode="edge" is wrong for central diff
+            Ny, Nx = field.shape
+            if Ny < 2 or Nx < 2:
+                return np.pad(field, 1, mode="edge")
+            padded = np.pad(field, 1, mode="constant", constant_values=0.0)
+            padded[1:-1, 1:-1] = field
+            padded[0, 1:-1] = field[1, :]
+            padded[-1, 1:-1] = field[-2, :]
+            padded[1:-1, 0] = field[:, 1]
+            padded[1:-1, -1] = field[:, -2]
+            padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
+            padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
+            padded[-1, 0] = 0.5 * (padded[-1, 1] + padded[-2, 0])
+            padded[-1, -1] = 0.5 * (padded[-1, -2] + padded[-2, -1])
+            return padded
 
     else:
         raise ValueError(f"Unsupported boundary condition type: {bc_type}")
@@ -303,7 +344,24 @@ def _apply_legacy_uniform_bc_2d(
             return padded
 
     elif bc_type in ["no_flux", "neumann"]:
-        return np.pad(field, 1, mode="edge")
+        # Issue #542 fix: For Neumann BC with central difference gradient stencil,
+        # we need reflection (ghost = u[next_interior]), not edge (ghost = u[adjacent])
+        Ny, Nx = field.shape
+        if Ny < 2 or Nx < 2:
+            return np.pad(field, 1, mode="edge")  # Fallback for trivial case
+        padded = np.pad(field, 1, mode="constant", constant_values=0.0)
+        padded[1:-1, 1:-1] = field
+        # Faces: use reflection
+        padded[0, 1:-1] = field[1, :]  # Top ghost = row 1 (reflection)
+        padded[-1, 1:-1] = field[-2, :]  # Bottom ghost = row -2 (reflection)
+        padded[1:-1, 0] = field[:, 1]  # Left ghost = col 1 (reflection)
+        padded[1:-1, -1] = field[:, -2]  # Right ghost = col -2 (reflection)
+        # Corners: average of adjacent edge ghosts
+        padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
+        padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
+        padded[-1, 0] = 0.5 * (padded[-1, 1] + padded[-2, 0])
+        padded[-1, -1] = 0.5 * (padded[-1, -2] + padded[-2, -1])
+        return padded
 
     elif bc_type == "robin":
         alpha = boundary_conditions.left_alpha if boundary_conditions.left_alpha is not None else 1.0
@@ -322,10 +380,23 @@ def _apply_legacy_uniform_bc_2d(
             padded[-1, 0] = 2 * g_eff - field[-1, 0]
             padded[-1, -1] = 2 * g_eff - field[-1, -1]
             return padded
-        elif abs(alpha) < 1e-14:
-            return np.pad(field, 1, mode="edge")
         else:
-            return np.pad(field, 1, mode="edge")
+            # Pure Neumann (alpha=0) or general Robin - use reflection
+            # Issue #542 fix: mode="edge" is wrong for central diff
+            Ny, Nx = field.shape
+            if Ny < 2 or Nx < 2:
+                return np.pad(field, 1, mode="edge")
+            padded = np.pad(field, 1, mode="constant", constant_values=0.0)
+            padded[1:-1, 1:-1] = field
+            padded[0, 1:-1] = field[1, :]
+            padded[-1, 1:-1] = field[-2, :]
+            padded[1:-1, 0] = field[:, 1]
+            padded[1:-1, -1] = field[:, -2]
+            padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
+            padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
+            padded[-1, 0] = 0.5 * (padded[-1, 1] + padded[-2, 0])
+            padded[-1, -1] = 0.5 * (padded[-1, -2] + padded[-2, -1])
+            return padded
 
     else:
         raise ValueError(f"Unsupported boundary condition type: {bc_type}")
@@ -950,7 +1021,18 @@ def apply_boundary_conditions_nd(
 
     Returns:
         Padded field with ghost cells
+
+    .. deprecated::
+        This function-based API will be removed in v0.19.0.
+        Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
+        See issue #577 for migration guide.
     """
+    warnings.warn(
+        "apply_boundary_conditions_nd is deprecated and will be removed in v0.19.0. "
+        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if config is None:
         config = GhostCellConfig()
 
@@ -985,7 +1067,27 @@ def apply_boundary_conditions_nd(
                 _apply_corner_values_nd(padded, d)
                 return padded
             elif bc_type in ["no_flux", "neumann"]:
-                return np.pad(field, 1, mode="edge")
+                # Issue #542 fix: For Neumann BC with central difference gradient stencil,
+                # we need reflection (ghost = u[next_interior]), not edge (ghost = u[adjacent])
+                padded = np.pad(field, 1, mode="edge")  # Initialize with edge
+                for axis in range(d):
+                    if field.shape[axis] < 2:
+                        continue  # Skip trivial axis
+                    # Low boundary: ghost = u[1] (reflection)
+                    slices_low = [slice(1, -1)] * d
+                    slices_low[axis] = slice(0, 1)
+                    slices_next_low = [slice(1, -1)] * d
+                    slices_next_low[axis] = slice(2, 3)
+                    padded[tuple(slices_low)] = padded[tuple(slices_next_low)]
+                    # High boundary: ghost = u[-2] (reflection)
+                    slices_high = [slice(1, -1)] * d
+                    slices_high[axis] = slice(-1, None)
+                    slices_prev_high = [slice(1, -1)] * d
+                    slices_prev_high[axis] = slice(-3, -2)
+                    padded[tuple(slices_high)] = padded[tuple(slices_prev_high)]
+                # Apply corner/edge values for consistency
+                _apply_corner_values_nd(padded, d)
+                return padded
             else:
                 raise ValueError(f"Unsupported BC type for nD: {bc_type}")
 
@@ -1018,7 +1120,37 @@ def apply_boundary_conditions_nd(
                 _apply_corner_values_nd(padded, d)
                 return padded
             elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
-                return np.pad(field, 1, mode="edge")
+                # Issue #542 fix: For Neumann BC with central difference gradient stencil,
+                # we need reflection (ghost = u[next_interior]), not edge (ghost = u[adjacent])
+                g = seg.value if seg.value is not None else 0.0
+                if callable(g):
+                    g = g(time)
+                padded = np.pad(field, 1, mode="edge")  # Initialize with edge
+                # Compute dx if domain_bounds available, else assume g=0 (pure reflection)
+                if domain_bounds is not None:
+                    bounds = np.atleast_2d(domain_bounds)
+                    spacing = (bounds[:, 1] - bounds[:, 0]) / (np.array(field.shape) - 1)
+                else:
+                    spacing = np.ones(d)  # Fallback
+                for axis in range(d):
+                    if field.shape[axis] < 2:
+                        continue  # Skip trivial axis
+                    dx = spacing[axis]
+                    # Low boundary: ghost = u[1] - 2*dx*g (reflection)
+                    slices_low = [slice(1, -1)] * d
+                    slices_low[axis] = slice(0, 1)
+                    slices_next_low = [slice(1, -1)] * d
+                    slices_next_low[axis] = slice(2, 3)
+                    padded[tuple(slices_low)] = padded[tuple(slices_next_low)] - 2 * dx * g
+                    # High boundary: ghost = u[-2] + 2*dx*g (reflection)
+                    slices_high = [slice(1, -1)] * d
+                    slices_high[axis] = slice(-1, None)
+                    slices_prev_high = [slice(1, -1)] * d
+                    slices_prev_high[axis] = slice(-3, -2)
+                    padded[tuple(slices_high)] = padded[tuple(slices_prev_high)] + 2 * dx * g
+                # Apply corner/edge values for consistency
+                _apply_corner_values_nd(padded, d)
+                return padded
             elif bc_type == BCType.ROBIN:
                 # Robin BC: α*u + β*du/dn = g
                 alpha = seg.alpha if seg.alpha is not None else 1.0
@@ -1045,8 +1177,24 @@ def apply_boundary_conditions_nd(
                     _apply_corner_values_nd(padded, d)
                     return padded
                 else:
-                    # General Robin - use Neumann-like ghost cells
-                    return np.pad(field, 1, mode="edge")
+                    # General Robin - use reflection (approximate Neumann-like)
+                    # Issue #542 fix: mode="edge" is wrong for central diff, use reflection
+                    padded = np.pad(field, 1, mode="edge")  # Initialize
+                    for axis in range(d):
+                        if field.shape[axis] < 2:
+                            continue
+                        slices_low = [slice(1, -1)] * d
+                        slices_low[axis] = slice(0, 1)
+                        slices_next_low = [slice(1, -1)] * d
+                        slices_next_low[axis] = slice(2, 3)
+                        padded[tuple(slices_low)] = padded[tuple(slices_next_low)]
+                        slices_high = [slice(1, -1)] * d
+                        slices_high[axis] = slice(-1, None)
+                        slices_prev_high = [slice(1, -1)] * d
+                        slices_prev_high[axis] = slice(-3, -2)
+                        padded[tuple(slices_high)] = padded[tuple(slices_prev_high)]
+                    _apply_corner_values_nd(padded, d)
+                    return padded
             else:
                 raise ValueError(f"Unsupported BC type for nD: {bc_type}")
         else:
@@ -1091,7 +1239,19 @@ def _apply_bc_1d(
             padded[-1] = 2.0 * right_val - field[-1]
             return padded
         elif bc_type in ["no_flux", "neumann"]:
-            return np.pad(field, 1, mode="edge")
+            # For Neumann BC with central difference gradient stencil:
+            # grad[0] = (u[1] - ghost_left) / (2*dx) should equal the flux g
+            # => ghost_left = u[1] - 2*dx*g
+            # For zero-flux (g=0): ghost_left = u[1] (reflection about boundary)
+            # Issue #542 fix: mode="edge" gives ghost=u[0], which is WRONG for central diff
+            # Legacy interface only supports zero-flux, so use reflection
+            if len(field) < 2:
+                return np.pad(field, 1, mode="edge")  # Fallback for trivial case
+            padded = np.zeros(len(field) + 2, dtype=field.dtype)
+            padded[1:-1] = field
+            padded[0] = field[1]  # Reflection: ghost = u[next_interior]
+            padded[-1] = field[-2]  # Reflection: ghost = u[prev_interior]
+            return padded
         else:
             raise ValueError(f"Unsupported BC type: {bc_type}")
 
@@ -1116,7 +1276,30 @@ def _apply_bc_1d(
             padded[-1] = 2.0 * g - field[-1]
             return padded
         elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
-            return np.pad(field, 1, mode="edge")
+            # For Neumann BC with central difference gradient stencil:
+            # grad[0] = (u[1] - ghost_left) / (2*dx) should equal the flux g
+            # => ghost_left = u[1] - 2*dx*g
+            # Issue #542 fix: mode="edge" gives ghost=u[0], which is WRONG for central diff
+            if len(field) < 2:
+                return np.pad(field, 1, mode="edge")  # Fallback for trivial case
+            g = seg.value if seg.value is not None else 0.0
+            if callable(g):
+                g = g(0.0)  # Evaluate at t=0 for uniform BC
+            padded = np.zeros(len(field) + 2, dtype=field.dtype)
+            padded[1:-1] = field
+            # Need domain_bounds to compute dx for general Neumann
+            # If not available, use reflection (g=0 assumption)
+            if domain_bounds is not None:
+                bounds = np.atleast_2d(domain_bounds)
+                x_min, x_max = bounds[0, 0], bounds[0, 1]
+                dx = (x_max - x_min) / (len(field) - 1) if len(field) > 1 else 1.0
+                padded[0] = field[1] - 2 * dx * g  # Left ghost
+                padded[-1] = field[-2] + 2 * dx * g  # Right ghost
+            else:
+                # Fallback: assume zero-flux (g=0) => pure reflection
+                padded[0] = field[1]
+                padded[-1] = field[-2]
+            return padded
         else:
             raise ValueError(f"Unsupported BC type: {bc_type}")
     else:
@@ -1145,6 +1328,12 @@ def _apply_bc_1d(
         elif bc_left.bc_type == BCType.EXTRAPOLATION_QUADRATIC and len(field) >= 3:
             # Quadratic extrapolation: ghost = 3*u_0 - 3*u_1 + u_2
             padded[0] = 3.0 * field[0] - 3.0 * field[1] + field[2]
+        elif bc_left.bc_type in [BCType.NEUMANN, BCType.NO_FLUX, BCType.REFLECTING] and len(field) >= 2:
+            # Issue #542 fix: For Neumann BC with central difference gradient stencil:
+            # grad[0] = (u[1] - ghost_left) / (2*dx) = g
+            # => ghost_left = u[1] - 2*dx*g (reflection about boundary)
+            g = _evaluate_bc_value(bc_left.value, point_left, time) if bc_left.value is not None else 0.0
+            padded[0] = field[1] - 2 * dx * g
         else:
             padded[0] = _compute_ghost_value_enhanced(bc_left, field[0], dx, "min", point_left, time, config)
 
@@ -1157,6 +1346,12 @@ def _apply_bc_1d(
         elif bc_right.bc_type == BCType.EXTRAPOLATION_QUADRATIC and len(field) >= 3:
             # Quadratic extrapolation: ghost = 3*u_0 - 3*u_1 + u_2
             padded[-1] = 3.0 * field[-1] - 3.0 * field[-2] + field[-3]
+        elif bc_right.bc_type in [BCType.NEUMANN, BCType.NO_FLUX, BCType.REFLECTING] and len(field) >= 2:
+            # Issue #542 fix: For Neumann BC with central difference gradient stencil:
+            # grad[-1] = (ghost_right - u[-2]) / (2*dx) = g
+            # => ghost_right = u[-2] + 2*dx*g (reflection about boundary)
+            g = _evaluate_bc_value(bc_right.value, point_right, time) if bc_right.value is not None else 0.0
+            padded[-1] = field[-2] + 2 * dx * g
         else:
             padded[-1] = _compute_ghost_value_enhanced(bc_right, field[-1], dx, "max", point_right, time, config)
 
@@ -1259,7 +1454,18 @@ def apply_boundary_conditions_1d(
 
     Returns:
         Padded field of shape (Nx+2,) with ghost cells
+
+    .. deprecated::
+        This function-based API will be removed in v0.19.0.
+        Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
+        See issue #577 for migration guide.
     """
+    warnings.warn(
+        "apply_boundary_conditions_1d is deprecated and will be removed in v0.19.0. "
+        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if config is None:
         config = GhostCellConfig()
 
@@ -1287,7 +1493,18 @@ def apply_boundary_conditions_3d(
 
     Returns:
         Padded field of shape (Nz+2, Ny+2, Nx+2) with ghost cells
+
+    .. deprecated::
+        This function-based API will be removed in v0.19.0.
+        Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
+        See issue #577 for migration guide.
     """
+    warnings.warn(
+        "apply_boundary_conditions_3d is deprecated and will be removed in v0.19.0. "
+        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if config is None:
         config = GhostCellConfig()
 
@@ -1324,8 +1541,11 @@ def get_ghost_values_nd(
 
     The ghost values are derived from BC type:
     - Dirichlet: u_ghost = 2*g - u_interior (cell-centered)
-    - Neumann/No-flux: u_ghost = u_interior (zero derivative)
+    - Neumann/No-flux: u_ghost = u_next_interior (reflection for central diff)
     - Periodic: u_ghost = u_opposite_boundary
+
+    Supports mixed BCs where different boundaries have different types.
+    Issue #542 fix: Properly handles per-boundary BC types.
 
     Args:
         field: Interior field of shape (N_1, N_2, ..., N_d)
@@ -1346,7 +1566,18 @@ def get_ghost_values_nd(
         >>> ghosts = get_ghost_values_nd(u, bc, spacing=(0.1, 0.1))
         >>> ghosts[(0, 0)]  # Ghost for left boundary of dim 0 (shape: (3,))
         >>> ghosts[(1, 1)]  # Ghost for right boundary of dim 1 (shape: (2,))
+
+    .. deprecated::
+        This function-based API will be removed in v0.19.0.
+        Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
+        See issue #577 for migration guide.
     """
+    warnings.warn(
+        "get_ghost_values_nd is deprecated and will be removed in v0.19.0. "
+        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if config is None:
         config = GhostCellConfig()
 
@@ -1357,68 +1588,195 @@ def get_ghost_values_nd(
 
     ghosts: dict[tuple[int, int], NDArray[np.floating]] = {}
 
-    # Determine BC type
-    bc_type, bc_value = _get_bc_type_and_value(boundary_conditions)
+    # Check if we have mixed BCs
+    is_mixed = isinstance(boundary_conditions, BoundaryConditions) and not boundary_conditions.is_uniform
 
-    for axis in range(d):
-        dx = spacing[axis]
+    if not is_mixed:
+        # Uniform BC - same type on all boundaries
+        bc_type, bc_value = _get_bc_type_and_value(boundary_conditions)
 
-        # Get interior values adjacent to boundaries
-        # Left boundary: interior value at index 0
-        slices_left = [slice(None)] * d
-        slices_left[axis] = 0
-        u_int_left = field[tuple(slices_left)]
+        for axis in range(d):
+            dx = spacing[axis]
+            shape_axis = field.shape[axis]
 
-        # Right boundary: interior value at index -1
-        slices_right = [slice(None)] * d
-        slices_right[axis] = -1
-        u_int_right = field[tuple(slices_right)]
+            # Get interior values adjacent to boundaries
+            slices_left = [slice(None)] * d
+            slices_left[axis] = 0
+            u_int_left = field[tuple(slices_left)]
 
-        if bc_type == BCType.PERIODIC:
-            # Periodic: ghost = value from opposite boundary
-            ghosts[(axis, 0)] = u_int_right.copy()  # Left ghost = right interior
-            ghosts[(axis, 1)] = u_int_left.copy()  # Right ghost = left interior
+            slices_next_left = [slice(None)] * d
+            slices_next_left[axis] = 1 if shape_axis > 1 else 0
+            u_next_left = field[tuple(slices_next_left)]
 
-        elif bc_type == BCType.DIRICHLET:
-            g = bc_value if bc_value is not None else 0.0
-            if callable(g):
-                # Time-varying BC: call with current time
-                g = g(time)
+            slices_right = [slice(None)] * d
+            slices_right[axis] = -1
+            u_int_right = field[tuple(slices_right)]
 
-            if config.is_vertex_centered:
-                # Vertex-centered: boundary is at grid point
-                ghosts[(axis, 0)] = np.full_like(u_int_left, g)
-                ghosts[(axis, 1)] = np.full_like(u_int_right, g)
-            else:
-                # Cell-centered: u_ghost = 2*g - u_interior
-                ghosts[(axis, 0)] = 2 * g - u_int_left
-                ghosts[(axis, 1)] = 2 * g - u_int_right
+            slices_prev_right = [slice(None)] * d
+            slices_prev_right[axis] = -2 if shape_axis > 1 else -1
+            u_prev_right = field[tuple(slices_prev_right)]
 
-        elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
-            # No-flux/Neumann: du/dn = 0 => u_ghost = u_interior
-            # For general Neumann du/dn = g:
-            # Left: u_ghost = u_int - 2*dx*g (inward normal)
-            # Right: u_ghost = u_int + 2*dx*g (outward normal)
-            g = bc_value if bc_value is not None else 0.0
-            if callable(g):
-                # Time-varying flux: call with current time
-                g = g(time)
+            ghosts[(axis, 0)], ghosts[(axis, 1)] = _compute_ghost_pair(
+                bc_type, bc_value, u_int_left, u_int_right, u_next_left, u_prev_right, dx, time, config
+            )
 
-            ghosts[(axis, 0)] = u_int_left - 2 * dx * g
-            ghosts[(axis, 1)] = u_int_right + 2 * dx * g
+    else:
+        # Mixed BC - need to query per-boundary type
+        # Issue #542 fix: Get BC type for each boundary separately
+        for axis in range(d):
+            dx = spacing[axis]
+            shape_axis = field.shape[axis]
 
-        elif bc_type == BCType.ROBIN:
-            # Robin: alpha*u + beta*du/dn = g
-            # For now, treat as Neumann-like
-            ghosts[(axis, 0)] = u_int_left.copy()
-            ghosts[(axis, 1)] = u_int_right.copy()
+            # Get interior values
+            slices_left = [slice(None)] * d
+            slices_left[axis] = 0
+            u_int_left = field[tuple(slices_left)]
 
-        else:
-            # Default to Neumann-like (edge extension)
-            ghosts[(axis, 0)] = u_int_left.copy()
-            ghosts[(axis, 1)] = u_int_right.copy()
+            slices_next_left = [slice(None)] * d
+            slices_next_left[axis] = 1 if shape_axis > 1 else 0
+            u_next_left = field[tuple(slices_next_left)]
+
+            slices_right = [slice(None)] * d
+            slices_right[axis] = -1
+            u_int_right = field[tuple(slices_right)]
+
+            slices_prev_right = [slice(None)] * d
+            slices_prev_right[axis] = -2 if shape_axis > 1 else -1
+            u_prev_right = field[tuple(slices_prev_right)]
+
+            # Get boundary names for this axis
+            boundary_min = _get_boundary_name_nd(axis, "min", d)
+            boundary_max = _get_boundary_name_nd(axis, "max", d)
+
+            # Get BC type at each boundary
+            bc_type_left = boundary_conditions.get_bc_type_at_boundary(boundary_min)
+            bc_type_right = boundary_conditions.get_bc_type_at_boundary(boundary_max)
+
+            # Get BC value at each boundary (need a representative point)
+            # For 1D: just use the boundary coordinate
+            # For nD: use center of the boundary face
+            bc_value_left = _get_bc_value_at_boundary(boundary_conditions, boundary_min, time)
+            bc_value_right = _get_bc_value_at_boundary(boundary_conditions, boundary_max, time)
+
+            # Compute ghost for left boundary
+            ghosts[(axis, 0)] = _compute_single_ghost(
+                bc_type_left, bc_value_left, u_int_left, u_next_left, dx, time, config, "left"
+            )
+
+            # Compute ghost for right boundary
+            ghosts[(axis, 1)] = _compute_single_ghost(
+                bc_type_right, bc_value_right, u_int_right, u_prev_right, dx, time, config, "right"
+            )
 
     return ghosts
+
+
+def _compute_ghost_pair(
+    bc_type: BCType,
+    bc_value: float | None,
+    u_int_left: NDArray,
+    u_int_right: NDArray,
+    u_next_left: NDArray,
+    u_prev_right: NDArray,
+    dx: float,
+    time: float,
+    config: GhostCellConfig,
+) -> tuple[NDArray, NDArray]:
+    """Compute ghost values for both boundaries with same BC type."""
+    g = bc_value if bc_value is not None else 0.0
+    if callable(g):
+        g = g(time)
+
+    if bc_type == BCType.PERIODIC:
+        return u_int_right.copy(), u_int_left.copy()
+
+    elif bc_type == BCType.DIRICHLET:
+        if config.is_vertex_centered:
+            return np.full_like(u_int_left, g), np.full_like(u_int_right, g)
+        else:
+            return 2 * g - u_int_left, 2 * g - u_int_right
+
+    elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
+        # Issue #542 fix: Use reflection formula for central difference
+        return u_next_left - 2 * dx * g, u_prev_right + 2 * dx * g
+
+    elif bc_type == BCType.ROBIN:
+        return u_next_left.copy(), u_prev_right.copy()
+
+    else:
+        return u_next_left.copy(), u_prev_right.copy()
+
+
+def _compute_single_ghost(
+    bc_type: BCType,
+    bc_value: float | None,
+    u_int: NDArray,
+    u_neighbor: NDArray,
+    dx: float,
+    time: float,
+    config: GhostCellConfig,
+    side: str,
+) -> NDArray:
+    """Compute ghost value for a single boundary.
+
+    Args:
+        bc_type: BC type at this boundary
+        bc_value: BC value (constant or None)
+        u_int: Interior value at boundary (u[0] for left, u[-1] for right)
+        u_neighbor: Next interior value (u[1] for left, u[-2] for right)
+        dx: Grid spacing
+        time: Current time
+        config: Ghost cell configuration
+        side: "left" or "right"
+    """
+    g = bc_value if bc_value is not None else 0.0
+    if callable(g):
+        g = g(time)
+
+    if bc_type == BCType.PERIODIC:
+        # For mixed BC with periodic, this shouldn't normally happen
+        # Just return neighbor as fallback
+        return u_neighbor.copy()
+
+    elif bc_type == BCType.DIRICHLET:
+        if config.is_vertex_centered:
+            return np.full_like(u_int, g)
+        else:
+            # Cell-centered: ghost = 2*g - u_interior
+            return 2 * g - u_int
+
+    elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
+        # Issue #542 fix: Reflection formula for central difference
+        # Left: ghost = u[1] - 2*dx*g
+        # Right: ghost = u[-2] + 2*dx*g
+        if side == "left":
+            return u_neighbor - 2 * dx * g
+        else:
+            return u_neighbor + 2 * dx * g
+
+    elif bc_type == BCType.ROBIN:
+        return u_neighbor.copy()
+
+    else:
+        return u_neighbor.copy()
+
+
+def _get_bc_value_at_boundary(
+    bc: BoundaryConditions,
+    boundary: str,
+    time: float,
+) -> float | None:
+    """Get BC value at a specific boundary for mixed BCs."""
+    # Find segment that matches this boundary
+    for segment in bc.segments:
+        if segment.boundary == boundary:
+            val = segment.value
+            if callable(val):
+                return val(time)
+            return val
+
+    # Fall back to default value
+    return bc.default_value
 
 
 def _get_bc_type_and_value(
@@ -2356,36 +2714,49 @@ class PreallocatedGhostBuffer:
                 buf[tuple(hi_ghost)] = 2 * v - buf[tuple(hi_interior)]
 
         elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
-            # No-flux: u_ghost = u_interior (or with flux for general Neumann)
+            # No-flux/Neumann: Reflect interior values about boundary point.
+            # For boundary at grid point x_0 with interior at x_1, x_2, ...:
+            #   u_{-k} = u_k (reflecting x_k about x_0)
+            # This gives O(h^2) accurate ghost values for zero-flux BC.
+            #
+            # Padded array structure: [ghost_g-1, ..., ghost_0, boundary, interior_1, ...]
+            # Ghost at idx 0 should equal interior at idx 2*g (first interior)
+            # Ghost at idx k should equal interior at idx 2*g + g - 1 - k (reflected)
             for axis in range(d):
-                # Low boundary
-                lo_ghost = [slice(None)] * d
-                lo_ghost[axis] = slice(0, g)
-                lo_interior = [slice(None)] * d
-                lo_interior[axis] = slice(g, 2 * g)
-                buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
+                # Low boundary: reflect interior values about boundary
+                # ghost[k] = interior[g-1-k] for k in 0..g-1
+                for k in range(g):
+                    lo_ghost = [slice(None)] * d
+                    lo_ghost[axis] = k  # Single ghost index
+                    lo_interior = [slice(None)] * d
+                    lo_interior[axis] = 2 * g - k  # Reflected interior index
+                    buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
 
-                # High boundary
-                hi_ghost = [slice(None)] * d
-                hi_ghost[axis] = slice(-g, None)
-                hi_interior = [slice(None)] * d
-                hi_interior[axis] = slice(-2 * g, -g)
-                buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
+                # High boundary: reflect interior values about boundary
+                # ghost[-k-1] = interior[-2*g+k] for k in 0..g-1
+                for k in range(g):
+                    hi_ghost = [slice(None)] * d
+                    hi_ghost[axis] = -(k + 1)  # Single ghost index from end
+                    hi_interior = [slice(None)] * d
+                    hi_interior[axis] = -(2 * g - k)  # Reflected interior index
+                    buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
 
         elif bc_type == BCType.ROBIN:
-            # Robin: treat as Neumann-like for now
+            # Robin: treat as Neumann-like for now (reflection about boundary)
             for axis in range(d):
-                lo_ghost = [slice(None)] * d
-                lo_ghost[axis] = slice(0, g)
-                lo_interior = [slice(None)] * d
-                lo_interior[axis] = slice(g, 2 * g)
-                buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
+                for k in range(g):
+                    lo_ghost = [slice(None)] * d
+                    lo_ghost[axis] = k
+                    lo_interior = [slice(None)] * d
+                    lo_interior[axis] = 2 * g - k
+                    buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
 
-                hi_ghost = [slice(None)] * d
-                hi_ghost[axis] = slice(-g, None)
-                hi_interior = [slice(None)] * d
-                hi_interior[axis] = slice(-2 * g, -g)
-                buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
+                for k in range(g):
+                    hi_ghost = [slice(None)] * d
+                    hi_ghost[axis] = -(k + 1)
+                    hi_interior = [slice(None)] * d
+                    hi_interior[axis] = -(2 * g - k)
+                    buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
 
     def _update_ghosts_legacy(self, bc_type_str: str) -> None:
         """Update ghost cells for legacy BC type."""
@@ -2408,18 +2779,21 @@ class PreallocatedGhostBuffer:
                 buf[tuple(hi_ghost)] = buf[tuple(lo_interior)]
 
         elif bc_type_str in ["no_flux", "neumann"]:
+            # Reflect interior values about boundary (same as BCType.NEUMANN above)
             for axis in range(d):
-                lo_ghost = [slice(None)] * d
-                lo_ghost[axis] = slice(0, g)
-                lo_interior = [slice(None)] * d
-                lo_interior[axis] = slice(g, 2 * g)
-                buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
+                for k in range(g):
+                    lo_ghost = [slice(None)] * d
+                    lo_ghost[axis] = k
+                    lo_interior = [slice(None)] * d
+                    lo_interior[axis] = 2 * g - k
+                    buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
 
-                hi_ghost = [slice(None)] * d
-                hi_ghost[axis] = slice(-g, None)
-                hi_interior = [slice(None)] * d
-                hi_interior[axis] = slice(-2 * g, -g)
-                buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
+                for k in range(g):
+                    hi_ghost = [slice(None)] * d
+                    hi_ghost[axis] = -(k + 1)
+                    hi_interior = [slice(None)] * d
+                    hi_interior[axis] = -(2 * g - k)
+                    buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
 
         elif bc_type_str == "dirichlet":
             bc = self._boundary_conditions
@@ -2479,11 +2853,103 @@ class PreallocatedGhostBuffer:
         """Copy full padded data to buffer."""
         self._buffer[:] = data
 
+    def get_padded_coordinates(
+        self,
+        coordinates: tuple[NDArray[np.floating], ...],
+    ) -> tuple[NDArray[np.floating], ...]:
+        """
+        Extend grid coordinates to include ghost cell regions.
+
+        For Semi-Lagrangian interpolation, we need not just padded values but also
+        extended coordinate arrays so that interpolation works properly at boundaries.
+
+        Args:
+            coordinates: Tuple of 1D coordinate arrays for each dimension.
+                Example: (x_array, y_array) for 2D where x_array has shape (Nx,)
+                and y_array has shape (Ny,).
+
+        Returns:
+            Tuple of extended coordinate arrays with ghost cell positions.
+            Each array is extended by ghost_depth points on each side.
+
+        Example:
+            For ghost_depth=1, x=[0, 0.1, 0.2, ..., 1.0] with dx=0.1 becomes:
+            x_ext=[-0.1, 0, 0.1, 0.2, ..., 1.0, 1.1]
+
+        Note:
+            This assumes uniform grid spacing per dimension. The spacing is
+            computed from consecutive coordinate differences.
+        """
+        if len(coordinates) != self._dimension:
+            raise ValueError(f"Expected {self._dimension} coordinate arrays, got {len(coordinates)}")
+
+        g = self._ghost_depth
+        extended_coords = []
+
+        for dim, coord in enumerate(coordinates):
+            # Compute grid spacing from coordinates (assumes uniform grid)
+            if len(coord) > 1:
+                h = coord[1] - coord[0]
+            elif self._grid_spacing is not None:
+                h = self._grid_spacing[dim]
+            else:
+                h = 1.0  # Fallback for single-point dimension
+
+            # Extend coordinates: add g points on each side
+            lo_ghost_coords = coord[0] - h * np.arange(g, 0, -1)  # [x_min - g*h, ..., x_min - h]
+            hi_ghost_coords = coord[-1] + h * np.arange(1, g + 1)  # [x_max + h, ..., x_max + g*h]
+
+            extended = np.concatenate([lo_ghost_coords, coord, hi_ghost_coords])
+            extended_coords.append(extended)
+
+        return tuple(extended_coords)
+
+
+def pad_array_with_ghosts(
+    array: NDArray[np.floating],
+    bc: BoundaryConditions,
+    ghost_depth: int = 1,
+    time: float = 0.0,
+) -> NDArray[np.floating]:
+    """
+    Pad array with ghost cells based on boundary conditions.
+
+    This is a simple convenience function for one-time use. For time-stepping
+    loops where performance matters, use PreallocatedGhostBuffer instead.
+
+    Args:
+        array: Interior field array (any dimension)
+        bc: Boundary conditions specification
+        ghost_depth: Number of ghost layers (default 1)
+        time: Current time for time-dependent BC values
+
+    Returns:
+        New array with ghost cells added on all boundaries
+
+    Example:
+        >>> from mfg_pde.geometry.boundary import neumann_bc, pad_array_with_ghosts
+        >>> u = np.array([1.0, 2.0, 3.0])
+        >>> bc = neumann_bc(dimension=1)
+        >>> u_padded = pad_array_with_ghosts(u, bc)
+        >>> # u_padded is [2.0, 1.0, 2.0, 3.0, 2.0] for Neumann BC
+    """
+    buffer = PreallocatedGhostBuffer(
+        interior_shape=array.shape,
+        boundary_conditions=bc,
+        ghost_depth=ghost_depth,
+    )
+    # Copy array into interior view and update ghosts
+    buffer.interior[:] = array
+    buffer.update_ghosts(time=time)
+    return buffer.padded.copy()
+
 
 __all__ = [
     # Configuration
     "GhostCellConfig",
-    # Function-based API
+    # Concrete function API (Issue #577 - preferred)
+    "pad_array_with_ghosts",
+    # Deprecated function APIs (will be removed in v0.19.0)
     "apply_boundary_conditions_1d",
     "apply_boundary_conditions_2d",
     "apply_boundary_conditions_3d",

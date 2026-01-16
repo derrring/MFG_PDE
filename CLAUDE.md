@@ -61,7 +61,7 @@ When bugs are discovered and validated in mfg-research:
 ```python
 # Issue #542 fix. Validated in:
 # mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
-# Achieves 23x error reduction (47.98% -> 2.06%) for Tower-on-Beach problem.
+# Achieves 23x error reduction (47.98% -> 2.06%) for 1D corridor evacuation problem.
 ```
 
 **Principles**:

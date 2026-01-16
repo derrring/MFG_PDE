@@ -17,7 +17,7 @@ This document outlines the prioritized roadmap for infrastructure improvements f
 ### Problem
 FDM 1D HJB solver used `np.roll()` for Laplacian computation, implementing periodic BC regardless of geometry settings.
 
-**Impact**: Tower-on-Beach validation showed 50% error (vs 0.5% for GFDM).
+**Impact**: 1D corridor evacuation validation showed 50% error (vs 0.5% for GFDM).
 
 ### Solution Implemented
 
@@ -31,7 +31,7 @@ FDM 1D HJB solver used `np.roll()` for Laplacian computation, implementing perio
 ### Result
 - ✅ BC-aware stencils replace `np.roll()`
 - ✅ Explicit Dirichlet/Neumann enforcement added
-- ✅ Tower-on-Beach validation error reduced to < 2%
+- ✅ 1D corridor evacuation validation error reduced to < 2%
 - ✅ Mixed BC handling implemented and tested
 
 ---
@@ -304,8 +304,8 @@ Run tests after each priority, validate with research experiments.
 
 ---
 
-**Last Updated**: 2026-01-11
-**Completed**: Priority 1 (#542), Priority 2 (#547), Priority 3 (#543), Priority 4 (#545), Priority 7 (#544)
+**Last Updated**: 2026-01-12
+**Completed**: Priority 1 (#542), Priority 2 (#547), Priority 3 (#543), Priority 4 (#545), Priority 7 (#544), #492 (Newton solvers), #527 (BC Infrastructure)
 **Current Focus**: All infrastructure priorities complete! Next: BC framework or Algorithm features
 
 ## Remaining Open Issues (by priority)
@@ -314,10 +314,10 @@ Run tests after each priority, validate with research experiments.
 |:---------|:------|:------------|:-----|
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large |
 | MEDIUM | #535 | BC framework enhancement | Large |
-| MEDIUM | #527 | BC Infrastructure (Phase 1-3 ✅, Phase 4 ⏳) | Large |
-| MEDIUM | #492 | Newton family solvers | Large |
 | MEDIUM | #489 | Direct particle query for coupling | Large |
-| LOW | #523 | MMS validation suite for BC | Medium |
+| LOW | #523 | MMS validation suite for BC (investigation complete - see issue comments) | Medium |
 | LOW | #521 | 3D corner handling | Large |
 | LOW | #517 | Semantic dispatch factory | Medium |
+| LOW | #571 | test_geometry_benchmarks: Missing pytest-benchmark fixture | Small |
+| LOW | #570 | test_particle_gpu_pipeline: Shape mismatch | Small |
 | LOW | Others | Various infrastructure/features | Large |

@@ -7,7 +7,7 @@
 
 ✅ **Priority 1** - Issue #542 (FDM Periodic BC Bug) - CLOSED 2026-01-10
 - PR #548 + PR #550 merged
-- Tower-on-Beach validation error reduced to < 2%
+- 1D corridor evacuation validation error reduced to < 2%
 
 ✅ **Priority 3** - Issue #543 (hasattr Protocol Duck Typing) - CLOSED 2026-01-10
 - 4 PRs merged (#551, #552, #553, #554)

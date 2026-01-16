@@ -99,6 +99,7 @@ from .applicator_fdm import (
     GhostBuffer,
     GhostCellConfig,
     PreallocatedGhostBuffer,
+    # Deprecated function APIs (will be removed in v0.19.0)
     apply_boundary_conditions_1d,
     apply_boundary_conditions_2d,
     apply_boundary_conditions_3d,
@@ -107,6 +108,8 @@ from .applicator_fdm import (
     create_boundary_mask_2d,
     create_ghost_buffer_from_bc,
     get_ghost_values_nd,
+    # Concrete function API (Issue #577 - preferred)
+    pad_array_with_ghosts,
 )
 
 # =============================================================================
@@ -294,6 +297,7 @@ __all__ = [
     "FDMApplicator",
     "GhostCellConfig",
     "PreallocatedGhostBuffer",
+    "pad_array_with_ghosts",
     "apply_boundary_conditions_1d",
     "apply_boundary_conditions_2d",
     "apply_boundary_conditions_3d",
