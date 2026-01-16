@@ -1,9 +1,9 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2026-01-10
-**Current Version**: v0.16.15
+**Last Updated**: 2026-01-16
+**Current Version**: v0.16.16 (dev)
 **Target**: v1.0.0 (deprecated patterns will be removed)
-**Status**: ✅ Migration complete, v0.10-v0.17 deprecations removed
+**Status**: ✅ Migration complete, v0.10-v0.17 deprecations removed, v0.16.16 Phase 2 complete
 
 ---
 
@@ -141,6 +141,8 @@ bc = neumann_bc(dimension=1)
 
 ### New Deprecations in v0.16.16 (Issue #577)
 
+**Status**: ✅ Phase 1 complete (deprecation warnings), ✅ Phase 2 complete (solver migrations)
+
 Function-based ghost cell APIs are deprecated in favor of concrete alternatives:
 
 | Deprecated Function | Replacement | Status |
@@ -181,6 +183,13 @@ ghost_buffer.interior[:] = u  # Work on interior view
 ghost_buffer.update_ghosts()  # Update ghosts in-place
 u_padded = ghost_buffer.padded  # Access full array
 ```
+
+**Phase 2 Migration Complete** (2026-01-16):
+- ✅ HJB FDM Solver → Migrated `_get_ghost_values()` from `get_ghost_values_nd` to `pad_array_with_ghosts`
+- ✅ Tensor Calculus → Migrated `_apply_ghost_cells_nd` and tensor diffusion to `pad_array_with_ghosts`
+- ✅ Neumann BC Bug Fix → Corrected right boundary reflection formula (buf[-1] = buf[-3])
+- ✅ Test Updates → All 40 HJB FDM solver tests passing
+- ✅ WENO & Semi-Lagrangian → No changes needed (don't use deprecated APIs)
 
 **Removal**: v0.19.0 (after paper publication)
 
