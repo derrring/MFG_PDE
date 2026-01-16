@@ -999,9 +999,29 @@ def _tensor_diffusion_1d(
     else:
         sigma_sq = Sigma
 
-    # Apply BC
+    # Apply BC using flux-conservative ghost cells
+    # For tensor diffusion with no-flux BC, use mode='edge' for flux conservation.
+    # Rationale: Same as 2D case - divergence-form diffusion needs FLUX-based ghost cells.
     if bc is not None:
-        u_padded = _apply_ghost_cells_nd(u, bc, 0.0)
+        from mfg_pde.geometry.boundary import BCType
+
+        # Check if this is a uniform no-flux/Neumann BC
+        is_noflux = False
+        try:
+            bc_type_str = bc.type.lower()
+            is_noflux = bc_type_str in ["no_flux", "neumann"]
+        except AttributeError:
+            # Unified BC without .type attribute - check segments
+            if bc.is_uniform and len(bc.segments) > 0:
+                seg = bc.segments[0]
+                is_noflux = seg.bc_type in [BCType.NO_FLUX, BCType.NEUMANN]
+
+        if is_noflux:
+            # Use mode='edge' for flux conservation (zero flux at boundary)
+            u_padded = np.pad(u, 1, mode="edge")
+        else:
+            # Use unified interface for other BC types
+            u_padded = _apply_ghost_cells_nd(u, bc, 0.0)
     else:
         u_padded = np.pad(u, 1, mode="wrap")
 
