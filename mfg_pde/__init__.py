@@ -53,6 +53,7 @@ from .solvers.variational import (  # noqa: E402
     create_obstacle_variational_mfg,
     create_quadratic_variational_mfg,
 )
+from .types import NumericalScheme  # noqa: E402
 
 # Geometry system for 2D/3D complex domains (optional dependency)
 try:
@@ -124,6 +125,8 @@ __all__ = [
     "MFGProblem",
     # Configuration
     "MFGSolverConfig",
+    # Numerical schemes (Issue #580)
+    "NumericalScheme",
     # Network backend
     "NetworkBackendType",
     "NetworkData",
