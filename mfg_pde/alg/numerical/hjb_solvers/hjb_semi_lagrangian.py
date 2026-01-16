@@ -1151,10 +1151,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 jax_solve_fn=jax_fn,
             )
 
-            # Apply boundary conditions with per-boundary BC types
-            # Issue #545: Use centralized BC retrieval (NO hasattr)
+            # Apply boundary conditions
+            # Issue #582: Use simplified BC type (periodic or clamp)
             bc = self._get_boundary_conditions()
-            bc_type_min, bc_type_max = self._get_per_boundary_bc_types(bc)
+            bc_type_min, _ = self._get_per_boundary_bc_types(bc)
+            # For characteristic tracing, only periodic needs special handling
+            # Neumann/Dirichlet use clamping (bc_type=None)
+            bc_type = "periodic" if bc_type_min == "periodic" else None
 
             bounds = self.problem.geometry.get_bounds()
             xmin, xmax = bounds[0][0], bounds[1][0]
@@ -1162,8 +1165,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 x_departure,
                 xmin=xmin,
                 xmax=xmax,
-                bc_type_min=bc_type_min,
-                bc_type_max=bc_type_max,
+                bc_type=bc_type,
             )
 
         else:
