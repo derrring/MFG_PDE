@@ -16,6 +16,7 @@ BC Integration (Issue #527):
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -26,6 +27,89 @@ if TYPE_CHECKING:
     from mfg_pde.config import BaseConfig
     from mfg_pde.core import MFGProblem
     from mfg_pde.geometry.boundary import BoundaryConditions
+
+
+class SchemeFamily(Enum):
+    """
+    Numerical scheme families for duality validation.
+
+    This enum is used internally by the solver pairing system to validate
+    HJB-FP duality relationships without relying on fragile class name matching.
+
+    Solvers annotate themselves with a _scheme_family class attribute to enable
+    refactoring-safe duality checking (Issue #543 validator pattern).
+
+    Usage (solver implementation):
+        >>> class HJBFDMSolver(BaseHJBSolver):
+        ...     _scheme_family = SchemeFamily.FDM
+
+    Usage (duality validation):
+        >>> hjb_family = getattr(hjb_solver, '_scheme_family', SchemeFamily.GENERIC)
+        >>> fp_family = getattr(fp_solver, '_scheme_family', SchemeFamily.GENERIC)
+        >>> if hjb_family == fp_family and hjb_family != SchemeFamily.GENERIC:
+        ...     # Same family → likely dual
+
+    Scheme Families
+    ---------------
+
+    **FDM** (Finite Difference Methods):
+        - Structured grid discretization
+        - Discrete adjoint: div and grad are matrix transposes
+        - Examples: Upwind, centered differences, WENO
+        - Duality: Type A (exact discrete transpose)
+
+    **SL** (Semi-Lagrangian):
+        - Characteristic-based discretization
+        - Discrete adjoint: Forward splatting (scatter) is transpose of backward interpolation (gather)
+        - Examples: Linear interpolation, cubic interpolation
+        - Duality: Type A (exact discrete transpose)
+
+    **FVM** (Finite Volume Methods):
+        - Conservation form discretization
+        - Discrete adjoint: Numerical flux must be consistent
+        - Examples: Godunov, Lax-Friedrichs, Roe
+        - Duality: Type A (exact discrete transpose)
+        - Status: Future extension
+
+    **GFDM** (Meshfree/Generalized Finite Differences):
+        - Point cloud discretization with weighted least squares
+        - Continuous adjoint: Asymmetric neighborhoods prevent discrete transpose
+        - Examples: RBF-FD, GFDM, particle methods
+        - Duality: Type B (continuous only, L_FP = L_HJB^T + O(h))
+
+    **PINN** (Physics-Informed Neural Networks):
+        - Neural network discretization
+        - Shared architecture for dual solvers
+        - Duality: Type B (continuous only)
+        - Status: Future extension
+
+    **GENERIC** (Unknown/Custom):
+        - Default for solvers without explicit family annotation
+        - Used as fallback when _scheme_family attribute missing
+        - Duality: Unknown (validation skipped)
+
+    See Also
+    --------
+    - NumericalScheme: User-facing enum for Safe Mode API
+    - check_solver_duality(): Validation function using this enum
+    - docs/theory/adjoint_operators_mfg.md: Mathematical foundation
+
+    References
+    ----------
+    - Issue #580: Adjoint-aware solver pairing
+    - Issue #543: Validator pattern (try/except instead of hasattr)
+    """
+
+    FDM = "fdm"  # Finite Difference Methods
+    SL = "semi_lagrangian"  # Semi-Lagrangian
+    FVM = "fvm"  # Finite Volume (future)
+    GFDM = "gfdm"  # Meshfree GFDM
+    PINN = "pinn"  # Physics-Informed Neural Network (future)
+    GENERIC = "generic"  # Unknown/custom solvers
+
+    def __str__(self) -> str:
+        """Human-readable string representation."""
+        return self.value
 
 
 class BaseMFGSolver(ABC):

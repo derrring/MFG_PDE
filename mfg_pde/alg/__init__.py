@@ -16,9 +16,14 @@ from __future__ import annotations
 # Import paradigm modules
 from . import neural, numerical, optimization, reinforcement
 
+# Import base types (Issue #580)
+from .base_solver import SchemeFamily
+
 __all__ = [
     "neural",
     "numerical",
     "optimization",
     "reinforcement",
+    # Base types
+    "SchemeFamily",
 ]
