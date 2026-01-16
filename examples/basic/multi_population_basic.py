@@ -48,7 +48,7 @@ def main():
         coupling_matrix=np.array([[0.1, 0.05], [0.05, 0.1]]),
         T=1.0,
         Nt=20,
-        sigma=[0.01, 0.02],
+        diffusion=[0.01, 0.02],
         population_labels=["Fast", "Slow"],
     )
     print(f"✓ Problem created with {problem.num_populations} populations")

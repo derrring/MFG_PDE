@@ -42,7 +42,7 @@ Examples:
     ...     spatial_discretization=[63, 63],
     ...     T=1.0,
     ...     Nt=50,
-    ...     sigma=0.01,
+    ...     diffusion=0.01,
     ... )
     >>>
     >>> # Solve with any MFG solver

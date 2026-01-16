@@ -62,7 +62,7 @@ class MFGProblem2D(MFGProblem):
             Nx=int(np.sqrt(self.mesh_data.num_vertices)),  # Approximate 1D grid size
             T=time_domain[0],
             Nt=time_domain[1],
-            sigma=sigma,
+            diffusion=sigma,
             **kwargs,
         )
 
@@ -133,7 +133,9 @@ def create_rectangle_with_holes_problem():
     }
 
     # Create MFG problem
-    problem = MFGProblem2D(geometry_config=geometry_config, time_domain=(1.0, 51), sigma=0.5, coupling_coefficient=1.0)
+    problem = MFGProblem2D(
+        geometry_config=geometry_config, time_domain=(1.0, 51), diffusion=0.5, coupling_coefficient=1.0
+    )
 
     return problem
 
@@ -148,7 +150,7 @@ def create_l_shaped_domain_problem():
     geometry_config = {"domain_type": "polygon", "vertices": l_vertices, "mesh_size": 0.06}
 
     # Create MFG problem
-    problem = MFGProblem2D(geometry_config=geometry_config, time_domain=(1.0, 51), sigma=0.8)
+    problem = MFGProblem2D(geometry_config=geometry_config, time_domain=(1.0, 51), diffusion=0.8)
 
     return problem
 
