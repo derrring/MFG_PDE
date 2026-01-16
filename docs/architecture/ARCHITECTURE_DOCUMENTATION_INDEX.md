@@ -6,21 +6,28 @@
 
 ## Primary Documents
 
-### 1. Factory Pattern Design (NEW - 2026-01-16)
+### 1. Factory Pattern Design (UPDATED - 2026-01-17)
 **File**: `FACTORY_PATTERN_DESIGN.md`
-**Purpose**: Three-layer factory architecture for MFG_PDE
+**Purpose**: Three-concern factory architecture for MFG_PDE
+**Version**: 1.3 (Consolidated with infrastructure audit)
 
 **What's Inside**:
-- Three-layer taxonomy: WHAT (problem) / HOW (scheme) / WHO (assembly)
-- Three-tier solving architecture: Safe / Expert / Auto modes
+- Three-concern separation: WHAT (problem) / HOW (scheme) / WHO (assembly)
+- Three-mode solving API: Safe / Expert / Auto modes
+- Current implementation status (baseline before Issue #580)
 - Mathematical foundation: Discrete vs asymptotic duality (Type A/B)
+- Critical implementation considerations (3 technical risks addressed)
 - Anti-confusion strategy: Single entry point via `problem.solve()`
-- Implementation design for Issue #580
+- Complete implementation roadmap for Issue #580
 
 **Key Insights**:
 - `problem.solve()` is the ONLY user-facing entry point
 - Factory functions are internal implementation details
 - Clear separation between problem configuration and scheme selection
+- Current state: GFDM+Particle hardcoded (line 1954-2026)
+- Target state: Intelligent scheme selection with user control
+
+**Archive**: Infrastructure audit moved to `docs/archive/issue_580_factory_pattern_2026-01/`
 
 **Read This If**: Implementing Issue #580 or understanding solver pairing architecture
 
