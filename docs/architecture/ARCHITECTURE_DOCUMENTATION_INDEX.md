@@ -6,7 +6,27 @@
 
 ## Primary Documents
 
-### 1. Architecture Audit Enrichment (NEW)
+### 1. Factory Pattern Design (NEW - 2026-01-16)
+**File**: `FACTORY_PATTERN_DESIGN.md`
+**Purpose**: Three-layer factory architecture for MFG_PDE
+
+**What's Inside**:
+- Three-layer taxonomy: WHAT (problem) / HOW (scheme) / WHO (assembly)
+- Three-tier solving architecture: Safe / Expert / Auto modes
+- Mathematical foundation: Discrete vs asymptotic duality (Type A/B)
+- Anti-confusion strategy: Single entry point via `problem.solve()`
+- Implementation design for Issue #580
+
+**Key Insights**:
+- `problem.solve()` is the ONLY user-facing entry point
+- Factory functions are internal implementation details
+- Clear separation between problem configuration and scheme selection
+
+**Read This If**: Implementing Issue #580 or understanding solver pairing architecture
+
+---
+
+### 2. Architecture Audit Enrichment
 **File**: `ARCHITECTURE_AUDIT_ENRICHMENT.md`
 **Pages**: 45
 **Purpose**: Empirical evidence from 3 weeks of research validating original audit
