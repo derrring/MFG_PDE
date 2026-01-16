@@ -274,7 +274,188 @@ For MFG problems on regular domains, **structured methods with discrete duality 
 
 ---
 
-## 6. Practical Implications for Solver Design
+## 6. Is Discrete Duality Required? A Practical Answer
+
+### 6.1 The Central Question
+
+**Question**: Must we satisfy discrete duality to solve MFG problems?
+
+**Short answer**:
+- For getting **a result**: No
+- For **guaranteed convergence** and **physical correctness**: Yes (or at least, highly desirable)
+
+### 6.2 What Happens Without Discrete Duality?
+
+When $\mathbf{L}_{\text{FP}} \neq \mathbf{L}_{\text{HJB}}^T$, the following issues arise:
+
+**1. Mass Drift Over Time**
+```python
+# Without duality: mass gradually leaks or accumulates
+masses = [1.0, 1.001, 1.003, 1.008, 1.015, ...]  # Should be [1.0, 1.0, 1.0, ...]
+```
+
+**2. Newton Method Stagnation**
+
+With exact adjoint (FDM/SL):
+```
+Iteration 1: ||residual|| = 1e-2
+Iteration 2: ||residual|| = 1e-4  (quadratic convergence)
+Iteration 3: ||residual|| = 1e-8
+Iteration 4: ||residual|| = 1e-16 (machine precision)
+```
+
+Without adjoint (GFDM primal-primal):
+```
+Iteration 1: ||residual|| = 1e-2
+Iteration 2: ||residual|| = 1e-3
+Iteration 3: ||residual|| = 5e-4
+Iteration 4: ||residual|| = 4e-4  (oscillation/stagnation)
+...never reaches 1e-6
+```
+
+**3. Nash Equilibrium Drift**
+
+The computed equilibrium $(u^*, m^*)$ satisfies neither:
+- Optimal control: $\alpha^* = -\nabla u^*$ may not minimize cost
+- Population consistency: $m^*$ may not follow the flow induced by $\alpha^*$
+
+**4. Energy Imbalance**
+
+The discrete energy $E = \sum_i u_i m_i$ may grow or shrink spuriously, violating conservation laws.
+
+### 6.3 Taxonomy: Strong vs Weak Adjoint Schemes
+
+The adjoint factory should include **all** solvers, but they fall into two categories:
+
+#### Type A: Strong Adjoint (Exact Discrete Duality)
+
+**Definition**: The code literally computes $\mathbf{L}_{\text{FP}} = \mathbf{L}_{\text{HJB}}^T$.
+
+**Members**:
+- FDM Upwind (matrix transpose on structured grids)
+- Semi-Lagrangian (interpolation ↔ splatting duality)
+- Finite Volume Methods (consistent numerical fluxes)
+- Discontinuous Galerkin (adjoint-consistent fluxes)
+- Graph/Network MFG (Q-matrix transpose)
+
+**Factory behavior**:
+- Instantiate HJB solver
+- Generate FP solver as algebraic transpose (or use dual operation like splat)
+- Guaranteed: No renormalization needed, quadratic Newton convergence
+
+**Code pattern**:
+```python
+# Type A: One solver defines both
+hjb = HJBSemiLagrangianSolver(problem)
+fp = hjb.get_adjoint_solver()  # Returns splatting-based FP
+assert fp.is_exact_adjoint(hjb)  # True
+```
+
+#### Type B: Weak Adjoint (Physical/Asymptotic Duality)
+
+**Definition**: Both HJB and FP are independently discretized (primal-primal), but parameters are **locked** to ensure complementary behavior.
+
+**Members**:
+- GFDM (exponential downwind HJB + exponential upwind FP)
+- Deep Learning (DGM/PINNs with matched loss functions)
+- Particle methods with dual kernels
+
+**Factory behavior**:
+- Instantiate both solvers independently
+- Ensure complementary parameters (e.g., upwind directions)
+- Auto-inject renormalization wrapper
+- Warning: Newton convergence may be slow or require stabilization
+
+**Code pattern**:
+```python
+# Type B: Paired but independent
+hjb = HJBGFDMSolver(problem, upwind="exponential_downwind")
+fp = FPGFDMSolver(problem, upwind="exponential_upwind")  # Complementary
+fp = RenormalizationWrapper(fp)  # Factory auto-injects
+assert fp.is_asymptotically_dual(hjb)  # True in limit h→0
+```
+
+### 6.4 Domain Evolution: From "Numerical Crime" to "Necessary Evil"
+
+#### In Mature Domains (Structured Grids)
+
+**Status**: Separate discretization without adjoint matching is considered **"numerical crime"** (审稿人会拒稿).
+
+**Why**: Since 2010 (Achdou's foundational work), the community established that mismatched HJB-FP pairs on regular grids:
+- Destroy monotonicity
+- Break Newton convergence
+- Violate conservation for no benefit
+
+**Verdict**: If using FDM/SL on Cartesian grids, you **must** use Type A (exact adjoint).
+
+#### In Frontier Domains (Meshless, Deep Learning)
+
+**Status**: Separate discretization is a **"necessary evil"** (必要的恶).
+
+**Why**:
+- Constructing $\mathbf{L}_{\text{HJB}}^T$ for GFDM is inconsistent (doesn't converge)
+- Transposing a neural network doesn't produce another valid network
+- The only alternative is abandoning geometric flexibility entirely
+
+**Tradeoff**: Accept Type B (weak adjoint) to gain:
+- Complex geometry handling
+- Adaptive refinement
+- High-dimensional capability
+
+**Verdict**: Type B schemes are valid when geometric flexibility justifies the loss of exact conservation.
+
+### 6.5 The Value Proposition of Type B Schemes
+
+**GFDM in MFG_PDE represents this tradeoff**:
+
+✅ **What you gain**:
+- Irregular domains (no mesh generation)
+- Natural boundary handling on curves/surfaces
+- Adaptive collocation in high-gradient regions
+- O(h²) accuracy (better than upwind FDM)
+
+⚠️ **What you sacrifice**:
+- Exact mass conservation → requires renormalization
+- Quadratic Newton convergence → linear or sublinear
+- Machine-precision equilibrium → residuals ~1e-4 to 1e-6
+
+**Strategic positioning** for research/papers:
+1. **Acknowledge limitation**: "We recognize GFDM lacks strict discrete duality..."
+2. **Highlight failure mode of alternatives**: "...but exact adjoint methods (FDM) fail completely on complex geometries."
+3. **Propose solution**: "We use Scharfetter-Gummel exponential schemes ensuring asymptotic duality with renormalization."
+4. **Quantify tradeoff**: "This trades ~1% conservation error for 10x geometric flexibility."
+
+### 6.6 Factory Design Philosophy
+
+**Principle**: Users should never manually pair solvers.
+
+**Implementation**:
+```python
+class AdjointType(Enum):
+    STRONG_EXACT = "exact"          # Type A
+    WEAK_ASYMPTOTIC = "asymptotic"  # Type B
+
+class NumericalScheme(Enum):
+    FDM_UPWIND = ("fdm_upwind", AdjointType.STRONG_EXACT)
+    SL_LINEAR = ("sl_linear", AdjointType.STRONG_EXACT)
+    GFDM = ("gfdm", AdjointType.WEAK_ASYMPTOTIC)  # ← First-class citizen!
+
+    @property
+    def guarantees_conservation(self) -> bool:
+        return self.adjoint_type == AdjointType.STRONG_EXACT
+
+# Factory encapsulates matching logic
+hjb, fp = create_paired_solvers(NumericalScheme.GFDM, problem)
+# → Auto-injects renormalization for Type B
+```
+
+**Result**:
+- Type A schemes: "It just works" (perfect conservation)
+- Type B schemes: "It just works" (renormalized, user doesn't see internals)
+
+---
+
+## 7. Practical Implications for Solver Design
 
 ### 6.1 Solver Pairing Requirements
 
