@@ -77,6 +77,11 @@ class HJBGFDMSolver(BaseHJBSolver):
         of three collocation strategies and why only fixed collocation is valid.
     """
 
+    # Scheme family trait for duality validation (Issue #580)
+    from mfg_pde.alg.base_solver import SchemeFamily
+
+    _scheme_family = SchemeFamily.GFDM
+
     # BoundaryCapable protocol: Supported BC types
     _SUPPORTED_BC_TYPES: frozenset = frozenset(
         {
