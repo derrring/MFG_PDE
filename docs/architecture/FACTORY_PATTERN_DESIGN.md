@@ -584,6 +584,249 @@ def _get_selection_rationale(self, scheme: NumericalScheme) -> str:
 
 ## Implementation Design
 
+### Critical Implementation Considerations
+
+Before implementing Issue #580, address these technical risks identified in architectural audit:
+
+#### 1. Configuration Leakage Risk ⚠️
+
+**Problem**: Current `create_paired_solvers()` signature doesn't pass `config`:
+
+```python
+# ❌ INCOMPLETE - Missing config parameter
+def create_paired_solvers(
+    scheme: NumericalScheme,
+    problem: MFGProblem,
+) -> tuple[BaseHJBSolver, BaseFPSolver]:
+    ...
+```
+
+**Risk**: Scheme-specific parameters (GFDM kernel bandwidth, stencil size, etc.) can't be passed through. Solvers fall back to hardcoded defaults, losing user control.
+
+**Solution**: Add `config` parameter with proper threading:
+
+```python
+# ✅ CORRECT - Config threaded through factory chain
+def create_paired_solvers(
+    scheme: NumericalScheme,
+    problem: MFGProblem,
+    config: MFGSolverConfig | None = None,
+) -> tuple[BaseHJBSolver, BaseFPSolver]:
+    """
+    Create adjoint-paired solvers with configuration.
+
+    Args:
+        scheme: Numerical scheme for pairing
+        problem: MFG problem to solve
+        config: Solver configuration (scheme-specific params, iteration control)
+    """
+    if config is None:
+        config = MFGSolverConfig()
+
+    if scheme == NumericalScheme.GFDM:
+        hjb = HJBGFDMSolver(
+            problem,
+            upwind="exponential_downwind",
+            kernel_bandwidth=config.hjb.gfdm.kernel_bandwidth,  # ← Config used
+            stencil_size=config.hjb.gfdm.stencil_size,
+        )
+        fp = FPGFDMSolver(
+            problem,
+            upwind="exponential_upwind",
+            kernel_bandwidth=config.fp.gfdm.kernel_bandwidth,
+            stencil_size=config.fp.gfdm.stencil_size,
+        )
+        fp = RenormalizationWrapper(fp)
+        return hjb, fp
+
+    # ... other schemes
+```
+
+**Update `problem.solve()` facade**:
+```python
+def solve(self, scheme=None, hjb_solver=None, fp_solver=None, config=None, ...):
+    # ...
+    if scheme is not None:
+        # Thread config through to factory
+        hjb_solver, fp_solver = self._create_paired_solvers(scheme, config)
+```
+
+---
+
+#### 2. Type Checking Brittleness Risk ⚠️
+
+**Problem**: `check_solver_duality()` uses string matching:
+
+```python
+# ❌ FRAGILE - Breaks on refactoring
+exact_pairs = {
+    ("HJBFDMSolver", "FPFDMSolver"),  # ← String matching class names
+    ...
+}
+if (hjb_type, fp_type) in exact_pairs:
+    return "exact"
+```
+
+**Risk**: Silent failure if class names change during refactoring (e.g., `HJBFDMSolver` → `FDMSolverHJB`). Type checking becomes obsolete without any indication.
+
+**Solution**: Trait-based validation (extensible and refactoring-safe):
+
+```python
+# NEW: mfg_pde/alg/numerical/base_solver.py
+
+from enum import Enum
+
+class SchemeFamily(Enum):
+    """Numerical scheme families for duality checking."""
+    FDM = "fdm"
+    SL = "semi_lagrangian"
+    FVM = "fvm"
+    GFDM = "gfdm"
+    PINN = "pinn"
+    GENERIC = "generic"  # Unknown/custom
+
+
+class BaseSolver:
+    """Base class for all solvers with trait annotations."""
+
+    # Trait: Declare scheme family (subclasses override)
+    _scheme_family: SchemeFamily = SchemeFamily.GENERIC
+
+
+# Example: FDM solvers declare family
+class HJBFDMSolver(BaseHJBSolver):
+    _scheme_family = SchemeFamily.FDM
+
+class FPFDMSolver(BaseFPSolver):
+    _scheme_family = SchemeFamily.FDM
+
+
+# ✅ ROBUST - Survives refactoring
+def check_solver_duality(hjb_solver, fp_solver) -> AdjointType:
+    """Check duality using scheme family traits."""
+
+    hjb_family = getattr(hjb_solver, '_scheme_family', SchemeFamily.GENERIC)
+    fp_family = getattr(fp_solver, '_scheme_family', SchemeFamily.GENERIC)
+
+    # Type A: Same family (except GENERIC)
+    if (hjb_family == fp_family and
+        hjb_family != SchemeFamily.GENERIC):
+
+        # Special handling for Type B schemes
+        if hjb_family == SchemeFamily.GFDM:
+            return "asymptotic"
+
+        # Type A schemes
+        return "exact"
+
+    # No duality
+    return "none"
+```
+
+**Benefits**:
+- ✅ Refactoring-safe: Class names can change freely
+- ✅ Extensible: New schemes just set `_scheme_family`
+- ✅ Self-documenting: Trait visible in class definition
+- ✅ Plugin-friendly: Custom solvers declare their family
+
+---
+
+#### 3. Auto-Selection Heuristic Edge Cases ⚠️
+
+**Problem**: `_auto_select_scheme()` uses dimension-only heuristic:
+
+```python
+# ❌ INCOMPLETE - Ignores geometry complexity
+if self.dimension <= 2:
+    return NumericalScheme.FDM_UPWIND  # Fails on non-convex polygons!
+```
+
+**Risk**: FDM auto-selected for 2D non-convex/unstructured domains where it produces poor results (staircase approximation, O(h) errors).
+
+**Solution**: Check geometry characteristics:
+
+```python
+def _auto_select_scheme(self) -> NumericalScheme:
+    """
+    Auto-select scheme based on problem characteristics.
+
+    Selection hierarchy (priority order):
+    1. Obstacles → GFDM (only scheme that handles them)
+    2. Complex geometry → GFDM (avoid FDM staircase errors)
+    3. Low dimension (1D/2D) + regular grid → FDM (most stable)
+    4. Medium dimension (3D) → SL (better scaling)
+    5. High dimension (4D+) → Error (explicit choice required)
+    """
+    from mfg_pde.types import NumericalScheme
+
+    # Priority 1: Obstacles force GFDM
+    if self.has_obstacles:
+        return NumericalScheme.GFDM
+
+    # Priority 2: Geometry complexity check
+    if self.dimension <= 2:
+        # Check if geometry is FDM-compatible (structured, rectangular)
+        if hasattr(self.geometry, 'is_structured'):
+            if not self.geometry.is_structured():
+                # Unstructured mesh → GFDM
+                return NumericalScheme.GFDM
+
+        # Check for non-convexity (FDM struggles with staircase boundaries)
+        if hasattr(self.geometry, 'is_convex'):
+            if not self.geometry.is_convex():
+                # Non-convex polygon → GFDM for smooth boundary treatment
+                return NumericalScheme.GFDM
+
+        # Regular grid, no complexity issues → FDM (most stable)
+        return NumericalScheme.FDM_UPWIND
+
+    # Priority 3: Dimension-based selection
+    elif self.dimension == 3:
+        # 3D → Semi-Lagrangian (better scaling than FDM)
+        return NumericalScheme.SL_LINEAR
+
+    else:
+        # High dimension (4D+) → Force explicit choice
+        raise ValueError(
+            f"Auto-selection not available for {self.dimension}D problems.\n"
+            f"Please explicitly specify scheme:\n"
+            f"  - NumericalScheme.SL_LINEAR (up to ~6D)\n"
+            f"  - NumericalScheme.GFDM (flexible, any dimension)\n"
+            f"High-dimensional MFG requires careful scheme selection."
+        )
+
+
+def _get_selection_rationale(self, scheme: NumericalScheme) -> str:
+    """Get human-readable rationale for auto-selection."""
+    if scheme == NumericalScheme.FDM_UPWIND:
+        return f"{self.dimension}D regular grid, structured domain"
+    elif scheme == NumericalScheme.SL_LINEAR:
+        return f"3D problem, Semi-Lagrangian scales better"
+    elif scheme == NumericalScheme.GFDM:
+        if self.has_obstacles:
+            return "Complex geometry with obstacles"
+        elif hasattr(self.geometry, 'is_structured') and not self.geometry.is_structured():
+            return "Unstructured mesh"
+        elif hasattr(self.geometry, 'is_convex') and not self.geometry.is_convex():
+            return "Non-convex domain (avoid FDM staircase errors)"
+        else:
+            return "Complex geometry requiring flexible discretization"
+    else:
+        return "Unknown selection criteria"
+```
+
+**Fallback strategy**: If geometry introspection unavailable (old Domain classes), be conservative:
+
+```python
+# Conservative fallback when geometry type unknown
+if not hasattr(self.geometry, 'is_structured'):
+    # Unknown geometry type → Prefer GFDM for safety
+    if self.dimension <= 3:
+        return NumericalScheme.GFDM
+```
+
+---
+
 ### Directory Structure
 
 ```
@@ -936,11 +1179,91 @@ result = problem.solve(hjb_solver=my_hjb, fp_solver=fp)
 
 ---
 
+## Architectural Audit Results
+
+**Status**: ✅ **Approved (High Quality)** - Ready for implementation
+
+**Audit Date**: 2026-01-16
+**Auditor**: Expert Review (MFG Theory + Software Architecture)
+
+### Overall Assessment
+
+> "这份文档写得非常出色。它不仅完美地贯彻了我们之前讨论的"分层架构"理念，还巧妙地解决了一个非常棘手的矛盾：如何在保留"2-Level API"简单性的同时，引入"3-Concern"的内部复杂度。"
+
+**Rating**: Approved as blueprint for Issue #580 implementation
+
+### Key Strengths (Highlights)
+
+1. **Separation of Concerns** ✅
+   - WHAT/HOW/WHO decomposition avoids "combination explosion"
+   - No `create_crowd_fdm_solver()` anti-patterns
+   - Clear boundary: Users define problems, mathematicians define schemes
+
+2. **2-Level Principle Preservation** ✅
+   - Facade pattern (`problem.solve()`) hides internal complexity
+   - Users see only Factory vs Expert modes
+   - Concern 2 (scheme pairing) correctly hidden as internal detail
+
+3. **Educational Error Messages** ✅
+   - `ValueError` designed for teaching, not just reporting
+   - Guides users to correct API patterns
+   - Hallmark of mature open-source projects
+
+### Technical Risks Addressed
+
+All three risks identified in audit have been incorporated into "Critical Implementation Considerations":
+
+1. **Configuration Leakage** → Addressed with `config` parameter threading
+2. **Type Checking Brittleness** → Addressed with `SchemeFamily` trait system
+3. **Auto-Selection Edge Cases** → Addressed with geometry introspection heuristics
+
+### Implementation Sequence (Recommended)
+
+Follow this order for Issue #580 implementation:
+
+**Step 1: Infrastructure** (Foundation)
+- Define `NumericalScheme` enum (`mfg_pde/types/schemes.py`)
+- Add `SchemeFamily` enum (`mfg_pde/alg/numerical/base_solver.py`)
+- Add `_scheme_family` trait to `BaseSolver` and all solver subclasses
+
+**Step 2: Validation Logic** (Core)
+- Implement `check_solver_duality()` using trait-based validation (`mfg_pde/utils/adjoint_validation.py`)
+- Implement `create_paired_solvers()` with config threading (`mfg_pde/factory/scheme_factory.py`)
+
+**Step 3: Facade Integration** (User API)
+- Refactor `problem.solve()` to accept `scheme` parameter
+- Implement mode detection (Safe/Expert/Auto)
+- Implement `_auto_select_scheme()` with geometry checks
+- Implement `_validate_manual_pairing()` with warnings
+
+**Step 4: Deprecation** (Cleanup)
+- Mark `create_solver()` as deprecated with `DeprecationWarning`
+- Update docstrings with migration guides
+- Add tests for all three modes
+
+**Step 5: Documentation** (User-Facing)
+- User guide showing only `problem.solve()` API
+- Mark internal factories as "do not use directly"
+- Add examples for all three modes
+
+### Pre-Implementation Checklist
+
+Before coding, ensure:
+- [ ] All solver classes have `_scheme_family` trait
+- [ ] `MFGSolverConfig` supports scheme-specific parameters
+- [ ] Geometry classes expose `is_structured()` and `is_convex()` methods
+- [ ] Test infrastructure can validate adjoint properties
+- [ ] Deprecation strategy agreed upon (v0.17.0 → v1.0.0)
+
+---
+
 ## Change History
 
 | Date | Version | Changes |
 |:-----|:--------|:--------|
 | 2026-01-16 | 1.0 | Initial design document for Issue #580 implementation |
+| 2026-01-16 | 1.1 | Terminology fix: Layer→Concern, Tier→Mode; Added 2-Level Principle section |
+| 2026-01-16 | 1.2 | Added Critical Implementation Considerations from architectural audit |
 
 ---
 
