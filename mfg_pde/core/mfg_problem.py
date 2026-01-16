@@ -12,7 +12,7 @@ from mfg_pde.core.mfg_components import (
 )
 
 # Issue #543: Runtime import for isinstance() checks
-from mfg_pde.geometry.protocol import GeometryProtocol
+from mfg_pde.geometry.protocol import GeometryProtocol  # noqa: TC001
 
 # Use unified nD-capable BoundaryConditions from conditions.py
 
@@ -1957,34 +1957,62 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         tolerance: float = 1e-6,
         verbose: bool = True,
         config: Any | None = None,
+        scheme: Any | None = None,
+        hjb_solver: Any | None = None,
+        fp_solver: Any | None = None,
     ) -> Any:
         """
-        Solve this MFG problem.
+        Solve this MFG problem using three-mode API (Issue #580).
 
-        This is the primary API for solving MFG problems. The solver is
-        automatically selected based on problem characteristics.
+        **Three Solving Modes:**
+
+        1. **Safe Mode** (Recommended): Specify validated numerical scheme
+            >>> result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
+            Automatically creates dual HJB-FP solver pair with duality guarantee.
+
+        2. **Expert Mode**: Manual solver injection for advanced users
+            >>> hjb = HJBFDMSolver(problem)
+            >>> fp = FPFDMSolver(problem)
+            >>> result = problem.solve(hjb_solver=hjb, fp_solver=fp)
+            Full control, but duality validation warnings if mismatched.
+
+        3. **Auto Mode**: Intelligent automatic selection (default)
+            >>> result = problem.solve()
+            Analyzes geometry and selects appropriate scheme automatically.
 
         Args:
             max_iterations: Maximum fixed-point iterations (default: 100)
             tolerance: Convergence tolerance (default: 1e-6)
             verbose: Show solver progress (default: True)
             config: Optional MFGSolverConfig for advanced configuration
+            scheme: NumericalScheme for Safe Mode (FDM_UPWIND, SL_LINEAR, GFDM, etc.)
+            hjb_solver: Pre-initialized HJB solver for Expert Mode
+            fp_solver: Pre-initialized FP solver for Expert Mode
 
         Returns:
             SolverResult with U (value function), M (density), convergence info
 
-        Example:
-            >>> problem = MFGProblem(Nx=50, Nt=20, T=1.0)
-            >>> result = problem.solve()
-            >>> print(f"Converged: {result.converged}")
-            >>> U, M = result.U, result.M
-        """
-        import numpy as np
+        Examples:
+            >>> # Safe Mode: Automatic dual pairing
+            >>> from mfg_pde.types import NumericalScheme
+            >>> result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 
+            >>> # Auto Mode: Intelligent selection
+            >>> result = problem.solve()
+
+            >>> # Expert Mode: Full control
+            >>> hjb = HJBSemiLagrangianSolver(problem, interpolation_method="cubic")
+            >>> fp = FPSLAdjointSolver(problem)
+            >>> result = problem.solve(hjb_solver=hjb, fp_solver=fp)
+
+        Note:
+            Cannot mix modes: specify either `scheme` OR (`hjb_solver` + `fp_solver`),
+            not both. Omit all to use Auto Mode.
+        """
         from mfg_pde.alg.numerical.coupling import FixedPointIterator
-        from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
         from mfg_pde.config import MFGSolverConfig
+        from mfg_pde.factory import create_paired_solvers, get_recommended_scheme
+        from mfg_pde.utils import check_solver_duality
 
         # Create or update config
         if config is None:
@@ -1995,27 +2023,105 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         config.picard.tolerance = tolerance
         config.picard.verbose = verbose
 
-        # Create collocation points from problem domain
-        if self.geometry is None:
-            raise ValueError("Variational solver requires geometry to be specified")
+        # ═══════════════════════════════════════════════════════════════════════
+        # Phase 3: Three-Mode API (Issue #580)
+        # ═══════════════════════════════════════════════════════════════════════
 
-        # Issue #543: Use GeometryProtocol instead of hasattr() duck typing
-        if not isinstance(self.geometry, GeometryProtocol):
-            raise TypeError(
-                f"Variational solver requires GeometryProtocol-compliant geometry, "
-                f"got {type(self.geometry).__name__}. "
-                f"All geometries must implement get_spatial_grid() and other required methods."
+        # Mode Detection
+        safe_mode = scheme is not None
+        expert_mode = hjb_solver is not None or fp_solver is not None
+
+        # Mode Validation: Cannot mix modes
+        if safe_mode and expert_mode:
+            raise ValueError(
+                "Cannot mix Safe Mode (scheme parameter) with Expert Mode "
+                "(hjb_solver/fp_solver parameters). Use one mode at a time:\n"
+                "  • Safe Mode: problem.solve(scheme=NumericalScheme.FDM_UPWIND)\n"
+                "  • Expert Mode: problem.solve(hjb_solver=hjb, fp_solver=fp)\n"
+                "  • Auto Mode: problem.solve() [no scheme/solver params]"
             )
 
-        # get_spatial_grid() is required by GeometryProtocol
-        x = self.geometry.get_spatial_grid()
-        collocation_points = np.atleast_2d(x).T if x.ndim == 1 else x
+        # ─────────────────────────────────────────────────────────────────────
+        # Safe Mode: Automatic dual pairing via scheme selection
+        # ─────────────────────────────────────────────────────────────────────
+        if safe_mode:
+            # Convert string to NumericalScheme if needed
+            from mfg_pde.types import NumericalScheme
 
-        # Create component solvers
-        hjb_solver = HJBGFDMSolver(self, collocation_points)
-        fp_solver = FPParticleSolver(self)
+            if isinstance(scheme, str):
+                try:
+                    scheme = NumericalScheme(scheme)
+                except ValueError:
+                    raise ValueError(
+                        f"Unknown scheme string: {scheme!r}. Valid schemes: {[s.value for s in NumericalScheme]}"
+                    ) from None
 
-        # Create fixed-point iterator
+            # Create validated dual pair (Phase 2 factory)
+            hjb_solver, fp_solver = create_paired_solvers(
+                problem=self,
+                scheme=scheme,
+                validate_duality=True,  # Guaranteed dual by construction
+            )
+
+            if verbose:
+                from mfg_pde.utils.mfg_logging import get_logger
+
+                logger = get_logger(__name__)
+                logger.info(f"Safe Mode: Created dual solver pair for {scheme.value}")
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Expert Mode: Manual solver injection with duality validation
+        # ─────────────────────────────────────────────────────────────────────
+        elif expert_mode:
+            # Both solvers must be provided
+            if hjb_solver is None or fp_solver is None:
+                raise ValueError(
+                    "Expert Mode requires BOTH hjb_solver and fp_solver. "
+                    "You provided only one. Either:\n"
+                    "  • Provide both: problem.solve(hjb_solver=hjb, fp_solver=fp)\n"
+                    "  • Use Safe Mode: problem.solve(scheme=NumericalScheme.FDM_UPWIND)\n"
+                    "  • Use Auto Mode: problem.solve() [omit both]"
+                )
+
+            # Validate duality (educational warnings if mismatched)
+            result = check_solver_duality(hjb_solver, fp_solver, warn_on_mismatch=True)
+
+            if verbose and not result.is_valid_pairing():
+                from mfg_pde.utils.mfg_logging import get_logger
+
+                logger = get_logger(__name__)
+                logger.warning(
+                    f"Expert Mode: Non-dual solver pair detected!\n"
+                    f"  HJB: {type(hjb_solver).__name__} ({result.hjb_family})\n"
+                    f"  FP: {type(fp_solver).__name__} ({result.fp_family})\n"
+                    f"  Status: {result.status.value}\n"
+                    f"This may lead to poor convergence or Nash gap issues.\n"
+                    f"Consider using Safe Mode for guaranteed duality."
+                )
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Auto Mode: Intelligent scheme selection (Phase 3 future work)
+        # ─────────────────────────────────────────────────────────────────────
+        else:  # auto_mode
+            # Phase 3 TODO: Implement geometry introspection
+            # For now, get_recommended_scheme() returns FDM_UPWIND as safe default
+            recommended_scheme = get_recommended_scheme(self)
+
+            hjb_solver, fp_solver = create_paired_solvers(
+                problem=self,
+                scheme=recommended_scheme,
+                validate_duality=True,
+            )
+
+            if verbose:
+                from mfg_pde.utils.mfg_logging import get_logger
+
+                logger = get_logger(__name__)
+                logger.info(f"Auto Mode: Selected {recommended_scheme.value} (geometry-based recommendation)")
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Create fixed-point iterator with selected/validated solvers
+        # ─────────────────────────────────────────────────────────────────────
         solver = FixedPointIterator(
             problem=self,
             hjb_solver=hjb_solver,
