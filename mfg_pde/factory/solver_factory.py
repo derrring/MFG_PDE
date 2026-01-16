@@ -184,7 +184,15 @@ def create_solver(
     """
     Create an MFG solver.
 
-    For most use cases, use problem.solve() directly instead.
+    .. deprecated:: 0.17.0
+        Use the new three-mode solving API instead (Issue #580):
+
+        - Safe Mode: ``problem.solve(scheme=NumericalScheme.FDM_UPWIND)``
+        - Expert Mode: ``problem.solve(hjb_solver=hjb, fp_solver=fp)``
+        - Auto Mode: ``problem.solve()``
+
+        The new API ensures adjoint duality between HJB and FP solvers.
+        See examples/basic/three_mode_api_demo.py for details.
 
     Args:
         problem: MFG problem to solve
@@ -198,12 +206,26 @@ def create_solver(
 
     Example:
         >>> from mfg_pde import MFGProblem
+        >>> from mfg_pde.types import NumericalScheme
         >>> problem = MFGProblem(Nx=50, Nt=20, T=1.0)
-        >>> result = problem.solve()  # Preferred
+        >>> result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)  # Preferred
 
     Note:
-        Prefer problem.solve() which handles solver creation internally.
+        Prefer problem.solve() which handles solver creation and duality validation.
     """
+    import warnings
+
+    warnings.warn(
+        "create_solver() is deprecated since v0.17.0 (Issue #580). "
+        "Use the new three-mode solving API instead:\n"
+        "  • Safe Mode: problem.solve(scheme=NumericalScheme.FDM_UPWIND)\n"
+        "  • Expert Mode: problem.solve(hjb_solver=hjb, fp_solver=fp)\n"
+        "  • Auto Mode: problem.solve()\n"
+        "See examples/basic/three_mode_api_demo.py for details.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     return SolverFactory.create_solver(
         problem=problem,
         hjb_solver=hjb_solver,
