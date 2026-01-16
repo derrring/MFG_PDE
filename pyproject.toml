@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.16.16"  # v0.16.16: Infrastructure improvements (BC fixes, sys.exit removal, GeometryProtocol)
+version = "0.16.17"  # v0.16.17: FP adjoint solver, BC consolidation Phase 2, issue cleanup
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
