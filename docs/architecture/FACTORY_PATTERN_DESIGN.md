@@ -9,20 +9,85 @@
 
 ## Executive Summary
 
-MFG_PDE uses a **three-layer factory architecture** to separate concerns:
-- **Layer 1 (WHAT)**: Application-domain problem configuration
-- **Layer 2 (HOW)**: Numerical scheme selection with mathematical guarantees
-- **Layer 3 (WHO)**: Solver assembly and iteration control
+MFG_PDE uses a **three-concern factory organization** to separate concerns:
+- **Concern 1 (WHAT)**: Application-domain problem configuration
+- **Concern 2 (HOW)**: Numerical scheme selection with mathematical guarantees
+- **Concern 3 (WHO)**: Solver assembly and iteration control
 
 **Key principle**: `problem.solve()` is the ONLY user-facing entry point. Internal factories are implementation details.
+
+---
+
+## Relationship to 2-Level Principle
+
+**Important**: This design preserves the 2-level user API established in `docs/archive/historical/API_SIMPLIFICATION_PROPOSAL.md` (2025-11-23).
+
+### The 2-Level Principle (Existing Architecture)
+
+> **Quote from API Simplification**: "2-level architecture: Factory vs Expert, no middle ground"
+
+- **Level 1 (Factory)**: Pre-configured, batteries-included solutions
+- **Level 2 (Expert)**: Direct control, full flexibility
+
+This principle **rejected intermediate abstractions** like:
+- ❌ `MFGProblemBuilder` (fluent API)
+- ❌ `create_mfg_problem()` (thin wrapper around `MFGProblem`)
+- ❌ Any "convenience" layers between factory and expert
+
+### How This Design Preserves It ✅
+
+**User-Facing API** (2 levels - PRESERVED):
+```python
+# Level 1: Factory mode (pre-configured)
+result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
+
+# Level 2: Expert mode (full control)
+result = problem.solve(hjb_solver=my_hjb, fp_solver=my_fp)
+```
+
+**Users see only TWO entry points** - no intermediate abstractions added!
+
+**Internal Organization** (3 separable concerns - NOT visible to users):
+```python
+# Concern 1: WHAT to solve (problem configuration)
+problem = create_crowd_problem(...)  # Application factory
+
+# Concern 2: HOW to solve (scheme selection)
+scheme = NumericalScheme.FDM_UPWIND  # Enum, not factory call
+
+# Concern 3: WHO couples them (solver assembly - INTERNAL)
+# User NEVER calls this - hidden behind problem.solve() facade
+```
+
+**Key Insight**: The three "concerns" are **internal implementation details** that compose behind the single `problem.solve()` entry point. They are NOT user-visible levels or abstractions.
+
+### Comparison with Other Architecture "Layers"
+
+To avoid confusion with other uses of "layer" terminology in MFG_PDE:
+
+**Boundary Conditions Architecture** (different context):
+- Layer 1: BC Specification (`geometry/boundary/conditions.py`)
+- Layer 2: BC Application (`geometry/boundary/applicator_*.py`)
+- Layer 3: Solver Integration (`alg/numerical/`)
+
+These are **software architecture layers** (data → logic → integration).
+
+**Factory Concerns** (this document):
+- Concern 1: Problem Configuration (WHAT to solve)
+- Concern 2: Numerical Scheme (HOW to discretize)
+- Concern 3: Solver Assembly (WHO couples them)
+
+These are **separable concerns** (orthogonal dimensions), not stacked layers.
+
+**Terminology choice**: "Concern" (separation of concerns) avoids confusion with BC "layers" and clarifies these are orthogonal, composable dimensions rather than sequential abstraction layers.
 
 ---
 
 ## Table of Contents
 
 1. [Motivation](#motivation)
-2. [Three-Layer Taxonomy](#three-layer-taxonomy)
-3. [Three-Tier Solving Architecture](#three-tier-solving-architecture)
+2. [Three-Concern Separation](#three-concern-separation)
+3. [Three-Mode Solving API](#three-mode-solving-api)
 4. [Implementation Design](#implementation-design)
 5. [Anti-Confusion Strategy](#anti-confusion-strategy)
 6. [Migration Guide](#migration-guide)
@@ -38,12 +103,12 @@ Users encounter multiple factory functions and struggle to understand their rela
 
 ```python
 # Confusing landscape (before clarification)
-create_lq_problem()          # Layer 1: Problem type
-create_crowd_problem()       # Layer 1: Problem type
-create_solver()              # Layer 3: Solver assembly
+create_lq_problem()          # Concern 1: Problem type
+create_crowd_problem()       # Concern 1: Problem type
+create_solver()              # Concern 3: Solver assembly
 create_fast_solver()         # Deprecated
-NumericalScheme enum         # Layer 2: Scheme selection (NEW in #580)
-create_paired_solvers()      # Layer 2: Internal (NEW in #580)
+NumericalScheme enum         # Concern 2: Scheme selection (NEW in #580)
+create_paired_solvers()      # Concern 2: Internal (NEW in #580)
 ```
 
 **User questions:**
@@ -57,15 +122,15 @@ create_paired_solvers()      # Layer 2: Internal (NEW in #580)
 
 ```python
 # Clear workflow (one entry point)
-problem = create_crowd_problem(...)  # Layer 1: WHAT to solve
+problem = create_crowd_problem(...)  # Concern 1: WHAT to solve
 result = problem.solve(scheme=...)   # Layers 2+3: HOW + WHO (internal)
 ```
 
 ---
 
-## Three-Layer Taxonomy
+## Three-Concern Separation
 
-### Layer 1: WHAT to Solve (Problem Configuration)
+### Concern 1: WHAT to Solve (Problem Configuration)
 
 **Location**: `mfg_pde/factory/problem_factories.py`
 **Responsibility**: Configure MFGProblem for specific applications
@@ -107,7 +172,7 @@ problem_crowd = create_crowd_problem(
 
 ---
 
-### Layer 2: HOW to Solve (Numerical Scheme Selection)
+### Concern 2: HOW to Solve (Numerical Scheme Selection)
 
 **Location**: `mfg_pde/factory/scheme_factory.py` (NEW in Issue #580)
 **Responsibility**: Select discretization with guaranteed mathematical properties
@@ -226,7 +291,7 @@ def create_paired_solvers(
 
 ---
 
-### Layer 3: WHO Couples Them (Solver Assembly)
+### Concern 3: WHO Couples Them (Solver Assembly)
 
 **Location**: `mfg_pde/factory/solver_factory.py`
 **Responsibility**: Wire HJB + FP into fixed-point iterator
@@ -286,7 +351,7 @@ def create_solver(
 
 ---
 
-## Three-Tier Solving Architecture
+## Three-Mode Solving API
 
 ### Facade Pattern: `problem.solve()`
 
@@ -297,10 +362,10 @@ def create_solver(
 
 def solve(
     self,
-    # Tier 1: Safe Mode (validated scheme)
+    # Mode 1: Safe Mode (validated scheme)
     scheme: NumericalScheme | None = None,
 
-    # Tier 2: Expert Mode (manual injection)
+    # Mode 2: Expert Mode (manual injection)
     hjb_solver: BaseHJBSolver | None = None,
     fp_solver: BaseFPSolver | None = None,
 
@@ -311,23 +376,23 @@ def solve(
     config: MFGSolverConfig | None = None,
 ) -> SolverResult:
     """
-    Solve MFG problem using three-tier architecture.
+    Solve MFG problem using three-mode API.
 
     Three modes available:
 
-    Tier 1 (Safe): Validated scheme pairing
+    Mode 1 (Safe): Validated scheme pairing
         result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 
-    Tier 2 (Expert): Manual solver injection with warnings
+    Mode 2 (Expert): Manual solver injection with warnings
         result = problem.solve(hjb_solver=..., fp_solver=...)
 
-    Tier 3 (Auto): Problem-aware automatic selection
+    Mode 3 (Auto): Problem-aware automatic selection
         result = problem.solve()
 
     Args:
-        scheme: Numerical scheme for validated pairing (Tier 1)
-        hjb_solver: Custom HJB solver (Tier 2 - expert mode)
-        fp_solver: Custom FP solver (Tier 2 - expert mode)
+        scheme: Numerical scheme for validated pairing (Mode 1)
+        hjb_solver: Custom HJB solver (Mode 2 - expert mode)
+        fp_solver: Custom FP solver (Mode 2 - expert mode)
         max_iterations: Maximum Picard iterations
         tolerance: Convergence tolerance
         verbose: Show progress information
@@ -340,34 +405,34 @@ def solve(
         ValueError: If parameters are ambiguous or incomplete
 
     Examples:
-        # Tier 1: Safe mode with validated scheme
+        # Mode 1: Safe mode with validated scheme
         result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 
-        # Tier 2: Expert mode with custom solvers
+        # Mode 2: Expert mode with custom solvers
         hjb = HJBSemiLagrangianSolver(problem)
         fp = FPFDMSolver(problem)  # Non-adjoint pairing
         result = problem.solve(hjb_solver=hjb, fp_solver=fp)
         # Warning: Using non-adjoint pair - expect convergence issues
 
-        # Tier 3: Auto mode
+        # Mode 3: Auto mode
         result = problem.solve()  # Auto-selects FDM for 1D/2D grids
     """
 
-    # === TIER DETECTION ===
+    # === MODE DETECTION ===
     if scheme is not None:
-        # Tier 1: Safe Mode - validated scheme pairing
+        # Mode 1: Safe Mode - validated scheme pairing
         if hjb_solver is not None or fp_solver is not None:
             raise ValueError(
-                "Ambiguous solve mode: specify EITHER 'scheme' (Tier 1) "
-                "OR ('hjb_solver', 'fp_solver') (Tier 2), not both.\n"
+                "Ambiguous solve mode: specify EITHER 'scheme' (Mode 1) "
+                "OR ('hjb_solver', 'fp_solver') (Mode 2), not both.\n"
                 "See docs/architecture/FACTORY_PATTERN_DESIGN.md"
             )
 
-        # Internal call to Layer 2 factory
+        # Internal call to Concern 2 factory
         hjb_solver, fp_solver = self._create_paired_solvers(scheme)
 
     elif hjb_solver is not None and fp_solver is not None:
-        # Tier 2: Expert Mode - validate and warn about non-adjoint pairs
+        # Mode 2: Expert Mode - validate and warn about non-adjoint pairs
         self._validate_manual_pairing(hjb_solver, fp_solver)
 
     elif hjb_solver is not None or fp_solver is not None:
@@ -378,7 +443,7 @@ def solve(
         )
 
     else:
-        # Tier 3: Auto Mode - problem-aware selection
+        # Mode 3: Auto Mode - problem-aware selection
         scheme = self._auto_select_scheme()
         hjb_solver, fp_solver = self._create_paired_solvers(scheme)
 
@@ -387,7 +452,7 @@ def solve(
             print(f"  Reason: {self._get_selection_rationale(scheme)}")
 
     # === COMMON PATH: Assemble and solve ===
-    # Internal call to Layer 3 factory
+    # Internal call to Concern 3 factory
     solver = self._create_solver_iterator(hjb_solver, fp_solver, config)
 
     return solver.solve(
@@ -525,9 +590,9 @@ def _get_selection_rationale(self, scheme: NumericalScheme) -> str:
 mfg_pde/
 ├── factory/
 │   ├── __init__.py                # Public API exports
-│   ├── problem_factories.py       # Layer 1: WHAT (applications)
-│   ├── scheme_factory.py          # Layer 2: HOW (NEW in #580)
-│   └── solver_factory.py          # Layer 3: WHO (deprecated)
+│   ├── problem_factories.py       # Concern 1: WHAT (applications)
+│   ├── scheme_factory.py          # Concern 2: HOW (NEW in #580)
+│   └── solver_factory.py          # Concern 3: WHO (deprecated)
 ├── core/
 │   └── mfg_problem.py             # Facade: problem.solve()
 ├── utils/
@@ -748,14 +813,14 @@ result = problem.solve()  # ← Now auto-selects based on problem
 
 ## Examples
 
-### Example 1: Crowd Evacuation (Tier 1 - Safe Mode)
+### Example 1: Crowd Evacuation (Mode 1 - Safe Mode)
 
 ```python
 from mfg_pde.factory import create_crowd_problem
 from mfg_pde.types import NumericalScheme
 from mfg_pde.geometry import Hyperrectangle
 
-# Layer 1: Configure problem (WHAT)
+# Concern 1: Configure problem (WHAT)
 room = Hyperrectangle(bounds=[[0, 10], [0, 10]])
 exit_door = [10, 5]
 
@@ -767,7 +832,7 @@ problem = create_crowd_problem(
     time_horizon=10.0
 )
 
-# Layer 2+3: Solve with validated scheme (HOW + WHO - internal)
+# Concerns 2+3: Solve with validated scheme (HOW + WHO - internal)
 result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 
 print(f"Converged: {result.converged}")
@@ -775,13 +840,13 @@ print(f"Iterations: {result.iterations}")
 print(f"Final error: {result.error:.2e}")
 ```
 
-### Example 2: LQ Problem with Auto-Selection (Tier 3)
+### Example 2: LQ Problem with Auto-Selection (Mode 3)
 
 ```python
 from mfg_pde.factory import create_lq_problem
 from mfg_pde.geometry import TensorProductGrid
 
-# Layer 1: Configure LQ problem
+# Concern 1: Configure LQ problem
 domain = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
 
 problem = create_lq_problem(
@@ -792,13 +857,13 @@ problem = create_lq_problem(
     running_cost_congestion=0.5
 )
 
-# Layer 2+3: Auto-select scheme based on 2D regular grid
+# Concerns 2+3: Auto-select scheme based on 2D regular grid
 result = problem.solve(verbose=True)
 # Output: Auto-selected scheme: fdm_upwind
 #         Reason: 2D regular grid, no obstacles
 ```
 
-### Example 3: Research Experiment (Tier 2 - Expert Mode)
+### Example 3: Research Experiment (Mode 2 - Expert Mode)
 
 ```python
 from mfg_pde import MFGProblem
@@ -809,11 +874,11 @@ from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 
 problem = MFGProblem(...)
 
-# Layer 2: Manual solver injection (deliberate mismatch)
+# Concern 2: Manual solver injection (deliberate mismatch)
 hjb = HJBSemiLagrangianSolver(problem, interpolation="linear")
 fp = FPFDMSolver(problem, scheme="upwind")  # ← Non-adjoint!
 
-# Layer 3: Assemble and solve
+# Concern 3: Assemble and solve
 result = problem.solve(hjb_solver=hjb, fp_solver=fp)
 
 # WARNING emitted:
