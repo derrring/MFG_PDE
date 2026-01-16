@@ -758,9 +758,9 @@ def _fix_boundaries_one_sided(grad: NDArray, u: NDArray, axis: int, h: float, xp
 
 def _apply_ghost_cells_nd(u: NDArray, bc: BoundaryConditions, time: float) -> NDArray:
     """Apply ghost cells using boundary conditions."""
-    from mfg_pde.geometry.boundary import apply_boundary_conditions_nd
+    from mfg_pde.geometry.boundary import pad_array_with_ghosts
 
-    return apply_boundary_conditions_nd(u, bc, time=time)
+    return pad_array_with_ghosts(u, bc, ghost_depth=1, time=time)
 
 
 def _extract_interior(u_padded: NDArray, dimension: int) -> NDArray:
@@ -1030,8 +1030,7 @@ def _tensor_diffusion_2d(
     time: float,
 ) -> NDArray:
     """2D tensor diffusion with optional Numba JIT."""
-    from mfg_pde.geometry.boundary import MixedBoundaryConditions
-    from mfg_pde.geometry.boundary.applicator_fdm import apply_boundary_conditions_2d
+    from mfg_pde.geometry.boundary import pad_array_with_ghosts
 
     Ny, Nx = u.shape
 
@@ -1041,19 +1040,11 @@ def _tensor_diffusion_2d(
     else:
         Sigma_full = Sigma
 
-    # Apply BC
+    # Apply BC using unified interface (Issue #577)
     if bc is not None:
-        if isinstance(bc, MixedBoundaryConditions):
-            u_padded = apply_boundary_conditions_2d(u, bc, domain_bounds, time)
-        else:
-            bc_type = bc.type.lower()
-            if bc_type == "periodic":
-                u_padded = np.pad(u, 1, mode="wrap")
-            elif bc_type in ["no_flux", "neumann"]:
-                u_padded = np.pad(u, 1, mode="edge")
-            else:
-                u_padded = apply_boundary_conditions_2d(u, bc, time=time)
+        u_padded = pad_array_with_ghosts(u, bc, ghost_depth=1, time=time)
     else:
+        # Default to periodic if no BC specified
         u_padded = np.pad(u, 1, mode="wrap")
 
     # Use JIT kernel if available

@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
-from mfg_pde.geometry.boundary import get_ghost_values_nd
+from mfg_pde.geometry.boundary import pad_array_with_ghosts
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
 from mfg_pde.utils.pde_coefficients import CoefficientField
 
@@ -721,9 +721,26 @@ class HJBFDMSolver(BaseHJBSolver):
             self._warn_no_bc_once("no boundary_conditions attribute")
             return None
 
-        # Compute ghost values using the BC applicator
+        # Compute ghost values using unified BC infrastructure (Issue #577)
         try:
-            return get_ghost_values_nd(U, bc, self.spacing, time=time)
+            # Pad array with ghost cells
+            U_padded = pad_array_with_ghosts(U, bc, ghost_depth=1, time=time)
+
+            # Extract ghost values for each boundary
+            # Ghost values should match the shape of boundary slices (excluding ghost corners)
+            ghost_dict = {}
+            for d in range(U.ndim):
+                # Left boundary ghost (d, 0) - select interior in other dimensions
+                slices_left = [slice(1, -1)] * U.ndim  # Interior in all dims
+                slices_left[d] = 0  # Ghost cell in this dim
+                ghost_dict[(d, 0)] = U_padded[tuple(slices_left)]
+
+                # Right boundary ghost (d, 1) - select interior in other dimensions
+                slices_right = [slice(1, -1)] * U.ndim  # Interior in all dims
+                slices_right[d] = -1  # Ghost cell in this dim
+                ghost_dict[(d, 1)] = U_padded[tuple(slices_right)]
+
+            return ghost_dict
         except (ValueError, TypeError) as e:
             # BC not compatible with ghost value computation
             self._warn_no_bc_once(f"BC computation failed: {e}")

@@ -2733,12 +2733,13 @@ class PreallocatedGhostBuffer:
                     buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
 
                 # High boundary: reflect interior values about boundary
-                # ghost[-k-1] = interior[-2*g+k] for k in 0..g-1
+                # ghost[-k-1] = interior[-(2*g+k+1)] for k in 0..g-1
+                # For g=1, k=0: buf[-1] = buf[-3] (skip adjacent, use next interior)
                 for k in range(g):
                     hi_ghost = [slice(None)] * d
                     hi_ghost[axis] = -(k + 1)  # Single ghost index from end
                     hi_interior = [slice(None)] * d
-                    hi_interior[axis] = -(2 * g - k)  # Reflected interior index
+                    hi_interior[axis] = -(2 * g + k + 1)  # Reflected interior index (fixed)
                     buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
 
         elif bc_type == BCType.ROBIN:
@@ -2755,7 +2756,7 @@ class PreallocatedGhostBuffer:
                     hi_ghost = [slice(None)] * d
                     hi_ghost[axis] = -(k + 1)
                     hi_interior = [slice(None)] * d
-                    hi_interior[axis] = -(2 * g - k)
+                    hi_interior[axis] = -(2 * g + k + 1)  # Fixed to match Neumann
                     buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
 
     def _update_ghosts_legacy(self, bc_type_str: str) -> None:
@@ -2792,7 +2793,7 @@ class PreallocatedGhostBuffer:
                     hi_ghost = [slice(None)] * d
                     hi_ghost[axis] = -(k + 1)
                     hi_interior = [slice(None)] * d
-                    hi_interior[axis] = -(2 * g - k)
+                    hi_interior[axis] = -(2 * g + k + 1)  # Fixed to match BCType.NEUMANN
                     buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
 
         elif bc_type_str == "dirichlet":
