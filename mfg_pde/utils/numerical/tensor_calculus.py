@@ -1041,8 +1041,38 @@ def _tensor_diffusion_2d(
         Sigma_full = Sigma
 
     # Apply BC using unified interface (Issue #577)
+    # For tensor diffusion with no-flux BC, use mode='edge' for flux conservation.
+    # Rationale: pad_array_with_ghosts uses O(h²) reflection optimized for VALUE-based
+    # operations (HJB, semi-Lagrangian). But divergence-form diffusion needs FLUX-based
+    # ghost cells: zero flux at boundary requires ghost=boundary (mode='edge'), not
+    # ghost=next_interior (reflection). See Issue #542 vs flux conservation.
     if bc is not None:
-        u_padded = pad_array_with_ghosts(u, bc, ghost_depth=1, time=time)
+        from mfg_pde.geometry.boundary import MixedBoundaryConditions
+
+        # Check if this is a uniform no-flux/Neumann BC
+        is_noflux = False
+        if isinstance(bc, MixedBoundaryConditions):
+            # Mixed BC - use unified interface (may not be uniform no-flux)
+            u_padded = pad_array_with_ghosts(u, bc, ghost_depth=1, time=time)
+        else:
+            # Legacy or unified uniform BC - check type
+            try:
+                bc_type_str = bc.type.lower()
+                is_noflux = bc_type_str in ["no_flux", "neumann"]
+            except AttributeError:
+                # Unified BC without .type attribute - check segments
+                if bc.is_uniform and len(bc.segments) > 0:
+                    from mfg_pde.geometry.boundary import BCType
+
+                    seg = bc.segments[0]
+                    is_noflux = seg.bc_type in [BCType.NO_FLUX, BCType.NEUMANN]
+
+            if is_noflux:
+                # Use mode='edge' for flux conservation (zero flux at boundary)
+                u_padded = np.pad(u, 1, mode="edge")
+            else:
+                # Use unified interface for other BC types
+                u_padded = pad_array_with_ghosts(u, bc, ghost_depth=1, time=time)
     else:
         # Default to periodic if no BC specified
         u_padded = np.pad(u, 1, mode="wrap")
