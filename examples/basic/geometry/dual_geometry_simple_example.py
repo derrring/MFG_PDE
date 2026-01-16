@@ -63,7 +63,7 @@ def example_1_multiresolution():
         fp_geometry=fp_grid,  # Coarse grid for FP
         T=1.0,
         Nt=50,
-        sigma=0.05,
+        diffusion=0.05,
         final_condition=terminal_cost,
         m0=initial_density,
         running_cost=running_cost,
@@ -128,7 +128,7 @@ def example_2_compare_unified_vs_dual():
         geometry=unified_grid,  # Same geometry for both HJB and FP
         T=1.0,
         Nt=50,
-        sigma=0.05,
+        diffusion=0.05,
     )
 
     # Check: both use same geometry
@@ -150,7 +150,7 @@ def example_2_compare_unified_vs_dual():
         fp_geometry=fp_grid,  # Coarse for FP
         T=1.0,
         Nt=50,
-        sigma=0.05,
+        diffusion=0.05,
     )
 
     # Check: different geometries

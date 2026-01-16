@@ -56,7 +56,7 @@ class SimpleCoupledMFGProblem(MFGProblem):
             spatial_discretization=[grid_resolution, grid_resolution],
             T=T,
             Nt=Nt,
-            sigma=diffusion_coeff,
+            diffusion=diffusion_coeff,
         )
         self.grid_resolution = grid_resolution
         self.coupling_strength = coupling_strength

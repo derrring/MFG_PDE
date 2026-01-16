@@ -48,7 +48,7 @@ class SimpleLQMFG2D(MFGProblem):
             Nx=30,  # Not used in collocation mode, but required by base class
             Lx=1.0,
             xmin=0.0,
-            sigma=0.2,
+            diffusion=0.2,
             coupling_coefficient=0.5,
             dimension=2,
         )

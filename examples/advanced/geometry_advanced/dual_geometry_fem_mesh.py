@@ -64,7 +64,7 @@ def demonstrate_fem_mesh_projection_basic():
         hjb_geometry=grid,  # Regular grid for HJB
         fp_geometry=mesh,  # FEM mesh for FP
         time_domain=(1.0, 50),
-        sigma=0.1,
+        diffusion=0.1,
     )
 
     # Check projection methods

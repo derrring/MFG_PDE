@@ -144,7 +144,7 @@ def example_4_solve_with_config():
         spatial_discretization=[51],
         T=1.0,
         Nt=51,
-        sigma=0.1,
+        diffusion=0.1,
     )
 
     # Create custom configuration

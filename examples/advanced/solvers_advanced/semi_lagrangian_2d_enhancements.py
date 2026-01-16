@@ -59,7 +59,7 @@ class Simple2DCrowdNavigationProblem(MFGProblem):
             spatial_discretization=[grid_resolution, grid_resolution],
             T=time_horizon,
             Nt=num_timesteps,
-            sigma=diffusion,
+            diffusion=diffusion,
         )
         self.grid_resolution = grid_resolution
         self.coupling_strength = coupling_strength
