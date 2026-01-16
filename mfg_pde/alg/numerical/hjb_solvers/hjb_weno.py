@@ -187,23 +187,22 @@ class HJBWenoSolver(BaseHJBSolver):
             raise ValueError(f"Unknown splitting method: {self.splitting_method}")
 
     def _detect_problem_dimension(self) -> int:
-        """Detect the spatial dimension of the MFG problem."""
-        # Check if it's a high-dimensional problem
-        if hasattr(self.problem, "dimension"):
-            return self.problem.dimension
-
-        # Check if it has multi-dimensional geometry
-        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "dimension"):
+        """Detect spatial dimension from geometry (unified interface, NO hasattr)."""
+        # Primary: geometry.dimension (standard for all modern problems)
+        try:
             return self.problem.geometry.dimension
+        except AttributeError:
+            pass
 
-        # Legacy: check for 2D/3D grid properties
-        if hasattr(self.problem, "Ny") or hasattr(self.problem, "ny"):
-            if hasattr(self.problem, "Nz") or hasattr(self.problem, "nz"):
-                return 3  # 3D problem
-            return 2  # 2D problem
+        # Fallback: problem.dimension attribute
+        try:
+            return self.problem.dimension
+        except AttributeError:
+            pass
 
-        # Default to 1D (backward compatibility)
-        return 1
+        raise ValueError(
+            "Cannot determine problem dimension. Ensure problem has 'geometry' with 'dimension' attribute."
+        )
 
     def _adjust_cfl_for_dimension(self, base_cfl: float) -> float:
         """Adjust CFL number based on problem dimension for stability."""
@@ -224,84 +223,22 @@ class HJBWenoSolver(BaseHJBSolver):
             return min(base_factor, 0.0625)  # Very restrictive for 3D+
 
     def _setup_dimensional_grid(self) -> None:
-        """Setup grid information based on problem dimension (dimension-agnostic)."""
-        # Try CartesianGrid geometry first (supports arbitrary nD)
-        from mfg_pde.geometry.base import CartesianGrid
+        """Setup grid information from geometry (standard interface, NO hasattr)."""
+        # Use standard geometry interface - all modern problems support this
+        geometry = self.problem.geometry
+        self.num_grid_points = list(geometry.get_grid_shape())
+        self.grid_spacing = list(geometry.get_grid_spacing())
 
-        if isinstance(getattr(self.problem, "geometry", None), CartesianGrid):
-            grid_obj = self.problem.geometry  # Geometry IS the grid
-            # Store as lists for dimension-agnostic access
-            self.num_grid_points = list(grid_obj.get_grid_shape())
-            self.grid_spacing = list(grid_obj.get_grid_spacing())
-
-            # Backward compatibility: set _x, _y, _z attributes for legacy code
-            if self.dimension >= 1:
-                self.num_grid_points_x = self.num_grid_points[0]
-                self.grid_spacing_x = self.grid_spacing[0]
-            if self.dimension >= 2:
-                self.num_grid_points_y = self.num_grid_points[1]
-                self.grid_spacing_y = self.grid_spacing[1]
-            if self.dimension >= 3:
-                self.num_grid_points_z = self.num_grid_points[2]
-                self.grid_spacing_z = self.grid_spacing[2]
-
-        # Legacy 2D geometry interface
-        elif (
-            self.dimension == 2
-            and hasattr(self.problem, "geometry")
-            and hasattr(self.problem.geometry, "get_computational_grid")
-        ):
-            grid = self.problem.geometry.get_computational_grid()
-            self.num_grid_points = [grid["nx"] + 1, grid["ny"] + 1]
-            self.grid_spacing = [grid["dx"], grid["dy"]]
-            self.num_grid_points_x, self.num_grid_points_y = self.num_grid_points
-            self.grid_spacing_x, self.grid_spacing_y = self.grid_spacing
-            self.X, self.Y = grid["X"], grid["Y"]
-
-        # Legacy 1D MFGProblem
-        elif self.dimension == 1:
-            if getattr(self.problem, "Nx", None) is not None:
-                self.num_grid_points_x = self.problem.geometry.get_grid_shape()[0]
-                self.grid_spacing_x = self.problem.geometry.get_grid_spacing()[0]
-            else:
-                self.num_grid_points_x = getattr(self.problem, "nx", 64) + 1
-                self.grid_spacing_x = getattr(self.problem, "dx", 1.0 / (self.num_grid_points_x - 1))
-            self.num_grid_points = [self.num_grid_points_x]
-            self.grid_spacing = [self.grid_spacing_x]
-
-        # Fallback: construct from dimension with default values
-        else:
-            self.num_grid_points = []
-            self.grid_spacing = []
-            dim_names = ["x", "y", "z"] + [f"d{i}" for i in range(3, self.dimension)]
-            default_points = [64, 64, 32] + [16] * max(0, self.dimension - 3)
-
-            for i, name in enumerate(dim_names[: self.dimension]):
-                # Try legacy uppercase (Nx, Ny, Nz)
-                num_pts = getattr(self.problem, f"N{name}", None)
-                if num_pts is None:
-                    # Try lowercase (nx, ny, nz)
-                    num_pts = getattr(self.problem, f"n{name}", default_points[i])
-                num_pts = num_pts + 1 if not hasattr(self.problem, "geometry") else num_pts
-
-                # Grid spacing
-                spacing = getattr(self.problem, f"D{name}", None)
-                if spacing is None:
-                    spacing = getattr(self.problem, f"d{name}", 1.0 / (num_pts - 1))
-
-                self.num_grid_points.append(num_pts)
-                self.grid_spacing.append(spacing)
-
-            # Backward compatibility attributes
-            if self.dimension >= 1:
-                self.num_grid_points_x = self.num_grid_points[0]
-                self.grid_spacing_x = self.grid_spacing[0]
-            if self.dimension >= 2:
-                self.num_grid_points_y = self.num_grid_points[1]
-                self.grid_spacing_y = self.grid_spacing[1]
-            if self.dimension >= 3:
-                self.num_grid_points_z = self.num_grid_points[2]
-                self.grid_spacing_z = self.grid_spacing[2]
+        # Backward compatibility: set _x, _y, _z attributes for internal WENO code
+        if self.dimension >= 1:
+            self.num_grid_points_x = self.num_grid_points[0]
+            self.grid_spacing_x = self.grid_spacing[0]
+        if self.dimension >= 2:
+            self.num_grid_points_y = self.num_grid_points[1]
+            self.grid_spacing_y = self.grid_spacing[1]
+        if self.dimension >= 3:
+            self.num_grid_points_z = self.num_grid_points[2]
+            self.grid_spacing_z = self.grid_spacing[2]
 
     def _setup_ghost_buffer(self) -> None:
         """
@@ -345,29 +282,58 @@ class HJBWenoSolver(BaseHJBSolver):
         Get boundary conditions from problem or geometry.
 
         Falls back to Neumann (no-flux) BC if not specified.
+
+        Resolution order (NO hasattr per CLAUDE.md):
+        1. geometry.get_boundary_conditions() (method accessor)
+        2. geometry.boundary_conditions (direct attribute)
+        3. problem.get_boundary_conditions() (method accessor)
+        4. problem.boundary_conditions (direct attribute)
+        5. Default Neumann BC
         """
-        # Try geometry first
-        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "boundary_conditions"):
+        # Priority 1: geometry.get_boundary_conditions() (method accessor)
+        try:
+            bc = self.problem.geometry.get_boundary_conditions()
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 2: geometry.boundary_conditions (direct attribute)
+        try:
             bc = self.problem.geometry.boundary_conditions
             if bc is not None:
                 return bc
+        except AttributeError:
+            pass
 
-        # Try problem directly
-        if hasattr(self.problem, "boundary_conditions"):
+        # Priority 3: problem.get_boundary_conditions() (method accessor)
+        try:
+            bc = self.problem.get_boundary_conditions()
+            if bc is not None:
+                return bc
+        except AttributeError:
+            pass
+
+        # Priority 4: problem.boundary_conditions (direct attribute)
+        try:
             bc = self.problem.boundary_conditions
             if bc is not None:
                 return bc
+        except AttributeError:
+            pass
 
         # Default: Neumann (no-flux) BC - common for HJB problems
         return neumann_bc(dimension=self.dimension)
 
     def _get_domain_bounds(self) -> np.ndarray:
-        """Get domain bounds from problem/geometry."""
-        # Try CartesianGrid geometry
-        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "bounds"):
+        """Get domain bounds from problem/geometry (NO hasattr per CLAUDE.md)."""
+        # Priority 1: Try CartesianGrid geometry bounds attribute
+        try:
             return np.array(self.problem.geometry.bounds)
+        except AttributeError:
+            pass
 
-        # Try legacy problem attributes
+        # Priority 2: Try legacy problem attributes with defaults
         bounds = []
         for d in range(self.dimension):
             if d == 0:
@@ -661,18 +627,18 @@ class HJBWenoSolver(BaseHJBSolver):
         # Build DerivativeTensors
         derivs = DerivativeTensors.from_gradient(grad_vector)
 
-        # Try to use problem.H() interface with DerivativeTensors
-        if hasattr(self.problem, "H") and callable(self.problem.H):
+        # Try to use problem.H() interface with DerivativeTensors (NO hasattr per CLAUDE.md)
+        try:
+            return self.problem.H(x_idx, m_val, derivs=derivs)
+        except TypeError:
+            # Legacy: convert to multi-index dict format
             try:
-                return self.problem.H(x_idx, m_val, derivs=derivs)
-            except TypeError:
-                # Legacy: convert to multi-index dict format
-                try:
-                    legacy_derivs = to_multi_index_dict(derivs)
-                    return self.problem.H(x_idx, m_val, derivs=legacy_derivs)
-                except (TypeError, AttributeError):
-                    # Fall through to default if problem.H() has incompatible signature
-                    pass
+                legacy_derivs = to_multi_index_dict(derivs)
+                return self.problem.H(x_idx, m_val, derivs=legacy_derivs)
+            except (TypeError, AttributeError):
+                pass
+        except AttributeError:
+            pass
 
         # Default: standard quadratic MFG Hamiltonian H = |p|²/2 + m*p
         # For 1D partial: H = (1/2)|∂u/∂x_i|² + m * ∂u/∂x_i
@@ -1333,7 +1299,8 @@ class HJBWenoSolver(BaseHJBSolver):
             dt_cfl = self.dt
 
         # Stability condition for diffusion term (very restrictive in 3D)
-        sigma_sq = self.problem.sigma**2 if hasattr(self.problem, "sigma") else 1.0
+        # All modern MFGProblem have sigma; getattr with default for safety
+        sigma_sq = getattr(self.problem, "sigma", 1.0) ** 2
         dt_diffusion_x = self.diffusion_stability_factor * (self.grid_spacing_x**2) / sigma_sq
         dt_diffusion_y = self.diffusion_stability_factor * (self.grid_spacing_y**2) / sigma_sq
         dt_diffusion_z = self.diffusion_stability_factor * (self.grid_spacing_z**2) / sigma_sq

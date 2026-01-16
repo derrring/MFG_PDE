@@ -285,11 +285,22 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         Note:
             Uses np.gradient with edge_order=2 for accurate boundary gradients.
+            For Neumann boundaries (∂u/∂n=0), gradient is explicitly set to zero.
             Issues CFL warning if max|∇u|·dt/dx > 1.
         """
         if self.dimension == 1:
             # 1D gradient computation
             grad_u = np.gradient(u_values, self.dx, edge_order=2)
+
+            # Enforce Neumann BC: gradient = 0 at Neumann boundaries
+            # This is critical for correct characteristic tracing at walls
+            bc = self._get_boundary_conditions()
+            bc_type_min, bc_type_max = self._get_per_boundary_bc_types(bc)
+
+            if bc_type_min in ("neumann", "no_flux"):
+                grad_u[0] = 0.0  # Enforce ∂u/∂x = 0 at x_min
+            if bc_type_max in ("neumann", "no_flux"):
+                grad_u[-1] = 0.0  # Enforce ∂u/∂x = 0 at x_max
 
             # CFL check
             if check_cfl and self.check_cfl:
@@ -472,6 +483,104 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 return str(bc_type_enum)
         except AttributeError:
             return None
+
+    def _get_per_boundary_bc_types(self, bc) -> tuple[str | None, str | None]:
+        """
+        Get BC type strings for each boundary (1D: xmin and xmax).
+
+        For mixed BCs (e.g., Neumann at x=0, Dirichlet at x=L), this method
+        queries the BC type at each boundary separately.
+
+        Args:
+            bc: BoundaryConditions object or None
+
+        Returns:
+            Tuple of (bc_type_at_xmin, bc_type_at_xmax)
+
+        Note:
+            For uniform BCs, both values will be the same.
+            For mixed BCs, values may differ per boundary.
+        """
+        if bc is None:
+            return (None, None)
+
+        # Try to use get_bc_type_at_boundary method for per-boundary queries
+        try:
+            bc_type_min_enum = bc.get_bc_type_at_boundary("x_min")
+            bc_type_max_enum = bc.get_bc_type_at_boundary("x_max")
+
+            # Extract string values from BCType enums
+            bc_type_min = bc_type_min_enum.value if bc_type_min_enum is not None else None
+            bc_type_max = bc_type_max_enum.value if bc_type_max_enum is not None else None
+
+            return (bc_type_min, bc_type_max)
+        except AttributeError:
+            pass
+
+        # Fallback: use uniform BC type for both boundaries
+        bc_type = self._get_bc_type_string(bc)
+        return (bc_type, bc_type)
+
+    def _enforce_boundary_conditions_1d(self, U: np.ndarray) -> np.ndarray:
+        """
+        Enforce boundary conditions on 1D solution array.
+
+        For Semi-Lagrangian, BC enforcement after each timestep ensures:
+        - **Neumann** (∂u/∂n=0): u[boundary] = u[interior neighbor] (zero gradient)
+        - **Dirichlet** (u=g): u[boundary] = g (prescribed value)
+
+        This explicit enforcement is critical because Semi-Lagrangian's
+        interpolation-based approach doesn't naturally preserve BCs.
+
+        Args:
+            U: Solution array of shape (Nx,)
+
+        Returns:
+            Solution with BCs enforced
+
+        Note:
+            This method modifies U in-place and returns it for chaining.
+        """
+        bc = self._get_boundary_conditions()
+        if bc is None:
+            return U
+
+        bc_type_min, bc_type_max = self._get_per_boundary_bc_types(bc)
+
+        # Enforce BC at x_min (index 0)
+        if bc_type_min in ("neumann", "no_flux"):
+            # Neumann: ∂u/∂x = 0 using 2nd-order extrapolation
+            # This preserves curvature while enforcing zero gradient:
+            # u[0] = (4*u[1] - u[2]) / 3  comes from Taylor expansion
+            # with ∂u/∂x|_{x=0} = 0
+            if len(U) >= 3:
+                U[0] = (4.0 * U[1] - U[2]) / 3.0
+            else:
+                U[0] = U[1]  # Fallback for very small arrays
+        elif bc_type_min == "dirichlet":
+            # Dirichlet: u = g at boundary
+            try:
+                g_min = bc.get_bc_value_at_boundary("x_min")
+                U[0] = g_min
+            except (AttributeError, ValueError):
+                pass  # Keep current value if BC value unavailable
+
+        # Enforce BC at x_max (index -1)
+        if bc_type_max in ("neumann", "no_flux"):
+            # Neumann: ∂u/∂x = 0 using 2nd-order extrapolation
+            if len(U) >= 3:
+                U[-1] = (4.0 * U[-2] - U[-3]) / 3.0
+            else:
+                U[-1] = U[-2]  # Fallback for very small arrays
+        elif bc_type_max == "dirichlet":
+            # Dirichlet: u = g at boundary
+            try:
+                g_max = bc.get_bc_value_at_boundary("x_max")
+                U[-1] = g_max
+            except (AttributeError, ValueError):
+                pass  # Keep current value if BC value unavailable
+
+        return U
 
     def solve_hjb_system(
         self,
@@ -672,8 +781,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
                     # Advection step for backward HJB solve:
                     # HJB: -∂u/∂t + H(x,∇u,m) - σ²/2 Δu = 0
-                    # Backward discretization: u^n = u^{n+1} + dt * H (diffusion handled separately)
-                    U_star[i] = u_departure + self.dt * hamiltonian_value
+                    # Rearranging: ∂u/∂t = H - σ²/2 Δu
+                    # Backward discretization: u^n = u^{n+1} - dt * H (diffusion handled separately)
+                    # Issue #575: Sign was wrong (+ instead of -)
+                    U_star[i] = u_departure - self.dt * hamiltonian_value
 
                 except Exception as e:
                     logger.warning(f"Error at grid point {i}: {e}")
@@ -681,6 +792,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             # Step 2: Diffusion (using configured method)
             U_current = self._apply_diffusion(U_star, self.dt)
+
+            # Step 3: Enforce boundary conditions on solution
+            # This is critical for Neumann BC to ensure ∂u/∂x = 0 at walls
+            U_current = self._enforce_boundary_conditions_1d(U_current)
 
             return U_current
 
@@ -737,8 +852,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
                 # Advection step for backward HJB solve:
                 # HJB: -∂u/∂t + H(x,∇u,m) - σ²/2 Δu = 0
-                # Backward discretization: u^n = u^{n+1} + dt * H (diffusion handled separately)
-                u_star_val = u_departure + self.dt * hamiltonian_value
+                # Rearranging: ∂u/∂t = H - σ²/2 Δu
+                # Backward discretization: u^n = u^{n+1} - dt * H (diffusion handled separately)
+                # Issue #575: Sign was wrong (+ instead of -)
+                u_star_val = u_departure - self.dt * hamiltonian_value
 
                 # Check for numerical issues
                 if np.isnan(u_star_val) or np.isinf(u_star_val):
@@ -818,8 +935,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     u_departure = self._interpolate_value(U_next, x_departure)
                     hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
 
-                    # Backward HJB: u^n = u^{n+1} + dt * H
-                    U_star[i] = u_departure + dt * hamiltonian_value
+                    # Backward HJB: u^n = u^{n+1} - dt * H (Issue #575: sign fix)
+                    U_star[i] = u_departure - dt * hamiltonian_value
 
                 except Exception as e:
                     logger.warning(f"Error at grid point {i}: {e}")
@@ -827,6 +944,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             # Step 2: Diffusion with custom dt
             U_current = self._apply_diffusion(U_star, dt)
+
+            # Step 3: Enforce boundary conditions on solution
+            U_current = self._enforce_boundary_conditions_1d(U_current)
+
             return U_current
 
         else:
@@ -862,8 +983,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 u_departure = self._interpolate_value(U_next_shaped, x_departure)
                 hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
 
-                # Backward HJB: u^n = u^{n+1} + dt * H
-                u_star_val = u_departure + dt * hamiltonian_value
+                # Backward HJB: u^n = u^{n+1} - dt * H (Issue #575: sign fix)
+                u_star_val = u_departure - dt * hamiltonian_value
 
                 if np.isnan(u_star_val) or np.isinf(u_star_val):
                     error_count += 1
@@ -1031,9 +1152,12 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             )
 
             # Apply boundary conditions
-            # Issue #545: Use centralized BC retrieval (NO hasattr)
+            # Issue #582: Use simplified BC type (periodic or clamp)
             bc = self._get_boundary_conditions()
-            bc_type = self._get_bc_type_string(bc)
+            bc_type_min, _ = self._get_per_boundary_bc_types(bc)
+            # For characteristic tracing, only periodic needs special handling
+            # Neumann/Dirichlet use clamping (bc_type=None)
+            bc_type = "periodic" if bc_type_min == "periodic" else None
 
             bounds = self.problem.geometry.get_bounds()
             xmin, xmax = bounds[0][0], bounds[1][0]
