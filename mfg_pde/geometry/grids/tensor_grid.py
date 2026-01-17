@@ -1479,20 +1479,22 @@ class TensorProductGrid(
             order: Discretization order (not used yet, reserved for future)
 
         Returns:
-            Callable that computes divergence of vector field
+            DivergenceOperator (scipy LinearOperator) that computes ∇·F
 
         Example:
             >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
             >>> div_op = grid.get_divergence_operator()
             >>> F = np.random.rand(2, 51, 51)  # Vector field (Fx, Fy)
             >>> div_F = div_op(F)  # Shape: (51, 51)
+            >>> # Or use scipy interface:
+            >>> div_F_flat = div_op @ F.ravel()  # Shape: (2601,)
         """
-        from mfg_pde.geometry.operators import create_divergence_operator
+        from mfg_pde.geometry.operators import DivergenceOperator
 
         # Use grid's BC
         bc = self.get_boundary_conditions()
 
-        return create_divergence_operator(
+        return DivergenceOperator(
             spacings=self.spacing,
             field_shape=tuple(self.Nx_points),
             bc=bc,
@@ -1515,7 +1517,7 @@ class TensorProductGrid(
             conservative: If True, compute ∇·(vm). If False, compute v·∇m.
 
         Returns:
-            Callable that computes advection term
+            AdvectionOperator (scipy LinearOperator) for transport
 
         Example:
             >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
@@ -1523,8 +1525,10 @@ class TensorProductGrid(
             >>> adv_op = grid.get_advection_operator(v, scheme='upwind', conservative=True)
             >>> m = np.random.rand(51, 51)  # Density
             >>> div_mv = adv_op(m)  # Conservative advection
+            >>> # Or use scipy interface:
+            >>> div_mv_flat = adv_op @ m.ravel()
         """
-        from mfg_pde.geometry.operators import create_advection_operator
+        from mfg_pde.geometry.operators import AdvectionOperator
 
         # Use grid's BC
         bc = self.get_boundary_conditions()
@@ -1532,7 +1536,7 @@ class TensorProductGrid(
         # Map conservative flag to form parameter
         form = "divergence" if conservative else "gradient"
 
-        return create_advection_operator(
+        return AdvectionOperator(
             velocity_field=velocity_field,
             spacings=self.spacing,
             field_shape=tuple(self.Nx_points),
@@ -1561,7 +1565,7 @@ class TensorProductGrid(
                 - "boundary": Project to boundary and use boundary value
 
         Returns:
-            Callable that interpolates field values at query points
+            InterpolationOperator (scipy LinearOperator) for grid-to-point evaluation
 
         Example:
             >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
@@ -1569,10 +1573,12 @@ class TensorProductGrid(
             >>> interp = grid.get_interpolation_operator(query_pts, order=1)
             >>> u = np.random.rand(51, 51)
             >>> u_interp = interp(u)  # Shape: (100,)
+            >>> # Or use scipy interface:
+            >>> u_interp_flat = interp @ u.ravel()  # Shape: (100,)
         """
-        from mfg_pde.geometry.operators import create_interpolation_operator
+        from mfg_pde.geometry.operators import InterpolationOperator
 
-        return create_interpolation_operator(
+        return InterpolationOperator(
             grid_points=tuple(self.coordinates),
             query_points=query_points,
             order=order,

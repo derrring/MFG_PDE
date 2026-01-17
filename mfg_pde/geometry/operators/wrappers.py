@@ -1,12 +1,37 @@
 """
-Temporary callable wrappers for operators not yet refactored to LinearOperator.
+DEPRECATED: Callable wrappers for operators (replaced by LinearOperator classes).
 
-These wrappers provide a consistent interface while we gradually migrate to
-LinearOperator classes (Issue #595). Once divergence, advection, and interpolation
-are refactored, this module can be deprecated.
+**Status**: DEPRECATED as of v0.17.2 (2026-01-17)
+**Removal**: Scheduled for v0.19.0
+
+This module provided temporary callable wrappers during the operator refactoring
+transition (Issue #595). All operators are now implemented as LinearOperator classes:
+    - DivergenceOperator (replaces create_divergence_operator)
+    - AdvectionOperator (replaces create_advection_operator)
+    - InterpolationOperator (replaces create_interpolation_operator)
+
+Migration Guide:
+    OLD (callable wrappers):
+        >>> from mfg_pde.geometry.operators import create_divergence_operator
+        >>> div_op = create_divergence_operator(spacings, field_shape, bc)
+        >>> div_F = div_op(F)  # Callable only
+
+    NEW (LinearOperator classes):
+        >>> from mfg_pde.geometry.operators import DivergenceOperator
+        >>> div_op = DivergenceOperator(spacings, field_shape, bc)
+        >>> div_F = div_op(F)  # Callable interface
+        >>> div_F_flat = div_op @ F.ravel()  # scipy interface
+        >>> # Can use with iterative solvers, operator algebra, etc.
+
+The new classes provide:
+    - scipy.sparse.linalg.LinearOperator interface
+    - Operator composition (L1 @ L2)
+    - Iterative solver compatibility (gmres, cg)
+    - Matrix-vector product syntax (L @ u)
 
 Created: 2026-01-17 (Issue #595 - Gradual Operator Refactoring)
-Status: TEMPORARY - will be replaced by LinearOperator classes in Phase 2
+Deprecated: 2026-01-17 (Issue #595 Phase 2 - Complete)
+Scheduled Removal: v0.19.0
 """
 
 from __future__ import annotations
