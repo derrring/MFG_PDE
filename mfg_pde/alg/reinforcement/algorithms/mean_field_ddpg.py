@@ -504,6 +504,8 @@ class MeanFieldDDPG:
             done = False
             while not done:
                 # Get population state
+                # Backend compatibility - gym environment API (Issue #543 acceptable)
+                # hasattr checks for optional get_population_state() method on MFG environments
                 if hasattr(self.env, "get_population_state"):
                     pop_state = self.env.get_population_state().density_histogram.flatten()
                 else:
@@ -517,6 +519,7 @@ class MeanFieldDDPG:
                 next_state = next_observations[0] if isinstance(next_observations, list | tuple) else next_observations
 
                 # Get next population state
+                # Backend compatibility - gym environment API (Issue #543 acceptable)
                 if hasattr(self.env, "get_population_state"):
                     next_pop_state = self.env.get_population_state().density_histogram.flatten()
                 else:

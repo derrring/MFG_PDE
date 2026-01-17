@@ -621,11 +621,13 @@ def create_mean_field_q_learning(env, config: dict[str, Any] | None = None) -> M
         state_dim = obs_batch.shape[1]
 
         # Extract action_dim from environment's action space
-        if hasattr(env, "action_space"):
-            if hasattr(env.action_space, "n"):
+        # Backend compatibility - gym environment API (Issue #543 acceptable)
+        # hasattr checks for gym/gymnasium action space attributes
+        if hasattr(env, "action_space"):  # Issue #543 acceptable
+            if hasattr(env.action_space, "n"):  # Issue #543 acceptable
                 # Discrete action space
                 action_dim = env.action_space.n
-            elif hasattr(env.action_space, "nvec"):
+            elif hasattr(env.action_space, "nvec"):  # Issue #543 acceptable
                 # MultiDiscrete action space - use single agent's action dim
                 action_dim = env.action_space.nvec[0]
             else:

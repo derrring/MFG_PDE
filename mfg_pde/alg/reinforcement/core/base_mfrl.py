@@ -303,9 +303,10 @@ class BaseMFRLSolver(BaseRLSolver):
     def _validate_mfg_problem(self) -> None:
         """Validate that MFG problem is suitable for RL approach."""
         # Check if problem has required components for RL
+        # Use getattr instead of hasattr for validation (Issue #543)
         required_attrs = ["T", "domain"]
         for attr in required_attrs:
-            if not hasattr(self.problem, attr):
+            if getattr(self.problem, attr, None) is None:
                 raise ValueError(f"MFG problem missing required attribute: {attr}")
 
         self.logger.info("MFG problem validation passed for RL approach")

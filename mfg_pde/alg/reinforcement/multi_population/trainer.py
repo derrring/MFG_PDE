@@ -146,6 +146,8 @@ class MultiPopulationTrainer:
                 stats[pop_id]["episode_lengths"].append(episode_lengths[pop_id])
 
             # Reset exploration noise for DDPG agents
+            # Backend compatibility - RL agent API (Issue #543 acceptable)
+            # hasattr checks for optional reset_noise() method on DDPG/TD3 agents
             for agent in self.agents.values():
                 if hasattr(agent, "reset_noise"):
                     agent.reset_noise()
