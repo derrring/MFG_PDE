@@ -171,6 +171,7 @@ if TORCH_AVAILABLE:
             self.network = nn.Sequential(*layers)
 
             # Attention mechanism (optional)
+            self.attention: nn.Module | None = None
             if config.use_attention:
                 self.attention = nn.MultiheadAttention(embed_dim=config.branch_width, num_heads=8, batch_first=True)
 
@@ -184,9 +185,9 @@ if TORCH_AVAILABLE:
             Returns:
                 Branch network output [batch, latent_dim]
             """
-            # Internal cache - optional attention module (Issue #543 acceptable)
-            # Defensive check: config.use_attention determines creation in __init__
-            if self.config.use_attention and hasattr(self, "attention"):
+            # Apply optional attention mechanism if configured
+            # self.attention initialized as None, created conditionally in __init__
+            if self.attention is not None:
                 # Reshape for attention
                 u_expanded = u.unsqueeze(1)  # [batch, 1, sensor_points]
                 u_attended, _ = self.attention(u_expanded, u_expanded, u_expanded)
@@ -349,6 +350,7 @@ if TORCH_AVAILABLE:
             self.trunk_net = TrunkNetwork(self.config)
 
             # Bias network (optional)
+            self.bias_net: nn.Module | None = None
             if self.config.use_bias_net:
                 self.bias_net = BiasNetwork(self.config)
 
@@ -408,9 +410,9 @@ if TORCH_AVAILABLE:
             # Element-wise multiplication and sum over latent dimension
             operator_output = torch.sum(branch_expanded * trunk_output, dim=-1)  # [batch, num_points]
 
-            # Internal cache - optional bias network (Issue #543 acceptable)
-            # Defensive check: config.use_bias_net determines creation in __init__
-            if self.config.use_bias_net and hasattr(self, "bias_net"):
+            # Apply optional bias network if configured
+            # self.bias_net initialized as None, created conditionally in __init__
+            if self.bias_net is not None:
                 bias_output = self.bias_net(trunk_input).squeeze(-1)  # [batch, num_points]
                 operator_output = operator_output + bias_output
 

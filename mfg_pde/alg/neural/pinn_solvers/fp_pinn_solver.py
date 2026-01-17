@@ -633,9 +633,9 @@ class FPPINNSolver(PINNBase):
         Returns:
             Dictionary containing solution data, convergence info, and metadata
         """
-        # Internal cache - state validation (Issue #543 acceptable)
-        # training_history is set during solve(), this ensures solve() was called
-        if not hasattr(self, "training_history") or not self.training_history:
+        # State validation: Check if solve() was called
+        # training_history is initialized in __init__, populated during solve()
+        if not self.training_history["total_loss"]:
             raise RuntimeError("No training results available. Run solve() first.")
 
         # Generate solution for return

@@ -687,6 +687,13 @@ class HJBGFDMSolver(BaseHJBSolver):
                 "osqp_failures": 0,
             }
 
+        # Lazy-initialized cache attributes
+        # These are expensive to compute and only created when needed
+        self._D_grad: list | None = None  # Gradient differentiation matrices
+        self._D_lap: Any | None = None  # Laplacian differentiation matrix
+        self._potential_at_collocation: np.ndarray | None = None  # Interpolated potential field
+        self._cached_derivative_weights: dict | None = None  # Pre-computed GFDM weights
+
     def _compute_n_spatial_grid_points(self) -> int:
         """Compute total number of spatial grid points from geometry."""
         grid_shape = self.problem.geometry.get_grid_shape()
@@ -1114,8 +1121,9 @@ class HJBGFDMSolver(BaseHJBSolver):
             grad_u: Gradient at all points, shape (n_points, dimension)
             lap_u: Laplacian at all points, shape (n_points,)
         """
-        # Internal cache - lazy initialization (Issue #543 acceptable)
-        if not hasattr(self, "_D_grad") or self._D_grad is None:
+        # Lazy initialization of differentiation matrices (expensive computation)
+        # self._D_grad initialized as None in __init__, computed on first use
+        if self._D_grad is None:
             self._build_differentiation_matrices()
 
         grad_u = np.column_stack([D @ u for D in self._D_grad])
@@ -1446,8 +1454,9 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         Handles arbitrary dimensions by building grid axes from bounds.
         """
-        # Internal cache - lazy initialization (Issue #543 acceptable)
-        if hasattr(self, "_potential_at_collocation"):
+        # Return cached value if already computed
+        # self._potential_at_collocation initialized as None in __init__
+        if self._potential_at_collocation is not None:
             return self._potential_at_collocation
 
         f_potential = getattr(self.problem, "f_potential", None)
@@ -1535,8 +1544,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         from scipy.sparse import diags, eye
 
-        # Internal cache - lazy initialization (Issue #543 acceptable)
-        if not hasattr(self, "_D_grad") or self._D_grad is None:
+        # Lazy initialization of differentiation matrices
+        if self._D_grad is None:
             self._build_differentiation_matrices()
 
         n = self.n_points
@@ -1576,9 +1585,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         d = self.problem.dimension
         dt = self.problem.T / self.problem.Nt
 
-        # Internal cache - lazy initialization (Issue #543 acceptable)
-        # Pre-cache all derivative weights (avoids repeated method call overhead)
-        if not hasattr(self, "_cached_derivative_weights"):
+        # Lazy initialization: Pre-cache all derivative weights (expensive computation)
+        # self._cached_derivative_weights initialized as None in __init__
+        if self._cached_derivative_weights is None:
             self._cached_derivative_weights = [self._gfdm_operator.get_derivative_weights(i) for i in range(n)]
 
         # Use LIL format for efficient construction
