@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.17.1"  # v0.17.1: Adjoint-consistent BC (Issue #574) + Three-mode API (Issue #580)
+version = "0.17.2"  # v0.17.2: Legacy parameter deprecation (Issue #544) + Solver mixin cleanup (Issue #545)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

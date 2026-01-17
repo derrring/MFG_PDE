@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-01-18
+
+**Maintenance Release: Legacy Parameter Deprecation + Codebase Cleanup**
+
+This release completes two important maintenance priorities:
+1. **Legacy parameter deprecation** (Issue #544) - Deprecates old MFGProblem parameters, migrates all internal code to modern Geometry API
+2. **Solver mixin cleanup** (Issue #545) - Removes dead code from completed refactoring
+
+Both changes are 100% backward compatible with clear migration paths for users.
+
+### Added
+
+- **DeprecationWarning for Legacy Parameters** (Issue #544, Phase 1) 🎯
+  - Warns users when using deprecated parameters: `Nx`, `xmin`, `xmax`, `Lx`, `spatial_bounds`, `spatial_discretization`
+  - Clear migration instructions in warning message pointing to `docs/migration/LEGACY_PARAMETERS.md`
+  - Respects `suppress_warnings=True` flag for gradual migration
+  - **Timeline**: 6-12 month deprecation period before v1.0.0 removal
+
+- **Comprehensive Migration Guide** (Issue #544):
+  - `docs/migration/LEGACY_PARAMETERS.md` - 180-line guide with 5 common patterns
+  - Before/after examples for each migration pattern
+  - Nx → Nx_points conversion explained (Nx=100 intervals → Nx_points=[101] grid points)
+  - Troubleshooting section for common issues
+
+- **Documentation** (Issue #544, #545):
+  - `docs/development/PRIORITY_8_PHASE_2_STATUS.md` - Complete deprecation plan (112 lines)
+  - Updated `docs/development/PRIORITY_LIST_2026-01.md` - Priority 7 & 8 marked complete
+  - Updated `docs/development/NEXT_STEPS_2026-01-18.md` - Next development priorities
+
+### Changed
+
+- **All Tests Migrated to Geometry API** (Issue #544, Phase 2) 🎯
+  - Migrated 7 test files with 23 MFGProblem/StochasticMFGProblem calls
+  - Integration tests: test_lq_common_noise_analytical.py, test_mass_conservation_1d*.py, test_particle_gpu_pipeline.py, etc.
+  - Unit tests: test_common_noise_solver.py (12 calls)
+  - Fixed SimpleMFGProblem1D mock for Geometry API compatibility
+  - **Test results**: 79 + 23 + 12 passing, zero regressions
+
+- **All Examples Verified** (Issue #544):
+  - All files in `examples/` already use modern Geometry API
+  - Zero migration needed (modern API adopted early)
+
+### Deprecated
+
+- **MFGProblem legacy parameters** (Issue #544) - **DEPRECATED, will be removed in v1.0.0**
+  - `Nx`, `xmin`, `xmax`, `Lx` - Use `geometry=TensorProductGrid(...)` instead
+  - `spatial_bounds`, `spatial_discretization` - Use `geometry=TensorProductGrid(...)` instead
+  - DeprecationWarning provides migration guidance
+  - See `docs/migration/LEGACY_PARAMETERS.md` for complete migration guide
+
+### Removed
+
+- **Dead Code Cleanup** (Issue #545) 🎯
+  - Deleted `hjb_gfdm_monotonicity.py` (28KB) - MonotonicityMixin no longer used
+  - Updated 5 outdated comments in hjb_gfdm.py referencing removed mixin
+  - Verified: All 11 solvers use composition or simple inheritance (zero mixins)
+
+### Fixed
+
+- Documentation consistency in solver architecture references
+
 ## [0.17.1] - 2026-01-17
 
 **Feature Release: Adjoint-Consistent Boundary Conditions + Three-Mode Solving API**
