@@ -7,6 +7,7 @@ Tests the check_solver_duality() function and DualityStatus classification.
 import pytest
 
 from mfg_pde.alg import SchemeFamily
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.utils import (
     DualityStatus,
     DualityValidationResult,
@@ -282,7 +283,8 @@ class TestCheckSolverDualityInstances:
         from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 
         # Create a minimal problem for initialization
-        problem = MFGProblem(Nx=10, Nt=5, T=1.0)
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
+        problem = MFGProblem(geometry=geometry, Nt=5, T=1.0)
 
         hjb_instance = HJBFDMSolver(problem)
         fp_instance = FPFDMSolver(problem)

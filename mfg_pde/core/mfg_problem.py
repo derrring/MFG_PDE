@@ -314,6 +314,25 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         # Normalize spatial parameters to arrays (with deprecation warnings for scalars)
         # This enables dimension-agnostic code while maintaining backward compatibility
+
+        # Issue #544: Deprecate legacy 1D parameters (Nx, xmin, xmax, Lx)
+        # These will be removed in v0.18.0. Use geometry=TensorProductGrid(...) instead.
+        if Nx is not None or xmin is not None or xmax is not None or Lx is not None:
+            if not suppress_warnings:
+                warnings.warn(
+                    "\nLegacy parameters (Nx, xmin, xmax, Lx) are deprecated and will be removed in v0.18.0.\n"
+                    "Use the Geometry API instead:\n\n"
+                    "  # Old (deprecated):\n"
+                    "  problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, Nt=50)\n\n"
+                    "  # New (recommended):\n"
+                    "  from mfg_pde.geometry import TensorProductGrid\n"
+                    "  geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])\n"
+                    "  problem = MFGProblem(geometry=geometry, Nt=50)\n\n"
+                    "See docs/migration/LEGACY_PARAMETERS.md for detailed migration guide.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+
         if Nx is not None:
             Nx_normalized = self._normalize_to_array(Nx, "Nx")
         else:

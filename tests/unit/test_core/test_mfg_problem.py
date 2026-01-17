@@ -457,7 +457,10 @@ def test_get_problem_info():
 )
 def test_mfg_problem_zero_nx():
     """Test MFGProblem handles Nx=0 gracefully."""
-    problem = MFGProblem(Nx=0)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[1])
+    problem = MFGProblem(
+        geometry=geometry,
+    )
 
     assert problem.Nx == 0
     assert problem.dx == 0.0
