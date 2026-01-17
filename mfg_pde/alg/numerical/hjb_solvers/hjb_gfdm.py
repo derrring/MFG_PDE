@@ -60,7 +60,7 @@ class HJBGFDMSolver(BaseHJBSolver):
     - "auto": Adaptive QP with M-matrix checking for monotonicity preservation
     - "always": Force QP at every point (for debugging and analysis)
 
-    Note: Monotonicity and QP constraint functionality is provided by MonotonicityMixin.
+    Note: Monotonicity and QP constraint functionality is provided by MonotonicityEnforcer component.
 
     Implements BoundaryCapable protocol for unified BC handling (Issue #527).
 
@@ -1810,10 +1810,10 @@ class HJBGFDMSolver(BaseHJBSolver):
             # Numeric sigma: use directly (with fallback to default)
             return float(getattr(self.problem, "sigma", 1.0))
 
-    # Note: _check_monotonicity_violation moved to MonotonicityMixin
-    # Note: _check_m_matrix_property moved to MonotonicityMixin
-    # Note: _build_monotonicity_constraints moved to MonotonicityMixin
-    # Note: _build_hamiltonian_gradient_constraints moved to MonotonicityMixin
+    # Note: _check_monotonicity_violation moved to MonotonicityEnforcer component
+    # Note: _check_m_matrix_property moved to MonotonicityEnforcer component
+    # Note: _build_monotonicity_constraints moved to MonotonicityEnforcer component
+    # Note: _build_hamiltonian_gradient_constraints moved to MonotonicityEnforcer component
 
     def solve_hjb_system(
         self,
