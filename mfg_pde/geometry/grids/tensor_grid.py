@@ -25,6 +25,14 @@ import numpy as np
 
 from mfg_pde.geometry.base import CartesianGrid
 from mfg_pde.geometry.protocol import GeometryType
+from mfg_pde.geometry.protocols import (
+    SupportsBoundaryDistance,
+    SupportsBoundaryNormal,
+    SupportsBoundaryProjection,
+    SupportsLipschitz,
+    SupportsManifold,
+    SupportsPeriodic,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -34,7 +42,15 @@ if TYPE_CHECKING:
     from mfg_pde.geometry.boundary.conditions import BoundaryConditions
 
 
-class TensorProductGrid(CartesianGrid):
+class TensorProductGrid(
+    CartesianGrid,
+    SupportsBoundaryNormal,
+    SupportsBoundaryProjection,
+    SupportsBoundaryDistance,
+    SupportsManifold,
+    SupportsLipschitz,
+    SupportsPeriodic,
+):
     """
     Tensor product grid for multi-dimensional structured domains.
 
@@ -900,6 +916,544 @@ class TensorProductGrid(CartesianGrid):
         from mfg_pde.geometry.boundary.fem_bc_3d import BoundaryConditionManager3D
 
         return BoundaryConditionManager3D()
+
+    # ============================================================================
+    # Boundary Trait Implementations (Issue #590 - Phase 1.2)
+    # ============================================================================
+
+    def get_outward_normal(
+        self,
+        points: NDArray,
+        boundary_name: str | None = None,
+    ) -> NDArray:
+        """
+        Compute outward unit normal vectors at boundary points.
+
+        For rectangular tensor product grids, normals are axis-aligned:
+        - x_min boundary: [-1, 0, 0, ...]
+        - x_max boundary: [+1, 0, 0, ...]
+        - y_min boundary: [0, -1, 0, ...]
+        - etc.
+
+        Args:
+            points: Points at which to evaluate normal, shape (num_points, dimension)
+                    or (dimension,) for single point
+            boundary_name: Optional boundary region name (e.g., "x_min", "y_max").
+                           If None, infers boundary from point location.
+
+        Returns:
+            Outward unit normals, shape (num_points, dimension) or (dimension,)
+
+        Raises:
+            ValueError: If points not on boundary (when boundary_name=None)
+            ValueError: If boundary_name not recognized
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> normal = grid.get_outward_normal(np.array([0.0, 0.5]), boundary_name="x_min")
+            >>> assert np.allclose(normal, [-1.0, 0.0])
+        """
+        # Handle single point
+        single_point = points.ndim == 1
+        if single_point:
+            points = points.reshape(1, -1)
+
+        if points.shape[1] != self._dimension:
+            raise ValueError(f"Points dimension {points.shape[1]} != grid dimension {self._dimension}")
+
+        num_points = points.shape[0]
+        normals = np.zeros((num_points, self._dimension))
+
+        if boundary_name is not None:
+            # Parse boundary name: "x_min", "x_max", "y_min", etc.
+            if "_" not in boundary_name:
+                raise ValueError(f"Invalid boundary_name: {boundary_name}. Expected format: 'x_min', 'y_max', etc.")
+
+            dim_name, side = boundary_name.rsplit("_", 1)
+            dim_names = ["x", "y", "z", "w"]  # Extend as needed for high dimensions
+            if self._dimension > len(dim_names):
+                dim_names += [f"x{i}" for i in range(len(dim_names), self._dimension)]
+
+            if dim_name not in dim_names[: self._dimension]:
+                raise ValueError(f"Unknown dimension name: {dim_name}")
+
+            dim_idx = dim_names.index(dim_name)
+            if side == "min":
+                normals[:, dim_idx] = -1.0
+            elif side == "max":
+                normals[:, dim_idx] = 1.0
+            else:
+                raise ValueError(f"Unknown side: {side}. Expected 'min' or 'max'")
+        else:
+            # Infer boundary from point location (find closest boundary)
+            tolerance = 1e-10
+            for i, point in enumerate(points):
+                min_coords, max_coords = self.get_bounds()
+
+                # Find which boundary this point is closest to
+                dist_to_min = np.abs(point - min_coords)
+                dist_to_max = np.abs(point - max_coords)
+
+                # Check if on any boundary
+                on_min = dist_to_min < tolerance
+                on_max = dist_to_max < tolerance
+
+                if not np.any(on_min | on_max):
+                    raise ValueError(f"Point {point} not on boundary (tolerance={tolerance})")
+
+                # Prioritize first boundary found (for corner points)
+                if np.any(on_min):
+                    dim_idx = np.argmax(on_min)
+                    normals[i, dim_idx] = -1.0
+                else:
+                    dim_idx = np.argmax(on_max)
+                    normals[i, dim_idx] = 1.0
+
+        if single_point:
+            return normals[0]
+        return normals
+
+    def project_to_boundary(
+        self,
+        points: NDArray,
+        boundary_name: str | None = None,
+    ) -> NDArray:
+        """
+        Project points onto domain boundary.
+
+        For rectangular domains, this clamps coordinates to [xmin, xmax] × [ymin, ymax] × ...
+
+        Args:
+            points: Points to project, shape (num_points, dimension) or (dimension,)
+            boundary_name: Optional specific boundary to project onto (e.g., "x_min").
+                           If None, project to closest boundary.
+
+        Returns:
+            Projected points on boundary, same shape as input
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> x_outside = np.array([1.2, 0.5])
+            >>> x_boundary = grid.project_to_boundary(x_outside)
+            >>> assert np.allclose(x_boundary, [1.0, 0.5])
+        """
+        # Handle single point
+        single_point = points.ndim == 1
+        if single_point:
+            points = points.reshape(1, -1)
+
+        projected = points.copy()
+        min_coords, max_coords = self.get_bounds()
+
+        if boundary_name is not None:
+            # Project to specific boundary
+            dim_name, side = boundary_name.rsplit("_", 1)
+            dim_names = ["x", "y", "z", "w"]
+            if self._dimension > len(dim_names):
+                dim_names += [f"x{i}" for i in range(len(dim_names), self._dimension)]
+
+            dim_idx = dim_names.index(dim_name)
+            if side == "min":
+                projected[:, dim_idx] = min_coords[dim_idx]
+            elif side == "max":
+                projected[:, dim_idx] = max_coords[dim_idx]
+        else:
+            # Project to closest boundary (clamp all coordinates)
+            projected = np.clip(projected, min_coords, max_coords)
+
+            # For points inside, project to closest face
+            for i in range(len(projected)):
+                point = points[i]
+                # Find closest boundary
+                dist_to_min = point - min_coords
+                dist_to_max = max_coords - point
+
+                # Find minimum distance to any boundary
+                all_dists = np.concatenate([dist_to_min, dist_to_max])
+                min_dist_idx = np.argmin(np.abs(all_dists))
+
+                if min_dist_idx < self._dimension:
+                    # Closest to min boundary
+                    projected[i, min_dist_idx] = min_coords[min_dist_idx]
+                else:
+                    # Closest to max boundary
+                    dim_idx = min_dist_idx - self._dimension
+                    projected[i, dim_idx] = max_coords[dim_idx]
+
+        if single_point:
+            return projected[0]
+        return projected
+
+    def project_to_interior(
+        self,
+        points: NDArray,
+        tolerance: float = 1e-10,
+    ) -> NDArray:
+        """
+        Project points from outside domain into interior.
+
+        For rectangular domains, clamps to [xmin + tol, xmax - tol] × ...
+
+        Args:
+            points: Points to project, shape (num_points, dimension) or (dimension,)
+            tolerance: Distance to move inside boundary
+
+        Returns:
+            Projected points in interior, same shape as input
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> x_outside = np.array([1.05, 0.5])
+            >>> x_inside = grid.project_to_interior(x_outside, tolerance=1e-3)
+            >>> assert x_inside[0] <= 1.0
+        """
+        # Handle single point
+        single_point = points.ndim == 1
+        if single_point:
+            points = points.reshape(1, -1)
+
+        min_coords, max_coords = self.get_bounds()
+        projected = np.clip(points, min_coords + tolerance, max_coords - tolerance)
+
+        if single_point:
+            return projected[0]
+        return projected
+
+    def get_signed_distance(
+        self,
+        points: NDArray,
+    ) -> NDArray:
+        """
+        Compute signed distance to boundary for rectangular domain.
+
+        Uses box SDF formula:
+            φ(x) = max(max(xmin - x), max(x - xmax))
+
+        Negative inside, zero on boundary, positive outside.
+
+        Args:
+            points: Query points, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Signed distances, shape (num_points,) or scalar
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> phi = grid.get_signed_distance(np.array([[0.5, 0.5], [1.0, 0.5], [1.5, 0.5]]))
+            >>> assert phi[0] < 0  # Inside
+            >>> assert np.isclose(phi[1], 0, atol=1e-10)  # On boundary
+            >>> assert phi[2] > 0  # Outside
+        """
+        # Handle single point
+        single_point = points.ndim == 1
+        if single_point:
+            points = points.reshape(1, -1)
+
+        min_coords, max_coords = self.get_bounds()
+
+        # Box SDF: φ(x) = max(max(xmin - x), max(x - xmax))
+        dist_from_min = min_coords - points  # Positive if outside min boundary
+        dist_from_max = points - max_coords  # Positive if outside max boundary
+
+        # For each point, find maximum violation
+        sdf = np.maximum(np.max(dist_from_min, axis=1), np.max(dist_from_max, axis=1))
+
+        if single_point:
+            return sdf[0]
+        return sdf
+
+    # ============================================================================
+    # Manifold Trait Implementation (Issue #590 - Phase 1.2)
+    # ============================================================================
+
+    @property
+    def manifold_dimension(self) -> int:
+        """
+        Intrinsic dimension of the manifold.
+
+        For TensorProductGrid, manifold dimension == spatial dimension (flat Euclidean space).
+        """
+        return self._dimension
+
+    def get_metric_tensor(
+        self,
+        points: NDArray,
+    ) -> NDArray:
+        """
+        Compute Riemannian metric tensor at given points.
+
+        For flat Euclidean space (TensorProductGrid), metric is identity: g = I.
+
+        Args:
+            points: Query points, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Metric tensor(s):
+                - Single point: (dimension, dimension) identity matrix
+                - Multiple points: (num_points, dimension, dimension) stack of identities
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> g = grid.get_metric_tensor(np.array([0.5, 0.5]))
+            >>> assert np.allclose(g, np.eye(2))
+        """
+        # Handle single point
+        single_point = points.ndim == 1
+        if single_point:
+            return np.eye(self._dimension)
+
+        num_points = points.shape[0]
+        metric = np.zeros((num_points, self._dimension, self._dimension))
+        for i in range(num_points):
+            metric[i] = np.eye(self._dimension)
+
+        return metric
+
+    def get_tangent_space_basis(
+        self,
+        points: NDArray,
+    ) -> NDArray:
+        """
+        Compute orthonormal basis for tangent space at given points.
+
+        For flat Euclidean space, tangent space is ℝ^d with canonical basis.
+
+        Args:
+            points: Query points, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Tangent basis vectors:
+                - Single point: (dimension, dimension) canonical basis
+                - Multiple points: (num_points, dimension, dimension)
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> basis = grid.get_tangent_space_basis(np.array([0.5, 0.5]))
+            >>> assert np.allclose(basis, np.eye(2))
+        """
+        # Canonical basis (same as metric for flat space)
+        return self.get_metric_tensor(points)
+
+    def compute_christoffel_symbols(
+        self,
+        points: NDArray,
+    ) -> NDArray:
+        """
+        Compute Christoffel symbols for flat Euclidean space.
+
+        For flat metric g = I, all Christoffel symbols are zero: Γᵢⱼᵏ = 0.
+
+        Args:
+            points: Query points, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Christoffel symbols (all zeros):
+                - Single point: (dimension, dimension, dimension) zeros
+                - Multiple points: (num_points, dimension, dimension, dimension) zeros
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> Gamma = grid.compute_christoffel_symbols(np.array([0.5, 0.5]))
+            >>> assert np.allclose(Gamma, 0)
+        """
+        # Handle single point
+        single_point = points.ndim == 1
+        if single_point:
+            return np.zeros((self._dimension, self._dimension, self._dimension))
+
+        num_points = points.shape[0]
+        return np.zeros((num_points, self._dimension, self._dimension, self._dimension))
+
+    # ============================================================================
+    # Lipschitz Trait Implementation (Issue #590 - Phase 1.2)
+    # ============================================================================
+
+    def get_lipschitz_constant(
+        self,
+        region: str | None = None,
+    ) -> float:
+        """
+        Return Lipschitz constant for boundary representation.
+
+        For axis-aligned rectangular boundaries, L = 0 (piecewise constant).
+
+        Args:
+            region: Optional boundary region name
+
+        Returns:
+            Lipschitz constant L = 0 for axis-aligned boundaries
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> L = grid.get_lipschitz_constant()
+            >>> assert L == 0.0
+        """
+        return 0.0  # Axis-aligned boundaries are piecewise constant
+
+    def validate_lipschitz_regularity(
+        self,
+        tolerance: float = 1e-6,
+    ) -> tuple[bool, str]:
+        """
+        Validate that boundary satisfies Lipschitz condition.
+
+        Rectangular tensor product grids always have Lipschitz boundaries
+        (piecewise smooth, axis-aligned).
+
+        Args:
+            tolerance: Numerical tolerance (unused for rectangular domains)
+
+        Returns:
+            (True, "") - Always valid for rectangular grids
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> valid, msg = grid.validate_lipschitz_regularity()
+            >>> assert valid and msg == ""
+        """
+        return True, ""
+
+    # ============================================================================
+    # Periodic Trait Implementation (Issue #590 - Phase 1.2)
+    # ============================================================================
+
+    @property
+    def periodic_dimensions(self) -> tuple[int, ...]:
+        """
+        Get dimensions with periodic topology.
+
+        Checks boundary conditions to determine which dimensions are periodic.
+
+        Returns:
+            Tuple of dimension indices that are periodic (empty if none)
+
+        Example:
+            >>> from mfg_pde.geometry.boundary import BoundaryConditions, BCType
+            >>> # Periodic in x (dimension 0)
+            >>> bc = BoundaryConditions(dimension=2, bc_type=BCType.PERIODIC)
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,2*np.pi),(0,1)],
+            ...                           Nx=[20,10], boundary_conditions=bc)
+            >>> # Note: Current BC doesn't track per-dimension periodicity yet
+        """
+        # Check boundary conditions for periodicity
+        # Note: Current BC system doesn't have per-dimension periodic flags yet
+        # This will be enhanced when SupportsRegionMarking is implemented
+        if self._boundary_conditions is None:
+            return ()
+
+        from mfg_pde.geometry.boundary.types import BCType
+
+        if self._boundary_conditions.is_uniform:
+            if self._boundary_conditions.bc_type == BCType.PERIODIC:
+                # All dimensions periodic
+                return tuple(range(self._dimension))
+
+        return ()  # Default: no periodicity
+
+    def get_periods(self) -> dict[int, float]:
+        """
+        Get period lengths for periodic dimensions.
+
+        Returns:
+            Dictionary mapping dimension index → period length (L = xmax - xmin)
+
+        Example:
+            >>> # Assuming periodic BC
+            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 2*np.pi)], Nx=[100])
+            >>> periods = grid.get_periods()
+            >>> # Returns {0: 2*pi} if periodic in x
+        """
+        periodic_dims = self.periodic_dimensions
+        periods = {}
+        for dim_idx in periodic_dims:
+            xmin, xmax = self.bounds[dim_idx]
+            periods[dim_idx] = xmax - xmin
+        return periods
+
+    def wrap_coordinates(
+        self,
+        points: NDArray,
+    ) -> NDArray:
+        """
+        Wrap coordinates to canonical fundamental domain.
+
+        For periodic dimension i: x_wrapped = xmin + (x - xmin) mod L
+
+        Args:
+            points: Points to wrap, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Wrapped coordinates in [xmin, xmax), same shape as input
+
+        Example:
+            >>> # Assuming 1D periodic domain [0, 2π)
+            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 2*np.pi)], Nx=[100])
+            >>> x_wrapped = grid.wrap_coordinates(np.array([3*np.pi]))
+            >>> # Returns [π] if periodic
+        """
+        # Handle single point
+        single_point = points.ndim == 1
+        if single_point:
+            points = points.reshape(1, -1)
+
+        wrapped = points.copy()
+        periodic_dims = self.periodic_dimensions
+
+        for dim_idx in periodic_dims:
+            xmin, xmax = self.bounds[dim_idx]
+            period = xmax - xmin
+            wrapped[:, dim_idx] = xmin + np.mod(wrapped[:, dim_idx] - xmin, period)
+
+        if single_point:
+            return wrapped[0]
+        return wrapped
+
+    def compute_periodic_distance(
+        self,
+        points1: NDArray,
+        points2: NDArray,
+    ) -> NDArray:
+        """
+        Compute distance accounting for periodic topology.
+
+        For periodic dim i: d_i = min(|x1_i - x2_i|, L_i - |x1_i - x2_i|)
+        Total distance: d = sqrt(∑ d_i²)
+
+        Args:
+            points1: First set of points, shape (num_points, dimension) or (dimension,)
+            points2: Second set of points, same shape as points1
+
+        Returns:
+            Distances, shape (num_points,) or scalar
+
+        Example:
+            >>> # 1D periodic [0, 1)
+            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+            >>> x1 = np.array([0.1])
+            >>> x2 = np.array([0.9])
+            >>> dist = grid.compute_periodic_distance(x1, x2)
+            >>> # Returns 0.2 (wrapped distance) if periodic, 0.8 otherwise
+        """
+        # Handle single point
+        single_point = points1.ndim == 1
+        if single_point:
+            points1 = points1.reshape(1, -1)
+            points2 = points2.reshape(1, -1)
+
+        diff = points1 - points2
+        periodic_dims = self.periodic_dimensions
+
+        for dim_idx in periodic_dims:
+            period = self.bounds[dim_idx][1] - self.bounds[dim_idx][0]
+            # Shortest distance on circle: min(|d|, L - |d|)
+            abs_diff = np.abs(diff[:, dim_idx])
+            diff[:, dim_idx] = np.minimum(abs_diff, period - abs_diff)
+
+        distances = np.linalg.norm(diff, axis=1)
+
+        if single_point:
+            return distances[0]
+        return distances
 
     def __repr__(self) -> str:
         """String representation of grid."""
