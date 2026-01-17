@@ -60,6 +60,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry.boundary import ConstraintProtocol
 
 
 class HJBFDMSolver(BaseHJBSolver):
@@ -108,6 +109,7 @@ class HJBFDMSolver(BaseHJBSolver):
         max_newton_iterations: int | None = None,
         newton_tolerance: float | None = None,
         bc_mode: Literal["standard", "adjoint_consistent"] = "standard",
+        constraint: ConstraintProtocol | None = None,
         # Deprecated parameters
         NiterNewton: int | None = None,
         l2errBoundNewton: float | None = None,
@@ -131,6 +133,11 @@ class HJBFDMSolver(BaseHJBSolver):
                 - 'adjoint_consistent': Coupled BC (∂U/∂n = -σ²/2 · ∂ln(m)/∂n)
                 Use 'adjoint_consistent' for better equilibrium consistency when
                 stall point is at domain boundary. Default: 'standard' (backward compat).
+            constraint: Variational inequality constraint (Issue #591):
+                - ObstacleConstraint: u ≥ ψ or u ≤ ψ (capacity limits, running cost floor)
+                - BilateralConstraint: ψ_lower ≤ u ≤ ψ_upper (bounded controls)
+                - None: No constraints (default)
+                Applied after each timestep solve via projection P_K(u).
             backend: 'numpy', 'torch', or None
         """
         import warnings
@@ -172,6 +179,7 @@ class HJBFDMSolver(BaseHJBSolver):
         self.solver_type = solver_type
         self.damping_factor = damping_factor
         self.bc_mode = bc_mode
+        self.constraint = constraint  # Variational inequality constraint (Issue #591)
 
         # Validate
         if self.max_newton_iterations < 1:
@@ -470,7 +478,7 @@ class HJBFDMSolver(BaseHJBSolver):
                     logger.info(f"[DEBUG Issue #542] BC has {len(bc.segments)} segments")
 
             # Use optimized 1D solver with BC-aware computation (Issue #542 fix)
-            return base_hjb.solve_hjb_system_backward(
+            U_solution = base_hjb.solve_hjb_system_backward(
                 M_density_from_prev_picard=M_density,
                 U_final_condition_at_T=U_terminal,
                 U_from_prev_picard=U_coupling_prev,
@@ -483,6 +491,14 @@ class HJBFDMSolver(BaseHJBSolver):
                 bc=bc,  # Now uses proper Robin BC for adjoint-consistent mode (Issue #574)
                 domain_bounds=domain_bounds,
             )
+
+            # Apply variational inequality constraint via projection (Issue #591)
+            # For 1D path, apply constraint to all timesteps after solving
+            if self.constraint is not None:
+                for n in range(U_solution.shape[0]):
+                    U_solution[n] = self.constraint.project(U_solution[n])
+
+            return U_solution
         else:
             # Use nD solver with centralized nonlinear solver
             return self._solve_hjb_nd(
@@ -573,7 +589,9 @@ class HJBFDMSolver(BaseHJBSolver):
             t_current = n * self.dt
 
             # Solve nonlinear system using centralized solver
-            U_solution[n] = self._solve_single_timestep(U_next, M_next, U_guess, sigma_at_n, Sigma_at_n, time=t_current)
+            U_solution[n] = self._solve_single_timestep(
+                U_next, M_next, U_guess, sigma_at_n, Sigma_at_n, time=t_current, constraint=self.constraint
+            )
 
         return U_solution
 
@@ -585,6 +603,7 @@ class HJBFDMSolver(BaseHJBSolver):
         sigma_at_n: float | NDArray | None = None,
         Sigma_at_n: NDArray | None = None,
         time: float = 0.0,
+        constraint: ConstraintProtocol | None = None,
     ) -> NDArray:
         """
         Solve single HJB timestep using centralized nonlinear solver.
@@ -601,6 +620,10 @@ class HJBFDMSolver(BaseHJBSolver):
             sigma_at_n: Scalar diffusion coefficient at current timestep (None, float, or array)
             Sigma_at_n: Tensor diffusion coefficient at current timestep (None or tensor array)
             time: Current time for time-dependent BC values
+            constraint: Variational inequality constraint (Issue #591)
+                - ObstacleConstraint: u ≥ ψ or u ≤ ψ
+                - BilateralConstraint: ψ_lower ≤ u ≤ ψ_upper
+                - None: No constraints
         """
         if self.solver_type == "fixed_point":
             # Define fixed-point map G: u → u
@@ -645,6 +668,12 @@ class HJBFDMSolver(BaseHJBSolver):
                 spacing=self.spacing,
                 time=time,
             )
+
+        # Apply variational inequality constraint via projection (Issue #591)
+        # Order: 1) Solve PDE → 2) Enforce BC → 3) Project onto constraint set K
+        # This ensures the solution satisfies both BC and constraints
+        if constraint is not None:
+            U_solution = constraint.project(U_solution)
 
         return U_solution
 

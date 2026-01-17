@@ -45,6 +45,9 @@ Usage:
 # =============================================================================
 
 # =============================================================================
+# Variational Inequality Constraints (Issue #591 - Tier 2 BCs)
+# =============================================================================
+# =============================================================================
 # Base Classes and Protocols (applicator hierarchy)
 # =============================================================================
 from .applicator_base import (
@@ -207,6 +210,8 @@ from .conditions import (
     robin_bc,
     uniform_bc,
 )
+from .constraint_protocol import ConstraintProtocol
+from .constraints import BilateralConstraint, ObstacleConstraint
 
 # =============================================================================
 # BC Dispatch (unified entry point for solvers)
@@ -249,6 +254,10 @@ __all__ = [
     "BoundaryHandler",
     "AdvancedBoundaryHandler",
     "validate_boundary_handler",
+    # Variational Inequality Constraints (Issue #591)
+    "ConstraintProtocol",
+    "ObstacleConstraint",
+    "BilateralConstraint",
     # Base classes and protocols
     "DiscretizationType",
     "GridType",
