@@ -316,6 +316,7 @@ class FPNetworkSolver(BaseFPSolver):
         A = A.tocsr()
         m_next = spsolve(A, b)
         # Ensure result is numpy array
+        # Backend compatibility - scipy.sparse may return matrix (Issue #543 acceptable)
         if hasattr(m_next, "toarray"):
             m_next = m_next.toarray().flatten()
         m_next = np.asarray(m_next)

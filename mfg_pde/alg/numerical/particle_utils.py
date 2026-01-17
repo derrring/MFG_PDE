@@ -190,6 +190,7 @@ def apply_boundary_conditions_gpu(particles, xmin: float, xmax: float, bc_type: 
 
     elif bc_type == "dirichlet":
         # Absorbing: clamp to domain
+        # Backend compatibility - JAX uses clamp, NumPy uses clip (Issue #543 acceptable)
         if hasattr(xp, "clip"):
             particles = xp.clip(particles, xmin, xmax)
         else:

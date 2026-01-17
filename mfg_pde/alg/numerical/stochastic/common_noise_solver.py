@@ -215,7 +215,9 @@ class CommonNoiseMFGSolver:
         Raises:
             ValueError: If problem doesn't have common noise
         """
-        if not hasattr(problem, "has_common_noise") or not problem.has_common_noise():
+        # Problem API validation (Issue #543: use getattr instead of hasattr)
+        has_common_noise = getattr(problem, "has_common_noise", None)
+        if has_common_noise is None or not callable(has_common_noise) or not has_common_noise():
             raise ValueError("Problem must have common noise process defined")
 
         self.problem = problem
