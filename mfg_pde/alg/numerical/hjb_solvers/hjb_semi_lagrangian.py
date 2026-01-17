@@ -82,6 +82,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
       - Diffusion: nD Laplacian (complete)
       - Characteristic tracing: Vector form (complete)
       - Optimal control: Vector optimization (complete)
+
+    Required Geometry Traits (Issue #596 Phase 2.1):
+        - SupportsGradient: Provides ∇U operator for optimal control computation
+
+    Compatible Geometries:
+        - TensorProductGrid (structured grids)
+        - ImplicitDomain (SDF-based domains)
+        - Any geometry implementing SupportsGradient trait
     """
 
     # Scheme family trait for duality validation (Issue #580)
@@ -171,6 +179,17 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         # Detect problem dimension
         self.dimension = self._detect_dimension(problem)
+
+        # Validate geometry capabilities (Issue #596 Phase 2.1)
+        # Semi-Lagrangian solver requires gradient operator for optimal control computation
+        from mfg_pde.geometry.protocols import SupportsGradient
+
+        if not isinstance(problem.geometry, SupportsGradient):
+            raise TypeError(
+                f"HJB Semi-Lagrangian solver requires geometry with SupportsGradient trait for ∇U computation. "
+                f"{type(problem.geometry).__name__} does not implement this trait. "
+                f"Compatible geometries: TensorProductGrid, ImplicitDomain."
+            )
 
         # Precompute grid and time parameters (dimension-agnostic)
         if self.dimension == 1:
@@ -272,10 +291,15 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
     def _compute_gradient(self, u_values: np.ndarray, check_cfl: bool = True) -> np.ndarray | tuple[np.ndarray, ...]:
         """
-        Compute gradient ∇u for optimal control using np.gradient.
+        Compute gradient ∇u for optimal control using trait-based geometry operators (Issue #596 Phase 2.1).
 
         For standard MFG with quadratic control cost, the optimal control is:
             α*(x,t) = ∇u(x,t)
+
+        Uses geometry.get_gradient_operator() which automatically handles:
+        - Boundary conditions via ghost cells
+        - Scheme selection (central differences for Semi-Lagrangian)
+        - Multi-dimensional stencils
 
         Args:
             u_values: Value function array
@@ -289,23 +313,17 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 - nD: tuple of d arrays, each shape (Nx1+1, ..., Nxd+1)
 
         Note:
-            Uses np.gradient with edge_order=2 for accurate boundary gradients.
-            For Neumann boundaries (∂u/∂n=0), gradient is explicitly set to zero.
+            Uses central differences for characteristic tracing (Semi-Lagrangian scheme).
+            Boundary conditions are automatically enforced by gradient operators.
             Issues CFL warning if max|∇u|·dt/dx > 1.
         """
+        # Get gradient operators from geometry (Issue #596 Phase 2.1)
+        # Semi-Lagrangian uses central differences for gradient computation
+        grad_ops = self.problem.geometry.get_gradient_operator(scheme="central")
+
         if self.dimension == 1:
-            # 1D gradient computation
-            grad_u = np.gradient(u_values, self.dx, edge_order=2)
-
-            # Enforce Neumann BC: gradient = 0 at Neumann boundaries
-            # This is critical for correct characteristic tracing at walls
-            bc = self._get_boundary_conditions()
-            bc_type_min, bc_type_max = self._get_per_boundary_bc_types(bc)
-
-            if bc_type_min in ("neumann", "no_flux"):
-                grad_u[0] = 0.0  # Enforce ∂u/∂x = 0 at x_min
-            if bc_type_max in ("neumann", "no_flux"):
-                grad_u[-1] = 0.0  # Enforce ∂u/∂x = 0 at x_max
+            # 1D gradient computation via operator
+            grad_u = grad_ops[0](u_values)
 
             # CFL check
             if check_cfl and self.check_cfl:
@@ -321,10 +339,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             return grad_u
 
         else:
-            # nD gradient computation
+            # nD gradient computation via operators
             grad_components = []
-            for axis in range(self.dimension):
-                grad_axis = np.gradient(u_values, self.dx[axis], axis=axis, edge_order=2)
+            for d in range(self.dimension):
+                grad_axis = grad_ops[d](u_values)
                 grad_components.append(grad_axis)
 
             # CFL check
@@ -352,6 +370,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         this method computes how many substeps are needed to maintain
         CFL <= cfl_target (default 0.9).
 
+        Uses trait-based gradient operators for consistent computation (Issue #596 Phase 2.1).
+
         Args:
             u_values: Current value function array
             dt_target: Target time step (full time step to subdivide)
@@ -362,19 +382,18 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 - n_substeps: Number of substeps needed (1 if CFL <= 1.0)
                 - dt_substep: Time step to use for each substep
         """
+        # Compute gradient using trait-based operators (reuse _compute_gradient with CFL check disabled)
+        grad_result = self._compute_gradient(u_values, check_cfl=False)
+
         if self.dimension == 1:
             # 1D CFL computation
-            grad_u = np.gradient(u_values, self.dx, edge_order=2)
+            grad_u = grad_result
             max_grad = np.max(np.abs(grad_u))
             cfl = max_grad * dt_target / self.dx
             dx_eff = self.dx
         else:
             # nD CFL computation
-            grad_components = []
-            for axis in range(self.dimension):
-                grad_axis = np.gradient(u_values, self.dx[axis], axis=axis, edge_order=2)
-                grad_components.append(grad_axis)
-
+            grad_components = grad_result  # Tuple of gradient arrays
             grad = np.stack(grad_components, axis=0)
             magnitude = np.sqrt(np.sum(grad**2, axis=0))
             max_grad = np.max(magnitude)
