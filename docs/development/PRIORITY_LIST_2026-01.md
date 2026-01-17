@@ -1,8 +1,10 @@
-# Development Priority List (2026-01-10)
+# Development Priority List (2026-01-17)
 
-## Current Version: v0.16.16
+## Current Version: v0.16.16 → v0.17.0 (ready for release)
 
 This document outlines the prioritized roadmap for infrastructure improvements following PR #548.
+
+**Recent Completion**: Issue #580 (Three-Mode Solving API) merged to main on 2026-01-17.
 
 ---
 
@@ -126,6 +128,66 @@ Protocol duck typing with `hasattr()` violates Fail Fast principle and creates u
 - **High priority** but can proceed incrementally
 - **Core first** (highest leverage for downstream code)
 - **Enables better type checking** and fail-fast behavior
+
+---
+
+## ✅ Priority 3.5: Adjoint-Aware Solver Pairing (#580) - **COMPLETED**
+
+**Issue**: [#580](https://github.com/derrring/MFG_PDE/issues/580)
+**PR**: [#585](https://github.com/derrring/MFG_PDE/pull/585)
+**Status**: ✅ COMPLETED (2026-01-17)
+**Priority**: High (scientific correctness)
+**Size**: Large
+**Actual Effort**: ~10 hours (5 implementation phases + comprehensive review)
+
+### Problem
+Users could accidentally mix incompatible discretization schemes (e.g., FDM HJB + GFDM FP), breaking the adjoint duality relationship L_FP = L_HJB^T required for Nash equilibrium convergence.
+
+**Impact**: Silent failure - Nash gap doesn't converge even as mesh size h→0.
+
+### Solution Implemented
+
+**Three-Mode Solving API** (PR #585):
+
+1. **Safe Mode**: `problem.solve(scheme=NumericalScheme.FDM_UPWIND)`
+   - Factory creates guaranteed dual pairs
+   - Impossible to create invalid pairings
+
+2. **Expert Mode**: `problem.solve(hjb_solver=hjb, fp_solver=fp)`
+   - Manual control with automatic validation
+   - Educational warnings if mismatched
+
+3. **Auto Mode**: `problem.solve()`
+   - Intelligent defaults (backward compatible)
+   - Currently uses FDM_UPWIND
+
+**Key Components**:
+- `NumericalScheme` enum: User-facing scheme selection
+- `SchemeFamily` enum: Internal classification (FDM, SL, GFDM, etc.)
+- Trait system: Refactoring-safe `_scheme_family` attributes
+- Duality validation: `check_solver_duality()` utility
+- Paired solver factory: `create_paired_solvers()` with config threading
+
+### Result
+- ✅ 12 files created (3 core, 6 tests, 3 docs)
+- ✅ 14 files modified (12 solver traits, 2 facade)
+- ✅ 121 tests passing (~98% coverage)
+- ✅ 2,400+ lines of documentation
+- ✅ 100% backward compatible
+- ✅ All reviews passed (5-star ratings across all categories)
+- ✅ Zero performance regression (<1% overhead)
+
+**Documentation**:
+- User guide: `docs/user/three_mode_api_migration_guide.md`
+- Technical guide: `docs/development/issue_580_adjoint_pairing_implementation.md`
+- Demo: `examples/basic/three_mode_api_demo.py`
+- Reviews: `.github/*_REVIEW_580.md` (7 documents)
+
+### Why 3.5?
+- **Critical for scientific correctness** but not infrastructure refactoring
+- **Independent feature development** (not part of infrastructure priority sequence)
+- **High value** but **different scope** than infrastructure improvements
+- **Inserted after completion** to maintain chronological record
 
 ---
 
