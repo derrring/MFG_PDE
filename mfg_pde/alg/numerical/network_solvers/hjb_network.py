@@ -42,6 +42,19 @@ class NetworkHJBSolver(BaseHJBSolver):
     ∂u/∂t + H_i(m, ∇_G u, t) = 0
 
     with network-specific Hamiltonians and discrete operators.
+
+    Required Geometry Traits (Issue #596 Phase 2.4):
+        - SupportsGraphLaplacian: Discrete Laplacian L = D - A for diffusion operators
+        - SupportsAdjacency: Adjacency matrix A and neighbor queries for connectivity
+
+    Compatible Geometries:
+        - NetworkGeometry (Grid, Random, ScaleFree, Custom networks)
+        - MazeGeometry (2D grids with obstacles)
+        - Any graph geometry implementing required traits
+
+    Note:
+        Uses trait-based graph operators for discrete differential equations on networks.
+        Trait validation occurs at problem/geometry level.
     """
 
     def __init__(

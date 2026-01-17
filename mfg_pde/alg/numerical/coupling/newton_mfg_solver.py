@@ -62,10 +62,18 @@ class NewtonMFGSolver(BaseMFGSolver):
         - Automatic Jacobian (finite diff or JAX)
         - Line search for globalization
 
+    Required Geometry Traits (Issue #596 Phase 2.3):
+        This coupling solver requires trait-validated HJB and FP component solvers:
+        - HJB solver must use geometry with SupportsGradient trait
+        - FP solver must use geometry with SupportsLaplacian trait
+
+        Trait validation occurs in component solvers, not at coupling layer.
+        See HJBFDMSolver and FPFDMSolver docstrings for trait details.
+
     Args:
         problem: MFG problem definition
-        hjb_solver: HJB solver instance
-        fp_solver: FP solver instance
+        hjb_solver: HJB solver instance (must be trait-validated)
+        fp_solver: FP solver instance (must be trait-validated)
         picard_warmup: Number of Picard iterations before Newton (default: 3)
         newton_tolerance: Convergence tolerance for Newton (default: 1e-6)
         newton_max_iterations: Maximum Newton iterations (default: 20)

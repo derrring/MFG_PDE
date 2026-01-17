@@ -138,6 +138,34 @@ def _build_diffusion_matrix_with_bc(
     """
     Build implicit diffusion matrix using LinearConstraint pattern.
 
+    .. deprecated:: 0.17.0
+        This function is deprecated as part of Issue #597 Milestone 2B.
+        Use `LaplacianOperator.as_scipy_sparse()` with `BoundaryConditions` instead.
+
+        Migration example::
+
+            # OLD: Manual matrix assembly with LinearConstraint
+            bc_constraint = LinearConstraint(weights={0: 1.0}, bias=0.0)  # Neumann
+            A_diffusion, b_bc = _build_diffusion_matrix_with_bc(
+                shape=shape, spacing=spacing, D=D, dt=dt, ndim=ndim,
+                bc_constraint_min=bc_constraint, bc_constraint_max=bc_constraint
+            )
+            b_rhs = M_current.ravel() / dt + b_bc
+            M_star = sparse.linalg.spsolve(A_diffusion, b_rhs).reshape(shape)
+
+            # NEW: Operator-based assembly with BoundaryConditions
+            from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+            from mfg_pde.geometry.boundary import no_flux_bc
+
+            bc = no_flux_bc(dimension=ndim)
+            L_op = LaplacianOperator(spacings=list(spacing), field_shape=shape, bc=bc)
+            L_matrix = L_op.as_scipy_sparse()
+
+            I = sparse.eye(np.prod(shape))
+            A_diffusion = I / dt - D * L_matrix
+            b_rhs = M_current.ravel() / dt
+            M_star = sparse.linalg.spsolve(A_diffusion, b_rhs).reshape(shape)
+
     Implements the matrix assembly protocol from docs/development/matrix_assembly_bc_protocol.md.
 
     The assembled system is: A @ m^{k+1} = b where:
@@ -270,8 +298,7 @@ def solve_timestep_explicit_with_drift(
     sigma: float | np.ndarray,
     spacing: tuple[float, ...],
     ndim: int,
-    bc_constraint_min: LinearConstraint | None = None,
-    bc_constraint_max: LinearConstraint | None = None,
+    boundary_conditions: BoundaryConditions | None = None,
 ) -> np.ndarray:
     """
     Solve one timestep using semi-implicit scheme with direct drift.
@@ -282,8 +309,8 @@ def solve_timestep_explicit_with_drift(
 
     This is unconditionally stable for diffusion while allowing direct drift.
 
-    Matrix assembly follows the LinearConstraint protocol from
-    docs/development/matrix_assembly_bc_protocol.md for proper BC integration.
+    **Issue #597 Milestone 2B**: Refactored to use LaplacianOperator with
+    trait-based geometry operators instead of manual matrix assembly.
 
     Parameters
     ----------
@@ -299,10 +326,8 @@ def solve_timestep_explicit_with_drift(
         Grid spacing (dx, dy, ...)
     ndim : int
         Spatial dimension
-    bc_constraint_min : LinearConstraint, optional
-        BC constraint for min boundary (default: Neumann du/dn=0)
-    bc_constraint_max : LinearConstraint, optional
-        BC constraint for max boundary (default: Neumann du/dn=0)
+    boundary_conditions : BoundaryConditions, optional
+        Boundary conditions for the domain (default: no-flux on all boundaries)
 
     Returns
     -------
@@ -311,12 +336,12 @@ def solve_timestep_explicit_with_drift(
 
     Notes
     -----
-    The BC handling uses the LinearConstraint pattern:
-    - Tier 2 (Neumann): weights={0: 1.0}, bias=0.0 (default)
-    - Tier 3 (Robin/No-flux): weights={0: alpha}, bias=0.0
+    Uses LaplacianOperator.as_scipy_sparse() for diffusion matrix assembly.
+    This ensures correct one-sided stencils at Neumann boundaries, matching
+    the coefficient folding behavior validated in Issue #597 Milestone 2.
 
-    For full FP no-flux BCs with advection, use ZeroFluxCalculator to get
-    the Robin coefficient that accounts for drift at boundaries.
+    For full FP no-flux BCs with advection, use no_flux_bc() which properly
+    handles mass conservation at boundaries.
     """
     # Get diffusion coefficient
     if isinstance(sigma, np.ndarray):
@@ -328,19 +353,27 @@ def solve_timestep_explicit_with_drift(
     D = 0.5 * sigma_val**2  # Diffusion coefficient
     shape = M_current.shape
 
-    # Step 1: Implicit diffusion using LinearConstraint-based matrix assembly
-    A_diffusion, b_bc = _build_diffusion_matrix_with_bc(
-        shape=shape,
-        spacing=spacing,
-        D=D,
-        dt=dt,
-        ndim=ndim,
-        bc_constraint_min=bc_constraint_min,
-        bc_constraint_max=bc_constraint_max,
-    )
+    # Set default boundary conditions
+    if boundary_conditions is None:
+        from mfg_pde.geometry.boundary import no_flux_bc
 
-    # RHS: m^k / dt + BC bias contributions
-    b_rhs = M_current.ravel() / dt + b_bc
+        boundary_conditions = no_flux_bc(dimension=ndim)
+
+    # Step 1: Implicit diffusion using LaplacianOperator (Issue #597 Milestone 2B)
+    from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+
+    L_op = LaplacianOperator(spacings=list(spacing), field_shape=shape, bc=boundary_conditions)
+    L_matrix = L_op.as_scipy_sparse()
+
+    # Build implicit system matrix: (I/dt - D*Δ) m^{k+1} = m^k/dt
+    # Note: Laplacian has NEGATIVE diagonal, so we SUBTRACT
+    N_total = int(np.prod(shape))
+    identity = sparse.eye(N_total)
+    A_diffusion = identity / dt - D * L_matrix
+
+    # RHS: m^k / dt
+    # Note: No b_bc term needed - BCs are incorporated into L_matrix
+    b_rhs = M_current.ravel() / dt
 
     # Solve implicit diffusion
     M_star = sparse.linalg.spsolve(A_diffusion, b_rhs).reshape(shape)
@@ -590,6 +623,7 @@ def solve_fp_nd_full_system(
                 sigma_at_k,
                 spacing,
                 ndim,
+                boundary_conditions,
             )
         else:
             # MFG-coupled mode: scalar diffusion + U-based drift - use implicit solver

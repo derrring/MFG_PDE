@@ -26,13 +26,29 @@ from numpy.typing import NDArray
 
 from mfg_pde.geometry.base import ImplicitGeometry
 from mfg_pde.geometry.protocol import GeometryType
+from mfg_pde.geometry.protocols import (
+    SupportsBoundaryDistance,
+    SupportsBoundaryNormal,
+    SupportsBoundaryProjection,
+    SupportsLipschitz,
+    SupportsManifold,
+)
 from mfg_pde.utils.mfg_logging import get_logger
 
 # Module logger
 logger = get_logger(__name__)
 
 
-class ImplicitDomain(ImplicitGeometry):
+class ImplicitDomain(
+    ImplicitGeometry,
+    # Boundary traits (Issue #590 Phase 1.2) - SDF-based geometries naturally support these
+    SupportsBoundaryNormal,
+    SupportsBoundaryProjection,
+    SupportsBoundaryDistance,
+    # Topology traits (Issue #590 Phase 1.2)
+    SupportsManifold,  # SDFs with C² continuity form smooth manifolds
+    SupportsLipschitz,  # SDFs are typically 1-Lipschitz
+):
     """
     Abstract base class for n-dimensional implicit domains.
 
@@ -450,6 +466,222 @@ class ImplicitDomain(ImplicitGeometry):
         """
         sd = self.signed_distance(x)
         return np.abs(sd) < tol
+
+    # =========================================================================
+    # Trait Protocol Implementations (Issue #590 Phase 1.2)
+    # =========================================================================
+
+    def get_outward_normal(
+        self,
+        points: NDArray[np.float64],
+        boundary_name: str | None = None,
+    ) -> NDArray[np.float64]:
+        """
+        Compute outward unit normal vectors at boundary points.
+
+        Implements SupportsBoundaryNormal protocol.
+
+        For SDF-based geometries, the outward normal is n = ∇φ / |∇φ| where
+        φ is the signed distance function.
+
+        Args:
+            points: Points at which to evaluate normal, shape (num_points, dimension)
+                    or (dimension,) for single point
+            boundary_name: Ignored for implicit domains (SDF defines single boundary)
+
+        Returns:
+            Outward unit normals, shape (num_points, dimension) or (dimension,)
+
+        Example:
+            >>> sphere = Hypersphere(center=[0, 0], radius=1.0)
+            >>> normal = sphere.get_outward_normal(np.array([1.0, 0.0]))
+            >>> assert np.allclose(normal, [1.0, 0.0])  # Points radially outward
+
+        Note:
+            This method delegates to get_boundary_normal() which uses finite
+            differences to compute the SDF gradient.
+        """
+        # Delegate to existing implementation
+        return self.get_boundary_normal(points)
+
+    def get_signed_distance(
+        self,
+        points: NDArray[np.float64],
+    ) -> NDArray[np.float64] | float:
+        """
+        Compute signed distance to boundary for given points.
+
+        Implements SupportsBoundaryDistance protocol.
+
+        Args:
+            points: Query points, shape (num_points, dimension) or (dimension,) for single point
+
+        Returns:
+            Signed distances, shape (num_points,) or scalar for single point
+                - Negative: Inside domain
+                - Zero: On boundary
+                - Positive: Outside domain
+
+        Example:
+            >>> sphere = Hypersphere(center=[0, 0], radius=1.0)
+            >>> points = np.array([[0, 0], [1, 0], [2, 0]])  # Center, boundary, outside
+            >>> phi = sphere.get_signed_distance(points)
+            >>> assert phi[0] < 0  # Inside
+            >>> assert np.isclose(phi[1], 0)  # On boundary
+            >>> assert phi[2] > 0  # Outside
+
+        Note:
+            This method delegates to signed_distance() which is the core SDF
+            implementation provided by subclasses.
+        """
+        # Delegate to existing implementation
+        return self.signed_distance(points)
+
+    def project_to_interior(
+        self,
+        points: NDArray[np.float64],
+        tolerance: float = 1e-10,
+    ) -> NDArray[np.float64]:
+        """
+        Project points from outside domain into interior.
+
+        Implements SupportsBoundaryProjection protocol.
+
+        This moves points outside the domain just inside the boundary by
+        projecting to the boundary and then moving inward by tolerance along
+        the inward normal.
+
+        Args:
+            points: Points to project, shape (num_points, dimension) or (dimension,)
+            tolerance: Distance to move inside boundary (for numerical stability)
+
+        Returns:
+            Projected points in interior, same shape as input
+
+        Example:
+            >>> sphere = Hypersphere(center=[0, 0], radius=1.0)
+            >>> outside = np.array([2.0, 0.0])  # Outside
+            >>> inside = sphere.project_to_interior(outside, tolerance=0.01)
+            >>> assert sphere.signed_distance(inside) < 0  # Now inside
+
+        Note:
+            For points already inside, returns them unchanged.
+        """
+        is_single = points.ndim == 1
+        if is_single:
+            points = points.reshape(1, -1)
+
+        # Check which points are outside
+        sd = self.signed_distance(points)
+        if np.isscalar(sd):
+            sd = np.array([sd])
+
+        outside = sd > 0
+
+        if not np.any(outside):
+            # All points already inside
+            return points[0] if is_single else points
+
+        # Project to boundary, then move inside by tolerance
+        points_interior = points.copy()
+
+        # Project outside points to boundary
+        boundary_points = self.project_to_boundary(points[outside])
+
+        # Get inward normal (negative of outward normal)
+        normals = self.get_outward_normal(boundary_points)
+
+        # Move inward by tolerance
+        points_interior[outside] = boundary_points - tolerance * normals
+
+        return points_interior[0] if is_single else points_interior
+
+    def get_metric_tensor(
+        self,
+        points: NDArray[np.float64],
+    ) -> NDArray[np.float64]:
+        """
+        Get metric tensor for the domain manifold.
+
+        Implements SupportsManifold protocol.
+
+        For ImplicitDomain in Euclidean space, the metric tensor is the
+        standard Euclidean metric g_ij = δ_ij (identity matrix).
+
+        Args:
+            points: Points at which to evaluate metric, shape (num_points, dimension)
+                    or (dimension,) for single point
+
+        Returns:
+            Metric tensor(s), shape (num_points, dimension, dimension) or (dimension, dimension)
+
+        Example:
+            >>> rect = Hyperrectangle([[0, 1], [0, 1]])
+            >>> g = rect.get_metric_tensor(np.array([0.5, 0.5]))
+            >>> assert np.allclose(g, np.eye(2))  # Euclidean metric
+
+        Note:
+            ImplicitDomains are embedded in Euclidean space, so the metric is
+            always Euclidean (flat). Subclasses with Riemannian geometry should
+            override this method.
+        """
+        is_single = points.ndim == 1
+        if is_single:
+            points = points.reshape(1, -1)
+
+        n_points, d = points.shape
+
+        # Euclidean metric: g_ij = δ_ij at all points
+        g = np.tile(np.eye(d), (n_points, 1, 1))
+
+        return g[0] if is_single else g
+
+    def get_lipschitz_constant(
+        self,
+        function_type: str = "sdf",
+    ) -> float:
+        """
+        Get Lipschitz constant for specified function.
+
+        Implements SupportsLipschitz protocol.
+
+        Args:
+            function_type: Type of function to query
+                - "sdf": Signed distance function (default)
+                - "metric": Metric tensor components
+                - "projection": Boundary projection map
+
+        Returns:
+            Lipschitz constant L where |f(x) - f(y)| ≤ L|x - y|
+
+        Example:
+            >>> sphere = Hypersphere(center=[0, 0], radius=1.0)
+            >>> L = sphere.get_lipschitz_constant("sdf")
+            >>> assert L == 1.0  # Exact SDFs are 1-Lipschitz
+
+        Raises:
+            ValueError: If function_type not recognized
+
+        Note:
+            - Exact SDFs satisfy |∇φ| = 1, so L_sdf = 1.0
+            - Metric tensor is constant (Euclidean), so L_metric = 0.0
+            - Projection map is generally 1-Lipschitz for convex domains
+        """
+        if function_type == "sdf":
+            # Exact SDFs are 1-Lipschitz: |φ(x) - φ(y)| ≤ |x - y|
+            return 1.0
+
+        elif function_type == "metric":
+            # Euclidean metric is constant, so derivative is zero
+            return 0.0
+
+        elif function_type == "projection":
+            # Projection to convex set is 1-Lipschitz (non-expansive)
+            # For non-convex sets, this is an upper bound
+            return 1.0
+
+        else:
+            raise ValueError(f"Unknown function_type '{function_type}'. Valid options: 'sdf', 'metric', 'projection'")
 
     # GeometryProtocol methods for solver interface
     def get_grid_shape(self) -> tuple[int]:

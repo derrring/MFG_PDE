@@ -260,11 +260,23 @@ class NetworkGeometry(GraphGeometry):
     Inherits from GraphGeometry to participate in the geometry hierarchy:
         Geometry -> GraphGeometry -> NetworkGeometry -> GridNetwork, etc.
 
+    Implemented Geometry Traits (Issue #596 Phase 2.4):
+        - SupportsGraphLaplacian: Discrete Laplacian operator L = D - A for diffusion
+        - SupportsAdjacency: Adjacency matrix and neighbor queries
+        - SupportsSpatialEmbedding: Node positions for positioned graphs (optional)
+        - SupportsGraphDistance: Shortest path distances on graph topology
+
+    Compatible Solvers:
+        - Network HJB solvers (using graph Laplacian for diffusion)
+        - Network FP solvers (using graph operators for density evolution)
+        - Network MFG solvers (coupling HJB and FP on graphs)
+
     Key features:
         - Unified interface with MazeGeometry and other graph types
         - Optional spatial embedding (node positions)
         - Multiple backend support (igraph, networkx, networkit)
         - Sparse matrix operations for efficiency
+        - Trait-based operator access for solver integration
     """
 
     def __init__(
@@ -344,17 +356,42 @@ class NetworkGeometry(GraphGeometry):
     @abstractmethod
     def get_adjacency_matrix(self) -> NDArray:
         """
-        Get adjacency matrix for the network.
+        Get adjacency matrix for the network (SupportsAdjacency trait).
 
         Returns:
             Adjacency matrix A of shape (N, N) where:
                 A[i,j] = weight of edge from node i to node j
                 A[i,j] = 0 if no edge exists
 
-        Note: Required by GraphGeometry ABC. Concrete implementations
-        should return the adjacency matrix from their network_data.
+        Note: Required by GraphGeometry ABC and SupportsAdjacency protocol.
+        Concrete implementations should return the adjacency matrix from their network_data.
         """
         ...
+
+    def get_neighbors(self, node_idx: int) -> list[int]:
+        """
+        Get neighbor indices for a node (SupportsAdjacency trait).
+
+        Args:
+            node_idx: Node index (0 ≤ node_idx < N)
+
+        Returns:
+            List of neighbor node indices (nodes connected by edges)
+
+        Raises:
+            IndexError: If node_idx out of range
+            ValueError: If network data not initialized
+
+        Example:
+            >>> network = GridNetwork(width=5, height=5)
+            >>> network.create_network()
+            >>> neighbors = network.get_neighbors(node_idx=5)
+            >>> # [0, 4, 6, 10] - nodes connected to node 5 in grid
+        """
+        if self.network_data is None:
+            raise ValueError("Network data not initialized. Call create_network() first.")
+
+        return self.network_data.get_neighbors(node_idx)
 
     def get_spatial_grid(self) -> np.ndarray:
         """
@@ -380,20 +417,131 @@ class NetworkGeometry(GraphGeometry):
 
     @abstractmethod
     def compute_distance_matrix(self) -> np.ndarray:
-        """Compute shortest path distances between all node pairs."""
+        """
+        Compute shortest path distances between all node pairs.
+
+        Returns:
+            Distance matrix D of shape (N, N) where D[i, j] = shortest path from i to j
+
+        Note: This abstract method is implemented by subclasses using their preferred
+        backend (NetworkX, iGraph, etc.). For protocol-compliant interface,
+        use compute_all_pairs_distance() which wraps this method.
+        """
+
+    def get_graph_distance(
+        self,
+        node_i: int,
+        node_j: int,
+        weighted: bool = False,
+    ) -> float:
+        """
+        Compute graph distance (shortest path length) between nodes (SupportsGraphDistance trait).
+
+        Args:
+            node_i: Source node index
+            node_j: Target node index
+            weighted: If True, use edge weights for path cost
+                     If False, count hops (all edges have weight 1)
+
+        Returns:
+            Shortest path length from node_i to node_j
+                - Returns inf if no path exists
+
+        Example:
+            >>> network = GridNetwork(width=5, height=5)
+            >>> network.create_network()
+            >>> # Manhattan distance on grid
+            >>> hops = network.get_graph_distance(0, 24, weighted=False)
+            >>> # 8 hops (from top-left to bottom-right on 5x5 grid)
+
+        Note:
+            For better performance when computing many distances, use
+            compute_all_pairs_distance() to get the full distance matrix.
+        """
+        # Use precomputed distance matrix if available
+        distance_matrix = self.compute_distance_matrix()
+        return float(distance_matrix[node_i, node_j])
+
+    def compute_all_pairs_distance(
+        self,
+        weighted: bool = False,
+    ) -> np.ndarray:
+        """
+        Compute distance matrix for all node pairs (SupportsGraphDistance trait).
+
+        Args:
+            weighted: If True, use edge weights. If False, count hops.
+
+        Returns:
+            Distance matrix D of shape (N, N) where D[i, j] = distance from i to j
+
+        Example:
+            >>> network = GridNetwork(width=5, height=5)
+            >>> network.create_network()
+            >>> D = network.compute_all_pairs_distance(weighted=False)
+            >>> diameter = np.max(D[D < np.inf])  # Graph diameter
+            >>> # 8 (maximum distance in 5x5 grid)
+
+        Note:
+            This method wraps compute_distance_matrix() with protocol-compliant signature.
+            The weighted parameter is provided for protocol compatibility but may not
+            affect all implementations (depends on backend).
+        """
+        return self.compute_distance_matrix()
 
     def get_node_positions(self) -> NDArray | None:
         """
-        Get physical coordinates for spatially-embedded networks.
+        Get physical coordinates for spatially-embedded networks (SupportsSpatialEmbedding trait).
 
         Returns:
             (N, d) array of node positions in R^d, or None if abstract network
 
         Note: Overrides GraphGeometry.get_node_positions() which returns None.
+        Implements SupportsSpatialEmbedding protocol for positioned graphs.
         """
         if self.network_data is not None:
             return self.network_data.node_positions
         return None
+
+    def get_euclidean_distance(
+        self,
+        node_i: int,
+        node_j: int,
+    ) -> float:
+        """
+        Compute Euclidean distance between nodes in embedding space (SupportsSpatialEmbedding trait).
+
+        Args:
+            node_i: First node index
+            node_j: Second node index
+
+        Returns:
+            Euclidean distance |xᵢ - xⱼ| in embedding space
+
+        Raises:
+            ValueError: If network has no spatial embedding
+            IndexError: If node indices out of range
+
+        Note:
+            This is DIFFERENT from graph distance (shortest path length).
+            Euclidean distance is "as the crow flies", while graph distance
+            respects network topology and can only travel along edges.
+
+        Example:
+            >>> network = GridNetwork(width=5, height=5)
+            >>> network.create_network()
+            >>> # Nodes at (0,0) and (3,4) in grid
+            >>> dist = network.get_euclidean_distance(0, 19)
+            >>> # 5.0 (Euclidean distance √(3² + 4²))
+        """
+        positions = self.get_node_positions()
+        if positions is None:
+            raise ValueError("Network has no spatial embedding. Cannot compute Euclidean distance.")
+
+        if not (0 <= node_i < len(positions) and 0 <= node_j < len(positions)):
+            raise IndexError(f"Node indices out of range: node_i={node_i}, node_j={node_j}")
+
+        return float(np.linalg.norm(positions[node_i] - positions[node_j]))
 
     def get_laplacian_operator(self) -> Callable[[NDArray, int], float]:
         """
@@ -422,6 +570,54 @@ class NetworkGeometry(GraphGeometry):
             return float(L.getrow(node_idx).dot(u))
 
         return graph_laplacian_op
+
+    def get_graph_laplacian_operator(
+        self,
+        normalized: bool = False,
+    ) -> csr_matrix:
+        """
+        Return discrete graph Laplacian operator (SupportsGraphLaplacian trait).
+
+        This method implements the SupportsGraphLaplacian protocol for trait-based
+        solver design. It provides the graph Laplacian in sparse matrix form for
+        efficient discrete diffusion operations.
+
+        Args:
+            normalized: If True, return normalized Laplacian L_norm = I - D^(-1/2) A D^(-1/2)
+                       If False, return unnormalized L = D - A (default)
+
+        Returns:
+            Sparse Laplacian matrix L of shape (N, N) where N is number of nodes
+
+        Mathematical Definition:
+            - Unnormalized: L = D - A
+            - Normalized: L_norm = I - D^(-1/2) A D^(-1/2)
+
+        where:
+            - D = diag(∑ⱼ Aᵢⱼ) is the degree matrix
+            - A is the adjacency matrix
+
+        Used For:
+            - Discrete diffusion: ∂m/∂t = -σ²Lm
+            - Graph-based PDEs
+            - Spectral graph analysis
+
+        Example:
+            >>> network = GridNetwork(width=10, height=10)
+            >>> network.create_network()
+            >>> L = network.get_graph_laplacian_operator(normalized=False)
+            >>> # Discrete heat equation on graph
+            >>> m_new = m - dt * sigma**2 * (L @ m)
+
+        Note:
+            This method wraps get_sparse_laplacian() with protocol-compliant signature.
+            For more Laplacian types (random_walk, etc.), use get_sparse_laplacian().
+
+        Raises:
+            ValueError: If network data not initialized
+        """
+        operator_type = "normalized" if normalized else "combinatorial"
+        return self.get_sparse_laplacian(operator_type=operator_type)
 
     def get_sparse_laplacian(self, operator_type: str = "combinatorial") -> csr_matrix:
         """

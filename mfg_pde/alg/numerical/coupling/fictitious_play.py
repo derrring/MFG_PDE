@@ -88,10 +88,18 @@ class FictitiousPlayIterator(BaseMFGSolver):
     2. Only average M (density): HJB solves full best-response each iteration
     3. Cesaro averaging suppresses particle noise over iterations
 
+    Required Geometry Traits (Issue #596 Phase 2.3):
+        This coupling solver requires trait-validated HJB and FP component solvers:
+        - HJB solver must use geometry with SupportsGradient trait
+        - FP solver must use geometry with SupportsLaplacian trait
+
+        Trait validation occurs in component solvers, not at coupling layer.
+        See HJBFDMSolver and FPFDMSolver docstrings for trait details.
+
     Args:
         problem: MFG problem definition
-        hjb_solver: HJB solver instance
-        fp_solver: FP solver instance
+        hjb_solver: HJB solver instance (must be trait-validated)
+        fp_solver: FP solver instance (must be trait-validated)
         learning_rate_schedule: Schedule type or callable
             - "harmonic": 1/(k+1) - standard fictitious play (default)
             - "sqrt": 1/sqrt(k+1) - faster initial progress

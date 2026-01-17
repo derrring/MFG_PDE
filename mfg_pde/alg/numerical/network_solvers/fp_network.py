@@ -45,6 +45,20 @@ class FPNetworkSolver(BaseFPSolver):
     ∂m/∂t - div_G(m ∇_G H_p) - σ²/2 Δ_G m = 0
 
     with network-specific operators and mass conservation.
+
+    Required Geometry Traits (Issue #596 Phase 2.4):
+        - SupportsGraphLaplacian: Discrete Laplacian Δ_G for diffusion term (σ²/2) Δ_G m
+        - SupportsAdjacency: Adjacency matrix for graph divergence operators
+
+    Compatible Geometries:
+        - NetworkGeometry (Grid, Random, ScaleFree, Custom networks)
+        - MazeGeometry (2D grids with obstacles)
+        - Any graph geometry implementing required traits
+
+    Note:
+        Uses trait-based graph operators for discrete density evolution on networks.
+        Trait validation occurs at problem/geometry level.
+        Mass conservation enforced through discrete operators.
     """
 
     def __init__(

@@ -77,6 +77,18 @@ class FPFDMSolver(BaseFPSolver):
         - Implicit timestepping for stability
         - Central differences for diffusion terms
         - Supports periodic, Dirichlet, and no-flux boundary conditions
+
+    Required Geometry Traits (Issue #596 Phase 2.2A):
+        - SupportsLaplacian: Provides Δm operator for diffusion term (σ²/2) Δm
+
+    Compatible Geometries:
+        - TensorProductGrid (structured grids)
+        - ImplicitDomain (SDF-based domains)
+        - Any geometry implementing SupportsLaplacian
+
+    Note:
+        Advection operators currently use manual sparse matrix construction.
+        Future work (Issue #597) will integrate trait-based advection operators.
     """
 
     # Scheme family trait for duality validation (Issue #580)
@@ -166,6 +178,17 @@ class FPFDMSolver(BaseFPSolver):
 
         # Detect problem dimension first (needed for BC creation)
         self.dimension = self._detect_dimension(problem)
+
+        # Validate geometry capabilities (Issue #596 Phase 2.2A)
+        # FP solver requires Laplacian operator for diffusion term
+        from mfg_pde.geometry.protocols import SupportsLaplacian
+
+        if not isinstance(problem.geometry, SupportsLaplacian):
+            raise TypeError(
+                f"FP FDM solver requires geometry with SupportsLaplacian trait for diffusion term. "
+                f"{type(problem.geometry).__name__} does not implement this trait. "
+                f"Compatible geometries: TensorProductGrid, ImplicitDomain."
+            )
 
         # Boundary condition resolution hierarchy:
         # Issue #543 Phase 2: Replace hasattr with try/except cascade

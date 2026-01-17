@@ -1499,7 +1499,11 @@ class ImplicitGeometry(Geometry):
         return {"type": "sdf_projection", "sdf": self.signed_distance}
 
 
-class GraphGeometry(Geometry):
+# Lazy import graph protocols for GraphGeometry (avoid circular import by importing here)
+from mfg_pde.geometry.protocols import SupportsAdjacency, SupportsGraphLaplacian  # noqa: E402
+
+
+class GraphGeometry(Geometry, SupportsGraphLaplacian, SupportsAdjacency):
     """
     Abstract base class for graph geometries (networks and mazes).
 
@@ -1525,6 +1529,23 @@ class GraphGeometry(Geometry):
         - Networks ARE graphs (abstract or spatially embedded)
         - Solver decides discrete vs continuous treatment
         - Geometry provides graph structure + optional spatial info
+
+    Trait Protocol Notes (Issue #590):
+        GraphGeometry implements GRAPH-SPECIFIC traits (Phase 1.3):
+        - ✅ SupportsGraphLaplacian: Discrete graph Laplacian L = D - A
+        - ✅ SupportsAdjacency: Adjacency matrix and neighbor queries
+        - Optional: SupportsSpatialEmbedding (for spatially-embedded graphs)
+        - Optional: SupportsGraphDistance (for shortest path computations)
+
+        GraphGeometry does NOT implement continuous geometry traits:
+        - ❌ SupportsLaplacian: Continuous Laplacian Δ (use SupportsGraphLaplacian instead)
+        - ❌ SupportsGradient/Divergence: No continuous differentiable structure
+        - ❌ SupportsBoundaryNormal/Projection: No continuous boundary manifold
+        - ❌ SupportsManifold: Discrete topology (dimension 0), not smooth manifold
+
+        Key Distinction:
+        - Graph Laplacian: L @ u (matrix-vector product on node values)
+        - Continuous Laplacian: Δu (differential operator on fields)
 
     Examples:
         >>> # Abstract network (no spatial embedding)
@@ -1708,6 +1729,33 @@ class GraphGeometry(Geometry):
         else:
             # Standard Laplacian: L = D - A
             return D - A
+
+    def get_graph_laplacian_operator(
+        self,
+        normalized: bool = False,
+    ) -> NDArray | Callable[[NDArray], NDArray]:
+        """
+        Return discrete graph Laplacian (implements SupportsGraphLaplacian protocol).
+
+        This is an alias for get_graph_laplacian() that adheres to the trait
+        protocol naming convention.
+
+        Args:
+            normalized: If True, return normalized Laplacian
+
+        Returns:
+            Graph Laplacian matrix L of shape (N, N)
+
+        Note:
+            Protocol method (Issue #590 Phase 1.3). Delegates to get_graph_laplacian()
+            for backward compatibility.
+
+        Example:
+            >>> network = NetworkGeometry(...)
+            >>> L = network.get_graph_laplacian_operator(normalized=False)
+            >>> # Discrete diffusion: m_new = m - dt * (L @ m)
+        """
+        return self.get_graph_laplacian(normalized=normalized)
 
     def get_neighbors(self, node_idx: int) -> list[int]:
         """

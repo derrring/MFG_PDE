@@ -26,9 +26,14 @@ import numpy as np
 from mfg_pde.geometry.base import CartesianGrid
 from mfg_pde.geometry.protocol import GeometryType
 from mfg_pde.geometry.protocols import (
+    SupportsAdvection,
     SupportsBoundaryDistance,
     SupportsBoundaryNormal,
     SupportsBoundaryProjection,
+    SupportsDivergence,
+    SupportsGradient,
+    SupportsInterpolation,
+    SupportsLaplacian,
     SupportsLipschitz,
     SupportsManifold,
     SupportsPeriodic,
@@ -44,12 +49,20 @@ if TYPE_CHECKING:
 
 class TensorProductGrid(
     CartesianGrid,
+    # Boundary traits (Issue #590 Phase 1.2)
     SupportsBoundaryNormal,
     SupportsBoundaryProjection,
     SupportsBoundaryDistance,
+    # Topology traits (Issue #590 Phase 1.2)
     SupportsManifold,
     SupportsLipschitz,
     SupportsPeriodic,
+    # Operator traits (Issue #590 Phase 1.2, Issue #595)
+    SupportsLaplacian,
+    SupportsGradient,
+    SupportsDivergence,
+    SupportsAdvection,
+    SupportsInterpolation,
 ):
     """
     Tensor product grid for multi-dimensional structured domains.
@@ -655,102 +668,6 @@ class TensorProductGrid(
     # ============================================================================
     # Solver Operation Interface (NEW - from Geometry ABC)
     # ============================================================================
-
-    def get_laplacian_operator(self) -> Callable:
-        """
-        Return finite difference Laplacian operator.
-
-        Returns:
-            Function with signature: (u: NDArray, idx: tuple[int, ...]) -> float
-
-        Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[10,10])
-            >>> laplacian = grid.get_laplacian_operator()
-            >>> u = np.random.rand(10, 10)
-            >>> lap_value = laplacian(u, (5, 5))  # Laplacian at grid point (5,5)
-        """
-        if not self.is_uniform:
-            raise NotImplementedError("Laplacian operator not yet implemented for non-uniform grids")
-
-        def laplacian_fd(u: NDArray, idx: tuple[int, ...]) -> float:
-            """
-            Compute Laplacian at grid point idx using central finite differences.
-
-            Args:
-                u: Solution array of shape self.grid_shape
-                idx: Grid index tuple (i, j, k, ...)
-
-            Returns:
-                Laplacian value: Δu = Σ (∂²u/∂xi²)
-            """
-            if len(idx) != self._dimension:
-                raise ValueError(f"Index must have length {self._dimension}, got {len(idx)}")
-
-            laplacian = 0.0
-            for dim in range(self._dimension):
-                dx = self.spacing[dim]
-
-                # Handle boundaries with clamping (Neumann-like BC)
-                idx_plus = list(idx)
-                idx_minus = list(idx)
-                idx_plus[dim] = min(idx[dim] + 1, self._Nx_points[dim] - 1)
-                idx_minus[dim] = max(idx[dim] - 1, 0)
-
-                # Central difference: (u[i+1] - 2*u[i] + u[i-1]) / dx²
-                laplacian += (u[tuple(idx_plus)] - 2.0 * u[idx] + u[tuple(idx_minus)]) / (dx**2)
-
-            return float(laplacian)
-
-        return laplacian_fd
-
-    def get_gradient_operator(self) -> Callable:
-        """
-        Return finite difference gradient operator.
-
-        Returns:
-            Function with signature: (u: NDArray, idx: tuple[int, ...]) -> NDArray
-
-        Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[10,10])
-            >>> gradient = grid.get_gradient_operator()
-            >>> u = np.random.rand(10, 10)
-            >>> grad_u = gradient(u, (5, 5))  # Returns [du/dx, du/dy]
-            >>> grad_u.shape
-            (2,)
-        """
-        if not self.is_uniform:
-            raise NotImplementedError("Gradient operator not yet implemented for non-uniform grids")
-
-        def gradient_fd(u: NDArray, idx: tuple[int, ...]) -> NDArray:
-            """
-            Compute gradient at grid point idx using central finite differences.
-
-            Args:
-                u: Solution array of shape self.grid_shape
-                idx: Grid index tuple (i, j, k, ...)
-
-            Returns:
-                Gradient vector [∂u/∂x1, ∂u/∂x2, ...]
-            """
-            if len(idx) != self._dimension:
-                raise ValueError(f"Index must have length {self._dimension}, got {len(idx)}")
-
-            gradient = np.zeros(self._dimension)
-            for dim in range(self._dimension):
-                dx = self.spacing[dim]
-
-                # Handle boundaries with clamping
-                idx_plus = list(idx)
-                idx_minus = list(idx)
-                idx_plus[dim] = min(idx[dim] + 1, self._Nx_points[dim] - 1)
-                idx_minus[dim] = max(idx[dim] - 1, 0)
-
-                # Central difference: (u[i+1] - u[i-1]) / (2*dx)
-                gradient[dim] = (u[tuple(idx_plus)] - u[tuple(idx_minus)]) / (2.0 * dx)
-
-            return gradient
-
-        return gradient_fd
 
     def get_interpolator(self) -> Callable:
         """
@@ -1454,6 +1371,213 @@ class TensorProductGrid(
         if single_point:
             return distances[0]
         return distances
+
+    # =========================================================================
+    # Operator Trait Implementations (Issue #590 Phase 1.2, Issue #595)
+    # =========================================================================
+
+    def get_laplacian_operator(
+        self,
+        order: int = 2,
+        bc: BoundaryConditions | None = None,
+    ):
+        """
+        Return discrete Laplacian operator for this grid.
+
+        Implements SupportsLaplacian protocol.
+
+        Args:
+            order: Discretization order (currently only order=2 supported)
+            bc: Boundary conditions (None uses grid's default BC)
+
+        Returns:
+            LaplacianOperator: scipy LinearOperator for Laplacian
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> L = grid.get_laplacian_operator(order=2)
+            >>> u = np.random.rand(51, 51)
+            >>> Lu = L(u)  # Apply Laplacian
+            >>> # Or use @ syntax for flattened arrays
+            >>> Lu_flat = L @ u.ravel()
+        """
+        from mfg_pde.geometry.operators import LaplacianOperator
+
+        # Use grid's BC if not provided
+        if bc is None:
+            bc = self.get_boundary_conditions()
+
+        return LaplacianOperator(
+            spacings=self.spacing,
+            field_shape=tuple(self.Nx_points),
+            bc=bc,
+            order=order,
+        )
+
+    def get_gradient_operator(
+        self,
+        direction: int | None = None,
+        order: int = 2,
+        scheme: str = "central",
+        time: float = 0.0,
+    ):
+        """
+        Return discrete gradient operator(s) for this grid.
+
+        Implements SupportsGradient protocol.
+
+        Args:
+            direction: Specific direction (0=x, 1=y, 2=z). If None, return all directions.
+            order: Discretization order (not used yet, reserved for future)
+            scheme: Difference scheme ("central", "upwind", "one_sided")
+            time: Time for time-dependent boundary conditions (default 0.0)
+
+        Returns:
+            If direction is None:
+                tuple of GradientComponentOperator for all dimensions
+            If direction specified:
+                Single GradientComponentOperator for that direction
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> grad_x, grad_y = grid.get_gradient_operator()
+            >>> u = np.random.rand(51, 51)
+            >>> du_dx = grad_x(u)
+            >>> du_dy = grad_y(u)
+        """
+        from mfg_pde.geometry.operators import create_gradient_operators
+
+        # Use grid's BC
+        bc = self.get_boundary_conditions()
+
+        # Create all gradient operators
+        operators = create_gradient_operators(
+            spacings=self.spacing,
+            field_shape=tuple(self.Nx_points),
+            scheme=scheme,
+            bc=bc,
+            time=time,
+        )
+
+        # Return specific direction or all
+        if direction is not None:
+            if direction >= self.dimension:
+                raise ValueError(f"direction {direction} >= dimension {self.dimension}")
+            return operators[direction]
+        return operators
+
+    def get_divergence_operator(
+        self,
+        order: int = 2,
+    ):
+        """
+        Return discrete divergence operator for this grid.
+
+        Implements SupportsDivergence protocol.
+
+        Args:
+            order: Discretization order (not used yet, reserved for future)
+
+        Returns:
+            Callable that computes divergence of vector field
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> div_op = grid.get_divergence_operator()
+            >>> F = np.random.rand(2, 51, 51)  # Vector field (Fx, Fy)
+            >>> div_F = div_op(F)  # Shape: (51, 51)
+        """
+        from mfg_pde.geometry.operators import create_divergence_operator
+
+        # Use grid's BC
+        bc = self.get_boundary_conditions()
+
+        return create_divergence_operator(
+            spacings=self.spacing,
+            field_shape=tuple(self.Nx_points),
+            bc=bc,
+        )
+
+    def get_advection_operator(
+        self,
+        velocity_field: NDArray,
+        scheme: str = "upwind",
+        conservative: bool = True,
+    ):
+        """
+        Return discrete advection operator for given velocity field.
+
+        Implements SupportsAdvection protocol.
+
+        Args:
+            velocity_field: Velocity/drift field, shape (dimension, Nx_points...)
+            scheme: Advection scheme ("upwind", "centered")
+            conservative: If True, compute ∇·(vm). If False, compute v·∇m.
+
+        Returns:
+            Callable that computes advection term
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> v = np.random.rand(2, 51, 51)  # Velocity field
+            >>> adv_op = grid.get_advection_operator(v, scheme='upwind', conservative=True)
+            >>> m = np.random.rand(51, 51)  # Density
+            >>> div_mv = adv_op(m)  # Conservative advection
+        """
+        from mfg_pde.geometry.operators import create_advection_operator
+
+        # Use grid's BC
+        bc = self.get_boundary_conditions()
+
+        # Map conservative flag to form parameter
+        form = "divergence" if conservative else "gradient"
+
+        return create_advection_operator(
+            velocity_field=velocity_field,
+            spacings=self.spacing,
+            field_shape=tuple(self.Nx_points),
+            scheme=scheme,
+            form=form,
+            bc=bc,
+        )
+
+    def get_interpolation_operator(
+        self,
+        query_points: NDArray,
+        order: int = 1,
+        extrapolation_mode: str = "boundary",
+    ):
+        """
+        Return interpolation operator for given query points.
+
+        Implements SupportsInterpolation protocol.
+
+        Args:
+            query_points: Points at which to interpolate, shape (num_query, dimension)
+            order: Interpolation order (1=linear, 3=cubic)
+            extrapolation_mode: How to handle points outside domain
+                - "constant": Use fill_value (NaN)
+                - "nearest": Use nearest boundary value
+                - "boundary": Project to boundary and use boundary value
+
+        Returns:
+            Callable that interpolates field values at query points
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> query_pts = np.random.rand(100, 2)  # 100 random points in [0,1]²
+            >>> interp = grid.get_interpolation_operator(query_pts, order=1)
+            >>> u = np.random.rand(51, 51)
+            >>> u_interp = interp(u)  # Shape: (100,)
+        """
+        from mfg_pde.geometry.operators import create_interpolation_operator
+
+        return create_interpolation_operator(
+            grid_points=tuple(self.coordinates),
+            query_points=query_points,
+            order=order,
+            extrapolation_mode=extrapolation_mode,
+        )
 
     def __repr__(self) -> str:
         """String representation of grid."""
