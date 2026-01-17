@@ -185,8 +185,82 @@ Prioritize surfacing problems early during development:
 - ✅ **Let problems emerge**: Allow exceptions to propagate rather than catching and silencing them.
 - ❌ **NO silent fallbacks**: Do not provide default values or fallbacks for failed operations without explicit permission.
 - ❌ **NO over-defensive programming**: Avoid excessive null checks or safety guards that mask logic errors.
-- ❌ **NO `hasattr()`**: Use explicit interfaces or handle `AttributeError` instead of checking for attribute existence.
+- ❌ **NO `hasattr()` for duck typing**: Use explicit interfaces (Protocol/ABC) or `getattr()` for optional attributes.
 - ❌ **NO ambiguous returns**: Do not return `None`, `0`, or `1` to indicate failure without a reasonable following action or error propagation.
+
+#### **hasattr() Usage Rules** ⚠️ **CRITICAL**
+
+**Prohibited**: Duck typing with hasattr()
+**Goal**: Move from "guessing" object capabilities to explicit contracts (ABC/Protocol).
+
+**🔴 Bad: Loose Duck Typing**
+```python
+# Ambiguous: Is 'solver' a valid object or just something with a 'solve' method?
+if hasattr(solver, "solve"):
+    solver.solve()
+```
+
+**🟢 Good: Structural Typing (Protocol/ABC)**
+```python
+# Explicit: We expect a specific interface
+if isinstance(solver, BaseSolver):
+    solver.solve()
+```
+
+**🟢 Good: Optional Configuration (getattr pattern)**
+```python
+# Clean: Optional config with default fallback
+# Replaces: if hasattr(config, 'tol'): tol = config.tol else: tol = 1e-6
+tolerance = getattr(config, "tolerance", 1e-6)
+```
+
+**🟢 Good: Optional Attributes with Explicit Initialization**
+```python
+# In __init__:
+self._cached_matrix: np.ndarray | None = None
+
+# In usage:
+if self._cached_matrix is None:  # ✅ Fast, type-safe, JIT-friendly
+    self._cached_matrix = expensive_computation()
+```
+
+**🟡 Acceptable: External Library Feature Detection**
+```python
+# Backend compatibility - PyTorch MPS support (Issue #543 acceptable)
+# hasattr required: torch.backends.mps added in PyTorch 1.12+
+if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+    device = "mps"
+```
+
+**❌ Bad: Runtime Attribute Addition**
+```python
+# Breaks object shape stability (confuses JIT compilers, static analyzers)
+if not hasattr(self, "_grid"):
+    self._grid = make_grid()
+```
+
+**Key Benefits of Explicit Initialization**:
+1. **Object Shape Stability**: All attributes exist from construction (helps Numba/JAX)
+2. **Type Safety**: Static analyzers can track `Optional[T]` types
+3. **Performance**: Single `is None` check vs `hasattr()` + `getattr()`
+4. **Clear Intent**: `None` means "not yet computed", not "maybe doesn't exist"
+
+**For Optional Methods**: Use `callable()` check or Protocol:
+```python
+# For optional callable attributes
+cleaner = getattr(solver, "cleanup", None)
+if callable(cleaner):  # ✅ Ensures it's actually a method
+    cleaner()
+
+# Better: Use Protocol for type safety
+from typing import Protocol
+
+class HasCleanup(Protocol):
+    def cleanup(self) -> None: ...
+
+if isinstance(solver, HasCleanup):  # ✅ Type-safe
+    solver.cleanup()
+```
 
 ### **File Path Anchoring** ⚠️ **CRITICAL**
 Always anchor output paths to **project root**, never to CWD:
