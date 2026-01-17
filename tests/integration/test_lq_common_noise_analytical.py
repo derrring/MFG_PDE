@@ -24,6 +24,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
 from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfg_pde.geometry import TensorProductGrid
 
 
 @pytest.mark.slow
@@ -67,10 +68,9 @@ class TestLQCommonNoiseAnalytical:
             return 0.5 * p**2 + 0.5 * x**2 + alpha * theta * x
 
         # Create stochastic problem
+        geometry = TensorProductGrid(dimension=1, bounds=[(-2.0, 2.0)], Nx_points=[42])
         problem = StochasticMFGProblem(
-            xmin=-2.0,
-            xmax=2.0,
-            Nx=41,  # Coarse grid for fast test
+            geometry=geometry,
             T=0.5,
             Nt=21,
             noise_process=noise_process,
@@ -177,10 +177,9 @@ class TestLQCommonNoiseAnalytical:
         def lq_hamiltonian(x, p, m, theta):
             return 0.5 * p**2 + 0.5 * x**2  # No noise coupling
 
+        geometry = TensorProductGrid(dimension=1, bounds=[(-2.0, 2.0)], Nx_points=[42])
         problem = StochasticMFGProblem(
-            xmin=-2.0,
-            xmax=2.0,
-            Nx=41,
+            geometry=geometry,
             T=0.5,
             Nt=21,
             noise_process=noise_process,

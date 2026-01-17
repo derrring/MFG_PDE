@@ -11,6 +11,7 @@ import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 pytestmark = pytest.mark.optional_torch
@@ -34,12 +35,11 @@ class TestParticleGPUPipeline:
     def test_gpu_matches_cpu_numerically(self):
         """GPU pipeline should match CPU pipeline numerically."""
         # Create simple problem
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(
-            Nx=50,
+            geometry=geometry,
             Nt=20,
             T=1.0,
-            xmin=0.0,
-            xmax=1.0,
             sigma=0.1,
             coupling_coefficient=1.0,
         )
@@ -102,12 +102,11 @@ class TestParticleGPUPipeline:
 
     def test_gpu_pipeline_runs_without_errors(self):
         """GPU pipeline should complete without errors."""
+        geometry = TensorProductGrid(dimension=1, bounds=[(-1.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(
-            Nx=30,
+            geometry=geometry,
             Nt=10,
             T=0.5,
-            xmin=-1.0,
-            xmax=1.0,
             sigma=0.2,
         )
 
@@ -141,12 +140,11 @@ class TestParticleGPUPipeline:
 
     def test_boundary_conditions_gpu(self):
         """Test different boundary conditions on GPU."""
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])
         problem = MFGProblem(
-            Nx=40,
+            geometry=geometry,
             Nt=15,
             T=0.5,
-            xmin=0.0,
-            xmax=1.0,
             sigma=0.15,
         )
 
@@ -182,12 +180,11 @@ class TestGPUPerformance:
         """GPU should be faster than CPU for large particle counts."""
         import time
 
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(
-            Nx=50,
+            geometry=geometry,
             Nt=50,
             T=1.0,
-            xmin=0.0,
-            xmax=1.0,
             sigma=0.1,
         )
 

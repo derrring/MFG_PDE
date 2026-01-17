@@ -16,7 +16,7 @@ from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterat
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import no_flux_bc
+from mfg_pde.geometry import TensorProductGrid, no_flux_bc
 
 
 def main():
@@ -32,10 +32,9 @@ def main():
 
     # Setup with reduced resolution
     np.random.seed(42)
+    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[26])
     problem = MFGProblem(
-        xmin=0.0,
-        xmax=1.0,
-        Nx=25,
+        geometry=geometry,
         T=1.0,
         Nt=25,
         sigma=1.0,

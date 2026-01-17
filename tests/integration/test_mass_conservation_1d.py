@@ -19,7 +19,7 @@ from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import no_flux_bc
+from mfg_pde.geometry import TensorProductGrid, no_flux_bc
 
 
 class SimpleMFGProblem1D:
@@ -61,12 +61,16 @@ class SimpleMFGProblem1D:
         self.xmax = L
         self.Dx = L / Nx
         self.Dt = T / Nt
+        self.dt = T / Nt  # Lowercase alias for compatibility
         self.sigma = sigma
         self.congestion_strength = congestion_strength
         self.dimension = 1  # Explicit dimension for solver detection
 
         # Grid
         self.xSpace = np.linspace(self.xmin, self.xmax, self.Nx + 1)
+
+        # Geometry API compatibility
+        self.geometry = TensorProductGrid(dimension=1, bounds=[(self.xmin, self.xmax)], Nx_points=[self.Nx + 1])
 
         # Terminal cost: g(x) = (x - L/2)²
         self.terminal_cost_weight = 1.0
@@ -210,10 +214,9 @@ class TestMassConservation1D:
         """Create standard test problem using built-in MFGProblem."""
         # Create problem with custom initial and terminal conditions
         L = 2.0
+        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, L)], Nx_points=[51])
         problem = MFGProblem(
-            xmin=0.0,
-            xmax=L,
-            Nx=50,
+            geometry=geometry,
             T=1.0,
             Nt=20,
             sigma=0.1,
