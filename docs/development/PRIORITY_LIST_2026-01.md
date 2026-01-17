@@ -871,21 +871,63 @@ Run tests after each priority, validate with research experiments.
 
 ---
 
-**Last Updated**: 2026-01-17
-**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574), P6.6 (#595), P6.7 (#591)
-**Current Focus**: ✅ Geometry/BC infrastructure complete! LinearOperator architecture + Variational inequality constraints integrated. Next: Consider remaining open issues or begin v0.18.0 development
+**Last Updated**: 2026-01-18
+**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574), P6.6 (#595), P6.7 (#591), P7 (#545), P8 (#544 Phases 1-2), **#573**
+**Current Focus**: ✅ Infrastructure complete through Priority 8! Starting geometry trait system (#590) for operator abstraction framework.
+
+## Recently Completed (2026-01-18)
+
+### ✅ Issue #573: Non-Quadratic Hamiltonian Support - **COMPLETED**
+
+**Issue**: [#573](https://github.com/derrring/MFG_PDE/issues/573)
+**Status**: ✅ CLOSED (2026-01-18)
+**Priority**: Medium
+**Size**: Medium
+**Actual Effort**: 1 day
+
+### Problem
+FP solvers assumed quadratic Hamiltonians (α* = -∇U), preventing use with L1, quartic, or constrained control problems.
+
+### Solution Implemented
+Clarified that `drift_field` parameter accepts drift velocity α* for ANY Hamiltonian, not just quadratic.
+
+**Key Insight**: The API was already correct - only documentation needed clarification!
+
+**Changes**:
+- Updated FP FDM/GFDM docstrings with non-quadratic examples
+- Added test suite: `test_fp_nonquadratic.py` (8/8 passing)
+- Created demonstration: `examples/advanced/mfg_l1_control.py`
+
+**Commits**:
+- `f5cb1039` - Documentation clarification + tests
+- `1c13a450` - L1 control example
+
+**Usage Pattern**:
+```python
+# For ANY Hamiltonian: caller computes α* = -∂_p H(∇U)
+alpha_L1 = -np.sign(grad_U)  # L1 control
+M = fp_solver.solve_fp_system(m0, drift_field=alpha_L1)
+```
+
+---
 
 ## Remaining Open Issues (by priority)
 
 | Priority | Issue | Description | Size | Status |
 |:---------|:------|:------------|:-----|:-------|
-| HIGH | #573 | Callable drift interface for non-quadratic H | Medium | Open |
+| HIGH | #590 | Phase 1: Geometry Trait System | Medium | 🎯 **IN PROGRESS** |
+| HIGH | #596 | Phase 2: Solver Integration with Traits | Large | Blocked by #590 |
+| HIGH | #589 | Geometry/BC Architecture (Master Tracking) | Large | In Progress |
+| MEDIUM | #598 | BCApplicatorProtocol → ABC refactoring | Medium | Open |
+| MEDIUM | #597 | FP Operator Refactoring | Large | Open |
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large | Open |
 | MEDIUM | #535 | BC framework enhancement | Large | Open |
 | MEDIUM | #489 | Direct particle query for coupling | Large | Open |
-| LOW | #523 | MMS validation suite for BC (investigation complete - see issue comments) | Medium | Open |
+| LOW | #577 | Neumann BC ghost cell consolidation (Phase 3) | Small | Phases 1-2 complete |
+| LOW | #523 | MMS validation suite for BC | Medium | Open |
 | LOW | #521 | 3D corner handling | Large | Open |
 | LOW | #517 | Semantic dispatch factory | Medium | Open |
-| ~~LOW~~ | ~~#571~~ | ~~test_geometry_benchmarks: Missing pytest-benchmark fixture~~ | ~~Small~~ | ✅ Fixed (8997589b) |
+| ~~MEDIUM~~ | ~~#573~~ | ~~Non-quadratic Hamiltonian support~~ | ~~Medium~~ | ✅ Closed (f5cb1039, 1c13a450) |
+| ~~LOW~~ | ~~#571~~ | ~~test_geometry_benchmarks: Missing fixture~~ | ~~Small~~ | ✅ Fixed (8997589b) |
 | ~~LOW~~ | ~~#570~~ | ~~test_particle_gpu_pipeline: Shape mismatch~~ | ~~Small~~ | ✅ Fixed (8997589b) |
 | LOW | Others | Various infrastructure/features | Large | Open |
