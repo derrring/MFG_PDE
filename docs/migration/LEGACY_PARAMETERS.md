@@ -159,11 +159,13 @@ geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 
 ## Timeline
 
-| Version | Status |
-|:--------|:-------|
-| v0.17.1 | DeprecationWarning added |
-| v0.18.0 | Legacy parameters removed |
-| v1.0.0  | Clean Geometry-first API |
+| Version | Status | Details |
+|:--------|:-------|:--------|
+| v0.17.1 | ✅ **Current** | DeprecationWarning active, all internal code migrated |
+| v0.18.0-v0.99.0 | ⏳ **User migration period** | 6-12 months deprecation window |
+| v1.0.0  | 🎯 **Target** | Legacy parameters removed, clean Geometry-first API |
+
+**Deprecation Strategy**: Conservative - 6-12 month warning period before v1.0.0 removal
 
 ## See Also
 

@@ -755,34 +755,42 @@ All solver mixin refactoring was already complete from Issue #545 (closed 2026-0
 
 ---
 
-## 🎯 Priority 8: Legacy Parameter Deprecation (#544)
+## ✅ Priority 8: Legacy Parameter Deprecation (#544) - **COMPLETED**
 
 **Issue**: [#544](https://github.com/derrring/MFG_PDE/issues/544)
-**Priority**: High (but deferred until foundation stable)
+**Priority**: High
 **Size**: Large
-**Estimated Effort**: 5-7 days
+**Status**: ✅ **PHASE 1 & 2 COMPLETE** (2026-01-18)
+**Actual Effort**: 2 days
 
 ### Problem
 MFGProblem supports both legacy (`Nx`, `xmin`) and modern (Geometry) APIs, creating bloat.
 
-### Solution (Phased)
+### Solution Implemented (Phased)
 
-**Phase 2: Add DeprecationWarning (v0.17.0)** (Priority 7a)
-- [ ] Add DeprecationWarning to MFGProblem.__init__
-- [ ] Migrate all examples/ to Geometry API
-- [ ] Migrate all tests/ to Geometry API
-- [ ] Document migration in `docs/migration/LEGACY_PARAMETERS.md`
+**Phase 1: Add DeprecationWarning (v0.17.1)** ✅ **COMPLETED**
+- ✅ Add DeprecationWarning to MFGProblem.__init__
+- ✅ Migrate representative tests to Geometry API (4 files)
+- ✅ Document migration in `docs/migration/LEGACY_PARAMETERS.md`
+- ✅ Verify examples already use Geometry API
+- **Commit**: `a6e54d21` (2026-01-18)
 
-**Phase 3: Remove Legacy (v0.18.0 or v1.0.0)** (Future)
-- [ ] Remove Nx, xmin, xmax parameters
-- [ ] Remove _override attributes
-- [ ] Simplify MFGProblem (target < 200 lines)
+**Phase 2: Migrate Test Suite (v0.17.1)** ✅ **COMPLETED**
+- ✅ Migrate all remaining test files to Geometry API (7 files, 23 calls)
+- ✅ Fix mock objects for Geometry API compatibility
+- ✅ Verify zero test regressions (79 + 23 + 12 passing)
+- **Commit**: `83f2031c` (2026-01-18)
 
-### Why Seventh?
-- **High priority** but **large scope**
-- **Requires stable foundation** (Protocols, BC handling)
-- **User-facing breaking change** (needs careful migration)
-- **Better after other refactoring** (cleaner migration path)
+**Phase 3: Remove Legacy Parameters (v1.0.0)** ⏳ **PLANNED**
+- [ ] Remove Nx, xmin, xmax, spatial_bounds parameters
+- [ ] Remove _override attributes and legacy grid construction
+- [ ] Simplify MFGProblem.__init__ (target < 200 lines from ~600)
+- [ ] Remove TestLegacy1DMode tests
+- [ ] Archive migration guide
+- **Timeline**: 6-12 months (v1.0.0 release)
+
+### Summary
+Phase 1 & 2 complete. All internal code uses modern Geometry API. Users have 6-12 month deprecation period before v1.0.0 removal.
 
 ---
 
