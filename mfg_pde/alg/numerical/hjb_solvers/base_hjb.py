@@ -464,7 +464,9 @@ def _calculate_derivatives(
         - docs/gradient_notation_standard.md
         - mfg_pde/compat/gradient_notation.py
     """
-    # Extract function value
+    # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
+    # PyTorch tensors have .item() method, NumPy arrays don't
+    # hasattr checks throughout this function are for external library compatibility
     if hasattr(U_array[i], "item"):
         u_i = U_array[i].item()
     else:
@@ -628,7 +630,7 @@ def compute_hjb_residual(
     # Diffusion term: -(sigma^2/2) * (U_n_current)_xx
     # Notebook FnU[i] += - ((sigma**2)/2.) * (Ukp1_n[i+1]-2*Ukp1_n[i]+Ukp1_n[i-1])/(dx**2)
     if abs(dx) > 1e-14 and Nx > 1:
-        # Use backend-aware roll operation
+        # Backend compatibility - PyTorch .roll() vs NumPy BC-aware Laplacian (Issue #543 acceptable)
         if backend is not None and hasattr(U_n_current_newton_iterate, "roll"):
             # PyTorch tensors have .roll() method (no BC support for GPU yet)
             U_xx = (
@@ -664,7 +666,7 @@ def compute_hjb_residual(
     U_n_derivatives_for_m_coupling: dict[str, Any] = {}  # Not used by MFGProblem's term
 
     for i in range(Nx):
-        # Get scalar value for nan check (works for both NumPy and PyTorch)
+        # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
         phi_val = Phi_U[i].item() if hasattr(Phi_U[i], "item") else float(Phi_U[i])
         if np.isnan(phi_val):
             continue
@@ -683,7 +685,7 @@ def compute_hjb_residual(
 
         # Hamiltonian term H(x_i, M_{n+1,i}, (Du_n_current)_i, t_n)
         # Notebook: FnU[i] += H_withM(...)
-        # Get M value as scalar for H function
+        # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
         m_val = (
             M_density_at_n_plus_1[i].item()
             if hasattr(M_density_at_n_plus_1[i], "item")

@@ -90,16 +90,17 @@ def gaussian_kde_gpu(
     particles_tensor = backend.from_numpy(particles)
     grid_tensor = backend.from_numpy(grid)
 
-    # Ensure tensors are on the correct device
+    # Backend compatibility - PyTorch/JAX device management (Issue #543 acceptable)
+    # hasattr checks are appropriate for external library feature detection
     if hasattr(backend, "device") and backend.device is not None:
         device = backend.device
-        if hasattr(particles_tensor, "to"):
+        if hasattr(particles_tensor, "to"):  # PyTorch tensor.to(device) method
             particles_tensor = particles_tensor.to(device)
         if hasattr(grid_tensor, "to"):
             grid_tensor = grid_tensor.to(device)
 
-    # Broadcasting: (Nx, 1) - (1, N) → (Nx, N) distance matrix
-    # This creates all pairwise distances in parallel
+    # Backend compatibility - PyTorch vs JAX tensor reshaping (Issue #543 acceptable)
+    # PyTorch uses .reshape(), JAX uses indexing notation
     if hasattr(particles_tensor, "reshape"):  # PyTorch
         particles_2d = particles_tensor.reshape(1, -1)  # (1, N)
         grid_2d = grid_tensor.reshape(-1, 1)  # (Nx, 1)
@@ -166,13 +167,13 @@ def gaussian_kde_gpu_internal(
     """
     xp = backend.array_module
 
-    # Get particle count
+    # Backend compatibility - tensor shape access (Issue #543 acceptable)
     if hasattr(particles_tensor, "shape"):
         N = particles_tensor.shape[0]
     else:
         N = len(particles_tensor)
 
-    # Broadcasting: (Nx, 1) - (1, N) → (Nx, N) distance matrix
+    # Backend compatibility - PyTorch vs JAX tensor reshaping (Issue #543 acceptable)
     if hasattr(particles_tensor, "reshape"):  # PyTorch
         particles_2d = particles_tensor.reshape(1, -1)  # (1, N)
         grid_2d = grid_tensor.reshape(-1, 1)  # (Nx, 1)
@@ -270,15 +271,15 @@ def gaussian_kde_gpu_nd(
     particles_tensor = backend.from_numpy(particles)
     grid_tensor = backend.from_numpy(grid_points)
 
-    # Ensure tensors are on correct device
+    # Backend compatibility - PyTorch/JAX device management (Issue #543 acceptable)
     if hasattr(backend, "device") and backend.device is not None:
         device = backend.device
-        if hasattr(particles_tensor, "to"):
+        if hasattr(particles_tensor, "to"):  # PyTorch tensor.to(device)
             particles_tensor = particles_tensor.to(device)
         if hasattr(grid_tensor, "to"):
             grid_tensor = grid_tensor.to(device)
 
-    # Broadcasting: (M, 1, d) - (1, N, d) → (M, N, d) difference tensor
+    # Backend compatibility - PyTorch vs JAX tensor reshaping (Issue #543 acceptable)
     if hasattr(particles_tensor, "reshape"):  # PyTorch
         particles_3d = particles_tensor.reshape(1, N, d)  # (1, N, d)
         grid_3d = grid_tensor.reshape(M, 1, d)  # (M, 1, d)
@@ -289,7 +290,7 @@ def gaussian_kde_gpu_nd(
     # Compute squared Euclidean distances: ||grid[i] - particles[j]||²
     diff = grid_3d - particles_3d  # (M, N, d)
 
-    # Sum across last dimension to get squared distances
+    # Backend compatibility - PyTorch dim vs NumPy/JAX axis (Issue #543 acceptable)
     if hasattr(diff, "dim"):  # PyTorch
         dist_sq = (diff**2).sum(dim=-1)  # (M, N)
     else:  # NumPy or JAX
@@ -300,7 +301,7 @@ def gaussian_kde_gpu_nd(
     normalization = (actual_bandwidth * np.sqrt(2 * np.pi)) ** d
     kernel_vals = kernel_vals / normalization
 
-    # Sum over particles, normalize by N
+    # Backend compatibility - PyTorch dim vs NumPy/JAX axis (Issue #543 acceptable)
     if hasattr(kernel_vals, "dim"):  # PyTorch
         density_tensor = kernel_vals.sum(dim=1) / N
     else:  # NumPy or JAX
