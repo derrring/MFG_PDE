@@ -7,7 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Three-Mode Solving API** (Issue #580, PR #585) 🎯
+  - **Safe Mode**: `problem.solve(scheme=NumericalScheme.FDM_UPWIND)` - Guaranteed dual pairing
+  - **Expert Mode**: `problem.solve(hjb_solver=hjb, fp_solver=fp)` - Manual control with validation
+  - **Auto Mode**: `problem.solve()` - Intelligent defaults (backward compatible)
+  - Prevents non-dual solver pairings that break Nash equilibrium convergence
+  - Educational warnings guide users toward correct pairings
+  - 121 tests validate correctness, 100% backward compatible
+
+- **New Types** (Issue #580):
+  - `NumericalScheme` enum: User-facing scheme selection (FDM_UPWIND, FDM_CENTERED, SL_LINEAR, SL_CUBIC, GFDM)
+  - `SchemeFamily` enum: Internal classification (FDM, SL, FVM, GFDM, PINN, GENERIC)
+  - `DualityStatus` enum: Validation status (DISCRETE_DUAL, CONTINUOUS_DUAL, NOT_DUAL, VALIDATION_SKIPPED)
+  - `DualityValidationResult` dataclass: Rich validation result object
+
+- **New Utilities** (Issue #580):
+  - `check_solver_duality()`: Validates HJB-FP adjoint relationship
+  - `create_paired_solvers()`: Factory for validated solver pairs with config threading
+  - `get_recommended_scheme()`: Intelligent scheme selection (Phase 3 TODO - currently returns FDM_UPWIND)
+
+- **New Examples** (Issue #580):
+  - `examples/basic/three_mode_api_demo.py`: Comprehensive three-mode demonstration (246 lines)
+
+- **New Documentation** (Issue #580):
+  - `docs/development/issue_580_adjoint_pairing_implementation.md`: Technical guide (578 lines)
+  - `docs/user/three_mode_api_migration_guide.md`: User migration guide (448 lines)
+
 ### Changed
+
+- **MFGProblem.solve()** (Issue #580):
+  - Added `scheme` parameter for Safe Mode
+  - Added `hjb_solver` and `fp_solver` parameters for Expert Mode
+  - Mode detection and validation implemented
+  - Fully backward compatible (existing code uses Auto Mode)
+
+- **Solver Traits** (Issue #580):
+  - All HJB and FP solvers now have `_scheme_family` class attribute
+  - Used for refactoring-safe duality validation
+  - Trait-based classification survives renames and inheritance changes
 
 - **Renamed** `OneDimensionalAMRMesh` → `OneDimensionalAMRGrid` (Issue #466)
   - The class is a structured grid, not an unstructured mesh
@@ -17,8 +56,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
+- **`create_solver()`** (Issue #580) - Use three-mode API instead
+  - Replacement: `problem.solve(scheme=...)` (Safe Mode) or `problem.solve(hjb_solver=..., fp_solver=...)` (Expert Mode)
+  - Will be removed in v1.0.0
+  - Deprecation warning guides migration with examples
+
 - `OneDimensionalAMRMesh` - use `OneDimensionalAMRGrid` instead
 - `create_1d_amr_mesh()` - use `create_1d_amr_grid()` instead
+
+### Fixed
+
+- **Scientific Correctness** (Issue #580):
+  - Prevents accidental mixing of incompatible discretizations (e.g., FDM + GFDM)
+  - Ensures L_FP = L_HJB^T relationship for Nash gap convergence
+  - Type A (discrete dual) vs Type B (continuous dual) distinction enforced
 
 ## [0.16.2] - 2025-12-12
 
