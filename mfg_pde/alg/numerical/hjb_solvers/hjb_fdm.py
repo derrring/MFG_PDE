@@ -87,6 +87,7 @@ class HJBFDMSolver(BaseHJBSolver):
         damping_factor: float = 1.0,
         max_newton_iterations: int | None = None,
         newton_tolerance: float | None = None,
+        bc_mode: Literal["standard", "adjoint_consistent"] = "standard",
         # Deprecated parameters
         NiterNewton: int | None = None,
         l2errBoundNewton: float | None = None,
@@ -105,6 +106,11 @@ class HJBFDMSolver(BaseHJBSolver):
             damping_factor: Damping ω ∈ (0,1] for fixed-point (recommend 0.5-0.8)
             max_newton_iterations: Max iterations per timestep
             newton_tolerance: Convergence tolerance
+            bc_mode: Boundary condition mode for reflecting boundaries (Issue #574):
+                - 'standard': Classical Neumann BC (∂U/∂n = 0)
+                - 'adjoint_consistent': Coupled BC (∂U/∂n = -σ²/2 · ∂ln(m)/∂n)
+                Use 'adjoint_consistent' for better equilibrium consistency when
+                stall point is at domain boundary. Default: 'standard' (backward compat).
             backend: 'numpy', 'torch', or None
         """
         import warnings
@@ -145,6 +151,7 @@ class HJBFDMSolver(BaseHJBSolver):
         self.newton_tolerance = newton_tolerance if newton_tolerance is not None else 1e-6
         self.solver_type = solver_type
         self.damping_factor = damping_factor
+        self.bc_mode = bc_mode
 
         # Validate
         if self.max_newton_iterations < 1:
@@ -153,6 +160,8 @@ class HJBFDMSolver(BaseHJBSolver):
             raise ValueError(f"newton_tolerance must be > 0, got {self.newton_tolerance}")
         if not 0 < damping_factor <= 1.0:
             raise ValueError(f"damping_factor must be in (0,1], got {damping_factor}")
+        if bc_mode not in ("standard", "adjoint_consistent"):
+            raise ValueError(f"bc_mode must be 'standard' or 'adjoint_consistent', got '{bc_mode}'")
 
         # Backward compatibility: Store Newton config
         self._newton_config = {
@@ -242,6 +251,7 @@ class HJBFDMSolver(BaseHJBSolver):
         U_coupling_prev: NDArray | None = None,
         diffusion_field: float | NDArray | None = None,
         tensor_diffusion_field: NDArray | None = None,
+        bc_values: dict[str, float] | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: NDArray | None = None,
         U_final_condition_at_T: NDArray | None = None,
@@ -260,6 +270,10 @@ class HJBFDMSolver(BaseHJBSolver):
             U_coupling_prev: Previous coupling iteration estimate
             diffusion_field: Diffusion coefficient (None uses problem.sigma)
             tensor_diffusion_field: Tensor diffusion (Phase 3.0, not yet fully implemented)
+            bc_values: Per-boundary BC values for adjoint-consistent mode (Issue #574).
+                Dict mapping boundary names to gradient values:
+                {"x_min": value_left, "x_max": value_right}
+                Only used when bc_mode="adjoint_consistent". Default: None (use standard BC).
         """
         import warnings
 
@@ -365,6 +379,33 @@ class HJBFDMSolver(BaseHJBSolver):
             except AttributeError:
                 pass
 
+            # Issue #574: Compute adjoint-consistent BC values if needed
+            if self.bc_mode == "adjoint_consistent" and bc_values is None:
+                from mfg_pde.geometry.boundary import compute_coupled_hjb_bc_values
+
+                # Get grid spacing
+                try:
+                    dx = self.problem.geometry.get_grid_spacing()[0]
+                except (AttributeError, IndexError):
+                    dx = self.problem.dx  # Fallback for legacy API
+
+                # Get diffusion coefficient
+                sigma = self.problem.sigma if diffusion_field is None else diffusion_field
+                if not isinstance(sigma, (int, float)):
+                    raise ValueError(
+                        "bc_mode='adjoint_consistent' requires scalar diffusion. "
+                        f"Got diffusion_field type: {type(sigma)}"
+                    )
+
+                # Compute coupled BC values from current density
+                # Use time-averaged density or final time slice
+                m_for_bc = M_density[-1, :] if M_density.ndim == 2 else M_density
+                bc_values = compute_coupled_hjb_bc_values(
+                    m=m_for_bc,
+                    dx=dx,
+                    sigma=sigma,
+                )
+
             # Debug: Log BC being passed (Issue #542 investigation)
             import logging
             from contextlib import suppress
@@ -389,6 +430,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 use_upwind=self.use_upwind,
                 bc=bc,
                 domain_bounds=domain_bounds,
+                bc_values=bc_values,
             )
         else:
             # Use nD solver with centralized nonlinear solver

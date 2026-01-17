@@ -76,6 +76,7 @@ def _compute_laplacian_1d(
     bc: BoundaryConditions | None = None,
     domain_bounds: np.ndarray | None = None,
     time: float = 0.0,
+    bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
 ) -> np.ndarray:
     """
     Compute Laplacian for entire 1D array using BC-aware ghost cell method.
@@ -107,7 +108,13 @@ def _compute_laplacian_1d(
     if bc is not None:
         # Compute ghost values specifically for Laplacian stencil
         # These differ from gradient ghost values!
-        ghost_left, ghost_right = _compute_laplacian_ghost_values_1d(U_array, bc, Dx, time)
+        ghost_left, ghost_right = _compute_laplacian_ghost_values_1d(
+            U_array,
+            bc,
+            Dx,
+            time,
+            bc_values=bc_values,  # Issue #574
+        )
 
         # Build padded array
         U_padded = np.concatenate([[ghost_left], U_array, [ghost_right]])
@@ -127,6 +134,7 @@ def _compute_laplacian_ghost_values_1d(
     bc: BoundaryConditions,
     Dx: float,
     time: float = 0.0,
+    bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
 ) -> tuple[float, float]:
     """
     Compute ghost values for Laplacian stencil at left and right boundaries.
@@ -155,6 +163,12 @@ def _compute_laplacian_ghost_values_1d(
     # Get BC types and values at each boundary
     left_type, left_value = _get_bc_type_and_value_1d(bc, "left", time)
     right_type, right_value = _get_bc_type_and_value_1d(bc, "right", time)
+
+    # Issue #574: Override BC values if bc_values provided (adjoint-consistent mode)
+    if bc_values is not None and "x_min" in bc_values and left_type == BCType.NEUMANN:
+        left_value = bc_values["x_min"]
+    if bc_values is not None and "x_max" in bc_values and right_type == BCType.NEUMANN:
+        right_value = bc_values["x_max"]
 
     # Compute ghost for left boundary (x_min)
     # For Laplacian, use standard FDM boundary stencils
@@ -237,12 +251,18 @@ def _get_bc_type_and_value_1d(
     # Note: For mixed BC, bc.type raises ValueError - this is intentional design
     try:
         bc_type_str = bc.type
-        if bc_type_str == "neumann":
+
+        if bc_type_str == "neumann" or bc_type_str == "no_flux":
             bc_type = BCType.NEUMANN
         elif bc_type_str == "dirichlet":
             bc_type = BCType.DIRICHLET
-        else:
+        elif bc_type_str == "periodic":
             bc_type = BCType.PERIODIC
+        elif bc_type_str == "robin":
+            bc_type = BCType.ROBIN
+        else:
+            # Unknown type - default to Neumann for safety
+            bc_type = BCType.NEUMANN
 
         # Get side-specific value
         try:
@@ -590,6 +610,7 @@ def compute_hjb_residual(
     bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
     current_time: float = 0.0,  # Current time for time-dependent BCs
+    bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
 ) -> np.ndarray:
     Nx = problem.geometry.get_grid_shape()[0]
     dx = problem.geometry.get_grid_spacing()[0]
@@ -642,7 +663,12 @@ def compute_hjb_residual(
         else:
             # NumPy: use BC-aware Laplacian (Issue #542 fix)
             U_xx = _compute_laplacian_1d(
-                U_n_current_newton_iterate, dx, bc=bc, domain_bounds=domain_bounds, time=current_time
+                U_n_current_newton_iterate,
+                dx,
+                bc=bc,
+                domain_bounds=domain_bounds,
+                time=current_time,
+                bc_values=bc_values,  # Issue #574
             )
         if has_nan_or_inf(U_xx, backend):
             if backend is not None:
@@ -937,6 +963,7 @@ def newton_hjb_step(
     bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
     current_time: float = 0.0,  # Current time for time-dependent BCs
+    bc_values: dict[str, float] | None = None,  # Issue #574
 ) -> tuple[np.ndarray, float]:
     dx = problem.geometry.get_grid_spacing()[0]
     dx_norm = dx if abs(dx) > 1e-12 else 1.0
@@ -956,6 +983,7 @@ def newton_hjb_step(
         bc=bc,
         domain_bounds=domain_bounds,
         current_time=current_time,
+        bc_values=bc_values,  # Issue #574
     )
     if has_nan_or_inf(residual_F_U, backend):
         return U_n_current_newton_iterate, np.inf
@@ -1035,6 +1063,7 @@ def solve_hjb_timestep_newton(
     bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
     current_time: float = 0.0,  # Current time for time-dependent BCs
+    bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
 ) -> np.ndarray:
     """
     Solve HJB timestep using Newton's method.
@@ -1049,6 +1078,7 @@ def solve_hjb_timestep_newton(
         t_idx_n: Time index for current solution
         NiterNewton: DEPRECATED - use max_newton_iterations
         l2errBoundNewton: DEPRECATED - use newton_tolerance
+        bc_values: Per-boundary BC values (Issue #574)
     """
     import warnings
 
@@ -1105,6 +1135,7 @@ def solve_hjb_timestep_newton(
             bc=bc,
             domain_bounds=domain_bounds,
             current_time=current_time,
+            bc_values=bc_values,  # Issue #574
         )
 
         if has_nan_or_inf(U_n_next_newton_iterate, backend):
@@ -1141,6 +1172,10 @@ def solve_hjb_timestep_newton(
 
         # Left boundary
         left_type, left_value = _get_bc_type_and_value_1d(bc, "left", current_time)
+        # Issue #574: Override BC value if bc_values provided (adjoint-consistent mode)
+        if bc_values is not None and "x_min" in bc_values and left_type == BCType.NEUMANN:
+            left_value = bc_values["x_min"]
+
         if left_type == BCType.DIRICHLET:
             # Dirichlet: Set boundary value directly
             if backend is not None:
@@ -1157,6 +1192,10 @@ def solve_hjb_timestep_newton(
 
         # Right boundary
         right_type, right_value = _get_bc_type_and_value_1d(bc, "right", current_time)
+        # Issue #574: Override BC value if bc_values provided (adjoint-consistent mode)
+        if bc_values is not None and "x_max" in bc_values and right_type == BCType.NEUMANN:
+            right_value = bc_values["x_max"]
+
         if right_type == BCType.DIRICHLET:
             # Dirichlet: Set boundary value directly
             if backend is not None:
@@ -1189,6 +1228,7 @@ def solve_hjb_system_backward(
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
     bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
+    bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
 ) -> np.ndarray:
     """
     Solve HJB system backward in time using Newton's method.
@@ -1202,6 +1242,9 @@ def solve_hjb_system_backward(
         newton_tolerance: Newton convergence tolerance (new parameter name)
         NiterNewton: DEPRECATED - use max_newton_iterations
         l2errBoundNewton: DEPRECATED - use newton_tolerance
+        bc_values: Per-boundary Neumann BC values (Issue #574):
+            {"x_min": gradient_left, "x_max": gradient_right}
+            For adjoint-consistent BC. Default: None (standard BC with 0 gradient).
     """
     import warnings
 
@@ -1299,6 +1342,7 @@ def solve_hjb_system_backward(
             bc=bc,  # Pass BC for Issue #542 fix
             domain_bounds=domain_bounds,
             current_time=current_time,
+            bc_values=bc_values,  # Issue #574: Per-boundary BC values
         )
         backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_new_n, backend)
 
