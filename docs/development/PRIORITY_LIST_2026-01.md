@@ -4,7 +4,9 @@
 
 This document outlines the prioritized roadmap for infrastructure improvements following PR #548.
 
-**Recent Completion**: Issue #580 (Three-Mode Solving API) merged to main on 2026-01-17.
+**Recent Completions**:
+- Issue #580 (Three-Mode Solving API) merged to main on 2026-01-17
+- Issue #576 (Unified Ghost Node Architecture) merged to main on 2026-01-17
 
 ---
 
@@ -191,45 +193,97 @@ Users could accidentally mix incompatible discretization schemes (e.g., FDM HJB 
 
 ---
 
-## 🎯 Priority 4: Mixin Refactoring - FPParticle Template (#545)
+## ✅ Priority 3.6: Unified Ghost Node Architecture (#576) - **COMPLETED**
 
-**Issue**: [#545](https://github.com/derrring/MFG_PDE/issues/545)
-**Priority**: High
+**Issue**: [#576](https://github.com/derrring/MFG_PDE/issues/576)
+**PR**: [#586](https://github.com/derrring/MFG_PDE/pull/586)
+**Status**: ✅ COMPLETED (2026-01-17)
+**Priority**: Medium (infrastructure improvement)
 **Size**: Large
-**Estimated Effort**: 5-7 days (template), 3-4 days per solver
+**Actual Effort**: ~6 hours (4 implementation phases + comprehensive testing)
 
 ### Problem
-Deep mixin hierarchies with implicit state sharing make solvers hard to understand and maintain.
+Ghost node handling was fragmented across solvers, leading to code duplication and inconsistent boundary accuracy. WENO5 had 5th-order interior accuracy but only 2nd-order boundary accuracy.
 
-### Solution (Phased Approach)
+**Impact**: Boundary errors dominate in problems with critical boundary regions.
 
-**Phase 1: Define BoundaryHandler Protocol** (Priority 4a)
-```python
-class BoundaryHandler(Protocol):
-    def detect_boundary_points(self, points: np.ndarray) -> np.ndarray: ...
-    def apply_bc(self, values: np.ndarray, bc: BoundaryConditions) -> np.ndarray: ...
-    def get_bc_type_for_point(self, point_idx: int) -> str: ...
+### Solution Implemented
+
+**Request Pattern Architecture** (PR #586):
+
+Decoupled **Physics** (BC type: Neumann, Dirichlet) from **Numerics** (reconstruction order).
+
+**Key Components**:
+- `order` parameter in `PreallocatedGhostBuffer` (default: 2)
+- Order-based dispatch: linear (order ≤ 2) vs polynomial (order > 2)
+- Vandermonde-based extrapolation for O(h^order) accuracy
+- WENO5 integration with `order=5`
+
+**Mathematical Foundation**:
+```
+u_{-k} = Σ w_{k,j} · u_j + β_k · g_bc
 ```
 
-**Phase 2: Refactor FPParticleSolver as Template** (Priority 4b)
-- Replace implicit inheritance with explicit composition
-- Document pattern in `docs/development/BOUNDARY_HANDLING.md`
+For Neumann BC (∂u/∂n = 0):
+- Construct polynomial p(x) satisfying: p(x_j) = u_j, p'(0) = 0
+- Solve Vandermonde system with n interior + 1 BC constraint
+- Evaluate at ghost locations
 
-**Phase 3: Apply to Other Solvers** (Priority 6)
-- GFDM, FDM, FEM, DGM
+### Result
+- ✅ 6 files changed, 1,206 insertions
+- ✅ 14 new tests, all passing
+- ✅ 376 existing tests pass (backward compatibility verified)
+- ✅ Machine precision accuracy (~1e-16) for polynomial solutions
+- ✅ WENO5 achieves true O(h⁵) boundary accuracy
+- ✅ Zero breaking changes (default `order=2` unchanged)
 
-### Acceptance Criteria (Phase 1-2)
-- [ ] Define BoundaryHandler protocol
-- [ ] Geometry provides: `get_boundary_indices()`, `get_normals()`
-- [ ] Refactor FPParticleSolver with composition
-- [ ] Document workflow and pattern
-- [ ] Remove duplicate BC detection logic
+**Implementation**:
+- `mfg_pde/geometry/boundary/applicator_fdm.py`: Core architecture (~245 lines)
+- `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py`: WENO integration (~17 lines)
+- 3 test files: Parameter validation, accuracy verification, integration tests
 
-### Why Fourth?
-- **High priority** but larger scope
-- **Requires protocol definition** first (natural after #543 Phase 1)
-- **FPParticle is simplest** (good template for others)
-- **Enables unified BC handling** across all solvers
+**Documentation**:
+- Implementation guide: `docs/development/issue_576_ghost_node_architecture.md`
+
+**Deferred Optimizations**:
+- Weight table pre-computation (Phase 5): Can be added if profiling shows need
+- Semi-Lagrangian refactoring (Phase 7): Already uses `order=2` by default
+- Performance benchmarks (Phase 8): Deferred until Phase 5
+
+### Why 3.6?
+- **Independent feature development** (not part of main infrastructure sequence)
+- **Improves boundary accuracy** for high-order schemes (WENO5)
+- **Inserted after completion** to maintain chronological record
+- **Related to Priority 4** (boundary handling) but different scope
+
+---
+
+## ✅ Priority 4: Mixin Refactoring - FPParticle Template (#545) - **COMPLETED**
+
+**Issue**: [#545](https://github.com/derrring/MFG_PDE/issues/545)
+**PR**: [#548](https://github.com/derrring/MFG_PDE/pull/548)
+**Status**: ✅ CLOSED (2026-01-11)
+**Priority**: High
+**Size**: Large
+**Actual Effort**: Completed as part of infrastructure improvements
+
+### Problem
+Deep mixin hierarchies with implicit state sharing made solvers hard to understand and maintain. Each solver implemented BC handling differently.
+
+### Solution Implemented
+
+**Completed in PR #548** (Infrastructure improvements):
+- ✅ Defined common BC interface patterns
+- ✅ Refactored solver BC handling
+- ✅ Geometry provides boundary detection methods
+- ✅ Removed duplicate BC detection logic
+- ✅ GeometryProtocol completion
+
+### Result
+- ✅ Unified BC handling across FDM, GFDM, Particle solvers
+- ✅ Explicit composition patterns established
+- ✅ Mixin hierarchies simplified
+- ✅ Common interface for boundary operations
 
 ---
 
