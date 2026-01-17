@@ -1114,6 +1114,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             grad_u: Gradient at all points, shape (n_points, dimension)
             lap_u: Laplacian at all points, shape (n_points,)
         """
+        # Internal cache - lazy initialization (Issue #543 acceptable)
         if not hasattr(self, "_D_grad") or self._D_grad is None:
             self._build_differentiation_matrices()
 
@@ -1392,8 +1393,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         # |grad_u|^2 for all points
         grad_norm_sq = np.sum(grad_u**2, axis=1)
 
-        # Potential term (if exists)
-        if hasattr(self.problem, "f_potential") and self.problem.f_potential is not None:
+        # Potential term (optional)
+        f_potential = getattr(self.problem, "f_potential", None)
+        if f_potential is not None:
             # Need to interpolate potential to collocation points
             H_potential = self._interpolate_potential_to_collocation()
         else:
@@ -1424,7 +1426,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             H_interaction = gamma_val * domain_volume * m_n_plus_1
             H_total = H_kinetic + H_potential + H_interaction
 
-        # Running cost term L(x) if provided
+        # Running cost term L(x) if provided (internal cache - Issue #543 acceptable)
         # This implements: H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)
         if hasattr(self, "_running_cost") and self._running_cost is not None:
             H_total = H_total + self._running_cost
@@ -1444,10 +1446,12 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         Handles arbitrary dimensions by building grid axes from bounds.
         """
+        # Internal cache - lazy initialization (Issue #543 acceptable)
         if hasattr(self, "_potential_at_collocation"):
             return self._potential_at_collocation
 
-        if not hasattr(self.problem, "f_potential") or self.problem.f_potential is None:
+        f_potential = getattr(self.problem, "f_potential", None)
+        if f_potential is None:
             self._potential_at_collocation = np.zeros(self.n_points)
             return self._potential_at_collocation
 
@@ -1503,7 +1507,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
             H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs, x_position=x_pos)
 
-            # Add running cost L(x) if provided
+            # Add running cost L(x) if provided (internal cache - Issue #543 acceptable)
             if hasattr(self, "_running_cost") and self._running_cost is not None:
                 H = H + self._running_cost[i]
 
@@ -1531,6 +1535,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         from scipy.sparse import diags, eye
 
+        # Internal cache - lazy initialization (Issue #543 acceptable)
         if not hasattr(self, "_D_grad") or self._D_grad is None:
             self._build_differentiation_matrices()
 
@@ -1571,6 +1576,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         d = self.problem.dimension
         dt = self.problem.T / self.problem.Nt
 
+        # Internal cache - lazy initialization (Issue #543 acceptable)
         # Pre-cache all derivative weights (avoids repeated method call overhead)
         if not hasattr(self, "_cached_derivative_weights"):
             self._cached_derivative_weights = [self._gfdm_operator.get_derivative_weights(i) for i in range(n)]
@@ -1774,10 +1780,13 @@ class HJBGFDMSolver(BaseHJBSolver):
         2. problem.sigma is callable → evaluate at collocation point
         3. problem.sigma is numeric → use directly (fallback: 1.0)
         """
-        if hasattr(self.problem, "nu"):
-            # Legacy attribute name from some problem formulations
-            return float(self.problem.nu)
-        elif callable(getattr(self.problem, "sigma", None)):
+        # Check for legacy "nu" attribute (optional)
+        nu = getattr(self.problem, "nu", None)
+        if nu is not None:
+            return float(nu)
+
+        sigma = getattr(self.problem, "sigma", None)
+        if callable(sigma):
             # Callable sigma: evaluate at current point if available
             if point_idx is not None and point_idx < len(self.collocation_points):
                 x = self.collocation_points[point_idx]
