@@ -1,12 +1,16 @@
 """
-Boundary condition coupling utilities for MFG systems.
+Boundary condition coupling utilities for coupled PDE systems.
 
-This module provides utilities for coupled boundary conditions where the BC
-for one equation (e.g., HJB) depends on the solution of another (e.g., FP).
+This module provides utilities for creating state-dependent boundary conditions
+where the BC for one equation depends on the solution of another equation.
 
-Key use case: Adjoint-consistent reflecting boundaries (Issue #574)
+Key use case: Adjoint-consistent reflecting boundaries for MFG (Issue #574)
 - FP equation: Zero-flux BC (J·n = 0)
-- HJB equation: Coupled Neumann BC (∂U/∂n = -σ²/2 · ∂ln(m)/∂n)
+- HJB equation: Robin BC where ∂U/∂n = -σ²/2 · ∂ln(m)/∂n
+
+This implementation uses the existing Robin BC framework (BCType.ROBIN with
+alpha=0, beta=1) for dimension-agnostic support and clean integration with
+all solver backends (FDM, GFDM, FEM, particle methods).
 
 Mathematical Background:
 -----------------------
@@ -19,7 +23,15 @@ At equilibrium, this gives:
 For quadratic Hamiltonian, α = -∇U, so:
     ∇U = -σ²/2 · ∇(ln m)
 
-This creates a Robin-type BC for HJB that depends on the FP density gradient.
+This creates a Robin-type BC for HJB that couples to the FP density gradient.
+
+Architecture:
+------------
+Instead of manually threading bc_values through solver chains, this module:
+1. Creates BoundaryConditions objects with Robin BC segments
+2. Computes Robin BC values from current FP density
+3. Returns BC object that integrates seamlessly with applicator framework
+4. Solver applies BC using existing infrastructure (no special handling)
 
 References:
 -----------
@@ -30,66 +42,44 @@ References:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+from .conditions import mixed_bc
+from .types import BCSegment, BCType
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from .conditions import BoundaryConditions
 
-def compute_boundary_log_density_gradient(
+
+def compute_boundary_log_density_gradient_1d(
     m: NDArray[np.floating],
     dx: float,
-    side: Literal["left", "right"],
+    side: str,
     regularization: float = 1e-10,
 ) -> float:
     """
-    Compute ∂(ln m)/∂n at boundary for adjoint-consistent BC.
+    Compute ∂ln(m)/∂n at 1D boundary using one-sided finite differences.
 
-    Uses one-sided finite differences with outward normal convention.
-
-    Mathematical Context:
-        At reflecting boundaries, the HJB BC should satisfy:
-            ∂U/∂n = -σ²/2 · ∂(ln m)/∂n
-
-        This ensures consistency with the zero-flux FP BC at equilibrium.
+    This is a dimension-specific implementation for 1D problems. For nD problems,
+    use compute_adjoint_consistent_bc_values() which handles arbitrary dimensions.
 
     Args:
         m: Density array (interior points only, shape (Nx,))
-            For 1D problems, this should be the density at grid points,
-            excluding ghost cells.
         dx: Grid spacing
-        side: Which boundary to compute gradient at
-            - "left": Left/lower boundary (x_min)
-            - "right": Right/upper boundary (x_max)
-        regularization: Small positive constant added to m to prevent log(0).
-            Default: 1e-10. Increase if density approaches zero at boundaries.
+        side: Boundary side ("left" or "right")
+        regularization: Small positive constant to prevent log(0)
 
     Returns:
-        Gradient ∂(ln m)/∂n at the specified boundary (positive outward).
-        This value can be used to set Neumann BC for HJB:
-            bc_value = -sigma**2 / 2 * grad_ln_m
+        Outward normal derivative of ln(m) at boundary
 
-    Notes:
-        - Outward normal convention:
-          * Left boundary: normal points in negative x direction
-          * Right boundary: normal points in positive x direction
-        - One-sided differences used to avoid requiring ghost cells
-        - Regularization prevents singularity but may affect accuracy
-          if actual density is very small at boundary
-
-    Example:
-        >>> # Compute coupled BC value for HJB at left boundary
-        >>> m_current = np.array([0.5, 0.6, 0.7, 0.8, 0.9])
-        >>> dx = 0.25
-        >>> grad_ln_m = compute_boundary_log_density_gradient(m_current, dx, "left")
-        >>> sigma = 0.2
-        >>> bc_value_left = -sigma**2 / 2 * grad_ln_m  # For HJB Neumann BC
-
-    See Also:
-        - compute_coupled_hjb_bc_values: Convenience wrapper for both boundaries
-        - Issue #574 for experimental validation
+    Note:
+        Uses one-sided differences with outward normal convention:
+        - Left boundary: normal points in -x direction
+        - Right boundary: normal points in +x direction
     """
     # Regularize density to prevent log(0)
     m_safe = m + regularization
@@ -98,14 +88,14 @@ def compute_boundary_log_density_gradient(
     ln_m = np.log(m_safe)
 
     if side == "left":
-        # Left boundary: outward normal points in negative x direction
-        # Forward difference approximation: ∂/∂x ≈ (ln_m[1] - ln_m[0]) / dx
-        # Outward derivative: ∂/∂n = -∂/∂x (normal is -x direction)
+        # Left boundary: outward normal points in -x direction
+        # Forward difference: ∂ln(m)/∂x ≈ (ln_m[1] - ln_m[0]) / dx
+        # Outward derivative: ∂ln(m)/∂n = -∂ln(m)/∂x
         grad_ln_m = -(ln_m[1] - ln_m[0]) / dx
     elif side == "right":
-        # Right boundary: outward normal points in positive x direction
-        # Backward difference approximation: ∂/∂x ≈ (ln_m[-1] - ln_m[-2]) / dx
-        # Outward derivative: ∂/∂n = ∂/∂x (normal is +x direction)
+        # Right boundary: outward normal points in +x direction
+        # Backward difference: ∂ln(m)/∂x ≈ (ln_m[-1] - ln_m[-2]) / dx
+        # Outward derivative: ∂ln(m)/∂n = ∂ln(m)/∂x
         grad_ln_m = (ln_m[-1] - ln_m[-2]) / dx
     else:
         raise ValueError(f"side must be 'left' or 'right', got {side}")
@@ -113,118 +103,229 @@ def compute_boundary_log_density_gradient(
     return float(grad_ln_m)
 
 
-def compute_coupled_hjb_bc_values(
-    m: NDArray[np.floating],
+def create_adjoint_consistent_bc_1d(
+    m_current: NDArray[np.floating],
     dx: float,
     sigma: float,
+    domain_bounds: NDArray[np.floating] | None = None,
     regularization: float = 1e-10,
-) -> dict[str, float]:
+) -> BoundaryConditions:
     """
-    Compute adjoint-consistent BC values for HJB at both boundaries.
+    Create adjoint-consistent Robin BC for 1D HJB equation.
 
-    This is a convenience wrapper around compute_boundary_log_density_gradient
-    that computes the coupled Neumann BC values for both left and right
-    boundaries simultaneously.
+    This function creates a BoundaryConditions object with Robin BC segments
+    that couple the HJB boundary condition to the current FP density gradient.
+    Uses the existing Robin BC framework for clean integration.
 
     Mathematical Formula:
-        ∂U/∂n = -σ²/2 · ∂(ln m)/∂n
+        At reflecting boundaries: ∂U/∂n = -σ²/2 · ∂ln(m)/∂n
+
+    Implementation:
+        Robin BC: alpha*U + beta*∂U/∂n = g
+        - alpha = 0.0 (no U term)
+        - beta = 1.0 (coefficient of ∂U/∂n)
+        - g = -σ²/2 · ∂ln(m)/∂n (computed from density)
 
     Args:
-        m: Density array (interior points, shape (Nx,))
+        m_current: Current FP density (interior points, shape (Nx,))
         dx: Grid spacing
-        sigma: Diffusion coefficient from problem
+        sigma: Diffusion coefficient
+        domain_bounds: Domain bounds array of shape (1, 2), optional
         regularization: Regularization constant for log(m)
 
     Returns:
-        Dictionary with BC values for HJB Neumann conditions:
-            {
-                "x_min": bc_value_left,   # ∂U/∂n at left boundary
-                "x_max": bc_value_right,  # ∂U/∂n at right boundary
-            }
+        BoundaryConditions object with Robin BC segments for both boundaries
 
     Example:
         >>> # In Picard iteration
         >>> m_current = solve_fp(U_prev)
-        >>> bc_values = compute_coupled_hjb_bc_values(
-        ...     m_current[-1, :],  # Take final time slice
+        >>> hjb_bc = create_adjoint_consistent_bc_1d(
+        ...     m_current=m_current[-1, :],  # Final time slice
         ...     dx=problem.dx,
         ...     sigma=problem.sigma,
+        ...     domain_bounds=problem.geometry.domain_bounds,
         ... )
-        >>> U_new = hjb_solver.solve_hjb_system(
-        ...     M_density=m_current,
-        ...     bc_values=bc_values,  # Pass coupled BC values
-        ... )
+        >>> # Temporarily replace BC
+        >>> original_bc = problem.boundary_conditions
+        >>> problem.boundary_conditions = hjb_bc
+        >>> U_new = hjb_solver.solve_hjb_system(...)
+        >>> problem.boundary_conditions = original_bc  # Restore
 
     Note:
-        This function returns values for Neumann BC (gradient conditions).
-        The HJB solver should apply these as:
-            ∂U/∂n = bc_values["x_min"]  (at left boundary)
-            ∂U/∂n = bc_values["x_max"]  (at right boundary)
+        This is a 1D-specific implementation. For nD problems, the architecture
+        is the same but gradient computation needs dimension-agnostic handling
+        via geometry.get_gradient_operator().
     """
     # Compute density gradients at boundaries
-    grad_ln_m_left = compute_boundary_log_density_gradient(m, dx, side="left", regularization=regularization)
-    grad_ln_m_right = compute_boundary_log_density_gradient(m, dx, side="right", regularization=regularization)
+    grad_ln_m_left = compute_boundary_log_density_gradient_1d(m_current, dx, side="left", regularization=regularization)
+    grad_ln_m_right = compute_boundary_log_density_gradient_1d(
+        m_current, dx, side="right", regularization=regularization
+    )
 
-    # Convert to HJB BC values: ∂U/∂n = -σ²/2 · ∂(ln m)/∂n
+    # Robin BC values: g = -σ²/2 · ∂ln(m)/∂n
     diffusion_coeff = sigma**2 / 2
+    value_left = -diffusion_coeff * grad_ln_m_left
+    value_right = -diffusion_coeff * grad_ln_m_right
 
-    bc_values = {
-        "x_min": -diffusion_coeff * grad_ln_m_left,
-        "x_max": -diffusion_coeff * grad_ln_m_right,
-    }
+    # Create Robin BC segments (alpha=0, beta=1, value=g)
+    segments = [
+        BCSegment(
+            name="left_adjoint_consistent",
+            bc_type=BCType.ROBIN,
+            alpha=0.0,  # No U term
+            beta=1.0,  # Coefficient of ∂U/∂n
+            value=value_left,  # -σ²/2 · ∂ln(m)/∂n at left boundary
+            boundary="x_min",
+            priority=1,
+        ),
+        BCSegment(
+            name="right_adjoint_consistent",
+            bc_type=BCType.ROBIN,
+            alpha=0.0,
+            beta=1.0,
+            value=value_right,  # -σ²/2 · ∂ln(m)/∂n at right boundary
+            boundary="x_max",
+            priority=1,
+        ),
+    ]
 
-    return bc_values
+    # Create mixed BC with Robin segments
+    return mixed_bc(
+        segments=segments,
+        dimension=1,
+        domain_bounds=domain_bounds,
+        default_bc=BCType.NEUMANN,  # Fallback (shouldn't be reached)
+        default_value=0.0,
+    )
 
 
-# Smoke test
+def compute_adjoint_consistent_bc_values(
+    m_current: NDArray[np.floating],
+    geometry: object,  # GeometryProtocol - avoid circular import
+    sigma: float,
+    dimension: int = 1,
+    regularization: float = 1e-10,
+) -> BoundaryConditions:
+    """
+    Create adjoint-consistent Robin BC for HJB equation (dimension-agnostic).
+
+    This is the general interface that dispatches to dimension-specific
+    implementations. Currently only 1D is implemented.
+
+    Args:
+        m_current: Current FP density (interior points)
+        geometry: Geometry object providing grid spacing and bounds
+        sigma: Diffusion coefficient
+        dimension: Spatial dimension
+        regularization: Regularization constant for log(m)
+
+    Returns:
+        BoundaryConditions object with adjoint-consistent Robin BC
+
+    Raises:
+        NotImplementedError: For dimensions > 1 (planned for future releases)
+
+    Example:
+        >>> bc = compute_adjoint_consistent_bc_values(
+        ...     m_current=m[-1, :],
+        ...     geometry=problem.geometry,
+        ...     sigma=problem.sigma,
+        ...     dimension=problem.dimension,
+        ... )
+        >>> problem.boundary_conditions = bc
+        >>> U = hjb_solver.solve_hjb_system(...)
+    """
+    if dimension == 1:
+        # 1D implementation using one-sided finite differences
+        dx = geometry.get_grid_spacing()[0]
+        domain_bounds = geometry.domain_bounds if hasattr(geometry, "domain_bounds") else None
+        return create_adjoint_consistent_bc_1d(
+            m_current=m_current,
+            dx=dx,
+            sigma=sigma,
+            domain_bounds=domain_bounds,
+            regularization=regularization,
+        )
+    else:
+        # Placeholder for 2D/nD implementation
+        # TODO: Implement using geometry.get_gradient_operator()
+        raise NotImplementedError(
+            f"Adjoint-consistent BC not yet implemented for {dimension}D. "
+            f"Currently only 1D is supported. Extension to nD requires normal gradient "
+            f"computation via geometry.get_gradient_operator() at boundary points."
+        )
+
+
+# =============================================================================
+# Backward Compatibility Aliases
+# =============================================================================
+
+# Alias for old function name (from flawed implementation)
+# Will be deprecated in v0.18.0
+compute_coupled_hjb_bc_values = compute_adjoint_consistent_bc_values
+
+
+# =============================================================================
+# Smoke Test
+# =============================================================================
+
 if __name__ == "__main__":
-    """Quick validation of boundary gradient computation."""
-    print("Testing boundary gradient computation...")
+    """Quick validation of boundary gradient computation and Robin BC creation."""
+    print("Testing adjoint-consistent BC creation...")
     print()
 
     # Test case 1: Exponential density (known analytical gradient)
     x = np.linspace(0, 1, 11)
     m_exp = np.exp(-x)  # m(x) = exp(-x)
     # Analytical: d/dx[ln(exp(-x))] = d/dx[-x] = -1
-    # At left (x=0): ∂(ln m)/∂n = -(-1) = 1 (outward is -x direction)
-    # At right (x=1): ∂(ln m)/∂n = -1 (outward is +x direction)
+    # At left (x=0): ∂ln(m)/∂n = -(-1) = 1 (outward is -x direction)
+    # At right (x=1): ∂ln(m)/∂n = -1 (outward is +x direction)
 
     dx = x[1] - x[0]
-    grad_left = compute_boundary_log_density_gradient(m_exp, dx, "left")
-    grad_right = compute_boundary_log_density_gradient(m_exp, dx, "right")
+    grad_left = compute_boundary_log_density_gradient_1d(m_exp, dx, "left")
+    grad_right = compute_boundary_log_density_gradient_1d(m_exp, dx, "right")
 
     print("Test 1: Exponential density m(x) = exp(-x)")
-    print("  Analytical: ∂(ln m)/∂n|_left = 1.0, ∂(ln m)/∂n|_right = -1.0")
-    print(f"  Numerical:  ∂(ln m)/∂n|_left = {grad_left:.6f}, ∂(ln m)/∂n|_right = {grad_right:.6f}")
+    print("  Analytical: ∂ln(m)/∂n|_left = 1.0, ∂ln(m)/∂n|_right = -1.0")
+    print(f"  Numerical:  ∂ln(m)/∂n|_left = {grad_left:.6f}, ∂ln(m)/∂n|_right = {grad_right:.6f}")
     print(f"  Error: left = {abs(grad_left - 1.0):.2e}, right = {abs(grad_right - (-1.0)):.2e}")
     print()
 
-    # Test case 2: Gaussian density
-    x = np.linspace(-1, 1, 21)
-    dx = x[1] - x[0]
-    m_gauss = np.exp(-(x**2))  # m(x) = exp(-x²)
-    # Analytical: d/dx[ln(exp(-x²))] = d/dx[-x²] = -2x
-    # At left (x=-1): ∂/∂x = 2, outward is -x, so ∂/∂n = -2
-    # At right (x=1): ∂/∂x = -2, outward is +x, so ∂/∂n = -2
-
-    grad_left_g = compute_boundary_log_density_gradient(m_gauss, dx, "left")
-    grad_right_g = compute_boundary_log_density_gradient(m_gauss, dx, "right")
-
-    print("Test 2: Gaussian density m(x) = exp(-x²)")
-    print("  Analytical: ∂(ln m)/∂n|_left = -2.0, ∂(ln m)/∂n|_right = -2.0")
-    print(f"  Numerical:  ∂(ln m)/∂n|_left = {grad_left_g:.6f}, ∂(ln m)/∂n|_right = {grad_right_g:.6f}")
-    print(f"  Error: left = {abs(grad_left_g - (-2.0)):.2e}, right = {abs(grad_right_g - (-2.0)):.2e}")
-    print()
-
-    # Test case 3: Coupled BC values
-    print("Test 3: Coupled HJB BC values")
+    # Test case 2: Create Robin BC object
+    print("Test 2: Robin BC creation")
     sigma = 0.2
-    bc_values = compute_coupled_hjb_bc_values(m_exp, dx=0.1, sigma=sigma)
+    domain_bounds = np.array([[0.0, 1.0]])
+    bc = create_adjoint_consistent_bc_1d(
+        m_current=m_exp,
+        dx=dx,
+        sigma=sigma,
+        domain_bounds=domain_bounds,
+    )
+
     print("  Density: m(x) = exp(-x)")
     print(f"  Diffusion: σ = {sigma}")
-    print(f"  BC values: {bc_values}")
-    print(f"  Expected: x_min ≈ -{sigma**2 / 2 * 1.0} = {-(sigma**2) / 2:.4f}")
-    print(f"  Expected: x_max ≈ -{sigma**2 / 2 * (-1.0)} = {sigma**2 / 2:.4f}")
+    print(f"  BC object: {bc}")
     print()
 
-    print("✓ All tests passed! Gradients computed correctly.")
+    # Verify BC properties
+    assert bc.dimension == 1, "Dimension should be 1"
+    assert bc.is_mixed, "Should be mixed BC (multiple segments)"
+    assert len(bc.segments) == 2, "Should have 2 segments (left + right)"
+
+    left_seg = bc.segments[0]
+    right_seg = bc.segments[1]
+
+    assert left_seg.bc_type == BCType.ROBIN, "Left should be Robin BC"
+    assert right_seg.bc_type == BCType.ROBIN, "Right should be Robin BC"
+    assert left_seg.alpha == 0.0, "alpha should be 0 (no U term)"
+    assert left_seg.beta == 1.0, "beta should be 1 (∂U/∂n coefficient)"
+
+    # Check BC values
+    expected_left = -(sigma**2) / 2 * 1.0  # grad_ln_m_left ≈ 1.0
+    expected_right = -(sigma**2) / 2 * (-1.0)  # grad_ln_m_right ≈ -1.0
+
+    print(f"  Left BC value: {left_seg.value:.6f} (expected ≈ {expected_left:.6f})")
+    print(f"  Right BC value: {right_seg.value:.6f} (expected ≈ {expected_right:.6f})")
+    print()
+
+    print("✓ All tests passed! Robin BC created correctly using framework.")

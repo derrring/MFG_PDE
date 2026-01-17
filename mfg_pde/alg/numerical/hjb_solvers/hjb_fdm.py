@@ -270,10 +270,14 @@ class HJBFDMSolver(BaseHJBSolver):
             U_coupling_prev: Previous coupling iteration estimate
             diffusion_field: Diffusion coefficient (None uses problem.sigma)
             tensor_diffusion_field: Tensor diffusion (Phase 3.0, not yet fully implemented)
-            bc_values: Per-boundary BC values for adjoint-consistent mode (Issue #574).
-                Dict mapping boundary names to gradient values:
-                {"x_min": value_left, "x_max": value_right}
-                Only used when bc_mode="adjoint_consistent". Default: None (use standard BC).
+            bc_values: DEPRECATED. No longer used (kept for backward compatibility).
+                Adjoint-consistent BC now handled automatically via bc_mode parameter.
+
+        Note:
+            When bc_mode="adjoint_consistent", the solver automatically creates
+            proper Robin BC using create_adjoint_consistent_bc_1d() from the
+            current FP density. This integrates with the existing BC framework
+            and works with all solver backends.
         """
         import warnings
 
@@ -328,6 +332,15 @@ class HJBFDMSolver(BaseHJBSolver):
             )
             U_coupling_prev = U_from_prev_picard
 
+        # Warn about deprecated bc_values parameter
+        if bc_values is not None:
+            warnings.warn(
+                "Parameter 'bc_values' is deprecated and no longer used. "
+                "Adjoint-consistent BC is now handled automatically via bc_mode='adjoint_consistent'.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         # Validate required parameters
         if M_density is None:
             raise ValueError("M_density is required")
@@ -379,9 +392,9 @@ class HJBFDMSolver(BaseHJBSolver):
             except AttributeError:
                 pass
 
-            # Issue #574: Compute adjoint-consistent BC values if needed
-            if self.bc_mode == "adjoint_consistent" and bc_values is None:
-                from mfg_pde.geometry.boundary import compute_coupled_hjb_bc_values
+            # Issue #574: Create adjoint-consistent BC if needed
+            if self.bc_mode == "adjoint_consistent":
+                from mfg_pde.geometry.boundary import create_adjoint_consistent_bc_1d
 
                 # Get grid spacing
                 try:
@@ -397,13 +410,16 @@ class HJBFDMSolver(BaseHJBSolver):
                         f"Got diffusion_field type: {type(sigma)}"
                     )
 
-                # Compute coupled BC values from current density
-                # Use time-averaged density or final time slice
+                # Create adjoint-consistent Robin BC from current density
+                # Use final time slice if time-dependent
                 m_for_bc = M_density[-1, :] if M_density.ndim == 2 else M_density
-                bc_values = compute_coupled_hjb_bc_values(
-                    m=m_for_bc,
+
+                # Create BoundaryConditions object with Robin BC segments
+                bc = create_adjoint_consistent_bc_1d(
+                    m_current=m_for_bc,
                     dx=dx,
                     sigma=sigma,
+                    domain_bounds=domain_bounds,
                 )
 
             # Debug: Log BC being passed (Issue #542 investigation)
@@ -428,9 +444,8 @@ class HJBFDMSolver(BaseHJBSolver):
                 backend=self.backend,
                 diffusion_field=diffusion_field,
                 use_upwind=self.use_upwind,
-                bc=bc,
+                bc=bc,  # Now uses proper Robin BC for adjoint-consistent mode (Issue #574)
                 domain_bounds=domain_bounds,
-                bc_values=bc_values,
             )
         else:
             # Use nD solver with centralized nonlinear solver

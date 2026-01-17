@@ -164,11 +164,18 @@ def _compute_laplacian_ghost_values_1d(
     left_type, left_value = _get_bc_type_and_value_1d(bc, "left", time)
     right_type, right_value = _get_bc_type_and_value_1d(bc, "right", time)
 
-    # Issue #574: Override BC values if bc_values provided (adjoint-consistent mode)
-    if bc_values is not None and "x_min" in bc_values and left_type == BCType.NEUMANN:
-        left_value = bc_values["x_min"]
-    if bc_values is not None and "x_max" in bc_values and right_type == BCType.NEUMANN:
-        right_value = bc_values["x_max"]
+    # Issue #574: bc_values parameter deprecated - BC framework now handles Robin BC automatically
+    # No manual override needed - proper Robin BC segments are created in HJBFDMSolver
+    if bc_values is not None:
+        import warnings
+
+        warnings.warn(
+            "bc_values parameter is deprecated and no longer used. "
+            "Adjoint-consistent BC is now handled via proper Robin BC segments. "
+            "This parameter will be removed in v0.18.0.",
+            DeprecationWarning,
+            stacklevel=3,  # Stack depth to show caller of newton_hjb_step
+        )
 
     # Compute ghost for left boundary (x_min)
     # For Laplacian, use standard FDM boundary stencils

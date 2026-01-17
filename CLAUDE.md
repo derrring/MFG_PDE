@@ -266,39 +266,47 @@ if isinstance(solver, HasCleanup):  # ✅ Type-safe
 
 When implementing coupled PDE systems (like HJB-FP in MFG), boundary conditions may need to couple between equations.
 
-**Pattern: Adjoint-Consistent Boundary Conditions**
+**Pattern: Adjoint-Consistent Boundary Conditions (Issue #574)**
 
-For reflecting boundaries in MFG systems, the HJB boundary condition may need to couple to the FP density gradient to maintain equilibrium consistency. This is implemented via the `bc_mode` parameter in HJB solvers.
+For reflecting boundaries in MFG systems, the HJB boundary condition couples to the FP density gradient to maintain equilibrium consistency. This is implemented using the **existing Robin BC framework** (`BCType.ROBIN` with α=0, β=1) for dimension-agnostic support.
 
-**Design Principles**:
-1. **Automatic computation**: Solver computes coupled BC values from density automatically
-2. **Override option**: Allow manual BC value specification via `bc_values` parameter
-3. **Backward compatibility**: Default mode preserves classical behavior
-4. **Clean API**: Single parameter switch, no manual BC computation in user code
+**Architecture Principles**:
+1. **Use existing framework**: Leverage Robin BC infrastructure, don't bypass it
+2. **Automatic BC creation**: Solver creates proper `BoundaryConditions` objects from density
+3. **Clean separation**: BC computation decoupled from solver internals
+4. **Dimension-agnostic**: Architecture supports 1D, 2D, nD (1D implemented)
+5. **Backward compatible**: Default mode preserves classical behavior
 
-**Example** (Issue #574 implementation):
+**Example** (Proper implementation, v0.17.1+):
 ```python
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
-# Standard Neumann BC (default)
+# Standard Neumann BC (default, backward compatible)
 solver_std = HJBFDMSolver(problem, bc_mode="standard")
 
-# Adjoint-consistent BC (couples to FP density gradient)
+# Adjoint-consistent BC (uses Robin BC framework)
 solver_ac = HJBFDMSolver(problem, bc_mode="adjoint_consistent")
-# Automatically computes BC values from density each iteration
-
-# Advanced: Manual override
-from mfg_pde.geometry.boundary import compute_coupled_hjb_bc_values
-bc_values = compute_coupled_hjb_bc_values(m=M_current[-1, :], dx=problem.dx, sigma=problem.sigma)
-U = solver.solve_hjb_system(M_density, U_terminal, U_prev, bc_values=bc_values)
+# Solver automatically creates BoundaryConditions with Robin BC segments
+# No manual BC computation or threading needed
 ```
+
+**How it works internally**:
+1. Solver detects `bc_mode="adjoint_consistent"`
+2. Calls `create_adjoint_consistent_bc_1d()` from bc_coupling module
+3. Returns proper `BoundaryConditions` object with Robin BC segments
+4. BC framework applies it automatically (works with FDM, GFDM, FEM, particles)
 
 **When to use adjoint-consistent BC**:
 - ✅ Reflecting boundaries with stall point at domain boundary
 - ✅ Near equilibrium or high-accuracy requirements
+- ✅ Boundary stall configurations (dramatic improvement: >1000x in some cases)
 - ❌ Not needed for interior stall points or periodic BC
 
-**Implementation location**: `mfg_pde/geometry/boundary/bc_coupling.py`
+**Implementation**:
+- Core utilities: `mfg_pde/geometry/boundary/bc_coupling.py`
+  - `create_adjoint_consistent_bc_1d()`: Creates Robin BC from density
+  - Uses `BCSegment` with `alpha=0, beta=1, value=-σ²/2 · ∂ln(m)/∂n`
+- Solver integration: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 **Reference**: See `docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md` § Boundary Condition Consistency Issue
 

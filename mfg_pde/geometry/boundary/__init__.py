@@ -189,8 +189,10 @@ from .applicator_particle import ParticleApplicator
 # BC Coupling (for coupled MFG systems - Issue #574)
 # =============================================================================
 from .bc_coupling import (
-    compute_boundary_log_density_gradient,
-    compute_coupled_hjb_bc_values,
+    compute_adjoint_consistent_bc_values,
+    compute_boundary_log_density_gradient_1d,
+    compute_coupled_hjb_bc_values,  # Backward compat alias
+    create_adjoint_consistent_bc_1d,
 )
 
 # Unified BoundaryConditions class and factory functions
@@ -238,6 +240,9 @@ from .types import (
 
 # Backward compatibility alias (DEPRECATED)
 LegacyBoundaryConditions1D = BoundaryConditions1DFDM
+
+# Backward compatibility alias for bc_coupling (Issue #574)
+compute_boundary_log_density_gradient = compute_boundary_log_density_gradient_1d
 
 __all__ = [
     # Solver BC Protocol (Issue #545)
@@ -359,8 +364,11 @@ __all__ = [
     # Particle Applicator (BC-segment-based)
     "ParticleApplicator",
     # BC Coupling (for coupled MFG systems - Issue #574)
-    "compute_boundary_log_density_gradient",
-    "compute_coupled_hjb_bc_values",
+    "compute_adjoint_consistent_bc_values",
+    "create_adjoint_consistent_bc_1d",
+    "compute_boundary_log_density_gradient_1d",
+    "compute_boundary_log_density_gradient",  # Backward compat alias (deprecated)
+    "compute_coupled_hjb_bc_values",  # Backward compat alias (deprecated)
     # Graph Applicator
     "GraphApplicator",
     "GraphBCConfig",

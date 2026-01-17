@@ -22,6 +22,12 @@ The adjoint-consistent BC couples HJB to the FP density gradient:
 
 This maintains the zero-flux condition J·n = 0 at equilibrium.
 
+Implementation:
+--------------
+Uses the existing Robin BC framework (BCType.ROBIN with alpha=0, beta=1) for
+dimension-agnostic support. The solver automatically creates proper
+BoundaryConditions objects when bc_mode="adjoint_consistent".
+
 Reference: docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md
 """
 
