@@ -298,19 +298,34 @@ Claude Code must proactively check at these triggers:
 ### **Logging and Progress Bars**
 ```python
 from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
-from mfg_pde.utils.progress import solver_progress, RichProgressBar
+from mfg_pde.utils.progress import create_progress_bar, solver_progress
 
 configure_research_logging("session_name", level="INFO")
 logger = get_logger(__name__)
 
-# For solver iterations with error tracking (preferred)
+# Type-safe progress bar pattern (Issue #587 Protocol)
+progress = create_progress_bar(range(max_iterations), verbose=True, desc="Picard")
+for i in progress:
+    progress.update_metrics(error=error, norm=norm)  # Always works, no hasattr needed
+    if converged:
+        progress.log("Converged!")  # Always works
+        break
+
+# Alternative: High-level solver progress utility
 with solver_progress(max_iterations, "Solving MFG") as progress:
     for iteration in range(max_iterations):
         error = step()
         progress.update(1, error=error)
 ```
 
-**Progress Bar Backend**: Rich only (v0.16.15+). External tqdm eliminated. The `tqdm` name kept as alias for `RichProgressBar` for backward compatibility.
+**Progress Bar Backend**: Rich only (v0.16.15+). External tqdm eliminated.
+
+**Key Principles**:
+- ✅ Use `create_progress_bar()` for type-safe polymorphism (Issue #587)
+- ✅ Call `update_metrics()` and `log()` directly - no hasattr checks needed
+- ✅ Protocol pattern ensures both verbose=True and verbose=False work identically
+- ❌ DO NOT use hasattr checks on progress bars
+- 📚 Legacy `tqdm` alias kept for backward compatibility, use `create_progress_bar()` in new code
 
 ---
 

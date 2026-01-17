@@ -90,6 +90,85 @@ from mfg_pde.utils.progress import solver_progress  # Preferred for solvers
 
 ---
 
+## v0.17.0 Modernization: Progress Bar Protocol Pattern (Issue #587)
+
+### ✅ COMPLETED: Protocol Pattern Eliminates hasattr Checks
+
+The progress bar API has been refactored to use Python's Protocol pattern with Null Object and Adapter patterns. All 7 hasattr duck typing patterns have been eliminated from numerical solvers.
+
+| Old (Deprecated) | New (Current) | Status |
+|:----------------|:--------------|:-------|
+| `picard_range = tqdm(...) if verbose else range(...)` | `create_progress_bar(range(...), verbose=...)` | **COMPLETED** |
+| `if verbose and hasattr(progress, "set_postfix"):` | `progress.update_metrics(...)` (always works) | **COMPLETED** |
+| `if verbose and hasattr(progress, "write"):` | `progress.log(...)` (always works) | **COMPLETED** |
+| `progress.set_postfix(error=err)` | `progress.update_metrics(error=err)` | Deprecated |
+
+**What Changed**:
+
+1. **ProgressTracker Protocol**: Explicit contract defining `__iter__()`, `update_metrics()`, `log()`
+2. **create_progress_bar() Factory**: Type-safe factory ensuring consistent ProgressTracker return type
+3. **NoOpProgressBar**: Null Object pattern for `verbose=False` with zero overhead
+4. **RichProgressBar Enhanced**: Implements Protocol with `update_metrics()` and `log()` methods
+5. **Deprecated Methods**: `set_postfix()` now calls `update_metrics()` (kept for compatibility until v1.0.0)
+
+**Migration Path**:
+
+```python
+# Old pattern (deprecated - hasattr checks)
+from mfg_pde.utils.progress import RichProgressBar
+
+picard_range = range(max_iterations)
+if verbose:
+    picard_range = RichProgressBar(picard_range, desc="Picard")
+
+for i in picard_range:
+    # Duck typing with hasattr
+    if verbose and hasattr(picard_range, "set_postfix"):
+        picard_range.set_postfix(error=error, norm=norm)
+    if converged and verbose and hasattr(picard_range, "write"):
+        picard_range.write("Converged!")
+        break
+
+# New pattern (Protocol - no hasattr needed)
+from mfg_pde.utils.progress import create_progress_bar
+
+progress = create_progress_bar(range(max_iterations), verbose=verbose, desc="Picard")
+
+for i in progress:
+    # Type-safe - methods always available
+    progress.update_metrics(error=error, norm=norm)  # Always works
+    if converged:
+        progress.log("Converged!")  # Always works
+        break
+```
+
+**Files Migrated** (Issue #587 Phase 2):
+- `fixed_point_iterator.py` - 2 hasattr patterns eliminated
+- `fictitious_play.py` - 2 hasattr patterns eliminated
+- `block_iterators.py` - 2 hasattr patterns eliminated
+- `hjb_gfdm.py` - 1 hasattr pattern eliminated
+
+**Benefits**:
+- ✅ Type safety: Mypy verifies all ProgressTracker calls
+- ✅ Zero hasattr checks: Protocol guarantees method availability
+- ✅ Performance: NoOpProgressBar is zero-overhead pass-through
+- ✅ Testability: NoOpProgressBar is built-in test double
+- ✅ Extensibility: Easy to add WebSocketProgressBar, JupyterProgressBar, etc.
+- ✅ Separation of concerns: UI logic isolated from algorithms
+
+**Behavior Change**:
+- `verbose=False` is now completely silent (no print statements)
+- Previously, `verbose=False` would print traditional text output
+
+**Architecture Documentation**: `docs/development/progress_bar_protocol_design.md`
+
+**Deprecation Timeline**:
+- v0.17.0: Protocol pattern implemented, `set_postfix()` deprecated
+- v0.19.0: Remove `set_postfix()` and legacy methods
+- v1.0.0: Remove all backward compatibility shims
+
+---
+
 ## v0.16.11 Deprecation Summary (BC Architecture)
 
 ### New Deprecations in v0.16.11
