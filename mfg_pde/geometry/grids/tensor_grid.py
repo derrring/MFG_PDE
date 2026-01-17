@@ -37,6 +37,7 @@ from mfg_pde.geometry.protocols import (
     SupportsLipschitz,
     SupportsManifold,
     SupportsPeriodic,
+    SupportsRegionMarking,
 )
 
 if TYPE_CHECKING:
@@ -63,6 +64,8 @@ class TensorProductGrid(
     SupportsDivergence,
     SupportsAdvection,
     SupportsInterpolation,
+    # Region traits (Issue #590 Phase 1.3)
+    SupportsRegionMarking,
 ):
     """
     Tensor product grid for multi-dimensional structured domains.
@@ -245,6 +248,9 @@ class TensorProductGrid(
 
         # Cache for flattened grid (computed lazily, perf optimization)
         self._flattened_cache: NDArray | None = None
+
+        # Region registry for named boundary/subdomain marking (Issue #590 Phase 1.3)
+        self._regions: dict[str, NDArray[np.bool_]] = {}
 
     # Geometry ABC implementation - properties
     @property
@@ -1584,6 +1590,252 @@ class TensorProductGrid(
             order=order,
             extrapolation_mode=extrapolation_mode,
         )
+
+    # ========================================================================
+    # Region Marking Protocol (Issue #590 Phase 1.3)
+    # ========================================================================
+
+    def mark_region(
+        self,
+        name: str,
+        predicate: Callable[[NDArray], NDArray[np.bool_]] | None = None,
+        mask: NDArray[np.bool_] | None = None,
+        boundary: str | None = None,
+    ) -> None:
+        """
+        Mark a named spatial region for later reference.
+
+        Implements SupportsRegionMarking protocol.
+
+        Args:
+            name: Unique name for this region (e.g., "inlet", "obstacle", "safe_zone")
+            predicate: Function taking points (N, dimension) → bool mask (N,)
+                       True where point is in region
+            mask: Boolean mask directly specifying region (total_points,)
+            boundary: Standard boundary name (e.g., "x_min", "x_max") for rectangular domains
+
+        Raises:
+            ValueError: If name already exists
+            ValueError: If neither predicate, mask, nor boundary provided
+            ValueError: If mask has wrong shape
+
+        Example:
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>>
+            >>> # Mark inlet region using predicate
+            >>> grid.mark_region(
+            ...     "inlet",
+            ...     predicate=lambda x: np.all((x[:, 0] < 0.1) & (x[:, 1] > 0.4) & (x[:, 1] < 0.6), axis=0)
+            ... )
+            >>>
+            >>> # Mark obstacle using direct mask
+            >>> obstacle_mask = ...  # Boolean array of shape (51*51,)
+            >>> grid.mark_region("obstacle", mask=obstacle_mask)
+            >>>
+            >>> # Mark boundary region
+            >>> grid.mark_region("left_wall", boundary="x_min")
+
+        Note:
+            Issue #590 Phase 1.3: Enables mixed BC and localized constraints.
+        """
+        if name in self._regions:
+            raise ValueError(
+                f"Region '{name}' already exists. Use a different name or remove the existing region first."
+            )
+
+        # Validate: exactly one specification method
+        specified = sum(x is not None for x in [predicate, mask, boundary])
+        if specified == 0:
+            raise ValueError("Must specify one of: predicate, mask, or boundary")
+        if specified > 1:
+            raise ValueError("Cannot specify multiple of: predicate, mask, boundary")
+
+        # Compute mask based on specification method
+        total_pts = self.total_points()
+
+        if mask is not None:
+            # Direct mask specification
+            if mask.shape != (total_pts,):
+                raise ValueError(f"Mask must have shape ({total_pts},), got {mask.shape}")
+            region_mask = mask
+
+        elif predicate is not None:
+            # Predicate-based specification
+            # Evaluate predicate at all grid points
+            points = self.flatten()  # Shape: (total_points, dimension)
+            region_mask = predicate(points)
+
+            if region_mask.shape != (total_pts,):
+                raise ValueError(
+                    f"Predicate must return boolean array of shape ({total_pts},), got {region_mask.shape}"
+                )
+
+        elif boundary is not None:
+            # Boundary name specification (e.g., "x_min", "x_max")
+            # Parse boundary name: "x_min", "y_max", etc.
+            import re
+
+            match = re.match(r"([xyz])_(min|max)", boundary)
+            if not match and self._dimension <= 3:
+                raise ValueError(
+                    f"Invalid boundary name '{boundary}'. Expected format: 'x_min', 'x_max', 'y_min', 'y_max', etc."
+                )
+
+            # For higher dimensions, support generic format
+            if not match:
+                # Try generic format: "dim0_min", "dim1_max", etc.
+                match = re.match(r"dim(\d+)_(min|max)", boundary)
+                if not match:
+                    raise ValueError(f"Invalid boundary name '{boundary}'. Expected format: 'x_min', 'dimN_min', etc.")
+                dim_idx = int(match.group(1))
+            else:
+                # Convert x/y/z to dimension index
+                dim_char = match.group(1)
+                dim_idx = {"x": 0, "y": 1, "z": 2}[dim_char]
+
+            side = match.group(2)  # "min" or "max"
+
+            if dim_idx >= self._dimension:
+                raise ValueError(f"Dimension index {dim_idx} out of range for {self._dimension}D grid")
+
+            # Create mask for specified boundary
+            region_mask = self._get_boundary_mask(dim_idx, side)
+
+        else:
+            # Should never reach here due to validation above
+            raise RuntimeError("Internal error: no specification method provided")
+
+        # Store region
+        self._regions[name] = region_mask
+
+    def _get_boundary_mask(self, dim_idx: int, side: str) -> NDArray[np.bool_]:
+        """
+        Get boolean mask for boundary face.
+
+        Args:
+            dim_idx: Dimension index (0=x, 1=y, 2=z, ...)
+            side: "min" or "max"
+
+        Returns:
+            Boolean mask of shape (total_points,)
+        """
+        # Create multi-index for boundary
+        shape = tuple(self._Nx_points)
+        total_pts = self.total_points()
+        mask = np.zeros(total_pts, dtype=bool)
+
+        # Flatten indices for the boundary
+        # For axis-aligned boundaries in tensor product grid:
+        # - x_min: all points where x-index = 0
+        # - x_max: all points where x-index = Nx_points[0] - 1
+        # etc.
+
+        if side == "min":
+            boundary_idx = 0
+        else:  # "max"
+            boundary_idx = self._Nx_points[dim_idx] - 1
+
+        # Generate all multi-indices for this boundary face
+        # Use np.ndindex to iterate over all indices in the grid
+        for idx, multi_idx in enumerate(np.ndindex(*shape)):
+            if multi_idx[dim_idx] == boundary_idx:
+                mask[idx] = True
+
+        return mask
+
+    def get_region_mask(self, name: str) -> NDArray[np.bool_]:
+        """
+        Get boolean mask for named region.
+
+        Implements SupportsRegionMarking protocol.
+
+        Args:
+            name: Region name (from mark_region call)
+
+        Returns:
+            Boolean mask of shape (total_points,)
+            True at grid points in region
+
+        Raises:
+            KeyError: If region name not found
+
+        Example:
+            >>> grid.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
+            >>> inlet_mask = grid.get_region_mask("inlet")
+            >>> u_flat = np.zeros(grid.total_points())
+            >>> u_flat[inlet_mask] = 1.0  # Set value in inlet region
+        """
+        if name not in self._regions:
+            raise KeyError(f"Region '{name}' not found. Available regions: {list(self._regions.keys())}")
+        return self._regions[name]
+
+    def intersect_regions(self, *names: str) -> NDArray[np.bool_]:
+        """
+        Get intersection of multiple regions (boolean AND).
+
+        Implements SupportsRegionMarking protocol.
+
+        Args:
+            *names: Region names to intersect
+
+        Returns:
+            Boolean mask: True where all regions overlap
+
+        Raises:
+            KeyError: If any region name not found
+
+        Example:
+            >>> # Points that are in both "inlet" and "high_priority"
+            >>> mask = grid.intersect_regions("inlet", "high_priority")
+            >>> u_flat[mask] = 2.0  # Set special value in intersection
+        """
+        if not names:
+            raise ValueError("Must provide at least one region name")
+
+        masks = [self.get_region_mask(name) for name in names]
+        return np.logical_and.reduce(masks)
+
+    def union_regions(self, *names: str) -> NDArray[np.bool_]:
+        """
+        Get union of multiple regions (boolean OR).
+
+        Implements SupportsRegionMarking protocol.
+
+        Args:
+            *names: Region names to union
+
+        Returns:
+            Boolean mask: True where any region is True
+
+        Raises:
+            KeyError: If any region name not found
+
+        Example:
+            >>> # All exit points (multiple exit boundaries)
+            >>> mask = grid.union_regions("exit_top", "exit_bottom", "exit_sides")
+            >>> apply_exit_bc(u_flat[mask])
+        """
+        if not names:
+            raise ValueError("Must provide at least one region name")
+
+        masks = [self.get_region_mask(name) for name in names]
+        return np.logical_or.reduce(masks)
+
+    def get_region_names(self) -> list[str]:
+        """
+        Get list of all registered region names.
+
+        Implements SupportsRegionMarking protocol.
+
+        Returns:
+            List of region names in registration order
+
+        Example:
+            >>> names = grid.get_region_names()
+            >>> print("Available regions:", names)
+            Available regions: ['inlet', 'exit', 'obstacle', 'walls']
+        """
+        return list(self._regions.keys())
 
     def __repr__(self) -> str:
         """String representation of grid."""
