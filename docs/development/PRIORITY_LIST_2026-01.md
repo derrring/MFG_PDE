@@ -877,15 +877,15 @@ Run tests after each priority, validate with research experiments.
 
 ## Remaining Open Issues (by priority)
 
-| Priority | Issue | Description | Size |
-|:---------|:------|:------------|:-----|
-| HIGH | #573 | Callable drift interface for non-quadratic H | Medium |
-| MEDIUM | #549 | BC framework for non-tensor geometries | Large |
-| MEDIUM | #535 | BC framework enhancement | Large |
-| MEDIUM | #489 | Direct particle query for coupling | Large |
-| LOW | #523 | MMS validation suite for BC (investigation complete - see issue comments) | Medium |
-| LOW | #521 | 3D corner handling | Large |
-| LOW | #517 | Semantic dispatch factory | Medium |
-| LOW | #571 | test_geometry_benchmarks: Missing pytest-benchmark fixture | Small |
-| LOW | #570 | test_particle_gpu_pipeline: Shape mismatch | Small |
-| LOW | Others | Various infrastructure/features | Large |
+| Priority | Issue | Description | Size | Status |
+|:---------|:------|:------------|:-----|:-------|
+| HIGH | #573 | Callable drift interface for non-quadratic H | Medium | Open |
+| MEDIUM | #549 | BC framework for non-tensor geometries | Large | Open |
+| MEDIUM | #535 | BC framework enhancement | Large | Open |
+| MEDIUM | #489 | Direct particle query for coupling | Large | Open |
+| LOW | #523 | MMS validation suite for BC (investigation complete - see issue comments) | Medium | Open |
+| LOW | #521 | 3D corner handling | Large | Open |
+| LOW | #517 | Semantic dispatch factory | Medium | Open |
+| ~~LOW~~ | ~~#571~~ | ~~test_geometry_benchmarks: Missing pytest-benchmark fixture~~ | ~~Small~~ | ✅ Fixed (8997589b) |
+| ~~LOW~~ | ~~#570~~ | ~~test_particle_gpu_pipeline: Shape mismatch~~ | ~~Small~~ | ✅ Fixed (8997589b) |
+| LOW | Others | Various infrastructure/features | Large | Open |
