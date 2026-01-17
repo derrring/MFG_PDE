@@ -398,9 +398,11 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         constraints["continuity_equation"] = 0.0  # Would check continuity equation
 
         # State constraints (if any)
-        if hasattr(self.problem.components, "state_constraints") and self.problem.components.state_constraints:
+        # Problem API: use getattr instead of hasattr (Issue #543 fix)
+        state_constraints = getattr(self.problem.components, "state_constraints", None)
+        if state_constraints:
             max_state_violation = 0.0
-            for constraint_func in self.problem.components.state_constraints:
+            for constraint_func in state_constraints:
                 for i in range(self.Nt):
                     for x in self.x_grid:
                         t = self.t_grid[i]
@@ -409,13 +411,10 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
             constraints["state_constraints"] = max_state_violation
 
         # Velocity constraints (if any)
-        if (
-            hasattr(self.problem.components, "velocity_constraints")
-            and self.problem.components.velocity_constraints
-            and velocity is not None
-        ):
+        velocity_constraints = getattr(self.problem.components, "velocity_constraints", None)
+        if velocity_constraints and velocity is not None:
             max_velocity_violation = 0.0
-            for constraint_func in self.problem.components.velocity_constraints:
+            for constraint_func in velocity_constraints:
                 for i in range(self.Nt):
                     for j, x in enumerate(self.x_grid):
                         t = self.t_grid[i]

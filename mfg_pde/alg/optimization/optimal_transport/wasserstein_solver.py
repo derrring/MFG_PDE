@@ -233,10 +233,12 @@ class WassersteinMFGSolver(BaseOptimizationSolver):
         xmin, xmax = bounds[0][0], bounds[1][0]
 
         # Initial density (t=0)
-        if hasattr(self.problem, "initial_density") and self.problem.initial_density is not None:
+        # Problem API: use getattr instead of hasattr (Issue #543 fix)
+        initial_density = getattr(self.problem, "initial_density", None)
+        if initial_density is not None:
             # Use problem-specific initial density
             for i, x in enumerate(self.spatial_grid):
-                densities[0, i] = self.problem.initial_density(x)
+                densities[0, i] = initial_density(x)
         else:
             # Default: Gaussian initial density
             center = (xmin + xmax) / 2
@@ -298,11 +300,13 @@ class WassersteinMFGSolver(BaseOptimizationSolver):
             total_cost += np.sum(plan * self.ground_cost) * self.dt
 
         # Running cost (simplified)
-        if hasattr(self.problem, "running_cost"):
+        # Problem API: use getattr instead of hasattr (Issue #543 fix)
+        running_cost = getattr(self.problem, "running_cost", None)
+        if running_cost is not None:
             for t, density in enumerate(densities):
                 time = self.time_grid[t] if t < len(self.time_grid) else self.time_grid[-1]
                 for i, x in enumerate(self.spatial_grid):
-                    total_cost += self.problem.running_cost(time, x, density[i]) * self.dx * self.dt
+                    total_cost += running_cost(time, x, density[i]) * self.dx * self.dt
 
         return total_cost
 

@@ -212,6 +212,7 @@ class VariationalMFGSolver(BaseVariationalSolver):
                     "optimization_method": self.optimization_method,
                     "penalty_weight": self.penalty_weight,
                     "final_objective": result.fun,
+                    # Backend compatibility - scipy.optimize result may not have jac (Issue #543 acceptable)
                     "gradient_norm": (np.linalg.norm(result.jac) if hasattr(result, "jac") else None),
                 },
             )

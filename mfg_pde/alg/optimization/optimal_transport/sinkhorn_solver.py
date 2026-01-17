@@ -253,9 +253,11 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         xmin, xmax = bounds[0][0], bounds[1][0]
 
         # Initial condition
-        if hasattr(self.problem, "initial_density") and self.problem.initial_density is not None:
+        # Problem API: use getattr instead of hasattr (Issue #543 fix)
+        initial_density = getattr(self.problem, "initial_density", None)
+        if initial_density is not None:
             for i, x in enumerate(self.spatial_grid):
-                densities[0, i] = self.problem.initial_density(x)
+                densities[0, i] = initial_density(x)
         else:
             # Default Gaussian
             center = (xmin + xmax) / 2
