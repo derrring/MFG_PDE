@@ -2569,6 +2569,7 @@ class PreallocatedGhostBuffer:
         domain_bounds: NDArray[np.floating] | None = None,
         dtype: np.dtype = np.float64,
         ghost_depth: int = 1,
+        order: int = 2,
         config: GhostCellConfig | None = None,
     ):
         """
@@ -2580,11 +2581,22 @@ class PreallocatedGhostBuffer:
             domain_bounds: Domain bounds for mixed BCs
             dtype: Data type for the buffer
             ghost_depth: Number of ghost cells per side (default: 1)
+            order: Accuracy order for ghost cell reconstruction (default: 2)
+                - order = 2: Linear reflection (simple mirror for Neumann)
+                - order > 2: Polynomial extrapolation (high-order schemes like WENO)
             config: Ghost cell configuration
+
+        Raises:
+            ValueError: If order < 1
         """
+        # Validate order parameter
+        if order < 1:
+            raise ValueError(f"order must be >= 1, got {order}")
+
         self._interior_shape = interior_shape
         self._dimension = len(interior_shape)
         self._ghost_depth = ghost_depth
+        self._order = order
         self._boundary_conditions = boundary_conditions
         self._domain_bounds = domain_bounds
         self._config = config if config is not None else GhostCellConfig()
@@ -2668,7 +2680,31 @@ class PreallocatedGhostBuffer:
         value: float | None,
         time: float,
     ) -> None:
-        """Update ghost cells for uniform BC (same type on all boundaries)."""
+        """
+        Update ghost cells for uniform BC (same type on all boundaries).
+
+        Dispatches to appropriate reconstruction method based on self._order:
+        - order <= 2: Linear reflection (simple mirror)
+        - order > 2: Polynomial extrapolation (high-order schemes)
+        """
+        # Dispatch based on order
+        if self._order <= 2:
+            self._apply_linear_reflection(bc_type, value, time)
+        else:
+            self._apply_poly_extrapolation(bc_type, value, time)
+
+    def _apply_linear_reflection(
+        self,
+        bc_type: BCType,
+        value: float | None,
+        time: float,
+    ) -> None:
+        """
+        Apply linear reflection for order <= 2 ghost cell reconstruction.
+
+        This is the original implementation that works for FDM and simple
+        Semi-Lagrangian schemes. Provides O(h^2) accuracy.
+        """
         d = self._dimension
         g = self._ghost_depth
         buf = self._buffer
@@ -2758,6 +2794,213 @@ class PreallocatedGhostBuffer:
                     hi_interior = [slice(None)] * d
                     hi_interior[axis] = -(2 * g + k + 1)  # Fixed to match Neumann
                     buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
+
+    def _apply_poly_extrapolation(
+        self,
+        bc_type: BCType,
+        value: float | None,
+        time: float,
+    ) -> None:
+        """
+        Apply polynomial extrapolation for order > 2 ghost cell reconstruction.
+
+        Uses Vandermonde systems to compute high-order accurate ghost values
+        that satisfy boundary conditions. Provides O(h^order) accuracy.
+
+        For Neumann BC (∂u/∂n = 0):
+            Constructs polynomial p(x) that:
+            1. Passes through n interior points: p(x_j) = u_j
+            2. Satisfies BC: p'(0) = 0
+            Then evaluates p(x_{-k}) for ghost points.
+
+        For Dirichlet BC (u = g):
+            Similar but with constraint p(0) = g.
+
+        Args:
+            bc_type: Boundary condition type
+            value: BC value (or None for Neumann)
+            time: Current time for time-dependent BCs
+
+        Raises:
+            NotImplementedError: Periodic/Robin BCs not yet supported for high order.
+        """
+        d = self._dimension
+        buf = self._buffer
+
+        # Evaluate value if callable
+        if callable(value):
+            v = value(time)
+        else:
+            v = value if value is not None else 0.0
+
+        # Only support Neumann and Dirichlet for now
+        if bc_type == BCType.PERIODIC:
+            # Periodic should use linear reflection (shouldn't reach here)
+            self._apply_linear_reflection(bc_type, value, time)
+            return
+
+        if bc_type not in [BCType.NEUMANN, BCType.NO_FLUX, BCType.REFLECTING, BCType.DIRICHLET]:
+            raise NotImplementedError(
+                f"Polynomial extrapolation for {bc_type.value} BC not yet implemented. "
+                f"Currently supports: NEUMANN, NO_FLUX, REFLECTING, DIRICHLET."
+            )
+
+        # Number of stencil points needed for order n polynomial
+        # For order n: need n points + 1 BC constraint = n+1 equations
+        n_stencil = self._order
+
+        # Apply extrapolation to each axis
+        for axis in range(d):
+            # Low boundary extrapolation
+            self._extrapolate_boundary_1d(buf, axis, is_low=True, bc_type=bc_type, bc_value=v, n_stencil=n_stencil)
+
+            # High boundary extrapolation
+            self._extrapolate_boundary_1d(buf, axis, is_low=False, bc_type=bc_type, bc_value=v, n_stencil=n_stencil)
+
+    def _extrapolate_boundary_1d(
+        self,
+        buf: np.ndarray,
+        axis: int,
+        is_low: bool,
+        bc_type: BCType,
+        bc_value: float,
+        n_stencil: int,
+    ) -> None:
+        """
+        Extrapolate ghost cells for one boundary using polynomial fitting.
+
+        Solves Vandermonde system:
+            V @ coeffs = rhs
+        where V includes polynomial basis and BC constraint.
+
+        Args:
+            buf: Padded buffer to update in-place
+            axis: Axis index (0 for x, 1 for y, etc.)
+            is_low: True for low boundary, False for high
+            bc_type: Boundary condition type
+            bc_value: Boundary condition value
+            n_stencil: Number of interior stencil points to use
+        """
+        g = self._ghost_depth
+        d = self._dimension
+
+        # Get grid spacing for this axis
+        if self._grid_spacing is not None:
+            dx = self._grid_spacing[axis]
+        else:
+            # Assume uniform spacing of 1.0 if not provided
+            dx = 1.0
+
+        # Extract all points along this axis (iterating over other axes)
+        # We'll process each 1D slice independently
+        shape = list(buf.shape)
+        n_total = shape[axis]
+
+        # Build index slicing for this axis
+        # For low boundary: interior starts at index g (boundary), but we skip it for stencil
+        # For high boundary: interior ends at index -g-1 (boundary), but we skip it for stencil
+        if is_low:
+            # Ghost points: indices 0 to g-1
+            # Interior stencil: indices g+1 to g+n_stencil (skip boundary at g)
+            ghost_indices = list(range(g))
+            interior_indices = list(range(g + 1, g + 1 + n_stencil))
+        else:
+            # Ghost points: indices -g to -1 (i.e., -g, -g+1, ..., -1)
+            # Interior stencil: indices -g-n_stencil-1 to -g-1 (skip boundary at -g-1)
+            ghost_indices = list(range(n_total - g, n_total))
+            interior_indices = list(range(n_total - g - n_stencil - 1, n_total - g - 1))
+
+        # Compute polynomial coefficients once, then apply to all slices
+        # Build Vandermonde matrix and solve for extrapolation weights
+
+        # Grid points relative to boundary (x=0 at boundary)
+        if is_low:
+            # Low boundary at x=0, interior at x = dx, 2*dx, ...
+            x_interior = np.arange(1, n_stencil + 1, dtype=np.float64) * dx
+            x_ghost = np.arange(-g, 0, dtype=np.float64) * dx  # Negative x for ghosts
+        else:
+            # High boundary at x=0, interior at x = -dx, -2*dx, ... (going inward)
+            x_interior = -np.arange(1, n_stencil + 1, dtype=np.float64) * dx
+            x_ghost = np.arange(1, g + 1, dtype=np.float64) * dx  # Positive x for ghosts
+
+        # Build Vandermonde matrix: [n_stencil+1] x [n_stencil+1]
+        # Rows: n_stencil interior constraints + 1 BC constraint
+        # Columns: polynomial coefficients [a_0, a_1, ..., a_{n_stencil}]
+        n_poly = n_stencil  # Polynomial degree (n_stencil points determine degree n_stencil-1)
+        V = np.zeros((n_poly + 1, n_poly + 1))
+        rhs = np.zeros(n_poly + 1)
+
+        # First n_stencil rows: polynomial passes through interior points
+        # p(x_i) = u_i: sum_j a_j * x_i^j = u_i
+        for i in range(n_stencil):
+            for j in range(n_poly + 1):
+                V[i, j] = x_interior[i] ** j
+            # RHS will be filled with actual u values during application
+
+        # Last row: BC constraint at x=0
+        if bc_type in [BCType.NEUMANN, BCType.NO_FLUX, BCType.REFLECTING]:
+            # Neumann: p'(0) = 0
+            # p'(x) = sum_j j * a_j * x^{j-1}
+            # p'(0) = a_1 (only linear term survives)
+            V[n_stencil, 0] = 0.0  # a_0 doesn't contribute to derivative
+            V[n_stencil, 1] = 1.0  # a_1 coefficient
+            for j in range(2, n_poly + 1):
+                V[n_stencil, j] = 0.0  # Higher terms vanish at x=0
+            rhs[n_stencil] = 0.0  # Zero derivative
+
+        elif bc_type == BCType.DIRICHLET:
+            # Dirichlet: p(0) = bc_value
+            # p(0) = a_0
+            V[n_stencil, 0] = 1.0  # a_0 coefficient
+            for j in range(1, n_poly + 1):
+                V[n_stencil, j] = 0.0  # Higher terms vanish at x=0
+            rhs[n_stencil] = bc_value
+
+        # Iterate over all slices perpendicular to this axis
+        # Build multi-dimensional slice iterator
+        other_axes = [i for i in range(d) if i != axis]
+        if d == 1:
+            # 1D case: single slice
+            slices_to_process = [()]
+        else:
+            # Multi-D: iterate over all combinations of other axes
+            from itertools import product
+
+            other_shapes = [buf.shape[i] for i in other_axes]
+            slices_to_process = list(product(*[range(s) for s in other_shapes]))
+
+        for slice_indices in slices_to_process:
+            # Build full index with slice_indices inserted at other_axes positions
+            full_index = [slice(None)] * d
+
+            # Insert slice indices for other axes
+            for other_idx, other_axis in enumerate(other_axes):
+                full_index[other_axis] = slice_indices[other_idx]
+
+            # Extract interior stencil values
+            u_interior = np.zeros(n_stencil)
+            for i, int_idx in enumerate(interior_indices):
+                full_index[axis] = int_idx
+                u_interior[i] = buf[tuple(full_index)]
+
+            # Set RHS with interior values
+            rhs[:n_stencil] = u_interior
+
+            # Solve Vandermonde system for polynomial coefficients
+            try:
+                coeffs = np.linalg.solve(V, rhs)
+            except np.linalg.LinAlgError:
+                # Fallback to least squares if singular
+                coeffs, _, _, _ = np.linalg.lstsq(V, rhs, rcond=None)
+
+            # Evaluate polynomial at ghost points
+            for i, ghost_idx in enumerate(ghost_indices):
+                x = x_ghost[i]
+                # p(x) = sum_j a_j * x^j
+                ghost_value = np.polyval(coeffs[::-1], x)  # polyval expects highest degree first
+
+                full_index[axis] = ghost_idx
+                buf[tuple(full_index)] = ghost_value
 
     def _update_ghosts_legacy(self, bc_type_str: str) -> None:
         """Update ghost cells for legacy BC type."""
