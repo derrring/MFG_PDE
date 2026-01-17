@@ -18,6 +18,15 @@ Organization:
 
 # NOTE: The `logging` alias (from . import mfg_logging as logging) was removed in v0.17.0
 # Users should import from mfg_pde.utils.mfg_logging or use the re-exported functions directly
+
+# Adjoint duality validation (Issue #580)
+from .adjoint_validation import (
+    DualityStatus,
+    DualityValidationResult,
+    check_solver_duality,
+    validate_scheme_config,
+)
+
 # Core utility functions (non-plotting)
 from .aux_func import npart, ppart
 from .convergence import (
@@ -264,6 +273,11 @@ __all__ = [
     "NOTEBOOK_REPORTING_AVAILABLE",
     "PERFORMANCE_MONITORING_AVAILABLE",
     "POLARS_AVAILABLE",
+    # Adjoint duality validation (Issue #580)
+    "DualityStatus",
+    "DualityValidationResult",
+    "check_solver_duality",
+    "validate_scheme_config",
     # PDE coefficient handling
     "CoefficientField",
     "CoefficientMode",

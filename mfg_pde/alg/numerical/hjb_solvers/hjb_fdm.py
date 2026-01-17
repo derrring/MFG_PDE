@@ -74,6 +74,11 @@ class HJBFDMSolver(BaseHJBSolver):
     Recommended: d ≤ 3 due to O(N^d) complexity
     """
 
+    # Scheme family trait for duality validation (Issue #580)
+    from mfg_pde.alg.base_solver import SchemeFamily
+
+    _scheme_family = SchemeFamily.FDM
+
     def __init__(
         self,
         problem: MFGProblem,

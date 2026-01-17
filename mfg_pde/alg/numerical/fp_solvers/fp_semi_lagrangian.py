@@ -78,6 +78,11 @@ class FPSLSolver(BaseFPSolver):
         - Calzola et al. (2023): High-order MFG schemes
     """
 
+    # Scheme family trait for duality validation (Issue #580)
+    from mfg_pde.alg.base_solver import SchemeFamily
+
+    _scheme_family = SchemeFamily.SL
+
     def __init__(
         self,
         problem: MFGProblem,

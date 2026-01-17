@@ -65,6 +65,11 @@ class FPGFDMSolver(BaseFPSolver):
         >>> M = solver.solve_fp_system(m_init, drift_field=U_drift)
     """
 
+    # Scheme family trait for duality validation (Issue #580)
+    from mfg_pde.alg.base_solver import SchemeFamily
+
+    _scheme_family = SchemeFamily.GFDM
+
     def __init__(
         self,
         problem: MFGProblem,

@@ -38,6 +38,7 @@ from .protocols import (
     MFGSolver,
     SolverConfig,
 )
+from .schemes import NumericalScheme
 from .solver_types import HamiltonianJacobians, SolverReturnTuple
 from .state import ConvergenceInfo, SpatialTemporalState
 
@@ -50,6 +51,7 @@ __all__ = [
     "MFGProblem",
     "MFGResult",
     "MFGSolver",
+    "NumericalScheme",
     "SolutionArray",
     "SolverConfig",
     "SolverReturnTuple",

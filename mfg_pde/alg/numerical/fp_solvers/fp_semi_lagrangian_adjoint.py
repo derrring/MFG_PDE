@@ -63,6 +63,11 @@ class FPSLAdjointSolver(BaseFPSolver):
         - nD: Planned for future
     """
 
+    # Scheme family trait for duality validation (Issue #580)
+    from mfg_pde.alg.base_solver import SchemeFamily
+
+    _scheme_family = SchemeFamily.SL  # Forward SL (adjoint of HJB Backward SL)
+
     def __init__(
         self,
         problem: MFGProblem,

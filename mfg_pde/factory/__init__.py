@@ -38,6 +38,9 @@ from .problem_factories import (
     create_variational_problem,
 )
 
+# Scheme-based paired solver factory (Issue #580)
+from .scheme_factory import create_paired_solvers, get_recommended_scheme
+
 # Solver factory
 from .solver_factory import (
     SolverFactory,
@@ -66,6 +69,9 @@ __all__ = [
     "create_accurate_solver",
     "create_research_solver",
     "create_basic_solver",
+    # Scheme-based paired solver factory (Issue #580)
+    "create_paired_solvers",
+    "get_recommended_scheme",
     # Backend support
     "BackendFactory",
     "create_backend_for_problem",

@@ -83,15 +83,178 @@ These are **separable concerns** (orthogonal dimensions), not stacked layers.
 
 ---
 
+## Current Implementation Status
+
+**Purpose**: Ground factory design in MFG_PDE's actual codebase state (as of 2026-01-16).
+
+### What Currently Exists ✅
+
+#### 1. Config System (Production-Ready)
+- **Location**: `mfg_pde/config/`
+- **Structure**: Hierarchical Pydantic models with auto-validation
+- **Status**: ✅ Ready for routing logic integration
+- **Example**:
+  ```python
+  config = MFGSolverConfig()
+  config.hjb.method = "fdm"  # Declares intent
+  config.hjb.gfdm = GFDMConfig(delta=0.1, stencil_size=20)
+  ```
+
+#### 2. Solver Hierarchy (Production-Ready)
+- **Location**: `mfg_pde/alg/numerical/`
+- **Structure**: `BaseMFGSolver` → `BaseNumericalSolver` → `BaseHJBSolver`/`BaseFPSolver`
+- **Concrete Implementations**:
+  - HJB: `HJBFDMSolver`, `HJBGFDMSolver`, `HJBSemiLagrangianSolver`, `HJBWENOSolver`
+  - FP: `FPFDMSolver`, `FPParticleSolver`, `FPGFDMSolver`, `FPSemiLagrangianSolver`
+- **Status**: ✅ Ready for trait annotations
+
+#### 3. Geometry Protocol (Production-Ready)
+- **Location**: `mfg_pde/geometry/protocol.py`
+- **Features**: Runtime-checkable protocol, `GeometryType` enum
+- **Available Properties**: `dimension`, `geometry_type`, `num_spatial_points`
+- **Available Methods**: `is_on_boundary()`, `get_boundary_normal()`, boundary projection
+- **Missing**: `is_structured()`, `is_convex()` → **Use `geometry_type` as proxy**
+- **Status**: ✅ Ready with workarounds
+
+#### 4. Problem Factories (Production-Ready)
+- **Location**: `mfg_pde/factory/problem_factories.py`
+- **Implemented**: `create_lq_problem()`, `create_crowd_problem()`, `create_network_problem()`, etc.
+- **Status**: ✅ Fully functional (Concern 1: WHAT)
+
+#### 5. Backend Selection (Template for Solver Selection)
+- **Location**: `mfg_pde/factory/backend_factory.py`
+- **Feature**: Intelligent JAX vs NumPy selection based on problem size
+- **Status**: ✅ Existing pattern to replicate for solver selection
+
+**Current Pattern** (Use as template):
+```python
+# mfg_pde/factory/backend_factory.py
+def create_optimal_backend(
+    problem: MFGProblem,
+    prefer_gpu: bool = False,
+    precision: str = "float64",
+) -> Backend:
+    """Auto-select backend based on problem characteristics."""
+
+    # Calculate total problem size
+    total_size = np.prod(problem.grid_shape) * problem.Nt
+
+    # Heuristic: Large problems → JAX, Small → NumPy
+    if total_size > 100_000:
+        return JAXBackend(precision=precision)
+    else:
+        return NumPyBackend(precision=precision)
+```
+
+**Analog for Solver Selection** (Target for Issue #580):
+```python
+# mfg_pde/factory/scheme_factory.py (NEW)
+def create_paired_solvers(
+    scheme: NumericalScheme | None = None,
+    problem: MFGProblem,
+    config: MFGSolverConfig | None = None,
+) -> tuple[BaseHJBSolver, BaseFPSolver]:
+    """Create adjoint-paired solvers (auto-select if scheme=None)."""
+
+    if scheme is None:
+        # Auto-select based on geometry (like backend auto-selection)
+        scheme = _auto_select_scheme(problem)
+
+    # Dispatch to scheme-specific factory (like backend dispatch)
+    if scheme == NumericalScheme.FDM_UPWIND:
+        return _create_fdm_pair(problem, config)
+    elif scheme == NumericalScheme.GFDM:
+        return _create_gfdm_pair(problem, config)
+    # ... etc
+```
+
+**Key Insight**: Backend selection already provides the intelligent dispatch pattern. Solver selection should follow the same structure.
+
+### What's Missing ❌
+
+#### 1. Solver Selection Logic (CRITICAL)
+- **Current**: `mfg_problem.py:1954-2026` **hardcodes GFDM+Particle**
+- **Code**:
+  ```python
+  def solve(self, max_iterations=100, tolerance=1e-6, verbose=True, config=None):
+      hjb_solver = HJBGFDMSolver(self, collocation_points)  # ← Always GFDM!
+      fp_solver = FPParticleSolver(self)                    # ← Always Particle!
+  ```
+- **Impact**: Users cannot choose FDM, SL, or any other scheme
+- **This is exactly what Issue #580 fixes**
+
+#### 2. Numerical Scheme Enum
+- **Current**: Methods scattered across 4 `Literal[...]` definitions
+- **Needed**: Single `NumericalScheme` enum as proposed
+
+#### 3. Solver Family Traits
+- **Current**: No `_scheme_family` attribute on any solver
+- **Needed**: `_scheme_family: SchemeFamily` for duality checking
+
+#### 4. Solver Registry
+- **Current**: No mapping from method name to solver class
+- **Needed**: `SOLVER_REGISTRY[method] → SolverClass`
+
+#### 5. Geometry Capability Helpers
+- **Current**: Only `geometry_type` enum available
+- **Workaround**:
+  ```python
+  def is_structured_grid(geometry):
+      return geometry.geometry_type == GeometryType.CARTESIAN_GRID
+  ```
+
+#### 6. Duality Validation
+- **Current**: No runtime checking of solver compatibility
+- **Needed**: `check_solver_duality(hjb, fp)` with warnings
+
+### Migration Context
+
+**Before Issue #580** (Current State - v0.16.x):
+- User has NO control over solver selection
+- Always GFDM+Particle regardless of problem type
+- 1D problems use expensive GFDM instead of simple FDM
+
+**After Issue #580** (Target State - v0.17.0+):
+- Mode 1 (Safe): `problem.solve(scheme=NumericalScheme.FDM_UPWIND)`
+- Mode 2 (Expert): `problem.solve(hjb_solver=my_hjb, fp_solver=my_fp)`
+- Mode 3 (Auto): `problem.solve()` with intelligent selection
+
+**Backward Compatibility Plan**:
+- v0.16.x (Current): Hardcoded GFDM+Particle
+- v0.17.0 (Transition): Add `scheme` parameter, deprecate hardcoded path with warning
+- v1.0.0 (Breaking): Remove hardcoded path, Mode 3 uses true auto-selection
+
+**Reference**: See `docs/archive/issue_580_factory_pattern_2026-01/INFRASTRUCTURE_AUDIT_2026-01-16.md` for detailed baseline survey.
+
+---
+
 ## Table of Contents
 
 1. [Motivation](#motivation)
-2. [Three-Concern Separation](#three-concern-separation)
-3. [Three-Mode Solving API](#three-mode-solving-api)
-4. [Implementation Design](#implementation-design)
-5. [Anti-Confusion Strategy](#anti-confusion-strategy)
-6. [Migration Guide](#migration-guide)
-7. [Examples](#examples)
+2. [Current Implementation Status](#current-implementation-status)
+   - What Currently Exists
+   - What's Missing
+   - Migration Context
+3. [Three-Concern Separation](#three-concern-separation)
+4. [Three-Mode Solving API](#three-mode-solving-api)
+5. [Implementation Design](#implementation-design)
+   - Facade Pattern
+   - Configuration Threading
+   - Duality Validation
+   - Auto-Selection Logic
+6. [Critical Implementation Considerations](#critical-implementation-considerations)
+   - Configuration Leakage Risk
+   - Type Checking Brittleness Risk
+   - Auto-Selection Heuristic Edge Cases
+7. [Directory Structure](#directory-structure)
+8. [Anti-Confusion Strategy](#anti-confusion-strategy)
+9. [Migration Guide](#migration-guide)
+10. [Examples](#examples)
+11. [Architectural Audit Results](#architectural-audit-results)
+    - Solver Registry Pattern (Optional Extension)
+    - Implementation Sequence
+    - Pre-Implementation Checklist
+12. [Change History](#change-history)
 
 ---
 
@@ -624,17 +787,32 @@ def create_paired_solvers(
         config = MFGSolverConfig()
 
     if scheme == NumericalScheme.GFDM:
+        # Auto-populate GFDM configs if missing (Pydantic pattern)
+        if config.hjb.gfdm is None:
+            config.hjb.gfdm = GFDMConfig()
+        if config.fp.gfdm is None:
+            config.fp.gfdm = GFDMConfig()
+
+        # Create HJB solver with actual GFDM parameters
         hjb = HJBGFDMSolver(
             problem,
             upwind="exponential_downwind",
-            kernel_bandwidth=config.hjb.gfdm.kernel_bandwidth,  # ← Config used
+            delta=config.hjb.gfdm.delta,  # Support radius (replaces kernel_bandwidth)
             stencil_size=config.hjb.gfdm.stencil_size,
+            qp_optimization_level=config.hjb.gfdm.qp_optimization_level,
+            monotonicity_check=config.hjb.gfdm.monotonicity_check,
+            adaptive_qp=config.hjb.gfdm.adaptive_qp,
         )
+
+        # Create FP solver with actual GFDM parameters
         fp = FPGFDMSolver(
             problem,
             upwind="exponential_upwind",
-            kernel_bandwidth=config.fp.gfdm.kernel_bandwidth,
+            delta=config.fp.gfdm.delta,
             stencil_size=config.fp.gfdm.stencil_size,
+            qp_optimization_level=config.fp.gfdm.qp_optimization_level,
+            monotonicity_check=config.fp.gfdm.monotonicity_check,
+            adaptive_qp=config.fp.gfdm.adaptive_qp,
         )
         fp = RenormalizationWrapper(fp)
         return hjb, fp
@@ -729,6 +907,15 @@ def check_solver_duality(hjb_solver, fp_solver) -> AdjointType:
 - ✅ Self-documenting: Trait visible in class definition
 - ✅ Plugin-friendly: Custom solvers declare their family
 
+**Note on Validator Pattern** (Issue #543):
+MFG_PDE uses `try/except AttributeError` instead of `hasattr()` for attribute validation (see Issue #543). The `getattr(..., default)` pattern above is preferred for optional attributes like `_scheme_family`. For required attributes, use:
+```python
+try:
+    family = solver._scheme_family
+except AttributeError:
+    raise ValueError(f"{solver.__class__.__name__} missing _scheme_family trait")
+```
+
 ---
 
 #### 3. Auto-Selection Heuristic Edge Cases ⚠️
@@ -765,19 +952,22 @@ def _auto_select_scheme(self) -> NumericalScheme:
 
     # Priority 2: Geometry complexity check
     if self.dimension <= 2:
-        # Check if geometry is FDM-compatible (structured, rectangular)
-        if hasattr(self.geometry, 'is_structured'):
-            if not self.geometry.is_structured():
-                # Unstructured mesh → GFDM
-                return NumericalScheme.GFDM
+        # Use geometry_type enum as proxy (is_structured()/is_convex() not yet implemented)
+        geom_type = self.geometry.geometry_type
 
-        # Check for non-convexity (FDM struggles with staircase boundaries)
-        if hasattr(self.geometry, 'is_convex'):
-            if not self.geometry.is_convex():
-                # Non-convex polygon → GFDM for smooth boundary treatment
-                return NumericalScheme.GFDM
+        # Complex geometries → GFDM (avoid FDM staircase errors)
+        if geom_type in ["unstructured_mesh", "point_cloud"]:
+            return NumericalScheme.GFDM
 
-        # Regular grid, no complexity issues → FDM (most stable)
+        # Non-rectangular domains → GFDM for smooth boundary treatment
+        if geom_type in ["polygon", "implicit"]:
+            return NumericalScheme.GFDM
+
+        # Regular grid (structured_grid, cartesian_grid) → FDM (most stable)
+        if geom_type in ["structured_grid", "cartesian_grid"]:
+            return NumericalScheme.FDM_UPWIND
+
+        # Unknown geometry type → Default to FDM (conservative choice)
         return NumericalScheme.FDM_UPWIND
 
     # Priority 3: Dimension-based selection
@@ -799,15 +989,17 @@ def _auto_select_scheme(self) -> NumericalScheme:
 def _get_selection_rationale(self, scheme: NumericalScheme) -> str:
     """Get human-readable rationale for auto-selection."""
     if scheme == NumericalScheme.FDM_UPWIND:
-        return f"{self.dimension}D regular grid, structured domain"
+        return f"{self.dimension}D {self.geometry.geometry_type}, structured domain"
     elif scheme == NumericalScheme.SL_LINEAR:
         return f"3D problem, Semi-Lagrangian scales better"
     elif scheme == NumericalScheme.GFDM:
         if self.has_obstacles:
             return "Complex geometry with obstacles"
-        elif hasattr(self.geometry, 'is_structured') and not self.geometry.is_structured():
-            return "Unstructured mesh"
-        elif hasattr(self.geometry, 'is_convex') and not self.geometry.is_convex():
+
+        geom_type = self.geometry.geometry_type
+        if geom_type in ["unstructured_mesh", "point_cloud"]:
+            return f"Unstructured geometry ({geom_type})"
+        elif geom_type in ["polygon", "implicit"]:
             return "Non-convex domain (avoid FDM staircase errors)"
         else:
             return "Complex geometry requiring flexible discretization"
@@ -1217,6 +1409,128 @@ All three risks identified in audit have been incorporated into "Critical Implem
 2. **Type Checking Brittleness** → Addressed with `SchemeFamily` trait system
 3. **Auto-Selection Edge Cases** → Addressed with geometry introspection heuristics
 
+### Solver Registry Pattern (Optional Extension)
+
+**Context**: The current design uses `if/elif` chains in `create_paired_solvers()`:
+
+```python
+if scheme == NumericalScheme.FDM_UPWIND:
+    return HJBFDMSolver(...), FPFDMSolver(...)
+elif scheme == NumericalScheme.GFDM:
+    return HJBGFDMSolver(...), FPGFDMSolver(...)
+# ... 10+ schemes
+```
+
+**Problem**: Every new scheme requires modifying the factory function (violates Open-Closed Principle).
+
+**Solution**: Plugin-style registry for extensibility:
+
+```python
+# mfg_pde/factory/scheme_registry.py (NEW - Optional)
+
+from typing import Callable, Protocol
+
+class SolverPairFactory(Protocol):
+    """Protocol for solver pair factory functions."""
+    def __call__(
+        self,
+        problem: MFGProblem,
+        config: MFGSolverConfig
+    ) -> tuple[BaseHJBSolver, BaseFPSolver]:
+        ...
+
+
+# Global registry
+_SCHEME_REGISTRY: dict[NumericalScheme, SolverPairFactory] = {}
+
+
+def register_scheme(scheme: NumericalScheme):
+    """Decorator to register solver pair factory."""
+    def decorator(factory: SolverPairFactory) -> SolverPairFactory:
+        _SCHEME_REGISTRY[scheme] = factory
+        return factory
+    return decorator
+
+
+# Built-in schemes registered at import time
+@register_scheme(NumericalScheme.FDM_UPWIND)
+def _create_fdm_pair(problem, config):
+    hjb = HJBFDMSolver(problem, upwind=True, ...)
+    fp = FPFDMSolver(problem, upwind=False, ...)
+    return hjb, fp
+
+
+@register_scheme(NumericalScheme.GFDM)
+def _create_gfdm_pair(problem, config):
+    # Auto-populate configs if missing
+    if config.hjb.gfdm is None:
+        config.hjb.gfdm = GFDMConfig()
+    if config.fp.gfdm is None:
+        config.fp.gfdm = GFDMConfig()
+
+    hjb = HJBGFDMSolver(
+        problem,
+        upwind="exponential_downwind",
+        delta=config.hjb.gfdm.delta,
+        stencil_size=config.hjb.gfdm.stencil_size,
+        qp_optimization_level=config.hjb.gfdm.qp_optimization_level,
+    )
+    fp = FPGFDMSolver(
+        problem,
+        upwind="exponential_upwind",
+        delta=config.fp.gfdm.delta,
+        stencil_size=config.fp.gfdm.stencil_size,
+        qp_optimization_level=config.fp.gfdm.qp_optimization_level,
+    )
+    fp = RenormalizationWrapper(fp)
+    return hjb, fp
+
+
+# Simplified factory
+def create_paired_solvers(
+    scheme: NumericalScheme,
+    problem: MFGProblem,
+    config: MFGSolverConfig | None = None,
+) -> tuple[BaseHJBSolver, BaseFPSolver]:
+    if config is None:
+        config = MFGSolverConfig()
+
+    factory = _SCHEME_REGISTRY.get(scheme)
+    if factory is None:
+        raise ValueError(f"Unknown scheme: {scheme}")
+
+    return factory(problem, config)
+```
+
+**Benefits**:
+- ✅ **Extensibility**: Users can register custom schemes without modifying MFG_PDE
+- ✅ **Separation**: Each scheme's pairing logic isolated in single function
+- ✅ **Testability**: Individual factories unit-testable
+- ✅ **Plugin-friendly**: Third-party packages can register schemes
+
+**Usage** (custom scheme):
+```python
+# User's custom package: my_mfg_extensions/solvers.py
+from mfg_pde.factory import register_scheme, NumericalScheme
+
+# Extend enum (requires Python 3.11+ or aenum)
+class CustomScheme(NumericalScheme):
+    MY_SCHEME = "my_scheme"
+
+@register_scheme(CustomScheme.MY_SCHEME)
+def create_my_scheme_pair(problem, config):
+    hjb = MyHJBSolver(problem, ...)
+    fp = MyFPSolver(problem, ...)
+    return hjb, fp
+
+# Now works with standard API
+result = problem.solve(scheme=CustomScheme.MY_SCHEME)
+```
+
+**Decision**: Keep registry pattern as optional extension. Initial implementation can use `if/elif` chains for simplicity, migrate to registry if plugin ecosystem develops.
+
+---
+
 ### Implementation Sequence (Recommended)
 
 Follow this order for Issue #580 implementation:
@@ -1248,12 +1562,32 @@ Follow this order for Issue #580 implementation:
 
 ### Pre-Implementation Checklist
 
-Before coding, ensure:
-- [ ] All solver classes have `_scheme_family` trait
-- [ ] `MFGSolverConfig` supports scheme-specific parameters
-- [ ] Geometry classes expose `is_structured()` and `is_convex()` methods
-- [ ] Test infrastructure can validate adjoint properties
-- [ ] Deprecation strategy agreed upon (v0.17.0 → v1.0.0)
+**Infrastructure Status** (2026-01-17):
+
+✅ **Ready to implement**:
+- `MFGSolverConfig` hierarchy complete (`config/*.py`)
+- Solver base classes exist (`BaseHJBSolver`, `BaseFPSolver`)
+- Backend selection pattern exists (`backend_factory.py`)
+- Coupling iterator exists (`FixedPointIterator`)
+
+⚠️ **Needs addition**:
+- [ ] `NumericalScheme` enum consolidation (scattered `Literal[...]` exist)
+- [ ] `SchemeFamily` enum and `_scheme_family` trait on all solvers
+- [ ] `check_solver_duality()` validation function
+- [ ] `create_paired_solvers()` factory with config threading
+- [ ] Geometry introspection (use `geometry_type` enum as workaround for missing `is_structured()`/`is_convex()`)
+
+❌ **Major refactoring required**:
+- [ ] `problem.solve()` currently **hardcoded to GFDM+Particle** (line 1954-2026)
+- [ ] Must implement mode detection (Safe/Expert/Auto)
+- [ ] Must implement `_auto_select_scheme()` logic
+- [ ] Deprecate `create_solver()` and update all examples
+
+**Critical Path**:
+1. Add enums and traits (low risk)
+2. Add validation and factory (isolated modules)
+3. Refactor `problem.solve()` (high risk - breaks existing code)
+4. Update all examples and tests
 
 ---
 
@@ -1264,6 +1598,7 @@ Before coding, ensure:
 | 2026-01-16 | 1.0 | Initial design document for Issue #580 implementation |
 | 2026-01-16 | 1.1 | Terminology fix: Layer→Concern, Tier→Mode; Added 2-Level Principle section |
 | 2026-01-16 | 1.2 | Added Critical Implementation Considerations from architectural audit |
+| 2026-01-17 | 1.3 | Consolidated with infrastructure audit: Added Current Implementation Status; Revised config examples with actual GFDMConfig params; Updated auto-selection to use geometry_type enum; Added Solver Registry Pattern; Revised Pre-Implementation Checklist with infrastructure baseline; Added Backend Selection template; Added Issue #543 validator pattern note; Updated TOC |
 
 ---
 

@@ -84,6 +84,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
       - Optimal control: Vector optimization (complete)
     """
 
+    # Scheme family trait for duality validation (Issue #580)
+    from mfg_pde.alg.base_solver import SchemeFamily
+
+    _scheme_family = SchemeFamily.SL
+
     def __init__(
         self,
         problem: MFGProblem,
