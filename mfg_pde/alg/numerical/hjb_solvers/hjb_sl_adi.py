@@ -141,10 +141,10 @@ def adi_diffusion_step(
     if isinstance(sigma, (int, float)):
         # Isotropic: same sigma in all directions
         sigma_vec = np.full(dimension, float(sigma))
-    elif hasattr(sigma, "ndim") and sigma.ndim == 1 and len(sigma) == dimension:
+    elif hasattr(sigma, "ndim") and sigma.ndim == 1 and len(sigma) == dimension:  # Issue #543 acceptable
         # Diagonal anisotropic: different sigma per direction
         sigma_vec = np.asarray(sigma)
-    elif hasattr(sigma, "ndim") and sigma.ndim == 2:
+    elif hasattr(sigma, "ndim") and sigma.ndim == 2:  # Issue #543 acceptable
         # Full tensor diffusion
         sigma_tensor = np.asarray(sigma)
         sigma_vec = np.sqrt(np.diag(sigma_tensor))  # Diagonal part for ADI

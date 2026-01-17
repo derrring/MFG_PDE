@@ -94,9 +94,9 @@ def gaussian_kde_gpu(
     # hasattr checks are appropriate for external library feature detection
     if hasattr(backend, "device") and backend.device is not None:
         device = backend.device
-        if hasattr(particles_tensor, "to"):  # PyTorch tensor.to(device) method
+        if hasattr(particles_tensor, "to"):  # PyTorch tensor.to(device) method (Issue #543 acceptable)
             particles_tensor = particles_tensor.to(device)
-        if hasattr(grid_tensor, "to"):
+        if hasattr(grid_tensor, "to"):  # PyTorch tensor.to(device) method (Issue #543 acceptable)
             grid_tensor = grid_tensor.to(device)
 
     # Backend compatibility - PyTorch vs JAX tensor reshaping (Issue #543 acceptable)
@@ -274,9 +274,9 @@ def gaussian_kde_gpu_nd(
     # Backend compatibility - PyTorch/JAX device management (Issue #543 acceptable)
     if hasattr(backend, "device") and backend.device is not None:
         device = backend.device
-        if hasattr(particles_tensor, "to"):  # PyTorch tensor.to(device)
+        if hasattr(particles_tensor, "to"):  # PyTorch tensor.to(device) method (Issue #543 acceptable)
             particles_tensor = particles_tensor.to(device)
-        if hasattr(grid_tensor, "to"):
+        if hasattr(grid_tensor, "to"):  # PyTorch tensor.to(device) method (Issue #543 acceptable)
             grid_tensor = grid_tensor.to(device)
 
     # Backend compatibility - PyTorch vs JAX tensor reshaping (Issue #543 acceptable)

@@ -490,12 +490,13 @@ def _calculate_derivatives(
 
     # Legacy path: compute derivatives locally with periodic BC (% Nx indexing)
     # Extract neighbor values
+    # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
     if hasattr(U_array[(i + 1) % Nx], "item"):
         u_ip1 = U_array[(i + 1) % Nx].item()
     else:
         u_ip1 = float(U_array[(i + 1) % Nx])
 
-    if hasattr(U_array[(i - 1 + Nx) % Nx], "item"):
+    if hasattr(U_array[(i - 1 + Nx) % Nx], "item"):  # Issue #543 acceptable
         u_im1 = U_array[(i - 1 + Nx) % Nx].item()
     else:
         u_im1 = float(U_array[(i - 1 + Nx) % Nx])
