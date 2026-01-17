@@ -185,6 +185,14 @@ from .applicator_meshfree import (
 # =============================================================================
 from .applicator_particle import ParticleApplicator
 
+# =============================================================================
+# BC Coupling (for coupled MFG systems - Issue #574)
+# =============================================================================
+from .bc_coupling import (
+    compute_boundary_log_density_gradient,
+    compute_coupled_hjb_bc_values,
+)
+
 # Unified BoundaryConditions class and factory functions
 from .conditions import (
     BoundaryConditions,
@@ -350,6 +358,9 @@ __all__ = [
     "SDFParticleBCHandler",
     # Particle Applicator (BC-segment-based)
     "ParticleApplicator",
+    # BC Coupling (for coupled MFG systems - Issue #574)
+    "compute_boundary_log_density_gradient",
+    "compute_coupled_hjb_bc_values",
     # Graph Applicator
     "GraphApplicator",
     "GraphBCConfig",

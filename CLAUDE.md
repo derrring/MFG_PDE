@@ -262,6 +262,46 @@ if isinstance(solver, HasCleanup):  # ✅ Type-safe
     solver.cleanup()
 ```
 
+### **Boundary Condition Coupling Patterns** ⚠️ **IMPORTANT**
+
+When implementing coupled PDE systems (like HJB-FP in MFG), boundary conditions may need to couple between equations.
+
+**Pattern: Adjoint-Consistent Boundary Conditions**
+
+For reflecting boundaries in MFG systems, the HJB boundary condition may need to couple to the FP density gradient to maintain equilibrium consistency. This is implemented via the `bc_mode` parameter in HJB solvers.
+
+**Design Principles**:
+1. **Automatic computation**: Solver computes coupled BC values from density automatically
+2. **Override option**: Allow manual BC value specification via `bc_values` parameter
+3. **Backward compatibility**: Default mode preserves classical behavior
+4. **Clean API**: Single parameter switch, no manual BC computation in user code
+
+**Example** (Issue #574 implementation):
+```python
+from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+
+# Standard Neumann BC (default)
+solver_std = HJBFDMSolver(problem, bc_mode="standard")
+
+# Adjoint-consistent BC (couples to FP density gradient)
+solver_ac = HJBFDMSolver(problem, bc_mode="adjoint_consistent")
+# Automatically computes BC values from density each iteration
+
+# Advanced: Manual override
+from mfg_pde.geometry.boundary import compute_coupled_hjb_bc_values
+bc_values = compute_coupled_hjb_bc_values(m=M_current[-1, :], dx=problem.dx, sigma=problem.sigma)
+U = solver.solve_hjb_system(M_density, U_terminal, U_prev, bc_values=bc_values)
+```
+
+**When to use adjoint-consistent BC**:
+- ✅ Reflecting boundaries with stall point at domain boundary
+- ✅ Near equilibrium or high-accuracy requirements
+- ❌ Not needed for interior stall points or periodic BC
+
+**Implementation location**: `mfg_pde/geometry/boundary/bc_coupling.py`
+
+**Reference**: See `docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md` § Boundary Condition Consistency Issue
+
 ### **File Path Anchoring** ⚠️ **CRITICAL**
 Always anchor output paths to **project root**, never to CWD:
 - ✅ `Path(__file__).resolve().parent.parent / "results"` — fixed to project structure
