@@ -693,6 +693,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         self._D_lap: Any | None = None  # Laplacian differentiation matrix
         self._potential_at_collocation: np.ndarray | None = None  # Interpolated potential field
         self._cached_derivative_weights: dict | None = None  # Pre-computed GFDM weights
+        self._running_cost: np.ndarray | None = None  # Running cost L(x) for Hamiltonian
 
     def _compute_n_spatial_grid_points(self) -> int:
         """Compute total number of spatial grid points from geometry."""
@@ -1434,9 +1435,10 @@ class HJBGFDMSolver(BaseHJBSolver):
             H_interaction = gamma_val * domain_volume * m_n_plus_1
             H_total = H_kinetic + H_potential + H_interaction
 
-        # Running cost term L(x) if provided (internal cache - Issue #543 acceptable)
+        # Running cost term L(x) if provided
         # This implements: H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)
-        if hasattr(self, "_running_cost") and self._running_cost is not None:
+        # _running_cost initialized in __init__, hasattr check removed (Issue #543 fix)
+        if self._running_cost is not None:
             H_total = H_total + self._running_cost
 
         # Diffusion term: (sigma^2 / 2) * Laplacian
@@ -1516,8 +1518,9 @@ class HJBGFDMSolver(BaseHJBSolver):
 
             H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs, x_position=x_pos)
 
-            # Add running cost L(x) if provided (internal cache - Issue #543 acceptable)
-            if hasattr(self, "_running_cost") and self._running_cost is not None:
+            # Add running cost L(x) if provided
+            # _running_cost initialized in __init__, hasattr check removed (Issue #543 fix)
+            if self._running_cost is not None:
                 H = H + self._running_cost[i]
 
             sigma_val = self._get_sigma_value(i)
@@ -1956,9 +1959,12 @@ class HJBGFDMSolver(BaseHJBSolver):
             )
 
             # Update progress bar with QP statistics if available
+            # Backend compatibility - progress bar optional methods (Issue #543 acceptable)
+            # timestep_range could be plain range() or progress bar wrapper (Rich/tqdm)
             if show_progress and hasattr(timestep_range, "set_postfix"):
                 postfix = {}
-                if self.qp_optimization_level in ["auto", "always"] and hasattr(self, "qp_stats"):
+                # qp_stats initialized in __init__, hasattr check removed (Issue #543 fix)
+                if self.qp_optimization_level in ["auto", "always"]:
                     postfix["qp_solves"] = self.qp_stats.get("total_qp_solves", 0)
                 if postfix:
                     timestep_range.set_postfix(**postfix)

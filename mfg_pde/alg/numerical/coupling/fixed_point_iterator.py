@@ -434,8 +434,8 @@ class FixedPointIterator(BaseMFGSolver):
             iter_time = time.time() - iter_start
             self.iterations_run = iiter + 1
 
-            # Update progress bar with convergence metrics
-            # hasattr acceptable here: checking external library (tqdm/rich) interface
+            # Backend compatibility - progress bar optional methods (Issue #543 acceptable)
+            # picard_range could be plain range() or progress bar wrapper (Rich/tqdm)
             if verbose and hasattr(picard_range, "set_postfix"):
                 accel_tag = "A" if self.use_anderson else ""
                 picard_range.set_postfix(
@@ -461,7 +461,7 @@ class FixedPointIterator(BaseMFGSolver):
             )
 
             if converged:
-                # hasattr acceptable here: checking external library (tqdm/rich) interface
+                # Backend compatibility - progress bar optional write method (Issue #543 acceptable)
                 if verbose and hasattr(picard_range, "write"):
                     picard_range.write(convergence_reason)
                 elif not verbose:

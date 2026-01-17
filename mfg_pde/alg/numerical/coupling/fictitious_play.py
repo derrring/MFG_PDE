@@ -495,8 +495,8 @@ class FictitiousPlayIterator(BaseMFGSolver):
             iter_time = time.time() - iter_start
             self.iterations_run = k + 1
 
-            # Update progress bar
-            # hasattr acceptable here: checking external library (tqdm/rich) interface
+            # Backend compatibility - progress bar optional methods (Issue #543 acceptable)
+            # iter_range could be plain range() or progress bar wrapper (Rich/tqdm)
             if verbose and hasattr(iter_range, "set_postfix"):
                 iter_range.set_postfix(
                     U_err=f"{self.l2distu_rel[k]:.2e}",
@@ -520,7 +520,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
             )
 
             if converged:
-                # hasattr acceptable here: checking external library (tqdm/rich) interface
+                # Backend compatibility - progress bar optional write method (Issue #543 acceptable)
                 if verbose and hasattr(iter_range, "write"):
                     iter_range.write(convergence_reason)
                 elif not verbose:
