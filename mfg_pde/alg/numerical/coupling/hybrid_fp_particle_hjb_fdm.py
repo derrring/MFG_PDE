@@ -55,6 +55,16 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
     - Fokker-Planck equation solved using particle methods
     - HJB equation solved using finite difference methods
     - Coupled through fixed point iteration with damping
+
+    Required Geometry Traits (Issue #596 Phase 2.3):
+        The HJB component of this hybrid solver requires:
+        - SupportsGradient trait for HJB finite difference solver
+
+        The FP particle method does not require geometry traits (operates
+        on unstructured particle representation).
+
+        Trait validation occurs in the HJB solver component.
+        See HJBFDMSolver docstring for trait details.
     """
 
     def __init__(
