@@ -60,6 +60,8 @@ class MockMFGProblem:
 
     Note: This mock maintains legacy attributes (Nx, Nt, dx, xmin, xmax)
     for backward compatibility with experiment_manager functions.
+
+    Supports both legacy parameter-based and modern geometry-based initialization.
     """
 
     def __init__(
@@ -71,23 +73,39 @@ class MockMFGProblem:
         Nx=100,
         sigma=0.1,
         coupling_coefficient=0.5,
+        geometry=None,  # Modern geometry-first API
     ):
         self.T = T
         self.Nt = Nt  # Number of time INTERVALS (not points)
-        self.xmin = xmin
-        self.xmax = xmax
-        self.Nx = Nx  # Number of space INTERVALS (not points)
-        # dx = domain_length / Nx (number of intervals)
-        self.dx = (xmax - xmin) / Nx if Nx > 0 else 0.0
-        # dt = T / Nt (number of intervals)
-        self.dt = T / Nt if Nt > 0 else 0.0
         self.sigma = sigma
         self.coupling_coefficient = coupling_coefficient
+
+        # If geometry is provided, extract parameters from it
+        if geometry is not None:
+            self.geometry = geometry
+            # Extract bounds from geometry
+            bounds = geometry.get_bounds()
+            self.xmin = bounds[0][0]
+            self.xmax = bounds[1][0]
+            # Extract Nx from geometry (number of intervals = points - 1)
+            grid_shape = geometry.get_grid_shape()
+            self.Nx = grid_shape[0] - 1  # Number of INTERVALS
+        else:
+            # Legacy parameter-based initialization
+            self.xmin = xmin
+            self.xmax = xmax
+            self.Nx = Nx  # Number of space INTERVALS (not points)
+            # Create geometry object for geometry-first API
+            self.geometry = MockGeometry(xmin, xmax, Nx)
+
+        # Calculate derived quantities
+        # dx = domain_length / Nx (number of intervals)
+        self.dx = (self.xmax - self.xmin) / self.Nx if self.Nx > 0 else 0.0
+        # dt = T / Nt (number of intervals)
+        self.dt = T / Nt if Nt > 0 else 0.0
         # Nt+1 time points, Nx+1 space points
         self.tSpace = np.linspace(0, T, Nt + 1)
-        self.xSpace = np.linspace(xmin, xmax, Nx + 1)
-        # Add geometry object for geometry-first API
-        self.geometry = MockGeometry(xmin, xmax, Nx)
+        self.xSpace = np.linspace(self.xmin, self.xmax, self.Nx + 1)
 
 
 # ===================================================================
