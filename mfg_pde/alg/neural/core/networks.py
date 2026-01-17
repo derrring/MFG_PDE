@@ -605,6 +605,8 @@ def print_network_info(network: nn.Module, name: str = "Network") -> None:
 
     for _i, (name, module) in enumerate(network.named_modules()):
         if len(list(module.children())) == 0:  # Leaf modules only
+            # Backend compatibility - PyTorch module introspection (Issue #543 acceptable)
+            # Some modules (Linear, Conv2d) have weights, others (ReLU, Dropout) don't
             if hasattr(module, "weight") and module.weight is not None:
                 weight_shape = tuple(module.weight.shape)
                 print(f"    {name}: {module.__class__.__name__} {weight_shape}")

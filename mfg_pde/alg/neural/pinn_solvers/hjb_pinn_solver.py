@@ -515,6 +515,8 @@ class HJBPINNSolver(PINNBase):
         Returns:
             Dictionary containing solution data, convergence info, and metadata
         """
+        # Internal cache - state validation (Issue #543 acceptable)
+        # training_history is set during solve(), this ensures solve() was called
         if not hasattr(self, "training_history") or not self.training_history:
             raise RuntimeError("No training results available. Run solve() first.")
 

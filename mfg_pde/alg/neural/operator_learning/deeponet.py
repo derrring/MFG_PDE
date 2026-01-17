@@ -184,7 +184,8 @@ if TORCH_AVAILABLE:
             Returns:
                 Branch network output [batch, latent_dim]
             """
-            # Apply attention if enabled
+            # Internal cache - optional attention module (Issue #543 acceptable)
+            # Defensive check: config.use_attention determines creation in __init__
             if self.config.use_attention and hasattr(self, "attention"):
                 # Reshape for attention
                 u_expanded = u.unsqueeze(1)  # [batch, 1, sensor_points]
@@ -407,7 +408,8 @@ if TORCH_AVAILABLE:
             # Element-wise multiplication and sum over latent dimension
             operator_output = torch.sum(branch_expanded * trunk_output, dim=-1)  # [batch, num_points]
 
-            # Add bias if enabled
+            # Internal cache - optional bias network (Issue #543 acceptable)
+            # Defensive check: config.use_bias_net determines creation in __init__
             if self.config.use_bias_net and hasattr(self, "bias_net"):
                 bias_output = self.bias_net(trunk_input).squeeze(-1)  # [batch, num_points]
                 operator_output = operator_output + bias_output

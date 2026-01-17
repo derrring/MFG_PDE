@@ -537,6 +537,7 @@ class MFGPINNSolver(PINNBase):
         for param in self.m_net.parameters():
             param.requires_grad = True
 
+        # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
         return {k: v.item() if hasattr(v, "item") else float(v) for k, v in losses.items()}
 
     def train_step_joint(
@@ -564,6 +565,7 @@ class MFGPINNSolver(PINNBase):
         # Update parameters
         self.joint_optimizer.step()
 
+        # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
         return {k: v.item() if hasattr(v, "item") else float(v) for k, v in losses.items()}
 
     def train_step(
@@ -759,6 +761,8 @@ class MFGPINNSolver(PINNBase):
         Returns:
             Dictionary containing solution data, convergence info, and metadata
         """
+        # Internal cache - state validation (Issue #543 acceptable)
+        # training_history is set during solve(), this ensures solve() was called
         if not hasattr(self, "training_history") or not self.training_history:
             raise RuntimeError("No training results available. Run solve() first.")
 

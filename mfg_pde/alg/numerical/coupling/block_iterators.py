@@ -365,7 +365,8 @@ class BlockIterator(BaseMFGSolver):
             iter_time = time.time() - iter_start
             self.iterations_run = iiter + 1
 
-            # Update progress bar
+            # Backend compatibility - progress bar optional methods (Issue #543 acceptable)
+            # iter_range could be plain range() or progress bar wrapper (Rich/tqdm)
             if verbose and hasattr(iter_range, "set_postfix"):
                 iter_range.set_postfix(
                     U_err=f"{metrics['l2distu_rel']:.2e}",
@@ -383,6 +384,7 @@ class BlockIterator(BaseMFGSolver):
             )
 
             if converged:
+                # Backend compatibility - progress bar optional write method (Issue #543 acceptable)
                 if verbose and hasattr(iter_range, "write"):
                     iter_range.write(convergence_reason)
                 break

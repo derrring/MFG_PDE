@@ -306,6 +306,8 @@ class PINNBase(BaseNeuralSolver, ABC):
                 gpu_name = torch.cuda.get_device_name()
                 memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
                 print(f"Auto-selected CUDA GPU: {gpu_name} ({memory_gb:.1f} GB)")
+            # Backend compatibility - Apple Silicon MPS support (Issue #543 acceptable)
+            # hasattr check required: torch.backends.mps added in PyTorch 1.12+
             elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                 device = torch.device("mps")
                 print("Auto-selected Apple Silicon MPS (Metal Performance Shaders)")
@@ -319,6 +321,7 @@ class PINNBase(BaseNeuralSolver, ABC):
                 # Validate device availability
                 if device.type == "cuda" and not torch.cuda.is_available():
                     raise ValueError("CUDA device requested but CUDA is not available")
+                # Backend compatibility - Apple Silicon MPS support (Issue #543 acceptable)
                 elif device.type == "mps" and not (
                     hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
                 ):
@@ -664,7 +667,8 @@ class PINNBase(BaseNeuralSolver, ABC):
         for optimizer in self.optimizers.values():
             optimizer.step()
 
-        # Convert losses to float for logging
+        # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
+        # PyTorch tensors have .item() method, plain Python scalars don't
         return {k: v.item() if hasattr(v, "item") else float(v) for k, v in losses.items()}
 
     def solve(self, **kwargs: Any) -> dict:
@@ -1032,6 +1036,7 @@ class PINNBase(BaseNeuralSolver, ABC):
         with torch.no_grad():
             losses = self.compute_total_loss(test_points["interior"], test_points["boundary"], test_points["initial"])
 
+        # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
         metrics = {k: v.item() if hasattr(v, "item") else float(v) for k, v in losses.items()}
 
         # Additional convergence metrics can be added here

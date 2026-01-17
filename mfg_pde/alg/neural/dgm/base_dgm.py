@@ -488,6 +488,7 @@ class BaseDGMSolver(BaseNeuralSolver):
 
                 if torch.cuda.is_available():
                     return "cuda"
+                # Backend compatibility - Apple Silicon MPS support (Issue #543 acceptable)
                 elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
                     return "mps"
                 else:
