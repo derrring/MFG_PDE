@@ -1,6 +1,6 @@
 # Development Priority List (2026-01-17)
 
-## Current Version: v0.16.16 → v0.17.0 (ready for release)
+## Current Version: v0.17.1 (released 2026-01-17)
 
 This document outlines the prioritized roadmap for infrastructure improvements following PR #548.
 
@@ -619,7 +619,7 @@ Run tests after each priority, validate with research experiments.
 
 **Last Updated**: 2026-01-17
 **Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574)
-**Current Focus**: ✅ All high-priority infrastructure complete! v0.17.0 feature development complete. Next: Prepare v0.17.0 release or explore additional features (#573, #549)
+**Current Focus**: ✅ v0.17.1 released (2026-01-17)! All high-priority infrastructure complete. Next: Explore additional features (#573, #549) or begin v0.18.0 development
 
 ## Remaining Open Issues (by priority)
 

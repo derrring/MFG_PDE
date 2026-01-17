@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-01-17
+
+**Feature Release: Adjoint-Consistent Boundary Conditions + Three-Mode Solving API**
+
+This release adds two major features:
+1. **Adjoint-consistent boundary conditions** for HJB solver (Issue #574) - fixes equilibrium inconsistency at reflecting boundaries
+2. **Three-mode solving API** (Issue #580) - prevents non-dual solver pairings
+
+Both features include comprehensive documentation, validated testing, and are 100% backward compatible.
+
 ### Added
 
 - **Three-Mode Solving API** (Issue #580, PR #585) 🎯
