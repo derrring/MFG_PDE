@@ -1991,31 +1991,42 @@ class FDMApplicator(BaseStructuredApplicator):
         for segment in boundary_conditions.segments:
             # Parse boundary identifier to get dimension and side
             boundary_id = segment.boundary
+
+            # If boundary_id is None, this is a uniform BC - apply to all boundaries
             if boundary_id is None:
-                continue
-
-            # Map boundary string to (dimension, side)
-            dim, side = self._parse_boundary_identifier(boundary_id)
-            if dim is None:
-                continue  # Unrecognized boundary format
-
-            # Get BC value (time-dependent or constant)
-            if callable(segment.value):
-                bc_value = segment.value(time)
+                # Determine field dimension
+                field_ndim = field.ndim
+                # Apply to all standard boundaries (x_min, x_max, y_min, y_max, etc.)
+                boundaries_to_apply = []
+                for d in range(field_ndim):
+                    boundaries_to_apply.append((d, "min"))
+                    boundaries_to_apply.append((d, "max"))
             else:
-                bc_value = segment.value
+                # Map boundary string to (dimension, side)
+                dim, side = self._parse_boundary_identifier(boundary_id)
+                if dim is None:
+                    continue  # Unrecognized boundary format
+                boundaries_to_apply = [(dim, side)]
 
-            # Get grid spacing for this dimension
-            h = spacing_tuple[dim] if dim < len(spacing_tuple) else 1.0
+            # Apply BC to each boundary
+            for dim, side in boundaries_to_apply:
+                # Get BC value (time-dependent or constant)
+                if callable(segment.value):
+                    bc_value = segment.value(time)
+                else:
+                    bc_value = segment.value
 
-            # Enforce BC based on type
-            if segment.bc_type == BCType.DIRICHLET:
-                # Dirichlet: Set boundary values directly u(boundary) = g
-                self._apply_dirichlet_enforcement(field, dim, side, bc_value)
+                # Get grid spacing for this dimension
+                h = spacing_tuple[dim] if dim < len(spacing_tuple) else 1.0
 
-            elif segment.bc_type == BCType.NEUMANN:
-                # Neumann: Set boundary value to satisfy gradient constraint ∂u/∂n = g
-                self._apply_neumann_enforcement(field, dim, side, bc_value, h)
+                # Enforce BC based on type
+                if segment.bc_type == BCType.DIRICHLET:
+                    # Dirichlet: Set boundary values directly u(boundary) = g
+                    self._apply_dirichlet_enforcement(field, dim, side, bc_value)
+
+                elif segment.bc_type == BCType.NEUMANN:
+                    # Neumann: Set boundary value to satisfy gradient constraint ∂u/∂n = g
+                    self._apply_neumann_enforcement(field, dim, side, bc_value, h)
 
         return field
 
