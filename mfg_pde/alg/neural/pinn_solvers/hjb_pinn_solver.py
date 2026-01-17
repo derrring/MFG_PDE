@@ -166,9 +166,10 @@ class HJBPINNSolver(PINNBase):
         else:
             # Use initial density or constant density as approximation
             # This is a placeholder - in coupled MFG, this would come from FP solver
-            if hasattr(self.problem, "initial_density"):
+            initial_density = getattr(self.problem, "initial_density", None)
+            if initial_density is not None:
                 # Evaluate initial density at current spatial points
-                m0_np = self.problem.initial_density(x.detach().cpu().numpy())
+                m0_np = initial_density(x.detach().cpu().numpy())
                 return torch.from_numpy(m0_np).to(self.device, dtype=self.dtype).reshape(-1, 1)
             else:
                 # Default to uniform density
@@ -318,16 +319,17 @@ class HJBPINNSolver(PINNBase):
         """
         # For HJB, we typically have terminal conditions, not initial conditions
         # But if initial conditions are provided, handle them here
-        if hasattr(self.problem, "initial_condition_u"):
+        initial_condition_u = getattr(self.problem, "initial_condition_u", None)
+        if initial_condition_u is not None:
             t_initial = torch.zeros_like(x)
             u_initial = self.forward(t_initial, x)
 
-            if callable(self.problem.initial_condition_u):
+            if callable(initial_condition_u):
                 x_np = x.detach().cpu().numpy()
-                u0_target = self.problem.initial_condition_u(x_np)
+                u0_target = initial_condition_u(x_np)
                 u0_target = torch.from_numpy(u0_target).to(self.device, dtype=self.dtype).reshape(-1, 1)
             else:
-                u0_target = torch.full_like(u_initial, self.problem.initial_condition_u)
+                u0_target = torch.full_like(u_initial, initial_condition_u)
 
             initial_loss = torch.mean((u_initial - u0_target) ** 2)
         else:

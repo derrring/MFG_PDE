@@ -121,14 +121,15 @@ if TORCH_AVAILABLE:
 
         def _setup_sampling(self) -> None:
             """Setup high-dimensional sampling strategies."""
-            # Infer domain bounds from problem
-            if hasattr(self.problem, "domain"):
-                if isinstance(self.problem.domain, list | tuple) and len(self.problem.domain) == 2:
+            # Infer domain bounds from problem, use getattr for optional attribute
+            domain = getattr(self.problem, "domain", None)
+            if domain is not None:
+                if isinstance(domain, list | tuple) and len(domain) == 2:
                     # 1D domain (min, max)
-                    self.domain_bounds = [self.problem.domain]
+                    self.domain_bounds = [domain]
                 else:
                     # Multi-dimensional domain - assume alternating min/max
-                    domain_list = list(self.problem.domain)
+                    domain_list = list(domain)
                     self.domain_bounds = [(domain_list[i], domain_list[i + 1]) for i in range(0, len(domain_list), 2)]
             else:
                 # Default hypercube domain
@@ -176,13 +177,15 @@ if TORCH_AVAILABLE:
 
         def _sample_interior_points(self, num_points: int) -> NDArray:
             """Sample interior points for physics loss computation."""
-            time_bounds = (0.0, self.problem.T if hasattr(self.problem, "T") else 1.0)
+            T_final = getattr(self.problem, "T", 1.0)
+            time_bounds = (0.0, T_final)
             points = self.sampler.sample_interior(num_points, time_bounds)
             return points
 
         def _sample_boundary_points(self, num_points: int) -> NDArray:
             """Sample boundary points for boundary condition loss."""
-            time_bounds = (0.0, self.problem.T if hasattr(self.problem, "T") else 1.0)
+            T_final = getattr(self.problem, "T", 1.0)
+            time_bounds = (0.0, T_final)
             points = self.sampler.sample_boundary(num_points, time_bounds)
             return points
 
@@ -394,7 +397,8 @@ if TORCH_AVAILABLE:
             # Create evaluation grid (simplified for 1D, can be extended)
             if self.dimension == 1:
                 x_eval = np.linspace(self.domain_bounds[0][0], self.domain_bounds[0][1], 100)
-                t_eval = np.linspace(0, self.problem.T if hasattr(self.problem, "T") else 1.0, 50)
+                T_final = getattr(self.problem, "T", 1.0)
+                t_eval = np.linspace(0, T_final, 50)
 
                 X_eval, T_eval = np.meshgrid(x_eval, t_eval)
                 eval_points = np.column_stack([T_eval.ravel(), X_eval.ravel()])
@@ -409,7 +413,8 @@ if TORCH_AVAILABLE:
                 spatial_points = np.column_stack([grid.ravel() for grid in grid_arrays])
 
                 # Add time dimension
-                t_eval = np.linspace(0, self.problem.T if hasattr(self.problem, "T") else 1.0, 20)
+                T_final = getattr(self.problem, "T", 1.0)
+                t_eval = np.linspace(0, T_final, 20)
                 eval_points = []
 
                 for t in t_eval:

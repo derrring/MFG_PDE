@@ -361,16 +361,17 @@ class BaseOptimizationSolver(BaseMFGSolver):
 
             constraints.append(constraint)
 
-        # If no segments, create constraint from default BC
-        if not constraints and hasattr(bc, "default_bc"):
-            bc_type = bc.default_bc
-            constraint = {
-                "region": "all",
-                "value": getattr(bc, "value", 0.0),
-                "bc_type": bc_type,
-                "type": "eq" if bc_type == BCType.DIRICHLET else "grad",
-            }
-            constraints.append(constraint)
+        # If no segments, create constraint from default BC if available
+        if not constraints:
+            bc_type = getattr(bc, "default_bc", None)
+            if bc_type is not None:
+                constraint = {
+                    "region": "all",
+                    "value": getattr(bc, "value", 0.0),
+                    "bc_type": bc_type,
+                    "type": "eq" if bc_type == BCType.DIRICHLET else "grad",
+                }
+                constraints.append(constraint)
 
         return constraints
 

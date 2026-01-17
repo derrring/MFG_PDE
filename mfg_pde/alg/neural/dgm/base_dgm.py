@@ -242,13 +242,15 @@ class BaseDGMSolver(BaseNeuralSolver):
 
     def _validate_high_dimensional_problem(self) -> None:
         """Validate that problem is suitable for DGM approach."""
-        # Check dimension
-        if hasattr(self.problem, "dimension"):
-            self.dimension = self.problem.dimension
+        # Check dimension - use getattr for optional problem attributes
+        dimension = getattr(self.problem, "dimension", None)
+        if dimension is not None:
+            self.dimension = dimension
         else:
-            # Infer from domain
-            if hasattr(self.problem, "domain") and len(self.problem.domain) >= 2:
-                self.dimension = len(self.problem.domain) // 2  # (min, max) pairs
+            # Infer from domain if available
+            domain = getattr(self.problem, "domain", None)
+            if domain is not None and len(domain) >= 2:
+                self.dimension = len(domain) // 2  # (min, max) pairs
             else:
                 self.dimension = 1
 
