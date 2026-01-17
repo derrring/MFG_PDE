@@ -572,12 +572,12 @@ class PINNBase(BaseNeuralSolver, ABC):
         # Interior points (random sampling in space-time)
         t_interior = torch.rand(self.config.n_interior_points, 1, device=self.device, dtype=self.dtype) * self.problem.T
 
-        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "sample_interior"):
-            # Use geometry-aware sampling if available
+        # Try geometry-aware sampling, fall back to uniform sampling if not available
+        try:
             x_interior = self.problem.geometry.sample_interior(self.config.n_interior_points)
             x_interior = torch.from_numpy(x_interior).to(self.device, dtype=self.dtype)
-        else:
-            # Default 1D sampling using geometry API
+        except AttributeError:
+            # Fallback: uniform sampling using geometry bounds
             bounds = self.problem.geometry.get_bounds()
             x_interior = (
                 torch.rand(self.config.n_interior_points, 1, device=self.device, dtype=self.dtype)
@@ -590,12 +590,12 @@ class PINNBase(BaseNeuralSolver, ABC):
         # Boundary points
         t_boundary = torch.rand(self.config.n_boundary_points, 1, device=self.device, dtype=self.dtype) * self.problem.T
 
-        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "sample_boundary"):
-            # Use geometry-aware boundary sampling
+        # Try geometry-aware boundary sampling, fall back to default 1D boundaries
+        try:
             x_boundary = self.problem.geometry.sample_boundary(self.config.n_boundary_points)
             x_boundary = torch.from_numpy(x_boundary).to(self.device, dtype=self.dtype)
-        else:
-            # Default 1D boundary points (left and right boundaries)
+        except AttributeError:
+            # Fallback: 1D boundary points (left and right boundaries)
             n_left = self.config.n_boundary_points // 2
             n_right = self.config.n_boundary_points - n_left
 
@@ -610,10 +610,11 @@ class PINNBase(BaseNeuralSolver, ABC):
         points["boundary"] = (t_boundary, x_boundary)
 
         # Initial condition points
-        if hasattr(self.problem, "geometry") and hasattr(self.problem.geometry, "sample_interior"):
+        try:
             x_initial = self.problem.geometry.sample_interior(self.config.n_initial_points)
             x_initial = torch.from_numpy(x_initial).to(self.device, dtype=self.dtype)
-        else:
+        except AttributeError:
+            # Fallback: uniform sampling
             bounds = self.problem.geometry.get_bounds()
             x_initial = (
                 torch.rand(self.config.n_initial_points, 1, device=self.device, dtype=self.dtype)
@@ -923,15 +924,14 @@ class PINNBase(BaseNeuralSolver, ABC):
         upper_bounds = torch.tensor([1.0, 1.0], device=self.device, dtype=self.dtype)
 
         # Try to get bounds from problem if available
-        if hasattr(self.problem, "domain") and hasattr(self.problem.domain, "bounds"):
-            try:
-                bounds = self.problem.domain.bounds
-                if isinstance(bounds, list | tuple) and len(bounds) == 2:
-                    lower_bounds = torch.tensor(bounds[0], device=self.device, dtype=self.dtype)
-                    upper_bounds = torch.tensor(bounds[1], device=self.device, dtype=self.dtype)
-            except (AttributeError, TypeError, ValueError):
-                # Problem may not have domain attribute, or bounds may have wrong format
-                pass  # Use default bounds
+        try:
+            bounds = self.problem.domain.bounds
+            if isinstance(bounds, list | tuple) and len(bounds) == 2:
+                lower_bounds = torch.tensor(bounds[0], device=self.device, dtype=self.dtype)
+                upper_bounds = torch.tensor(bounds[1], device=self.device, dtype=self.dtype)
+        except (AttributeError, TypeError, ValueError):
+            # Problem may not have domain attribute, or bounds may have wrong format
+            pass  # Use default bounds
 
         return lower_bounds, upper_bounds
 
