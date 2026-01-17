@@ -247,16 +247,24 @@ class HJBWenoSolver(BaseHJBSolver):
 
     def _setup_ghost_buffer(self) -> None:
         """
-        Setup ghost cell buffer for boundary handling.
+        Setup ghost cell buffer for boundary handling with high-order accuracy.
 
-        WENO5 requires a 5-point stencil (i-2 to i+2), which means 2 ghost cells
-        on each side to compute derivatives at boundary interior points.
+        WENO5 requires:
+        - ghost_depth=2: 2 ghost cells on each side for 5-point stencil (i-2 to i+2)
+        - order=5: High-order polynomial extrapolation for O(h^5) boundary accuracy
+
+        Issue #576: Unified ghost node architecture enables WENO5 to achieve
+        true 5th-order convergence at boundaries via Vandermonde extrapolation.
 
         Uses composition pattern: the solver holds a PreallocatedGhostBuffer
         component rather than inheriting from a BoundaryAwareSolver base class.
         """
-        # Ghost depth for WENO5: 2 cells on each side
+        # Ghost depth for WENO5: 2 cells on each side for 5-point stencil
         self.ghost_depth = 2
+
+        # Reconstruction order: 5th-order accuracy at boundaries
+        # Issue #576: Uses polynomial extrapolation (not simple reflection)
+        self.ghost_order = 5
 
         # Get boundary conditions from problem/geometry if available
         bc = self._get_boundary_conditions()
@@ -274,6 +282,7 @@ class HJBWenoSolver(BaseHJBSolver):
                 boundary_conditions=bc,
                 domain_bounds=domain_bounds,
                 ghost_depth=self.ghost_depth,
+                order=self.ghost_order,  # High-order ghost cells for WENO5
             )
         else:
             # For multi-D with dimensional splitting, we create 1D buffers on demand
