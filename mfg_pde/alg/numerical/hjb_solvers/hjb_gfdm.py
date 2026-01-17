@@ -1188,7 +1188,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                         if callable(bc_values):
                             x_pos = self.collocation_points[point_idx]
                             u_neighbors.append(bc_values(x_pos))
-                        elif hasattr(bc_values, "__getitem__"):
+                        elif isinstance(bc_values, (list, tuple, np.ndarray)):
                             # Array-like: use value at this point
                             u_neighbors.append(bc_values[point_idx] if point_idx < len(bc_values) else 0.0)
                         else:
