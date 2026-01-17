@@ -1,12 +1,14 @@
-# Development Priority List (2026-01-17)
+# Development Priority List (2026-01-18)
 
-## Current Version: v0.17.1 (released 2026-01-17)
+## Current Version: v0.17.2 (released 2026-01-18)
 
 This document outlines the prioritized roadmap for infrastructure improvements following PR #548.
 
 **Recent Completions**:
-- Issue #580 (Three-Mode Solving API) merged to main on 2026-01-17
-- Issue #576 (Unified Ghost Node Architecture) merged to main on 2026-01-17
+- Issue #591 Phase 2 (Variational Inequality Constraints) merged to main on 2026-01-18
+- Issue #496 (Time-Varying BC Fix) fixed on 2026-01-18
+- Issue #544 (Legacy Parameter Deprecation) completed on 2026-01-18 (v0.17.2)
+- Issue #545 (Solver Mixin Cleanup) completed on 2026-01-17 (v0.17.2)
 
 ---
 
