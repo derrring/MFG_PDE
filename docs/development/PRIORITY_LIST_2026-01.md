@@ -871,21 +871,123 @@ Run tests after each priority, validate with research experiments.
 
 ---
 
-**Last Updated**: 2026-01-17
-**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574), P6.6 (#595), P6.7 (#591)
-**Current Focus**: ✅ Geometry/BC infrastructure complete! LinearOperator architecture + Variational inequality constraints integrated. Next: Consider remaining open issues or begin v0.18.0 development
+**Last Updated**: 2026-01-18
+**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574), P6.6 (#595), P6.7 (#591), P7 (#545), P8 (#544 Phases 1-2), **#573**
+**Current Focus**: ✅ Infrastructure complete through Priority 8! Starting geometry trait system (#590) for operator abstraction framework.
+
+## Recently Completed (2026-01-18)
+
+### ✅ Issue #573: Non-Quadratic Hamiltonian Support - **COMPLETED**
+
+**Issue**: [#573](https://github.com/derrring/MFG_PDE/issues/573)
+**Status**: ✅ CLOSED (2026-01-18)
+**Priority**: Medium
+**Size**: Medium
+**Actual Effort**: 1 day
+
+### Problem
+FP solvers assumed quadratic Hamiltonians (α* = -∇U), preventing use with L1, quartic, or constrained control problems.
+
+### Solution Implemented
+Clarified that `drift_field` parameter accepts drift velocity α* for ANY Hamiltonian, not just quadratic.
+
+**Key Insight**: The API was already correct - only documentation needed clarification!
+
+**Changes**:
+- Updated FP FDM/GFDM docstrings with non-quadratic examples
+- Added test suite: `test_fp_nonquadratic.py` (8/8 passing)
+- Created demonstration: `examples/advanced/mfg_l1_control.py`
+
+**Commits**:
+- `f5cb1039` - Documentation clarification + tests
+- `1c13a450` - L1 control example
+
+**Usage Pattern**:
+```python
+# For ANY Hamiltonian: caller computes α* = -∂_p H(∇U)
+alpha_L1 = -np.sign(grad_U)  # L1 control
+M = fp_solver.solve_fp_system(m0, drift_field=alpha_L1)
+```
+
+---
+
+### ✅ Issue #590: Geometry Trait System (Phase 1) - **COMPLETED**
+
+**Issue**: [#590](https://github.com/derrring/MFG_PDE/issues/590) - Phase 1: Geometry Trait System & Region Registry
+**Part of**: #589 (Geometry & BC Architecture Master Tracking)
+**Status**: ✅ COMPLETED (2026-01-18)
+**Commit**: TBD (to be committed)
+
+**Objective**: Formalize trait protocols for geometry capabilities, enabling solver-geometry compatibility validation.
+
+**Implementation**:
+
+**Phase 1.1: Protocol Definition**
+- ✅ 12 protocols defined in `mfg_pde/geometry/protocols/`:
+  - **Operator traits** (5): SupportsLaplacian, SupportsGradient, SupportsDivergence, SupportsAdvection, SupportsInterpolation
+  - **Region traits** (4): SupportsBoundaryNormal, SupportsBoundaryProjection, SupportsBoundaryDistance, SupportsRegionMarking
+  - **Topology traits** (3): SupportsManifold, SupportsLipschitz, SupportsPeriodic
+- ✅ All protocols use `@runtime_checkable` decorator
+- ✅ Comprehensive docstrings with mathematical background
+
+**Phase 1.2: TensorProductGrid Retrofitting**
+- ✅ TensorProductGrid implements all 12 protocols
+- ✅ Operator methods delegate to `mfg_pde/geometry/operators/` (Issue #595)
+- ✅ Protocol compliance verified with `isinstance()` checks
+
+**Phase 1.3: Region Marking System** (completed 2026-01-18)
+- ✅ SupportsRegionMarking protocol fully implemented in TensorProductGrid
+- ✅ 5 methods: `mark_region()`, `get_region_mask()`, `intersect_regions()`, `union_regions()`, `get_region_names()`
+- ✅ Three region specification modes:
+  - **Predicate**: `lambda x: x[:, 0] < 0.1` (functional specification)
+  - **Mask**: Direct boolean array `np.array([True, False, ...])`
+  - **Boundary**: Named boundaries `"x_min"`, `"y_max"`, `"dim3_min"`
+- ✅ Internal registry storage: `self._regions: dict[str, NDArray[np.bool_]]`
+
+**Testing**:
+- ✅ Protocol compliance: `tests/unit/geometry/protocols/test_protocol_compliance.py` (12 protocols)
+- ✅ Region marking: `tests/unit/geometry/grids/test_tensor_grid_regions.py` (31 tests, all passing)
+- ✅ Integration tests: TensorProductGrid verifies as `isinstance(grid, SupportsRegionMarking)`
+
+**Key Achievement**: TensorProductGrid now advertises all capabilities via traits (12/12 protocols implemented)
+
+**Usage Example**:
+```python
+from mfg_pde.geometry import TensorProductGrid
+
+grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+
+# Mark regions for mixed BC
+grid.mark_region("inlet", boundary="x_min")
+grid.mark_region("outlet", boundary="x_max")
+grid.mark_region("obstacle", predicate=lambda x: np.linalg.norm(x - [0.5, 0.5], axis=1) < 0.2)
+
+# Apply BC to regions
+inlet_mask = grid.get_region_mask("inlet")
+u_flat[inlet_mask] = 1.0  # Dirichlet BC on inlet
+```
+
+**Next Steps**: Issue #596 (Solver Integration with Traits) now unblocked.
+
+---
 
 ## Remaining Open Issues (by priority)
 
 | Priority | Issue | Description | Size | Status |
 |:---------|:------|:------------|:-----|:-------|
-| HIGH | #573 | Callable drift interface for non-quadratic H | Medium | Open |
+| ~~HIGH~~ | ~~#590~~ | ~~Phase 1: Geometry Trait System~~ | ~~Medium~~ | ✅ Closed (2026-01-18) |
+| HIGH | #596 | Phase 2: Solver Integration with Traits | Large | Open (unblocked) |
+| HIGH | #589 | Geometry/BC Architecture (Master Tracking) | Large | In Progress |
+| MEDIUM | #598 | BCApplicatorProtocol → ABC refactoring | Medium | Open |
+| MEDIUM | #597 | FP Operator Refactoring | Large | Open |
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large | Open |
 | MEDIUM | #535 | BC framework enhancement | Large | Open |
 | MEDIUM | #489 | Direct particle query for coupling | Large | Open |
-| LOW | #523 | MMS validation suite for BC (investigation complete - see issue comments) | Medium | Open |
+| LOW | #577 | Neumann BC ghost cell consolidation (Phase 3) | Small | Phases 1-2 complete |
+| LOW | #523 | MMS validation suite for BC | Medium | Open |
 | LOW | #521 | 3D corner handling | Large | Open |
 | LOW | #517 | Semantic dispatch factory | Medium | Open |
-| ~~LOW~~ | ~~#571~~ | ~~test_geometry_benchmarks: Missing pytest-benchmark fixture~~ | ~~Small~~ | ✅ Fixed (8997589b) |
+| ~~MEDIUM~~ | ~~#573~~ | ~~Non-quadratic Hamiltonian support~~ | ~~Medium~~ | ✅ Closed (f5cb1039, 1c13a450) |
+| ~~LOW~~ | ~~#571~~ | ~~test_geometry_benchmarks: Missing fixture~~ | ~~Small~~ | ✅ Fixed (8997589b) |
 | ~~LOW~~ | ~~#570~~ | ~~test_particle_gpu_pipeline: Shape mismatch~~ | ~~Small~~ | ✅ Fixed (8997589b) |
 | LOW | Others | Various infrastructure/features | Large | Open |
