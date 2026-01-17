@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.16.17"  # v0.16.17: FP adjoint solver, BC consolidation Phase 2, issue cleanup
+version = "0.17.0"  # v0.17.0: Three-mode solving API (Issue #580)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
