@@ -336,6 +336,110 @@ def check_boundary_consistency(boundary_data: SpacetimeBoundaryData, T: float, d
             )
 ```
 
+#### 4.1.1 Advanced: Compatibility Conditions and Smoothing (Future)
+
+**Beyond Numerical Equality**: For parabolic PDEs (heat, diffusion, Fokker-Planck), checking `np.isclose()` is **insufficient**. Rapid changes at corners can cause **Gibbs phenomenon** and numerical instability.
+
+**Mathematical Context**:
+
+When BC and IC don't match smoothly, the solution may not be in $C^2$ at corners:
+- **Heat equation** $\partial_t u - \Delta u = 0$ requires $u \in C^2$ for classical solutions
+- If $u(0, x_0) \neq \lim_{t \to 0^+} u(t, x_0)$ for $x_0 \in \partial\Omega$, solution develops sharp gradients
+
+**Engineering Requirement**: Verify **compatibility conditions** on derivatives, not just values.
+
+**Future Implementation Strategy**:
+
+```python
+def check_corner_compatibility(
+    ic_value: float,
+    bc_value: float,
+    bc_time_derivative: float | None = None,
+    tolerance: float = 1e-6,
+    smoothing: Literal["raise", "transition", "project"] = "raise"
+) -> tuple[bool, str]:
+    """
+    Check corner compatibility with optional smoothing.
+
+    Args:
+        ic_value: Initial condition value at corner point
+        bc_value: Spatial BC value at t=0 for same point
+        bc_time_derivative: ∂(BC)/∂t at t=0 (if available)
+        tolerance: Numerical tolerance for compatibility
+        smoothing: Strategy for handling incompatible corners
+            - "raise": Fail with error (default, strict validation)
+            - "transition": Apply temporal smoothing over [0, ε]
+            - "project": Project onto compatible subspace
+
+    Returns:
+        (is_compatible, diagnostic_message)
+
+    Raises:
+        ValueError: If smoothing="raise" and corner is incompatible
+
+    Note:
+        For parabolic PDEs, incompatible corners → Gibbs phenomenon.
+        Use smoothing strategies to avoid numerical artifacts.
+    """
+    if abs(ic_value - bc_value) < tolerance:
+        return True, "Corner values compatible"
+
+    # Compatibility violation detected
+    if smoothing == "raise":
+        raise ValueError(
+            f"Corner incompatibility detected:\n"
+            f"  IC value: {ic_value}\n"
+            f"  BC value at t=0: {bc_value}\n"
+            f"  Difference: {abs(ic_value - bc_value):.2e} > tolerance {tolerance:.2e}\n"
+            f"This may cause Gibbs phenomenon for parabolic PDEs."
+        )
+
+    elif smoothing == "transition":
+        # Apply exponential transition: u(t,x) = BC(t,x) + [IC(x)-BC(0,x)] * exp(-t/ε)
+        # Smooths discontinuity over timescale ε
+        epsilon = 0.01  # Transition timescale (problem-dependent)
+        return False, f"Applying exponential transition with ε={epsilon}"
+
+    elif smoothing == "project":
+        # Project boundary data onto space of compatible functions
+        # (Requires solving constrained optimization problem)
+        return False, "Projecting onto compatible BC subspace"
+
+    raise ValueError(f"Unknown smoothing strategy: {smoothing}")
+```
+
+**Example Usage** (Future):
+
+```python
+# Problem with incompatible corners
+boundary_data = SpacetimeBoundaryData(
+    spatial_bc=dirichlet_bc(value=lambda x, t: np.sin(2*np.pi*t)),  # Oscillating
+    initial_condition=lambda x: 0.0,  # Zero initially
+    terminal_condition=None
+)
+
+# At corner (t=0, x_boundary):
+#   IC says: u = 0.0
+#   BC says: u = sin(0) = 0.0  ✓ Compatible!
+# But if BC were sin(2πt + π/4), we'd have:
+#   IC: 0.0, BC: sin(π/4) ≈ 0.707  ✗ Incompatible!
+
+# Future API with smoothing
+boundary_data.check_consistency(
+    T=1.0,
+    domain_bounds=[(0, 1)],
+    smoothing="transition"  # Don't fail, apply smoothing
+)
+```
+
+**Design Rationale**:
+
+1. **"raise" (default)**: Strict validation catches user errors early
+2. **"transition"**: Production use where we need robustness
+3. **"project"**: Research applications requiring mathematical rigor
+
+**Implementation Complexity**: Medium (requires solving ODE for transition, optimization for projection)
+
 ### 4.2 MFG-Specific Considerations
 
 **For Mean Field Games**, boundary consistency is particularly important because:
@@ -460,6 +564,119 @@ class SpacetimeFEMSolver:
 
 **Advantage**: This naturally handles time-varying spatial BCs - they're just part of the boundary data on $\partial Q$!
 
+#### 5.2.1 Moving Boundaries and Deformable Domains (Future)
+
+**Space-Time FEM Natural Extension**: When the domain $\Omega(t)$ varies in time (free boundary problems, Stefan problems), the space-time approach **eliminates special handling**.
+
+**Mathematical Context**:
+
+**Classical Time-Stepping View**:
+- Domain $\Omega(t)$ changes at each timestep
+- Requires remeshing or ALE (Arbitrary Lagrangian-Eulerian) methods
+- Boundary tracking is a **separate algorithm** from PDE solve
+
+**Space-Time View**:
+- Domain becomes a **deformed cylinder** $Q = \{(t, x) : x \in \Omega(t), t \in [0, T]\}$
+- Lateral surface is now $\Gamma_{\text{lateral}} = \{(t, x) : x \in \partial\Omega(t), t \in [0, T]\}$
+- Mesh elements are **skewed** in space-time, but assembly logic is **unchanged**!
+
+**Example: Stefan Problem** (ice melting)
+
+$$
+\begin{cases}
+\partial_t u - \Delta u = 0 & \text{in } Q = \{(t,x) : x \in \Omega(t)\} \\
+u = 0 & \text{on free boundary } x = s(t) \\
+\dot{s}(t) = -\partial_n u|_{x=s(t)} & \text{Stefan condition (interface velocity)}
+\end{cases}
+$$
+
+**Space-Time BC Design**:
+
+```python
+@dataclass
+class DeformableDomainBC(SpacetimeBoundaryData):
+    """
+    Boundary conditions for problems with moving boundaries Ω(t).
+
+    The lateral surface Γ_lateral is now time-dependent:
+        Γ_lateral(t) = {(t, x) : x ∈ ∂Ω(t)}
+
+    Extends SpacetimeBoundaryData to support:
+    - Free boundary tracking (Stefan, Hele-Shaw)
+    - ALE mesh deformation
+    - Interface conditions
+    """
+
+    # Free boundary specification (None if domain is static)
+    free_boundary: Callable[[float], NDArray] | None = None  # t → ∂Ω_free(t)
+
+    # Interface condition on free boundary (Stefan, jump conditions)
+    interface_condition: Callable[[float, NDArray], float] | None = None
+
+    def get_lateral_surface_mesh(self, t: float) -> Mesh:
+        """
+        Return time-dependent lateral boundary mesh.
+
+        Args:
+            t: Current time
+
+        Returns:
+            Mesh representing ∂Ω(t) at time t
+
+        Note:
+            For static domains: Returns self._static_mesh (constant)
+            For moving boundaries: Computes deformed mesh at time t
+        """
+        if self.free_boundary is not None:
+            # Compute boundary position at time t
+            boundary_position = self.free_boundary(t)
+            return self._build_deformed_mesh(boundary_position)
+        else:
+            # Static domain
+            return self._static_mesh
+
+    def _build_deformed_mesh(self, boundary_position: NDArray) -> Mesh:
+        """Build mesh for deformed domain (implementation-specific)."""
+        # Would use mesh generation library (e.g., meshio, gmsh)
+        raise NotImplementedError("Mesh deformation not yet implemented")
+```
+
+**Key Advantage**:
+
+In space-time FEM, moving boundaries **don't require special treatment**:
+- Mesh elements are space-time "slabs" that naturally accommodate domain deformation
+- Assembly loop is **identical** to static domain case
+- Free boundary tracking becomes a **mesh generation problem**, not a PDE solver modification
+
+**Example Application** (Future):
+
+```python
+# Ice melting with phase change
+boundary_data = DeformableDomainBC(
+    # Fixed outer boundary (container wall)
+    spatial_bc=dirichlet_bc(value=lambda x, t: T_wall),
+
+    # Initial ice-water interface position
+    free_boundary=lambda t: compute_interface_position(t),
+
+    # Stefan condition on free boundary
+    interface_condition=lambda t, x: 0.0,  # u = 0 at interface
+
+    # Initial temperature distribution
+    initial_condition=lambda x: T_initial(x),
+)
+
+# Solver automatically handles moving interface
+stefan_solver = SpacetimeFEMSolver(boundary_data=boundary_data)
+u_solution = stefan_solver.solve()
+```
+
+**Implementation Complexity**: High (requires space-time mesh generation, possibly isoparametric elements)
+
+**Research Relevance**: MFG with **congestion** (crowds avoiding overcrowded regions) can be formulated as free boundary problems. This design enables future support for such models.
+
+**Status**: Conceptual design only - not currently planned for MFG_PDE v1.0
+
 ---
 
 ## 6. Connection to Current MFG_PDE Architecture
@@ -554,6 +771,121 @@ boundary_data = SpacetimeBoundaryData(
 global_solver.solve(boundary_data=boundary_data)
 ```
 
+### 6.3 Metadata and Introspection (Future Enhancement)
+
+**Motivation**: Runtime introspection of boundary configuration aids debugging and logging.
+
+**Proposed Design**:
+
+```python
+@dataclass
+class SpacetimeBoundaryData:
+    """
+    Unified boundary data specification for space-time cylinder [0,T] × Ω.
+    """
+
+    # Boundary data (as before)
+    spatial_bc: BoundaryConditions
+    initial_condition: np.ndarray | Callable[[np.ndarray], float] | None = None
+    terminal_condition: np.ndarray | Callable[[np.ndarray], float] | None = None
+
+    def __post_init__(self):
+        """
+        Infer boundary configuration metadata for introspection.
+
+        This metadata enables:
+        - Semantic logging ("Solving with Initial + Lateral(Neumann)")
+        - Validation (MFG requires both IC and TC)
+        - Debugging (quick check of what BCs are active)
+        """
+        # Infer boundary configuration
+        self._has_lateral = self.spatial_bc is not None
+        self._has_initial = self.initial_condition is not None
+        self._has_terminal = self.terminal_condition is not None
+
+        # Validate MFG requirements (if applicable)
+        # Note: For MFG, we typically need:
+        #   - FP: IC required, TC optional
+        #   - HJB: TC required, IC optional
+        # This is problem-specific, so validation might be delegated to solver
+
+    def describe(self) -> str:
+        """
+        Return semantic description of boundary configuration.
+
+        Returns:
+            Human-readable description of active boundary components
+
+        Example:
+            >>> bc_data = SpacetimeBoundaryData(
+            ...     spatial_bc=neumann_bc(dimension=2),
+            ...     initial_condition=lambda x: gaussian(x),
+            ...     terminal_condition=None
+            ... )
+            >>> print(bc_data.describe())
+            "Initial(t=0, callable) + Lateral(Neumann)"
+        """
+        parts = []
+
+        if self._has_initial:
+            ic_type = "callable" if callable(self.initial_condition) else "array"
+            parts.append(f"Initial(t=0, {ic_type})")
+
+        if self._has_terminal:
+            tc_type = "callable" if callable(self.terminal_condition) else "array"
+            parts.append(f"Terminal(t=T, {tc_type})")
+
+        if self._has_lateral:
+            # Get BC type description from BoundaryConditions
+            bc_desc = self.spatial_bc.describe()  # Assumes BoundaryConditions has describe()
+            parts.append(f"Lateral({bc_desc})")
+
+        return " + ".join(parts) if parts else "No boundary data"
+
+    def validate_for_mfg(self, pde_type: Literal["hjb", "fp"]):
+        """
+        Validate boundary data satisfies MFG requirements.
+
+        Args:
+            pde_type: "hjb" (backward) or "fp" (forward)
+
+        Raises:
+            ValueError: If required boundary data missing for PDE type
+        """
+        if pde_type == "hjb":
+            if not self._has_terminal:
+                raise ValueError("HJB (backward) requires terminal_condition")
+        elif pde_type == "fp":
+            if not self._has_initial:
+                raise ValueError("FP (forward) requires initial_condition")
+        else:
+            raise ValueError(f"Unknown PDE type: {pde_type}")
+```
+
+**Usage in Logging**:
+
+```python
+# Solver initialization
+logger.info(f"Initializing FP solver with BC: {boundary_data.describe()}")
+# Output: "Initializing FP solver with BC: Initial(t=0, callable) + Lateral(Neumann)"
+
+# Validation
+try:
+    boundary_data.validate_for_mfg(pde_type="fp")
+    logger.info("Boundary data validated for FP equation")
+except ValueError as e:
+    logger.error(f"BC validation failed: {e}")
+```
+
+**Benefits**:
+
+1. **Debugging**: Quickly see what BCs are active without inspecting internals
+2. **Logging**: Semantic descriptions in solver output
+3. **Validation**: Catch missing BCs before expensive solve
+4. **Documentation**: Self-describing boundary configurations
+
+**Implementation Priority**: Low (nice-to-have, not critical for correctness)
+
 ---
 
 ## 7. Practical Benefits
@@ -622,7 +954,57 @@ Can use Lagrange multipliers or penalty methods to enforce BCs weakly:
 
 ---
 
-## 8. Summary
+## 8. Technical Review and Future Enhancements
+
+**Status**: This document has been reviewed and enhanced based on technical feedback (2026-01-17).
+
+### 8.1 Enhancements Incorporated
+
+**Section 4.1.1 - Corner Compatibility Conditions**:
+- **Issue Identified**: Simple `np.isclose()` check insufficient for parabolic PDEs
+- **Mathematical Context**: Incompatible corners → Gibbs phenomenon, loss of regularity
+- **Proposed Solution**: Three-tier strategy (raise/transition/project)
+- **Status**: Design complete, implementation deferred to global solver work
+
+**Section 6.3 - Metadata and Introspection**:
+- **Motivation**: Runtime introspection aids debugging and logging
+- **Design**: `describe()` method + `__post_init__` metadata inference
+- **Benefits**: Semantic logging, validation, self-documentation
+- **Status**: Low priority enhancement, nice-to-have
+
+**Section 5.2.1 - Moving Boundaries**:
+- **Context**: Space-time FEM naturally handles deformable domains
+- **Extension**: `DeformableDomainBC` for Stefan problems, free boundaries
+- **MFG Relevance**: Congestion models (free boundary formulation)
+- **Status**: Conceptual design, not planned for v1.0
+
+### 8.2 Implementation Priorities
+
+| Enhancement | Mathematical Rigor | Engineering Value | Implementation Complexity | Priority |
+|:------------|:-------------------|:------------------|:--------------------------|:---------|
+| Corner smoothing | High | Medium | Medium | Future (global solvers) |
+| Metadata descriptors | Low | High | Low | Low (nice-to-have) |
+| Moving boundaries | High | Low (MFG) | High | Future (research) |
+
+### 8.3 Design Validation
+
+**Review Findings**:
+1. ✅ **Geometric unification**: "Soup can" model validated as strong mental framework
+2. ✅ **Engineering feasibility**: All proposed designs are implementable
+3. ✅ **MFG alignment**: Validates forward-backward coupling architecture
+4. ✅ **Extensibility**: Natural path to advanced features (ST-FEM, free boundaries)
+
+**Approval**: Design approved for archival as foundational document for future global solver development.
+
+**Next Steps** (when resuming space-time work):
+1. Implement `SpacetimeBoundaryData` base class
+2. Add corner consistency validation (strict mode only initially)
+3. Integrate with first global solver prototype (likely ST-FEM for heat equation)
+4. Extend to MFG-specific requirements (forward-backward coupling)
+
+---
+
+## 9. Summary
 
 ### The Unification
 
@@ -662,4 +1044,6 @@ Can use Lagrange multipliers or penalty methods to enforce BCs weakly:
 
 **Contributors**: Claude Opus 4.5
 **Date**: 2026-01-17
+**Last Updated**: 2026-01-17 (Technical review enhancements incorporated)
 **Related**: Space-Time Operator Architecture Proposal
+**Status**: Design Document - Implementation deferred to future global solver work
