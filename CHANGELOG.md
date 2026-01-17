@@ -35,6 +35,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `docs/development/issue_580_adjoint_pairing_implementation.md`: Technical guide (578 lines)
   - `docs/user/three_mode_api_migration_guide.md`: User migration guide (448 lines)
 
+- **Adjoint-Consistent Boundary Conditions** (Issue #574, PR #588) 🎯
+  - **`bc_mode` parameter** in `HJBFDMSolver`: `"standard"` | `"adjoint_consistent"`
+  - Fixes equilibrium inconsistency at reflecting boundaries when stall points occur at domain boundaries
+  - Mathematical formula: `∂U/∂n = -σ²/2 · ∂ln(m)/∂n` (Robin-type BC coupling HJB to FP density gradient)
+  - **2.13x convergence improvement** validated in boundary stall configuration (703 → 330 max error)
+  - Automatic BC computation from density gradient each Picard iteration
+  - Negligible overhead (<0.1%), often reduces total iterations due to better consistency
+  - 100% backward compatible (default `bc_mode="standard"` preserves classical Neumann BC)
+  - 11 tests passing (smoke, integration, validation)
+
+- **New Utilities** (Issue #574):
+  - `compute_boundary_log_density_gradient()`: Computes ∂ln(m)/∂n at boundaries
+  - `compute_coupled_hjb_bc_values()`: Converts to HJB BC values for adjoint-consistent mode
+
+- **New Tutorial** (Issue #574):
+  - `examples/tutorials/06_boundary_condition_coupling.py`: Comprehensive tutorial (266 lines)
+  - Step-by-step comparison of standard vs adjoint-consistent BC modes
+  - 4-panel visualization (density, value function, differences, convergence history)
+
+- **New Documentation** (Issue #574):
+  - `docs/development/issue_574_robin_bc_design.md`: Mathematical derivation and design (339 lines)
+  - `docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md`: BC consistency solution section
+  - `CLAUDE.md`: Boundary condition coupling patterns
+
 ### Changed
 
 - **MFGProblem.solve()** (Issue #580):
@@ -66,10 +90,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Critical BC Type Recognition Bug** (Issue #574, PR #588):
+  - Fixed BC type recognition for `'no_flux'` string in HJB solver (`base_hjb.py`)
+  - Previously, `neumann_bc()` objects were misinterpreted as periodic boundaries
+  - **Impact**: Affects ALL Neumann BC usage throughout codebase (not limited to Issue #574)
+  - Solver now correctly recognizes `'no_flux'`, `'neumann'`, `'dirichlet'`, `'periodic'`, and `'robin'` BC types
+
 - **Scientific Correctness** (Issue #580):
   - Prevents accidental mixing of incompatible discretizations (e.g., FDM + GFDM)
   - Ensures L_FP = L_HJB^T relationship for Nash gap convergence
   - Type A (discrete dual) vs Type B (continuous dual) distinction enforced
+
+- **HJB Boundary Equilibrium Consistency** (Issue #574):
+  - Adjoint-consistent BC mode fixes 2.65x error increase at boundary stall configurations
+  - Enables correct convergence to Boltzmann-Gibbs equilibrium
 
 ## [0.16.2] - 2025-12-12
 

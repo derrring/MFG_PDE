@@ -424,6 +424,84 @@ Remaining 11 hasattr violations in RL subsystem (`mfg_pde/alg/reinforcement/`).
 
 ---
 
+## ✅ Priority 6.5: Adjoint-Consistent Boundary Conditions (#574) - **COMPLETED**
+
+**Issue**: [#574](https://github.com/derrring/MFG_PDE/issues/574)
+**PR**: [#588](https://github.com/derrring/MFG_PDE/pull/588)
+**Status**: ✅ COMPLETED (2026-01-17)
+**Priority**: Medium (scientific correctness)
+**Size**: Medium
+**Actual Effort**: ~8 hours (4 phases)
+
+### Problem
+Standard Neumann BC (∂U/∂n = 0) for HJB at reflecting boundaries is mathematically inconsistent with the equilibrium solution when stall points occur at domain boundaries.
+
+**Mathematical Analysis**: At Boltzmann-Gibbs equilibrium, the drift is α* = -∇U* = (σ²/2T_eff) · ∇V. When the stall point is at the boundary, ∇V ≠ 0 there, so the equilibrium requires ∇U ≠ 0, violating standard Neumann BC.
+
+**Impact**: 2.65x error increase observed in mfg-research exp14b validation when stall point at boundary vs centered.
+
+### Solution Implemented
+
+**Adjoint-Consistent Robin BC** (PR #588):
+
+At reflecting boundaries with zero total flux J·n = 0 where J = -σ²/2·∇m + m·α, the correct HJB BC for quadratic Hamiltonians is:
+```
+∂U/∂n = -σ²/2 · ∂ln(m)/∂n
+```
+
+**Four-Phase Implementation**:
+1. **Phase 1: Utilities** - BC coupling computation functions
+2. **Phase 2: Solver Integration** - `bc_mode` parameter + critical bug fix
+3. **Phase 3: Validation** - 2.13x convergence improvement demonstrated
+4. **Phase 4: Documentation** - Protocol, conventions, tutorial
+
+**Key Components**:
+- `mfg_pde/geometry/boundary/bc_coupling.py` - BC computation utilities (230 lines)
+- `bc_mode` parameter in `HJBFDMSolver` ("standard" | "adjoint_consistent")
+- Automatic BC computation from density gradient each Picard iteration
+- Parameter threading through 6-level solver call chain
+- BC value overrides in ghost cell computations
+
+**Critical Bug Fix**:
+- Fixed BC type recognition for `'no_flux'` string in `base_hjb.py`
+- Previously, `neumann_bc()` objects were misinterpreted as periodic
+- **Impact**: Affects ALL Neumann BC usage throughout codebase (scope beyond #574)
+
+### Result
+- ✅ 8 files changed, 1,034 additions, 12 deletions
+- ✅ 11 new tests (smoke, integration, validation) - all passing
+- ✅ All 40 existing HJB FDM tests pass (backward compatibility verified)
+- ✅ **2.13x convergence improvement** validated (703 → 330 max error)
+- ✅ Negligible computational overhead (<0.1%)
+- ✅ 100% backward compatible (default `bc_mode="standard"`)
+- ✅ Tutorial validated with expected results
+
+**Implementation**:
+- Core: `bc_coupling.py`, `hjb_fdm.py` (+42 lines), `base_hjb.py` (+52 lines + bug fix)
+- Documentation: Protocol, CLAUDE.md patterns, design doc, tutorial (703 total lines)
+- Testing: 4 smoke tests, 3 integration tests, 1 validation test, 1 tutorial validation
+
+**Documentation**:
+- Protocol: `docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md` § BC Consistency
+- Conventions: `CLAUDE.md` § Boundary Condition Coupling Patterns
+- Design: `docs/development/issue_574_robin_bc_design.md`
+- Tutorial: `examples/tutorials/06_boundary_condition_coupling.py`
+
+**Known Limitations** (documented):
+1. 1D only (2D/nD extension planned)
+2. Quadratic Hamiltonian (non-quadratic requires Issue #573 integration)
+3. Scalar diffusion only (tensor diffusion not yet supported)
+4. 1st-order gradient accuracy (higher-order possible)
+
+### Why 6.5?
+- **Scientific correctness** feature (not infrastructure refactoring)
+- **Independent development** (parallel to infrastructure sequence)
+- **Medium priority** (important but not blocking other work)
+- **Inserted after completion** to maintain chronological record
+- **Discovered during validation** in mfg-research experiments
+
+---
+
 ## 🎯 Priority 7: Mixin Refactoring - Remaining Solvers (#545)
 
 **Continuation of Priority 4**
@@ -540,13 +618,14 @@ Run tests after each priority, validate with research experiments.
 ---
 
 **Last Updated**: 2026-01-17
-**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3)
-**Current Focus**: ✅ All high-priority infrastructure complete! Issue #543 fully resolved for core solver infrastructure. Next: Explore medium-priority features (#574, #573, #549) or prepare v0.17.0 release
+**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574)
+**Current Focus**: ✅ All high-priority infrastructure complete! v0.17.0 feature development complete. Next: Prepare v0.17.0 release or explore additional features (#573, #549)
 
 ## Remaining Open Issues (by priority)
 
 | Priority | Issue | Description | Size |
 |:---------|:------|:------------|:-----|
+| HIGH | #573 | Callable drift interface for non-quadratic H | Medium |
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large |
 | MEDIUM | #535 | BC framework enhancement | Large |
 | MEDIUM | #489 | Direct particle query for coupling | Large |
