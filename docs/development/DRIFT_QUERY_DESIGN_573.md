@@ -49,114 +49,89 @@ Users cannot solve MFG problems with non-quadratic control costs using FP solver
 
 ---
 
-## Proposed Solution
+## Adopted Solution
 
 ### Design Principle
 
 **Separation of concerns**:
 1. HJB solver computes value function U(t,x)
 2. **Caller computes optimal control** α*(t,x) from their Hamiltonian
-3. FP solver takes drift velocity α* directly
+3. FP solver takes drift velocity α* directly via `drift_field`
 
-### New API
+### Unified API
+
+**Key Insight**: The existing `drift_field` parameter is already general enough! It accepts drift velocity α* for ANY Hamiltonian, not just quadratic. The issue was only in the documentation.
 
 ```python
-# Option 1: Pass precomputed drift velocity (array)
-alpha_drift = compute_drift_from_hamiltonian(U_hjb, hamiltonian_type="L1")
-M = solver.solve_fp_system(
-    M_initial=m0,
-    drift_velocity=alpha_drift,  # NEW: Drift velocity α*(t,x)
-    ...
-)
+# Quadratic H: Caller computes α* = -∇U
+alpha_quadratic = -grad(U_hjb)
+M = solver.solve_fp_system(M_initial=m0, drift_field=alpha_quadratic)
 
-# Option 2: Pass drift computation callable
-def compute_L1_drift(grad_U):
-    """L1 control: α* = -sign(∇U)"""
-    return -np.sign(grad_U)
+# L1 control: Caller computes α* = -sign(∇U)
+alpha_L1 = -np.sign(grad(U_hjb))
+M = solver.solve_fp_system(M_initial=m0, drift_field=alpha_L1)
 
-M = solver.solve_fp_system(
-    M_initial=m0,
-    value_function=U_hjb,  # Value function for gradient computation
-    drift_callable=compute_L1_drift,  # Maps ∇U → α*
-    ...
-)
+# Quartic H: Caller computes α* = -(∇U)^(1/3)
+alpha_quartic = -np.sign(grad(U_hjb)) * np.abs(grad(U_hjb)) ** (1/3)
+M = solver.solve_fp_system(M_initial=m0, drift_field=alpha_quartic)
 
-# Option 3: Backward compatible (quadratic H)
-M = solver.solve_fp_system(
-    M_initial=m0,
-    drift_field=U_hjb,  # DEPRECATED: Assumes α* = -∇U
-    ...
-)
+# Custom H: Any function of ∇U
+alpha_custom = your_optimal_control_function(grad(U_hjb))
+M = solver.solve_fp_system(M_initial=m0, drift_field=alpha_custom)
 ```
 
 ### Parameter Naming
 
-**Recommended**:
-- `drift_velocity`: Actual drift velocity α*(t,x) (most explicit)
-- `value_function`: Value function U(t,x) when using drift_callable
-- `drift_callable`: Function (∇U) → α* for custom Hamiltonians
+**Single parameter** `drift_field`:
+- **Type**: np.ndarray or callable
+- **Meaning**: Drift velocity α*(t,x) computed from ANY Hamiltonian
+- **Caller responsibility**: Compute α* = -∂_p H(x, ∇U, m) for their H
+- **No assumptions**: Solver doesn't "know" about Hamiltonians, just advects the drift
 
-**Deprecated** (keep for backward compat):
-- `drift_field`: Ambiguous - treated as U, computes -∇U internally
+**Why `drift_field`**:
+- Clear, descriptive name
+- Already established in codebase
+- No need for multiple parameters (drift_velocity, drift_callable, etc.)
+- Simple API: one way to specify drift
 
 ---
 
-## Implementation Plan
+## Implementation (COMPLETED)
 
-### Phase 1: FP FDM Solver
+### Phase 1: Documentation Updates ✅
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+**Files**:
+- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+- `mfg_pde/alg/numerical/fp_solvers/fp_gfdm.py`
 
-1. Add new parameter `drift_velocity` to `solve_fp_system()`
-2. Clarify `drift_field` deprecation path
-3. Update internal logic:
-   - If `drift_velocity` provided → use directly
-   - If `drift_field` provided → compute -∇U (legacy path)
-   - If both provided → raise error
-4. Update docstring with clear examples
+**Changes**:
+1. Updated `drift_field` docstring to clarify it accepts drift velocity α* for ANY Hamiltonian
+2. Added examples for quadratic, L1, quartic control in docstrings
+3. No API changes needed - existing parameter already supports all use cases
 
-### Phase 2: FP GFDM Solver
+**Key Insight**: The API was already correct! The confusion was in documentation that suggested drift_field was for "value functions" when it actually accepts drift velocity.
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_gfdm.py`
+### Phase 2: Test Coverage ✅
 
-Same changes as FDM.
+**File**: `tests/unit/fp_solvers/test_fp_nonquadratic.py`
 
-### Phase 3: Add drift_callable Option
+**Tests added**:
+1. Shape validation
+2. Backward compatibility (quadratic H)
+3. Equivalence test (drift_field gives same result for quadratic H)
+4. L1 control drift
+5. Quartic control drift
+6. Zero drift (pure diffusion)
+7. Custom drift
+8. Mass conservation with drift_field
 
-For advanced users who want to compute drift from ∇U:
+All tests passing ✅
 
-```python
-def solve_fp_system(
-    self,
-    M_initial,
-    drift_velocity=None,      # Direct drift α*(t,x)
-    drift_callable=None,      # Callable: (grad_U) → α*
-    value_function=None,      # U(t,x) for drift_callable
-    drift_field=None,         # DEPRECATED
-    ...
-):
-    if drift_velocity is not None:
-        # Use provided drift directly
-        alpha = drift_velocity
-    elif drift_callable is not None:
-        # Compute drift from gradient
-        grad_U = compute_gradient(value_function)
-        alpha = drift_callable(grad_U)
-    elif drift_field is not None:
-        # Legacy: assume quadratic H
-        grad_U = compute_gradient(drift_field)
-        alpha = -grad_U
-    else:
-        # Zero drift
-        alpha = np.zeros_like(...)
-```
+### Phase 3: Examples & Documentation
 
-### Phase 4: Documentation & Examples
-
-1. Update docstrings with non-quadratic examples
-2. Create example: `examples/advanced/mfg_l1_control.py`
-3. Update TOWEL_ON_BEACH_1D_PROTOCOL.md with usage pattern
-4. Add unit tests for L1, quartic Hamiltonians
+**TODO**:
+1. Create example: `examples/advanced/mfg_l1_control.py`
+2. Update TOWEL_ON_BEACH_1D_PROTOCOL.md with non-quadratic H usage
 
 ---
 

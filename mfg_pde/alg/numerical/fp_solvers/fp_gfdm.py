@@ -388,19 +388,48 @@ class FPGFDMSolver(BaseFPSolver):
 
         Solves: dm/dt + div(m * alpha) = D * Laplacian(m)
 
-        where alpha = -grad(U) is computed from drift_field.
+        where alpha is the drift velocity.
 
         Args:
             m_initial_condition: Initial density at collocation points, shape (N,)
-            drift_field: Value function U for drift computation, shape (Nt+1, N).
-                        Drift is computed as alpha = -grad(U).
-                        If None, zero drift (pure diffusion).
+            drift_field: Drift velocity specification (Issue #573):
+                - None: Zero drift (pure diffusion)
+                - np.ndarray: Drift velocity field α*(t,x), shape (Nt+1, N, d)
+                  Caller computes α* = -∂_p H(x, ∇U, m) for their Hamiltonian:
+                    * Quadratic H = (1/2)|p|²: compute grad(U), then α* = -grad(U)
+                    * L1 control H = |p|: α* = -sign(grad(U))
+                    * Quartic H = (1/4)|p|⁴: α* = -sign(grad(U)) |grad(U)|^(1/3)
+                    * Custom H: Any function of grad(U)
+                - Callable: Custom drift function α(t, x, m) -> drift_vector
+                Default: None
             diffusion_field: Diffusion coefficient. If None, uses problem.sigma.
                             Currently only scalar diffusion supported.
             show_progress: Display progress bar (not yet implemented)
 
         Returns:
             Density evolution M(t,x) at collocation points, shape (Nt+1, N)
+
+        Examples:
+            Pure diffusion (heat equation):
+            >>> M = solver.solve_fp_system(m0)
+
+            Quadratic control (H = (1/2)|p|²):
+            >>> U_hjb = hjb_solver.solve(M_density)
+            >>> grad_U_all = np.array([gfdm_op.gradient(U_hjb[t]) for t in range(Nt+1)])
+            >>> alpha = -grad_U_all  # α* = -∇U, shape (Nt+1, N, d)
+            >>> M = solver.solve_fp_system(m0, drift_field=alpha)
+
+            L1 control cost (H = |p|, minimal fuel):
+            >>> U_hjb = hjb_solver.solve_hjb_L1(M_density)
+            >>> grad_U_all = np.array([gfdm_op.gradient(U_hjb[t]) for t in range(Nt+1)])
+            >>> alpha_L1 = -np.sign(grad_U_all)  # α* = -sign(∇U), shape (Nt+1, N, d)
+            >>> M = solver.solve_fp_system(m0, drift_field=alpha_L1)
+
+            Quartic control cost (H = (1/4)|p|⁴):
+            >>> U_hjb = hjb_solver.solve_hjb_quartic(M_density)
+            >>> grad_U_all = np.array([gfdm_op.gradient(U_hjb[t]) for t in range(Nt+1)])
+            >>> alpha_quartic = -np.sign(grad_U_all) * np.abs(grad_U_all) ** (1/3)
+            >>> M = solver.solve_fp_system(m0, drift_field=alpha_quartic)
         """
         # Time discretization
         n_time_points = self.problem.Nt + 1
@@ -421,13 +450,22 @@ class FPGFDMSolver(BaseFPSolver):
         if m_init.shape[0] != self.n_points:
             raise ValueError(f"m_initial_condition length {m_init.shape[0]} must match n_points {self.n_points}")
 
-        # Handle drift field
+        # Handle drift field (Issue #573: accepts drift velocity α* for any H)
         if drift_field is None:
-            U_solution = np.zeros((n_time_points, self.n_points))
+            # Zero drift - treat as if drift velocity is zero
+            drift_velocity_array = np.zeros((n_time_points, self.n_points, self.dimension))
+        elif isinstance(drift_field, np.ndarray):
+            # Direct drift velocity array provided
+            drift_velocity_array = np.asarray(drift_field)
+            expected_shape = (n_time_points, self.n_points, self.dimension)
+            if drift_velocity_array.shape != expected_shape:
+                raise ValueError(
+                    f"drift_field shape {drift_velocity_array.shape} must be {expected_shape} "
+                    f"(Nt+1={n_time_points}, N={self.n_points}, d={self.dimension})"
+                )
         else:
-            U_solution = np.asarray(drift_field)
-            if U_solution.shape != (n_time_points, self.n_points):
-                raise ValueError(f"drift_field shape {U_solution.shape} must be ({n_time_points}, {self.n_points})")
+            # Callable drift function (advanced use)
+            raise NotImplementedError("Callable drift_field not yet supported for GFDM")
 
         # Storage for density evolution
         M_solution = np.zeros((n_time_points, self.n_points))
@@ -436,11 +474,9 @@ class FPGFDMSolver(BaseFPSolver):
         # Time stepping loop (forward Euler)
         for t_idx in range(n_time_points - 1):
             m_current = M_solution[t_idx, :]
-            U_current = U_solution[t_idx, :]
 
-            # Compute drift: alpha = -grad(U)
-            grad_U = self.gfdm_operator.gradient(U_current)
-            drift = -grad_U  # Shape: (N, d)
+            # Use drift velocity directly (Issue #573: drift_field is α*, not U)
+            drift = drift_velocity_array[t_idx, :, :]  # Shape: (N, d)
 
             # Advection term: div(m * alpha)
             if self.upwind_scheme != "none":

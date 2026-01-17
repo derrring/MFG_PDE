@@ -299,10 +299,16 @@ class FPFDMSolver(BaseFPSolver):
         m_initial_condition : np.ndarray
             DEPRECATED, use M_initial
         drift_field : np.ndarray or callable, optional
-            Drift field specification:
+            Drift velocity specification (Issue #573):
             - None: Zero drift (pure diffusion)
-            - np.ndarray: Precomputed drift α(t,x), e.g., -∇U/λ for MFG
-            - Callable: Function α(t, x, m) -> drift (Phase 2)
+            - np.ndarray: Drift velocity α*(t,x), shape (Nt+1, Nx) for 1D or (Nt+1, N1, N2, ...) for nD
+              Caller computes α* = -∂_p H(x, ∇U, m) for their Hamiltonian:
+                * Quadratic H = (1/2)|p|²: α* = -∇U
+                * L1 control H = |p|: α* = -sign(∇U)
+                * Quartic H = (1/4)|p|⁴: α* = -sign(∇U) |∇U|^(1/3)
+                * Custom H: Any function of ∇U
+            - Callable: Custom drift function α(t, x, m) -> drift_vector
+              Signature: (t: float, x_coords: list, m: ndarray) -> ndarray
             Default: None
         diffusion_field : float, np.ndarray, or callable, optional
             Diffusion specification:
@@ -389,6 +395,26 @@ class FPFDMSolver(BaseFPSolver):
         ...     sigma_perp = 0.05 * (1 - m / np.max(m))
         ...     return np.diag([sigma_parallel, sigma_perp])
         >>> M = solver.solve_fp_system(m0, tensor_diffusion_field=anisotropic_crowd)
+
+        Non-quadratic Hamiltonians (Issue #573):
+
+        Quadratic control (H = (1/2)|p|²):
+        >>> U_hjb = hjb_solver.solve(M_density)
+        >>> grad_U = problem.compute_gradient(U_hjb)
+        >>> alpha_quadratic = -grad_U  # α* = -∇U for quadratic H
+        >>> M = solver.solve_fp_system(m0, drift_field=alpha_quadratic)
+
+        L1 control cost (H = |p|, minimal fuel):
+        >>> U_hjb = hjb_solver.solve_hjb_L1(M_density)
+        >>> grad_U = problem.compute_gradient(U_hjb)
+        >>> alpha_L1 = -np.sign(grad_U)  # α* = -sign(∇U) for L1 H
+        >>> M = solver.solve_fp_system(m0, drift_field=alpha_L1)
+
+        Quartic control cost (H = (1/4)|p|⁴):
+        >>> U_hjb = hjb_solver.solve_hjb_quartic(M_density)
+        >>> grad_U = problem.compute_gradient(U_hjb)
+        >>> alpha_quartic = -np.sign(grad_U) * np.abs(grad_U) ** (1/3)  # α* = -(∇U)^(1/3)
+        >>> M = solver.solve_fp_system(m0, drift_field=alpha_quartic)
         """
         import warnings
 
@@ -410,7 +436,7 @@ class FPFDMSolver(BaseFPSolver):
         if M_initial is None:
             raise ValueError("M_initial is required")
 
-        # Handle drift_field parameter
+        # Handle drift field
         if drift_field is None:
             # Zero drift (pure diffusion): create zero U field for internal use
             # Issue #543 Phase 2: Replace hasattr with try/except
