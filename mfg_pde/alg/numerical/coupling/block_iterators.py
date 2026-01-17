@@ -72,6 +72,14 @@ class BlockIterator(BaseMFGSolver):
     Provides unified implementation of Jacobi and Gauss-Seidel block methods
     with optional damping for robustness.
 
+    Required Geometry Traits (Issue #596 Phase 2.3):
+        This coupling solver requires trait-validated HJB and FP component solvers:
+        - HJB solver must use geometry with SupportsGradient trait
+        - FP solver must use geometry with SupportsLaplacian trait
+
+        Trait validation occurs in component solvers, not at coupling layer.
+        See HJBFDMSolver and FPFDMSolver docstrings for trait details.
+
     Args:
         problem: MFG problem definition
         hjb_solver: HJB solver instance
