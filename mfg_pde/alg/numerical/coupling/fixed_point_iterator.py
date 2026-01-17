@@ -330,17 +330,14 @@ class FixedPointIterator(BaseMFGSolver):
         convergence_reason = "Maximum iterations reached"
         # M_initial already computed above
 
-        # Progress bar for Picard iterations
-        from mfg_pde.utils.progress import RichProgressBar
+        # Progress bar for Picard iterations (Issue #587 Protocol pattern)
+        from mfg_pde.utils.progress import create_progress_bar
 
-        picard_range = range(final_max_iterations)
-        if verbose:
-            picard_range = RichProgressBar(
-                picard_range,
-                desc="MFG Picard",
-                unit="iter",
-                disable=False,
-            )
+        picard_range = create_progress_bar(
+            range(final_max_iterations),
+            verbose=verbose,
+            desc="MFG Picard",
+        )
 
         for iiter in picard_range:
             iter_start = time.time()
@@ -434,22 +431,14 @@ class FixedPointIterator(BaseMFGSolver):
             iter_time = time.time() - iter_start
             self.iterations_run = iiter + 1
 
-            # Backend compatibility - progress bar optional methods (Issue #543 acceptable)
-            # picard_range could be plain range() or progress bar wrapper (Rich/tqdm)
-            if verbose and hasattr(picard_range, "set_postfix"):
-                accel_tag = "A" if self.use_anderson else ""
-                picard_range.set_postfix(
-                    U_err=f"{self.l2distu_rel[iiter]:.2e}",
-                    M_err=f"{self.l2distm_rel[iiter]:.2e}",
-                    t=f"{iter_time:.1f}s",
-                    acc=accel_tag,
-                )
-            elif not verbose:
-                # Print traditional output when not using progress bar
-                accel_tag = " (Anderson)" if self.use_anderson else ""
-                print(f"--- Picard Iteration {iiter + 1}/{final_max_iterations}{accel_tag} ---")
-                print(f"  Errors: U={self.l2distu_rel[iiter]:.2e}, M={self.l2distm_rel[iiter]:.2e}")
-                print(f"  Time: {iter_time:.3f}s")
+            # Update progress metrics (Issue #587 Protocol - no hasattr needed)
+            accel_tag = "A" if self.use_anderson else ""
+            picard_range.update_metrics(
+                U_err=f"{self.l2distu_rel[iiter]:.2e}",
+                M_err=f"{self.l2distm_rel[iiter]:.2e}",
+                t=f"{iter_time:.1f}s",
+                acc=accel_tag,
+            )
 
             # Check convergence
             converged, convergence_reason = check_convergence_criteria(
@@ -461,11 +450,8 @@ class FixedPointIterator(BaseMFGSolver):
             )
 
             if converged:
-                # Backend compatibility - progress bar optional write method (Issue #543 acceptable)
-                if verbose and hasattr(picard_range, "write"):
-                    picard_range.write(convergence_reason)
-                elif not verbose:
-                    print(convergence_reason)
+                # Log convergence message (Issue #587 Protocol - no hasattr needed)
+                picard_range.log(convergence_reason)
                 break
 
         # Construct result

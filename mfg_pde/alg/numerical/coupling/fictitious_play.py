@@ -402,17 +402,14 @@ class FictitiousPlayIterator(BaseMFGSolver):
         converged = False
         convergence_reason = "Maximum iterations reached"
 
-        # Progress bar
-        from mfg_pde.utils.progress import RichProgressBar
+        # Progress bar (Issue #587 Protocol pattern)
+        from mfg_pde.utils.progress import create_progress_bar
 
-        iter_range = range(final_max_iterations)
-        if verbose:
-            iter_range = RichProgressBar(
-                iter_range,
-                desc="Fictitious Play",
-                unit="iter",
-                disable=False,
-            )
+        iter_range = create_progress_bar(
+            range(final_max_iterations),
+            verbose=verbose,
+            desc="Fictitious Play",
+        )
 
         for k in iter_range:
             iter_start = time.time()
@@ -495,20 +492,13 @@ class FictitiousPlayIterator(BaseMFGSolver):
             iter_time = time.time() - iter_start
             self.iterations_run = k + 1
 
-            # Backend compatibility - progress bar optional methods (Issue #543 acceptable)
-            # iter_range could be plain range() or progress bar wrapper (Rich/tqdm)
-            if verbose and hasattr(iter_range, "set_postfix"):
-                iter_range.set_postfix(
-                    U_err=f"{self.l2distu_rel[k]:.2e}",
-                    M_err=f"{self.l2distm_rel[k]:.2e}",
-                    alpha=f"{alpha:.3f}",
-                    t=f"{iter_time:.1f}s",
-                )
-            elif not verbose:
-                print(f"--- Fictitious Play Iteration {k + 1}/{final_max_iterations} ---")
-                print(f"  Learning rate: {alpha:.4f}")
-                print(f"  Errors: U={self.l2distu_rel[k]:.2e}, M={self.l2distm_rel[k]:.2e}")
-                print(f"  Time: {iter_time:.3f}s")
+            # Update progress metrics (Issue #587 Protocol - no hasattr needed)
+            iter_range.update_metrics(
+                U_err=f"{self.l2distu_rel[k]:.2e}",
+                M_err=f"{self.l2distm_rel[k]:.2e}",
+                alpha=f"{alpha:.3f}",
+                t=f"{iter_time:.1f}s",
+            )
 
             # Check convergence
             converged, convergence_reason = check_convergence_criteria(
@@ -520,11 +510,8 @@ class FictitiousPlayIterator(BaseMFGSolver):
             )
 
             if converged:
-                # Backend compatibility - progress bar optional write method (Issue #543 acceptable)
-                if verbose and hasattr(iter_range, "write"):
-                    iter_range.write(convergence_reason)
-                elif not verbose:
-                    print(convergence_reason)
+                # Log convergence message (Issue #587 Protocol - no hasattr needed)
+                iter_range.log(convergence_reason)
                 break
 
         # Construct result

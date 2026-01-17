@@ -328,12 +328,14 @@ class BlockIterator(BaseMFGSolver):
         if verbose:
             print(f"Starting {method_name} iteration (damping={self.damping_factor})")
 
-        # Progress bar
-        from mfg_pde.utils.progress import RichProgressBar
+        # Progress bar (Issue #587 Protocol pattern)
+        from mfg_pde.utils.progress import create_progress_bar
 
-        iter_range = range(max_iterations)
-        if verbose:
-            iter_range = RichProgressBar(iter_range, desc=method_name, unit="iter")
+        iter_range = create_progress_bar(
+            range(max_iterations),
+            verbose=verbose,
+            desc=method_name,
+        )
 
         converged = False
         convergence_reason = "Maximum iterations reached"
@@ -365,14 +367,12 @@ class BlockIterator(BaseMFGSolver):
             iter_time = time.time() - iter_start
             self.iterations_run = iiter + 1
 
-            # Backend compatibility - progress bar optional methods (Issue #543 acceptable)
-            # iter_range could be plain range() or progress bar wrapper (Rich/tqdm)
-            if verbose and hasattr(iter_range, "set_postfix"):
-                iter_range.set_postfix(
-                    U_err=f"{metrics['l2distu_rel']:.2e}",
-                    M_err=f"{metrics['l2distm_rel']:.2e}",
-                    t=f"{iter_time:.1f}s",
-                )
+            # Update progress metrics (Issue #587 Protocol - no hasattr needed)
+            iter_range.update_metrics(
+                U_err=f"{metrics['l2distu_rel']:.2e}",
+                M_err=f"{metrics['l2distm_rel']:.2e}",
+                t=f"{iter_time:.1f}s",
+            )
 
             # Check convergence
             converged, convergence_reason = check_convergence_criteria(
@@ -384,9 +384,8 @@ class BlockIterator(BaseMFGSolver):
             )
 
             if converged:
-                # Backend compatibility - progress bar optional write method (Issue #543 acceptable)
-                if verbose and hasattr(iter_range, "write"):
-                    iter_range.write(convergence_reason)
+                # Log convergence message (Issue #587 Protocol - no hasattr needed)
+                iter_range.log(convergence_reason)
                 break
 
         elapsed = time.time() - start_time

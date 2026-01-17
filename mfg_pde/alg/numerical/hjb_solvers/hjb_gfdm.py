@@ -1887,8 +1887,6 @@ class HJBGFDMSolver(BaseHJBSolver):
                 f"Pass boundary_conditions parameter to solver or set BC on problem.geometry."
             )
 
-        from mfg_pde.utils.progress import RichProgressBar
-
         # Determine n_time_points from available data or problem configuration
         # n_time_points = Nt + 1 (number of time knots including t=0 and t=T)
         if M_density is not None:
@@ -1940,15 +1938,14 @@ class HJBGFDMSolver(BaseHJBSolver):
             U_solution_collocation[n_time_points - 1, :] = self._mapper.map_grid_to_collocation(U_terminal.flatten())
 
         # Backward time stepping: Nt steps from index (n_time_points-2) down to 0
-        # This covers all Nt intervals in the backward direction
-        timestep_range = range(n_time_points - 2, -1, -1)
-        if show_progress:
-            timestep_range = RichProgressBar(
-                timestep_range,
-                desc="HJB (backward)",
-                unit="step",
-                disable=False,
-            )
+        # This covers all Nt intervals in the backward direction (Issue #587 Protocol pattern)
+        from mfg_pde.utils.progress import create_progress_bar
+
+        timestep_range = create_progress_bar(
+            range(n_time_points - 2, -1, -1),
+            verbose=show_progress,
+            desc="HJB (backward)",
+        )
 
         for n in timestep_range:
             U_solution_collocation[n, :] = self._solve_timestep(
@@ -1958,16 +1955,9 @@ class HJBGFDMSolver(BaseHJBSolver):
                 n,
             )
 
-            # Update progress bar with QP statistics if available
-            # Backend compatibility - progress bar optional methods (Issue #543 acceptable)
-            # timestep_range could be plain range() or progress bar wrapper (Rich/tqdm)
-            if show_progress and hasattr(timestep_range, "set_postfix"):
-                postfix = {}
-                # qp_stats initialized in __init__, hasattr check removed (Issue #543 fix)
-                if self.qp_optimization_level in ["auto", "always"]:
-                    postfix["qp_solves"] = self.qp_stats.get("total_qp_solves", 0)
-                if postfix:
-                    timestep_range.set_postfix(**postfix)
+            # Update progress bar with QP statistics if available (Issue #587 Protocol - no hasattr needed)
+            if self.qp_optimization_level in ["auto", "always"]:
+                timestep_range.update_metrics(qp_solves=self.qp_stats.get("total_qp_solves", 0))
 
         # Return format depends on input mode
         if is_meshfree_input:

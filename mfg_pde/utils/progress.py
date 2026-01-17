@@ -26,12 +26,8 @@ from __future__ import annotations
 import functools
 import time
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
-# Rich is required
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -45,6 +41,11 @@ from rich.progress import (
 )
 from rich.table import Table
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+T = TypeVar("T")
+
 console = Console()
 
 __all__ = [
@@ -57,6 +58,10 @@ __all__ = [
     "tqdm",
     "trange",
     "RichProgressBar",
+    # Protocol pattern (Issue #587)
+    "ProgressTracker",
+    "NoOpProgressBar",
+    "create_progress_bar",
     # Solver utilities
     "SolverTimer",
     "IterationProgress",
@@ -65,6 +70,63 @@ __all__ = [
     "time_solver_operation",
     "progress_context",
 ]
+
+
+@runtime_checkable
+class ProgressTracker(Protocol[T]):
+    """
+    Structural type for progress reporting (Issue #587).
+
+    Defines the contract that all progress tracking implementations must satisfy.
+    Enables compile-time type checking and eliminates runtime hasattr checks.
+
+    All implementations must provide:
+        - __iter__: Iterate over the tracked sequence
+        - update_metrics: Display solver metrics (convergence errors, etc.)
+        - log: Print informational messages
+
+    Benefits:
+        - Static type checking: Mypy can verify all method calls
+        - No hasattr needed: Protocol guarantees method availability
+        - Clear contract: Implementers know exactly what to provide
+        - Polymorphism: verbose=True and verbose=False return same interface
+
+    Example:
+        progress: ProgressTracker[int] = create_progress_bar(range(100), verbose=True)
+        for i in progress:
+            progress.update_metrics(error=compute_error())
+            if converged:
+                progress.log("Converged!")
+                break
+    """
+
+    def __iter__(self) -> Iterator[T]:
+        """Iterate over the sequence being tracked."""
+        ...
+
+    def update_metrics(self, **kwargs: Any) -> None:
+        """
+        Update displayed metrics (e.g., convergence error, iteration count).
+
+        Args:
+            **kwargs: Metric key-value pairs to display
+
+        Example:
+            progress.update_metrics(error=1e-6, norm=0.5)
+        """
+        ...
+
+    def log(self, message: str) -> None:
+        """
+        Print an informational message.
+
+        Args:
+            message: Message to display
+
+        Example:
+            progress.log("Solver converged!")
+        """
+        ...
 
 
 class RichProgressBar:
@@ -139,11 +201,48 @@ class RichProgressBar:
             self.progress.update(self.task_id, advance=n, description=desc)
 
     def set_postfix(self, **kwargs: Any) -> None:
-        """Set postfix values to display."""
+        """
+        Set postfix values to display.
+
+        .. deprecated:: 0.17.0
+            Use :meth:`update_metrics` instead. This method is kept for
+            backward compatibility but will be removed in v1.0.0.
+        """
+        self.update_metrics(**kwargs)
+
+    def update_metrics(self, **kwargs: Any) -> None:
+        """
+        Update displayed metrics (Issue #587 Protocol API).
+
+        Replaces set_postfix() with clearer semantics. Formats floats
+        using scientific notation for solver metrics.
+
+        Args:
+            **kwargs: Metric key-value pairs to display
+
+        Example:
+            progress.update_metrics(error=1.5e-6, iteration=42)
+        """
         self.postfix_data.update(kwargs)
         if not self.disable and self.progress and self.task_id is not None:
             desc = self._format_description()
             self.progress.update(self.task_id, description=desc)
+
+    def log(self, message: str) -> None:
+        """
+        Print an informational message (Issue #587 Protocol API).
+
+        Displays message above the progress bar using Rich console.
+        Safe to call whether progress bar is active or disabled.
+
+        Args:
+            message: Message to display
+
+        Example:
+            progress.log("Convergence achieved!")
+        """
+        if not self.disable:
+            console.print(f"[blue]INFO[/]: {message}")
 
     def set_description(self, desc: str) -> None:
         """Update the progress bar description."""
@@ -163,6 +262,121 @@ class RichProgressBar:
         if self.progress and self._started:
             self.progress.stop()
             self._started = False
+
+
+class NoOpProgressBar:
+    """
+    Null Object Pattern for silent progress tracking (Issue #587).
+
+    Provides the same interface as RichProgressBar but with zero behavior.
+    Used when verbose=False to eliminate conditional logic in solver code.
+
+    Key Properties:
+        - Zero performance overhead: All methods are pass/yield statements
+        - Type-safe: Satisfies ProgressTracker Protocol
+        - Same interface: Solvers work identically with RichProgressBar or NoOpProgressBar
+        - No conditionals needed: progress.update_metrics() always works
+
+    Example:
+        progress = NoOpProgressBar(range(100))
+        for i in progress:
+            progress.update_metrics(error=1e-5)  # Does nothing, no overhead
+            progress.log("Done!")  # Does nothing
+    """
+
+    def __init__(
+        self,
+        iterable: Any = None,
+        total: int | None = None,
+        desc: str | None = None,
+        disable: bool = False,
+        **kwargs: Any,
+    ):
+        """
+        Initialize no-op progress bar.
+
+        Args:
+            iterable: Sequence to iterate over (passed through unchanged)
+            total: Ignored (for API compatibility)
+            desc: Ignored (for API compatibility)
+            disable: Ignored (always disabled)
+            **kwargs: Ignored (for API compatibility)
+        """
+        self.iterable = iterable
+
+    def __iter__(self) -> Iterator[Any]:
+        """Pass through iteration with zero overhead."""
+        if self.iterable is None:
+            return iter([])
+        yield from self.iterable
+
+    def __enter__(self) -> NoOpProgressBar:
+        """No-op context manager entry."""
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        """No-op context manager exit."""
+
+    def update(self, n: int = 1) -> None:
+        """No-op update (Protocol compatibility)."""
+
+    def update_metrics(self, **kwargs: Any) -> None:
+        """No-op metrics update (Protocol API - Issue #587)."""
+
+    def log(self, message: str) -> None:
+        """No-op logging (Protocol API - Issue #587)."""
+
+    def set_postfix(self, **kwargs: Any) -> None:
+        """No-op set_postfix (backward compatibility)."""
+
+    def set_description(self, desc: str) -> None:
+        """No-op set_description (backward compatibility)."""
+
+    def close(self) -> None:
+        """No-op close (backward compatibility)."""
+
+
+def create_progress_bar(
+    iterable: Any,
+    *,
+    verbose: bool = True,
+    desc: str = "",
+    total: int | None = None,
+) -> ProgressTracker[Any]:
+    """
+    Factory function ensuring consistent ProgressTracker return type (Issue #587).
+
+    Replaces the pattern: `tqdm(iterable) if verbose else iterable`
+    with type-safe polymorphism: Both branches return ProgressTracker Protocol.
+
+    Polymorphism guarantees:
+        - verbose=True → RichProgressBar (renders UI with metrics)
+        - verbose=False → NoOpProgressBar (silent pass-through)
+        - Both satisfy ProgressTracker Protocol
+        - Solver code works identically with either implementation
+        - No hasattr checks needed (methods always available)
+
+    Args:
+        iterable: Sequence to iterate over
+        verbose: If True, show progress bar; if False, silent pass-through
+        desc: Progress bar description
+        total: Total iterations (auto-detected if iterable has __len__)
+
+    Returns:
+        ProgressTracker instance (RichProgressBar or NoOpProgressBar)
+
+    Example:
+        progress = create_progress_bar(range(100), verbose=True, desc="Solving")
+        for i in progress:
+            progress.update_metrics(error=compute_error())  # Always works
+            if converged:
+                progress.log("Converged!")  # Always works
+                break
+    """
+    if verbose:
+        return RichProgressBar(iterable, desc=desc, total=total, disable=False)
+    else:
+        return NoOpProgressBar(iterable, desc=desc, total=total, disable=True)
 
 
 # tqdm-like interface using rich
