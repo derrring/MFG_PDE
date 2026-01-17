@@ -121,9 +121,12 @@ class TestFPGFDMSolver:
         # Use temporal grid size (Nt + 1), not spatial grid
         n_time_points = problem.Nt + 1
         m0 = np.ones(N_points) / N_points
-        U = np.zeros((n_time_points, N_points))
 
-        M = fp_solver.solve_fp_system(m0, U, show_progress=False)
+        # drift_field must be shape (Nt+1, N, d) for GFDM solver
+        # Use zero drift for this test
+        drift_field = np.zeros((n_time_points, N_points, problem.d))
+
+        M = fp_solver.solve_fp_system(m0, drift_field=drift_field, show_progress=False)
 
         # GFDM solver outputs on collocation points
         assert M.shape == (n_time_points, N_points)
@@ -141,9 +144,12 @@ class TestFPGFDMSolver:
         # Use temporal grid size (Nt + 1), not spatial grid
         n_time_points = problem.Nt + 1
         m0 = np.ones(N_points) / N_points
-        U = np.zeros((n_time_points, N_points))
 
-        M = fp_solver.solve_fp_system(m0, U, show_progress=False)
+        # drift_field must be shape (Nt+1, N, d) for GFDM solver
+        # Use zero drift for this test
+        drift_field = np.zeros((n_time_points, N_points, problem.d))
+
+        M = fp_solver.solve_fp_system(m0, drift_field=drift_field, show_progress=False)
 
         # Check mass conservation
         for t_idx in range(n_time_points):
