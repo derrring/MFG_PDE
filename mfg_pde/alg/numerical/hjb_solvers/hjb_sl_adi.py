@@ -139,6 +139,7 @@ def adi_diffusion_step(
     if isinstance(sigma, (int, float)):
         # Isotropic: same sigma in all directions
         sigma_vec = np.full(dimension, float(sigma))
+    # Backend compatibility - NumPy array detection (Issue #543 acceptable)
     elif hasattr(sigma, "ndim") and sigma.ndim == 1 and len(sigma) == dimension:
         # Diagonal anisotropic: different sigma per direction
         sigma_vec = np.asarray(sigma)

@@ -258,16 +258,20 @@ class PrimalDualMFGSolver(BaseVariationalSolver):
         self.dual_vars["mass_conservation"] = np.zeros(self.Nt)
 
         # Dual variables for state constraints (if any)
-        if hasattr(self.problem.components, "state_constraints") and self.problem.components.state_constraints:
+        # Problem API: use getattr instead of hasattr (Issue #543 fix)
+        state_constraints = getattr(self.problem.components, "state_constraints", None)
+        if state_constraints:
             self.dual_vars["state_constraints"] = np.zeros((self.Nt, self.Nx + 1))
 
         # Dual variables for velocity constraints (if any)
-        if hasattr(self.problem.components, "velocity_constraints") and self.problem.components.velocity_constraints:
+        velocity_constraints = getattr(self.problem.components, "velocity_constraints", None)
+        if velocity_constraints:
             self.dual_vars["velocity_constraints"] = np.zeros((self.Nt, self.Nx + 1))
 
         # Dual variables for integral constraints (if any)
-        if hasattr(self.problem.components, "integral_constraints") and self.problem.components.integral_constraints:
-            num_integral_constraints = len(self.problem.components.integral_constraints)
+        integral_constraints = getattr(self.problem.components, "integral_constraints", None)
+        if integral_constraints:
+            num_integral_constraints = len(integral_constraints)
             self.dual_vars["integral_constraints"] = np.zeros(num_integral_constraints)
 
         logger.info("Initialized dual variables:")
