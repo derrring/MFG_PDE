@@ -1,14 +1,15 @@
 # Development Priority List (2026-01-18)
 
-## Current Version: v0.17.2 (released 2026-01-18)
+## Current Version: v0.17.3 (released 2026-01-18)
 
 This document outlines the prioritized roadmap for infrastructure improvements following PR #548.
 
 **Recent Completions**:
+- Issue #597 (FP Operator Refactoring - All 3 Milestones) completed on 2026-01-18 (v0.17.3)
+- Issue #598 (BCApplicatorProtocol → ABC Refactoring) completed on 2026-01-18
 - Issue #591 Phase 2 (Variational Inequality Constraints) merged to main on 2026-01-18
 - Issue #496 (Time-Varying BC Fix) fixed on 2026-01-18
 - Issue #544 (Legacy Parameter Deprecation) completed on 2026-01-18 (v0.17.2)
-- Issue #545 (Solver Mixin Cleanup) completed on 2026-01-17 (v0.17.2)
 
 ---
 
@@ -1025,10 +1026,10 @@ u_flat[inlet_mask] = 1.0  # Dirichlet BC on inlet
 | Priority | Issue | Description | Size | Status |
 |:---------|:------|:------------|:-----|:-------|
 | ~~HIGH~~ | ~~#590~~ | ~~Phase 1: Geometry Trait System~~ | ~~Medium~~ | ✅ Closed (2026-01-18) |
-| ~~HIGH~~ | ~~#596~~ | ~~Phase 2: Solver Integration with Traits~~ | ~~Large~~ | ✅ Closed (2026-01-18, commit 658c4ab) |
+| HIGH | #596 | Phase 2: Solver Integration with Traits | Large | In Progress (Phases 2.1-2.5 complete) |
 | HIGH | #589 | Geometry/BC Architecture (Master Tracking) | Large | In Progress |
 | ~~MEDIUM~~ | ~~#598~~ | ~~BCApplicatorProtocol → ABC refactoring~~ | ~~Medium~~ | ✅ Closed (2026-01-18, commits 8ae9eecd, 13f0fee0, e95f579f) |
-| MEDIUM | #597 | FP Operator Refactoring | Large | Open |
+| ~~MEDIUM~~ | ~~#597~~ | ~~FP Operator Refactoring~~ | ~~Large~~ | ✅ Closed (2026-01-18, v0.17.3, PR #603) |
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large | Open |
 | MEDIUM | #535 | BC framework enhancement | Large | Open |
 | MEDIUM | #489 | Direct particle query for coupling | Large | Open |
