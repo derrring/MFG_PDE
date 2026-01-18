@@ -186,8 +186,11 @@ def _validate_field_2d(field: NDArray[np.floating]) -> None:
         raise ValueError(f"Expected 2D field, got {field.ndim}D")
     if field.size == 0:
         raise ValueError("Field cannot be empty")
-    if not np.isfinite(field).all():
-        raise ValueError("Field contains NaN or Inf values")
+    # Use shared validation method (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=2, grid_type=GridType.CELL_CENTERED)
+    applicator._validate_field(field)
 
 
 def _validate_domain_bounds_2d(bounds: NDArray[np.floating]) -> None:
@@ -217,6 +220,11 @@ def _apply_uniform_bc_2d(
     Returns:
         Padded field (Ny+2, Nx+2)
     """
+    # Create applicator to access shared formula methods (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=2, grid_type=config.grid_type)
+
     # Get BC type and value from the single segment
     seg = boundary_conditions.segments[0]
     bc_type = seg.bc_type
@@ -234,14 +242,17 @@ def _apply_uniform_bc_2d(
             return np.pad(field, 1, mode="constant", constant_values=g)
         else:
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
-            padded[0, 1:-1] = 2 * g - field[0, :]
-            padded[-1, 1:-1] = 2 * g - field[-1, :]
-            padded[1:-1, 0] = 2 * g - field[:, 0]
-            padded[1:-1, -1] = 2 * g - field[:, -1]
-            padded[0, 0] = 2 * g - field[0, 0]
-            padded[0, -1] = 2 * g - field[0, -1]
-            padded[-1, 0] = 2 * g - field[-1, 0]
-            padded[-1, -1] = 2 * g - field[-1, -1]
+            # Use shared Dirichlet formula (Issue #598)
+            # Apply to edges
+            padded[0, 1:-1] = applicator._compute_ghost_dirichlet(field[0, :], g, time=0.0)
+            padded[-1, 1:-1] = applicator._compute_ghost_dirichlet(field[-1, :], g, time=0.0)
+            padded[1:-1, 0] = applicator._compute_ghost_dirichlet(field[:, 0], g, time=0.0)
+            padded[1:-1, -1] = applicator._compute_ghost_dirichlet(field[:, -1], g, time=0.0)
+            # Apply to corners
+            padded[0, 0] = applicator._compute_ghost_dirichlet(field[0, 0], g, time=0.0)
+            padded[0, -1] = applicator._compute_ghost_dirichlet(field[0, -1], g, time=0.0)
+            padded[-1, 0] = applicator._compute_ghost_dirichlet(field[-1, 0], g, time=0.0)
+            padded[-1, -1] = applicator._compute_ghost_dirichlet(field[-1, -1], g, time=0.0)
             return padded
 
     elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
@@ -252,11 +263,20 @@ def _apply_uniform_bc_2d(
             return np.pad(field, 1, mode="edge")  # Fallback for trivial case
         padded = np.pad(field, 1, mode="constant", constant_values=0.0)
         padded[1:-1, 1:-1] = field
-        # Faces: use reflection
-        padded[0, 1:-1] = field[1, :]  # Top ghost = row 1 (reflection)
-        padded[-1, 1:-1] = field[-2, :]  # Bottom ghost = row -2 (reflection)
-        padded[1:-1, 0] = field[:, 1]  # Left ghost = col 1 (reflection)
-        padded[1:-1, -1] = field[:, -2]  # Right ghost = col -2 (reflection)
+        # Faces: use reflection via shared Neumann formula (Issue #598)
+        # For zero-flux, u_ghost = u_next_interior (reflection)
+        padded[0, 1:-1] = applicator._compute_ghost_neumann(
+            field[0, :], field[1, :], g=0.0, dx=1.0, side="left", time=0.0
+        )
+        padded[-1, 1:-1] = applicator._compute_ghost_neumann(
+            field[-1, :], field[-2, :], g=0.0, dx=1.0, side="right", time=0.0
+        )
+        padded[1:-1, 0] = applicator._compute_ghost_neumann(
+            field[:, 0], field[:, 1], g=0.0, dx=1.0, side="left", time=0.0
+        )
+        padded[1:-1, -1] = applicator._compute_ghost_neumann(
+            field[:, -1], field[:, -2], g=0.0, dx=1.0, side="right", time=0.0
+        )
         # Corners: average of adjacent edge ghosts
         padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
         padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
@@ -272,30 +292,42 @@ def _apply_uniform_bc_2d(
             g = 0.0
 
         if abs(beta) < 1e-14:
-            # Pure Dirichlet
+            # Pure Dirichlet - use shared formula (Issue #598)
             g_eff = g / alpha if abs(alpha) > 1e-14 else 0.0
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
-            padded[0, 1:-1] = 2 * g_eff - field[0, :]
-            padded[-1, 1:-1] = 2 * g_eff - field[-1, :]
-            padded[1:-1, 0] = 2 * g_eff - field[:, 0]
-            padded[1:-1, -1] = 2 * g_eff - field[:, -1]
-            padded[0, 0] = 2 * g_eff - field[0, 0]
-            padded[0, -1] = 2 * g_eff - field[0, -1]
-            padded[-1, 0] = 2 * g_eff - field[-1, 0]
-            padded[-1, -1] = 2 * g_eff - field[-1, -1]
+            # Apply to edges
+            padded[0, 1:-1] = applicator._compute_ghost_dirichlet(field[0, :], g_eff, time=0.0)
+            padded[-1, 1:-1] = applicator._compute_ghost_dirichlet(field[-1, :], g_eff, time=0.0)
+            padded[1:-1, 0] = applicator._compute_ghost_dirichlet(field[:, 0], g_eff, time=0.0)
+            padded[1:-1, -1] = applicator._compute_ghost_dirichlet(field[:, -1], g_eff, time=0.0)
+            # Apply to corners
+            padded[0, 0] = applicator._compute_ghost_dirichlet(field[0, 0], g_eff, time=0.0)
+            padded[0, -1] = applicator._compute_ghost_dirichlet(field[0, -1], g_eff, time=0.0)
+            padded[-1, 0] = applicator._compute_ghost_dirichlet(field[-1, 0], g_eff, time=0.0)
+            padded[-1, -1] = applicator._compute_ghost_dirichlet(field[-1, -1], g_eff, time=0.0)
             return padded
         else:
-            # General Robin or pure Neumann - use reflection
+            # General Robin or pure Neumann - use reflection via shared formula (Issue #598)
             # Issue #542 fix: mode="edge" is wrong for central diff
             Ny, Nx = field.shape
             if Ny < 2 or Nx < 2:
                 return np.pad(field, 1, mode="edge")
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
             padded[1:-1, 1:-1] = field
-            padded[0, 1:-1] = field[1, :]
-            padded[-1, 1:-1] = field[-2, :]
-            padded[1:-1, 0] = field[:, 1]
-            padded[1:-1, -1] = field[:, -2]
+            # Use shared Neumann formula for reflection
+            padded[0, 1:-1] = applicator._compute_ghost_neumann(
+                field[0, :], field[1, :], g=0.0, dx=1.0, side="left", time=0.0
+            )
+            padded[-1, 1:-1] = applicator._compute_ghost_neumann(
+                field[-1, :], field[-2, :], g=0.0, dx=1.0, side="right", time=0.0
+            )
+            padded[1:-1, 0] = applicator._compute_ghost_neumann(
+                field[:, 0], field[:, 1], g=0.0, dx=1.0, side="left", time=0.0
+            )
+            padded[1:-1, -1] = applicator._compute_ghost_neumann(
+                field[:, -1], field[:, -2], g=0.0, dx=1.0, side="right", time=0.0
+            )
+            # Corners: average of adjacent edge ghosts
             padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
             padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
             padded[-1, 0] = 0.5 * (padded[-1, 1] + padded[-2, 0])
@@ -324,6 +356,11 @@ def _apply_legacy_uniform_bc_2d(
     Returns:
         Padded field (Ny+2, Nx+2)
     """
+    # Create applicator to access shared formula methods (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=2, grid_type=config.grid_type)
+
     bc_type = boundary_conditions.type.lower()
 
     if bc_type == "periodic":
@@ -336,14 +373,17 @@ def _apply_legacy_uniform_bc_2d(
             return np.pad(field, 1, mode="constant", constant_values=g)
         else:
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
-            padded[0, 1:-1] = 2 * g - field[0, :]
-            padded[-1, 1:-1] = 2 * g - field[-1, :]
-            padded[1:-1, 0] = 2 * g - field[:, 0]
-            padded[1:-1, -1] = 2 * g - field[:, -1]
-            padded[0, 0] = 2 * g - field[0, 0]
-            padded[0, -1] = 2 * g - field[0, -1]
-            padded[-1, 0] = 2 * g - field[-1, 0]
-            padded[-1, -1] = 2 * g - field[-1, -1]
+            # Use shared Dirichlet formula (Issue #598)
+            # Apply to edges
+            padded[0, 1:-1] = applicator._compute_ghost_dirichlet(field[0, :], g, time=0.0)
+            padded[-1, 1:-1] = applicator._compute_ghost_dirichlet(field[-1, :], g, time=0.0)
+            padded[1:-1, 0] = applicator._compute_ghost_dirichlet(field[:, 0], g, time=0.0)
+            padded[1:-1, -1] = applicator._compute_ghost_dirichlet(field[:, -1], g, time=0.0)
+            # Apply to corners
+            padded[0, 0] = applicator._compute_ghost_dirichlet(field[0, 0], g, time=0.0)
+            padded[0, -1] = applicator._compute_ghost_dirichlet(field[0, -1], g, time=0.0)
+            padded[-1, 0] = applicator._compute_ghost_dirichlet(field[-1, 0], g, time=0.0)
+            padded[-1, -1] = applicator._compute_ghost_dirichlet(field[-1, -1], g, time=0.0)
             return padded
 
     elif bc_type in ["no_flux", "neumann"]:
@@ -354,11 +394,19 @@ def _apply_legacy_uniform_bc_2d(
             return np.pad(field, 1, mode="edge")  # Fallback for trivial case
         padded = np.pad(field, 1, mode="constant", constant_values=0.0)
         padded[1:-1, 1:-1] = field
-        # Faces: use reflection
-        padded[0, 1:-1] = field[1, :]  # Top ghost = row 1 (reflection)
-        padded[-1, 1:-1] = field[-2, :]  # Bottom ghost = row -2 (reflection)
-        padded[1:-1, 0] = field[:, 1]  # Left ghost = col 1 (reflection)
-        padded[1:-1, -1] = field[:, -2]  # Right ghost = col -2 (reflection)
+        # Faces: use reflection via shared Neumann formula (Issue #598)
+        padded[0, 1:-1] = applicator._compute_ghost_neumann(
+            field[0, :], field[1, :], g=0.0, dx=1.0, side="left", time=0.0
+        )
+        padded[-1, 1:-1] = applicator._compute_ghost_neumann(
+            field[-1, :], field[-2, :], g=0.0, dx=1.0, side="right", time=0.0
+        )
+        padded[1:-1, 0] = applicator._compute_ghost_neumann(
+            field[:, 0], field[:, 1], g=0.0, dx=1.0, side="left", time=0.0
+        )
+        padded[1:-1, -1] = applicator._compute_ghost_neumann(
+            field[:, -1], field[:, -2], g=0.0, dx=1.0, side="right", time=0.0
+        )
         # Corners: average of adjacent edge ghosts
         padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
         padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
