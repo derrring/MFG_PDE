@@ -214,10 +214,28 @@ print("Time Evolution")
 print("=" * 70)
 
 # Initialize temperature field
-# Smooth transition across interface (avoids numerical shock)
-# Use tanh profile: smooth but steep transition
-transition_width = 5 * dx
-T = T_cold + (T_hot - T_cold) * 0.5 * (1 + np.tanh((s0 - x) / transition_width))
+# Piecewise linear profile with gradient discontinuity at interface
+# This creates the heat flux jump that drives the Stefan problem
+#
+# For classical Stefan: T_water = T_hot at x=0, T_ice = T_cold at x=1
+# Interface at s0: T(s0⁻) = T(s0⁺) = T_melting (continuity)
+# But ∂T/∂x|_{s0⁻} ≠ ∂T/∂x|_{s0⁺} (gradient jump)
+#
+# Simplified initialization: Linear profiles on each side
+# Left (water): T = T_hot + (T_cold - T_hot) * (x / s0)
+# Right (ice): T = T_cold (uniform, will develop gradient during evolution)
+T = np.zeros_like(x)
+for i, xi in enumerate(x):
+    if xi < s0:
+        # Water side: linear from T_hot to T_cold
+        T[i] = T_hot + (T_cold - T_hot) * (xi / s0)
+    else:
+        # Ice side: start cold (gradient will develop)
+        T[i] = T_cold
+
+# Enforce boundary conditions
+T[0] = T_hot
+T[-1] = T_cold
 
 # Storage for snapshots
 snapshot_times = [0.0, 0.5, 1.0, 1.5, 2.0]
@@ -305,8 +323,11 @@ print("Validation Against Analytical Solution")
 print("=" * 70)
 
 # Analytical interface position
+# Note: Classical Neumann solution has interface moving INTO solid (positive direction)
+# Our setup: hot at x=0, cold at x=1, interface moves LEFT (melting towards hot side)
+# Therefore: s(t) = s0 - λ·√(4αt)  (negative sign for leftward motion)
 time_array = np.array(time_history)
-s_analytical = s0 + lambda_neumann * np.sqrt(4 * alpha * time_array)
+s_analytical = s0 - lambda_neumann * np.sqrt(4 * alpha * time_array)
 s_numerical = np.array(interface_history)
 
 # Compute error
