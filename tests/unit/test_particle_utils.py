@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.particle_utils import (
+from mfg_pde.utils.particle_utils import (
     apply_boundary_conditions_numpy,
     interpolate_1d_numpy,
     sample_from_density_numpy,
@@ -19,12 +19,12 @@ from mfg_pde.alg.numerical.particle_utils import (
 try:
     import torch  # Check for PyTorch package directly
 
-    from mfg_pde.alg.numerical.particle_utils import (
+    from mfg_pde.backends.torch_backend import TorchBackend
+    from mfg_pde.utils.particle_utils import (
         apply_boundary_conditions_gpu,
         interpolate_1d_gpu,
         sample_from_density_gpu,
     )
-    from mfg_pde.backends.torch_backend import TorchBackend
 
     TORCH_AVAILABLE = True
 except ImportError:

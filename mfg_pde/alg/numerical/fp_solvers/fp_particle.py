@@ -1418,7 +1418,7 @@ class FPParticleSolver(BaseFPSolver):
             - See docs/development/TRACK_B_GPU_ACCELERATION_COMPLETE.md
         """
         from mfg_pde.alg.numerical.density_estimation import gaussian_kde_gpu_internal
-        from mfg_pde.alg.numerical.particle_utils import (
+        from mfg_pde.utils.particle_utils import (
             apply_boundary_conditions_gpu,
             interpolate_1d_gpu,
             sample_from_density_gpu,
