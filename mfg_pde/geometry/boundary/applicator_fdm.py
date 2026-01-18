@@ -1243,9 +1243,18 @@ def _apply_bc_1d(
 
     Returns:
         Padded field of shape (Nx+2,)
+
+    Note:
+        Issue #598: Refactored to use shared ghost cell formula methods from
+        BaseStructuredApplicator, eliminating duplicated Dirichlet/Neumann logic.
     """
-    if not np.isfinite(field).all():
-        raise ValueError("Field contains NaN or Inf values")
+    # Create applicator to access shared formula methods (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=1, grid_type=config.grid_type)
+
+    # Shared validation (Issue #598)
+    applicator._validate_field(field)
 
     # Handle legacy BoundaryConditions from bc_1d
     if isinstance(boundary_conditions, LegacyBoundaryConditions1D):
@@ -1257,8 +1266,9 @@ def _apply_bc_1d(
             right_val = boundary_conditions.right_value if boundary_conditions.right_value is not None else 0.0
             padded = np.zeros(len(field) + 2, dtype=field.dtype)
             padded[1:-1] = field
-            padded[0] = 2.0 * left_val - field[0]
-            padded[-1] = 2.0 * right_val - field[-1]
+            # Issue #598: Use shared Dirichlet formula
+            padded[0] = applicator._compute_ghost_dirichlet(field[0], left_val, time)
+            padded[-1] = applicator._compute_ghost_dirichlet(field[-1], right_val, time)
             return padded
         elif bc_type in ["no_flux", "neumann"]:
             # For Neumann BC with central difference gradient stencil:
@@ -1271,8 +1281,9 @@ def _apply_bc_1d(
                 return np.pad(field, 1, mode="edge")  # Fallback for trivial case
             padded = np.zeros(len(field) + 2, dtype=field.dtype)
             padded[1:-1] = field
-            padded[0] = field[1]  # Reflection: ghost = u[next_interior]
-            padded[-1] = field[-2]  # Reflection: ghost = u[prev_interior]
+            # Issue #598: Use shared Neumann formula (zero-flux)
+            padded[0] = applicator._compute_ghost_neumann(field[0], field[1], g=0.0, dx=1.0, side="left", time=time)
+            padded[-1] = applicator._compute_ghost_neumann(field[-1], field[-2], g=0.0, dx=1.0, side="right", time=time)
             return padded
         else:
             raise ValueError(f"Unsupported BC type: {bc_type}")
@@ -1290,12 +1301,11 @@ def _apply_bc_1d(
             return np.pad(field, 1, mode="wrap")
         elif bc_type == BCType.DIRICHLET:
             g = seg.value if seg.value is not None else 0.0
-            if callable(g):
-                g = 0.0
             padded = np.zeros(len(field) + 2, dtype=field.dtype)
             padded[1:-1] = field
-            padded[0] = 2.0 * g - field[0]
-            padded[-1] = 2.0 * g - field[-1]
+            # Issue #598: Use shared Dirichlet formula
+            padded[0] = applicator._compute_ghost_dirichlet(field[0], g, time)
+            padded[-1] = applicator._compute_ghost_dirichlet(field[-1], g, time)
             return padded
         elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
             # For Neumann BC with central difference gradient stencil:
@@ -1305,8 +1315,6 @@ def _apply_bc_1d(
             if len(field) < 2:
                 return np.pad(field, 1, mode="edge")  # Fallback for trivial case
             g = seg.value if seg.value is not None else 0.0
-            if callable(g):
-                g = g(0.0)  # Evaluate at t=0 for uniform BC
             padded = np.zeros(len(field) + 2, dtype=field.dtype)
             padded[1:-1] = field
             # Need domain_bounds to compute dx for general Neumann
@@ -1315,12 +1323,16 @@ def _apply_bc_1d(
                 bounds = np.atleast_2d(domain_bounds)
                 x_min, x_max = bounds[0, 0], bounds[0, 1]
                 dx = (x_max - x_min) / (len(field) - 1) if len(field) > 1 else 1.0
-                padded[0] = field[1] - 2 * dx * g  # Left ghost
-                padded[-1] = field[-2] + 2 * dx * g  # Right ghost
+                # Issue #598: Use shared Neumann formula
+                padded[0] = applicator._compute_ghost_neumann(field[0], field[1], g, dx, side="left", time=time)
+                padded[-1] = applicator._compute_ghost_neumann(field[-1], field[-2], g, dx, side="right", time=time)
             else:
                 # Fallback: assume zero-flux (g=0) => pure reflection
-                padded[0] = field[1]
-                padded[-1] = field[-2]
+                # Issue #598: Use shared Neumann formula (zero-flux)
+                padded[0] = applicator._compute_ghost_neumann(field[0], field[1], g=0.0, dx=1.0, side="left", time=time)
+                padded[-1] = applicator._compute_ghost_neumann(
+                    field[-1], field[-2], g=0.0, dx=1.0, side="right", time=time
+                )
             return padded
         else:
             raise ValueError(f"Unsupported BC type: {bc_type}")
@@ -1336,10 +1348,10 @@ def _apply_bc_1d(
         if boundary_conditions.domain_bounds is None:
             boundary_conditions.domain_bounds = bounds
 
-        padded = np.zeros(len(field) + 2, dtype=field.dtype)
-        padded[1:-1] = field
-
-        dx = (x_max - x_min) / (len(field) - 1) if len(field) > 1 else 1.0
+        # Issue #598: Use shared buffer creation and spacing computation
+        padded = applicator._create_padded_buffer(field, ghost_depth=1)
+        spacing = applicator._compute_grid_spacing(field, bounds)
+        dx = spacing[0]
 
         # Left BC
         point_left = np.array([x_min])
@@ -1355,7 +1367,8 @@ def _apply_bc_1d(
             # grad[0] = (u[1] - ghost_left) / (2*dx) = g
             # => ghost_left = u[1] - 2*dx*g (reflection about boundary)
             g = _evaluate_bc_value(bc_left.value, point_left, time) if bc_left.value is not None else 0.0
-            padded[0] = field[1] - 2 * dx * g
+            # Issue #598: Use shared Neumann formula
+            padded[0] = applicator._compute_ghost_neumann(field[0], field[1], g, dx, side="left", time=time)
         else:
             padded[0] = _compute_ghost_value_enhanced(bc_left, field[0], dx, "min", point_left, time, config)
 
@@ -1373,7 +1386,8 @@ def _apply_bc_1d(
             # grad[-1] = (ghost_right - u[-2]) / (2*dx) = g
             # => ghost_right = u[-2] + 2*dx*g (reflection about boundary)
             g = _evaluate_bc_value(bc_right.value, point_right, time) if bc_right.value is not None else 0.0
-            padded[-1] = field[-2] + 2 * dx * g
+            # Issue #598: Use shared Neumann formula
+            padded[-1] = applicator._compute_ghost_neumann(field[-1], field[-2], g, dx, side="right", time=time)
         else:
             padded[-1] = _compute_ghost_value_enhanced(bc_right, field[-1], dx, "max", point_right, time, config)
 
