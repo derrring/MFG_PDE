@@ -19,6 +19,7 @@ References:
 
 import warnings
 from abc import abstractmethod
+from collections.abc import Callable
 from typing import Literal
 
 import numpy as np
@@ -731,6 +732,210 @@ class ImplicitDomain(
             >>> points.shape  # (N, 2) where N ≈ volume / 0.1^2
         """
         return self.sample_uniform(self.num_spatial_points)
+
+    # =========================================================================
+    # Region Marking (SupportsRegionMarking protocol - Issue #590 Phase 1.3)
+    # =========================================================================
+
+    @property
+    def _regions(self) -> dict:
+        """
+        Lazy-initialized storage for named regions.
+
+        For ImplicitDomain (meshfree), regions are stored as predicates/callables,
+        not boolean masks (unlike TensorProductGrid which has discrete points).
+
+        Returns:
+            Dictionary mapping region names to predicates
+        """
+        if not hasattr(self, "_regions_dict"):
+            self._regions_dict = {}
+        return self._regions_dict
+
+    def mark_region(
+        self,
+        name: str,
+        predicate: Callable[[NDArray], NDArray[np.bool_]] | None = None,
+        sdf_region: Callable[[NDArray], NDArray[np.floating]] | None = None,
+        **kwargs,
+    ) -> None:
+        """
+        Mark a named spatial region for later reference.
+
+        For implicit domains (meshfree), regions are specified via predicates
+        or SDF functions and evaluated on-demand at query points.
+
+        Args:
+            name: Unique name for this region (e.g., "inlet", "obstacle")
+            predicate: Function (N, d) → (N,) bool - True where point in region
+            sdf_region: Alternative SDF-based specification (φ < 0 means inside region)
+            **kwargs: Ignored (for compatibility with TensorProductGrid signature)
+
+        Raises:
+            ValueError: If name already exists
+            ValueError: If neither predicate nor sdf_region provided
+
+        Example:
+            >>> circle = Hypersphere(center=[0.5, 0.5], radius=0.3)
+            >>>
+            >>> # Mark top half using predicate
+            >>> circle.mark_region(
+            ...     "top_half",
+            ...     predicate=lambda x: x[:, 1] > 0.5
+            ... )
+            >>>
+            >>> # Mark region using SDF
+            >>> def sector_sdf(x):
+            ...     on_boundary = np.abs(np.linalg.norm(x - [0.5, 0.5], axis=-1) - 0.3) < 0.01
+            ...     in_sector = x[:, 1] > 0.65
+            ...     return np.where(on_boundary & in_sector, -1.0, 1.0)
+            >>> circle.mark_region("exit", sdf_region=sector_sdf)
+
+        Note:
+            Issue #549 / #590 Phase 1.3: Enables BC via region_name parameter
+        """
+        if name in self._regions:
+            raise ValueError(f"Region '{name}' already exists. Available regions: {list(self._regions.keys())}")
+
+        # Validate: exactly one specification method
+        specified = sum(x is not None for x in [predicate, sdf_region])
+        if specified == 0:
+            raise ValueError("Must specify one of: predicate or sdf_region")
+        if specified > 1:
+            raise ValueError("Cannot specify both predicate and sdf_region")
+
+        # Store predicate (or convert SDF to predicate)
+        if predicate is not None:
+            self._regions[name] = predicate
+        elif sdf_region is not None:
+            # Convert SDF to predicate: region is where SDF < 0
+            self._regions[name] = lambda x: sdf_region(x) < 0
+
+    def get_region_mask(
+        self,
+        name: str,
+        points: NDArray[np.float64] | None = None,
+    ) -> NDArray[np.bool_]:
+        """
+        Get boolean mask for named region.
+
+        For implicit domains, evaluates the stored predicate at given points.
+
+        Args:
+            name: Region name (from mark_region call)
+            points: Points to evaluate at - shape (N, d)
+                    If None, uses get_collocation_points() (sampled discretization)
+
+        Returns:
+            Boolean mask of shape (N,) - True at points in region
+
+        Raises:
+            KeyError: If region name not found
+
+        Example:
+            >>> circle = Hypersphere(center=[0.5, 0.5], radius=0.3)
+            >>> circle.mark_region("top", predicate=lambda x: x[:, 1] > 0.5)
+            >>>
+            >>> # Evaluate at specific points
+            >>> pts = np.array([[0.5, 0.6], [0.5, 0.4]])
+            >>> mask = circle.get_region_mask("top", points=pts)
+            >>> # Returns: [True, False]
+
+        Note:
+            Unlike TensorProductGrid (which has fixed grid), implicit domains
+            evaluate regions on-demand at provided points.
+        """
+        if name not in self._regions:
+            raise KeyError(f"Region '{name}' not found. Available regions: {list(self._regions.keys())}")
+
+        # Get points to evaluate at
+        if points is None:
+            points = self.get_collocation_points()
+
+        # Ensure 2D array
+        if points.ndim == 1:
+            points = points.reshape(1, -1)
+
+        # Evaluate predicate
+        predicate = self._regions[name]
+        return predicate(points)
+
+    def intersect_regions(self, *names: str) -> Callable[[NDArray], NDArray[np.bool_]]:
+        """
+        Get intersection of multiple regions (boolean AND).
+
+        For implicit domains, returns a combined predicate.
+
+        Args:
+            *names: Region names to intersect
+
+        Returns:
+            Combined predicate: callable (N, d) → (N,) bool
+
+        Raises:
+            KeyError: If any region name not found
+            ValueError: If no region names provided
+
+        Example:
+            >>> circle.mark_region("top", predicate=lambda x: x[:, 1] > 0.5)
+            >>> circle.mark_region("right", predicate=lambda x: x[:, 0] > 0.5)
+            >>> combined = circle.intersect_regions("top", "right")
+            >>> # combined(pts) returns True where BOTH top AND right
+        """
+        if not names:
+            raise ValueError("Must provide at least one region name")
+
+        predicates = [self._regions[name] for name in names]
+
+        # Combine predicates with logical AND
+        def combined_predicate(x: NDArray[np.float64]) -> NDArray[np.bool_]:
+            result = predicates[0](x)
+            for pred in predicates[1:]:
+                result &= pred(x)
+            return result
+
+        return combined_predicate
+
+    def get_region_predicate(self, name: str) -> Callable[[NDArray], NDArray[np.bool_]]:
+        """
+        Get predicate function for named region (meshfree helper).
+
+        This is a convenience method for meshfree solvers that work directly
+        with predicates rather than boolean masks.
+
+        Args:
+            name: Region name
+
+        Returns:
+            Predicate function: (N, d) → (N,) bool
+
+        Raises:
+            KeyError: If region name not found
+
+        Example:
+            >>> circle.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.3)
+            >>> inlet_pred = circle.get_region_predicate("inlet")
+            >>> particles = np.array([[0.2, 0.5], [0.8, 0.5]])
+            >>> in_inlet = inlet_pred(particles)  # [True, False]
+        """
+        if name not in self._regions:
+            raise KeyError(f"Region '{name}' not found. Available regions: {list(self._regions.keys())}")
+        return self._regions[name]
+
+    def get_region_names(self) -> list[str]:
+        """
+        Get list of all marked region names.
+
+        Returns:
+            List of region names
+
+        Example:
+            >>> circle.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.3)
+            >>> circle.mark_region("outlet", predicate=lambda x: x[:, 0] > 0.7)
+            >>> circle.get_region_names()
+            ['inlet', 'outlet']
+        """
+        return list(self._regions.keys())
 
     def __repr__(self) -> str:
         """String representation of the domain."""
