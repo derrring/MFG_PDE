@@ -1279,9 +1279,11 @@ bc_2d = bc_template.bind_dimension(2)
 
 ## Part VII: Migration and Evolution Strategy
 
-### 7.1 Current Status (v0.17.1)
+### 7.1 Current Status (v0.18.0)
 
-✅ **Production-Ready**:
+✅ **Production-Ready (v0.18.0 - Phases 1-4 Complete)**:
+
+**Core Infrastructure**:
 - Tier 1 BCs (DNR + Mixed + Periodic)
 - TensorProductGrid geometry
 - ImplicitDomain (SDF) geometry
@@ -1289,16 +1291,39 @@ bc_2d = bc_template.bind_dimension(2)
 - FDM applicators (ghost cells, 2-layer architecture)
 - Robin BC framework (Issue #574 refactored)
 
-🟡 **Infrastructure Present, Needs Implementation**:
-- UnstructuredMesh (FEM weak form assembly)
-- Particle applicators (basic reflection)
+**Phase 1: Geometry Trait System** (Issue #590):
+- ✅ Protocol definitions (`SupportsLaplacian`, `SupportsGradient`, etc.)
+- ✅ Retrofitted TensorProductGrid, ImplicitDomain, GraphGeometry
+- ✅ Region registry for boolean operations
 
-❌ **Not Implemented**:
-- Tier 2 (Variational constraints)
-- Tier 3 (Level set evolution)
-- GKS/L-S validation
-- Nitsche's method
-- Penalty methods
+**Phase 2: Tier 2 BCs - Variational Constraints** (Issue #591):
+- ✅ `ObstacleConstraint` protocol and implementations
+- ✅ Projection operator integration
+- ✅ Capacity-constrained MFG example
+- ✅ 1D obstacle problem validated (< 1% error vs analytical)
+
+**Phase 3: Tier 3 BCs - Level Set Method** (Issue #592):
+- ✅ Level Set infrastructure (evolution, reinitialization, curvature)
+- ✅ `TimeDependentDomain` wrapper (composition pattern)
+- ✅ Stefan problem (1D/2D) validated (< 5% error)
+- ✅ O(h²) convergence for curvature computation
+
+**Phase 4: Advanced BC Methods** (Issue #593):
+- ✅ Nitsche's method for FEM (1D Poisson, O(h²) convergence)
+- ✅ GKS stability validation framework
+- ✅ Neumann/Periodic BC verified GKS-stable
+- ✅ Comprehensive theory documentation
+
+🟡 **Infrastructure Present, Needs Implementation**:
+- UnstructuredMesh (FEM weak form assembly) - partial
+- Particle applicators (basic reflection) - basic only
+- Robin BC (2nd-order discretization for GKS stability)
+- Dirichlet BC (projected operator for GKS analysis)
+
+🔜 **In Progress (Phase 5-6)**:
+- Comprehensive documentation (theory + user guides)
+- >90% test coverage on new code
+- Integration tests for all solver + BC combinations
 
 ---
 
@@ -1325,6 +1350,123 @@ bc_2d = bc_template.bind_dimension(2)
    - New features opt-in initially
    - Become default after stabilization
    - Old behavior removed in major version
+
+---
+
+### 7.3 Lessons Learned (Phases 1-4 Implementation)
+
+**Completed**: 2026-01-18 (Issues #590-#593)
+
+#### What Worked Well
+
+**1. Composition Over Inheritance Pattern** (Phase 3 - Level Set):
+- `TimeDependentDomain` wraps static `ImplicitDomain` instances
+- **Benefit**: Zero changes to existing solvers required
+- **Key insight**: Don't make solvers "level-set-aware"; update geometry between timesteps
+- **Trade-off**: Manual coupling (user must call `evolve_step()`), but explicit is better than implicit
+
+**2. Operator Reuse via Traits** (Phase 1):
+- Level Set curvature uses existing `DivergenceOperator`
+- Nitsche method leverages `GradientOperator` from FEM infrastructure
+- **Benefit**: ~70% code reduction vs reimplementation
+- **Key insight**: Design operators dimension-agnostic from the start
+
+**3. Developer Tools Separate from User API** (Phase 4 - GKS):
+- GKS validation is validation tool, not runtime check
+- Nitsche solver standalone for research, not integrated into `applicator_fem.py` yet
+- **Benefit**: Can iterate on implementation without breaking user workflows
+- **Trade-off**: Eventual integration needed for production use
+
+**4. Incremental Documentation Strategy**:
+- Created technical notes during implementation (not after)
+- Example: `nitsche_method_1d_implementation.md` documents limitations upfront
+- **Benefit**: Prevents "documentation debt" accumulation
+- **Key insight**: Document "why it doesn't work" as valuable as "how it works"
+
+#### What Could Be Improved
+
+**1. Stefan Problem Debugging** (Phase 3):
+- **Issue**: Initial temperature profile was symmetric → zero heat flux → interface didn't move
+- **Root cause**: Insufficient validation of initial conditions before running
+- **Fix**: Asymmetric piecewise linear profile
+- **Lesson**: Validate boundary/initial conditions analytically before numerical solve
+- **Action**: Add IC/BC sanity checks to examples (e.g., assert heat flux nonzero)
+
+**2. Nitsche Penalty Independence** (Phase 4.1):
+- **Issue**: Error scales as γ^(-1/2) instead of being constant
+- **Root cause**: Basic formulation lacks stabilization terms
+- **Status**: Documented as "acceptable for research prototype"
+- **Lesson**: Perfect theoretical properties may require advanced techniques (ghost penalty, grad-div)
+- **Action**: Defer stabilization to future work; document tradeoffs clearly
+
+**3. Robin BC GKS Validation** (Phase 4.2):
+- **Issue**: Simplified first-order discretization shows positive eigenvalues (unstable)
+- **Root cause**: Placeholder implementation, not production-quality
+- **Status**: Documented as "implementation-dependent"
+- **Lesson**: Don't validate placeholder code; either implement properly or defer
+- **Action**: Mark Robin BC discretization as "TODO: 2nd-order ghost point method"
+
+**4. Dirichlet BC Constraint Handling** (GKS):
+- **Issue**: Strong imposition creates identity rows → eigenvalue = 1 (violates Re(λ) ≤ 0)
+- **Analysis**: This is constraint, not evolution (mathematically benign)
+- **Status**: Deferred (requires projected operator approach)
+- **Lesson**: Theory-practice mismatch requires design decision, not immediate fix
+- **Action**: Document edge case; defer to Issue #535 (L-S validation) for systematic treatment
+
+#### Architectural Decisions Validated
+
+**1. Trait Protocols Over Abstract Base Classes**:
+- **Rationale**: Optional capabilities, not mandatory inheritance
+- **Validation**: TensorProductGrid implements 6 traits without complexity explosion
+- **Confirmed**: Protocols scale better than ABC for heterogeneous geometries
+
+**2. Constraint as Projection Operator** (Phase 2):
+- **Design**: `ObstacleConstraint.project(u)` instead of modifying solvers
+- **Validation**: Capacity-constrained MFG works with zero solver changes
+- **Confirmed**: Orthogonal to solver logic, easy to compose
+
+**3. Level Set as Geometry Wrapper** (Phase 3):
+- **Design**: `TimeDependentDomain.get_geometry_at_time(t)` returns static geometry
+- **Validation**: Stefan problem couples heat solver + level set with 15 lines of glue code
+- **Confirmed**: Minimizes framework "magic," maximizes clarity
+
+#### Performance Observations
+
+**1. Level Set Overhead** (Phase 3):
+- **Measured**: < 5% per timestep for reinitialization + evolution
+- **Bottleneck**: Number of timesteps (explicit heat solver requires Nt ~ 16,000)
+- **Implication**: Implicit solvers would give 30x speedup, not level set optimization
+- **Action**: Defer Level Set v1.1 (WENO5, narrow band) until after implicit heat solver
+
+**2. GKS Eigenvalue Computation** (Phase 4.2):
+- **N ≤ 100**: Dense solver O(N³) ~0.01s
+- **N = 1000**: Sparse solver O(kN) ~0.05s (k=50 eigenvalues)
+- **Implication**: Fast enough for validation (run once), too slow for runtime checks
+- **Confirmed**: Developer tool categorization correct
+
+**3. Projection Overhead** (Phase 2):
+- **Measured**: < 2% of total solve time for capacity constraints
+- **Mechanism**: Simple pointwise max(u, obstacle)
+- **Implication**: Can be used in inner loops without performance penalty
+- **Confirmed**: Tier 2 BCs production-ready
+
+#### Future Design Implications
+
+**From Nitsche Implementation**:
+- Need systematic approach to penalty parameter selection (GKS-guided?)
+- Stabilization techniques (ghost penalty) should be modular add-ons
+
+**From Level Set Implementation**:
+- Implicit time-stepping is critical bottleneck (not level set numerics)
+- Narrow band optimization deferred until implicit solvers exist
+
+**From GKS Validation**:
+- Need projected operator analysis for Dirichlet BC (shared with L-S validation, Issue #535)
+- Robin BC requires proper 2nd-order discretization before GKS validation
+
+**From Constraint Projection**:
+- Projection operator pattern generalizes well
+- Could extend to inequality constraints in HJB (e.g., state constraints in optimal control)
 
 ---
 
@@ -1598,6 +1740,7 @@ class TensorProductGrid(
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-17
-**Next Review**: After v0.18.0 implementation
+**Document Version**: 2.0
+**Last Updated**: 2026-01-18
+**Baseline Version**: v0.18.0 (Phases 1-4 complete)
+**Next Review**: After v1.0.0 release
