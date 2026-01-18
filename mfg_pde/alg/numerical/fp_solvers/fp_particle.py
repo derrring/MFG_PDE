@@ -1115,9 +1115,27 @@ class FPParticleSolver(BaseFPSolver):
         if Nt == 0:
             return np.zeros((0, Nx))
 
-        M_density_on_grid = np.zeros((Nt, Nx))
-        current_M_particles_t = np.zeros((Nt, self.num_particles))
+        # Check if segment-aware BC is needed (Issue #535 Phase 1)
+        use_segment_aware_bc = self._needs_segment_aware_bc()
 
+        # Reset exit flux tracking for this solve
+        if use_segment_aware_bc:
+            self.exit_flux_history = []
+            self.exit_positions_history = []
+            self.total_absorbed = 0
+
+        M_density_on_grid = np.zeros((Nt, Nx))
+
+        # For segment-aware BC with absorption, use list storage (variable particle count)
+        # For uniform BC, use fixed array (all particles preserved)
+        if use_segment_aware_bc:
+            particles_list: list[np.ndarray] = [None] * Nt  # type: ignore
+            current_M_particles_t = None  # Will be built at end
+        else:
+            current_M_particles_t = np.zeros((Nt, self.num_particles))
+            particles_list = None
+
+        # Sample initial particles
         if Dx > 1e-14 and np.sum(m_initial_condition * Dx) > 1e-9:
             m0_probs_unnormalized = m_initial_condition * Dx
             m0_probs = m0_probs_unnormalized / np.sum(m0_probs_unnormalized)
@@ -1132,12 +1150,22 @@ class FPParticleSolver(BaseFPSolver):
                 else np.full(self.num_particles, xmin)
             )
 
-        current_M_particles_t[0, :] = initial_particle_positions
-        M_density_on_grid[0, :] = self._estimate_density_from_particles(current_M_particles_t[0, :])
+        # Store initial particles
+        if use_segment_aware_bc:
+            particles_list[0] = initial_particle_positions
+            init_particles = particles_list[0]
+        else:
+            current_M_particles_t[0, :] = initial_particle_positions
+            init_particles = current_M_particles_t[0, :]
+
+        M_density_on_grid[0, :] = self._estimate_density_from_particles(init_particles)
         self._time_step_counter += 1  # Increment after computing density at t=0
 
         if Nt == 1:
-            self.M_particles_trajectory = current_M_particles_t
+            if use_segment_aware_bc:
+                self.M_particles_trajectory = particles_list
+            else:
+                self.M_particles_trajectory = current_M_particles_t
             return M_density_on_grid
 
         # Progress bar for forward particle timesteps
@@ -1154,6 +1182,22 @@ class FPParticleSolver(BaseFPSolver):
             )
 
         for n_time_idx in timestep_range:
+            # Get current particles from appropriate storage
+            if use_segment_aware_bc:
+                particles_t = particles_list[n_time_idx]
+                n_particles_t = len(particles_t)
+            else:
+                particles_t = current_M_particles_t[n_time_idx, :]
+                n_particles_t = self.num_particles
+
+            # Skip if no particles remain (all absorbed)
+            if n_particles_t == 0:
+                if use_segment_aware_bc:
+                    particles_list[n_time_idx + 1] = np.array([])
+                M_density_on_grid[n_time_idx + 1, :] = np.zeros(Nx)
+                self._time_step_counter += 1
+                continue
+
             U_at_tn = U_solution_for_drift[n_time_idx, :]
 
             # Use shared nD gradient method (works for 1D too)
@@ -1165,7 +1209,7 @@ class FPParticleSolver(BaseFPSolver):
 
             if Nx > 1:
                 # Interpolate gradient to particle positions using utils
-                particles_1d = current_M_particles_t[n_time_idx, :].reshape(-1, 1)
+                particles_1d = particles_t.reshape(-1, 1)
                 dUdx_at_particles = interpolate_grid_to_particles(
                     grid_values=dUdx_grid,
                     grid_bounds=(xmin, xmin + Lx),
@@ -1173,28 +1217,43 @@ class FPParticleSolver(BaseFPSolver):
                     method="linear",
                 )
             else:
-                dUdx_at_particles = np.zeros(self.num_particles)
+                dUdx_at_particles = np.zeros(n_particles_t)
 
             alpha_optimal_at_particles = -coupling_coefficient * dUdx_at_particles
 
-            dW = np.random.normal(0.0, np.sqrt(Dt), self.num_particles) if Dt > 1e-14 else np.zeros(self.num_particles)
+            # Generate Brownian motion for current particle count
+            dW = np.random.normal(0.0, np.sqrt(Dt), n_particles_t) if Dt > 1e-14 else np.zeros(n_particles_t)
 
-            current_M_particles_t[n_time_idx + 1, :] = (
-                current_M_particles_t[n_time_idx, :] + alpha_optimal_at_particles * Dt + sigma_sde * dW
-            )
+            # Euler-Maruyama update
+            new_particles = particles_t + alpha_optimal_at_particles * Dt + sigma_sde * dW
 
-            # Apply boundary handling using shared nD method (works for 1D too)
-            particles_2d = current_M_particles_t[n_time_idx + 1, :].reshape(-1, 1)
-            topologies = self._get_topology_per_dimension(1)
-            particles_2d = self._apply_boundary_conditions_nd(particles_2d, [(xmin, xmin + Lx)], topologies)
-            current_M_particles_t[n_time_idx + 1, :] = particles_2d[:, 0]
+            # Apply boundary conditions (segment-aware or topology-based)
+            if use_segment_aware_bc:
+                # Segment-aware BC: may absorb particles
+                # Convert to 2D for applicator (expects shape (N, d))
+                particles_2d = new_particles.reshape(-1, 1)
+                remaining_2d, _n_absorbed, _ = self._apply_boundary_conditions_segment_aware(
+                    particles_2d, [(xmin, xmin + Lx)]
+                )
+                new_particles = remaining_2d[:, 0]  # Back to 1D
+                particles_list[n_time_idx + 1] = new_particles
+            else:
+                # Uniform BC: topology-based (no absorption)
+                particles_2d = new_particles.reshape(-1, 1)
+                topologies = self._get_topology_per_dimension(1)
+                particles_2d = self._apply_boundary_conditions_nd(particles_2d, [(xmin, xmin + Lx)], topologies)
+                new_particles = particles_2d[:, 0]
+                current_M_particles_t[n_time_idx + 1, :] = new_particles
 
-            M_density_on_grid[n_time_idx + 1, :] = self._estimate_density_from_particles(
-                current_M_particles_t[n_time_idx + 1, :]
-            )
+            M_density_on_grid[n_time_idx + 1, :] = self._estimate_density_from_particles(new_particles)
             self._time_step_counter += 1  # Increment after each time step
 
-        self.M_particles_trajectory = current_M_particles_t
+        # Store trajectory (different format for segment-aware BC)
+        if use_segment_aware_bc:
+            self.M_particles_trajectory = particles_list
+        else:
+            self.M_particles_trajectory = current_M_particles_t
+
         return M_density_on_grid
 
     def _solve_fp_system_cpu_nd(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
@@ -1416,6 +1475,10 @@ class FPParticleSolver(BaseFPSolver):
             - Apple Silicon MPS: 1.5-2x for N≥50k particles
             - NVIDIA CUDA: 3-5x (estimated, not tested)
             - See docs/development/TRACK_B_GPU_ACCELERATION_COMPLETE.md
+
+        Note (Issue #535 Phase 1): Segment-aware absorbing BC not yet implemented
+        for GPU solver. Use CPU solver for mixed BC with DIRICHLET segments.
+        GPU solver currently supports uniform BC only (periodic/reflecting).
         """
         from mfg_pde.alg.numerical.density_estimation import gaussian_kde_gpu_internal
         from mfg_pde.utils.particle_utils import (
