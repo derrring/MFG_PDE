@@ -902,6 +902,93 @@ def mixed_bc(
     )
 
 
+def mixed_bc_from_regions(
+    geometry,  # Type: SupportsRegionMarking (avoid circular import)
+    bc_config: dict[str, BCSegment],
+    dimension: int | None = None,
+) -> BoundaryConditions:
+    """
+    Create mixed boundary conditions from marked regions (Issue #596 Phase 2.5).
+
+    Convenient factory for region-based BCs without manual region_name assignment.
+    Automatically populates the region_name field for each BCSegment.
+
+    Args:
+        geometry: Geometry with marked regions (must implement SupportsRegionMarking)
+        bc_config: Mapping from region name to BC segment
+            - Keys are region names from geometry.mark_region()
+            - "default" key specifies fallback BC for unmarked regions
+        dimension: Spatial dimension (inferred from geometry if None)
+
+    Returns:
+        BoundaryConditions object with region-based segments
+
+    Raises:
+        TypeError: If geometry doesn't implement SupportsRegionMarking
+        ValueError: If region name in bc_config not found in geometry
+
+    Example:
+        >>> from mfg_pde.geometry import TensorProductGrid
+        >>> from mfg_pde.geometry.boundary import BCSegment, BCType, mixed_bc_from_regions
+        >>>
+        >>> # Setup geometry with marked regions
+        >>> geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        >>> geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
+        >>> geometry.mark_region("outlet", boundary="x_max")
+        >>>
+        >>> # Define BCs via dictionary (no manual region_name assignment)
+        >>> bc_config = {
+        ...     "inlet": BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0),
+        ...     "outlet": BCSegment(name="outlet_bc", bc_type=BCType.NEUMANN, value=0.0),
+        ...     "default": BCSegment(name="default_bc", bc_type=BCType.PERIODIC)
+        ... }
+        >>>
+        >>> # Create boundary conditions
+        >>> bc = mixed_bc_from_regions(geometry, bc_config)
+        >>> assert len(bc.segments) == 2  # inlet + outlet
+        >>> assert bc.segments[0].region_name == "inlet"
+        >>> assert bc.default_bc == BCType.PERIODIC
+    """
+    # Import here to avoid circular dependency
+    from mfg_pde.geometry.protocols import SupportsRegionMarking
+
+    # Validate geometry supports region marking
+    if not isinstance(geometry, SupportsRegionMarking):
+        raise TypeError(
+            f"mixed_bc_from_regions requires geometry implementing SupportsRegionMarking, got {type(geometry).__name__}"
+        )
+
+    # Infer dimension from geometry if not provided
+    if dimension is None:
+        dimension = geometry.dimension
+
+    # Separate default BC from region-specific BCs
+    default_segment = bc_config.pop("default", None) if "default" in bc_config else None
+
+    # Create copy to avoid mutating input
+    bc_config_copy = dict(bc_config)
+
+    # Create segments with region_name field populated
+    segments = []
+    for region_name, segment_template in bc_config_copy.items():
+        # Verify region exists in geometry
+        available_regions = geometry.get_region_names()
+        if region_name not in available_regions:
+            raise ValueError(f"Region '{region_name}' not found in geometry. Available regions: {available_regions}")
+
+        # Clone segment and set region_name (preserves other fields)
+        segment = replace(segment_template, region_name=region_name)
+        segments.append(segment)
+
+    # Create BoundaryConditions object
+    return BoundaryConditions(
+        dimension=dimension,
+        segments=segments,
+        default_bc=default_segment.bc_type if default_segment else BCType.PERIODIC,
+        default_value=default_segment.value if default_segment else 0.0,
+    )
+
+
 # =============================================================================
 # Backward Compatibility
 # =============================================================================

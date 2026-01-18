@@ -176,6 +176,10 @@ class BCSegment:
     - `normal_direction`: Match by outward normal direction
     - `normal_tolerance`: Cosine threshold for normal matching
 
+    **Marked regions** (Issue #596 Phase 2.5):
+    - `region_name`: References regions marked via geometry.mark_region()
+    - Enables semantic naming and complex region shapes
+
     Attributes:
         name: Human-readable identifier for this segment
         bc_type: Type of boundary condition (Dirichlet, Neumann, etc.)
@@ -185,6 +189,7 @@ class BCSegment:
         sdf_region: SDF function defining segment region (phi < 0 means in segment)
         normal_direction: Target outward normal for matching (unit vector)
         normal_tolerance: Cosine of max angle between actual and target normal (0.7 = ~45 deg)
+        region_name: Name of region marked via geometry.mark_region() (Issue #596 Phase 2.5)
         priority: Priority for overlapping segments (higher overrides lower)
 
     Examples:
@@ -217,6 +222,17 @@ class BCSegment:
         ...     sdf_region=lambda x: np.linalg.norm(x - np.array([1, 1])) - 0.2,
         ...     priority=2,
         ... )
+
+        Marked region (Issue #596 Phase 2.5):
+        >>> # First mark region on geometry
+        >>> geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
+        >>> # Then reference it in BC segment
+        >>> inlet_bc = BCSegment(
+        ...     name="inlet_bc",
+        ...     bc_type=BCType.DIRICHLET,
+        ...     value=1.0,
+        ...     region_name="inlet",
+        ... )
     """
 
     name: str
@@ -236,12 +252,50 @@ class BCSegment:
     normal_direction: np.ndarray | None = None
     normal_tolerance: float = 0.7  # cos(~45 deg)
 
+    # Marked region matching (Issue #596 Phase 2.5)
+    # References regions marked via geometry.mark_region(name, ...)
+    region_name: str | None = None
+
     priority: int = 0
 
     # Flux-limited absorption (for DIRICHLET exits)
     # Units: mass/time for density methods, particles/time for Lagrangian methods
     # None = unlimited (instant absorption)
     flux_capacity: float | None = None
+
+    def __post_init__(self) -> None:
+        """Validate BCSegment specification (Issue #596 Phase 2.5)."""
+        # Count non-None region specification methods
+        region_specs = [
+            self.boundary is not None,
+            self.region is not None,
+            self.sdf_region is not None,
+            self.normal_direction is not None,
+            self.region_name is not None,
+        ]
+
+        if sum(region_specs) == 0:
+            # Default: apply to all boundaries (uniform BC)
+            pass
+        elif sum(region_specs) > 1:
+            # Multiple specification methods conflict
+            active_specs = []
+            if self.boundary is not None:
+                active_specs.append("boundary")
+            if self.region is not None:
+                active_specs.append("region")
+            if self.sdf_region is not None:
+                active_specs.append("sdf_region")
+            if self.normal_direction is not None:
+                active_specs.append("normal_direction")
+            if self.region_name is not None:
+                active_specs.append("region_name")
+
+            raise ValueError(
+                f"BCSegment '{self.name}': Only one region specification method may be used. "
+                f"Got {len(active_specs)} methods: {', '.join(active_specs)}. "
+                f"Choose one of: boundary, region, sdf_region, normal_direction, region_name."
+            )
 
     def matches_point(
         self,
