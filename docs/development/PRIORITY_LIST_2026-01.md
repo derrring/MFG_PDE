@@ -873,8 +873,8 @@ Run tests after each priority, validate with research experiments.
 ---
 
 **Last Updated**: 2026-01-18
-**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574), P6.6 (#595), P6.7 (#591), P7 (#545), P8 (#544 Phases 1-2), **#573**, **#590**, **#596**, **#598**, **#594**
-**Current Focus**: ✅ All priority infrastructure complete! All Tier 2/3 BC features documented and tested. Proceeding to next open issue.
+**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574), P6.6 (#595), P6.7 (#591), P7 (#545), P8 (#544 Phases 1-2), **#573**, **#590**, **#596**, **#598**, **#594**, **#605**, **#549**
+**Current Focus**: ✅ All priority infrastructure complete! All Tier 2/3 BC features documented and tested. Issue #549 (non-tensor BC) complete. Proceeding to next open issue.
 
 ## Recently Completed (2026-01-18)
 
