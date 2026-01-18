@@ -1105,6 +1105,11 @@ def apply_boundary_conditions_nd(
 
     d = field.ndim
 
+    # Create applicator to access shared formula methods (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=d, grid_type=config.grid_type)
+
     if d == 1:
         return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config, geometry)
     elif d == 2:
@@ -1128,8 +1133,13 @@ def apply_boundary_conditions_nd(
                     slices_high[axis] = slice(-1, None)
                     slices_int_high = [slice(1, -1)] * d
                     slices_int_high[axis] = slice(-2, -1)
-                    padded[tuple(slices_low)] = 2 * g - padded[tuple(slices_int_low)]
-                    padded[tuple(slices_high)] = 2 * g - padded[tuple(slices_int_high)]
+                    # Use shared Dirichlet formula (Issue #598)
+                    padded[tuple(slices_low)] = applicator._compute_ghost_dirichlet(
+                        padded[tuple(slices_int_low)], g, time=0.0
+                    )
+                    padded[tuple(slices_high)] = applicator._compute_ghost_dirichlet(
+                        padded[tuple(slices_int_high)], g, time=0.0
+                    )
                 # Apply corner/edge values
                 _apply_corner_values_nd(padded, d)
                 return padded
@@ -1140,18 +1150,31 @@ def apply_boundary_conditions_nd(
                 for axis in range(d):
                     if field.shape[axis] < 2:
                         continue  # Skip trivial axis
-                    # Low boundary: ghost = u[1] (reflection)
+                    # Low boundary: use shared Neumann formula (Issue #598)
                     slices_low = [slice(1, -1)] * d
                     slices_low[axis] = slice(0, 1)
+                    slices_int = [slice(1, -1)] * d
+                    slices_int[axis] = slice(1, 2)
                     slices_next_low = [slice(1, -1)] * d
                     slices_next_low[axis] = slice(2, 3)
-                    padded[tuple(slices_low)] = padded[tuple(slices_next_low)]
-                    # High boundary: ghost = u[-2] (reflection)
+                    padded[tuple(slices_low)] = applicator._compute_ghost_neumann(
+                        padded[tuple(slices_int)], padded[tuple(slices_next_low)], g=0.0, dx=1.0, side="left", time=0.0
+                    )
+                    # High boundary: use shared Neumann formula
                     slices_high = [slice(1, -1)] * d
                     slices_high[axis] = slice(-1, None)
+                    slices_int_high = [slice(1, -1)] * d
+                    slices_int_high[axis] = slice(-2, -1)
                     slices_prev_high = [slice(1, -1)] * d
                     slices_prev_high[axis] = slice(-3, -2)
-                    padded[tuple(slices_high)] = padded[tuple(slices_prev_high)]
+                    padded[tuple(slices_high)] = applicator._compute_ghost_neumann(
+                        padded[tuple(slices_int_high)],
+                        padded[tuple(slices_prev_high)],
+                        g=0.0,
+                        dx=1.0,
+                        side="right",
+                        time=0.0,
+                    )
                 # Apply corner/edge values for consistency
                 _apply_corner_values_nd(padded, d)
                 return padded
@@ -1181,8 +1204,13 @@ def apply_boundary_conditions_nd(
                     slices_high[axis] = slice(-1, None)
                     slices_int_high = [slice(1, -1)] * d
                     slices_int_high[axis] = slice(-2, -1)
-                    padded[tuple(slices_low)] = 2 * g - padded[tuple(slices_int_low)]
-                    padded[tuple(slices_high)] = 2 * g - padded[tuple(slices_int_high)]
+                    # Use shared Dirichlet formula (Issue #598)
+                    padded[tuple(slices_low)] = applicator._compute_ghost_dirichlet(
+                        padded[tuple(slices_int_low)], g, time=0.0
+                    )
+                    padded[tuple(slices_high)] = applicator._compute_ghost_dirichlet(
+                        padded[tuple(slices_int_high)], g, time=0.0
+                    )
                 # Apply corner/edge values (edges first, then corners)
                 _apply_corner_values_nd(padded, d)
                 return padded
@@ -1203,18 +1231,26 @@ def apply_boundary_conditions_nd(
                     if field.shape[axis] < 2:
                         continue  # Skip trivial axis
                     dx = spacing[axis]
-                    # Low boundary: ghost = u[1] - 2*dx*g (reflection)
+                    # Low boundary: use shared Neumann formula (Issue #598)
                     slices_low = [slice(1, -1)] * d
                     slices_low[axis] = slice(0, 1)
+                    slices_int = [slice(1, -1)] * d
+                    slices_int[axis] = slice(1, 2)
                     slices_next_low = [slice(1, -1)] * d
                     slices_next_low[axis] = slice(2, 3)
-                    padded[tuple(slices_low)] = padded[tuple(slices_next_low)] - 2 * dx * g
-                    # High boundary: ghost = u[-2] + 2*dx*g (reflection)
+                    padded[tuple(slices_low)] = applicator._compute_ghost_neumann(
+                        padded[tuple(slices_int)], padded[tuple(slices_next_low)], g, dx, side="left", time=time
+                    )
+                    # High boundary: use shared Neumann formula
                     slices_high = [slice(1, -1)] * d
                     slices_high[axis] = slice(-1, None)
+                    slices_int_high = [slice(1, -1)] * d
+                    slices_int_high[axis] = slice(-2, -1)
                     slices_prev_high = [slice(1, -1)] * d
                     slices_prev_high[axis] = slice(-3, -2)
-                    padded[tuple(slices_high)] = padded[tuple(slices_prev_high)] + 2 * dx * g
+                    padded[tuple(slices_high)] = applicator._compute_ghost_neumann(
+                        padded[tuple(slices_int_high)], padded[tuple(slices_prev_high)], g, dx, side="right", time=time
+                    )
                 # Apply corner/edge values for consistency
                 _apply_corner_values_nd(padded, d)
                 return padded
