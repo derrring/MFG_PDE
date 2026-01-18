@@ -64,7 +64,7 @@ print("=" * 70)
 
 # Domain and discretization
 x_min, x_max = 0.0, 1.0
-Nx = 200  # Fine grid for accurate heat flux computation
+Nx = 400  # Finer grid for better heat flux accuracy
 T_final = 2.0  # Final time
 
 # Physics
@@ -76,9 +76,11 @@ s0 = 0.5  # Initial interface position
 
 # Time stepping
 # CFL condition for heat equation: α·dt/dx² < 0.5
-# With α = 0.01, Nx = 200 → dx = 0.005
-# dt < 0.5 * 0.005² / 0.01 = 0.00125
-dt = 0.001  # Small timestep for CFL stability
+# With α = 0.01, Nx = 400 → dx = 0.0025
+# dt < 0.5 * 0.0025² / 0.01 = 0.0003125
+# Use CFL = 0.2 for stability
+dx_val = (x_max - x_min) / Nx
+dt = 0.2 * dx_val**2 / alpha  # CFL = 0.2 (conservative)
 Nt = int(T_final / dt)
 
 print("\nProblem Setup:")
@@ -214,26 +216,26 @@ print("Time Evolution")
 print("=" * 70)
 
 # Initialize temperature field
-# Piecewise linear profile with gradient discontinuity at interface
-# This creates the heat flux jump that drives the Stefan problem
+# CRITICAL: Need ASYMMETRIC gradients to create heat flux jump
+# The Stefan problem requires different temperature gradients on each side
 #
-# For classical Stefan: T_water = T_hot at x=0, T_ice = T_cold at x=1
-# Interface at s0: T(s0⁻) = T(s0⁺) = T_melting (continuity)
-# But ∂T/∂x|_{s0⁻} ≠ ∂T/∂x|_{s0⁺} (gradient jump)
+# Classical Stefan setup:
+# - Water (left): Should have gradient ∂T/∂x = -T_hot/s0  (cooling towards interface)
+# - Ice (right): Should have gradient ∂T/∂x = 0 (uniformly cold, will evolve)
 #
-# Simplified initialization: Linear profiles on each side
-# Left (water): T = T_hot + (T_cold - T_hot) * (x / s0)
-# Right (ice): T = T_cold (uniform, will develop gradient during evolution)
+# This creates heat flux jump: κ·[∂T/∂x] = κ·(0 - (-T_hot/s0)) = κ·T_hot/s0 > 0
+# Stefan condition: V = -κ·[∂T/∂x] = -κ·T_hot/s0 < 0  (moves left)
+
 T = np.zeros_like(x)
 for i, xi in enumerate(x):
-    if xi < s0:
-        # Water side: linear from T_hot to T_cold
-        T[i] = T_hot + (T_cold - T_hot) * (xi / s0)
+    if xi <= s0:
+        # Water side: linear from T_hot at x=0 to T_melt=0 at interface
+        T[i] = T_hot * (1 - xi / s0)
     else:
-        # Ice side: start cold (gradient will develop)
+        # Ice side: uniform T_cold (zero gradient initially)
         T[i] = T_cold
 
-# Enforce boundary conditions
+# Enforce boundary conditions exactly
 T[0] = T_hot
 T[-1] = T_cold
 
