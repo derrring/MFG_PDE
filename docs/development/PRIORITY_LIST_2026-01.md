@@ -6,10 +6,10 @@ This document outlines the prioritized roadmap for infrastructure improvements f
 
 **Recent Completions**:
 - Issue #597 (FP Operator Refactoring - All 3 Milestones) completed on 2026-01-18 (v0.17.3)
+- Issue #595 (LinearOperator Architecture) completed on 2026-01-18 (all 5 operators)
 - Issue #598 (BCApplicatorProtocol → ABC Refactoring) completed on 2026-01-18
 - Issue #591 Phase 2 (Variational Inequality Constraints) merged to main on 2026-01-18
 - Issue #496 (Time-Varying BC Fix) fixed on 2026-01-18
-- Issue #544 (Legacy Parameter Deprecation) completed on 2026-01-18 (v0.17.2)
 
 ---
 
@@ -1030,6 +1030,7 @@ u_flat[inlet_mask] = 1.0  # Dirichlet BC on inlet
 | HIGH | #589 | Geometry/BC Architecture (Master Tracking) | Large | In Progress |
 | ~~MEDIUM~~ | ~~#598~~ | ~~BCApplicatorProtocol → ABC refactoring~~ | ~~Medium~~ | ✅ Closed (2026-01-18, commits 8ae9eecd, 13f0fee0, e95f579f) |
 | ~~MEDIUM~~ | ~~#597~~ | ~~FP Operator Refactoring~~ | ~~Large~~ | ✅ Closed (2026-01-18, v0.17.3, PR #603) |
+| ~~MEDIUM~~ | ~~#595~~ | ~~LinearOperator Architecture~~ | ~~Medium~~ | ✅ Closed (2026-01-18, all 5 operators complete) |
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large | Open |
 | MEDIUM | #535 | BC framework enhancement | Large | Open |
 | MEDIUM | #489 | Direct particle query for coupling | Large | Open |
