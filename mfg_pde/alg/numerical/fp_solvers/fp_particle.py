@@ -33,6 +33,7 @@ from mfg_pde.utils.numerical.particle import (
 from mfg_pde.utils.numerical.tensor_calculus import gradient_simple
 
 from .base_fp import BaseFPSolver
+from .particle_result import FPParticleResult
 
 # Mapping from dimension index to boundary name prefix
 _DIM_TO_AXIS_PREFIX = {0: "x", 1: "y", 2: "z"}
@@ -1076,6 +1077,10 @@ class FPParticleSolver(BaseFPSolver):
         self._show_progress = show_progress
         self._drift_is_precomputed = drift_is_precomputed
 
+        # Initialize particle history for direct query modes (Issue #489)
+        if self.density_mode in ("hybrid", "query_only"):
+            self._particle_history = []
+
         try:
             # Hybrid mode: particles -> grid (with strategy selection)
             # Determine problem size for strategy selection
@@ -1267,6 +1272,32 @@ class FPParticleSolver(BaseFPSolver):
         else:
             self.M_particles_trajectory = current_M_particles_t
 
+        # Build particle history for direct query mode (Issue #489)
+        if self._particle_history is not None:
+            # Convert stored trajectory to list of (num_particles, dimension) arrays
+            if use_segment_aware_bc:
+                # List of 1D arrays -> List of (num_particles_t, 1) arrays
+                for t_particles in particles_list:
+                    if t_particles.ndim == 1:
+                        self._particle_history.append(t_particles.reshape(-1, 1))
+                    else:
+                        self._particle_history.append(t_particles)
+            else:
+                # 2D array (Nt, num_particles) -> List of (num_particles, 1) arrays
+                for t in range(Nt):
+                    self._particle_history.append(current_M_particles_t[t, :].reshape(-1, 1))
+
+        # Return FPParticleResult if particle history was stored (Issue #489)
+        if self._particle_history is not None:
+            time_grid = np.linspace(0, self.problem.T, Nt)
+            return FPParticleResult(
+                M_grid=M_density_on_grid,
+                time_grid=time_grid,
+                particle_history=self._particle_history,
+                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
+            )
+
+        # Backward compatible: return grid density only
         return M_density_on_grid
 
     def _solve_fp_system_cpu_nd(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
@@ -1457,6 +1488,28 @@ class FPParticleSolver(BaseFPSolver):
         else:
             self.M_particles_trajectory = current_particles
 
+        # Build particle history for direct query mode (Issue #489)
+        if self._particle_history is not None:
+            # Convert stored trajectory to list of (num_particles, dimension) arrays
+            if use_segment_aware_bc:
+                # List already in correct format: (num_particles_t, dimension)
+                self._particle_history.extend(particles_list)
+            else:
+                # 3D array (Nt, num_particles, dimension) -> List of (num_particles, dimension)
+                for t in range(Nt):
+                    self._particle_history.append(current_particles[t, :, :])
+
+        # Return FPParticleResult if particle history was stored (Issue #489)
+        if self._particle_history is not None:
+            time_grid = np.linspace(0, self.problem.T, Nt)
+            return FPParticleResult(
+                M_grid=M_density_on_grid,
+                time_grid=time_grid,
+                particle_history=self._particle_history,
+                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
+            )
+
+        # Backward compatible: return grid density only
         return M_density_on_grid
 
     def _normalize_density_nd(self, density: np.ndarray, spacings: list[float]) -> np.ndarray:
@@ -1612,8 +1665,28 @@ class FPParticleSolver(BaseFPSolver):
             self._time_step_counter += 1  # Increment after each time step
 
         # Store trajectory and convert to NumPy ONCE at end
-        self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
-        return self.backend.to_numpy(M_density_gpu)
+        X_particles_np = self.backend.to_numpy(X_particles_gpu)
+        M_density_np = self.backend.to_numpy(M_density_gpu)
+        self.M_particles_trajectory = X_particles_np
+
+        # Build particle history for direct query mode (Issue #489)
+        if self._particle_history is not None:
+            # Convert 2D array (Nt, num_particles) to list of (num_particles, 1) arrays
+            for t in range(Nt):
+                self._particle_history.append(X_particles_np[t, :].reshape(-1, 1))
+
+        # Return FPParticleResult if particle history was stored (Issue #489)
+        if self._particle_history is not None:
+            time_grid = np.linspace(0, self.problem.T, Nt)
+            return FPParticleResult(
+                M_grid=M_density_np,
+                time_grid=time_grid,
+                particle_history=self._particle_history,
+                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
+            )
+
+        # Backward compatible: return grid density only
+        return M_density_np
 
     def _solve_fp_system_callable_drift(
         self,
@@ -1794,6 +1867,24 @@ class FPParticleSolver(BaseFPSolver):
             self._time_step_counter += 1
 
         self.M_particles_trajectory = current_particles
+
+        # Build particle history for direct query mode (Issue #489)
+        if self._particle_history is not None:
+            # Convert 3D array (Nt+1, num_particles, dimension) to list
+            for t in range(Nt + 1):
+                self._particle_history.append(current_particles[t, :, :])
+
+        # Return FPParticleResult if particle history was stored (Issue #489)
+        if self._particle_history is not None:
+            time_grid = np.linspace(0, self.problem.T, Nt + 1)
+            return FPParticleResult(
+                M_grid=M_density_on_grid,
+                time_grid=time_grid,
+                particle_history=self._particle_history,
+                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
+            )
+
+        # Backward compatible: return grid density only
         return M_density_on_grid
 
     def _interpolate_field_at_particles(
