@@ -1,14 +1,15 @@
 """
 WENO (Weighted Essentially Non-Oscillatory) Numerical Methods.
 
-Shared high-order spatial discretization utilities for Hamilton-Jacobi equations:
-- WENO5 gradient computation for level set evolution
-- WENO reconstruction for HJB solvers
-- ENO/WENO variants
+This module previously contained WENO5Gradient (Issue #605), which has been
+refactored into the operator framework (Issue #606).
+
+For WENO5 gradient computation, use:
+    from mfg_pde.geometry.operators import create_gradient_operators
+    grad_x, = create_gradient_operators(spacings=[dx], field_shape=(N,), scheme="weno5")
 
 Created: 2026-01-18 (Issue #605 Phase 2.1)
+Refactored: 2026-01-18 (Issue #606 - WENO5 Operator Integration)
 """
 
-from mfg_pde.alg.numerical.weno.weno5_gradients import WENO5Gradient
-
-__all__ = ["WENO5Gradient"]
+__all__: list[str] = []

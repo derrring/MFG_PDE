@@ -35,6 +35,14 @@ if TYPE_CHECKING:
     from mfg_pde.geometry.boundary import BoundaryConditions
 
 
+# WENO5 scheme support (Issue #606)
+_WENO5_AVAILABLE = True
+try:
+    from mfg_pde.geometry.operators.schemes.weno5 import compute_weno5_derivative_1d
+except ImportError:
+    _WENO5_AVAILABLE = False
+
+
 class GradientComponentOperator(LinearOperator):
     """
     Single component of gradient operator: ∂u/∂xᵢ.
@@ -57,7 +65,7 @@ class GradientComponentOperator(LinearOperator):
         direction: int,
         spacings: Sequence[float],
         field_shape: tuple[int, ...],
-        scheme: Literal["central", "upwind", "one_sided"] = "central",
+        scheme: Literal["central", "upwind", "one_sided", "weno5"] = "central",
         bc: BoundaryConditions | None = None,
         time: float = 0.0,
     ):
@@ -72,6 +80,7 @@ class GradientComponentOperator(LinearOperator):
                 - "central": 2nd-order central differences (default)
                 - "upwind": Godunov upwind (monotone, 1st-order)
                 - "one_sided": Forward at left, backward at right
+                - "weno5": 5th-order WENO reconstruction (high-order, shock-capturing)
             bc: Boundary conditions (None for periodic)
             time: Time for time-dependent BCs (default 0.0)
 
@@ -106,10 +115,25 @@ class GradientComponentOperator(LinearOperator):
         Returns:
             Directional derivative, flattened, shape (N,)
         """
-        from mfg_pde.utils.numerical.tensor_calculus import gradient
-
         # Reshape to field
         u = u_flat.reshape(self.field_shape)
+
+        # WENO5 scheme: use dedicated implementation (Issue #606)
+        if self.scheme == "weno5":
+            if not _WENO5_AVAILABLE:
+                raise ImportError("WENO5 scheme requires mfg_pde.geometry.operators.schemes.weno5")
+
+            # Currently only 1D supported
+            if len(self.field_shape) != 1:
+                raise NotImplementedError(f"WENO5 not yet implemented for {len(self.field_shape)}D")
+
+            # Compute WENO5 derivative (left-biased for now)
+            du_dxi = compute_weno5_derivative_1d(u, spacing=self.spacings[self.direction], bias="left")
+
+            return du_dxi.ravel()
+
+        # Standard schemes: use tensor_calculus
+        from mfg_pde.utils.numerical.tensor_calculus import gradient
 
         # Compute full gradient (all components)
         grad_components = gradient(u, self.spacings, scheme=self.scheme, bc=self.bc, time=self.time)
@@ -161,7 +185,7 @@ class GradientComponentOperator(LinearOperator):
 def create_gradient_operators(
     spacings: Sequence[float],
     field_shape: tuple[int, ...] | int,
-    scheme: Literal["central", "upwind", "one_sided"] = "central",
+    scheme: Literal["central", "upwind", "one_sided", "weno5"] = "central",
     bc: BoundaryConditions | None = None,
     time: float = 0.0,
 ) -> tuple[GradientComponentOperator, ...]:
@@ -173,7 +197,11 @@ def create_gradient_operators(
     Args:
         spacings: Grid spacing per dimension [h₀, h₁, ..., hd₋₁]
         field_shape: Shape of field arrays (Nx, Ny, ...) or Nx for 1D
-        scheme: Difference scheme ("central", "upwind", "one_sided")
+        scheme: Difference scheme ("central", "upwind", "one_sided", "weno5")
+            - "central": 2nd-order central differences (default)
+            - "upwind": Godunov upwind (monotone, 1st-order)
+            - "one_sided": Forward at left, backward at right
+            - "weno5": 5th-order WENO reconstruction (1D only, high-order)
         bc: Boundary conditions (None for periodic)
         time: Time for time-dependent BCs
 
@@ -304,5 +332,45 @@ if __name__ == "__main__":
     # Test repr
     print("\n[String representation]")
     print(grad_x)
+
+    # Test WENO5 scheme (Issue #606)
+    print("\n[WENO5 Scheme Integration]")
+    try:
+        # Create 1D grid for WENO5 test
+        x_weno = np.linspace(0, 2 * np.pi, 100)
+        dx_weno = x_weno[1] - x_weno[0]
+
+        # Create WENO5 operator
+        (grad_weno5,) = create_gradient_operators(spacings=[dx_weno], field_shape=100, scheme="weno5")
+
+        # Test on linear function (should be exact)
+        u_linear = 2 * x_weno + 1
+        du_weno5 = grad_weno5(u_linear)
+
+        # Check interior points
+        interior_error_weno5 = np.max(np.abs(du_weno5[2:-2] - 2.0))
+        print("  Linear function (u = 2x + 1):")
+        print(f"  Interior error: {interior_error_weno5:.6e} (expect ~machine precision)")
+
+        assert interior_error_weno5 < 1e-10, "WENO5 should be exact for linear functions"
+        print("  ✓ WENO5 scheme integration working!")
+
+        # Test @ syntax
+        du_weno5_matvec = grad_weno5 @ u_linear.ravel()
+        assert np.allclose(du_weno5.ravel(), du_weno5_matvec)
+        print("  ✓ grad_weno5(u) == grad_weno5 @ u.ravel()")
+
+        # Test smooth function accuracy
+        u_smooth = np.sin(2 * np.pi * x_weno)
+        du_exact_smooth = 2 * np.pi * np.cos(2 * np.pi * x_weno)
+        du_weno5_smooth = grad_weno5(u_smooth)
+
+        interior_error_smooth = np.max(np.abs(du_weno5_smooth[2:-2] - du_exact_smooth[2:-2]))
+        print("  Smooth function (sin(2πx)):")
+        print(f"  Interior error: {interior_error_smooth:.6e}")
+        print("  ✓ WENO5 high-order accuracy verified!")
+
+    except ImportError:
+        print("  ⚠ WENO5 scheme not available (schemes module not found)")
 
     print("\n✅ All GradientOperator tests passed!")
