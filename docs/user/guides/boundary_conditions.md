@@ -66,6 +66,108 @@ wall_bc = BCSegment(
 bc = mixed_bc([exit_bc, wall_bc], dimension=2, domain_bounds=bounds)
 ```
 
+## Region-Based Boundary Conditions
+
+For complex geometries, you can define BCs using **regions** marked on the geometry rather than boundary identifiers:
+
+```python
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import mixed_bc_from_regions, BCSegment, BCType
+
+# Create geometry
+geometry = TensorProductGrid(dimension=2, bounds=[(0, 2), (0, 1)], Nx_points=[41, 21])
+
+# Mark regions using predicates
+geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)  # Left 10%
+geometry.mark_region("outlet", predicate=lambda x: x[:, 0] > 1.9)  # Right 10%
+geometry.mark_region("walls", boundary="y_min")  # Bottom wall
+geometry.mark_region("walls", boundary="y_max")  # Top wall (merged with bottom)
+
+# Define BCs referencing regions
+bc_config = {
+    "inlet": BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0),
+    "outlet": BCSegment(name="outlet_bc", bc_type=BCType.NEUMANN, value=0.0),
+    "walls": BCSegment(name="wall_bc", bc_type=BCType.NO_FLUX),
+    "default": BCSegment(name="periodic_bc", bc_type=BCType.PERIODIC),
+}
+
+bc = mixed_bc_from_regions(geometry, bc_config)
+
+# Apply BCs (must pass geometry parameter)
+from mfg_pde.geometry.boundary import FDMApplicator
+applicator = FDMApplicator(dimension=2)
+padded = applicator.apply(field, bc, domain_bounds=geometry.bounds, geometry=geometry)
+```
+
+### Region Marking Methods
+
+Regions can be marked using boundaries or custom predicates:
+
+```python
+# Method 1: Mark using boundary identifier
+geometry.mark_region("left_wall", boundary="x_min")
+
+# Method 2: Mark using predicate function
+geometry.mark_region("inlet", predicate=lambda x: (x[:, 0] < 0.1) & (x[:, 1] > 0.5))
+
+# Method 3: Combine multiple boundaries in one region
+geometry.mark_region("walls", boundary="y_min")
+geometry.mark_region("walls", boundary="y_max")  # Adds to existing "walls" region
+```
+
+Predicates receive grid points as `(N, dimension)` array and must return boolean mask of length `N`.
+
+### Priority Resolution for Overlapping Regions
+
+When regions overlap, **priority** determines which BC wins (higher number = higher precedence):
+
+```python
+# Mark overlapping regions
+geometry.mark_region("broad", predicate=lambda x: x[:, 0] < 0.5)
+geometry.mark_region("narrow", predicate=lambda x: x[:, 0] < 0.1)
+
+# Create segments with priorities
+bc_narrow = BCSegment(
+    name="narrow_bc",
+    bc_type=BCType.DIRICHLET,
+    value=1.0,
+    region_name="narrow",
+    priority=2,  # Higher number = higher precedence
+)
+bc_broad = BCSegment(
+    name="broad_bc",
+    bc_type=BCType.NEUMANN,
+    value=0.0,
+    region_name="broad",
+    priority=1,  # Lower number = lower precedence
+)
+
+bc = BoundaryConditions(
+    dimension=2,
+    segments=[bc_narrow, bc_broad],  # Order doesn't matter
+    default_bc=BCType.PERIODIC,
+    domain_bounds=geometry.bounds,
+)
+
+# At x=0.05 (in both regions): narrow_bc wins due to higher priority
+# At x=0.3 (only in broad): broad_bc applies
+```
+
+### Boundary-Based vs Region-Based
+
+| Approach | Use When | Example |
+|----------|----------|---------|
+| **Boundary-based** | Simple geometries, entire boundaries | `boundary="x_min"` |
+| **Region-based** | Complex geometries, partial boundaries | `predicate=lambda x: x[:, 0] < 0.1` |
+
+Both approaches can be mixed in the same BC specification.
+
+### Performance Notes
+
+- Region lookup overhead: <5% compared to standard boundary-based BCs
+- Region masks are cached after first call to `mark_region()`
+- For best performance, mark all regions before solver iteration
+
 ## Boundary Naming Convention
 
 | Dimension | Boundaries |

@@ -34,6 +34,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .conditions import BoundaryConditions
 
 # =============================================================================
@@ -955,6 +957,17 @@ class BaseStructuredApplicator(BaseBCApplicator):
 
     Uses ghost cell method for BC application on regular grids.
     Supports dimension dispatch for optimized 1D/2D/3D implementations.
+
+    This class provides shared infrastructure for ghost cell computation
+    following the Template Method Pattern (Issue #598):
+    - Shared validation logic
+    - Shared ghost cell formulas (Dirichlet, Neumann, Robin)
+    - Shared buffer creation utilities
+    - Dimension-specific slicing in subclasses
+
+    Usage:
+        Subclasses override _fill_ghost_cells() for dimension-specific logic
+        but use shared formula methods for ghost cell values.
     """
 
     def __init__(self, dimension: int, grid_type: GridType = GridType.CELL_CENTERED):
@@ -976,6 +989,244 @@ class BaseStructuredApplicator(BaseBCApplicator):
     def grid_type(self) -> GridType:
         """Grid type."""
         return self._grid_type
+
+    # =========================================================================
+    # Shared Ghost Cell Formula Methods (Issue #598 - DRY Principle)
+    # =========================================================================
+
+    def _compute_ghost_dirichlet(
+        self,
+        u_interior: NDArray | float,
+        g: float | Callable[[float], float],
+        time: float = 0.0,
+    ) -> NDArray | float:
+        """
+        Compute Dirichlet ghost cell value (shared formula).
+
+        For cell-centered grid with boundary at cell face:
+            u_boundary = (u_ghost + u_interior) / 2 = g
+            => u_ghost = 2*g - u_interior
+
+        For vertex-centered grid with boundary at grid point:
+            u_ghost = g
+
+        Args:
+            u_interior: Interior values adjacent to boundary
+            g: Boundary value (constant or callable)
+            time: Current time (for callable g)
+
+        Returns:
+            Ghost cell values with same type as u_interior
+
+        Note:
+            This formula is shared across 1D/2D/3D/nD to eliminate duplication.
+            Previously duplicated at applicator_fdm.py:232, 1255, 1725.
+        """
+        # Evaluate callable BC values
+        if callable(g):
+            g_val = g(time)
+        else:
+            g_val = g
+
+        # Apply formula based on grid type
+        if self._grid_type == GridType.CELL_CENTERED:
+            return 2.0 * g_val - u_interior
+        else:  # VERTEX_CENTERED
+            if isinstance(u_interior, np.ndarray):
+                return np.full_like(u_interior, g_val)
+            else:
+                return g_val
+
+    def _compute_ghost_neumann(
+        self,
+        u_interior: NDArray | float,
+        u_next_interior: NDArray | float,
+        g: float | Callable[[float], float],
+        dx: float,
+        side: str,
+        time: float = 0.0,
+    ) -> NDArray | float:
+        """
+        Compute Neumann ghost cell value (shared formula).
+
+        For central difference gradient stencil with cell-centered grid:
+        - Left boundary (normal points left/inward):
+          du/dn = (u_interior - u_ghost) / (2*dx) = -g  (inward normal)
+          => u_ghost = u_interior + 2*dx*g
+          For zero-flux (g=0): u_ghost = u_next_interior (reflection)
+
+        - Right boundary (normal points right/outward):
+          du/dn = (u_ghost - u_interior) / (2*dx) = g  (outward normal)
+          => u_ghost = u_interior + 2*dx*g
+          For zero-flux (g=0): u_ghost = u_prev_interior (reflection)
+
+        Args:
+            u_interior: Interior values adjacent to boundary
+            u_next_interior: Interior values one step inward from boundary
+            g: Flux value (constant or callable)
+            dx: Grid spacing
+            side: Boundary side ("left" or "right")
+            time: Current time (for callable g)
+
+        Returns:
+            Ghost cell values with same type as u_interior
+
+        Note:
+            Issue #542 fix: Uses reflection formula (ghost = u_next_interior)
+            for central difference stencil, not edge extension (ghost = u_interior).
+
+            This formula is shared across 1D/2D/3D/nD to eliminate duplication.
+            Previously duplicated at applicator_fdm.py:1099, 1274, 1748.
+        """
+        # Evaluate callable BC values
+        if callable(g):
+            g_val = g(time)
+        else:
+            g_val = g
+
+        # Zero-flux case: reflection (Issue #542 fix)
+        if np.isclose(g_val, 0.0):
+            return u_next_interior.copy() if isinstance(u_next_interior, np.ndarray) else u_next_interior
+
+        # General Neumann case
+        if side == "left":
+            # Left boundary: u_ghost = u_next_interior - 2*dx*g
+            return u_next_interior - 2.0 * dx * g_val
+        else:  # "right"
+            # Right boundary: u_ghost = u_next_interior + 2*dx*g
+            return u_next_interior + 2.0 * dx * g_val
+
+    def _compute_ghost_robin(
+        self,
+        u_interior: NDArray | float,
+        alpha: float,
+        beta: float,
+        g: float | Callable[[float], float],
+        dx: float,
+        side: str,
+        time: float = 0.0,
+    ) -> NDArray | float:
+        """
+        Compute Robin ghost cell value (shared formula).
+
+        Robin BC: alpha*u + beta*du/dn = g at boundary
+
+        For cell-centered grid with boundary at cell face:
+            alpha * (u_ghost + u_interior)/2 + beta * (u_ghost - u_interior)/(2*dx) = g
+            => u_ghost * (alpha/2 + beta/(2*dx)) = g - u_interior * (alpha/2 - beta/(2*dx))
+            => u_ghost = (g - u_interior * (alpha/2 - beta/(2*dx))) / (alpha/2 + beta/(2*dx))
+
+        Args:
+            u_interior: Interior values adjacent to boundary
+            alpha: Robin coefficient for value term
+            beta: Robin coefficient for flux term
+            g: Robin boundary value (constant or callable)
+            dx: Grid spacing
+            side: Boundary side ("left" or "right")
+            time: Current time (for callable g)
+
+        Returns:
+            Ghost cell values with same type as u_interior
+
+        Note:
+            This formula is shared across 1D/2D/3D/nD to eliminate duplication.
+        """
+        # Evaluate callable BC values
+        if callable(g):
+            g_val = g(time)
+        else:
+            g_val = g
+
+        # Robin formula (valid for both left and right boundaries)
+        coeff_ghost = alpha / 2.0 + beta / (2.0 * dx)
+        coeff_interior = alpha / 2.0 - beta / (2.0 * dx)
+
+        return (g_val - u_interior * coeff_interior) / coeff_ghost
+
+    # =========================================================================
+    # Shared Validation and Utility Methods (Issue #598)
+    # =========================================================================
+
+    def _validate_field(self, field: NDArray) -> None:
+        """
+        Validate field before BC application (shared logic).
+
+        Checks:
+        - Field contains finite values (no NaN/Inf)
+
+        Args:
+            field: Interior field to validate
+
+        Raises:
+            ValueError: If validation fails
+
+        Note:
+            This validation is shared across all dimension-specific functions
+            to eliminate duplication. Previously duplicated at applicator_fdm.py:1247.
+        """
+        if not np.isfinite(field).all():
+            raise ValueError("Field contains NaN or Inf values. Check solver convergence and boundary conditions.")
+
+    def _create_padded_buffer(
+        self,
+        field: NDArray,
+        ghost_depth: int = 1,
+    ) -> NDArray:
+        """
+        Create zero-initialized padded buffer (shared logic).
+
+        Args:
+            field: Interior field
+            ghost_depth: Number of ghost cells per side (default: 1)
+
+        Returns:
+            Zero-initialized padded array with shape (N1+2*depth, N2+2*depth, ...)
+
+        Note:
+            Interior values are copied to padded buffer.
+            Ghost cells initialized to zero (will be filled by BC application).
+        """
+        # Compute padded shape
+        padded_shape = tuple(n + 2 * ghost_depth for n in field.shape)
+
+        # Create zero buffer
+        padded = np.zeros(padded_shape, dtype=field.dtype)
+
+        # Copy interior values
+        interior_slices = tuple(slice(ghost_depth, -ghost_depth) for _ in range(field.ndim))
+        padded[interior_slices] = field
+
+        return padded
+
+    def _compute_grid_spacing(
+        self,
+        field: NDArray,
+        domain_bounds: NDArray,
+    ) -> tuple[float, ...]:
+        """
+        Compute grid spacing from domain bounds (shared logic).
+
+        Args:
+            field: Interior field (to get shape)
+            domain_bounds: Domain bounds shape (ndim, 2)
+
+        Returns:
+            Grid spacing for each dimension
+
+        Note:
+            This computation is shared across dimension-specific functions
+            to eliminate duplication. Previously duplicated at applicator_fdm.py:2664.
+        """
+        domain_bounds = np.atleast_2d(domain_bounds)
+        spacing = []
+
+        for d in range(field.ndim):
+            extent = domain_bounds[d, 1] - domain_bounds[d, 0]
+            n_points = field.shape[d]
+            dx = extent / (n_points - 1) if n_points > 1 else extent
+            spacing.append(dx)
+
+        return tuple(spacing)
 
 
 # =============================================================================

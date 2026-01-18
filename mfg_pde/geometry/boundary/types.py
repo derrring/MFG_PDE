@@ -176,6 +176,10 @@ class BCSegment:
     - `normal_direction`: Match by outward normal direction
     - `normal_tolerance`: Cosine threshold for normal matching
 
+    **Marked regions** (Issue #596 Phase 2.5):
+    - `region_name`: References regions marked via geometry.mark_region()
+    - Enables semantic naming and complex region shapes
+
     Attributes:
         name: Human-readable identifier for this segment
         bc_type: Type of boundary condition (Dirichlet, Neumann, etc.)
@@ -185,6 +189,7 @@ class BCSegment:
         sdf_region: SDF function defining segment region (phi < 0 means in segment)
         normal_direction: Target outward normal for matching (unit vector)
         normal_tolerance: Cosine of max angle between actual and target normal (0.7 = ~45 deg)
+        region_name: Name of region marked via geometry.mark_region() (Issue #596 Phase 2.5)
         priority: Priority for overlapping segments (higher overrides lower)
 
     Examples:
@@ -217,6 +222,17 @@ class BCSegment:
         ...     sdf_region=lambda x: np.linalg.norm(x - np.array([1, 1])) - 0.2,
         ...     priority=2,
         ... )
+
+        Marked region (Issue #596 Phase 2.5):
+        >>> # First mark region on geometry
+        >>> geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
+        >>> # Then reference it in BC segment
+        >>> inlet_bc = BCSegment(
+        ...     name="inlet_bc",
+        ...     bc_type=BCType.DIRICHLET,
+        ...     value=1.0,
+        ...     region_name="inlet",
+        ... )
     """
 
     name: str
@@ -236,12 +252,50 @@ class BCSegment:
     normal_direction: np.ndarray | None = None
     normal_tolerance: float = 0.7  # cos(~45 deg)
 
+    # Marked region matching (Issue #596 Phase 2.5)
+    # References regions marked via geometry.mark_region(name, ...)
+    region_name: str | None = None
+
     priority: int = 0
 
     # Flux-limited absorption (for DIRICHLET exits)
     # Units: mass/time for density methods, particles/time for Lagrangian methods
     # None = unlimited (instant absorption)
     flux_capacity: float | None = None
+
+    def __post_init__(self) -> None:
+        """Validate BCSegment specification (Issue #596 Phase 2.5)."""
+        # Count non-None region specification methods
+        region_specs = [
+            self.boundary is not None,
+            self.region is not None,
+            self.sdf_region is not None,
+            self.normal_direction is not None,
+            self.region_name is not None,
+        ]
+
+        if sum(region_specs) == 0:
+            # Default: apply to all boundaries (uniform BC)
+            pass
+        elif sum(region_specs) > 1:
+            # Multiple specification methods conflict
+            active_specs = []
+            if self.boundary is not None:
+                active_specs.append("boundary")
+            if self.region is not None:
+                active_specs.append("region")
+            if self.sdf_region is not None:
+                active_specs.append("sdf_region")
+            if self.normal_direction is not None:
+                active_specs.append("normal_direction")
+            if self.region_name is not None:
+                active_specs.append("region_name")
+
+            raise ValueError(
+                f"BCSegment '{self.name}': Only one region specification method may be used. "
+                f"Got {len(active_specs)} methods: {', '.join(active_specs)}. "
+                f"Choose one of: boundary, region, sdf_region, normal_direction, region_name."
+            )
 
     def matches_point(
         self,
@@ -251,6 +305,7 @@ class BCSegment:
         tolerance: float = 1e-8,
         axis_names: dict[int, str] | None = None,
         domain_sdf: Callable[[np.ndarray], float] | None = None,
+        geometry=None,  # Type: SupportsRegionMarking | None (avoid circular import)
     ) -> bool:
         """
         Check if this BC segment applies to a given boundary point.
@@ -260,6 +315,7 @@ class BCSegment:
         2. Coordinate range matching (rectangular domains)
         3. SDF region matching (general domains)
         4. Normal direction matching (general domains)
+        5. Region name matching (Issue #596 Phase 2.5)
 
         Args:
             point: Spatial coordinates as 1D array of shape (dimension,)
@@ -271,12 +327,15 @@ class BCSegment:
             tolerance: Tolerance for geometric comparisons
             axis_names: Optional mapping from axis index to name (e.g., {0: "x", 1: "y"})
             domain_sdf: Optional domain SDF for normal-based matching
+            geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                     Required if this segment uses region_name.
 
         Returns:
             True if this BC segment applies to the given point
 
         Raises:
-            ValueError: If point is empty or domain_bounds are invalid
+            ValueError: If point is empty, domain_bounds are invalid, or geometry is
+                       missing when region_name is used
         """
         # Input validation
         point = np.asarray(point, dtype=float)
@@ -351,6 +410,88 @@ class BCSegment:
                 cos_angle = np.dot(normal, target)
                 if cos_angle < self.normal_tolerance:
                     return False
+
+        # Method 5: Check region name match (Issue #596 Phase 2.5)
+        if self.region_name is not None:
+            # Import here to avoid circular dependency
+            from mfg_pde.geometry.protocols import SupportsRegionMarking
+
+            # Validate geometry is provided
+            if geometry is None:
+                raise ValueError(
+                    f"BCSegment '{self.name}' uses region_name='{self.region_name}' "
+                    f"but no geometry provided to matches_point(). "
+                    f"Region-based BCs require geometry parameter."
+                )
+
+            # Validate geometry supports region marking
+            if not isinstance(geometry, SupportsRegionMarking):
+                raise TypeError(
+                    f"BCSegment '{self.name}' uses region_name but geometry "
+                    f"{type(geometry).__name__} doesn't implement SupportsRegionMarking"
+                )
+
+            # Get region mask from geometry
+            try:
+                region_mask = geometry.get_region_mask(self.region_name)
+            except (KeyError, ValueError) as e:
+                raise ValueError(
+                    f"BCSegment '{self.name}': Failed to get region mask for '{self.region_name}'. Error: {e}"
+                ) from e
+
+            # Convert point to grid indices
+            # Assumption: point is in physical coordinates, need to map to grid indices
+            # This requires the geometry to provide a method to map coordinates to indices
+            # For now, we'll check if the point's grid index is in the region mask
+            # This is a simplified implementation - may need refinement for general geometries
+
+            # Try to get grid indices from geometry
+            if hasattr(geometry, "point_to_indices"):
+                try:
+                    indices = geometry.point_to_indices(point)
+                    # Check if indices are in region (region_mask is boolean array)
+                    in_region = region_mask[tuple(indices)]
+                    if not in_region:
+                        return False
+                except (IndexError, AttributeError, TypeError):
+                    # Fallback: point not mappable to grid indices
+                    # This could happen for points outside domain or at boundaries
+                    # Conservative approach: assume point is NOT in region
+                    return False
+            else:
+                # Geometry doesn't support point_to_indices
+                # For TensorProductGrid, we can compute indices manually
+                if hasattr(geometry, "bounds") and hasattr(geometry, "Nx_points"):
+                    try:
+                        # Manual index computation for structured grids
+                        bounds = geometry.bounds
+                        Nx_points = geometry.Nx_points
+
+                        indices = []
+                        for dim_idx in range(len(point)):
+                            x_min, x_max = bounds[dim_idx]
+                            # Compute grid index (with clamping to handle boundary points)
+                            grid_idx = int((point[dim_idx] - x_min) / (x_max - x_min) * (Nx_points[dim_idx] - 1))
+                            grid_idx = max(0, min(grid_idx, Nx_points[dim_idx] - 1))
+                            indices.append(grid_idx)
+
+                        # Convert multi-dimensional indices to flat index
+                        # Region masks are flattened 1D arrays
+                        flat_idx = np.ravel_multi_index(indices, Nx_points)
+
+                        # Check region mask
+                        in_region = region_mask[flat_idx]
+                        if not in_region:
+                            return False
+                    except (IndexError, AttributeError, TypeError, KeyError):
+                        # Fallback: assume NOT in region
+                        return False
+                else:
+                    raise NotImplementedError(
+                        f"BCSegment '{self.name}': Geometry {type(geometry).__name__} doesn't support "
+                        f"point-to-index mapping required for region_name matching. "
+                        f"Geometry must implement either point_to_indices() method or provide bounds/Nx_points attributes."
+                    )
 
         return True
 

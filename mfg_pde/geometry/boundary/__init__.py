@@ -204,6 +204,7 @@ from .conditions import (
     MixedBoundaryConditions,  # Alias for backward compatibility
     dirichlet_bc,
     mixed_bc,
+    mixed_bc_from_regions,  # Issue #596 Phase 2.5
     neumann_bc,
     no_flux_bc,
     periodic_bc,
@@ -309,6 +310,7 @@ __all__ = [
     "no_flux_bc",
     "robin_bc",
     "mixed_bc",
+    "mixed_bc_from_regions",  # Issue #596 Phase 2.5
     # Physics-based Calculator names (preferred)
     "ZeroGradientCalculator",  # du/dn = 0 (edge extension)
     "ZeroFluxCalculator",  # J·n = 0 (mass conservation)

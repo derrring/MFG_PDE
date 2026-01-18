@@ -194,6 +194,265 @@ class TestBCSegment:
         assert "y" in s
         assert "priority=1" in s
 
+    # =========================================================================
+    # Region-Based BC Tests (Issue #596 Phase 2.5)
+    # =========================================================================
+
+    def test_region_name_field(self):
+        """Test BCSegment with region_name field (Issue #596 Phase 2.5)."""
+        segment = BCSegment(
+            name="inlet_bc",
+            bc_type=BCType.DIRICHLET,
+            value=1.0,
+            region_name="inlet",
+        )
+
+        assert segment.name == "inlet_bc"
+        assert segment.bc_type == BCType.DIRICHLET
+        assert segment.value == 1.0
+        assert segment.region_name == "inlet"
+        assert segment.boundary is None
+        assert segment.region is None
+        assert segment.sdf_region is None
+        assert segment.normal_direction is None
+
+    def test_region_name_backward_compatibility(self):
+        """Test region_name defaults to None (backward compatibility)."""
+        segment = BCSegment(
+            name="left",
+            bc_type=BCType.DIRICHLET,
+            value=0.0,
+            boundary="x_min",
+        )
+
+        assert segment.region_name is None
+        assert segment.boundary == "x_min"
+
+    def test_region_name_validation_rejects_multiple_specs(self):
+        """Test validation rejects multiple region specifications."""
+        import pytest
+
+        # Conflict: boundary + region_name
+        with pytest.raises(ValueError, match="Only one region specification method"):
+            BCSegment(
+                name="bad",
+                bc_type=BCType.DIRICHLET,
+                value=0.0,
+                boundary="x_min",
+                region_name="inlet",
+            )
+
+        # Conflict: region + region_name
+        with pytest.raises(ValueError, match="Only one region specification method"):
+            BCSegment(
+                name="bad",
+                bc_type=BCType.DIRICHLET,
+                value=0.0,
+                region={"y": (0.4, 0.6)},
+                region_name="inlet",
+            )
+
+        # Conflict: sdf_region + region_name
+        with pytest.raises(ValueError, match="Only one region specification method"):
+            BCSegment(
+                name="bad",
+                bc_type=BCType.DIRICHLET,
+                value=0.0,
+                sdf_region=lambda x: np.linalg.norm(x) - 1.0,
+                region_name="inlet",
+            )
+
+        # Conflict: normal_direction + region_name
+        with pytest.raises(ValueError, match="Only one region specification method"):
+            BCSegment(
+                name="bad",
+                bc_type=BCType.DIRICHLET,
+                value=0.0,
+                normal_direction=np.array([0.0, 1.0]),
+                region_name="inlet",
+            )
+
+    def test_region_name_validation_accepts_single_spec(self):
+        """Test validation accepts single region specification."""
+        # Each of these should succeed without raising
+        seg1 = BCSegment(name="s1", bc_type=BCType.DIRICHLET, value=0.0, boundary="x_min")
+        assert seg1.boundary == "x_min"
+
+        seg2 = BCSegment(name="s2", bc_type=BCType.DIRICHLET, value=0.0, region={"y": (0, 1)})
+        assert seg2.region == {"y": (0, 1)}
+
+        seg3 = BCSegment(name="s3", bc_type=BCType.DIRICHLET, value=0.0, region_name="inlet")
+        assert seg3.region_name == "inlet"
+
+        seg4 = BCSegment(name="s4", bc_type=BCType.DIRICHLET, value=0.0, sdf_region=lambda x: np.linalg.norm(x) - 1.0)
+        assert seg4.sdf_region is not None
+
+        seg5 = BCSegment(name="s5", bc_type=BCType.DIRICHLET, value=0.0, normal_direction=np.array([0.0, 1.0]))
+        assert seg5.normal_direction is not None
+
+    def test_region_name_validation_allows_no_spec(self):
+        """Test validation allows no region specification (uniform BC)."""
+        segment = BCSegment(name="uniform", bc_type=BCType.DIRICHLET, value=0.0)
+
+        assert segment.boundary is None
+        assert segment.region is None
+        assert segment.sdf_region is None
+        assert segment.normal_direction is None
+        assert segment.region_name is None
+
+
+class TestMixedBCFromRegions:
+    """Test mixed_bc_from_regions() helper function (Issue #596 Phase 2.5)."""
+
+    def test_basic_usage(self):
+        """Test basic usage of mixed_bc_from_regions()."""
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+
+        # Setup geometry with marked regions
+        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
+        geometry.mark_region("outlet", boundary="x_max")
+
+        # Define BCs via dictionary
+        bc_config = {
+            "inlet": BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0),
+            "outlet": BCSegment(name="outlet_bc", bc_type=BCType.NEUMANN, value=0.0),
+            "default": BCSegment(name="default_bc", bc_type=BCType.PERIODIC),
+        }
+
+        # Create boundary conditions
+        bc = mixed_bc_from_regions(geometry, bc_config)
+
+        assert bc.dimension == 2
+        assert len(bc.segments) == 2  # inlet + outlet (default not in segments)
+        assert bc.segments[0].region_name == "inlet"
+        assert bc.segments[1].region_name == "outlet"
+        assert bc.default_bc == BCType.PERIODIC
+        assert bc.default_value == 0.0
+
+    def test_auto_populates_region_name(self):
+        """Test that region_name is auto-populated from config keys."""
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+
+        geometry = TensorProductGrid(dimension=1, bounds=[(0, 10)], Nx_points=[101])
+        geometry.mark_region("left", boundary="x_min")
+        geometry.mark_region("right", boundary="x_max")
+
+        bc_config = {
+            "left": BCSegment(name="left_bc", bc_type=BCType.DIRICHLET, value=0.0),
+            "right": BCSegment(name="right_bc", bc_type=BCType.DIRICHLET, value=1.0),
+        }
+
+        bc = mixed_bc_from_regions(geometry, bc_config)
+
+        # Check region_name was populated
+        assert bc.segments[0].region_name == "left"
+        assert bc.segments[1].region_name == "right"
+
+        # Check original segment fields preserved
+        assert bc.segments[0].name == "left_bc"
+        assert bc.segments[0].value == 0.0
+        assert bc.segments[1].name == "right_bc"
+        assert bc.segments[1].value == 1.0
+
+    def test_infers_dimension_from_geometry(self):
+        """Test dimension inference from geometry."""
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+
+        geometry = TensorProductGrid(dimension=3, bounds=[(0, 1), (0, 1), (0, 1)], Nx_points=[10, 10, 10])
+        geometry.mark_region("box", predicate=lambda x: np.all(x < 0.5, axis=1))
+
+        bc_config = {"box": BCSegment(name="box_bc", bc_type=BCType.DIRICHLET, value=0.0)}
+
+        bc = mixed_bc_from_regions(geometry, bc_config)
+
+        assert bc.dimension == 3  # Inferred from geometry
+
+    def test_validates_geometry_supports_region_marking(self):
+        """Test error when geometry doesn't support SupportsRegionMarking."""
+        import pytest
+
+        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+
+        # Mock geometry without SupportsRegionMarking
+        class FakeGeometry:
+            dimension = 2
+
+        fake_geometry = FakeGeometry()
+        bc_config = {"region1": BCSegment(name="bc1", bc_type=BCType.DIRICHLET)}
+
+        with pytest.raises(TypeError, match="SupportsRegionMarking"):
+            mixed_bc_from_regions(fake_geometry, bc_config)
+
+    def test_validates_region_exists(self):
+        """Test error when region doesn't exist in geometry."""
+        import pytest
+
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+
+        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
+
+        # Try to reference non-existent region
+        bc_config = {"nonexistent": BCSegment(name="bad", bc_type=BCType.DIRICHLET)}
+
+        with pytest.raises(ValueError, match="Region 'nonexistent' not found"):
+            mixed_bc_from_regions(geometry, bc_config)
+
+    def test_default_bc_optional(self):
+        """Test that default BC is optional."""
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+
+        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
+
+        # No default BC specified
+        bc_config = {"inlet": BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0)}
+
+        bc = mixed_bc_from_regions(geometry, bc_config)
+
+        # Should use default values
+        assert bc.default_bc == BCType.PERIODIC
+        assert bc.default_value == 0.0
+
+    def test_preserves_segment_fields(self):
+        """Test that all segment fields are preserved."""
+        from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+
+        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        geometry.mark_region("special", predicate=lambda x: x[:, 0] < 0.1)
+
+        # Create segment with many fields
+        bc_config = {
+            "special": BCSegment(
+                name="special_bc",
+                bc_type=BCType.ROBIN,
+                value=2.5,
+                alpha=1.5,
+                beta=0.5,
+                priority=10,
+                flux_capacity=100.0,
+            )
+        }
+
+        bc = mixed_bc_from_regions(geometry, bc_config)
+
+        segment = bc.segments[0]
+        assert segment.region_name == "special"
+        assert segment.name == "special_bc"
+        assert segment.bc_type == BCType.ROBIN
+        assert segment.value == 2.5
+        assert segment.alpha == 1.5
+        assert segment.beta == 0.5
+        assert segment.priority == 10
+        assert segment.flux_capacity == 100.0
+
 
 class TestMixedBoundaryConditions:
     """Test MixedBoundaryConditions class."""

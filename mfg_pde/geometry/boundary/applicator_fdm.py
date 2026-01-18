@@ -117,6 +117,7 @@ def apply_boundary_conditions_2d(
     domain_bounds: NDArray[np.floating] | None = None,
     time: float = 0.0,
     config: GhostCellConfig | None = None,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions by padding array with ghost cells.
@@ -133,6 +134,8 @@ def apply_boundary_conditions_2d(
                       bounds[i] = [min_i, max_i]. Required for mixed BCs.
         time: Current time for time-dependent BC values
         config: Ghost cell configuration (grid type, etc.)
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field of shape (Ny+2, Nx+2) with ghost cells
@@ -174,7 +177,7 @@ def apply_boundary_conditions_2d(
             raise ValueError("domain_bounds required for mixed boundary conditions")
         bounds = domain_bounds if domain_bounds is not None else boundary_conditions.domain_bounds
         _validate_domain_bounds_2d(bounds)
-        return _apply_mixed_bc_2d(field, boundary_conditions, bounds, time, config)
+        return _apply_mixed_bc_2d(field, boundary_conditions, bounds, time, config, geometry)
 
 
 def _validate_field_2d(field: NDArray[np.floating]) -> None:
@@ -183,8 +186,11 @@ def _validate_field_2d(field: NDArray[np.floating]) -> None:
         raise ValueError(f"Expected 2D field, got {field.ndim}D")
     if field.size == 0:
         raise ValueError("Field cannot be empty")
-    if not np.isfinite(field).all():
-        raise ValueError("Field contains NaN or Inf values")
+    # Use shared validation method (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=2, grid_type=GridType.CELL_CENTERED)
+    applicator._validate_field(field)
 
 
 def _validate_domain_bounds_2d(bounds: NDArray[np.floating]) -> None:
@@ -214,6 +220,11 @@ def _apply_uniform_bc_2d(
     Returns:
         Padded field (Ny+2, Nx+2)
     """
+    # Create applicator to access shared formula methods (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=2, grid_type=config.grid_type)
+
     # Get BC type and value from the single segment
     seg = boundary_conditions.segments[0]
     bc_type = seg.bc_type
@@ -231,14 +242,17 @@ def _apply_uniform_bc_2d(
             return np.pad(field, 1, mode="constant", constant_values=g)
         else:
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
-            padded[0, 1:-1] = 2 * g - field[0, :]
-            padded[-1, 1:-1] = 2 * g - field[-1, :]
-            padded[1:-1, 0] = 2 * g - field[:, 0]
-            padded[1:-1, -1] = 2 * g - field[:, -1]
-            padded[0, 0] = 2 * g - field[0, 0]
-            padded[0, -1] = 2 * g - field[0, -1]
-            padded[-1, 0] = 2 * g - field[-1, 0]
-            padded[-1, -1] = 2 * g - field[-1, -1]
+            # Use shared Dirichlet formula (Issue #598)
+            # Apply to edges
+            padded[0, 1:-1] = applicator._compute_ghost_dirichlet(field[0, :], g, time=0.0)
+            padded[-1, 1:-1] = applicator._compute_ghost_dirichlet(field[-1, :], g, time=0.0)
+            padded[1:-1, 0] = applicator._compute_ghost_dirichlet(field[:, 0], g, time=0.0)
+            padded[1:-1, -1] = applicator._compute_ghost_dirichlet(field[:, -1], g, time=0.0)
+            # Apply to corners
+            padded[0, 0] = applicator._compute_ghost_dirichlet(field[0, 0], g, time=0.0)
+            padded[0, -1] = applicator._compute_ghost_dirichlet(field[0, -1], g, time=0.0)
+            padded[-1, 0] = applicator._compute_ghost_dirichlet(field[-1, 0], g, time=0.0)
+            padded[-1, -1] = applicator._compute_ghost_dirichlet(field[-1, -1], g, time=0.0)
             return padded
 
     elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
@@ -249,11 +263,20 @@ def _apply_uniform_bc_2d(
             return np.pad(field, 1, mode="edge")  # Fallback for trivial case
         padded = np.pad(field, 1, mode="constant", constant_values=0.0)
         padded[1:-1, 1:-1] = field
-        # Faces: use reflection
-        padded[0, 1:-1] = field[1, :]  # Top ghost = row 1 (reflection)
-        padded[-1, 1:-1] = field[-2, :]  # Bottom ghost = row -2 (reflection)
-        padded[1:-1, 0] = field[:, 1]  # Left ghost = col 1 (reflection)
-        padded[1:-1, -1] = field[:, -2]  # Right ghost = col -2 (reflection)
+        # Faces: use reflection via shared Neumann formula (Issue #598)
+        # For zero-flux, u_ghost = u_next_interior (reflection)
+        padded[0, 1:-1] = applicator._compute_ghost_neumann(
+            field[0, :], field[1, :], g=0.0, dx=1.0, side="left", time=0.0
+        )
+        padded[-1, 1:-1] = applicator._compute_ghost_neumann(
+            field[-1, :], field[-2, :], g=0.0, dx=1.0, side="right", time=0.0
+        )
+        padded[1:-1, 0] = applicator._compute_ghost_neumann(
+            field[:, 0], field[:, 1], g=0.0, dx=1.0, side="left", time=0.0
+        )
+        padded[1:-1, -1] = applicator._compute_ghost_neumann(
+            field[:, -1], field[:, -2], g=0.0, dx=1.0, side="right", time=0.0
+        )
         # Corners: average of adjacent edge ghosts
         padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
         padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
@@ -269,30 +292,42 @@ def _apply_uniform_bc_2d(
             g = 0.0
 
         if abs(beta) < 1e-14:
-            # Pure Dirichlet
+            # Pure Dirichlet - use shared formula (Issue #598)
             g_eff = g / alpha if abs(alpha) > 1e-14 else 0.0
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
-            padded[0, 1:-1] = 2 * g_eff - field[0, :]
-            padded[-1, 1:-1] = 2 * g_eff - field[-1, :]
-            padded[1:-1, 0] = 2 * g_eff - field[:, 0]
-            padded[1:-1, -1] = 2 * g_eff - field[:, -1]
-            padded[0, 0] = 2 * g_eff - field[0, 0]
-            padded[0, -1] = 2 * g_eff - field[0, -1]
-            padded[-1, 0] = 2 * g_eff - field[-1, 0]
-            padded[-1, -1] = 2 * g_eff - field[-1, -1]
+            # Apply to edges
+            padded[0, 1:-1] = applicator._compute_ghost_dirichlet(field[0, :], g_eff, time=0.0)
+            padded[-1, 1:-1] = applicator._compute_ghost_dirichlet(field[-1, :], g_eff, time=0.0)
+            padded[1:-1, 0] = applicator._compute_ghost_dirichlet(field[:, 0], g_eff, time=0.0)
+            padded[1:-1, -1] = applicator._compute_ghost_dirichlet(field[:, -1], g_eff, time=0.0)
+            # Apply to corners
+            padded[0, 0] = applicator._compute_ghost_dirichlet(field[0, 0], g_eff, time=0.0)
+            padded[0, -1] = applicator._compute_ghost_dirichlet(field[0, -1], g_eff, time=0.0)
+            padded[-1, 0] = applicator._compute_ghost_dirichlet(field[-1, 0], g_eff, time=0.0)
+            padded[-1, -1] = applicator._compute_ghost_dirichlet(field[-1, -1], g_eff, time=0.0)
             return padded
         else:
-            # General Robin or pure Neumann - use reflection
+            # General Robin or pure Neumann - use reflection via shared formula (Issue #598)
             # Issue #542 fix: mode="edge" is wrong for central diff
             Ny, Nx = field.shape
             if Ny < 2 or Nx < 2:
                 return np.pad(field, 1, mode="edge")
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
             padded[1:-1, 1:-1] = field
-            padded[0, 1:-1] = field[1, :]
-            padded[-1, 1:-1] = field[-2, :]
-            padded[1:-1, 0] = field[:, 1]
-            padded[1:-1, -1] = field[:, -2]
+            # Use shared Neumann formula for reflection
+            padded[0, 1:-1] = applicator._compute_ghost_neumann(
+                field[0, :], field[1, :], g=0.0, dx=1.0, side="left", time=0.0
+            )
+            padded[-1, 1:-1] = applicator._compute_ghost_neumann(
+                field[-1, :], field[-2, :], g=0.0, dx=1.0, side="right", time=0.0
+            )
+            padded[1:-1, 0] = applicator._compute_ghost_neumann(
+                field[:, 0], field[:, 1], g=0.0, dx=1.0, side="left", time=0.0
+            )
+            padded[1:-1, -1] = applicator._compute_ghost_neumann(
+                field[:, -1], field[:, -2], g=0.0, dx=1.0, side="right", time=0.0
+            )
+            # Corners: average of adjacent edge ghosts
             padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
             padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
             padded[-1, 0] = 0.5 * (padded[-1, 1] + padded[-2, 0])
@@ -321,6 +356,11 @@ def _apply_legacy_uniform_bc_2d(
     Returns:
         Padded field (Ny+2, Nx+2)
     """
+    # Create applicator to access shared formula methods (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=2, grid_type=config.grid_type)
+
     bc_type = boundary_conditions.type.lower()
 
     if bc_type == "periodic":
@@ -333,14 +373,17 @@ def _apply_legacy_uniform_bc_2d(
             return np.pad(field, 1, mode="constant", constant_values=g)
         else:
             padded = np.pad(field, 1, mode="constant", constant_values=0.0)
-            padded[0, 1:-1] = 2 * g - field[0, :]
-            padded[-1, 1:-1] = 2 * g - field[-1, :]
-            padded[1:-1, 0] = 2 * g - field[:, 0]
-            padded[1:-1, -1] = 2 * g - field[:, -1]
-            padded[0, 0] = 2 * g - field[0, 0]
-            padded[0, -1] = 2 * g - field[0, -1]
-            padded[-1, 0] = 2 * g - field[-1, 0]
-            padded[-1, -1] = 2 * g - field[-1, -1]
+            # Use shared Dirichlet formula (Issue #598)
+            # Apply to edges
+            padded[0, 1:-1] = applicator._compute_ghost_dirichlet(field[0, :], g, time=0.0)
+            padded[-1, 1:-1] = applicator._compute_ghost_dirichlet(field[-1, :], g, time=0.0)
+            padded[1:-1, 0] = applicator._compute_ghost_dirichlet(field[:, 0], g, time=0.0)
+            padded[1:-1, -1] = applicator._compute_ghost_dirichlet(field[:, -1], g, time=0.0)
+            # Apply to corners
+            padded[0, 0] = applicator._compute_ghost_dirichlet(field[0, 0], g, time=0.0)
+            padded[0, -1] = applicator._compute_ghost_dirichlet(field[0, -1], g, time=0.0)
+            padded[-1, 0] = applicator._compute_ghost_dirichlet(field[-1, 0], g, time=0.0)
+            padded[-1, -1] = applicator._compute_ghost_dirichlet(field[-1, -1], g, time=0.0)
             return padded
 
     elif bc_type in ["no_flux", "neumann"]:
@@ -351,11 +394,19 @@ def _apply_legacy_uniform_bc_2d(
             return np.pad(field, 1, mode="edge")  # Fallback for trivial case
         padded = np.pad(field, 1, mode="constant", constant_values=0.0)
         padded[1:-1, 1:-1] = field
-        # Faces: use reflection
-        padded[0, 1:-1] = field[1, :]  # Top ghost = row 1 (reflection)
-        padded[-1, 1:-1] = field[-2, :]  # Bottom ghost = row -2 (reflection)
-        padded[1:-1, 0] = field[:, 1]  # Left ghost = col 1 (reflection)
-        padded[1:-1, -1] = field[:, -2]  # Right ghost = col -2 (reflection)
+        # Faces: use reflection via shared Neumann formula (Issue #598)
+        padded[0, 1:-1] = applicator._compute_ghost_neumann(
+            field[0, :], field[1, :], g=0.0, dx=1.0, side="left", time=0.0
+        )
+        padded[-1, 1:-1] = applicator._compute_ghost_neumann(
+            field[-1, :], field[-2, :], g=0.0, dx=1.0, side="right", time=0.0
+        )
+        padded[1:-1, 0] = applicator._compute_ghost_neumann(
+            field[:, 0], field[:, 1], g=0.0, dx=1.0, side="left", time=0.0
+        )
+        padded[1:-1, -1] = applicator._compute_ghost_neumann(
+            field[:, -1], field[:, -2], g=0.0, dx=1.0, side="right", time=0.0
+        )
         # Corners: average of adjacent edge ghosts
         padded[0, 0] = 0.5 * (padded[0, 1] + padded[1, 0])
         padded[0, -1] = 0.5 * (padded[0, -2] + padded[1, -1])
@@ -408,6 +459,7 @@ def _apply_mixed_bc_2d(
     domain_bounds: NDArray[np.floating],
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply mixed boundary conditions (different types on different segments).
@@ -420,6 +472,7 @@ def _apply_mixed_bc_2d(
         domain_bounds: Domain bounds array of shape (2, 2)
         time: Current time for time-dependent values
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5)
 
     Returns:
         Padded field (Ny+2, Nx+2)
@@ -457,6 +510,7 @@ def _apply_mixed_bc_2d(
         grid_spacing=dx,
         time=time,
         config=config,
+        geometry=geometry,
     )
 
     # Right boundary (x = x_max)
@@ -471,6 +525,7 @@ def _apply_mixed_bc_2d(
         grid_spacing=dx,
         time=time,
         config=config,
+        geometry=geometry,
     )
 
     # Bottom boundary (y = y_min)
@@ -485,6 +540,7 @@ def _apply_mixed_bc_2d(
         grid_spacing=dy,
         time=time,
         config=config,
+        geometry=geometry,
     )
 
     # Top boundary (y = y_max)
@@ -499,6 +555,7 @@ def _apply_mixed_bc_2d(
         grid_spacing=dy,
         time=time,
         config=config,
+        geometry=geometry,
     )
 
     # Handle corners (average of adjacent boundary values)
@@ -521,6 +578,7 @@ def _apply_boundary_ghost_cells(
     grid_spacing: float,
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> None:
     """
     Apply ghost cells for one boundary.
@@ -536,6 +594,7 @@ def _apply_boundary_ghost_cells(
         grid_spacing: Grid spacing normal to boundary
         time: Current time
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5)
     """
     _ny, _nx = field.shape
     n_points = len(coords)
@@ -574,7 +633,7 @@ def _apply_boundary_ghost_cells(
                 ghost_idx = (-1, i + 1)
 
         # Get BC segment for this point
-        bc_segment = mixed_bc.get_bc_at_point(point, boundary_id)
+        bc_segment = mixed_bc.get_bc_at_point(point, boundary_id, geometry=geometry)
 
         # Compute ghost cell value
         ghost_val = _compute_ghost_value_enhanced(
@@ -775,6 +834,7 @@ def _apply_mixed_bc_nd(
     domain_bounds: NDArray[np.floating],
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply mixed boundary conditions in n dimensions.
@@ -788,6 +848,7 @@ def _apply_mixed_bc_nd(
         domain_bounds: Domain bounds array of shape (d, 2)
         time: Current time for time-dependent values
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5)
 
     Returns:
         Padded field with shape (N_0+2, N_1+2, ..., N_{d-1}+2)
@@ -830,6 +891,7 @@ def _apply_mixed_bc_nd(
                 grid_spacing=grid_spacings[axis],
                 time=time,
                 config=config,
+                geometry=geometry,
             )
 
     # Handle corners/edges (intersections of multiple boundaries)
@@ -850,6 +912,7 @@ def _apply_boundary_face_nd(
     grid_spacing: float,
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> None:
     """
     Apply ghost cells for one boundary face in nD.
@@ -865,6 +928,7 @@ def _apply_boundary_face_nd(
         grid_spacing: Grid spacing normal to boundary
         time: Current time
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5)
     """
     d = field.ndim
     shape = field.shape
@@ -911,7 +975,7 @@ def _apply_boundary_face_nd(
                 )
 
         # Get BC segment for this point
-        bc_segment = mixed_bc.get_bc_at_point(point, boundary_id)
+        bc_segment = mixed_bc.get_bc_at_point(point, boundary_id, geometry=geometry)
 
         # Compute ghost cell value
         ghost_val = _compute_ghost_value_enhanced(
@@ -1008,6 +1072,7 @@ def apply_boundary_conditions_nd(
     domain_bounds: NDArray[np.floating] | None = None,
     time: float = 0.0,
     config: GhostCellConfig | None = None,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions in n dimensions.
@@ -1018,6 +1083,8 @@ def apply_boundary_conditions_nd(
         domain_bounds: Domain bounds array of shape (d, 2)
         time: Current time for time-dependent BCs
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field with ghost cells
@@ -1038,10 +1105,15 @@ def apply_boundary_conditions_nd(
 
     d = field.ndim
 
+    # Create applicator to access shared formula methods (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=d, grid_type=config.grid_type)
+
     if d == 1:
-        return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config)
+        return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config, geometry)
     elif d == 2:
-        return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, config)
+        return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, config, geometry)
     else:
         # For d > 2, use uniform BC only
         # Handle legacy BoundaryConditions
@@ -1061,8 +1133,13 @@ def apply_boundary_conditions_nd(
                     slices_high[axis] = slice(-1, None)
                     slices_int_high = [slice(1, -1)] * d
                     slices_int_high[axis] = slice(-2, -1)
-                    padded[tuple(slices_low)] = 2 * g - padded[tuple(slices_int_low)]
-                    padded[tuple(slices_high)] = 2 * g - padded[tuple(slices_int_high)]
+                    # Use shared Dirichlet formula (Issue #598)
+                    padded[tuple(slices_low)] = applicator._compute_ghost_dirichlet(
+                        padded[tuple(slices_int_low)], g, time=0.0
+                    )
+                    padded[tuple(slices_high)] = applicator._compute_ghost_dirichlet(
+                        padded[tuple(slices_int_high)], g, time=0.0
+                    )
                 # Apply corner/edge values
                 _apply_corner_values_nd(padded, d)
                 return padded
@@ -1073,18 +1150,31 @@ def apply_boundary_conditions_nd(
                 for axis in range(d):
                     if field.shape[axis] < 2:
                         continue  # Skip trivial axis
-                    # Low boundary: ghost = u[1] (reflection)
+                    # Low boundary: use shared Neumann formula (Issue #598)
                     slices_low = [slice(1, -1)] * d
                     slices_low[axis] = slice(0, 1)
+                    slices_int = [slice(1, -1)] * d
+                    slices_int[axis] = slice(1, 2)
                     slices_next_low = [slice(1, -1)] * d
                     slices_next_low[axis] = slice(2, 3)
-                    padded[tuple(slices_low)] = padded[tuple(slices_next_low)]
-                    # High boundary: ghost = u[-2] (reflection)
+                    padded[tuple(slices_low)] = applicator._compute_ghost_neumann(
+                        padded[tuple(slices_int)], padded[tuple(slices_next_low)], g=0.0, dx=1.0, side="left", time=0.0
+                    )
+                    # High boundary: use shared Neumann formula
                     slices_high = [slice(1, -1)] * d
                     slices_high[axis] = slice(-1, None)
+                    slices_int_high = [slice(1, -1)] * d
+                    slices_int_high[axis] = slice(-2, -1)
                     slices_prev_high = [slice(1, -1)] * d
                     slices_prev_high[axis] = slice(-3, -2)
-                    padded[tuple(slices_high)] = padded[tuple(slices_prev_high)]
+                    padded[tuple(slices_high)] = applicator._compute_ghost_neumann(
+                        padded[tuple(slices_int_high)],
+                        padded[tuple(slices_prev_high)],
+                        g=0.0,
+                        dx=1.0,
+                        side="right",
+                        time=0.0,
+                    )
                 # Apply corner/edge values for consistency
                 _apply_corner_values_nd(padded, d)
                 return padded
@@ -1114,8 +1204,13 @@ def apply_boundary_conditions_nd(
                     slices_high[axis] = slice(-1, None)
                     slices_int_high = [slice(1, -1)] * d
                     slices_int_high[axis] = slice(-2, -1)
-                    padded[tuple(slices_low)] = 2 * g - padded[tuple(slices_int_low)]
-                    padded[tuple(slices_high)] = 2 * g - padded[tuple(slices_int_high)]
+                    # Use shared Dirichlet formula (Issue #598)
+                    padded[tuple(slices_low)] = applicator._compute_ghost_dirichlet(
+                        padded[tuple(slices_int_low)], g, time=0.0
+                    )
+                    padded[tuple(slices_high)] = applicator._compute_ghost_dirichlet(
+                        padded[tuple(slices_int_high)], g, time=0.0
+                    )
                 # Apply corner/edge values (edges first, then corners)
                 _apply_corner_values_nd(padded, d)
                 return padded
@@ -1136,18 +1231,26 @@ def apply_boundary_conditions_nd(
                     if field.shape[axis] < 2:
                         continue  # Skip trivial axis
                     dx = spacing[axis]
-                    # Low boundary: ghost = u[1] - 2*dx*g (reflection)
+                    # Low boundary: use shared Neumann formula (Issue #598)
                     slices_low = [slice(1, -1)] * d
                     slices_low[axis] = slice(0, 1)
+                    slices_int = [slice(1, -1)] * d
+                    slices_int[axis] = slice(1, 2)
                     slices_next_low = [slice(1, -1)] * d
                     slices_next_low[axis] = slice(2, 3)
-                    padded[tuple(slices_low)] = padded[tuple(slices_next_low)] - 2 * dx * g
-                    # High boundary: ghost = u[-2] + 2*dx*g (reflection)
+                    padded[tuple(slices_low)] = applicator._compute_ghost_neumann(
+                        padded[tuple(slices_int)], padded[tuple(slices_next_low)], g, dx, side="left", time=time
+                    )
+                    # High boundary: use shared Neumann formula
                     slices_high = [slice(1, -1)] * d
                     slices_high[axis] = slice(-1, None)
+                    slices_int_high = [slice(1, -1)] * d
+                    slices_int_high[axis] = slice(-2, -1)
                     slices_prev_high = [slice(1, -1)] * d
                     slices_prev_high[axis] = slice(-3, -2)
-                    padded[tuple(slices_high)] = padded[tuple(slices_prev_high)] + 2 * dx * g
+                    padded[tuple(slices_high)] = applicator._compute_ghost_neumann(
+                        padded[tuple(slices_int_high)], padded[tuple(slices_prev_high)], g, dx, side="right", time=time
+                    )
                 # Apply corner/edge values for consistency
                 _apply_corner_values_nd(padded, d)
                 return padded
@@ -1199,7 +1302,7 @@ def apply_boundary_conditions_nd(
                 raise ValueError(f"Unsupported BC type for nD: {bc_type}")
         else:
             # Mixed BC for d > 2
-            return _apply_mixed_bc_nd(field, boundary_conditions, domain_bounds, time, config)
+            return _apply_mixed_bc_nd(field, boundary_conditions, domain_bounds, time, config, geometry)
 
 
 def _apply_bc_1d(
@@ -1208,6 +1311,7 @@ def _apply_bc_1d(
     domain_bounds: NDArray[np.floating] | None,
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions in 1D.
@@ -1218,12 +1322,23 @@ def _apply_bc_1d(
         domain_bounds: Domain bounds array of shape (1, 2) or (2,)
         time: Current time
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field of shape (Nx+2,)
+
+    Note:
+        Issue #598: Refactored to use shared ghost cell formula methods from
+        BaseStructuredApplicator, eliminating duplicated Dirichlet/Neumann logic.
     """
-    if not np.isfinite(field).all():
-        raise ValueError("Field contains NaN or Inf values")
+    # Create applicator to access shared formula methods (Issue #598)
+    from .applicator_base import BaseStructuredApplicator
+
+    applicator = BaseStructuredApplicator(dimension=1, grid_type=config.grid_type)
+
+    # Shared validation (Issue #598)
+    applicator._validate_field(field)
 
     # Handle legacy BoundaryConditions from bc_1d
     if isinstance(boundary_conditions, LegacyBoundaryConditions1D):
@@ -1235,8 +1350,9 @@ def _apply_bc_1d(
             right_val = boundary_conditions.right_value if boundary_conditions.right_value is not None else 0.0
             padded = np.zeros(len(field) + 2, dtype=field.dtype)
             padded[1:-1] = field
-            padded[0] = 2.0 * left_val - field[0]
-            padded[-1] = 2.0 * right_val - field[-1]
+            # Issue #598: Use shared Dirichlet formula
+            padded[0] = applicator._compute_ghost_dirichlet(field[0], left_val, time)
+            padded[-1] = applicator._compute_ghost_dirichlet(field[-1], right_val, time)
             return padded
         elif bc_type in ["no_flux", "neumann"]:
             # For Neumann BC with central difference gradient stencil:
@@ -1249,8 +1365,9 @@ def _apply_bc_1d(
                 return np.pad(field, 1, mode="edge")  # Fallback for trivial case
             padded = np.zeros(len(field) + 2, dtype=field.dtype)
             padded[1:-1] = field
-            padded[0] = field[1]  # Reflection: ghost = u[next_interior]
-            padded[-1] = field[-2]  # Reflection: ghost = u[prev_interior]
+            # Issue #598: Use shared Neumann formula (zero-flux)
+            padded[0] = applicator._compute_ghost_neumann(field[0], field[1], g=0.0, dx=1.0, side="left", time=time)
+            padded[-1] = applicator._compute_ghost_neumann(field[-1], field[-2], g=0.0, dx=1.0, side="right", time=time)
             return padded
         else:
             raise ValueError(f"Unsupported BC type: {bc_type}")
@@ -1268,12 +1385,11 @@ def _apply_bc_1d(
             return np.pad(field, 1, mode="wrap")
         elif bc_type == BCType.DIRICHLET:
             g = seg.value if seg.value is not None else 0.0
-            if callable(g):
-                g = 0.0
             padded = np.zeros(len(field) + 2, dtype=field.dtype)
             padded[1:-1] = field
-            padded[0] = 2.0 * g - field[0]
-            padded[-1] = 2.0 * g - field[-1]
+            # Issue #598: Use shared Dirichlet formula
+            padded[0] = applicator._compute_ghost_dirichlet(field[0], g, time)
+            padded[-1] = applicator._compute_ghost_dirichlet(field[-1], g, time)
             return padded
         elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
             # For Neumann BC with central difference gradient stencil:
@@ -1283,8 +1399,6 @@ def _apply_bc_1d(
             if len(field) < 2:
                 return np.pad(field, 1, mode="edge")  # Fallback for trivial case
             g = seg.value if seg.value is not None else 0.0
-            if callable(g):
-                g = g(0.0)  # Evaluate at t=0 for uniform BC
             padded = np.zeros(len(field) + 2, dtype=field.dtype)
             padded[1:-1] = field
             # Need domain_bounds to compute dx for general Neumann
@@ -1293,12 +1407,16 @@ def _apply_bc_1d(
                 bounds = np.atleast_2d(domain_bounds)
                 x_min, x_max = bounds[0, 0], bounds[0, 1]
                 dx = (x_max - x_min) / (len(field) - 1) if len(field) > 1 else 1.0
-                padded[0] = field[1] - 2 * dx * g  # Left ghost
-                padded[-1] = field[-2] + 2 * dx * g  # Right ghost
+                # Issue #598: Use shared Neumann formula
+                padded[0] = applicator._compute_ghost_neumann(field[0], field[1], g, dx, side="left", time=time)
+                padded[-1] = applicator._compute_ghost_neumann(field[-1], field[-2], g, dx, side="right", time=time)
             else:
                 # Fallback: assume zero-flux (g=0) => pure reflection
-                padded[0] = field[1]
-                padded[-1] = field[-2]
+                # Issue #598: Use shared Neumann formula (zero-flux)
+                padded[0] = applicator._compute_ghost_neumann(field[0], field[1], g=0.0, dx=1.0, side="left", time=time)
+                padded[-1] = applicator._compute_ghost_neumann(
+                    field[-1], field[-2], g=0.0, dx=1.0, side="right", time=time
+                )
             return padded
         else:
             raise ValueError(f"Unsupported BC type: {bc_type}")
@@ -1314,14 +1432,14 @@ def _apply_bc_1d(
         if boundary_conditions.domain_bounds is None:
             boundary_conditions.domain_bounds = bounds
 
-        padded = np.zeros(len(field) + 2, dtype=field.dtype)
-        padded[1:-1] = field
-
-        dx = (x_max - x_min) / (len(field) - 1) if len(field) > 1 else 1.0
+        # Issue #598: Use shared buffer creation and spacing computation
+        padded = applicator._create_padded_buffer(field, ghost_depth=1)
+        spacing = applicator._compute_grid_spacing(field, bounds)
+        dx = spacing[0]
 
         # Left BC
         point_left = np.array([x_min])
-        bc_left = boundary_conditions.get_bc_at_point(point_left, "x_min")
+        bc_left = boundary_conditions.get_bc_at_point(point_left, "x_min", geometry=geometry)
         if bc_left.bc_type == BCType.EXTRAPOLATION_LINEAR and len(field) >= 2:
             # Linear extrapolation: ghost = 2*u_0 - u_1
             padded[0] = 2.0 * field[0] - field[1]
@@ -1333,13 +1451,14 @@ def _apply_bc_1d(
             # grad[0] = (u[1] - ghost_left) / (2*dx) = g
             # => ghost_left = u[1] - 2*dx*g (reflection about boundary)
             g = _evaluate_bc_value(bc_left.value, point_left, time) if bc_left.value is not None else 0.0
-            padded[0] = field[1] - 2 * dx * g
+            # Issue #598: Use shared Neumann formula
+            padded[0] = applicator._compute_ghost_neumann(field[0], field[1], g, dx, side="left", time=time)
         else:
             padded[0] = _compute_ghost_value_enhanced(bc_left, field[0], dx, "min", point_left, time, config)
 
         # Right BC
         point_right = np.array([x_max])
-        bc_right = boundary_conditions.get_bc_at_point(point_right, "x_max")
+        bc_right = boundary_conditions.get_bc_at_point(point_right, "x_max", geometry=geometry)
         if bc_right.bc_type == BCType.EXTRAPOLATION_LINEAR and len(field) >= 2:
             # Linear extrapolation: ghost = 2*u_0 - u_1
             padded[-1] = 2.0 * field[-1] - field[-2]
@@ -1351,7 +1470,8 @@ def _apply_bc_1d(
             # grad[-1] = (ghost_right - u[-2]) / (2*dx) = g
             # => ghost_right = u[-2] + 2*dx*g (reflection about boundary)
             g = _evaluate_bc_value(bc_right.value, point_right, time) if bc_right.value is not None else 0.0
-            padded[-1] = field[-2] + 2 * dx * g
+            # Issue #598: Use shared Neumann formula
+            padded[-1] = applicator._compute_ghost_neumann(field[-1], field[-2], g, dx, side="right", time=time)
         else:
             padded[-1] = _compute_ghost_value_enhanced(bc_right, field[-1], dx, "max", point_right, time, config)
 
@@ -1362,6 +1482,7 @@ def create_boundary_mask_2d(
     mixed_bc: BoundaryConditions,
     grid_shape: tuple[int, int],
     domain_bounds: NDArray[np.floating],
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> dict[str, dict[str, NDArray[np.bool_]]]:
     """
     Pre-compute boundary masks for each BC segment.
@@ -1373,6 +1494,8 @@ def create_boundary_mask_2d(
         mixed_bc: BC specification (unified BoundaryConditions)
         grid_shape: Grid shape (Ny, Nx)
         domain_bounds: Domain bounds
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if mixed_bc uses region_name.
 
     Returns:
         Dictionary mapping segment names to boundary masks:
@@ -1402,25 +1525,25 @@ def create_boundary_mask_2d(
         # Left boundary
         for j in range(Ny):
             point = np.array([x_min, y_coords[j]])
-            bc = mixed_bc.get_bc_at_point(point, "x_min")
+            bc = mixed_bc.get_bc_at_point(point, "x_min", geometry=geometry)
             segment_masks["left"][j] = bc.name == segment.name
 
         # Right boundary
         for j in range(Ny):
             point = np.array([x_max, y_coords[j]])
-            bc = mixed_bc.get_bc_at_point(point, "x_max")
+            bc = mixed_bc.get_bc_at_point(point, "x_max", geometry=geometry)
             segment_masks["right"][j] = bc.name == segment.name
 
         # Bottom boundary
         for i in range(Nx):
             point = np.array([x_coords[i], y_min])
-            bc = mixed_bc.get_bc_at_point(point, "y_min")
+            bc = mixed_bc.get_bc_at_point(point, "y_min", geometry=geometry)
             segment_masks["bottom"][i] = bc.name == segment.name
 
         # Top boundary
         for i in range(Nx):
             point = np.array([x_coords[i], y_max])
-            bc = mixed_bc.get_bc_at_point(point, "y_max")
+            bc = mixed_bc.get_bc_at_point(point, "y_max", geometry=geometry)
             segment_masks["top"][i] = bc.name == segment.name
 
         masks[segment.name] = segment_masks
@@ -1439,6 +1562,7 @@ def apply_boundary_conditions_1d(
     domain_bounds: NDArray[np.floating] | None = None,
     time: float = 0.0,
     config: GhostCellConfig | None = None,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions in 1D.
@@ -1451,6 +1575,8 @@ def apply_boundary_conditions_1d(
         domain_bounds: Domain bounds array of shape (1, 2) or (2,)
         time: Current time for time-dependent BC values
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field of shape (Nx+2,) with ghost cells
@@ -1469,7 +1595,7 @@ def apply_boundary_conditions_1d(
     if config is None:
         config = GhostCellConfig()
 
-    return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config)
+    return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config, geometry)
 
 
 def apply_boundary_conditions_3d(
@@ -1478,6 +1604,7 @@ def apply_boundary_conditions_3d(
     domain_bounds: NDArray[np.floating] | None = None,
     time: float = 0.0,
     config: GhostCellConfig | None = None,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions in 3D.
@@ -1490,6 +1617,8 @@ def apply_boundary_conditions_3d(
         domain_bounds: Domain bounds array of shape (3, 2)
         time: Current time for time-dependent BC values
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field of shape (Nz+2, Ny+2, Nx+2) with ghost cells
@@ -1513,7 +1642,7 @@ def apply_boundary_conditions_3d(
 
     # Currently delegates to nD implementation
     # TODO: Add optimized 3D implementation with face-specific handling
-    return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, config)
+    return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, config, geometry)
 
 
 # =============================================================================
@@ -1872,6 +2001,7 @@ class FDMApplicator(BaseStructuredApplicator):
         grid_spacing: float | tuple[float, ...] | None = None,
         domain_bounds: NDArray[np.floating] | None = None,
         time: float = 0.0,
+        geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
     ) -> NDArray[np.floating]:
         """
         Apply boundary conditions to a field.
@@ -1884,18 +2014,20 @@ class FDMApplicator(BaseStructuredApplicator):
             grid_spacing: Grid spacing (not used for ghost cells, but kept for API consistency)
             domain_bounds: Domain bounds (required for mixed BCs)
             time: Current time for time-dependent BCs
+            geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                     Required if boundary_conditions uses region_name.
 
         Returns:
             Padded field with ghost cells
         """
         if self._dimension == 1:
-            return apply_boundary_conditions_1d(field, boundary_conditions, domain_bounds, time, self._config)
+            return apply_boundary_conditions_1d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
         elif self._dimension == 2:
-            return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, self._config)
+            return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
         elif self._dimension == 3:
-            return apply_boundary_conditions_3d(field, boundary_conditions, domain_bounds, time, self._config)
+            return apply_boundary_conditions_3d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
         else:
-            return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, self._config)
+            return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, self._config, geometry)
 
     @staticmethod
     def apply_1d(

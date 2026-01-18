@@ -872,8 +872,8 @@ Run tests after each priority, validate with research experiments.
 ---
 
 **Last Updated**: 2026-01-18
-**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574), P6.6 (#595), P6.7 (#591), P7 (#545), P8 (#544 Phases 1-2), **#573**
-**Current Focus**: ✅ Infrastructure complete through Priority 8! Starting geometry trait system (#590) for operator abstraction framework.
+**Completed**: P1 (#542), P2 (#547), P3 (#543 Phase 1), P3.5 (#580), P3.6 (#576), P4 (#545), P5 (#543 Phase 2), P5.5 (#587), P6 (#543 Phase 3), P6.5 (#574), P6.6 (#595), P6.7 (#591), P7 (#545), P8 (#544 Phases 1-2), **#573**, **#590**, **#596**, **#598**
+**Current Focus**: ✅ All priority infrastructure complete! Proceeding to next open issue.
 
 ## Recently Completed (2026-01-18)
 
@@ -971,14 +971,63 @@ u_flat[inlet_mask] = 1.0  # Dirichlet BC on inlet
 
 ---
 
+### ✅ Issue #598: BCApplicatorProtocol → ABC Refactoring - **COMPLETED**
+
+**Issue**: [#598](https://github.com/derrring/MFG_PDE/issues/598)
+**Status**: ✅ CLOSED (2026-01-18)
+**Priority**: Medium
+**Size**: Medium
+**Actual Effort**: 1 day (Phases 1 + 2 Demo + 2 Production)
+
+### Problem
+~300 lines of duplicated ghost cell formulas across 1D/2D/3D/nD BC application functions, violating DRY principle and creating maintenance burden.
+
+### Solution Implemented
+
+**Template Method Pattern** - Extract ghost cell formulas to shared methods in BaseStructuredApplicator.
+
+**Phase 1: Shared Infrastructure** (commit `a7790886`)
+- Created 6 shared methods in `BaseStructuredApplicator`:
+  - `_compute_ghost_dirichlet()` - Dirichlet BC formula
+  - `_compute_ghost_neumann()` - Neumann/zero-flux formula
+  - `_compute_ghost_robin()` - Robin BC formula
+  - `_validate_field()` - NaN/Inf validation
+  - `_create_padded_buffer()` - Buffer creation
+  - `_compute_grid_spacing()` - Grid spacing computation
+- Created smoke tests: 8/8 passing
+
+**Phase 2 Demo** (commit `940ea748`)
+- Demonstrated migration pattern in `_demo_shared_formulas_usage.py`
+- 3/3 test cases passing (Dirichlet, Neumann, Mixed BC)
+
+**Phase 2 Production** (commits `8ae9eecd`, `13f0fee0`, `e95f579f`)
+- Migrated all deprecated BC functions:
+  - **1D**: `_apply_bc_1d()` - 10 duplication sites eliminated
+  - **2D**: `_apply_uniform_bc_2d()` + `_apply_legacy_uniform_bc_2d()` - 24 sites eliminated
+  - **nD**: `apply_boundary_conditions_nd()` - 12 sites eliminated
+- **Total**: 46+ inline ghost cell formulas → shared method calls
+
+### Result
+- ✅ ~80% code reduction for ghost cell computation
+- ✅ Single source of truth for each BC type
+- ✅ 144/144 BC tests passing (55 1D + 54 2D + 35 3D)
+- ✅ Zero breaking changes (backward compatible)
+- ✅ Complete documentation
+
+**User Request**: "Push forward the deprecation progress" - completed migration during deprecation period instead of deferring to v0.19.0.
+
+**Documentation**: `docs/development/issue_598_progress_summary.md`
+
+---
+
 ## Remaining Open Issues (by priority)
 
 | Priority | Issue | Description | Size | Status |
 |:---------|:------|:------------|:-----|:-------|
 | ~~HIGH~~ | ~~#590~~ | ~~Phase 1: Geometry Trait System~~ | ~~Medium~~ | ✅ Closed (2026-01-18) |
-| HIGH | #596 | Phase 2: Solver Integration with Traits | Large | Open (unblocked) |
+| ~~HIGH~~ | ~~#596~~ | ~~Phase 2: Solver Integration with Traits~~ | ~~Large~~ | ✅ Closed (2026-01-18, commit 658c4ab) |
 | HIGH | #589 | Geometry/BC Architecture (Master Tracking) | Large | In Progress |
-| MEDIUM | #598 | BCApplicatorProtocol → ABC refactoring | Medium | Open |
+| ~~MEDIUM~~ | ~~#598~~ | ~~BCApplicatorProtocol → ABC refactoring~~ | ~~Medium~~ | ✅ Closed (2026-01-18, commits 8ae9eecd, 13f0fee0, e95f579f) |
 | MEDIUM | #597 | FP Operator Refactoring | Large | Open |
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large | Open |
 | MEDIUM | #535 | BC framework enhancement | Large | Open |

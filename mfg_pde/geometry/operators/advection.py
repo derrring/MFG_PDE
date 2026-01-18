@@ -43,6 +43,7 @@ from scipy.sparse.linalg import LinearOperator
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    import scipy.sparse as sparse
     from numpy.typing import NDArray
 
     from mfg_pde.geometry.boundary import BoundaryConditions
@@ -267,6 +268,92 @@ class AdvectionOperator(LinearOperator):
         # Apply via _matvec
         adv_m_flat = self._matvec(m.ravel())
         return adv_m_flat.reshape(self.field_shape)
+
+    def as_scipy_sparse(self, max_grid_size: int = 100_000) -> sparse.spmatrix:
+        """
+        Convert operator to scipy sparse matrix (CSR format).
+
+        **⚠️ IMPORTANT - Godunov Paradox Limitation**:
+
+        This method works by probing the operator with unit vectors (e_j).
+        For operators using Godunov upwinding (scheme="upwind" in tensor_calculus),
+        this can produce incorrect matrices due to state-dependent flux limiting.
+
+        **Why this matters**: Godunov upwind selects flux direction based on
+        sign(∇m), which changes between localized (unit vector) and distributed
+        (actual density) fields. The extracted matrix represents the operator
+        on impulses, not general smooth fields.
+
+        **Recommendation**:
+        - ✅ Use this method for periodic BC or exploratory analysis
+        - ❌ Do NOT use for implicit solver Jacobians
+        - ✅ For implicit solvers, use velocity-based upwind sparse construction
+          (see fp_fdm_alg_*.py modules)
+
+        **See**: docs/theory/godunov_paradox_and_defect_correction.md for full
+        mathematical explanation and the Defect Correction solution strategy.
+
+        Args:
+            max_grid_size: Maximum allowed grid size (default 100,000).
+                Raises ValueError if exceeded.
+
+        Returns:
+            Sparse CSR matrix representing the advection operator evaluated
+            on unit vectors (may not equal operator on smooth fields for Godunov).
+
+        Raises:
+            ValueError: If grid too large (N > max_grid_size)
+
+        Example:
+            >>> # Exploratory use (understand stencil structure)
+            >>> adv_op = AdvectionOperator(v, spacings=[0.1], field_shape=(100,))
+            >>> A_adv = adv_op.as_scipy_sparse()
+            >>> print(f"Sparsity: {A_adv.nnz / (100*100) * 100:.1f}%")
+
+            >>> # For implicit solvers, use velocity-based construction instead:
+            >>> # See mfg_pde/alg/numerical/fp_solvers/fp_fdm_alg_gradient_upwind.py
+
+        Notes:
+            - Returns CSR format for efficient matrix-vector products
+            - Slower than direct assembly (O(N²) vs O(N))
+            - Godunov limitation documented in Issue #597 Milestone 3
+            - Suitable for analysis, not for production implicit solvers
+        """
+        import scipy.sparse as sparse
+
+        N = int(np.prod(self.field_shape))
+
+        if max_grid_size < N:
+            raise ValueError(
+                f"Grid size {N} exceeds max_grid_size={max_grid_size}. "
+                f"For large grids, use matrix-free methods (LinearOperator interface) instead."
+            )
+
+        # Build matrix by evaluating operator on unit vectors
+        # This is robust and automatically correct for all schemes/BCs
+        rows = []
+        cols = []
+        vals = []
+
+        for j in range(N):
+            # Create j-th unit vector
+            e_j = np.zeros(N, dtype=np.float64)
+            e_j[j] = 1.0
+
+            # Apply operator: A @ e_j = j-th column of A
+            col_j = self._matvec(e_j)
+
+            # Extract nonzeros (threshold for numerical stability)
+            nz_mask = np.abs(col_j) > 1e-14
+            nz_indices = np.where(nz_mask)[0]
+
+            if len(nz_indices) > 0:
+                rows.extend(nz_indices.tolist())
+                cols.extend([j] * len(nz_indices))
+                vals.extend(col_j[nz_indices].tolist())
+
+        # Build COO matrix and convert to CSR for efficient operations
+        return sparse.coo_matrix((vals, (rows, cols)), shape=(N, N)).tocsr()
 
     def __repr__(self) -> str:
         """String representation of operator."""

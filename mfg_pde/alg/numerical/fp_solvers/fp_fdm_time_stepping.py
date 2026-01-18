@@ -19,6 +19,32 @@ Mathematical Background:
 
     where A is advection, D is diffusion operators.
 
+Issue #597 Milestone 3 - Hybrid Operator Strategy:
+    This module uses a **Defect Correction** approach for robustness:
+
+    - **Explicit solvers**: Use AdvectionOperator (tensor_calculus.advection)
+      for high-accuracy Godunov fluxes. See solve_timestep_tensor_explicit().
+
+    - **Implicit solvers**: Use manual sparse matrix construction from
+      fp_fdm_alg_*.py modules. These build velocity-based linear upwind
+      matrices that form the well-conditioned Jacobian for Newton iteration.
+
+    **Why this hybrid approach?**
+
+    The AdvectionOperator uses state-dependent Godunov upwinding (nonlinear
+    flux limiting). While this produces sharp, accurate solutions, it cannot
+    be linearized into a sparse matrix via unit-vector probing.
+
+    For implicit solvers, we need the **linearized velocity-based Jacobian**:
+        J(m) ≈ ∂(∇·(vm))/∂m
+
+    This is exactly what the manual sparse construction provides. It's the
+    correct linear approximation for Newton/Picard iteration.
+
+    **This is standard CFD practice**: Use a stable linear operator for the
+    LHS (Jacobian) while evaluating the nonlinear residual on the RHS. Known
+    as "Defect Correction" or "Picard Linearization."
+
 Note:
     Functions are exported without leading underscore but should be imported
     with underscore alias in fp_fdm.py for internal use:
