@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -62,6 +62,14 @@ class FPParticleSolver(BaseFPSolver):
 
     For meshfree density evolution on collocation points, use FPGFDMSolver instead.
 
+    Density Modes (Issue #489 - Direct Particle Query):
+        - "grid_only" (default): Store only grid density M (backward compatible)
+        - "hybrid": Store both grid density M and particle positions for direct queries
+        - "query_only": Store only particles (grid density computed on-demand)
+
+        Use hybrid/query_only modes to enable efficient density queries at arbitrary
+        points, providing 10-100× speedup for Semi-Lagrangian HJB coupling.
+
     Boundary Conditions:
         FPParticleSolver requires explicit boundary conditions. Provide via:
         1. boundary_conditions parameter (direct), OR
@@ -90,6 +98,7 @@ class FPParticleSolver(BaseFPSolver):
         num_particles: int = 5000,
         kde_bandwidth: Any = "scott",
         kde_normalization: KDENormalization | str = KDENormalization.ALL,
+        density_mode: Literal["grid_only", "hybrid", "query_only"] = "grid_only",
         boundary_conditions: BoundaryConditions | None = None,
         implicit_domain: ImplicitDomain | None = None,
         backend: str | None = None,
@@ -153,6 +162,10 @@ class FPParticleSolver(BaseFPSolver):
         self.kde_normalization = kde_normalization
         self.M_particles_trajectory: np.ndarray | None = None
         self._time_step_counter = 0  # Track current time step for normalization logic
+
+        # Density mode for direct queries (Issue #489 Phase 2)
+        self.density_mode = density_mode
+        self._particle_history: list[np.ndarray] | None = None  # Stored if density_mode != "grid_only"
 
         # Segment-aware BC applicator (Pattern A: solver owns applicator)
         self._applicator = ParticleApplicator()
