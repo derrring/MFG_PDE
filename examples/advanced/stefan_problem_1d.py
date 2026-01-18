@@ -55,7 +55,7 @@ from scipy.special import erf
 from mfg_pde.alg.numerical.pde_solvers import ImplicitHeatSolver
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import dirichlet_bc
-from mfg_pde.geometry.level_set import TimeDependentDomain
+from mfg_pde.geometry.level_set import LevelSetFunction, TimeDependentDomain
 from mfg_pde.geometry.operators import InterfaceJumpOperator
 
 # ========================================
@@ -252,7 +252,9 @@ for n in range(Nt):
     # Compute gradient jump: [∂T/∂x] = (∂T/∂x)|_right - (∂T/∂x)|_left
     heat_flux_jump_field = jump_op.compute_jump(T, quantity="gradient")
 
-    # Extract jump value at interface
+    # Extract jump value at interface (grid-based for physics)
+    # Note: InterfaceJumpOperator computes jumps at grid points
+    # Using grid-based extraction ensures consistency with jump computation
     idx_interface = np.argmin(np.abs(phi_current))
     heat_flux_jump = heat_flux_jump_field[idx_interface]
 
@@ -267,10 +269,12 @@ for n in range(Nt):
     # Evolve (without reinitialization for now - φ stays close to SDF)
     ls_domain.evolve_step(V_field, dt, reinitialize=False, save_to_history=True)
 
-    # Track interface position
+    # Track interface position using subcell precision
+    # Note: Subcell gives O(dx²) accuracy for interface LOCATION
+    # Overall Stefan error dominated by physics solver, not geometry
     phi_new = ls_domain.current_phi
-    idx_interface_new = np.argmin(np.abs(phi_new))
-    s_current = x[idx_interface_new]
+    ls_func_new = LevelSetFunction(phi_new, grid, is_signed_distance=True)
+    s_current = ls_func_new.get_interface_location_subcell()
 
     interface_history.append(s_current)
     time_history.append((n + 1) * dt)
