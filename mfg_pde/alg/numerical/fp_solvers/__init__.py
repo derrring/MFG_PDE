@@ -25,6 +25,8 @@ from .fp_gfdm import FPGFDMSolver
 from .fp_particle import FPParticleSolver, KDENormalization
 from .fp_semi_lagrangian import FPSLSolver
 from .fp_semi_lagrangian_adjoint import FPSLAdjointSolver
+from .particle_density_query import ParticleDensityQuery
+from .particle_result import FPParticleResult
 
 __all__ = [
     "BaseFPSolver",
@@ -35,4 +37,6 @@ __all__ = [
     "FPSLSolver",
     "FPSLAdjointSolver",  # Forward SL (adjoint of HJB SL for MFG)
     "KDENormalization",
+    "ParticleDensityQuery",  # Issue #489 - Direct particle query
+    "FPParticleResult",  # Issue #489 - Result with query support
 ]
