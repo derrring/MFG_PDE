@@ -305,6 +305,7 @@ class BCSegment:
         tolerance: float = 1e-8,
         axis_names: dict[int, str] | None = None,
         domain_sdf: Callable[[np.ndarray], float] | None = None,
+        geometry=None,  # Type: SupportsRegionMarking | None (avoid circular import)
     ) -> bool:
         """
         Check if this BC segment applies to a given boundary point.
@@ -314,6 +315,7 @@ class BCSegment:
         2. Coordinate range matching (rectangular domains)
         3. SDF region matching (general domains)
         4. Normal direction matching (general domains)
+        5. Region name matching (Issue #596 Phase 2.5)
 
         Args:
             point: Spatial coordinates as 1D array of shape (dimension,)
@@ -325,12 +327,15 @@ class BCSegment:
             tolerance: Tolerance for geometric comparisons
             axis_names: Optional mapping from axis index to name (e.g., {0: "x", 1: "y"})
             domain_sdf: Optional domain SDF for normal-based matching
+            geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                     Required if this segment uses region_name.
 
         Returns:
             True if this BC segment applies to the given point
 
         Raises:
-            ValueError: If point is empty or domain_bounds are invalid
+            ValueError: If point is empty, domain_bounds are invalid, or geometry is
+                       missing when region_name is used
         """
         # Input validation
         point = np.asarray(point, dtype=float)
@@ -405,6 +410,84 @@ class BCSegment:
                 cos_angle = np.dot(normal, target)
                 if cos_angle < self.normal_tolerance:
                     return False
+
+        # Method 5: Check region name match (Issue #596 Phase 2.5)
+        if self.region_name is not None:
+            # Import here to avoid circular dependency
+            from mfg_pde.geometry.protocols import SupportsRegionMarking
+
+            # Validate geometry is provided
+            if geometry is None:
+                raise ValueError(
+                    f"BCSegment '{self.name}' uses region_name='{self.region_name}' "
+                    f"but no geometry provided to matches_point(). "
+                    f"Region-based BCs require geometry parameter."
+                )
+
+            # Validate geometry supports region marking
+            if not isinstance(geometry, SupportsRegionMarking):
+                raise TypeError(
+                    f"BCSegment '{self.name}' uses region_name but geometry "
+                    f"{type(geometry).__name__} doesn't implement SupportsRegionMarking"
+                )
+
+            # Get region mask from geometry
+            try:
+                region_mask = geometry.get_region_mask(self.region_name)
+            except (KeyError, ValueError) as e:
+                raise ValueError(
+                    f"BCSegment '{self.name}': Failed to get region mask for '{self.region_name}'. Error: {e}"
+                ) from e
+
+            # Convert point to grid indices
+            # Assumption: point is in physical coordinates, need to map to grid indices
+            # This requires the geometry to provide a method to map coordinates to indices
+            # For now, we'll check if the point's grid index is in the region mask
+            # This is a simplified implementation - may need refinement for general geometries
+
+            # Try to get grid indices from geometry
+            if hasattr(geometry, "point_to_indices"):
+                try:
+                    indices = geometry.point_to_indices(point)
+                    # Check if indices are in region (region_mask is boolean array)
+                    in_region = region_mask[tuple(indices)]
+                    if not in_region:
+                        return False
+                except (IndexError, AttributeError, TypeError):
+                    # Fallback: point not mappable to grid indices
+                    # This could happen for points outside domain or at boundaries
+                    # Conservative approach: assume point is NOT in region
+                    return False
+            else:
+                # Geometry doesn't support point_to_indices
+                # For TensorProductGrid, we can compute indices manually
+                if hasattr(geometry, "bounds") and hasattr(geometry, "Nx_points"):
+                    try:
+                        # Manual index computation for structured grids
+                        bounds = geometry.bounds
+                        Nx_points = geometry.Nx_points
+
+                        indices = []
+                        for dim_idx in range(len(point)):
+                            x_min, x_max = bounds[dim_idx]
+                            # Compute grid index (with clamping to handle boundary points)
+                            grid_idx = int((point[dim_idx] - x_min) / (x_max - x_min) * (Nx_points[dim_idx] - 1))
+                            grid_idx = max(0, min(grid_idx, Nx_points[dim_idx] - 1))
+                            indices.append(grid_idx)
+
+                        # Check region mask
+                        in_region = region_mask[tuple(indices)]
+                        if not in_region:
+                            return False
+                    except (IndexError, AttributeError, TypeError, KeyError):
+                        # Fallback: assume NOT in region
+                        return False
+                else:
+                    raise NotImplementedError(
+                        f"BCSegment '{self.name}': Geometry {type(geometry).__name__} doesn't support "
+                        f"point-to-index mapping required for region_name matching. "
+                        f"Geometry must implement either point_to_indices() method or provide bounds/Nx_points attributes."
+                    )
 
         return True
 

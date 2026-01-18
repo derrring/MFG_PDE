@@ -223,6 +223,7 @@ class BoundaryConditions:
         boundary_id: str | None = None,
         tolerance: float = 1e-8,
         axis_names: dict[int, str] | None = None,
+        geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
     ) -> BCSegment:
         """
         Get the BC segment that applies to a specific boundary point.
@@ -232,6 +233,8 @@ class BoundaryConditions:
             boundary_id: Boundary identifier (can be None for SDF-based domains)
             tolerance: Tolerance for geometric comparisons
             axis_names: Optional axis name mapping
+            geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                     Required if any segment uses region_name.
 
         Returns:
             BCSegment that applies (highest priority match, or default)
@@ -253,6 +256,7 @@ class BoundaryConditions:
                 tolerance,
                 axis_names,
                 domain_sdf=self.domain_sdf,
+                geometry=geometry,  # Pass geometry for region_name matching (Issue #596 Phase 2.5)
             ):
                 return segment
 

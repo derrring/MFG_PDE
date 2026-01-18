@@ -117,6 +117,7 @@ def apply_boundary_conditions_2d(
     domain_bounds: NDArray[np.floating] | None = None,
     time: float = 0.0,
     config: GhostCellConfig | None = None,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions by padding array with ghost cells.
@@ -133,6 +134,8 @@ def apply_boundary_conditions_2d(
                       bounds[i] = [min_i, max_i]. Required for mixed BCs.
         time: Current time for time-dependent BC values
         config: Ghost cell configuration (grid type, etc.)
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field of shape (Ny+2, Nx+2) with ghost cells
@@ -174,7 +177,7 @@ def apply_boundary_conditions_2d(
             raise ValueError("domain_bounds required for mixed boundary conditions")
         bounds = domain_bounds if domain_bounds is not None else boundary_conditions.domain_bounds
         _validate_domain_bounds_2d(bounds)
-        return _apply_mixed_bc_2d(field, boundary_conditions, bounds, time, config)
+        return _apply_mixed_bc_2d(field, boundary_conditions, bounds, time, config, geometry)
 
 
 def _validate_field_2d(field: NDArray[np.floating]) -> None:
@@ -408,6 +411,7 @@ def _apply_mixed_bc_2d(
     domain_bounds: NDArray[np.floating],
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply mixed boundary conditions (different types on different segments).
@@ -420,6 +424,7 @@ def _apply_mixed_bc_2d(
         domain_bounds: Domain bounds array of shape (2, 2)
         time: Current time for time-dependent values
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5)
 
     Returns:
         Padded field (Ny+2, Nx+2)
@@ -457,6 +462,7 @@ def _apply_mixed_bc_2d(
         grid_spacing=dx,
         time=time,
         config=config,
+        geometry=geometry,
     )
 
     # Right boundary (x = x_max)
@@ -471,6 +477,7 @@ def _apply_mixed_bc_2d(
         grid_spacing=dx,
         time=time,
         config=config,
+        geometry=geometry,
     )
 
     # Bottom boundary (y = y_min)
@@ -485,6 +492,7 @@ def _apply_mixed_bc_2d(
         grid_spacing=dy,
         time=time,
         config=config,
+        geometry=geometry,
     )
 
     # Top boundary (y = y_max)
@@ -499,6 +507,7 @@ def _apply_mixed_bc_2d(
         grid_spacing=dy,
         time=time,
         config=config,
+        geometry=geometry,
     )
 
     # Handle corners (average of adjacent boundary values)
@@ -521,6 +530,7 @@ def _apply_boundary_ghost_cells(
     grid_spacing: float,
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> None:
     """
     Apply ghost cells for one boundary.
@@ -536,6 +546,7 @@ def _apply_boundary_ghost_cells(
         grid_spacing: Grid spacing normal to boundary
         time: Current time
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5)
     """
     _ny, _nx = field.shape
     n_points = len(coords)
@@ -574,7 +585,7 @@ def _apply_boundary_ghost_cells(
                 ghost_idx = (-1, i + 1)
 
         # Get BC segment for this point
-        bc_segment = mixed_bc.get_bc_at_point(point, boundary_id)
+        bc_segment = mixed_bc.get_bc_at_point(point, boundary_id, geometry=geometry)
 
         # Compute ghost cell value
         ghost_val = _compute_ghost_value_enhanced(
@@ -775,6 +786,7 @@ def _apply_mixed_bc_nd(
     domain_bounds: NDArray[np.floating],
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply mixed boundary conditions in n dimensions.
@@ -788,6 +800,7 @@ def _apply_mixed_bc_nd(
         domain_bounds: Domain bounds array of shape (d, 2)
         time: Current time for time-dependent values
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5)
 
     Returns:
         Padded field with shape (N_0+2, N_1+2, ..., N_{d-1}+2)
@@ -830,6 +843,7 @@ def _apply_mixed_bc_nd(
                 grid_spacing=grid_spacings[axis],
                 time=time,
                 config=config,
+                geometry=geometry,
             )
 
     # Handle corners/edges (intersections of multiple boundaries)
@@ -850,6 +864,7 @@ def _apply_boundary_face_nd(
     grid_spacing: float,
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> None:
     """
     Apply ghost cells for one boundary face in nD.
@@ -865,6 +880,7 @@ def _apply_boundary_face_nd(
         grid_spacing: Grid spacing normal to boundary
         time: Current time
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5)
     """
     d = field.ndim
     shape = field.shape
@@ -911,7 +927,7 @@ def _apply_boundary_face_nd(
                 )
 
         # Get BC segment for this point
-        bc_segment = mixed_bc.get_bc_at_point(point, boundary_id)
+        bc_segment = mixed_bc.get_bc_at_point(point, boundary_id, geometry=geometry)
 
         # Compute ghost cell value
         ghost_val = _compute_ghost_value_enhanced(
@@ -1008,6 +1024,7 @@ def apply_boundary_conditions_nd(
     domain_bounds: NDArray[np.floating] | None = None,
     time: float = 0.0,
     config: GhostCellConfig | None = None,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions in n dimensions.
@@ -1018,6 +1035,8 @@ def apply_boundary_conditions_nd(
         domain_bounds: Domain bounds array of shape (d, 2)
         time: Current time for time-dependent BCs
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field with ghost cells
@@ -1039,9 +1058,9 @@ def apply_boundary_conditions_nd(
     d = field.ndim
 
     if d == 1:
-        return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config)
+        return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config, geometry)
     elif d == 2:
-        return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, config)
+        return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, config, geometry)
     else:
         # For d > 2, use uniform BC only
         # Handle legacy BoundaryConditions
@@ -1199,7 +1218,7 @@ def apply_boundary_conditions_nd(
                 raise ValueError(f"Unsupported BC type for nD: {bc_type}")
         else:
             # Mixed BC for d > 2
-            return _apply_mixed_bc_nd(field, boundary_conditions, domain_bounds, time, config)
+            return _apply_mixed_bc_nd(field, boundary_conditions, domain_bounds, time, config, geometry)
 
 
 def _apply_bc_1d(
@@ -1208,6 +1227,7 @@ def _apply_bc_1d(
     domain_bounds: NDArray[np.floating] | None,
     time: float,
     config: GhostCellConfig,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions in 1D.
@@ -1218,6 +1238,8 @@ def _apply_bc_1d(
         domain_bounds: Domain bounds array of shape (1, 2) or (2,)
         time: Current time
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field of shape (Nx+2,)
@@ -1321,7 +1343,7 @@ def _apply_bc_1d(
 
         # Left BC
         point_left = np.array([x_min])
-        bc_left = boundary_conditions.get_bc_at_point(point_left, "x_min")
+        bc_left = boundary_conditions.get_bc_at_point(point_left, "x_min", geometry=geometry)
         if bc_left.bc_type == BCType.EXTRAPOLATION_LINEAR and len(field) >= 2:
             # Linear extrapolation: ghost = 2*u_0 - u_1
             padded[0] = 2.0 * field[0] - field[1]
@@ -1339,7 +1361,7 @@ def _apply_bc_1d(
 
         # Right BC
         point_right = np.array([x_max])
-        bc_right = boundary_conditions.get_bc_at_point(point_right, "x_max")
+        bc_right = boundary_conditions.get_bc_at_point(point_right, "x_max", geometry=geometry)
         if bc_right.bc_type == BCType.EXTRAPOLATION_LINEAR and len(field) >= 2:
             # Linear extrapolation: ghost = 2*u_0 - u_1
             padded[-1] = 2.0 * field[-1] - field[-2]
@@ -1362,6 +1384,7 @@ def create_boundary_mask_2d(
     mixed_bc: BoundaryConditions,
     grid_shape: tuple[int, int],
     domain_bounds: NDArray[np.floating],
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> dict[str, dict[str, NDArray[np.bool_]]]:
     """
     Pre-compute boundary masks for each BC segment.
@@ -1373,6 +1396,8 @@ def create_boundary_mask_2d(
         mixed_bc: BC specification (unified BoundaryConditions)
         grid_shape: Grid shape (Ny, Nx)
         domain_bounds: Domain bounds
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if mixed_bc uses region_name.
 
     Returns:
         Dictionary mapping segment names to boundary masks:
@@ -1402,25 +1427,25 @@ def create_boundary_mask_2d(
         # Left boundary
         for j in range(Ny):
             point = np.array([x_min, y_coords[j]])
-            bc = mixed_bc.get_bc_at_point(point, "x_min")
+            bc = mixed_bc.get_bc_at_point(point, "x_min", geometry=geometry)
             segment_masks["left"][j] = bc.name == segment.name
 
         # Right boundary
         for j in range(Ny):
             point = np.array([x_max, y_coords[j]])
-            bc = mixed_bc.get_bc_at_point(point, "x_max")
+            bc = mixed_bc.get_bc_at_point(point, "x_max", geometry=geometry)
             segment_masks["right"][j] = bc.name == segment.name
 
         # Bottom boundary
         for i in range(Nx):
             point = np.array([x_coords[i], y_min])
-            bc = mixed_bc.get_bc_at_point(point, "y_min")
+            bc = mixed_bc.get_bc_at_point(point, "y_min", geometry=geometry)
             segment_masks["bottom"][i] = bc.name == segment.name
 
         # Top boundary
         for i in range(Nx):
             point = np.array([x_coords[i], y_max])
-            bc = mixed_bc.get_bc_at_point(point, "y_max")
+            bc = mixed_bc.get_bc_at_point(point, "y_max", geometry=geometry)
             segment_masks["top"][i] = bc.name == segment.name
 
         masks[segment.name] = segment_masks
@@ -1439,6 +1464,7 @@ def apply_boundary_conditions_1d(
     domain_bounds: NDArray[np.floating] | None = None,
     time: float = 0.0,
     config: GhostCellConfig | None = None,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions in 1D.
@@ -1451,6 +1477,8 @@ def apply_boundary_conditions_1d(
         domain_bounds: Domain bounds array of shape (1, 2) or (2,)
         time: Current time for time-dependent BC values
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field of shape (Nx+2,) with ghost cells
@@ -1469,7 +1497,7 @@ def apply_boundary_conditions_1d(
     if config is None:
         config = GhostCellConfig()
 
-    return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config)
+    return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config, geometry)
 
 
 def apply_boundary_conditions_3d(
@@ -1478,6 +1506,7 @@ def apply_boundary_conditions_3d(
     domain_bounds: NDArray[np.floating] | None = None,
     time: float = 0.0,
     config: GhostCellConfig | None = None,
+    geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions in 3D.
@@ -1490,6 +1519,8 @@ def apply_boundary_conditions_3d(
         domain_bounds: Domain bounds array of shape (3, 2)
         time: Current time for time-dependent BC values
         config: Ghost cell configuration
+        geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                 Required if boundary_conditions uses region_name.
 
     Returns:
         Padded field of shape (Nz+2, Ny+2, Nx+2) with ghost cells
@@ -1513,7 +1544,7 @@ def apply_boundary_conditions_3d(
 
     # Currently delegates to nD implementation
     # TODO: Add optimized 3D implementation with face-specific handling
-    return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, config)
+    return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, config, geometry)
 
 
 # =============================================================================
@@ -1872,6 +1903,7 @@ class FDMApplicator(BaseStructuredApplicator):
         grid_spacing: float | tuple[float, ...] | None = None,
         domain_bounds: NDArray[np.floating] | None = None,
         time: float = 0.0,
+        geometry=None,  # Type: SupportsRegionMarking | None (Issue #596 Phase 2.5)
     ) -> NDArray[np.floating]:
         """
         Apply boundary conditions to a field.
@@ -1884,18 +1916,20 @@ class FDMApplicator(BaseStructuredApplicator):
             grid_spacing: Grid spacing (not used for ghost cells, but kept for API consistency)
             domain_bounds: Domain bounds (required for mixed BCs)
             time: Current time for time-dependent BCs
+            geometry: Geometry object with marked regions (Issue #596 Phase 2.5).
+                     Required if boundary_conditions uses region_name.
 
         Returns:
             Padded field with ghost cells
         """
         if self._dimension == 1:
-            return apply_boundary_conditions_1d(field, boundary_conditions, domain_bounds, time, self._config)
+            return apply_boundary_conditions_1d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
         elif self._dimension == 2:
-            return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, self._config)
+            return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
         elif self._dimension == 3:
-            return apply_boundary_conditions_3d(field, boundary_conditions, domain_bounds, time, self._config)
+            return apply_boundary_conditions_3d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
         else:
-            return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, self._config)
+            return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, self._config, geometry)
 
     @staticmethod
     def apply_1d(
