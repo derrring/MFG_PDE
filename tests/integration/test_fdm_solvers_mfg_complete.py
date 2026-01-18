@@ -225,7 +225,10 @@ class TestFDMSolversNumericalProperties:
 
         mfg_solver = FixedPointIterator(problem, hjb_solver=hjb_solver, fp_solver=fp_solver, damping_factor=0.5)
 
-        result = mfg_solver.solve(max_iterations=8, tolerance=1e-4)
+        # Use 15 iterations for sufficient convergence (Issue #600)
+        # With 8 iterations: max_jump=2281 (oscillates)
+        # With 15 iterations: max_jump=577 (smooth)
+        result = mfg_solver.solve(max_iterations=15, tolerance=1e-4)
 
         U, _M = result[:2]
         # Check that spatial derivatives don't have wild oscillations
