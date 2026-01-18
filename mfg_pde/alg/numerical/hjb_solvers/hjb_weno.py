@@ -102,6 +102,19 @@ class HJBWenoSolver(BaseHJBSolver):
     - Use "weno-z" for problems requiring high resolution
     - Use "weno-m" for critical points and smooth solutions
     - Use "weno-js" for maximum stability requirements
+
+    Required Geometry Traits (Issue #596 Phase 2.1):
+        - SupportsGradient: Provides gradient operators for derivative computation
+
+    Compatible Geometries:
+        - TensorProductGrid (structured grids)
+        - ImplicitDomain (SDF-based domains)
+        - Any geometry implementing SupportsGradient protocol
+
+    Note:
+        While WENO uses dimensional splitting instead of trait-based gradient
+        operators, the SupportsGradient trait ensures geometry can provide
+        spatial derivatives if needed for extensions.
     """
 
     # Scheme family trait for duality validation (Issue #580)
@@ -140,6 +153,16 @@ class HJBWenoSolver(BaseHJBSolver):
             splitting_method: Dimensional splitting method for 2D+ ("strang", "godunov")
         """
         super().__init__(problem)
+
+        # Validate geometry supports required trait (Issue #596 Phase 2.1C)
+        from mfg_pde.geometry.protocols import SupportsGradient
+
+        if not isinstance(problem.geometry, SupportsGradient):
+            raise TypeError(
+                f"HJB WENO solver requires geometry with SupportsGradient trait. "
+                f"{type(problem.geometry).__name__} does not implement this trait. "
+                f"Compatible geometries: TensorProductGrid, ImplicitDomain."
+            )
 
         # Validate WENO variant
         if weno_variant not in ["weno5", "weno-z", "weno-m", "weno-js"]:
