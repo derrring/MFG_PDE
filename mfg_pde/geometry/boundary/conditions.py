@@ -984,12 +984,18 @@ def mixed_bc_from_regions(
         segment = replace(segment_template, region_name=region_name)
         segments.append(segment)
 
+    # Extract domain bounds from geometry if available
+    domain_bounds = None
+    if hasattr(geometry, "bounds"):
+        domain_bounds = np.array(geometry.bounds)
+
     # Create BoundaryConditions object
     return BoundaryConditions(
         dimension=dimension,
         segments=segments,
         default_bc=default_segment.bc_type if default_segment else BCType.PERIODIC,
         default_value=default_segment.value if default_segment else 0.0,
+        domain_bounds=domain_bounds,
     )
 
 

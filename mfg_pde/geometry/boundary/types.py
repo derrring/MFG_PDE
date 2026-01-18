@@ -475,8 +475,12 @@ class BCSegment:
                             grid_idx = max(0, min(grid_idx, Nx_points[dim_idx] - 1))
                             indices.append(grid_idx)
 
+                        # Convert multi-dimensional indices to flat index
+                        # Region masks are flattened 1D arrays
+                        flat_idx = np.ravel_multi_index(indices, Nx_points)
+
                         # Check region mask
-                        in_region = region_mask[tuple(indices)]
+                        in_region = region_mask[flat_idx]
                         if not in_region:
                             return False
                     except (IndexError, AttributeError, TypeError, KeyError):
