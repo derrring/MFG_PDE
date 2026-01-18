@@ -52,7 +52,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mfg_pde.alg.numerical.pde_solvers import ImplicitHeatSolver
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import dirichlet_bc
 from mfg_pde.geometry.level_set import TimeDependentDomain
 
 # ========================================
@@ -79,11 +81,17 @@ x_center, y_center = 0.5, 0.5
 R0 = 0.3  # Initial radius
 
 # Time stepping
-# CFL for 2D heat equation: α·dt/(dx²) < 0.25
+# IMPLICIT SOLVER: Can use CFL >> 1 for 2D heat equation
 dx_min = min((x_max - x_min) / Nx, (y_max - y_min) / Ny)
-dt_max_heat = 0.25 * dx_min**2 / alpha
-dt = 0.5 * dt_max_heat  # Safety factor
+dt_explicit = 0.125 * dx_min**2 / alpha  # CFL = 0.125 (explicit stability, 2D)
+cfl_factor = 10  # Use 10× larger timestep
+dt = cfl_factor * dt_explicit
 Nt = int(T_final / dt)
+
+print("\nImplicit Solver Speedup (2D):")
+print(f"  Explicit stable dt: {dt_explicit:.6f} (CFL = 0.125)")
+print(f"  Implicit dt: {dt:.6f} (CFL = {cfl_factor * 0.125:.2f})")
+print(f"  Speedup factor: {cfl_factor}× ({Nt} steps vs {int(T_final / dt_explicit)} steps)")
 
 print("\nProblem Setup:")
 print(f"  Domain: [{x_min},{x_max}] × [{y_min},{y_max}]")
@@ -118,49 +126,23 @@ print("\nInitialized TimeDependentDomain:")
 print(f"  {ls_domain}")
 
 # ========================================
-# Heat Equation Solver (2D)
+# Heat Equation Solver (Implicit 2D)
 # ========================================
 
+# Create Dirichlet boundary conditions for 2D heat equation
+bc_heat = dirichlet_bc(dimension=2, value=0.0)  # Will override values manually
 
-def solve_heat_equation_2d(
-    T_prev: np.ndarray,
-    phi: np.ndarray,
-    dx: float,
-    dy: float,
-    dt: float,
-    alpha: float,
-    T_boundary: float = 1.0,
-) -> np.ndarray:
-    """
-    Solve 2D heat equation ∂T/∂t = α·(∂²T/∂x² + ∂²T/∂y²).
+# Initialize implicit heat solver (Crank-Nicolson)
+heat_solver = ImplicitHeatSolver(
+    grid=grid,
+    alpha=alpha,
+    bc=bc_heat,
+    theta=0.5,  # Crank-Nicolson (2nd-order accurate, unconditionally stable)
+)
 
-    Uses explicit finite difference with Dirichlet BC.
-    """
-    # CFL check
-    cfl = alpha * dt * (1 / dx**2 + 1 / dy**2)
-    if cfl > 0.5:
-        raise ValueError(f"CFL = {cfl:.3f} > 0.5, unstable!")
-
-    T_new = T_prev.copy()
-
-    # Interior points
-    for i in range(1, T_new.shape[0] - 1):
-        for j in range(1, T_new.shape[1] - 1):
-            # ∂²T/∂x²
-            d2T_dx2 = (T_prev[i + 1, j] - 2 * T_prev[i, j] + T_prev[i - 1, j]) / dx**2
-            # ∂²T/∂y²
-            d2T_dy2 = (T_prev[i, j + 1] - 2 * T_prev[i, j] + T_prev[i, j - 1]) / dy**2
-
-            # Update
-            T_new[i, j] = T_prev[i, j] + alpha * dt * (d2T_dx2 + d2T_dy2)
-
-    # Boundary conditions (Dirichlet)
-    T_new[0, :] = T_boundary  # Left
-    T_new[-1, :] = T_boundary  # Right
-    T_new[:, 0] = T_boundary  # Bottom
-    T_new[:, -1] = T_boundary  # Top
-
-    return T_new
+print("\nHeat Solver (2D):")
+print(f"  {heat_solver}")
+print(f"  CFL number: {heat_solver.get_cfl_number(dt):.2f} (no stability restriction)")
 
 
 def compute_heat_flux_normal(T: np.ndarray, phi: np.ndarray, dx: float, dy: float) -> np.ndarray:
@@ -256,9 +238,15 @@ snapshot_phi.append(phi0.copy())
 for n in range(Nt):
     t = (n + 1) * dt
 
-    # 1. Solve heat equation
+    # 1. Solve heat equation (implicit solver)
     phi_current = ls_domain.current_phi
-    T = solve_heat_equation_2d(T, phi_current, dx, dy, dt, alpha, T_boundary)
+    T = heat_solver.solve_step(T, dt)
+
+    # Enforce Dirichlet boundary conditions
+    T[0, :] = T_boundary  # Left
+    T[-1, :] = T_boundary  # Right
+    T[:, 0] = T_boundary  # Bottom
+    T[:, -1] = T_boundary  # Top
 
     # 2. Compute interface velocity from heat flux
     V_field = compute_heat_flux_normal(T, phi_current, dx, dy)

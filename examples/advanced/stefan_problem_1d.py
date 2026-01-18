@@ -52,7 +52,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import erf
 
+from mfg_pde.alg.numerical.pde_solvers import ImplicitHeatSolver
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import dirichlet_bc
 from mfg_pde.geometry.level_set import TimeDependentDomain
 
 # ========================================
@@ -75,13 +77,19 @@ T_cold = 0.0  # Cold boundary temperature
 s0 = 0.5  # Initial interface position
 
 # Time stepping
-# CFL condition for heat equation: α·dt/dx² < 0.5
-# With α = 0.01, Nx = 400 → dx = 0.0025
-# dt < 0.5 * 0.0025² / 0.01 = 0.0003125
-# Use CFL = 0.2 for stability
+# IMPLICIT SOLVER: Can use CFL >> 1 (unconditionally stable)
+# With explicit solver: CFL < 0.5 required → dt_explicit ≈ 0.0003125
+# With implicit solver: CFL = 10-50 achievable → 10-100× speedup
 dx_val = (x_max - x_min) / Nx
-dt = 0.2 * dx_val**2 / alpha  # CFL = 0.2 (conservative)
+dt_explicit = 0.2 * dx_val**2 / alpha  # CFL = 0.2 (explicit stability limit)
+cfl_factor = 20  # Use 20× larger timestep (CFL = 4.0)
+dt = cfl_factor * dt_explicit
 Nt = int(T_final / dt)
+
+print("\nImplicit Solver Speedup:")
+print(f"  Explicit stable dt: {dt_explicit:.6f} (CFL = 0.2)")
+print(f"  Implicit dt: {dt:.6f} (CFL = {cfl_factor * 0.2:.1f})")
+print(f"  Speedup factor: {cfl_factor}× ({Nt} steps vs {int(T_final / dt_explicit)} steps)")
 
 print("\nProblem Setup:")
 print(f"  Domain: x ∈ [{x_min}, {x_max}]")
@@ -158,53 +166,24 @@ print("\nInitialized TimeDependentDomain:")
 print(f"  {ls_domain}")
 
 # ========================================
-# Heat Equation Solver
+# Heat Equation Solver (Implicit)
 # ========================================
 
+# Create Dirichlet boundary conditions for heat equation
+# Left boundary: T = T_hot, Right boundary: T = T_cold
+bc_heat = dirichlet_bc(dimension=1, value=0.0)  # Will override values manually
 
-def solve_heat_equation_1d(
-    T_prev: np.ndarray,
-    phi: np.ndarray,
-    dx: float,
-    dt: float,
-    alpha: float,
-    T_hot: float = 1.0,
-    T_cold: float = 0.0,
-) -> np.ndarray:
-    """
-    Solve heat equation ∂T/∂t = α·∂²T/∂x² with Dirichlet BC.
+# Initialize implicit heat solver (Crank-Nicolson, theta=0.5)
+heat_solver = ImplicitHeatSolver(
+    grid=grid,
+    alpha=alpha,
+    bc=bc_heat,
+    theta=0.5,  # Crank-Nicolson (2nd-order accurate, unconditionally stable)
+)
 
-    Uses explicit finite difference (forward Euler in time, central in space).
-
-    Args:
-        T_prev: Temperature at previous timestep
-        phi: Level set function (currently unused - solve on full domain)
-        dx: Spatial step
-        dt: Time step
-        alpha: Thermal diffusivity
-        T_hot: Left boundary temperature
-        T_cold: Right boundary temperature
-
-    Returns:
-        Updated temperature field
-    """
-    # CFL check
-    cfl = alpha * dt / dx**2
-    if cfl > 0.5:
-        raise ValueError(f"CFL = {cfl:.3f} > 0.5, unstable! Reduce dt or increase Nx.")
-
-    T_new = T_prev.copy()
-
-    # Interior points: explicit finite difference
-    # T^{n+1}_i = T^n_i + α·dt/dx²·(T^n_{i+1} - 2T^n_i + T^n_{i-1})
-    for i in range(1, len(T_new) - 1):
-        T_new[i] = T_prev[i] + alpha * dt / dx**2 * (T_prev[i + 1] - 2 * T_prev[i] + T_prev[i - 1])
-
-    # Boundary conditions (Dirichlet)
-    T_new[0] = T_hot
-    T_new[-1] = T_cold
-
-    return T_new
+print("\nHeat Solver:")
+print(f"  {heat_solver}")
+print(f"  CFL number: {heat_solver.get_cfl_number(dt):.2f} (no stability restriction)")
 
 
 # ========================================
@@ -256,9 +235,13 @@ print(f"  Saving snapshots at t = {snapshot_times}")
 for n in range(Nt):
     t = n * dt
 
-    # 1. Solve heat equation on current domain
+    # 1. Solve heat equation on current domain (implicit solver)
     phi_current = ls_domain.current_phi
-    T = solve_heat_equation_1d(T, phi_current, dx, dt, alpha, T_hot, T_cold)
+    T = heat_solver.solve_step(T, dt)
+
+    # Enforce Dirichlet boundary conditions (solver may not preserve exactly)
+    T[0] = T_hot
+    T[-1] = T_cold
 
     # 2. Compute interface velocity from heat flux jump
     # Stefan condition: V = -κ·[∂T/∂x] at interface
