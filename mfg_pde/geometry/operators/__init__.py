@@ -36,6 +36,7 @@ Usage:
 from .advection import AdvectionOperator
 from .divergence import DivergenceOperator
 from .gradient import GradientComponentOperator, create_gradient_operators
+from .interface_jump import InterfaceJumpOperator
 from .interpolation import InterpolationOperator
 from .laplacian import LaplacianOperator
 from .projection import GeometryProjector, ProjectionRegistry
@@ -50,6 +51,7 @@ __all__ = [
     "DivergenceOperator",
     "AdvectionOperator",
     "InterpolationOperator",
+    "InterfaceJumpOperator",
     # Factory functions
     "create_gradient_operators",
 ]

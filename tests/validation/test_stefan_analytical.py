@@ -114,7 +114,7 @@ class TestNeumannSolution:
             T = self.solve_heat_equation_step(T, dx, dt, alpha, T_hot, T_cold)
 
             # Interface velocity
-            phi_current = ls_domain.get_level_set_at_time(ls_domain.time_history[-1])
+            phi_current = ls_domain.get_phi_at_time(ls_domain.time_history[-1])
             idx_interface = np.argmin(np.abs(phi_current))
 
             if 1 <= idx_interface < Nx:
@@ -129,7 +129,7 @@ class TestNeumannSolution:
 
             # Record every 50 steps
             if n % 50 == 0:
-                phi_t = ls_domain.get_level_set_at_time(t)
+                phi_t = ls_domain.get_phi_at_time(t)
                 s_num = x[np.argmin(np.abs(phi_t))]
 
                 time_points.append(t)
@@ -184,7 +184,7 @@ class TestNeumannSolution:
 
             T = self.solve_heat_equation_step(T, dx, dt, alpha, T_hot, 0.0)
 
-            phi_current = ls_domain.get_level_set_at_time(ls_domain.time_history[-1])
+            phi_current = ls_domain.get_phi_at_time(ls_domain.time_history[-1])
             idx_interface = np.argmin(np.abs(phi_current))
 
             if 1 <= idx_interface < Nx:
@@ -239,7 +239,7 @@ class TestNeumannSolution:
                 t += dt
                 T = self.solve_heat_equation_step(T, dx, dt, alpha, T_hot, 0.0)
 
-                phi_current = ls_domain.get_level_set_at_time(ls_domain.time_history[-1])
+                phi_current = ls_domain.get_phi_at_time(ls_domain.time_history[-1])
                 idx_interface = np.argmin(np.abs(phi_current))
                 grad_T = (
                     (T[min(idx_interface + 1, Nx)] - T[max(idx_interface - 1, 0)]) / (2 * dx)
@@ -249,7 +249,7 @@ class TestNeumannSolution:
 
                 ls_domain.evolve_step(-grad_T, dt)
 
-            phi_final = ls_domain.get_level_set_at_time(t)
+            phi_final = ls_domain.get_phi_at_time(t)
             s_numerical = x[np.argmin(np.abs(phi_final))]
 
             error = abs(s_numerical - s_analytical)
@@ -302,7 +302,7 @@ class TestStefanEnergyConservation:
             T[0] = T_hot
             T[-1] = 0.0
 
-            phi_current = ls_domain.get_level_set_at_time(ls_domain.time_history[-1])
+            phi_current = ls_domain.get_phi_at_time(ls_domain.time_history[-1])
             idx_interface = np.argmin(np.abs(phi_current))
             grad_T = (T[min(idx_interface + 1, Nx)] - T[max(idx_interface - 1, 0)]) / (2 * dx)
 

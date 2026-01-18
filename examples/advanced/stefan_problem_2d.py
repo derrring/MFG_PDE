@@ -57,6 +57,9 @@ from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import dirichlet_bc
 from mfg_pde.geometry.level_set import TimeDependentDomain
 
+# Note: InterfaceJumpOperator not yet used in 2D (requires nD implementation)
+# from mfg_pde.geometry.operators import InterfaceJumpOperator
+
 # ========================================
 # Problem Parameters
 # ========================================

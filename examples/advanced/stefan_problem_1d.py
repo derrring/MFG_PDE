@@ -56,6 +56,7 @@ from mfg_pde.alg.numerical.pde_solvers import ImplicitHeatSolver
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import dirichlet_bc
 from mfg_pde.geometry.level_set import TimeDependentDomain
+from mfg_pde.geometry.operators import InterfaceJumpOperator
 
 # ========================================
 # Problem Parameters
@@ -245,27 +246,19 @@ for n in range(Nt):
 
     # 2. Compute interface velocity from heat flux jump
     # Stefan condition: V = -κ·[∂T/∂x] at interface
-    # Find interface location
+    # Use InterfaceJumpOperator for systematic jump computation
+    jump_op = InterfaceJumpOperator(grid, phi_current, offset_distance=2 * dx)
+
+    # Compute gradient jump: [∂T/∂x] = (∂T/∂x)|_right - (∂T/∂x)|_left
+    heat_flux_jump_field = jump_op.compute_jump(T, quantity="gradient")
+
+    # Extract jump value at interface
     idx_interface = np.argmin(np.abs(phi_current))
+    heat_flux_jump = heat_flux_jump_field[idx_interface]
 
-    # Compute heat flux using central differences averaged on both sides
-    if idx_interface > 1 and idx_interface < len(x) - 2:
-        # Average gradient on right side (ice, φ > 0)
-        # Use 2 points right of interface
-        grad_T_right = (T[idx_interface + 2] - T[idx_interface]) / (2 * dx)
-
-        # Average gradient on left side (water, φ < 0)
-        # Use 2 points left of interface
-        grad_T_left = (T[idx_interface] - T[idx_interface - 2]) / (2 * dx)
-
-        # Heat flux jump: [∂T/∂x] = grad_right - grad_left
-        heat_flux_jump = grad_T_right - grad_T_left
-
-        # Stefan condition: V = -κ·[∂T/∂x]
-        # Negative of jump gives melting direction
-        V_interface = -kappa_thermal * heat_flux_jump
-    else:
-        V_interface = 0.0
+    # Stefan condition: V = -κ·[∂T/∂x]
+    # Negative of jump gives melting direction
+    V_interface = -kappa_thermal * heat_flux_jump
 
     # 3. Evolve level set with interface velocity
     # Constant velocity field (interface moves uniformly)

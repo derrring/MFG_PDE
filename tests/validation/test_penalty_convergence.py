@@ -11,7 +11,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import ObstacleConstraint
+from mfg_pde.geometry.boundary import BilateralConstraint, ObstacleConstraint
 
 
 class TestPenaltyConvergenceTheory:
@@ -139,7 +139,7 @@ class TestObstacleConstraintAccuracy:
     def test_projection_exact_for_violated_constraint(self):
         """Test that projection exactly enforces constraint."""
         psi = np.array([0.5, 1.0, 0.3, 0.8])
-        constraint = ObstacleConstraint(lower_bound=psi, upper_bound=None)
+        constraint = ObstacleConstraint(psi, constraint_type="lower")
 
         # Input violates constraint
         u = np.array([0.3, 0.9, 0.1, 1.2])
@@ -159,7 +159,7 @@ class TestObstacleConstraintAccuracy:
     def test_projection_distance_minimization(self):
         """Test that projection minimizes distance."""
         psi = np.array([0.0, 0.5, 1.0, 0.3])
-        constraint = ObstacleConstraint(lower_bound=psi, upper_bound=None)
+        constraint = ObstacleConstraint(psi, constraint_type="lower")
 
         u = np.array([-0.2, 0.3, 1.5, 0.8])
         u_proj = constraint.project(u)
@@ -177,7 +177,7 @@ class TestObstacleConstraintAccuracy:
         psi_lower = np.array([-0.5, -0.3, 0.0, 0.2])
         psi_upper = np.array([0.5, 0.7, 1.0, 0.8])
 
-        constraint = ObstacleConstraint(lower_bound=psi_lower, upper_bound=psi_upper)
+        constraint = BilateralConstraint(psi_lower, psi_upper)
 
         # Test points violating both constraints
         u = np.array([-1.0, 0.5, 1.5, 0.5])  # Below, inside, above, inside
