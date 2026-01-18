@@ -190,6 +190,112 @@ class LevelSetFunction:
 
         return compute_curvature(self.phi, self.geometry)
 
+    def get_interface_location_subcell(self) -> float | NDArray[np.float64]:
+        """
+        Extract interface location with subcell precision via linear interpolation.
+
+        For a level set φ(x), the zero crossing occurs between grid points where
+        φ changes sign. Linear interpolation gives O(dx²) accuracy vs O(dx) for
+        simple argmin(|φ|).
+
+        Mathematical Formula (1D):
+            If φ[i] < 0 and φ[i+1] > 0, then:
+            x_interface = x[i] + |φ[i]| / (|φ[i]| + |φ[i+1]|) * dx
+
+        This is the weighted midpoint between bracketing grid points, giving
+        second-order accuracy for smooth level sets.
+
+        Returns
+        -------
+        interface_location : float | NDArray
+            For 1D: Scalar x-coordinate of interface
+            For 2D/3D: Array of (x, y) or (x, y, z) coordinates on zero level set
+            (2D/3D implementation TBD - Issue #605 Phase 2.3 extension)
+
+        Raises
+        ------
+        ValueError
+            If no zero crossing found (all φ same sign)
+
+        Notes
+        -----
+        **Accuracy**:
+        - Simple argmin: O(dx) error - finds grid point nearest to interface
+        - Subcell: O(dx²) error - interpolates between bracketing points
+
+        **Expected Impact on Stefan Problem**:
+        - Current error: 19.58% (using argmin for interface location)
+        - Target error: < 3% (with subcell precision)
+
+        **Implementation Status** (v0.17.3):
+        - 1D: Implemented ✓
+        - 2D/3D: Planned for future
+
+        Example
+        -------
+        >>> # 1D example
+        >>> ls = LevelSetFunction(phi_1d, grid, is_signed_distance=True)
+        >>> x_interface = ls.get_interface_location_subcell()
+        >>> # More accurate than: x_interface = x[np.argmin(np.abs(phi))]
+        """
+        if self.dimension == 1:
+            return self._get_interface_1d_subcell()
+        else:
+            # 2D/3D: Future implementation
+            # Would return list of (x, y) or (x, y, z) coordinates on zero level set
+            raise NotImplementedError(
+                f"Subcell interface extraction not yet implemented for {self.dimension}D. "
+                "See Issue #605 Phase 2.3 for planned extension."
+            )
+
+    def _get_interface_1d_subcell(self) -> float:
+        """
+        1D subcell interface extraction via linear interpolation.
+
+        Returns
+        -------
+        x_interface : float
+            x-coordinate of zero crossing with O(dx²) accuracy
+        """
+        phi = self.phi
+
+        # Get grid coordinates
+        if hasattr(self.geometry, "coordinates"):
+            x = self.geometry.coordinates[0]
+        elif hasattr(self.geometry, "grid") and hasattr(self.geometry.grid, "coordinates"):
+            x = self.geometry.grid.coordinates[0]
+        else:
+            raise AttributeError("Geometry must provide coordinates for subcell extraction")
+
+        # Find zero crossings (sign changes)
+        sign_changes = np.diff(np.sign(phi))
+        crossing_indices = np.where(sign_changes != 0)[0]
+
+        if len(crossing_indices) == 0:
+            raise ValueError(
+                "No zero crossing found in level set. "
+                f"phi range: [{phi.min():.3f}, {phi.max():.3f}]. "
+                "All values have same sign."
+            )
+
+        # Use first crossing (primary interface)
+        i = crossing_indices[0]
+
+        # Linear interpolation between phi[i] and phi[i+1]
+        # Zero crossing at: x = x[i] + t*(x[i+1] - x[i])
+        # where t = |phi[i]| / (|phi[i]| + |phi[i+1]|)
+
+        phi_left = phi[i]
+        phi_right = phi[i + 1]
+
+        # Interpolation parameter (0 to 1)
+        t = abs(phi_left) / (abs(phi_left) + abs(phi_right))
+
+        # Interface location
+        x_interface = x[i] + t * (x[i + 1] - x[i])
+
+        return float(x_interface)
+
     def __repr__(self) -> str:
         """String representation for debugging."""
         phi_min, phi_max = self.phi.min(), self.phi.max()
