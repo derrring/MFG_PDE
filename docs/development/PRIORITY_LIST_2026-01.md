@@ -976,9 +976,9 @@ u_flat[inlet_mask] = 1.0  # Dirichlet BC on inlet
 | Priority | Issue | Description | Size | Status |
 |:---------|:------|:------------|:-----|:-------|
 | ~~HIGH~~ | ~~#590~~ | ~~Phase 1: Geometry Trait System~~ | ~~Medium~~ | ✅ Closed (2026-01-18) |
-| HIGH | #596 | Phase 2: Solver Integration with Traits | Large | Open (unblocked) |
+| ~~HIGH~~ | ~~#596~~ | ~~Phase 2: Solver Integration with Traits~~ | ~~Large~~ | ✅ Closed (2026-01-18, commit 658c4ab) |
 | HIGH | #589 | Geometry/BC Architecture (Master Tracking) | Large | In Progress |
-| MEDIUM | #598 | BCApplicatorProtocol → ABC refactoring | Medium | Open |
+| MEDIUM | #598 | BCApplicatorProtocol → ABC refactoring | Medium | **In Progress (Phase 1 complete)** |
 | MEDIUM | #597 | FP Operator Refactoring | Large | Open |
 | MEDIUM | #549 | BC framework for non-tensor geometries | Large | Open |
 | MEDIUM | #535 | BC framework enhancement | Large | Open |
