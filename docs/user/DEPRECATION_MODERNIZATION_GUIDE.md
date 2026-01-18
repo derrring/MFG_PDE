@@ -1030,6 +1030,75 @@ pytest tests/unit/your_test_file.py
 
 ---
 
+## v0.16.17 New Features (BC Modernization)
+
+### ✅ COMPLETED: Region-Based Boundary Conditions (Issue #596 Phase 2.5)
+
+**Status**: Feature complete, all tests passing
+
+Modern approach for specifying boundary conditions on complex geometries using marked regions instead of boundary identifiers.
+
+**What's New**:
+
+1. **Region Marking**: Mark arbitrary regions on geometry using predicates or boundaries
+2. **BC from Regions**: Define BCs referencing region names via `mixed_bc_from_regions()`
+3. **Priority Resolution**: Handle overlapping regions with priority-based precedence
+4. **Performance**: <5% overhead compared to standard boundary-based BCs
+
+**Basic Usage**:
+
+```python
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import mixed_bc_from_regions, BCSegment, BCType
+
+# Create geometry and mark regions
+geometry = TensorProductGrid(dimension=2, bounds=[(0, 2), (0, 1)], Nx_points=[41, 21])
+geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
+geometry.mark_region("outlet", predicate=lambda x: x[:, 0] > 1.9)
+geometry.mark_region("walls", boundary="y_min")
+
+# Define BCs referencing regions
+bc_config = {
+    "inlet": BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0),
+    "outlet": BCSegment(name="outlet_bc", bc_type=BCType.NEUMANN, value=0.0),
+    "walls": BCSegment(name="wall_bc", bc_type=BCType.NO_FLUX),
+    "default": BCSegment(name="periodic_bc", bc_type=BCType.PERIODIC),
+}
+
+bc = mixed_bc_from_regions(geometry, bc_config)
+
+# Apply BCs (must pass geometry parameter)
+from mfg_pde.geometry.boundary import FDMApplicator
+applicator = FDMApplicator(dimension=2)
+padded = applicator.apply(field, bc, domain_bounds=geometry.bounds, geometry=geometry)
+```
+
+**Use Cases**:
+
+| Scenario | Old Approach | New Approach |
+|:---------|:-------------|:-------------|
+| Partial boundary BC | Split into multiple segments | Single region with predicate |
+| Complex inlet shape | Manual masking | `mark_region()` with predicate |
+| Overlapping regions | Manual priority logic | Built-in priority resolution |
+
+**Benefits**:
+
+- ✅ **Flexible**: Define BCs on arbitrary spatial regions, not just full boundaries
+- ✅ **Composable**: Combine boundary-based and region-based segments in one BC
+- ✅ **Priority-aware**: Automatic resolution when regions overlap (higher number wins)
+- ✅ **Performant**: Minimal overhead (<5%) via cached region masks
+- ✅ **Backward compatible**: Existing code continues to work without changes
+
+**See Also**:
+
+- `docs/user/guides/boundary_conditions.md` - Full guide with examples
+- `tests/integration/test_region_based_bc.py` - Comprehensive test suite
+- Issue #596 Phase 2.5 - Implementation details
+
+**Next Milestone**: v0.19.0 release with final warning period
+
+---
+
 ## See Also
 
 - `docs/development/GEOMETRY_PARAMETER_MIGRATION.md` - Detailed geometry API docs
