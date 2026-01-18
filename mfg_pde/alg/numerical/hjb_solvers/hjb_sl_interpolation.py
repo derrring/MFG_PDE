@@ -25,7 +25,7 @@ import logging
 from typing import Any
 
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator, interp1d
+from scipy.interpolate import PchipInterpolator, RegularGridInterpolator, interp1d
 
 logger = logging.getLogger(__name__)
 
@@ -76,12 +76,12 @@ def interpolate_value_1d(
 
     try:
         if method == "cubic":
-            interpolator = interp1d(
+            # Issue #583 fix: Use PCHIP (monotonicity-preserving cubic Hermite)
+            # instead of cubic splines to prevent Runge oscillations at discontinuities
+            interpolator = PchipInterpolator(
                 x_grid,
                 U_values,
-                kind="cubic",
-                bounds_error=False,
-                fill_value="extrapolate",
+                extrapolate=False,  # Return NaN outside bounds (handled by lines 72-75)
             )
         else:
             # Default to linear
