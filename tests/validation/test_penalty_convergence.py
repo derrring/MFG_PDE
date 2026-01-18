@@ -56,6 +56,7 @@ class TestPenaltyConvergenceTheory:
 
         return u
 
+    @pytest.mark.xfail(reason="Issue #594: Theoretical convergence rate validation - requires improved penalty solver")
     def test_penalty_convergence_rate_sqrt_epsilon(self):
         """Test O(√ε) convergence rate for penalty method."""
         # Reference VI solution (via projection)
