@@ -35,8 +35,10 @@ class DeprecatedSymbol(NamedTuple):
     name: str
     location: str  # file:line where @deprecated was found
     since: str
-    remove_by: str
     replacement: str
+    remove_by: str | None = None  # Old format: date-based removal
+    removal_blockers: list[str] | None = None  # New format: condition-based removal
+    reason: str | None = None  # Optional: explanation of why deprecated
 
 
 class DeprecationDiscoveryVisitor(ast.NodeVisitor):
@@ -91,17 +93,33 @@ class DeprecationDiscoveryVisitor(ast.NodeVisitor):
             return node.attr
         return None
 
-    def _extract_metadata(self, call: ast.Call) -> dict[str, str] | None:
-        """Extract since, remove_by, replacement from decorator call."""
+    def _extract_metadata(self, call: ast.Call) -> dict[str, str | list[str]] | None:
+        """Extract metadata from @deprecated decorator.
+
+        Supports two formats:
+        - Old: @deprecated(since="v1.0", remove_by="v2.0", replacement="new_api")
+        - New: @deprecated(since="v1.0", replacement="new_api", removal_blockers=["internal_usage"])
+        """
         metadata = {}
 
         for keyword in call.keywords:
-            if keyword.arg in ["since", "remove_by", "replacement"]:
+            if keyword.arg in ["since", "remove_by", "replacement", "reason"]:
                 if isinstance(keyword.value, ast.Constant):
                     metadata[keyword.arg] = keyword.value.value
+            elif keyword.arg == "removal_blockers":
+                # Extract list of blocker strings
+                if isinstance(keyword.value, ast.List):
+                    blockers = []
+                    for elt in keyword.value.elts:
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                            blockers.append(elt.value)
+                    metadata["removal_blockers"] = blockers
 
-        # Require all three fields
-        if all(k in metadata for k in ["since", "remove_by", "replacement"]):
+        # Require: since, replacement, AND (remove_by OR removal_blockers)
+        has_required = "since" in metadata and "replacement" in metadata
+        has_removal_strategy = "remove_by" in metadata or "removal_blockers" in metadata
+
+        if has_required and has_removal_strategy:
             return metadata
         return None
 
@@ -163,8 +181,18 @@ def discover_deprecated_symbols(src_path: Path) -> dict[str, DeprecatedSymbol]:
             visitor.visit(tree)
 
             for symbol in visitor.deprecated_symbols:
-                deprecated_registry[symbol.name] = symbol
-                print(f"   Found @deprecated: {symbol.name} at {symbol.location}")
+                # Skip duplicates (e.g., multiple @deprecated_parameter on same function)
+                if symbol.name not in deprecated_registry:
+                    deprecated_registry[symbol.name] = symbol
+                    # Format: Show removal strategy (date or blockers)
+                    if symbol.remove_by:
+                        strategy = f"remove_by={symbol.remove_by}"
+                    elif symbol.removal_blockers:
+                        blockers_str = ", ".join(symbol.removal_blockers)
+                        strategy = f"blockers=[{blockers_str}]"
+                    else:
+                        strategy = "no removal strategy"
+                    print(f"   Found @deprecated: {symbol.name} at {symbol.location} ({strategy})")
 
         except (SyntaxError, UnicodeDecodeError):
             # Skip files with syntax errors or encoding issues
