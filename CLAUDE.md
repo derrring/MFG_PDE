@@ -533,6 +533,28 @@ Unit tests remain essential for:
 
 ## 🔧 **Development Workflow**
 
+### **Deprecation Policy** ⚠️ **CRITICAL**
+
+**Core Principle**: Deprecated code must immediately redirect to new standard.
+
+When deprecating any API element (parameter, function, class, module):
+1. **Immediate redirection**: Old API MUST call new API internally (zero behavior difference)
+2. **Equivalence test**: MUST verify old and new give identical results
+3. **Complete migration**: Update ALL call sites (direct, factory, defaults, examples, tests)
+4. **Timeline**: 3 minor versions OR 6 months before removal
+
+**Reference**: `docs/development/DEPRECATION_LIFECYCLE_POLICY.md`
+
+**Lesson from Issue #616** (`conservative=` parameter):
+- Deprecated with warning but wrong default → 1 month of catastrophic bugs (99.4% mass error)
+- Factory not updated → production code got broken behavior
+- No equivalence test → bug not caught until user validation
+
+**Enforcement**:
+- ✅ Equivalence test is mandatory
+- ✅ Pre-commit hook blocks deprecated usage in production code
+- ✅ CI verifies all call sites updated
+
 ### **Branch Naming** ⚠️ **MANDATORY**
 Always use `<type>/<short-description>` format:
 
