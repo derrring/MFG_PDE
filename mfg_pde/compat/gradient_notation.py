@@ -57,20 +57,19 @@ import warnings
 
 import numpy as np
 
+from mfg_pde.utils.deprecation import deprecated
+
 # NOTE: Module-level warning removed in v0.17.0 to avoid noise when internal code
 # imports this module. Individual functions emit warnings when called instead.
 # This module is still deprecated - use mfg_pde.core.DerivativeTensors instead.
 
 
-def _emit_deprecation_warning(func_name: str) -> None:
-    """Emit deprecation warning for a function in this module."""
-    warnings.warn(
-        f"gradient_notation.{func_name}() is deprecated since v0.17.0. Use mfg_pde.core.DerivativeTensors instead.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-
-
+@deprecated(
+    since="v0.17.0",
+    replacement="mfg_pde.core.DerivativeTensors",
+    reason="legacy string-key gradient notation. Use DerivativeTensors.grad instead.",
+    removal_blockers=["internal_usage", "migration_docs"],
+)
 def derivs_to_p_values_1d(derivs: dict[tuple[int], float]) -> dict[str, float]:
     """
     Convert tuple notation to legacy 1D string-key format.
@@ -87,18 +86,17 @@ def derivs_to_p_values_1d(derivs: dict[tuple[int], float]) -> dict[str, float]:
         >>> p_values
         {'forward': 0.5, 'backward': 0.5}
     """
-    warnings.warn(
-        "Using legacy string-key gradient notation. "
-        "Please migrate to tuple notation: derivs[(1,)] instead of p_values['forward']. "
-        "See docs/gradient_notation_standard.md for details.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
+    # Deprecation warning issued automatically by @deprecated decorator
     p = derivs.get((1,), 0.0)
     return {"forward": p, "backward": p}
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="mfg_pde.core.DerivativeTensors",
+    reason="legacy string-key gradient notation. Use DerivativeTensors.grad instead.",
+    removal_blockers=["internal_usage", "migration_docs"],
+)
 def p_values_to_derivs_1d(p_values: dict[str, float], u_value: float = 0.0) -> dict[tuple[int], float]:
     """
     Convert legacy 1D string-key format to tuple notation.
@@ -116,13 +114,7 @@ def p_values_to_derivs_1d(p_values: dict[str, float], u_value: float = 0.0) -> d
         >>> derivs
         {(0,): 1.0, (1,): 0.5}
     """
-    warnings.warn(
-        "Converting from legacy string-key gradient notation. "
-        "Please migrate to tuple notation. "
-        "See docs/gradient_notation_standard.md for migration guide.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
+    # Deprecation warning issued automatically by @deprecated decorator
 
     # Use central difference approximation
     p_forward = p_values.get("forward", 0.0)
@@ -135,6 +127,12 @@ def p_values_to_derivs_1d(p_values: dict[str, float], u_value: float = 0.0) -> d
     }
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="mfg_pde.core.DerivativeTensors.from_gradient()",
+    reason="Use DerivativeTensors for gradient representation instead of dict format.",
+    removal_blockers=["internal_usage", "migration_docs"],
+)
 def gradient_tuple_to_derivs(grad: tuple[float, ...], u_value: float = 0.0) -> dict[tuple[int, ...], float]:
     """
     Convert gradient tuple to tuple-indexed derivatives dict.
@@ -160,6 +158,7 @@ def gradient_tuple_to_derivs(grad: tuple[float, ...], u_value: float = 0.0) -> d
         >>> derivs
         {(0,): 1.0, (1,): 0.5}
     """
+    # Deprecation warning issued automatically by @deprecated decorator
     d = len(grad)
 
     if d == 1:
@@ -195,6 +194,12 @@ def gradient_tuple_to_derivs(grad: tuple[float, ...], u_value: float = 0.0) -> d
         return result
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="mfg_pde.core.DerivativeTensors.grad",
+    reason="Use DerivativeTensors.grad attribute instead of tuple extraction.",
+    removal_blockers=["internal_usage", "migration_docs"],
+)
 def derivs_to_gradient_tuple(derivs: dict[tuple[int, ...], float]) -> tuple[float, ...]:
     """
     Extract gradient as tuple from tuple-indexed derivatives dict.
@@ -214,6 +219,7 @@ def derivs_to_gradient_tuple(derivs: dict[tuple[int, ...], float]) -> tuple[floa
         >>> grad
         (0.5, 0.3)
     """
+    # Deprecation warning issued automatically by @deprecated decorator
     # Detect dimension from keys
     if not derivs:
         return ()
@@ -244,6 +250,12 @@ def derivs_to_gradient_tuple(derivs: dict[tuple[int, ...], float]) -> tuple[floa
         return tuple(result)
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="mfg_pde.core.DerivativeTensors.grad",
+    reason="Use DerivativeTensors.grad attribute (already a NumPy array).",
+    removal_blockers=["internal_usage", "migration_docs"],
+)
 def derivs_to_gradient_array(derivs: dict[tuple[int, ...], float], dimension: int) -> np.ndarray:
     """
     Extract gradient as NumPy array from tuple-indexed derivatives.
@@ -267,6 +279,7 @@ def derivs_to_gradient_array(derivs: dict[tuple[int, ...], float], dimension: in
         >>> p
         array([0.1, 0.2, 0.3, 0.4])
     """
+    # Deprecation warning issued automatically by @deprecated decorator
     # General nD implementation
     result = np.zeros(dimension)
     for i in range(dimension):
@@ -276,6 +289,12 @@ def derivs_to_gradient_array(derivs: dict[tuple[int, ...], float], dimension: in
     return result
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="mfg_pde.core.DerivativeTensors.from_gradient()",
+    reason="Use DerivativeTensors.from_gradient(array) instead of dict conversion.",
+    removal_blockers=["internal_usage", "migration_docs"],
+)
 def gradient_array_to_derivs(p: np.ndarray, u_value: float = 0.0) -> dict[tuple[int, ...], float]:
     """
     Convert gradient array to tuple-indexed derivatives.
@@ -299,6 +318,7 @@ def gradient_array_to_derivs(p: np.ndarray, u_value: float = 0.0) -> dict[tuple[
         >>> derivs[(1, 0, 0, 0)]
         0.1
     """
+    # Deprecation warning issued automatically by @deprecated decorator
     d = len(p)
 
     # General nD implementation

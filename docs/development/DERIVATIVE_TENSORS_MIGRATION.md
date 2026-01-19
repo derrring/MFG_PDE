@@ -47,6 +47,10 @@ grad_norm_sq = derivs.grad_norm_squared  # |∇u|²
 
 ### Phase 3: Deprecate Legacy Format (v0.17.0 - v0.19.0) 🔄 IN PROGRESS
 - [x] Add deprecation warning to `mfg_pde.compat.gradient_notation` module
+- [x] Apply `@deprecated` decorator to gradient_notation.py functions (v0.17.3)
+  - `derivs_to_p_values_1d()`, `p_values_to_derivs_1d()`
+  - `gradient_tuple_to_derivs()`, `derivs_to_gradient_tuple()`
+  - `gradient_array_to_derivs()`, `derivs_to_gradient_array()`
 - [ ] Add deprecation warnings when `MFGProblem.H()` receives dict format
 - [ ] Update all examples to use `DerivativeTensors`
 - [ ] Update test Hamiltonians to use new format
