@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Mass Conservation in FP FDM Solver** (Issue #615) 🎯
+  - Fixed catastrophic mass conservation failure (99.4% error → 2.3%)
+  - Changed default advection scheme from `gradient_upwind` to `divergence_upwind`
+  - Removed confusing `conservative: bool` parameter
+  - Root cause: Issue #490 inadvertently broke Issue #382's fix when refactoring API
+  - Aligns with Achdou's FDM benchmark (HJB upwind + FP flux form)
+  - Validated in mfg-research exp14/exp15 (1D corridor evacuation)
+  - **Files modified**: `fp_fdm.py`, `fp_fdm_time_stepping.py`, `scheme_factory.py`
+  - **Commit**: c18c798d
+
 ## [0.17.2] - 2026-01-18
 
 **Maintenance Release: Legacy Parameter Deprecation + Codebase Cleanup**

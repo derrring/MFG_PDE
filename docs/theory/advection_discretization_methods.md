@@ -391,17 +391,44 @@ Coupled MFG:
 
 # Implementation Notes
 
-## Current State in MFG_PDE
+## Current State in MFG_PDE (v0.17.3+)
 
-- `FPFDMSolver` uses **Gradient FDM** (non-conservative)
+- `FPFDMSolver` uses **divergence_upwind** (conservative flux form) by default
+- Four advection schemes available via `advection_scheme` parameter:
+  - `"gradient_centered"`: Non-conservative, second-order, unstable for Peclet > 2
+  - `"gradient_upwind"`: ⚠️ **HAS BOUNDARY FLUX BUG** - mass leaks at boundaries
+  - `"divergence_centered"`: Conservative flux form, second-order, unstable for Peclet > 2
+  - `"divergence_upwind"`: Conservative flux form, first-order, stable (DEFAULT)
 - `GFDM+Particle` solver is **inherently conservative** (particles carry fixed mass)
 
-## Potential Enhancement
+## Advection Scheme Selection
 
-Add `conservative=True` option to `FPFDMSolver`:
 ```python
-solver = FPFDMSolver(problem, conservative=True)  # Uses Flux FDM
+# Default: Mass-conservative flux form (recommended)
+solver = FPFDMSolver(problem)  # Uses divergence_upwind
+
+# Explicit scheme selection
+solver = FPFDMSolver(problem, advection_scheme="divergence_upwind")  # Achdou benchmark
+solver = FPFDMSolver(problem, advection_scheme="gradient_upwind")    # ⚠️ NOT RECOMMENDED (boundary bug)
 ```
+
+## Known Issues
+
+### gradient_upwind Boundary Flux Bug (Issue #615)
+
+The `gradient_upwind` scheme has a boundary handling bug that causes mass to disappear:
+
+**Problem**: When flow is away from boundaries, the scheme doesn't account for outflow:
+```python
+# fp_fdm_alg_gradient_upwind.py:282-285
+if alpha >= 0:
+    # Flow away from boundary
+    pass  # ❌ BUG: Missing outflow contribution!
+```
+
+**Impact**: 99.4% mass error (mass collapses to 0.56% of initial)
+
+**Solution**: Use `divergence_upwind` (default since v0.17.3+)
 
 ## Boundary Conditions for Conservative Methods
 
@@ -429,7 +456,10 @@ For no-flux BC at left boundary with Flux FDM:
 ---
 
 **Document Info**
-- **Last Updated**: 2025-12
-- **Related Files**: `fp_fdm.py`, `boundary_conditions_and_geometry.md`
-- **Related Issues**: #382 (FDM mass conservation investigation)
+- **Last Updated**: 2026-01-20
+- **Related Files**: `fp_fdm.py`, `fp_fdm_time_stepping.py`, `scheme_factory.py`
+- **Related Issues**:
+  - #382 (FDM mass conservation investigation - Dec 2025)
+  - #490 (4 FDM advection schemes - Dec 2025)
+  - #615 (Mass conservation fix - Jan 2026)
 - **Author**: MFG_PDE Development Team
