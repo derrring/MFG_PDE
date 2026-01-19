@@ -56,17 +56,17 @@ class FPFDMSolver(BaseFPSolver):
             Second-order accurate but oscillates for Peclet > 2.
             Use to demonstrate why conservative schemes are needed.
 
-        **gradient_upwind** [default]: Non-conservative form with upwind differences.
+        **gradient_upwind**: Non-conservative form with upwind differences.
             Mass-conservative via row sums = 1/dt. Stable but first-order.
-            Standard choice for most MFG applications.
+            WARNING: Has boundary flux bug when flow crosses boundaries.
 
         **divergence_centered**: Conservative form with centered flux averaging.
             Mass-conservative via flux telescoping. Oscillates for Peclet > 2.
             Demonstrates that conservation alone doesn't guarantee stability.
 
-        **divergence_upwind**: Conservative form with upwind flux selection.
+        **divergence_upwind** [default]: Conservative form with upwind flux selection.
             Mass-conservative via flux telescoping. Stable, first-order.
-            Best for sharp density fronts and strict conservation.
+            Best choice for MFG: handles boundary fluxes correctly.
 
     Legacy Aliases (DEPRECATED, will be removed in v1.0.0):
         - "centered" -> "gradient_centered"
@@ -100,9 +100,7 @@ class FPFDMSolver(BaseFPSolver):
         self,
         problem: Any,
         boundary_conditions: BoundaryConditions | None = None,
-        advection_scheme: AdvectionScheme = "gradient_upwind",
-        # Deprecated parameter for backward compatibility
-        conservative: bool | None = None,
+        advection_scheme: AdvectionScheme = "divergence_upwind",
     ) -> None:
         """
         Initialize FDM solver for Fokker-Planck equations.
@@ -114,39 +112,23 @@ class FPFDMSolver(BaseFPSolver):
         boundary_conditions : BoundaryConditions | None
             Boundary condition specification (default: no-flux)
         advection_scheme : str
-            Advection term discretization (default: "gradient_upwind").
+            Advection term discretization (default: "divergence_upwind").
 
             Scheme names:
             - "gradient_centered": v·grad(m) with central diff, NOT conservative
-            - "gradient_upwind": v·grad(m) with upwind, conservative (row sums) [DEFAULT]
+            - "gradient_upwind": v·grad(m) with upwind, has boundary flux bug
             - "divergence_centered": div(v*m) with centered flux, conservative (telescoping)
-            - "divergence_upwind": div(v*m) with upwind flux, conservative (telescoping)
+            - "divergence_upwind": div(v*m) with upwind flux, conservative (telescoping) [DEFAULT]
 
             Legacy names (DEPRECATED, will be removed in v1.0.0):
             - "centered" -> gradient_centered
             - "upwind" -> gradient_upwind
             - "flux" -> divergence_upwind
-
-        conservative : bool | None
-            DEPRECATED. Use advection_scheme instead.
-            True maps to "divergence_upwind", False maps to "gradient_upwind".
         """
         import warnings
 
         super().__init__(problem)
         self.fp_method_name = "FDM"
-
-        # Handle deprecated conservative parameter
-        if conservative is not None:
-            warnings.warn(
-                "Parameter 'conservative' is deprecated. Use 'advection_scheme' instead. "
-                "conservative=True -> advection_scheme='divergence_upwind', "
-                "conservative=False -> advection_scheme='gradient_upwind'. "
-                "Will be removed in v1.0.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            advection_scheme = "divergence_upwind" if conservative else "gradient_upwind"
 
         # Map legacy scheme names to new names
         scheme_aliases = {
@@ -510,7 +492,7 @@ class FPFDMSolver(BaseFPSolver):
                 backend=self.backend,
                 diffusion_field=None,
                 tensor_diffusion_field=tensor_diffusion_field,
-                conservative=self.conservative,
+                advection_scheme=self.advection_scheme,
             )
 
         # Handle diffusion_field parameter (scalar diffusion)
@@ -576,7 +558,7 @@ class FPFDMSolver(BaseFPSolver):
                 show_progress=show_progress,
                 backend=self.backend,
                 diffusion_field=effective_sigma if diffusion_field is not None else None,
-                conservative=self.conservative,
+                advection_scheme=self.advection_scheme,
             )
         else:
             # Legacy 1D solver for periodic/dirichlet BC with non-conservative mode

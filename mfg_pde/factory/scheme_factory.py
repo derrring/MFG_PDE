@@ -151,8 +151,9 @@ def _create_fdm_pair(
 
     # Map scheme to FP advection scheme
     if scheme == NumericalScheme.FDM_UPWIND:
-        # FDM upwind uses gradient_upwind for FP (default, most stable)
-        fp_config.setdefault("advection_scheme", "gradient_upwind")
+        # FDM upwind uses divergence_upwind for FP (mass conservative, handles boundaries correctly)
+        # Note: gradient_upwind has boundary flux bug, see Issue #382
+        fp_config.setdefault("advection_scheme", "divergence_upwind")
     elif scheme == NumericalScheme.FDM_CENTERED:
         # FDM centered uses gradient_centered (second-order, oscillates for high Peclet)
         fp_config.setdefault("advection_scheme", "gradient_centered")

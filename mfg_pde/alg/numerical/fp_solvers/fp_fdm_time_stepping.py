@@ -420,11 +420,9 @@ def solve_fp_nd_full_system(
     backend: Any | None = None,
     diffusion_field: float | np.ndarray | Any | None = None,
     tensor_diffusion_field: np.ndarray | Callable | None = None,
-    advection_scheme: str = "upwind",
+    advection_scheme: str = "divergence_upwind",
     # Callable drift support (Phase 2 - Issue #487)
     drift_field: Callable | None = None,
-    # Deprecated parameter for backward compatibility
-    conservative: bool | None = None,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
@@ -478,8 +476,6 @@ def solve_fp_nd_full_system(
           Signature: (t: float, x: list[ndarray], m: ndarray) -> ndarray
           Returns drift vector field, shape (ndim, N1, N2, ..., Nd)
           where ndim is spatial dimension.
-    conservative : bool | None
-        DEPRECATED. Use advection_scheme instead.
 
     Returns
     -------
@@ -669,7 +665,6 @@ def solve_fp_nd_full_system(
                 shape,
                 boundary_conditions,
                 advection_scheme=advection_scheme,
-                conservative=conservative,
             )
 
         M_solution[k + 1] = M_next
@@ -806,8 +801,7 @@ def solve_timestep_full_nd(
     ndim: int,
     shape: tuple[int, ...],
     boundary_conditions: Any,
-    advection_scheme: str = "upwind",
-    conservative: bool | None = None,
+    advection_scheme: str = "divergence_upwind",
 ) -> np.ndarray:
     """
     Solve one timestep of the full nD FP equation.
@@ -847,31 +841,15 @@ def solve_timestep_full_nd(
         - "divergence_centered": Divergence form + centered fluxes
           (conservative via telescoping, oscillates for Peclet > 2)
         - "divergence_upwind": Divergence form + upwind fluxes
-          (conservative via telescoping, stable, O(dx))
+          (conservative via telescoping, stable, O(dx)) [DEFAULT]
         Legacy aliases: "centered"->"gradient_centered",
         "upwind"->"gradient_upwind", "flux"->"divergence_upwind"
-    conservative : bool | None
-        DEPRECATED. Use advection_scheme instead.
-        If True, maps to advection_scheme="flux".
-        If False, maps to advection_scheme="upwind".
 
     Returns
     -------
     np.ndarray
         Next density field. Shape: (N1, N2, ..., Nd)
     """
-    # Handle backward compatibility: conservative parameter overrides advection_scheme
-    if conservative is not None:
-        import warnings
-
-        warnings.warn(
-            "The 'conservative' parameter is deprecated. "
-            "Use advection_scheme='divergence_upwind' for conservative or 'gradient_upwind' for non-conservative.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        advection_scheme = "divergence_upwind" if conservative else "gradient_upwind"
-
     # Map legacy scheme names to new names
     scheme_aliases = {
         "centered": "gradient_centered",
