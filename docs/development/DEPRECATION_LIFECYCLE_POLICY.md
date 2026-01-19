@@ -41,7 +41,7 @@ Deprecation IS:
 
 **Impact**: 1 month (34 days) with **catastrophic mass conservation failure** (99.4% error) in production code.
 
-**Lesson**: `remove_by="v1.0.0"` was a false promise - we don't actually know when removal is safe.
+**Lesson**: Date-based removal was a false promise - we don't actually know when removal is safe.
 
 ### Root Cause
 
@@ -490,9 +490,9 @@ from mfg_pde.utils.deprecation import deprecated
 
 @deprecated(
     since="v0.17.0",
-    remove_by="v1.0.0",
     replacement="use advection_scheme parameter",
-    reason="Confusing name, prefer explicit scheme selection"
+    reason="Confusing name, prefer explicit scheme selection",
+    removal_blockers=["internal_usage", "equivalence_test", "migration_docs"]
 )
 def old_function():
     """Deprecated: Use new_function() instead."""
