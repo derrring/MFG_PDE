@@ -2,7 +2,27 @@
 
 **Issue**: #544
 **Target Version**: v0.18.0
-**Status**: DeprecationWarning added in v0.17.1
+**Status**: Active deprecation (v0.17.1+) via `@deprecated_parameter` decorator
+**Enforcement**: Issue #616 - Automated deprecation lifecycle
+
+## Deprecation Status
+
+| Parameter | Since | Replacement | Removal Blockers |
+|:----------|:------|:------------|:-----------------|
+| `Nx` | v0.17.1 | `geometry=TensorProductGrid(...)` | internal_usage, migration_docs |
+| `xmin` | v0.17.1 | `geometry=TensorProductGrid(...)` | internal_usage, migration_docs |
+| `xmax` | v0.17.1 | `geometry=TensorProductGrid(...)` | internal_usage, migration_docs |
+| `Lx` | v0.17.1 | `geometry=TensorProductGrid(...)` | internal_usage, migration_docs |
+| `sigma` | v0.17.0 | `diffusion` | internal_usage, equivalence_test, migration_docs |
+
+**Removal readiness** (checked automatically):
+- ❌ **internal_usage**: Production code still uses these parameters
+- ✅ **migration_docs**: This guide documents migration
+- ❌ **equivalence_test**: Needs test verifying old API = new API
+
+**To check removal readiness**: `python scripts/check_internal_deprecation.py`
+
+---
 
 ## Overview
 

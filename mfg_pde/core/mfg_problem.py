@@ -14,6 +14,9 @@ from mfg_pde.core.mfg_components import (
 # Issue #543: Runtime import for isinstance() checks
 from mfg_pde.geometry.protocol import GeometryProtocol  # noqa: TC001
 
+# Deprecation utilities (Issue #616)
+from mfg_pde.utils.deprecation import deprecated_parameter
+
 # Use unified nD-capable BoundaryConditions from conditions.py
 
 if TYPE_CHECKING:
@@ -111,6 +114,36 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Already a list - return as-is
         return list(value)
 
+    @deprecated_parameter(
+        param_name="sigma",
+        since="v0.17.0",
+        replacement="diffusion",
+        removal_blockers=["internal_usage", "equivalence_test", "migration_docs"],
+    )
+    @deprecated_parameter(
+        param_name="Lx",
+        since="v0.17.1",
+        replacement="geometry=TensorProductGrid(...)",
+        removal_blockers=["internal_usage", "migration_docs"],
+    )
+    @deprecated_parameter(
+        param_name="Nx",
+        since="v0.17.1",
+        replacement="geometry=TensorProductGrid(...)",
+        removal_blockers=["internal_usage", "migration_docs"],
+    )
+    @deprecated_parameter(
+        param_name="xmax",
+        since="v0.17.1",
+        replacement="geometry=TensorProductGrid(...)",
+        removal_blockers=["internal_usage", "migration_docs"],
+    )
+    @deprecated_parameter(
+        param_name="xmin",
+        since="v0.17.1",
+        replacement="geometry=TensorProductGrid(...)",
+        removal_blockers=["internal_usage", "migration_docs"],
+    )
     def __init__(
         self,
         # Legacy 1D parameters (backward compatible - scalars will be converted to arrays with deprecation warning)
@@ -272,14 +305,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             T, Nt = time_domain
 
         # Handle sigma as legacy alias for diffusion
+        # Note: Deprecation warning issued by @deprecated_parameter decorator
         if sigma is not None:
             if diffusion is not None:
                 raise ValueError("Specify EITHER diffusion OR sigma, not both")
-            warnings.warn(
-                "Parameter 'sigma' is deprecated. Use 'diffusion' instead. 'sigma' will be removed in v1.0.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             diffusion = sigma
 
         # Set defaults for T, Nt if not provided
@@ -316,22 +345,8 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # This enables dimension-agnostic code while maintaining backward compatibility
 
         # Issue #544: Deprecate legacy 1D parameters (Nx, xmin, xmax, Lx)
-        # These will be removed in v0.18.0. Use geometry=TensorProductGrid(...) instead.
-        if Nx is not None or xmin is not None or xmax is not None or Lx is not None:
-            if not suppress_warnings:
-                warnings.warn(
-                    "\nLegacy parameters (Nx, xmin, xmax, Lx) are deprecated and will be removed in v0.18.0.\n"
-                    "Use the Geometry API instead:\n\n"
-                    "  # Old (deprecated):\n"
-                    "  problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, Nt=50)\n\n"
-                    "  # New (recommended):\n"
-                    "  from mfg_pde.geometry import TensorProductGrid\n"
-                    "  geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])\n"
-                    "  problem = MFGProblem(geometry=geometry, Nt=50)\n\n"
-                    "See docs/migration/LEGACY_PARAMETERS.md for detailed migration guide.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
+        # Note: Deprecation warnings issued by @deprecated_parameter decorators
+        # Detailed migration guide: docs/user/LEGACY_PARAMETERS.md
 
         if Nx is not None:
             Nx_normalized = self._normalize_to_array(Nx, "Nx")
