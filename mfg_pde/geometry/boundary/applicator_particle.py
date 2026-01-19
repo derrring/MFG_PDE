@@ -284,21 +284,30 @@ class ParticleApplicator:
         Determine which boundary a particle is at.
 
         Returns boundary ID using BCSegment convention:
-        - 2D: "left", "right", "bottom", "top"
-        - 3D: "left", "right", "bottom", "top", "front", "back"
+        - 1D: "left", "right" (directional for 1D)
+        - 2D: "x_min", "x_max", "y_min", "y_max" (axis-based for 2D+)
+        - 3D: "x_min", "x_max", "y_min", "y_max", "z_min", "z_max"
         - nD: "dim0_min", "dim0_max", etc. for d >= 3
+
+        Note: Different conventions for 1D vs 2D+ to match common usage patterns.
         """
-        # Standard boundary names for 2D/3D (matches BCSegment convention)
-        # 2D: x_min=left, x_max=right, y_min=bottom, y_max=top
-        # 3D: z_min=front, z_max=back
-        boundary_names_min = ["left", "bottom", "front"] + [f"dim{i}_min" for i in range(3, dimension)]
-        boundary_names_max = ["right", "top", "back"] + [f"dim{i}_max" for i in range(3, dimension)]
+        # Handle 1D special case (uses directional naming)
+        if dimension == 1:
+            if particle[0] <= domain_min[0] + self._boundary_tolerance:
+                return "left"
+            if particle[0] >= domain_max[0] - self._boundary_tolerance:
+                return "right"
+            return None
+
+        # 2D+ uses axis-based naming (x_min, y_max, etc.)
+        axis_names = ["x", "y", "z"] + [f"dim{i}" for i in range(3, dimension)]
 
         for d in range(dimension):
+            axis_name = axis_names[d] if d < len(axis_names) else f"dim{d}"
             if particle[d] <= domain_min[d] + self._boundary_tolerance:
-                return boundary_names_min[d]
+                return f"{axis_name}_min"
             if particle[d] >= domain_max[d] - self._boundary_tolerance:
-                return boundary_names_max[d]
+                return f"{axis_name}_max"
 
         return None
 

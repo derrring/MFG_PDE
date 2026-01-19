@@ -265,36 +265,57 @@ class BCSegment:
 
     def __post_init__(self) -> None:
         """Validate BCSegment specification (Issue #596 Phase 2.5)."""
-        # Count non-None region specification methods
-        region_specs = [
-            self.boundary is not None,
-            self.region is not None,
-            self.sdf_region is not None,
-            self.normal_direction is not None,
-            self.region_name is not None,
-        ]
+        # Issue #612: Fix validation - boundary+region are complementary filters, not exclusive
+        # Valid combinations:
+        #   - boundary alone (entire boundary wall)
+        #   - region alone (any boundary with coords in range)
+        #   - boundary + region (specific part of specific wall) ✅
+        #   - sdf_region alone or sdf_region + normal_direction (SDF-based matching)
+        #   - region_name alone (marked regions)
 
-        if sum(region_specs) == 0:
-            # Default: apply to all boundaries (uniform BC)
-            pass
-        elif sum(region_specs) > 1:
-            # Multiple specification methods conflict
+        has_boundary = self.boundary is not None
+        has_region = self.region is not None
+        has_sdf_region = self.sdf_region is not None
+        has_normal = self.normal_direction is not None
+        has_region_name = self.region_name is not None
+
+        # Rectangular domain methods: boundary, region (can combine)
+        rectangular_methods = has_boundary or has_region
+
+        # SDF domain methods: sdf_region, normal_direction (can combine)
+        sdf_methods = has_sdf_region or has_normal
+
+        # Marked region method: region_name (exclusive)
+        marked_region = has_region_name
+
+        # Check for invalid combinations across method categories
+        active_categories = sum([rectangular_methods, sdf_methods, marked_region])
+
+        if active_categories > 1:
+            # Conflicting method categories
             active_specs = []
-            if self.boundary is not None:
-                active_specs.append("boundary")
-            if self.region is not None:
-                active_specs.append("region")
-            if self.sdf_region is not None:
-                active_specs.append("sdf_region")
-            if self.normal_direction is not None:
-                active_specs.append("normal_direction")
-            if self.region_name is not None:
+            if rectangular_methods:
+                specs = []
+                if has_boundary:
+                    specs.append("boundary")
+                if has_region:
+                    specs.append("region")
+                active_specs.append(f"rectangular ({', '.join(specs)})")
+            if sdf_methods:
+                specs = []
+                if has_sdf_region:
+                    specs.append("sdf_region")
+                if has_normal:
+                    specs.append("normal_direction")
+                active_specs.append(f"SDF ({', '.join(specs)})")
+            if marked_region:
                 active_specs.append("region_name")
 
             raise ValueError(
-                f"BCSegment '{self.name}': Only one region specification method may be used. "
-                f"Got {len(active_specs)} methods: {', '.join(active_specs)}. "
-                f"Choose one of: boundary, region, sdf_region, normal_direction, region_name."
+                f"BCSegment '{self.name}': Cannot mix region specification methods from different categories. "
+                f"Got {len(active_specs)} categories: {', '.join(active_specs)}. "
+                f"Use either: (1) rectangular domain (boundary, region), "
+                f"(2) SDF domain (sdf_region, normal_direction), or (3) marked regions (region_name)."
             )
 
     def matches_point(
