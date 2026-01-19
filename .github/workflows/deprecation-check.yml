@@ -1,0 +1,33 @@
+name: Deprecation Policy Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  check-deprecation:
+    name: Check internal deprecated API usage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run deprecation check
+        run: |
+          echo "Checking for internal usage of deprecated APIs..."
+          python scripts/check_internal_deprecation.py
+
+      - name: Report status
+        if: failure()
+        run: |
+          echo "❌ Production code uses deprecated symbols"
+          echo "See DEPRECATION_LIFECYCLE_POLICY.md for migration guide"
+          exit 1
