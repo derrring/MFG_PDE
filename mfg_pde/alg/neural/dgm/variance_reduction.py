@@ -18,11 +18,12 @@ Mathematical Foundation:
 
 from __future__ import annotations
 
-import logging
 import time
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 # Import centralized Monte Carlo utilities
 
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ControlVariates:

@@ -27,11 +27,12 @@ Applications:
 
 from __future__ import annotations
 
-import logging
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -49,7 +50,7 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AdaptiveTrainingMode(str, Enum):
@@ -213,7 +214,7 @@ if TORCH_AVAILABLE:
         def __init__(self, config: AdaptiveTrainingConfig):
             """Initialize physics-guided sampler."""
             self.config = config
-            self.logger = logging.getLogger(self.__class__.__name__)
+            self.logger = get_logger(self.__class__.__name__)
 
         def compute_importance_weights(self, residuals: torch.Tensor) -> torch.Tensor:
             """
@@ -316,7 +317,7 @@ if TORCH_AVAILABLE:
             self.config = config
             self.state = TrainingState()
             self.sampler = PhysicsGuidedSampler(config)
-            self.logger = logging.getLogger(self.__class__.__name__)
+            self.logger = get_logger(self.__class__.__name__)
 
         def update_curriculum(self) -> float:
             """

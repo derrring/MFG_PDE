@@ -37,7 +37,6 @@ See Also:
 
 from __future__ import annotations
 
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
@@ -46,6 +45,7 @@ import numpy as np
 
 # Issue #543: Runtime import for isinstance() checks
 from mfg_pde.geometry.protocol import GeometryProtocol
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -57,7 +57,7 @@ from mfg_pde.utils.numerical.particle.sampling import (
     UniformMCSampler,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass

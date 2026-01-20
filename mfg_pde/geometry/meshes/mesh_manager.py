@@ -7,18 +7,19 @@ the Gmsh → Meshio → PyVista workflow for professional mesh generation and an
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 from .mesh_2d import Mesh2D
 
 if TYPE_CHECKING:
     from mfg_pde.geometry.meshes.mesh_data import BaseGeometry, MeshData
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MeshPipeline:

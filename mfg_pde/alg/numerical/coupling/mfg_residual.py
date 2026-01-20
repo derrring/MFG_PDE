@@ -21,10 +21,11 @@ References:
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
     from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
     from mfg_pde.core.mfg_problem import MFGProblem
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MFGResidual:

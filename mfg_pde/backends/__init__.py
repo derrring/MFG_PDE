@@ -12,12 +12,12 @@ Tiered auto-selection priority: torch > jax > numpy
 
 from __future__ import annotations
 
-import logging
 import warnings
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from mfg_pde.utils.mfg_logging import get_logger
 
+logger = get_logger(__name__)
 # Backend registry
 _BACKENDS = {}
 _DEFAULT_BACKEND = "numpy"

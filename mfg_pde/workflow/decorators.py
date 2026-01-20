@@ -12,6 +12,8 @@ import inspect
 import time
 from typing import TYPE_CHECKING, Any
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 from .experiment_tracker import ExperimentTracker
 from .parameter_sweep import ParameterSweep
 
@@ -465,9 +467,7 @@ def log_execution(
     """
 
     def decorator(func: Callable) -> Callable:
-        import logging
-
-        logger = logging.getLogger(logger_name or func.__module__)
+        logger = get_logger(logger_name or func.__module__)
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):

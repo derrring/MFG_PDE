@@ -17,11 +17,14 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
 from mfg_pde.utils.pde_coefficients import CoefficientField
 
 from . import base_hjb
 from .base_hjb import BaseHJBSolver
+
+logger = get_logger(__name__)
 
 # Type alias for HJB advection schemes (gradient form only - HJB is not a conservation law)
 HJBAdvectionScheme = Literal["gradient_centered", "gradient_upwind"]
@@ -467,10 +470,8 @@ class HJBFDMSolver(BaseHJBSolver):
                 )
 
             # Debug: Log BC being passed (Issue #542 investigation)
-            import logging
             from contextlib import suppress
 
-            logger = logging.getLogger(__name__)
             logger.info(f"[DEBUG Issue #542] BC passed to solve_hjb_system_backward: {bc}")
             # Log segment count if BC has segments attribute (Issue #545: use contextlib.suppress)
             if bc is not None:

@@ -23,6 +23,8 @@ import pandas as pd
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -505,7 +507,7 @@ class ParameterSweep:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for parameter sweep."""
-        logger = logging.getLogger("mfg_parameter_sweep")
+        logger = get_logger("mfg_parameter_sweep")
         logger.setLevel(logging.INFO)
 
         if not logger.handlers:

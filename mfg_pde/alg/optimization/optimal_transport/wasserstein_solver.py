@@ -8,20 +8,20 @@ in the space of probability measures with Wasserstein geometry.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from mfg_pde.alg.base_solver import BaseOptimizationSolver
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.core.mfg_problem import MFGProblem
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -104,7 +104,7 @@ class WassersteinMFGSolver(BaseOptimizationSolver):
         """
         super().__init__(problem, **kwargs)
         self.config = config or WassersteinSolverConfig()
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
         # Validate dependencies
         self._check_dependencies()

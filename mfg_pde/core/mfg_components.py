@@ -21,6 +21,9 @@ import numpy as np
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
 from mfg_pde.types import HamiltonianJacobians
 from mfg_pde.utils.aux_func import npart, ppart
+from mfg_pde.utils.mfg_logging import get_logger
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -692,9 +695,7 @@ class HamiltonianMixin:
                     problem=self,
                 )
             except Exception as e:
-                import logging
-
-                logging.getLogger(__name__).warning(f"Jacobian computation failed: {e}")
+                logger.warning(f"Jacobian computation failed: {e}")
 
         if not self.is_custom:
             num_intervals = self._get_num_intervals() or 0
@@ -744,9 +745,7 @@ class HamiltonianMixin:
                     problem=self,
                 )
             except Exception as e:
-                import logging
-
-                logging.getLogger(__name__).warning(f"Coupling term computation failed: {e}")
+                logger.warning(f"Coupling term computation failed: {e}")
                 return np.nan
 
         if not self.is_custom:

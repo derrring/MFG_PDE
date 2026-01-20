@@ -16,11 +16,11 @@ This replaces the old mfg_pde/accelerated/ directory with better organization.
 
 from __future__ import annotations
 
-import logging
 import warnings
 
-logger = logging.getLogger(__name__)
+from mfg_pde.utils.mfg_logging import get_logger
 
+logger = get_logger(__name__)
 # Check JAX availability
 try:
     import jax

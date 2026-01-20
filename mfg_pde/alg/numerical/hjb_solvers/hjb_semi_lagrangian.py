@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from scipy.optimize import minimize, minimize_scalar
 
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
 
 from .base_hjb import BaseHJBSolver
@@ -50,8 +51,7 @@ if TYPE_CHECKING:
 
 from mfg_pde.core.derivatives import DerivativeTensors
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger(__name__)
 try:
     import jax.numpy as jnp
     from jax import jit

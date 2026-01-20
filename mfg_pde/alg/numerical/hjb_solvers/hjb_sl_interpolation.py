@@ -21,13 +21,14 @@ Functions:
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator, RegularGridInterpolator, interp1d
 
-logger = logging.getLogger(__name__)
+from mfg_pde.utils.mfg_logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def interpolate_value_1d(
