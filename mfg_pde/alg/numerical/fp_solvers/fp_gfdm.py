@@ -451,18 +451,39 @@ class FPGFDMSolver(BaseFPSolver):
             raise ValueError(f"m_initial_condition length {m_init.shape[0]} must match n_points {self.n_points}")
 
         # Handle drift field (Issue #573: accepts drift velocity α* for any H)
+        N_colloc = self.n_points  # Number of collocation points
+
         if drift_field is None:
             # Zero drift - treat as if drift velocity is zero
-            drift_velocity_array = np.zeros((n_time_points, self.n_points, self.dimension))
+            drift_velocity_array = np.zeros((n_time_points, N_colloc, self.dimension))
         elif isinstance(drift_field, np.ndarray):
             # Direct drift velocity array provided
             drift_velocity_array = np.asarray(drift_field)
-            expected_shape = (n_time_points, self.n_points, self.dimension)
-            if drift_velocity_array.shape != expected_shape:
-                raise ValueError(
-                    f"drift_field shape {drift_velocity_array.shape} must be {expected_shape} "
-                    f"(Nt+1={n_time_points}, N={self.n_points}, d={self.dimension})"
-                )
+
+            # Issue #618 fix. Validated in:
+            # mfg-research/experiments/crowd_evacuation_2d/experiments/exp15_lq_benchmark/validation/validate_gfdm_shape_bug.py
+            # Standard shape: (Nt+1, N_colloc) for 1D, (Nt+1, N_colloc, d) for d>1
+            # Dimension inferred from self.dimension (set from collocation_points.shape[1] at init)
+
+            if self.dimension == 1:
+                # 1D: Accept scalar representation (Nt+1, N_colloc)
+                expected_shape = (n_time_points, N_colloc)
+                if drift_velocity_array.shape != expected_shape:
+                    raise ValueError(
+                        f"For 1D problems, drift_field shape {drift_velocity_array.shape} "
+                        f"must be {expected_shape} (Nt+1={n_time_points}, N_colloc={N_colloc})"
+                    )
+                # Reshape to internal format (Nt+1, N_colloc, 1)
+                drift_velocity_array = drift_velocity_array.reshape(n_time_points, N_colloc, 1)
+            else:
+                # nD: Require explicit dimension axis (Nt+1, N_colloc, d)
+                expected_shape = (n_time_points, N_colloc, self.dimension)
+                if drift_velocity_array.shape != expected_shape:
+                    raise ValueError(
+                        f"For {self.dimension}D problems, drift_field shape {drift_velocity_array.shape} "
+                        f"must be {expected_shape} "
+                        f"(Nt+1={n_time_points}, N_colloc={N_colloc}, d={self.dimension})"
+                    )
         else:
             # Callable drift function (advanced use)
             raise NotImplementedError("Callable drift_field not yet supported for GFDM")
