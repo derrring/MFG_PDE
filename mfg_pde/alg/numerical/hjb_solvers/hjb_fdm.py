@@ -470,13 +470,14 @@ class HJBFDMSolver(BaseHJBSolver):
                 )
 
             # Debug: Log BC being passed (Issue #542 investigation)
+            # Changed from logger.info to logger.debug to reduce verbosity (Issue #623)
             from contextlib import suppress
 
-            logger.info(f"[DEBUG Issue #542] BC passed to solve_hjb_system_backward: {bc}")
+            logger.debug(f"[DEBUG Issue #542] BC passed to solve_hjb_system_backward: {bc}")
             # Log segment count if BC has segments attribute (Issue #545: use contextlib.suppress)
             if bc is not None:
                 with suppress(AttributeError):
-                    logger.info(f"[DEBUG Issue #542] BC has {len(bc.segments)} segments")
+                    logger.debug(f"[DEBUG Issue #542] BC has {len(bc.segments)} segments")
 
             # Use optimized 1D solver with BC-aware computation (Issue #542 fix)
             U_solution = base_hjb.solve_hjb_system_backward(
