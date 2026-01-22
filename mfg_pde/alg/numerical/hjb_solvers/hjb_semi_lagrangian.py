@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from scipy.optimize import minimize, minimize_scalar
 
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
 
 from .base_hjb import BaseHJBSolver
@@ -50,8 +51,7 @@ if TYPE_CHECKING:
 
 from mfg_pde.core.derivatives import DerivativeTensors
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger(__name__)
 try:
     import jax.numpy as jnp
     from jax import jit
@@ -113,6 +113,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         enable_adaptive_substepping: bool = True,
         max_substeps: int = 100,
         cfl_target: float = 0.9,
+        gradient_clip_threshold: float | None = None,
+        enable_gradient_monitoring: bool = True,
     ):
         """
         Initialize semi-Lagrangian HJB solver.
@@ -153,6 +155,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 a warning is issued and the solver proceeds with max_substeps.
             cfl_target: Target CFL number for adaptive substepping (default: 0.9).
                 When CFL > 1.0, the time step is subdivided to achieve CFL ≤ cfl_target.
+            gradient_clip_threshold: Safety threshold for gradient clipping (default: None).
+                If provided, gradients exceeding this threshold will be clipped to prevent
+                overflow in p² terms. Recommended: 1e6 for strong coupling problems.
+                When None, no clipping is performed.
+            enable_gradient_monitoring: Enable detailed gradient statistics tracking (default: True).
+                Records when and where gradient clipping occurs for debugging. Disable for
+                performance if clipping monitoring is not needed.
         """
         super().__init__(problem)
         self.hjb_method_name = "Semi-Lagrangian"
@@ -170,6 +179,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         self.enable_adaptive_substepping = enable_adaptive_substepping
         self.max_substeps = max_substeps
         self.cfl_target = cfl_target
+
+        # Gradient clipping configuration (Issue #583)
+        self.gradient_clip_threshold = gradient_clip_threshold
+        self.enable_gradient_monitoring = enable_gradient_monitoring
+
+        # Gradient clipping statistics tracking
+        self._reset_gradient_stats()
 
         # JAX acceleration
         self.use_jax = use_jax if use_jax is not None else JAX_AVAILABLE
@@ -253,6 +269,68 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         self._jax_interpolate = jax_interpolate_linear
         self._jax_solve_characteristic = jax_solve_characteristic_euler
 
+    def _reset_gradient_stats(self):
+        """Reset gradient clipping statistics for new solve (Issue #583)."""
+        self.gradient_stats = {
+            "count": 0,  # Total number of clipped spatial points
+            "max_gradient": 0.0,  # Maximum gradient magnitude encountered
+            "locations": [],  # List of {t_idx, spatial_idx, gradient_value, density_value}
+            "by_timestep": {},  # {t_idx: count} - clipping events per timestep
+        }
+
+    def _log_gradient_clipping_summary(self):
+        """Log detailed summary of gradient clipping events (Issue #583)."""
+        from mfg_pde.utils.mfg_logging import get_logger
+
+        logger_local = get_logger(__name__)
+
+        if self.gradient_stats["count"] == 0:
+            if self.gradient_clip_threshold is not None:
+                logger_local.info(
+                    f"No gradient clipping required - all gradients remained below threshold "
+                    f"({self.gradient_clip_threshold:.2e}). Max gradient: {self.gradient_stats['max_gradient']:.2e}"
+                )
+            return
+
+        # Gradient clipping occurred
+        logger_local.warning("=" * 60)
+        logger_local.warning("GRADIENT CLIPPING SUMMARY (Issue #583)")
+        logger_local.warning("=" * 60)
+        logger_local.warning(f"Total clipped points: {self.gradient_stats['count']}")
+        logger_local.warning(f"Max gradient encountered: {self.gradient_stats['max_gradient']:.2e}")
+        logger_local.warning(f"Clip threshold: {self.gradient_clip_threshold:.2e}")
+
+        # Temporal distribution
+        if self.gradient_stats["by_timestep"]:
+            logger_local.warning("\nClipping by timestep (first 10):")
+            sorted_timesteps = sorted(self.gradient_stats["by_timestep"].keys())[:10]
+            for t_idx in sorted_timesteps:
+                count = self.gradient_stats["by_timestep"][t_idx]
+                logger_local.warning(f"  t={t_idx}: {count} points clipped")
+
+            if len(self.gradient_stats["by_timestep"]) > 10:
+                logger_local.warning(f"  ... and {len(self.gradient_stats['by_timestep']) - 10} more timesteps")
+
+        # Spatial hotspots (if tracked)
+        if self.gradient_stats["locations"] and self.enable_gradient_monitoring:
+            logger_local.warning("\nFirst few clipping locations:")
+            for loc in self.gradient_stats["locations"][:5]:
+                density_str = f"{loc['density_value']:.2e}" if loc["density_value"] is not None else "N/A"
+                logger_local.warning(
+                    f"  t={loc['t_idx']}, x_idx={loc['spatial_idx']}, "
+                    f"||∇U||={loc['gradient_value']:.2e}, "
+                    f"m={density_str}"
+                )
+
+            if len(self.gradient_stats["locations"]) > 5:
+                logger_local.warning(f"  ... and {len(self.gradient_stats['locations']) - 5} more locations")
+
+        logger_local.warning("=" * 60)
+        logger_local.warning(
+            "RECOMMENDATION: Consider adaptive damping in Picard iteration (primary fix) "
+            "or weaker coupling to prevent gradient amplification."
+        )
+
     def _detect_dimension(self, problem) -> int:
         """
         Detect the dimension of the problem.
@@ -289,7 +367,140 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
         )
 
-    def _compute_gradient(self, u_values: np.ndarray, check_cfl: bool = True) -> np.ndarray | tuple[np.ndarray, ...]:
+    def _clip_gradient_with_monitoring(
+        self,
+        grad_u: np.ndarray | tuple[np.ndarray, ...],
+        t_idx: int | None = None,
+        m_density: np.ndarray | None = None,
+    ) -> np.ndarray | tuple[np.ndarray, ...]:
+        """
+        Clip gradients and track where clipping occurs (Issue #583).
+
+        Args:
+            grad_u: Gradient array(s) from _compute_gradient
+            t_idx: Current timestep index for location tracking (optional)
+            m_density: Density values for correlation analysis (optional)
+
+        Returns:
+            Clipped gradient with same structure as input
+        """
+        if self.gradient_clip_threshold is None:
+            return grad_u  # No clipping
+
+        # Import logging tools
+        from mfg_pde.utils.mfg_logging import get_logger
+
+        logger_local = get_logger(__name__)
+
+        if self.dimension == 1:
+            # 1D gradient clipping
+            grad_norm = np.abs(grad_u)
+            grad_max = np.max(grad_norm)
+
+            # Update max gradient stat
+            self.gradient_stats["max_gradient"] = max(self.gradient_stats["max_gradient"], float(grad_max))
+
+            # Identify where clipping is needed
+            clip_mask = grad_norm > self.gradient_clip_threshold
+
+            if np.any(clip_mask):
+                clip_indices = np.where(clip_mask)[0]
+                n_clipped = len(clip_indices)
+                self.gradient_stats["count"] += n_clipped
+
+                # Track by timestep
+                if t_idx is not None and self.enable_gradient_monitoring:
+                    if t_idx not in self.gradient_stats["by_timestep"]:
+                        self.gradient_stats["by_timestep"][t_idx] = 0
+                    self.gradient_stats["by_timestep"][t_idx] += n_clipped
+
+                    # Store first few locations (avoid memory explosion)
+                    if len(self.gradient_stats["locations"]) < 100:
+                        for idx in clip_indices[:10]:  # First 10 per timestep
+                            self.gradient_stats["locations"].append(
+                                {
+                                    "t_idx": int(t_idx),
+                                    "spatial_idx": int(idx),
+                                    "gradient_value": float(grad_norm[idx]),
+                                    "density_value": float(m_density[idx]) if m_density is not None else None,
+                                }
+                            )
+
+                    # Log clipping event with location info
+                    x_values = self.x_grid[clip_indices]
+                    logger_local.warning(
+                        f"Gradient clipped at t={t_idx}: {n_clipped} points, "
+                        f"max ||∇U||={grad_max:.2e}, "
+                        f"locations: x={x_values[:5].tolist()}"  # First 5 x-coordinates
+                    )
+
+                # Perform clipping
+                grad_u_clipped = np.clip(grad_u, -self.gradient_clip_threshold, self.gradient_clip_threshold)
+                return grad_u_clipped
+
+            return grad_u
+
+        else:
+            # nD gradient clipping
+            grad_components = list(grad_u)  # Convert tuple to list for modification
+            grad = np.stack(grad_components, axis=0)
+            grad_norm = np.sqrt(np.sum(grad**2, axis=0))
+            grad_max = np.max(grad_norm)
+
+            # Update max gradient stat
+            self.gradient_stats["max_gradient"] = max(self.gradient_stats["max_gradient"], float(grad_max))
+
+            # Identify where clipping is needed
+            clip_mask = grad_norm > self.gradient_clip_threshold
+
+            if np.any(clip_mask):
+                clip_indices = np.argwhere(clip_mask)  # Returns (N, d) array
+                n_clipped = len(clip_indices)
+                self.gradient_stats["count"] += n_clipped
+
+                # Track by timestep
+                if t_idx is not None and self.enable_gradient_monitoring:
+                    if t_idx not in self.gradient_stats["by_timestep"]:
+                        self.gradient_stats["by_timestep"][t_idx] = 0
+                    self.gradient_stats["by_timestep"][t_idx] += n_clipped
+
+                    # Store first few locations
+                    if len(self.gradient_stats["locations"]) < 100:
+                        for idx_tuple in clip_indices[:10]:
+                            idx_tuple_int = tuple(int(i) for i in idx_tuple)
+                            self.gradient_stats["locations"].append(
+                                {
+                                    "t_idx": int(t_idx),
+                                    "spatial_idx": idx_tuple_int,
+                                    "gradient_value": float(grad_norm[idx_tuple_int]),
+                                    "density_value": float(m_density[idx_tuple_int]) if m_density is not None else None,
+                                }
+                            )
+
+                    # Log clipping event
+                    logger_local.warning(
+                        f"Gradient clipped at t={t_idx}: {n_clipped} points, max ||∇U||={grad_max:.2e}"
+                    )
+
+                # Perform clipping component-wise
+                for d in range(self.dimension):
+                    grad_components[d] = np.where(
+                        clip_mask,
+                        grad_components[d] * self.gradient_clip_threshold / (grad_norm + 1e-16),
+                        grad_components[d],
+                    )
+
+                return tuple(grad_components)
+
+            return grad_u
+
+    def _compute_gradient(
+        self,
+        u_values: np.ndarray,
+        check_cfl: bool = True,
+        t_idx: int | None = None,
+        m_density: np.ndarray | None = None,
+    ) -> np.ndarray | tuple[np.ndarray, ...]:
         """
         Compute gradient ∇u for optimal control using trait-based geometry operators (Issue #596 Phase 2.1).
 
@@ -306,9 +517,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 - 1D: shape (Nx+1,)
                 - nD: shape (Nx1+1, Nx2+1, ..., Nxd+1)
             check_cfl: Whether to check CFL condition (default: True)
+            t_idx: Current timestep index for gradient clipping monitoring (optional, Issue #583)
+            m_density: Density values for gradient clipping correlation analysis (optional, Issue #583)
 
         Returns:
-            gradient: Gradient array(s)
+            gradient: Gradient array(s), optionally clipped if gradient_clip_threshold is set
                 - 1D: shape (Nx+1,) - scalar gradient at each point
                 - nD: tuple of d arrays, each shape (Nx1+1, ..., Nxd+1)
 
@@ -316,6 +529,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             Uses central differences for characteristic tracing (Semi-Lagrangian scheme).
             Boundary conditions are automatically enforced by gradient operators.
             Issues CFL warning if max|∇u|·dt/dx > 1.
+            Gradient clipping (Issue #583): Clips gradients > gradient_clip_threshold to prevent overflow.
         """
         # Get gradient operators from geometry (Issue #596 Phase 2.1)
         # Semi-Lagrangian uses central differences for gradient computation
@@ -325,9 +539,12 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # 1D gradient computation via operator
             grad_u = grad_ops[0](u_values)
 
-            # CFL check
+            # Apply gradient clipping (Issue #583)
+            grad_u_clipped = self._clip_gradient_with_monitoring(grad_u, t_idx=t_idx, m_density=m_density)
+
+            # CFL check (after clipping to get realistic CFL with clipped gradients)
             if check_cfl and self.check_cfl:
-                max_grad = np.max(np.abs(grad_u))
+                max_grad = np.max(np.abs(grad_u_clipped))
                 cfl = max_grad * self.dt / self.dx
                 if cfl > 1.0:
                     logger.warning(
@@ -336,7 +553,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                         f"max|∇u| = {max_grad:.3f}, dt = {self.dt:.6f}, dx = {self.dx:.6f}"
                     )
 
-            return grad_u
+            return grad_u_clipped
 
         else:
             # nD gradient computation via operators
@@ -345,9 +562,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 grad_axis = grad_ops[d](u_values)
                 grad_components.append(grad_axis)
 
-            # CFL check
+            # Apply gradient clipping (Issue #583)
+            grad_components_clipped = self._clip_gradient_with_monitoring(
+                tuple(grad_components), t_idx=t_idx, m_density=m_density
+            )
+
+            # CFL check (after clipping)
             if check_cfl and self.check_cfl:
-                grad = np.stack(grad_components, axis=0)
+                grad = np.stack(grad_components_clipped, axis=0)
                 magnitude = np.sqrt(np.sum(grad**2, axis=0))
                 max_grad = np.max(magnitude)
                 min_spacing = np.min(self.dx)
@@ -360,7 +582,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                     )
 
             # Return as tuple of arrays (one per dimension)
-            return tuple(grad_components)
+            return grad_components_clipped
 
     def _compute_cfl_and_substeps(self, u_values: np.ndarray, dt_target: float) -> tuple[float, int, float]:
         """
@@ -678,6 +900,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         if U_coupling_prev is None:
             raise ValueError("U_coupling_prev is required")
 
+        # Reset gradient clipping statistics for this solve (Issue #583)
+        self._reset_gradient_stats()
+
         # Handle multi-dimensional grids
         # M_density has shape (Nt_points, *spatial_shape) where Nt_points = Nt + 1
         shape = M_density.shape
@@ -695,6 +920,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             logger.info(
                 f"Starting semi-Lagrangian HJB solve: {Nt_points} time points, {total_points} spatial points ({grid_shape})"
             )
+            if self.gradient_clip_threshold is not None:
+                logger.info(f"Gradient clipping enabled: threshold = {self.gradient_clip_threshold:.2e}")
 
         # Solve backward in time using semi-Lagrangian method
         # Loop from second-to-last index down to 0
@@ -759,6 +986,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         if logger.isEnabledFor(logging.INFO):
             final_residual = np.linalg.norm(U_solution[1] - U_solution[0])
             logger.info(f"Semi-Lagrangian HJB solve completed. Final residual: {final_residual:.2e}")
+            if self.enable_adaptive_substepping and total_substeps_used > Nt_points:
+                logger.info(
+                    f"Adaptive substepping used {total_substeps_used} total substeps for {Nt_points} time points"
+                )
+
+        # Log gradient clipping summary (Issue #583)
+        if self.gradient_clip_threshold is not None or self.gradient_stats["count"] > 0:
+            self._log_gradient_clipping_summary()
 
         return U_solution
 
@@ -789,7 +1024,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             U_star = np.zeros(Nx)  # Intermediate solution after advection
 
             # Compute gradient for optimal control: α* = ∇u
-            grad_u = self._compute_gradient(U_next, check_cfl=True)
+            # Pass timestep and density for gradient clipping monitoring (Issue #583)
+            grad_u = self._compute_gradient(U_next, check_cfl=True, t_idx=time_idx, m_density=M_next)
 
             # Step 1: Advection along characteristics (explicit)
             for i in range(Nx):
@@ -850,7 +1086,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             # Compute gradient for optimal control: alpha* = grad(u)
             # Returns tuple of gradient components, each with shape grid_shape
-            grad_components = self._compute_gradient(U_next_shaped, check_cfl=True)
+            # Pass timestep and density for gradient clipping monitoring (Issue #583)
+            grad_components = self._compute_gradient(
+                U_next_shaped, check_cfl=True, t_idx=time_idx, m_density=M_next_shaped
+            )
 
             # Track errors for diagnostics
             error_count = 0
@@ -946,7 +1185,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             U_star = np.zeros(Nx)
 
             # Compute gradient for optimal control
-            grad_u = self._compute_gradient(U_next, check_cfl=False)
+            # Pass timestep and density for gradient clipping monitoring (Issue #583)
+            grad_u = self._compute_gradient(U_next, check_cfl=False, t_idx=time_idx, m_density=M_next)
 
             # Step 1: Advection along characteristics
             for i in range(Nx):
@@ -993,7 +1233,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 grid_shape = U_next_shaped.shape
 
             U_star = np.zeros_like(U_next_shaped)
-            grad_components = self._compute_gradient(U_next_shaped, check_cfl=False)
+            # Pass timestep and density for gradient clipping monitoring (Issue #583)
+            grad_components = self._compute_gradient(
+                U_next_shaped, check_cfl=False, t_idx=time_idx, m_density=M_next_shaped
+            )
 
             error_count = 0
             total_points = int(np.prod(grid_shape))
@@ -1893,5 +2136,53 @@ if __name__ == "__main__":
     print("   apply_boundary_conditions (no-op): OK")
 
     print("   BoundaryHandler protocol: OK")
+
+    # Test 8: Gradient clipping (Issue #583)
+    print("\n8. Testing gradient clipping (Issue #583)...")
+    solver_clipped = HJBSemiLagrangianSolver(
+        problem,
+        gradient_clip_threshold=1e6,
+        enable_gradient_monitoring=True,
+    )
+    assert solver_clipped.gradient_clip_threshold == 1e6, "Clip threshold not set"
+    assert solver_clipped.enable_gradient_monitoring, "Monitoring not enabled"
+    print(f"   Clip threshold: {solver_clipped.gradient_clip_threshold:.0e}")
+
+    # Test 1D clipping
+    test_grad = np.array([1e5, 2e6, 5e5, 3e6, 1e4])  # 2e6, 3e6 exceed threshold
+    solver_clipped._reset_gradient_stats()
+    clipped_grad = solver_clipped._clip_gradient_with_monitoring(test_grad, t_idx=0, m_density=np.ones(5))
+    assert np.max(np.abs(clipped_grad)) <= 1e6, "1D clipping failed"
+    assert solver_clipped.gradient_stats["count"] == 2, "Expected 2 clips"
+    print(f"   1D clipping: {solver_clipped.gradient_stats['count']} points clipped, OK")
+
+    # Test 2D clipping with direction preservation (use 2D solver)
+    solver_clipped_2d = HJBSemiLagrangianSolver(
+        problem_2d,  # Use 2D problem
+        gradient_clip_threshold=1e6,
+        enable_gradient_monitoring=True,
+    )
+    grid_shape = (5, 5)
+    grad_x = np.ones(grid_shape) * 1e5
+    grad_y = np.ones(grid_shape) * 1e5
+    grad_x[2, 2] = 3e6
+    grad_y[2, 2] = 4e6  # Norm = 5e6 at (2,2)
+    solver_clipped_2d._reset_gradient_stats()
+    clipped_x, clipped_y = solver_clipped_2d._clip_gradient_with_monitoring(
+        (grad_x, grad_y), t_idx=0, m_density=np.ones(grid_shape)
+    )
+    norm_after = np.sqrt(clipped_x[2, 2] ** 2 + clipped_y[2, 2] ** 2)
+    assert norm_after <= 1e6 + 1e-6, "2D clipping failed"
+    # Check direction preserved (3:4 ratio)
+    assert abs(clipped_x[2, 2] / clipped_y[2, 2] - 0.75) < 1e-10, "Direction not preserved"
+    print("   2D clipping with direction preservation: OK")
+
+    # Test no-clip path
+    solver_no_clip = HJBSemiLagrangianSolver(problem, gradient_clip_threshold=None)
+    result = solver_no_clip._clip_gradient_with_monitoring(test_grad)
+    assert np.array_equal(result, test_grad), "No-clip path failed"
+    print("   No-clip path (threshold=None): OK")
+
+    print("   Gradient clipping (Issue #583): OK")
 
     print("\nAll smoke tests passed!")

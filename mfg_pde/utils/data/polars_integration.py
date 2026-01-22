@@ -14,10 +14,11 @@ Features:
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -56,7 +57,7 @@ except ImportError:
 
     pl = MockPolars()  # type: ignore
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MFGDataFrame:

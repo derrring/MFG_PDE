@@ -21,7 +21,6 @@ Mathematical Foundation:
 
 from __future__ import annotations
 
-import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -29,9 +28,9 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-logger = logging.getLogger(__name__)
+from mfg_pde.utils.mfg_logging import get_logger
 
-
+logger = get_logger(__name__)
 # Type definitions for Monte Carlo integration
 MCIntegrand = Callable[[NDArray], NDArray]
 MCWeightFunction = Callable[[NDArray], NDArray]

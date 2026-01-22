@@ -338,129 +338,152 @@ class FixedPointIterator(BaseMFGSolver):
         convergence_reason = "Maximum iterations reached"
         # M_initial already computed above
 
-        # Progress bar for Picard iterations (Issue #587 Protocol pattern)
-        from mfg_pde.utils.progress import create_progress_bar
+        # Hierarchical progress for Picard iterations (Issue #614)
+        from mfg_pde.utils.progress import HierarchicalProgress
 
-        picard_range = create_progress_bar(
-            range(final_max_iterations),
-            verbose=verbose,
-            desc="MFG Picard",
-        )
-
-        for iiter in picard_range:
-            iter_start = time.time()
-
-            U_old = self.U.copy()
-            M_old = self.M.copy()
-
-            # 1. Solve HJB backward with current M (disable inner progress bar when verbose)
-            # Issue #543 Phase 2: Use cached signature instead of hasattr
-            show_hjb_progress = not verbose
-            if self._hjb_sig_params is not None:
-                # Method exists and signature is cached
-                params = self._hjb_sig_params
-                kwargs = {}
-                if "show_progress" in params:
-                    kwargs["show_progress"] = show_hjb_progress
-                if "diffusion_field" in params and self.diffusion_field is not None:
-                    kwargs["diffusion_field"] = self.diffusion_field
-
-                U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
-            else:
-                # No signature cached - use basic call
-                U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
-
-            # 2. Solve FP forward with new U (disable inner progress bar when verbose)
-            # Issue #543 Phase 2: Use cached signature instead of hasattr
-            show_fp_progress = not verbose
-            if self._fp_sig_params is not None:
-                # Method exists and signature is cached
-                params = self._fp_sig_params
-                kwargs = {}
-                if "show_progress" in params:
-                    kwargs["show_progress"] = show_fp_progress
-
-                # Determine drift field: override or MFG drift from U
-                if self.drift_field is not None:
-                    # User-provided drift override (for non-MFG problems)
-                    effective_drift = self.drift_field
-                else:
-                    # Standard MFG: drift from U
-                    effective_drift = U_new
-
-                if "drift_field" in params:
-                    kwargs["drift_field"] = effective_drift
-                else:
-                    # Legacy: positional argument for U
-                    # solve_fp_system(m_initial, U_drift, **kwargs)
-                    pass  # Will use positional argument below
-
-                if "diffusion_field" in params and self.diffusion_field is not None:
-                    kwargs["diffusion_field"] = self.diffusion_field
-
-                # Call with appropriate arguments
-                if "drift_field" in params:
-                    M_new = self.fp_solver.solve_fp_system(M_initial, **kwargs)
-                else:
-                    # Legacy interface: second positional arg is U for drift
-                    M_new = self.fp_solver.solve_fp_system(M_initial, effective_drift, **kwargs)
-            else:
-                # No signature cached - use basic call
-                M_new = self.fp_solver.solve_fp_system(M_initial, U_new)
-
-            # 3. Apply damping or Anderson acceleration
-            if self.use_anderson and self.anderson_accelerator is not None:
-                # Anderson acceleration on U only (M uses standard damping for positivity)
-                x_current_U = U_old.flatten()
-                f_current_U = U_new.flatten()
-                x_next_U = self.anderson_accelerator.update(x_current_U, f_current_U, method="type1")
-                self.U = x_next_U.reshape(U_old.shape)
-
-                # Standard damping for M (guarantees non-negativity and mass conservation)
-                self.M = final_damping_factor * M_new + (1 - final_damping_factor) * M_old
-            else:
-                # Standard damping for both
-                self.U = final_damping_factor * U_new + (1 - final_damping_factor) * U_old
-                self.M = final_damping_factor * M_new + (1 - final_damping_factor) * M_old
-
-            # Preserve boundary conditions
-            self.M = preserve_initial_condition(self.M, M_initial)
-            self.U = preserve_terminal_condition(self.U, U_terminal)
-
-            # Calculate convergence metrics
-            from mfg_pde.utils.convergence import calculate_l2_convergence_metrics
-
-            metrics = calculate_l2_convergence_metrics(self.U, U_old, self.M, M_old, grid_spacing, time_step)
-            self.l2distu_abs[iiter] = metrics["l2distu_abs"]
-            self.l2distu_rel[iiter] = metrics["l2distu_rel"]
-            self.l2distm_abs[iiter] = metrics["l2distm_abs"]
-            self.l2distm_rel[iiter] = metrics["l2distm_rel"]
-
-            iter_time = time.time() - iter_start
-            self.iterations_run = iiter + 1
-
-            # Update progress metrics (Issue #587 Protocol - no hasattr needed)
-            accel_tag = "A" if self.use_anderson else ""
-            picard_range.update_metrics(
-                U_err=f"{self.l2distu_rel[iiter]:.2e}",
-                M_err=f"{self.l2distm_rel[iiter]:.2e}",
-                t=f"{iter_time:.1f}s",
-                acc=accel_tag,
+        with HierarchicalProgress(verbose=verbose) as progress:
+            # Add main Picard task with initial metrics
+            picard_task = progress.add_task(
+                "MFG Picard",
+                total=final_max_iterations,
+                error_U=0.0,
+                error_M=0.0,
             )
 
-            # Check convergence
-            converged, convergence_reason = check_convergence_criteria(
-                self.l2distu_rel[iiter],
-                self.l2distm_rel[iiter],
-                self.l2distu_abs[iiter],
-                self.l2distm_abs[iiter],
-                final_tolerance,
-            )
+            for iiter in range(final_max_iterations):
+                iter_start = time.time()
 
-            if converged:
-                # Log convergence message (Issue #587 Protocol - no hasattr needed)
-                picard_range.log(convergence_reason)
-                break
+                U_old = self.U.copy()
+                M_old = self.M.copy()
+
+                # Build iteration state for BC provider resolution (Issue #625)
+                # This state is passed to BCValueProvider.compute() for dynamic BCs
+                bc_resolution_state = {
+                    "m_current": M_old,
+                    "U_current": U_old,
+                    "geometry": self.problem.geometry,
+                    "sigma": getattr(self.problem, "sigma", None),
+                    "iteration": iiter,
+                }
+
+                # 1. Solve HJB backward with current M (transient subtask)
+                # Issue #614: Use hierarchical subtask for inner solver visibility
+                # Issue #625: Resolve BC providers before HJB solve
+                with progress.subtask("HJB", total=num_time_steps) as hjb_subtask:
+                    # Use context manager to resolve any BC providers (Issue #625)
+                    with self.problem.using_resolved_bc(bc_resolution_state):
+                        # Issue #543 Phase 2: Use cached signature instead of hasattr
+                        show_hjb_progress = False  # Subtask replaces inner progress
+                        if self._hjb_sig_params is not None:
+                            # Method exists and signature is cached
+                            params = self._hjb_sig_params
+                            kwargs = {}
+                            if "show_progress" in params:
+                                kwargs["show_progress"] = show_hjb_progress
+                            if "diffusion_field" in params and self.diffusion_field is not None:
+                                kwargs["diffusion_field"] = self.diffusion_field
+
+                            U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
+                        else:
+                            # No signature cached - use basic call
+                            U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
+                    # Advance subtask to completion (HJB solver completes all time steps)
+                    hjb_subtask.advance(num_time_steps)
+
+                # 2. Solve FP forward with new U (transient subtask)
+                # Issue #614: Use hierarchical subtask for inner solver visibility
+                with progress.subtask("FP", total=num_time_steps) as fp_subtask:
+                    # Issue #543 Phase 2: Use cached signature instead of hasattr
+                    show_fp_progress = False  # Subtask replaces inner progress
+                    if self._fp_sig_params is not None:
+                        # Method exists and signature is cached
+                        params = self._fp_sig_params
+                        kwargs = {}
+                        if "show_progress" in params:
+                            kwargs["show_progress"] = show_fp_progress
+
+                        # Determine drift field: override or MFG drift from U
+                        if self.drift_field is not None:
+                            # User-provided drift override (for non-MFG problems)
+                            effective_drift = self.drift_field
+                        else:
+                            # Standard MFG: drift from U
+                            effective_drift = U_new
+
+                        if "drift_field" in params:
+                            kwargs["drift_field"] = effective_drift
+                        else:
+                            # Legacy: positional argument for U
+                            # solve_fp_system(m_initial, U_drift, **kwargs)
+                            pass  # Will use positional argument below
+
+                        if "diffusion_field" in params and self.diffusion_field is not None:
+                            kwargs["diffusion_field"] = self.diffusion_field
+
+                        # Call with appropriate arguments
+                        if "drift_field" in params:
+                            M_new = self.fp_solver.solve_fp_system(M_initial, **kwargs)
+                        else:
+                            # Legacy interface: second positional arg is U for drift
+                            M_new = self.fp_solver.solve_fp_system(M_initial, effective_drift, **kwargs)
+                    else:
+                        # No signature cached - use basic call
+                        M_new = self.fp_solver.solve_fp_system(M_initial, U_new)
+                    # Advance subtask to completion (FP solver completes all time steps)
+                    fp_subtask.advance(num_time_steps)
+
+                # 3. Apply damping or Anderson acceleration
+                if self.use_anderson and self.anderson_accelerator is not None:
+                    # Anderson acceleration on U only (M uses standard damping for positivity)
+                    x_current_U = U_old.flatten()
+                    f_current_U = U_new.flatten()
+                    x_next_U = self.anderson_accelerator.update(x_current_U, f_current_U, method="type1")
+                    self.U = x_next_U.reshape(U_old.shape)
+
+                    # Standard damping for M (guarantees non-negativity and mass conservation)
+                    self.M = final_damping_factor * M_new + (1 - final_damping_factor) * M_old
+                else:
+                    # Standard damping for both
+                    self.U = final_damping_factor * U_new + (1 - final_damping_factor) * U_old
+                    self.M = final_damping_factor * M_new + (1 - final_damping_factor) * M_old
+
+                # Preserve boundary conditions
+                self.M = preserve_initial_condition(self.M, M_initial)
+                self.U = preserve_terminal_condition(self.U, U_terminal)
+
+                # Calculate convergence metrics
+                from mfg_pde.utils.convergence import calculate_l2_convergence_metrics
+
+                metrics = calculate_l2_convergence_metrics(self.U, U_old, self.M, M_old, grid_spacing, time_step)
+                self.l2distu_abs[iiter] = metrics["l2distu_abs"]
+                self.l2distu_rel[iiter] = metrics["l2distu_rel"]
+                self.l2distm_abs[iiter] = metrics["l2distm_abs"]
+                self.l2distm_rel[iiter] = metrics["l2distm_rel"]
+
+                iter_time = time.time() - iter_start
+                self.iterations_run = iiter + 1
+
+                # Update main task progress with metrics (Issue #614)
+                accel_tag = "A" if self.use_anderson else ""
+                progress.update(
+                    picard_task,
+                    error_U=self.l2distu_rel[iiter],
+                    error_M=self.l2distm_rel[iiter],
+                    time=f"{iter_time:.1f}s",
+                    acc=accel_tag,
+                )
+
+                # Check convergence
+                converged, convergence_reason = check_convergence_criteria(
+                    self.l2distu_rel[iiter],
+                    self.l2distm_rel[iiter],
+                    self.l2distu_abs[iiter],
+                    self.l2distm_abs[iiter],
+                    final_tolerance,
+                )
+
+                if converged:
+                    break
 
         # Construct result
         result = SolverResult(

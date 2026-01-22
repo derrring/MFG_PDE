@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import importlib
 import inspect
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -26,11 +25,13 @@ from typing import TYPE_CHECKING, Any
 
 import pkg_resources
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 if TYPE_CHECKING:
     from mfg_pde.config import MFGSolverConfig
     from mfg_pde.factory.solver_factory import SolverType
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PluginStatus(Enum):
@@ -201,7 +202,7 @@ class PluginManager:
         self._core_solvers = self._discover_core_solvers()
 
         # Initialize logging
-        self.logger = logging.getLogger(__name__ + ".PluginManager")
+        self.logger = get_logger(__name__ + ".PluginManager")
 
     def discover_plugins(self, search_paths: list[Path] | None = None) -> list[str]:
         """Discover available plugins in specified paths.

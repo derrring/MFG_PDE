@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Any
 
@@ -9,6 +8,7 @@ import scipy.sparse as sparse
 
 from mfg_pde.alg.base_solver import BaseNumericalSolver
 from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, has_nan_or_inf
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     from mfg_pde.geometry.boundary import BoundaryConditions
@@ -18,8 +18,7 @@ if TYPE_CHECKING:
 from mfg_pde.utils.numerical.tensor_calculus import gradient as tensor_gradient
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger(__name__)
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
     from mfg_pde.config import BaseConfig

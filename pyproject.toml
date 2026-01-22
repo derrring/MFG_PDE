@@ -434,9 +434,16 @@ ignore = [
     "N803", "N806", "N816",  # Mathematical notation in algorithms
     "C901",                  # Complex functions allowed in algorithms
 ]
+"mfg_pde/utils/mfg_logging/logger.py" = [
+    "TID251",                # Logging infrastructure uses logging.getLogger directly
+]
 "mfg_pde/core/**/*.py" = [
     "N803", "N806", "N816",  # Mathematical notation in core modules
 ]
+
+# Ban direct logging.getLogger - use mfg_logging.get_logger instead (Issue #620)
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"logging.getLogger".msg = "Use `from mfg_pde.utils.mfg_logging import get_logger` instead"
 
 [tool.ruff.lint.isort]
 known-first-party = ["mfg_pde"]

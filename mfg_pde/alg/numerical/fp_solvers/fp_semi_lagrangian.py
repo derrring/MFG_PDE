@@ -23,7 +23,6 @@ Validated in: mfg-research/experiments/crowd_evacuation_2d/runners/exp14j_fp_sem
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -34,6 +33,7 @@ from scipy.linalg import solve_banded
 from mfg_pde.alg.numerical.hjb_solvers.hjb_sl_characteristics import (
     apply_boundary_conditions_1d,
 )
+from mfg_pde.utils.mfg_logging import get_logger
 
 # Use tensor_calculus for proper differential operators with BC handling
 from mfg_pde.utils.numerical.tensor_calculus import laplacian as tensor_laplacian
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FPSLSolver(BaseFPSolver):

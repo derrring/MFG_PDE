@@ -19,11 +19,12 @@ The variational formulation provides:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     # For type checking only - these imports may not be available at runtime
@@ -41,8 +42,7 @@ if TYPE_CHECKING:
     with contextlib.suppress(ImportError):
         from scipy.optimize import minimize
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger(__name__)
 try:
     import jax.numpy as jnp  # noqa: F401
     from jax import grad, jit, vmap  # noqa: F401

@@ -18,10 +18,11 @@ DGM Approach:
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 from .base_dgm import BaseDGMSolver, DGMConfig
 from .sampling import MonteCarloSampler, QuasiMonteCarloSampler
@@ -43,9 +44,7 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
-logger = logging.getLogger(__name__)
-
-
+logger = get_logger(__name__)
 if TORCH_AVAILABLE:
 
     class MFGDGMSolver(BaseDGMSolver):

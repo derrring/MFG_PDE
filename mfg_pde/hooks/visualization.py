@@ -7,10 +7,13 @@ of solver progress and solutions.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 from .base import SolverHooks
 
@@ -309,29 +312,22 @@ class LoggingHook(SolverHooks):
         self.log_format = log_format
         self.log_entries: list[dict[str, Any]] = []
 
-        # Try to import logging
-        self.logging_available = False
-        try:
-            import json
-            import logging
+        # Set up logging
+        import json
 
-            self.logging = logging
-            self.json = json
-            self.logging_available = True
+        self.json = json
+        self.logging_available = True
 
-            # Set up logger
-            self.logger = logging.getLogger("MFGSolver")
-            self.logger.setLevel(getattr(logging, log_level))
+        # Set up logger using mfg_logging for consistent formatting
+        self.logger = get_logger("MFGSolver")
+        self.logger.setLevel(getattr(logging, log_level))
 
-            # Set up handlers
-            if log_file:
-                handler = logging.FileHandler(log_file)
-                formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-                handler.setFormatter(formatter)
-                self.logger.addHandler(handler)
-
-        except ImportError:
-            print("Warning: logging module not available")
+        # Set up handlers
+        if log_file:
+            handler = logging.FileHandler(log_file)
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
     def _log_entry(self, level: str, message: str, data: dict[str, Any] | None = None):
         """Create a log entry."""

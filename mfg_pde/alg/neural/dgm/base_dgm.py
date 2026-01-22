@@ -20,7 +20,6 @@ Key Features:
 
 from __future__ import annotations
 
-import logging
 import warnings
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -30,13 +29,14 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfg_pde.alg.base_solver import BaseNeuralSolver
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.core.mfg_problem import MFGProblem
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class VarianceReductionMethod(str, Enum):

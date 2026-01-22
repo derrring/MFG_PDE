@@ -18,18 +18,17 @@ subject to:
 from __future__ import annotations
 
 import importlib.util
-import logging
 import time
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical.integration import trapezoid
 
 from .base_variational import BaseVariationalSolver, VariationalSolverResult
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger(__name__)
 try:
     from scipy.optimize import minimize
 

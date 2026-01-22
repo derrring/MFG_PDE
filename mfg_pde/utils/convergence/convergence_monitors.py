@@ -22,7 +22,6 @@ These utilities are designed for MFG problems where:
 from __future__ import annotations
 
 import inspect
-import logging
 import warnings
 from collections import deque
 from functools import wraps
@@ -30,13 +29,14 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 from .convergence_metrics import DistributionComparator
 
 if TYPE_CHECKING:
     from mfg_pde.alg.base_mfg_solver import MFGSolver  # type: ignore[import-not-found]
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger(__name__)
 # =============================================================================
 # INTERNAL ERROR HISTORY TRACKER
 # =============================================================================

@@ -12,12 +12,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from .providers import BCValueProvider
 
 
 def _compute_sdf_gradient(
@@ -237,7 +239,9 @@ class BCSegment:
 
     name: str
     bc_type: BCType
-    value: float | Callable = 0.0
+    # BC value: static float, callable f(x,t), or BCValueProvider (Issue #625)
+    # Providers are resolved by FixedPointIterator with current iteration state
+    value: float | Callable | BCValueProvider = 0.0
 
     # Robin BC coefficients: alpha*u + beta*du/dn = g
     alpha: float = 1.0  # Weight on u (Dirichlet term)
@@ -516,24 +520,55 @@ class BCSegment:
 
         return True
 
-    def get_value(self, point: np.ndarray, t: float = 0.0) -> float:
+    def get_value(
+        self,
+        point: np.ndarray,
+        t: float = 0.0,
+        state: dict[str, Any] | None = None,
+    ) -> float:
         """
         Evaluate BC value at a point.
 
         Args:
             point: Spatial coordinates as 1D array
             t: Time
+            state: Optional iteration state dict for BCValueProvider resolution
+                   (Issue #625). Required if value is a provider. Standard keys:
+                   'm_current', 'U_current', 'geometry', 'sigma', 'iteration'.
 
         Returns:
             BC value at this point and time
 
         Note:
+            Value resolution order:
+            1. BCValueProvider: resolved via provider.compute(state)
+            2. Callable: tries multiple signature patterns (see below)
+            3. Float: returned directly
+
             For callable values, tries multiple signature patterns:
             1. value(point, t) - generic array interface
             2. value(*point, t) - coordinate expansion
             3. value(point) - no time dependency
             4. Falls back to 0.0 if all fail
+
+        Raises:
+            ValueError: If value is a provider but state is not provided
         """
+        # Check for BCValueProvider first (Issue #625)
+        # Import here to avoid circular dependency at module load time
+        from .providers import is_provider
+
+        if is_provider(self.value):
+            if state is None:
+                raise ValueError(
+                    f"BCSegment '{self.name}' has a BCValueProvider value but no state "
+                    f"was provided to get_value(). Providers require iteration state "
+                    f"for resolution. Either pass state dict or use resolve_provider() "
+                    f"in the coupling iterator."
+                )
+            result = self.value.compute(state)
+            return float(result) if np.isscalar(result) else result
+
         if callable(self.value):
             # Strategy 1: Try generic array interface first (safest)
             try:

@@ -46,13 +46,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .conditions import mixed_bc
+from .conditions import BoundaryConditions
 from .types import BCSegment, BCType
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-
-    from .conditions import BoundaryConditions
 
 
 def compute_boundary_log_density_gradient_1d(
@@ -189,8 +187,8 @@ def create_adjoint_consistent_bc_1d(
         ),
     ]
 
-    # Create mixed BC with Robin segments
-    return mixed_bc(
+    # Create BC with Robin segments (direct construction)
+    return BoundaryConditions(
         segments=segments,
         dimension=1,
         domain_bounds=domain_bounds,

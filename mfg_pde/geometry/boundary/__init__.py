@@ -236,6 +236,18 @@ from .handler_protocol import (
 )
 
 # =============================================================================
+# Dynamic BC Value Providers (Issue #625)
+# =============================================================================
+from .providers import (
+    AdjointConsistentProvider,
+    BaseBCValueProvider,
+    BCValueProvider,
+    ConstantProvider,
+    is_provider,
+    resolve_provider,
+)
+
+# =============================================================================
 # Core Types (dimension-agnostic BC specification)
 # =============================================================================
 from .types import (
@@ -299,6 +311,13 @@ __all__ = [
     "BCType",
     "BCSegment",
     "create_standard_boundary_names",
+    # Dynamic BC Value Providers (Issue #625)
+    "BCValueProvider",
+    "BaseBCValueProvider",
+    "AdjointConsistentProvider",
+    "ConstantProvider",
+    "is_provider",
+    "resolve_provider",
     # Unified BC class
     "BoundaryConditions",
     "MixedBoundaryConditions",

@@ -29,9 +29,11 @@ Examples:
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+
+from mfg_pde.utils.deprecation import deprecated
 
 from .types import BCSegment, BCType, _compute_sdf_gradient
 
@@ -189,6 +191,71 @@ class BoundaryConditions:
         Mixed BCs have multiple segments or segments targeting specific boundaries.
         """
         return not self.is_uniform
+
+    # =========================================================================
+    # Dynamic BC Value Provider Support (Issue #625)
+    # =========================================================================
+
+    def has_providers(self) -> bool:
+        """
+        Check if any segment has a BCValueProvider value.
+
+        Used by FixedPointIterator to determine if BC resolution is needed
+        before passing to solvers.
+
+        Returns:
+            True if any segment.value is a BCValueProvider
+
+        Example:
+            >>> if bc.has_providers():
+            ...     bc = bc.with_resolved_providers(state)
+        """
+        from .providers import is_provider
+
+        return any(is_provider(seg.value) for seg in self.segments)
+
+    def with_resolved_providers(
+        self,
+        state: dict[str, Any],
+    ) -> BoundaryConditions:
+        """
+        Create a new BoundaryConditions with all providers resolved to concrete values.
+
+        This is the primary method for the FixedPointIterator to resolve dynamic
+        BCs before passing them to solvers. Returns a new instance where all
+        BCValueProvider values have been replaced with their computed float values.
+
+        Args:
+            state: Iteration state dict passed to provider.compute().
+                   Standard keys: 'm_current', 'U_current', 'geometry', 'sigma'.
+
+        Returns:
+            New BoundaryConditions instance with concrete values (no providers)
+
+        Example:
+            >>> # In FixedPointIterator
+            >>> if problem.boundary_conditions.has_providers():
+            ...     resolved_bc = problem.boundary_conditions.with_resolved_providers(state)
+            ... else:
+            ...     resolved_bc = problem.boundary_conditions
+            >>> U_new = hjb_solver.solve(bc=resolved_bc, ...)
+        """
+        from .providers import is_provider
+
+        if not self.has_providers():
+            return self  # Fast path: no providers to resolve
+
+        resolved_segments = []
+        for seg in self.segments:
+            if is_provider(seg.value):
+                # Resolve provider to concrete value
+                resolved_value = seg.value.compute(state)
+                resolved_seg = replace(seg, value=float(resolved_value))
+            else:
+                resolved_seg = seg
+            resolved_segments.append(resolved_seg)
+
+        return replace(self, segments=resolved_segments)
 
     @property
     def type(self) -> str:
@@ -860,6 +927,11 @@ def robin_bc(
     )
 
 
+@deprecated(
+    since="v0.18.0",
+    replacement="Use BoundaryConditions(segments=[...]) directly",
+    reason="Factory is redundant - direct construction is clearer",
+)
 def mixed_bc(
     segments: list[BCSegment],
     dimension: int | None = None,
@@ -870,30 +942,14 @@ def mixed_bc(
     corner_strategy: Literal["priority", "average", "mollify"] = "priority",
 ) -> BoundaryConditions:
     """
-    Create mixed boundary conditions (different types on different segments).
+    DEPRECATED: Use BoundaryConditions(segments=[...]) directly.
 
-    Supports both rectangular domains (via domain_bounds) and general/Lipschitz
-    domains (via domain_sdf with SDF-based boundary detection).
+    Migration:
+        # Old
+        bc = mixed_bc([seg1, seg2], dimension=2, domain_bounds=bounds)
 
-    Args:
-        segments: List of BCSegment defining BCs on different boundary parts
-        dimension: Spatial dimension. If None, dimension will be inferred when
-            BC is attached to a Geometry (lazy binding).
-        domain_bounds: Domain bounds array (dimension, 2) for rectangular domains
-        domain_sdf: Signed distance function for general/Lipschitz domains
-        default_bc: Default BC type when no segment matches
-        default_value: Default BC value when no segment matches
-        corner_strategy: How to handle corners ("priority", "average", "mollify")
-
-    Returns:
-        Mixed BoundaryConditions
-
-    Example:
-        >>> exit = BCSegment(name="exit", bc_type=BCType.DIRICHLET, value=0.0,
-        ...                  boundary="x_max", priority=1)
-        >>> wall = BCSegment(name="wall", bc_type=BCType.NEUMANN, value=0.0)
-        >>> bc = mixed_bc([exit, wall], dimension=2,
-        ...               domain_bounds=np.array([[0, 1], [0, 1]]))
+        # New (preferred)
+        bc = BoundaryConditions(segments=[seg1, seg2], dimension=2, domain_bounds=bounds)
     """
     return BoundaryConditions(
         dimension=dimension,

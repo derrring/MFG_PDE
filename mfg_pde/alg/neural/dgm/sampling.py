@@ -20,11 +20,12 @@ Mathematical Foundation:
 
 from __future__ import annotations
 
-import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 # Import centralized Monte Carlo utilities
 from mfg_pde.utils.numerical.particle.sampling import (
@@ -37,7 +38,7 @@ from mfg_pde.utils.numerical.particle.sampling import (
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class HighDimSampler(ABC):

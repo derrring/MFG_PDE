@@ -8,12 +8,12 @@ for professional research and analysis workflows.
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical.integration import trapezoid
 
 # Import optional dependencies from parent module (centralized imports)
@@ -44,7 +44,7 @@ except ImportError:
     create_data_exporter = None
     MFGDataFrame = None
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MFGAnalyticsEngine:

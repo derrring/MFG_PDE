@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar
@@ -58,9 +59,20 @@ class MFGFormatter(logging.Formatter):
 
 
 class MFGLogger:
-    """Central logging manager for MFG_PDE with configuration management."""
+    """
+    Central logging manager for MFG_PDE with configuration management.
+
+    Thread Safety (Issue #620):
+        This class uses double-check locking pattern to ensure thread-safe
+        logger creation. Multiple threads can safely call get_logger()
+        concurrently without risking duplicate handlers or race conditions.
+
+    Singleton Pattern:
+        Uses __new__ to ensure only one instance manages global configuration.
+    """
 
     _instance = None
+    _lock: ClassVar[threading.Lock] = threading.Lock()  # Thread safety (Issue #620)
     _loggers: ClassVar[dict[str, logging.Logger]] = {}
     _log_level = logging.INFO
     _log_to_file = False
@@ -86,6 +98,10 @@ class MFGLogger:
         """
         Configure global logging settings for MFG_PDE.
 
+        Thread Safety:
+            Configuration changes are applied under lock to prevent
+            race conditions when updating existing loggers.
+
         Args:
             level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
             log_to_file: Whether to log to file
@@ -94,43 +110,52 @@ class MFGLogger:
             include_location: Include file location in log messages
             suppress_external: Suppress verbose logging from external libraries
         """
-        # Set log level
-        if isinstance(level, str):
-            cls._log_level = getattr(logging, level.upper())
-        else:
-            cls._log_level = level
-
-        cls._log_to_file = log_to_file
-        cls._use_colors = use_colors and COLORLOG_AVAILABLE
-        cls._include_location = include_location
-
-        # Set up log file path
-        if log_to_file:
-            if log_file_path is None:
-                # Default to logs directory
-                log_dir = Path.cwd() / "logs"
-                log_dir.mkdir(exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                cls._log_file_path = log_dir / f"mfg_pde_{timestamp}.log"
+        with cls._lock:
+            # Set log level
+            if isinstance(level, str):
+                cls._log_level = getattr(logging, level.upper())
             else:
-                cls._log_file_path = Path(log_file_path)
-                cls._log_file_path.parent.mkdir(parents=True, exist_ok=True)
+                cls._log_level = level
 
-        # Suppress verbose logging from external libraries
-        if suppress_external:
-            logging.getLogger("matplotlib").setLevel(logging.WARNING)
-            logging.getLogger("PIL").setLevel(logging.WARNING)
-            logging.getLogger("urllib3").setLevel(logging.WARNING)
-            logging.getLogger("requests").setLevel(logging.WARNING)
+            cls._log_to_file = log_to_file
+            cls._use_colors = use_colors and COLORLOG_AVAILABLE
+            cls._include_location = include_location
 
-        # Update existing loggers
-        for logger in cls._loggers.values():
-            cls._setup_logger(logger)
+            # Set up log file path
+            if log_to_file:
+                if log_file_path is None:
+                    # Default to logs directory
+                    log_dir = Path.cwd() / "logs"
+                    log_dir.mkdir(exist_ok=True)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    cls._log_file_path = log_dir / f"mfg_pde_{timestamp}.log"
+                else:
+                    cls._log_file_path = Path(log_file_path)
+                    cls._log_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Suppress verbose logging from external libraries
+            if suppress_external:
+                logging.getLogger("matplotlib").setLevel(logging.WARNING)
+                logging.getLogger("PIL").setLevel(logging.WARNING)
+                logging.getLogger("urllib3").setLevel(logging.WARNING)
+                logging.getLogger("requests").setLevel(logging.WARNING)
+
+            # Update existing loggers
+            for logger in cls._loggers.values():
+                cls._setup_logger(logger)
 
     @classmethod
     def get_logger(cls, name: str) -> logging.Logger:
         """
         Get or create a logger for the specified module/component.
+
+        Thread Safety (Issue #620):
+            Uses double-check locking pattern for performance:
+            1. Fast path: Return cached logger without lock (most common case)
+            2. Slow path: Acquire lock, double-check, create if needed
+
+            Also handles mixed usage scenario where some code uses direct
+            logging.getLogger() - avoids duplicate handlers.
 
         Args:
             name: Logger name (typically __name__ from calling module)
@@ -138,10 +163,22 @@ class MFGLogger:
         Returns:
             Configured logger instance
         """
-        if name not in cls._loggers:
-            logger = logging.getLogger(name)
-            cls._loggers[name] = logger
-            cls._setup_logger(logger)
+        # Fast path: check cache without lock (optimization)
+        if name in cls._loggers:
+            return cls._loggers[name]
+
+        # Slow path: acquire lock for thread-safe creation
+        with cls._lock:
+            # Double-check after acquiring lock (another thread may have created it)
+            if name not in cls._loggers:
+                logger = logging.getLogger(name)
+
+                # Safety check: avoid duplicate handlers if logger was
+                # configured externally (handles mixed usage during migration)
+                if not logger.handlers:
+                    cls._setup_logger(logger)
+
+                cls._loggers[name] = logger
 
         return cls._loggers[name]
 
@@ -569,5 +606,66 @@ def demo_logging_capabilities():
     print("\nLogging demonstration complete!")
 
 
+def test_thread_safety():
+    """Test thread-safe logger creation (Issue #620)."""
+    import concurrent.futures
+
+    print("\n=== Thread Safety Test (Issue #620) ===")
+
+    # Reset state for clean test
+    MFGLogger._loggers.clear()
+
+    # Track handler counts to detect duplicates
+    handler_counts: dict[str, int] = {}
+    errors: list[str] = []
+
+    def get_logger_from_thread(thread_id: int) -> str:
+        """Simulate concurrent logger access."""
+        logger_name = f"test.thread_{thread_id % 5}"  # 5 unique loggers, multiple threads per logger
+        logger = get_logger(logger_name)
+
+        # Record handler count
+        handler_counts[logger_name] = len(logger.handlers)
+
+        # Log from this thread
+        logger.debug(f"Thread {thread_id} using {logger_name}")
+        return logger_name
+
+    # Run concurrent logger creation
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(get_logger_from_thread, i) for i in range(50)]
+        concurrent.futures.wait(futures)
+
+    # Verify no duplicate handlers
+    for name, count in handler_counts.items():
+        if count > 1:
+            errors.append(f"Logger '{name}' has {count} handlers (expected 1)")
+
+    # Verify all loggers cached
+    expected_loggers = {f"test.thread_{i}" for i in range(5)}
+    cached_loggers = {k for k in MFGLogger._loggers if k.startswith("test.thread_")}
+
+    if cached_loggers != expected_loggers:
+        errors.append(f"Cache mismatch: expected {expected_loggers}, got {cached_loggers}")
+
+    if errors:
+        print("FAILED:")
+        for err in errors:
+            print(f"  - {err}")
+    else:
+        print(f"PASSED: {len(handler_counts)} loggers created safely from 50 concurrent requests")
+        print(f"  Handler counts: {handler_counts}")
+
+    # Cleanup
+    for name in list(MFGLogger._loggers.keys()):
+        if name.startswith("test.thread_"):
+            del MFGLogger._loggers[name]
+
+    return len(errors) == 0
+
+
 if __name__ == "__main__":
     demo_logging_capabilities()
+
+    # Run thread safety test
+    test_thread_safety()

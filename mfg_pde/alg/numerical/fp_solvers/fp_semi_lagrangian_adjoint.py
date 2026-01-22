@@ -25,11 +25,12 @@ Issue #578: Adjoint SL implementation for proper SL-SL MFG coupling
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from scipy.linalg import solve_banded
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 from .base_fp import BaseFPSolver
 
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FPSLAdjointSolver(BaseFPSolver):

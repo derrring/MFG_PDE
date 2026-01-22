@@ -8,7 +8,6 @@ that directly optimize the Lagrangian formulation of MFG problems.
 
 from __future__ import annotations
 
-import logging
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -16,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfg_pde.alg.base_solver import BaseOptimizationSolver
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical.integration import trapezoid
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     from mfg_pde.solvers.variational import VariationalMFGProblem
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass

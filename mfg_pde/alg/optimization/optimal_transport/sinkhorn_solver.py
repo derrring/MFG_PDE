@@ -8,20 +8,20 @@ for large-scale MFG problems through efficient iterative algorithms.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from mfg_pde.alg.base_solver import BaseOptimizationSolver
+from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.core.mfg_problem import MFGProblem
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -108,7 +108,7 @@ class SinkhornMFGSolver(BaseOptimizationSolver):
         """Initialize Sinkhorn MFG solver."""
         super().__init__(problem, **kwargs)
         self.config = config or SinkhornSolverConfig()
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
         # Validate dependencies
         self._check_dependencies()

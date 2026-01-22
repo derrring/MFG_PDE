@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -491,7 +493,7 @@ class Workflow:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the workflow."""
-        logger = logging.getLogger(f"mfg_workflow.{self.id}")
+        logger = get_logger(f"mfg_workflow.{self.id}")
         logger.setLevel(logging.INFO)
 
         if not logger.handlers:
@@ -683,7 +685,7 @@ class WorkflowManager:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the workflow manager."""
-        logger = logging.getLogger("mfg_workflow_manager")
+        logger = get_logger("mfg_workflow_manager")
         logger.setLevel(logging.INFO)
 
         if not logger.handlers:

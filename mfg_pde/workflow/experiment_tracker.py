@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
+
 if TYPE_CHECKING:
     from .workflow_manager import Workflow
 
@@ -575,7 +577,7 @@ class Experiment:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the experiment."""
-        logger = logging.getLogger(f"mfg_experiment.{self.metadata.id}")
+        logger = get_logger(f"mfg_experiment.{self.metadata.id}")
         logger.setLevel(logging.INFO)
 
         if not logger.handlers:
@@ -897,7 +899,7 @@ class ExperimentTracker:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the experiment tracker."""
-        logger = logging.getLogger("mfg_experiment_tracker")
+        logger = get_logger("mfg_experiment_tracker")
         logger.setLevel(logging.INFO)
 
         if not logger.handlers:

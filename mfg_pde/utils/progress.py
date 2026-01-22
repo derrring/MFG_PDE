@@ -62,6 +62,8 @@ __all__ = [
     "ProgressTracker",
     "NoOpProgressBar",
     "create_progress_bar",
+    # Hierarchical progress (Issue #614)
+    "HierarchicalProgress",
     # Solver utilities
     "SolverTimer",
     "IterationProgress",
@@ -334,6 +336,366 @@ class NoOpProgressBar:
 
     def close(self) -> None:
         """No-op close (backward compatibility)."""
+
+
+# =============================================================================
+# Hierarchical Progress (Issue #614)
+# =============================================================================
+
+
+class HierarchicalProgress:
+    """
+    Universal hierarchical progress manager with dynamic metrics (Issue #614).
+
+    Supports nested task structures where main tasks persist and subtasks
+    are transient (disappear after completion). Designed for multi-level
+    solver loops like MFG Picard iteration with inner HJB/FP solves.
+
+    Key Features:
+        - Dynamic metrics via **kwargs (not hardcoded field names)
+        - Transient subtasks that auto-remove on completion
+        - Null-object pattern for verbose=False (no conditionals needed)
+        - Auto-formatting of scientific notation for small/large values
+        - Reentrant support: Can be passed to child solvers (Optional Injection pattern)
+
+    Design Pattern: Optional Injection with Default Fallback
+        - Standalone mode: Create own Progress, own the console
+        - Coupled mode: Reuse passed manager, add subtasks to existing display
+
+    Supported Use Cases:
+        - MFG Picard iteration (error_U, error_M)
+        - Hyperparameter grid search (alpha, lr, loss)
+        - Training loops (epoch, loss, accuracy)
+        - Data processing pipelines (no metrics)
+
+    Example (Standalone - HJB solver alone):
+        with HierarchicalProgress() as progress:
+            task = progress.add_task("HJB Solver", total=100)
+            for t in range(100):
+                # ... solve ...
+                progress.update(task, error=err)
+
+    Example (Coupled - Picard with HJB/FP):
+        with HierarchicalProgress() as progress:
+            picard_task = progress.add_task("MFG Picard", total=100)
+
+            for i in range(100):
+                # Pass progress to inner solver
+                hjb_solver.solve(..., progress_manager=progress)
+                fp_solver.solve(..., progress_manager=progress)
+                progress.update(picard_task, error_U=err_u, error_M=err_m)
+
+    Example (Child solver receiving progress_manager):
+        def solve(self, ..., progress_manager: HierarchicalProgress | None = None):
+            is_standalone = (progress_manager is None)
+            ctx = progress_manager if not is_standalone else HierarchicalProgress(verbose=self.verbose)
+
+            with ctx:
+                # transient=True in coupled mode, False in standalone
+                with ctx.transient_subtask("HJB", total=Nt, transient=not is_standalone) as task:
+                    for t in range(Nt):
+                        task.advance()
+                        task.update_metrics(error=err)
+
+    Output (Coupled):
+        MFG Picard ━━━━━━━━━━╺━━━━━━━ 45% 0:01:23 error_U=1.20e-04 | error_M=3.50e-05
+          └─ HJB ━━━━━━━━━━━━━━━━━━━━━━ 60%              (disappears after completion)
+    """
+
+    def __init__(self, verbose: bool = True):
+        """
+        Initialize hierarchical progress manager.
+
+        Args:
+            verbose: If True, display progress bars; if False, all operations are no-ops
+        """
+        self.verbose = verbose
+        self._progress: Progress | None = None
+        self._entry_count: int = 0  # Reentrant counter for nested context managers
+
+    def __enter__(self) -> HierarchicalProgress:
+        """
+        Start the progress display (if not already active).
+
+        Reentrant behavior:
+            - First entry (standalone): Creates and starts Progress display
+            - Subsequent entries (coupled): Increments counter, reuses existing display
+        """
+        self._entry_count += 1
+
+        if self.verbose and self._entry_count == 1:
+            # First entry - create and start display
+            self._progress = Progress(
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                TimeElapsedColumn(),
+                TextColumn("{task.fields[metrics_str]}"),  # Dynamic metrics slot
+                console=console,
+                transient=False,
+            )
+            self._progress.start()
+        # Else: Already active (passed from parent), reuse display
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """
+        Stop the progress display (only on final exit).
+
+        Reentrant behavior:
+            - Decrements entry counter
+            - Only stops display when counter reaches 0 (original entry exits)
+        """
+        self._entry_count -= 1
+
+        if self._progress and self._entry_count == 0:
+            self._progress.stop()
+            self._progress = None
+
+    @property
+    def is_active(self) -> bool:
+        """Check if progress display is currently active."""
+        return self._entry_count > 0
+
+    def add_task(self, description: str, total: int, **initial_metrics: Any) -> int | None:
+        """
+        Add a persistent task with optional initial metrics.
+
+        Args:
+            description: Task label (e.g., "MFG Picard", "Grid Search", "Training")
+            total: Total number of iterations
+            **initial_metrics: Any key-value pairs to display (e.g., error_U=0.0, lr=0.001)
+
+        Returns:
+            Task ID for updates, or None if verbose=False
+
+        Example:
+            task = progress.add_task("Picard", total=100, error_U=0.0, error_M=0.0)
+        """
+        if not self._progress:
+            return None
+        metrics_str = self._format_metrics(initial_metrics)
+        return self._progress.add_task(description, total=total, metrics_str=metrics_str)
+
+    def update(self, task_id: int | None, advance: int = 1, **metrics: Any) -> None:
+        """
+        Update task progress and metrics.
+
+        Args:
+            task_id: Task to update (from add_task)
+            advance: Steps to advance (default 1)
+            **metrics: Updated metrics to display
+
+        Example:
+            progress.update(task, error_U=1.2e-4, error_M=3.5e-5)
+            progress.update(task, advance=0, loss=0.023)  # Update metrics only
+        """
+        if not self._progress or task_id is None:
+            return
+        updates: dict[str, Any] = {"advance": advance}
+        if metrics:
+            updates["metrics_str"] = self._format_metrics(metrics)
+        self._progress.update(task_id, **updates)
+
+    def subtask(self, description: str, total: int) -> _TransientSubtask | _NullSubtask:
+        """
+        Create a transient subtask that disappears after completion.
+
+        Subtasks appear indented below the main task and are automatically
+        removed when the context manager exits (even on exception).
+
+        Args:
+            description: Subtask label (will be prefixed with "└─")
+            total: Total number of iterations
+
+        Returns:
+            Context manager for the subtask
+
+        Example:
+            with progress.subtask("FP Solver", total=100) as fp:
+                for t in range(100):
+                    # ... compute ...
+                    fp.advance()
+            # Subtask automatically removed here
+        """
+        if not self._progress:
+            return _NullSubtask()
+        return _TransientSubtask(self._progress, f"  └─ {description}", total, transient=True)
+
+    def transient_subtask(
+        self, description: str, total: int, transient: bool = True
+    ) -> _TransientSubtask | _NullSubtask:
+        """
+        Create a subtask with controllable transient behavior.
+
+        Use this when you need control over whether the subtask disappears
+        after completion. Useful for the "Optional Injection" pattern where:
+        - Coupled mode (transient=True): Subtask disappears after completion
+        - Standalone mode (transient=False): Task persists for user visibility
+
+        Args:
+            description: Subtask label (will be prefixed with "└─" if transient)
+            total: Total number of iterations
+            transient: If True, remove after completion; if False, persist
+
+        Returns:
+            Context manager for the subtask
+
+        Example (inner solver with optional injection):
+            def solve(self, ..., progress_manager=None):
+                is_standalone = (progress_manager is None)
+                ctx = progress_manager or HierarchicalProgress(verbose=True)
+                with ctx:
+                    with ctx.transient_subtask("HJB", total=Nt, transient=not is_standalone) as t:
+                        for step in range(Nt):
+                            t.advance()
+        """
+        if not self._progress:
+            return _NullSubtask()
+        # Only indent if transient (child task visual style)
+        prefix = "  └─ " if transient else ""
+        return _TransientSubtask(self._progress, f"{prefix}{description}", total, transient=transient)
+
+    def _format_metrics(self, metrics: dict[str, Any]) -> str:
+        """
+        Format metrics dict as compact display string.
+
+        Automatically uses scientific notation for very small or large values.
+
+        Args:
+            metrics: Dictionary of metric name -> value pairs
+
+        Returns:
+            Formatted string like "error_U=1.20e-04 | error_M=3.50e-05"
+        """
+        if not metrics:
+            return ""
+        parts = []
+        for key, value in metrics.items():
+            if isinstance(value, float):
+                # Scientific notation for very small/large values
+                if value != 0 and (abs(value) < 1e-3 or abs(value) > 1e3):
+                    formatted = f"{value:.2e}"
+                else:
+                    formatted = f"{value:.4f}"
+            else:
+                formatted = str(value)
+            parts.append(f"{key}={formatted}")
+        return " | ".join(parts)
+
+
+class _TransientSubtask:
+    """
+    Subtask with optional auto-remove on completion.
+
+    Used internally by HierarchicalProgress.subtask() and transient_subtask().
+
+    Behavior controlled by `transient` parameter:
+        - transient=True: Remove from display on __exit__ (for coupled mode)
+        - transient=False: Keep in display after completion (for standalone mode)
+
+    Thread Safety:
+        Not thread-safe. Designed for single-threaded solver loops.
+    """
+
+    def __init__(self, progress: Progress, description: str, total: int, transient: bool = True):
+        """
+        Initialize subtask.
+
+        Args:
+            progress: Parent Progress instance
+            description: Subtask description (already formatted with indent if needed)
+            total: Total iterations
+            transient: If True, remove on exit; if False, persist
+        """
+        self._progress = progress
+        self._description = description
+        self._total = total
+        self._task_id: int | None = None
+        self._transient = transient
+        self._metrics: dict[str, Any] = {}
+
+    def __enter__(self) -> _TransientSubtask:
+        """Add subtask to progress display."""
+        self._task_id = self._progress.add_task(self._description, total=self._total, metrics_str="")
+        return self
+
+    def advance(self, steps: int = 1) -> None:
+        """
+        Advance subtask progress.
+
+        Args:
+            steps: Number of steps to advance (default 1)
+        """
+        if self._task_id is not None:
+            self._progress.update(self._task_id, advance=steps)
+
+    def update_metrics(self, **kwargs: Any) -> None:
+        """
+        Update subtask metrics display.
+
+        Args:
+            **kwargs: Metric key-value pairs to display
+
+        Example:
+            subtask.update_metrics(error=1.2e-5, t=0.5)
+        """
+        if self._task_id is not None:
+            self._metrics.update(kwargs)
+            metrics_str = self._format_metrics(self._metrics)
+            self._progress.update(self._task_id, metrics_str=metrics_str)
+
+    def _format_metrics(self, metrics: dict[str, Any]) -> str:
+        """Format metrics dict as compact display string."""
+        if not metrics:
+            return ""
+        parts = []
+        for key, value in metrics.items():
+            if isinstance(value, float):
+                if value != 0 and (abs(value) < 1e-3 or abs(value) > 1e3):
+                    formatted = f"{value:.2e}"
+                else:
+                    formatted = f"{value:.4f}"
+            else:
+                formatted = str(value)
+            parts.append(f"{key}={formatted}")
+        return " | ".join(parts)
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """
+        Handle subtask completion.
+
+        Behavior:
+            - transient=True: Remove from display (for nested/coupled mode)
+            - transient=False: Keep in display (for standalone mode)
+
+        Always handles cleanup safely, even if an exception occurred.
+        """
+        try:
+            if self._task_id is not None and self._transient:
+                self._progress.remove_task(self._task_id)
+        except Exception:
+            # Don't mask the actual error with UI errors
+            pass
+
+
+class _NullSubtask:
+    """
+    No-op subtask for verbose=False mode.
+
+    Provides the same interface as _TransientSubtask but with zero behavior.
+    Eliminates the need for conditional checks in solver code.
+    """
+
+    def __enter__(self) -> _NullSubtask:
+        """No-op context manager entry."""
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """No-op context manager exit."""
+
+    def advance(self, steps: int = 1) -> None:
+        """No-op advance (for API compatibility)."""
 
 
 def create_progress_bar(
@@ -660,3 +1022,108 @@ if __name__ == "__main__":
     console.print(table)
 
     print("\nProgress utilities test completed!")
+
+    # Test HierarchicalProgress (Issue #614)
+    print("\n" + "=" * 50)
+    print("Testing HierarchicalProgress (Issue #614)")
+    print("=" * 50)
+
+    # Test 1: Basic hierarchical progress with metrics (coupled mode)
+    print("\nTest 1: MFG Picard-style iteration (coupled mode)")
+    with HierarchicalProgress(verbose=True) as progress:
+        task = progress.add_task("MFG Picard", total=10, error_U=0.0, error_M=0.0)
+
+        for i in range(10):
+            # Simulate HJB subtask (transient - disappears after)
+            with progress.subtask("HJB", total=5) as hjb:
+                for _t in range(5):
+                    time.sleep(0.01)
+                    hjb.advance()
+
+            # Simulate FP subtask (transient - disappears after)
+            with progress.subtask("FP", total=5) as fp:
+                for _t in range(5):
+                    time.sleep(0.01)
+                    fp.advance()
+
+            # Update main task with convergence metrics
+            err_u = 1.0 / (i + 1)
+            err_m = 0.5 / (i + 1)
+            progress.update(task, error_U=err_u, error_M=err_m)
+
+    # Test 2: Grid search style
+    print("\nTest 2: Grid search style")
+    with HierarchicalProgress(verbose=True) as progress:
+        task = progress.add_task("Grid Search", total=5)
+        for alpha in [0.001, 0.01, 0.1, 1.0, 10.0]:
+            time.sleep(0.05)
+            loss = 1.0 / alpha
+            progress.update(task, alpha=alpha, loss=loss)
+
+    # Test 3: No metrics (simple processing)
+    print("\nTest 3: Simple processing (no metrics)")
+    with HierarchicalProgress(verbose=True) as progress:
+        task = progress.add_task("Processing", total=10)
+        for _ in range(10):
+            time.sleep(0.02)
+            progress.update(task)
+
+    # Test 4: verbose=False (no output)
+    print("\nTest 4: verbose=False (should be silent)")
+    with HierarchicalProgress(verbose=False) as progress:
+        task = progress.add_task("Silent Task", total=5)
+        for i in range(5):
+            with progress.subtask("Inner", total=3) as inner:
+                for _ in range(3):
+                    inner.advance()
+            progress.update(task, value=i)
+    print("  (No output expected - verbose=False)")
+
+    # Test 5: Standalone mode (transient=False, task persists)
+    print("\nTest 5: Standalone mode (transient=False - task persists)")
+    with (
+        HierarchicalProgress(verbose=True) as progress,
+        progress.transient_subtask("HJB Standalone", total=10, transient=False) as hjb,
+    ):
+        for t in range(10):
+            time.sleep(0.02)
+            hjb.advance()
+            hjb.update_metrics(error=1.0 / (t + 1), t=t * 0.1)
+    print("  (Task should have persisted above - standalone mode)")
+
+    # Test 6: Reentrant behavior (Optional Injection pattern)
+    print("\nTest 6: Reentrant behavior (Optional Injection pattern)")
+
+    def inner_solver(name: str, iterations: int, progress_manager: HierarchicalProgress | None = None):
+        """Simulates an inner solver with optional progress injection."""
+        is_standalone = progress_manager is None
+        ctx = progress_manager if not is_standalone else HierarchicalProgress(verbose=True)
+
+        with ctx, ctx.transient_subtask(name, total=iterations, transient=not is_standalone) as task:
+            for i in range(iterations):
+                time.sleep(0.01)
+                task.advance()
+                task.update_metrics(error=1.0 / (i + 1))
+
+    # 6a: Inner solver standalone (should show its own progress)
+    print("  6a: Inner solver standalone mode")
+    inner_solver("HJB Solver", 5, progress_manager=None)
+
+    # 6b: Inner solver coupled (receives progress from parent)
+    print("  6b: Inner solver coupled mode (injected progress)")
+    with HierarchicalProgress(verbose=True) as parent_progress:
+        outer_task = parent_progress.add_task("Picard", total=3)
+        for _ in range(3):
+            inner_solver("HJB", 3, progress_manager=parent_progress)
+            inner_solver("FP", 3, progress_manager=parent_progress)
+            parent_progress.update(outer_task)
+
+    # Test 7: Verify is_active property
+    print("\nTest 7: Verify is_active property")
+    progress = HierarchicalProgress(verbose=True)
+    print(f"  Before enter: is_active = {progress.is_active}")
+    with progress:
+        print(f"  Inside context: is_active = {progress.is_active}")
+    print(f"  After exit: is_active = {progress.is_active}")
+
+    print("\nHierarchicalProgress test completed!")

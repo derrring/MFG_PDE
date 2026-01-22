@@ -30,9 +30,10 @@ Features:
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from mfg_pde.utils.mfg_logging import get_logger
 
 # Simplified OmegaConf integration - minimize typing conflicts
 if TYPE_CHECKING:
@@ -109,8 +110,7 @@ from .structured_schemas import (
     MFGSchema,
 )
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger(__name__)
 # Type aliases for structured configs
 if TYPE_CHECKING:
     from omegaconf import DictConfig as OmegaConfig
