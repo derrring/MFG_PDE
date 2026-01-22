@@ -74,7 +74,7 @@ convergence_tolerance  # NOT: l2errBound, conv_tol
 num_particles          # NOT: N_particles, particle_count
 kde_bandwidth         # NOT: bandwidth, kde_bw
 
-# GFDM methods  
+# GFDM methods
 delta                 # Neighborhood size - keep as is
 taylor_order          # NOT: order, taylor_degree
 weight_function       # NOT: kernel, weight_type
@@ -83,6 +83,28 @@ weight_scale          # NOT: scale, weight_factor
 # QP methods
 use_monotone_constraints    # NOT: enable_qp, qp_constraints
 qp_solver                  # NOT: quadprog_solver
+```
+
+**✅ PHYSICAL PARAMETER NAMING:**
+```python
+# Diffusion coefficient naming (CRITICAL)
+diffusion              # Canonical name for σ (diffusion coefficient)
+                       # NOT: sigma (deprecated, use 'diffusion')
+                       # NOT: sigma_squared (use diffusion**2 in code)
+
+# Mathematical relationship:
+# - diffusion = σ (the standard diffusion coefficient)
+# - diffusion**2 = σ² (appears in formulas as σ²/2)
+# - In code, write: -(diffusion**2) / 2 for the term -σ²/2
+
+# Example: Adjoint-consistent Robin BC
+# Formula: g = -σ²/2 · ∂ln(m)/∂n
+# Code:    g = -(diffusion**2) / 2 * grad_ln_m
+# Where diffusion = σ, so diffusion**2 = σ²
+
+# Backward compatibility:
+# - Constructor: Accept 'sigma' with deprecation warning
+# - State dict: Look for 'diffusion' first, fall back to 'sigma'
 ```
 
 ### 3. Method Signature Consistency

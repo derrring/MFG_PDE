@@ -142,10 +142,10 @@ class AdjointConsistentProvider(BaseBCValueProvider):
     Computes the Robin BC value for reflecting boundaries that maintains
     adjoint consistency between HJB and FP equations:
 
-        g = -diffusion/2 * d(ln m)/dn
+        g = -σ²/2 · d(ln m)/dn = -(diffusion²)/2 · d(ln m)/dn
 
     where:
-        - diffusion: diffusion coefficient (σ²)
+        - diffusion: diffusion coefficient σ (NOT σ²)
         - m: current FP density
         - d/dn: outward normal derivative at boundary
 
@@ -201,7 +201,7 @@ class AdjointConsistentProvider(BaseBCValueProvider):
                 - 1D: "left", "right", "x_min", "x_max", "min", "max"
                 - 2D: "y_min", "y_max", "bottom", "top"
                 - 3D: "z_min", "z_max", "front", "back"
-            diffusion: Diffusion coefficient (σ²). If None, reads from state.
+            diffusion: Diffusion coefficient σ. If None, reads from state.
             regularization: Small positive constant added to density
                            to prevent log(0). Default 1e-10.
             sigma: DEPRECATED. Use diffusion instead.
