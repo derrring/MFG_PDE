@@ -48,12 +48,49 @@ References:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, TypedDict, runtime_checkable
 
 import numpy as np
 
+from mfg_pde.geometry.boundary.bc_coupling import compute_boundary_log_density_gradient_1d
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+
+    from mfg_pde.geometry.protocol import GeometryProtocol
+
+
+# =============================================================================
+# Type Definitions
+# =============================================================================
+
+
+class BCProviderState(TypedDict, total=False):
+    """
+    Typed dictionary for BC provider state.
+
+    This defines the standard keys passed to BCValueProvider.compute().
+    All keys are optional (total=False) as different providers need different subsets.
+
+    Required by AdjointConsistentProvider:
+        m_current: Current FP density array
+        geometry: Problem geometry object
+        diffusion: Diffusion coefficient σ (or legacy 'sigma')
+
+    Optional (context-dependent):
+        U_current: Current value function array
+        t: Current time (for time-dependent problems)
+        iteration: Current Picard iteration number
+        sigma: Legacy alias for diffusion (deprecated)
+    """
+
+    m_current: NDArray[np.floating]
+    U_current: NDArray[np.floating]
+    geometry: GeometryProtocol
+    diffusion: float
+    sigma: float  # Deprecated, use diffusion
+    t: float
+    iteration: int
 
 
 # =============================================================================
@@ -310,10 +347,6 @@ class AdjointConsistentProvider(BaseBCValueProvider):
 
         if dimension == 1 or side in ("left", "right"):
             # 1D case: use finite difference implementation
-            from mfg_pde.geometry.boundary.bc_coupling import (
-                compute_boundary_log_density_gradient_1d,
-            )
-
             dx = geometry.get_grid_spacing()[0]
             return compute_boundary_log_density_gradient_1d(m, dx, side, regularization)
         else:
@@ -373,7 +406,7 @@ def is_provider(value: Any) -> bool:
 def resolve_provider(
     value: float | BCValueProvider,
     state: dict[str, Any],
-) -> float:
+) -> float | NDArray[np.floating]:
     """
     Resolve a BC value, computing if it's a provider.
 
@@ -382,7 +415,7 @@ def resolve_provider(
         state: Current iteration state (passed to provider.compute())
 
     Returns:
-        Resolved float value
+        Resolved value - float for scalar BCs, NDArray for spatially-varying BCs
 
     Example:
         >>> value = AdjointConsistentProvider("left", 0.2)
