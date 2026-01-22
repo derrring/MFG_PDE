@@ -34,14 +34,18 @@ class TestCreatePairedSolversFDM:
         assert result.fp_family == SchemeFamily.FDM
 
     def test_fdm_upwind_default_advection_scheme(self):
-        """Test that FDM_UPWIND sets gradient_upwind for FP."""
+        """Test that FDM_UPWIND sets divergence_upwind for FP.
+
+        Note: Changed from gradient_upwind to divergence_upwind in Issue #382
+        because gradient_upwind has boundary flux bugs.
+        """
         problem = MFGProblem(Nx=[20], Nt=10, T=1.0)
 
         _, fp = create_paired_solvers(problem, NumericalScheme.FDM_UPWIND)
 
-        # Check FP advection scheme
+        # Check FP advection scheme (divergence_upwind is mass-conservative)
         assert hasattr(fp, "advection_scheme")
-        assert fp.advection_scheme == "gradient_upwind"
+        assert fp.advection_scheme == "divergence_upwind"
 
     def test_fdm_centered_creates_dual_pair(self):
         """Test that FDM_CENTERED creates valid dual pair."""

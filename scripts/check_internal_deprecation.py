@@ -68,12 +68,18 @@ class DeprecationDiscoveryVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def _check_decorators(self, node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef) -> None:
-        """Check if node has @deprecated decorator."""
+        """Check if node has @deprecated decorator.
+
+        Note: @deprecated_parameter only deprecates specific parameters, not the
+        entire function. We only flag @deprecated (the whole function/class).
+        """
         for decorator in node.decorator_list:
             # Check for @deprecated(...) pattern
             if isinstance(decorator, ast.Call):
                 func_name = self._get_decorator_name(decorator.func)
-                if func_name == "deprecated" or func_name == "deprecated_parameter":
+                # Only check @deprecated, NOT @deprecated_parameter
+                # @deprecated_parameter marks specific params, not the whole function
+                if func_name == "deprecated":
                     # Extract metadata from decorator arguments
                     metadata = self._extract_metadata(decorator)
                     if metadata:
@@ -200,6 +206,7 @@ def check_production_code(
     src_path: Path,
     deprecated_names: set[str],
     exclude_files: set[str] | None = None,
+    exclude_dirs: set[str] | None = None,
 ) -> list[str]:
     """
     Check production code for usage of deprecated symbols.
@@ -208,6 +215,7 @@ def check_production_code(
         src_path: Root directory to scan
         deprecated_names: Set of deprecated symbol names
         exclude_files: Optional set of files to skip (e.g., deprecation.py itself)
+        exclude_dirs: Optional set of directories to skip (e.g., "compat" module)
 
     Returns:
         List of violation messages
@@ -219,6 +227,7 @@ def check_production_code(
     all_violations: list[str] = []
 
     exclude_files = exclude_files or set()
+    exclude_dirs = exclude_dirs or set()
 
     for py_file in src_path.rglob("*.py"):
         # Skip test files
@@ -227,6 +236,10 @@ def check_production_code(
 
         # Skip excluded files (e.g., deprecation.py itself)
         if py_file.name in exclude_files:
+            continue
+
+        # Skip excluded directories (e.g., compat/ which defines deprecated functions)
+        if any(exc_dir in py_file.parts for exc_dir in exclude_dirs):
             continue
 
         try:
@@ -278,6 +291,7 @@ def main() -> int:
         src_path,
         deprecated_names,
         exclude_files={"deprecation.py"},  # Exclude the decorator itself
+        exclude_dirs={"compat"},  # Exclude compat module (defines backward-compat wrappers)
     )
 
     # Report results

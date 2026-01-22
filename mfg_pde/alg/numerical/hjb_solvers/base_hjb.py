@@ -9,7 +9,6 @@ import scipy.sparse as sparse
 
 from mfg_pde.alg.base_solver import BaseNumericalSolver
 from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, has_nan_or_inf
-from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
 
 if TYPE_CHECKING:
     from mfg_pde.geometry.boundary import BoundaryConditions
@@ -591,8 +590,9 @@ def _calculate_p_values(
     # Call new tuple-based function
     derivs = _calculate_derivatives(U_array, i, Dx, Nx, clip=clip, clip_limit=clip_limit)
 
-    # Convert to legacy format
-    return derivs_to_p_values_1d(derivs)
+    # Convert to legacy string-keyed format: {(1,): p} -> {"forward": p, "backward": p}
+    p = derivs.get((1,), 0.0)
+    return {"forward": p, "backward": p}
 
 
 def _clip_p_values(p_values: dict[str, float], clip_limit: float) -> dict[str, float]:  # Helper for FD Jac
