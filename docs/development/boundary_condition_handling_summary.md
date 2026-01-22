@@ -53,19 +53,22 @@ Based on a thorough design review (see **Issue #625**), a new architecture is pr
     2.  ✅ **Introduce "Value Providers" in `BCSegment`:** The `value` field accepts `BCValueProvider` objects (see `mfg_pde/geometry/boundary/providers.py`):
         ```python
         from mfg_pde.geometry.boundary import (
-            BCSegment, BCType, mixed_bc, AdjointConsistentProvider
+            BoundaryConditions, BCSegment, BCType, AdjointConsistentProvider
         )
 
-        bc = mixed_bc([
-            BCSegment(
-                name="left_ac",
-                bc_type=BCType.ROBIN,
-                alpha=0.0, beta=1.0,
-                value=AdjointConsistentProvider(side="left", sigma=0.2),
-                boundary="x_min",
-            ),
-            # ... similarly for right boundary
-        ])
+        bc = BoundaryConditions(
+            segments=[
+                BCSegment(
+                    name="left_ac",
+                    bc_type=BCType.ROBIN,
+                    alpha=0.0, beta=1.0,
+                    value=AdjointConsistentProvider(side="left", sigma=0.2),
+                    boundary="x_min",
+                ),
+                # ... similarly for right boundary
+            ],
+            dimension=1,
+        )
         grid = TensorProductGrid(..., boundary_conditions=bc)
         ```
     3.  ✅ **Move Logic to the Coupling Iterator:** `FixedPointIterator` now:

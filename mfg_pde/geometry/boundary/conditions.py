@@ -33,6 +33,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
+from mfg_pde.utils.deprecation import deprecated
+
 from .types import BCSegment, BCType, _compute_sdf_gradient
 
 if TYPE_CHECKING:
@@ -925,6 +927,11 @@ def robin_bc(
     )
 
 
+@deprecated(
+    since="v0.18.0",
+    replacement="Use BoundaryConditions(segments=[...]) directly",
+    reason="Factory is redundant - direct construction is clearer",
+)
 def mixed_bc(
     segments: list[BCSegment],
     dimension: int | None = None,
@@ -935,30 +942,14 @@ def mixed_bc(
     corner_strategy: Literal["priority", "average", "mollify"] = "priority",
 ) -> BoundaryConditions:
     """
-    Create mixed boundary conditions (different types on different segments).
+    DEPRECATED: Use BoundaryConditions(segments=[...]) directly.
 
-    Supports both rectangular domains (via domain_bounds) and general/Lipschitz
-    domains (via domain_sdf with SDF-based boundary detection).
+    Migration:
+        # Old
+        bc = mixed_bc([seg1, seg2], dimension=2, domain_bounds=bounds)
 
-    Args:
-        segments: List of BCSegment defining BCs on different boundary parts
-        dimension: Spatial dimension. If None, dimension will be inferred when
-            BC is attached to a Geometry (lazy binding).
-        domain_bounds: Domain bounds array (dimension, 2) for rectangular domains
-        domain_sdf: Signed distance function for general/Lipschitz domains
-        default_bc: Default BC type when no segment matches
-        default_value: Default BC value when no segment matches
-        corner_strategy: How to handle corners ("priority", "average", "mollify")
-
-    Returns:
-        Mixed BoundaryConditions
-
-    Example:
-        >>> exit = BCSegment(name="exit", bc_type=BCType.DIRICHLET, value=0.0,
-        ...                  boundary="x_max", priority=1)
-        >>> wall = BCSegment(name="wall", bc_type=BCType.NEUMANN, value=0.0)
-        >>> bc = mixed_bc([exit, wall], dimension=2,
-        ...               domain_bounds=np.array([[0, 1], [0, 1]]))
+        # New (preferred)
+        bc = BoundaryConditions(segments=[seg1, seg2], dimension=2, domain_bounds=bounds)
     """
     return BoundaryConditions(
         dimension=dimension,
