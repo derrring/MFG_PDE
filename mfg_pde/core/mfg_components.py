@@ -404,9 +404,10 @@ class HamiltonianMixin:
                     problem=self,
                 )
             else:
-                from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
-
-                p_values_legacy = derivs_to_p_values_1d(derivs)
+                # Legacy hamiltonian expects p_values dict with string keys
+                # Inline conversion: derivs {(1,): p} -> {"forward": p, "backward": p}
+                p = derivs.get((1,), 0.0)
+                p_values_legacy = {"forward": p, "backward": p}
 
                 return self.components.hamiltonian_func(
                     x_idx=x_idx,
@@ -572,9 +573,10 @@ class HamiltonianMixin:
                     problem=self,
                 )
             else:
-                from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
-
-                p_values_legacy = derivs_to_p_values_1d(derivs)
+                # Legacy hamiltonian_dm expects p_values dict with string keys
+                # Inline conversion: derivs {(1,): p} -> {"forward": p, "backward": p}
+                p = derivs.get((1,), 0.0)
+                p_values_legacy = {"forward": p, "backward": p}
 
                 return self.components.hamiltonian_dm_func(
                     x_idx=x_idx,
@@ -648,10 +650,10 @@ class HamiltonianMixin:
                 problem=self,
             )
         else:
-            # Legacy p_values format
-            from mfg_pde.compat.gradient_notation import derivs_to_p_values_1d
-
-            p_values_legacy = derivs_to_p_values_1d(derivs)
+            # Legacy hamiltonian_dp expects p_values dict with string keys
+            # Inline conversion: derivs {(1,): p} -> {"forward": p, "backward": p}
+            p = derivs.get((1,), 0.0)
+            p_values_legacy = {"forward": p, "backward": p}
 
             return self.components.hamiltonian_dp_func(
                 x_idx=x_idx,
