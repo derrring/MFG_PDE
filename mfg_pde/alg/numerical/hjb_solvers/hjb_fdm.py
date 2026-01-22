@@ -131,11 +131,11 @@ class HJBFDMSolver(BaseHJBSolver):
             damping_factor: Damping ω ∈ (0,1] for fixed-point (recommend 0.5-0.8)
             max_newton_iterations: Max iterations per timestep
             newton_tolerance: Convergence tolerance
-            bc_mode: Boundary condition mode for reflecting boundaries (Issue #574):
+            bc_mode: DEPRECATED (Issue #625). Use BCValueProvider in BoundaryConditions.
+                Boundary condition mode for reflecting boundaries (Issue #574):
                 - 'standard': Classical Neumann BC (∂U/∂n = 0)
                 - 'adjoint_consistent': Coupled BC (∂U/∂n = -σ²/2 · ∂ln(m)/∂n)
-                Use 'adjoint_consistent' for better equilibrium consistency when
-                stall point is at domain boundary. Default: 'standard' (backward compat).
+                Migration: Use AdjointConsistentProvider in BCSegment.value instead.
             constraint: Variational inequality constraint (Issue #591):
                 - ObstacleConstraint: u ≥ ψ or u ≤ ψ (capacity limits, running cost floor)
                 - BilateralConstraint: ψ_lower ≤ u ≤ ψ_upper (bounded controls)
@@ -175,6 +175,31 @@ class HJBFDMSolver(BaseHJBSolver):
                 stacklevel=2,
             )
             newton_tolerance = newton_tolerance or l2errBoundNewton
+
+        # Issue #625: Deprecate bc_mode in favor of BCValueProvider
+        if bc_mode != "standard":
+            warnings.warn(
+                "Parameter 'bc_mode' is deprecated since v0.18.0. "
+                "Use BCValueProvider in BoundaryConditions instead:\n\n"
+                "  from mfg_pde.geometry.boundary import (\n"
+                "      BCSegment, BCType, mixed_bc, AdjointConsistentProvider\n"
+                "  )\n\n"
+                "  bc = mixed_bc([\n"
+                "      BCSegment(\n"
+                "          name='left_ac',\n"
+                "          bc_type=BCType.ROBIN,\n"
+                "          alpha=0.0, beta=1.0,\n"
+                "          value=AdjointConsistentProvider(side='left', sigma=sigma),\n"
+                "          boundary='x_min',\n"
+                "      ),\n"
+                "      # ... right boundary similarly\n"
+                "  ])\n"
+                "  grid = TensorProductGrid(..., boundary_conditions=bc)\n\n"
+                "The bc_mode parameter will be removed in v1.0.0. "
+                "See Issue #625 for migration details.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         # Set defaults (use None check to avoid treating 0 as falsy)
         self.max_newton_iterations = max_newton_iterations if max_newton_iterations is not None else 30

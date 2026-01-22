@@ -46,20 +46,39 @@ Based on a thorough design review (see **Issue #625**), a new architecture is pr
 
 *   **Problem:** The current `bc_mode='adjoint_consistent'` flag on the `HJBFDMSolver` places MFG-specific coupling logic inside a general-purpose solver, which is a poor separation of concerns.
 
-*   **Final Proposed Architecture: A Callback-Provider Pattern**
+*   **Final Proposed Architecture: A Callback-Provider Pattern** ✅ **IMPLEMENTED (v0.18.0)**
     This design removes the specialized logic from the solver and moves it into the coupling loop where it belongs.
 
-    1.  **Eliminate `bc_mode` from Solvers:** The solver's `__init__` method will no longer have this flag, making the solver truly generic.
-    2.  **Introduce "Value Providers" in `BCSegment`:** The `value` field of a `BCSegment` will be enhanced to accept a special "provider" object. This object's job is to generate a concrete boundary value when executed with the current system state (e.g., the density `m` from the previous iteration).
+    1.  ✅ **Eliminate `bc_mode` from Solvers:** The `bc_mode` parameter is now deprecated. Solvers read BC from `problem.boundary_conditions` (single source of truth).
+    2.  ✅ **Introduce "Value Providers" in `BCSegment`:** The `value` field accepts `BCValueProvider` objects (see `mfg_pde/geometry/boundary/providers.py`):
         ```python
-        # The user defines the *intent* to use a dynamic BC
-        dynamic_value = AdjointConsistentValueProvider()
-        bc_segment = BCSegment(..., value=dynamic_value)
+        from mfg_pde.geometry.boundary import (
+            BCSegment, BCType, mixed_bc, AdjointConsistentProvider
+        )
+
+        bc = mixed_bc([
+            BCSegment(
+                name="left_ac",
+                bc_type=BCType.ROBIN,
+                alpha=0.0, beta=1.0,
+                value=AdjointConsistentProvider(side="left", sigma=0.2),
+                boundary="x_min",
+            ),
+            # ... similarly for right boundary
+        ])
+        grid = TensorProductGrid(..., boundary_conditions=bc)
         ```
-    3.  **Move Logic to the Coupling Iterator:** The `FixedPointIterator` will be enhanced. On each iteration, it will:
-        a. Get the base `BoundaryConditions` from the problem.
-        b. Inspect them for any "Value Provider" objects.
-        c. Execute these providers with the current state (e.g., `m_prev`) to generate a simple, static `BoundaryConditions` object for the current iteration.
-        d. Pass this now-static BC object to the solver for that step.
+    3.  ✅ **Move Logic to the Coupling Iterator:** `FixedPointIterator` now:
+        a. Builds iteration state dict (`m_current`, `geometry`, `sigma`, etc.)
+        b. Uses `problem.using_resolved_bc(state)` context manager
+        c. Providers are resolved to concrete values before each HJB solve
+        d. Solvers receive static BC (no provider knowledge needed)
+
+*   **Implementation Files:**
+    - `mfg_pde/geometry/boundary/providers.py` - `BCValueProvider` protocol, `AdjointConsistentProvider`
+    - `mfg_pde/geometry/boundary/types.py` - `BCSegment.get_value()` extended for providers
+    - `mfg_pde/geometry/boundary/conditions.py` - `has_providers()`, `with_resolved_providers()`
+    - `mfg_pde/core/mfg_components.py` - `using_resolved_bc()` context manager
+    - `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py` - BC resolution integration
 
 *   **Conclusion:** This design is architecturally superior. It makes the solvers general-purpose, correctly places the responsibility for managing iterative state in the coupling loop, and makes the `BoundaryConditions` object more expressive by storing the *intent* to use a dynamic value.

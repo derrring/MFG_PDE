@@ -356,24 +356,37 @@ class FixedPointIterator(BaseMFGSolver):
                 U_old = self.U.copy()
                 M_old = self.M.copy()
 
+                # Build iteration state for BC provider resolution (Issue #625)
+                # This state is passed to BCValueProvider.compute() for dynamic BCs
+                bc_resolution_state = {
+                    "m_current": M_old,
+                    "U_current": U_old,
+                    "geometry": self.problem.geometry,
+                    "sigma": getattr(self.problem, "sigma", None),
+                    "iteration": iiter,
+                }
+
                 # 1. Solve HJB backward with current M (transient subtask)
                 # Issue #614: Use hierarchical subtask for inner solver visibility
+                # Issue #625: Resolve BC providers before HJB solve
                 with progress.subtask("HJB", total=num_time_steps) as hjb_subtask:
-                    # Issue #543 Phase 2: Use cached signature instead of hasattr
-                    show_hjb_progress = False  # Subtask replaces inner progress
-                    if self._hjb_sig_params is not None:
-                        # Method exists and signature is cached
-                        params = self._hjb_sig_params
-                        kwargs = {}
-                        if "show_progress" in params:
-                            kwargs["show_progress"] = show_hjb_progress
-                        if "diffusion_field" in params and self.diffusion_field is not None:
-                            kwargs["diffusion_field"] = self.diffusion_field
+                    # Use context manager to resolve any BC providers (Issue #625)
+                    with self.problem.using_resolved_bc(bc_resolution_state):
+                        # Issue #543 Phase 2: Use cached signature instead of hasattr
+                        show_hjb_progress = False  # Subtask replaces inner progress
+                        if self._hjb_sig_params is not None:
+                            # Method exists and signature is cached
+                            params = self._hjb_sig_params
+                            kwargs = {}
+                            if "show_progress" in params:
+                                kwargs["show_progress"] = show_hjb_progress
+                            if "diffusion_field" in params and self.diffusion_field is not None:
+                                kwargs["diffusion_field"] = self.diffusion_field
 
-                        U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
-                    else:
-                        # No signature cached - use basic call
-                        U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
+                            U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
+                        else:
+                            # No signature cached - use basic call
+                            U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
                     # Advance subtask to completion (HJB solver completes all time steps)
                     hjb_subtask.advance(num_time_steps)
 

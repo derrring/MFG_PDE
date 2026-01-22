@@ -917,3 +917,74 @@ class ConditionsMixin:
             stacklevel=2,
         )
         return periodic_bc(dimension=self.dimension)
+
+    @contextlib.contextmanager
+    def using_resolved_bc(self, state: dict[str, Any]):
+        """
+        Context manager for temporarily using resolved boundary conditions (Issue #625).
+
+        This is the unified API for dynamic BC resolution. When BoundaryConditions
+        contain BCValueProvider objects (e.g., AdjointConsistentProvider), this
+        context manager resolves them to concrete values for the duration of
+        the context.
+
+        Args:
+            state: Iteration state dict passed to provider.compute().
+                   Standard keys: 'm_current', 'U_current', 'geometry', 'sigma'.
+
+        Yields:
+            self (the problem instance with resolved BC)
+
+        Example:
+            >>> # In FixedPointIterator
+            >>> state = {'m_current': M_old, 'geometry': self.problem.geometry, ...}
+            >>> with self.problem.using_resolved_bc(state):
+            ...     U_new = self.hjb_solver.solve_hjb_system(...)
+            >>> # BC is automatically restored after context
+
+        Note:
+            - If BC has no providers, this is a no-op (fast path)
+            - Thread-safety: This modifies geometry.boundary_conditions temporarily
+            - The geometry must support set_boundary_conditions() method
+        """
+        # Get current BC
+        current_bc = self.get_boundary_conditions()
+
+        # Fast path: no providers to resolve
+        if not current_bc.has_providers():
+            yield self
+            return
+
+        # Resolve providers to concrete values
+        resolved_bc = current_bc.with_resolved_providers(state)
+
+        # Store original BC and set resolved
+        # Use geometry's set_boundary_conditions if available
+        original_bc = None
+        geometry_has_setter = False
+
+        try:
+            if self.geometry is not None:
+                set_bc = getattr(self.geometry, "set_boundary_conditions", None)
+                if callable(set_bc):
+                    geometry_has_setter = True
+                    original_bc = self.geometry.get_boundary_conditions()
+                    self.geometry.set_boundary_conditions(resolved_bc)
+
+            if not geometry_has_setter:
+                # Fallback: store resolved BC in a temporary attribute
+                # This is less clean but works for geometries without setter
+                original_bc = getattr(self, "_temp_resolved_bc", None)
+                self._temp_resolved_bc = resolved_bc
+
+            yield self
+
+        finally:
+            # Restore original BC
+            if geometry_has_setter and self.geometry is not None:
+                self.geometry.set_boundary_conditions(original_bc)
+            elif hasattr(self, "_temp_resolved_bc"):
+                if original_bc is None:
+                    delattr(self, "_temp_resolved_bc")
+                else:
+                    self._temp_resolved_bc = original_bc
