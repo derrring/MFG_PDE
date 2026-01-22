@@ -236,7 +236,8 @@ def compute_adjoint_consistent_bc_values(
     if dimension == 1:
         # 1D implementation using one-sided finite differences
         dx = geometry.get_grid_spacing()[0]
-        domain_bounds = geometry.domain_bounds if hasattr(geometry, "domain_bounds") else None
+        # Use getattr pattern per CLAUDE.md (no hasattr for optional attributes)
+        domain_bounds = getattr(geometry, "domain_bounds", None)
         return create_adjoint_consistent_bc_1d(
             m_current=m_current,
             dx=dx,

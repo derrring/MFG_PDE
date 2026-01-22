@@ -30,12 +30,12 @@ Example:
     ...     name="left_ac",
     ...     bc_type=BCType.ROBIN,
     ...     alpha=0.0, beta=1.0,
-    ...     value=AdjointConsistentProvider(side="left", sigma=0.2),
+    ...     value=AdjointConsistentProvider(side="left", diffusion=0.2),
     ...     boundary="x_min",
     ... )
     >>>
     >>> # Later, iterator resolves provider with current state
-    >>> state = {'m_current': m, 'geometry': geometry, 'sigma': 0.2}
+    >>> state = {'m_current': m, 'geometry': geometry, 'diffusion': 0.2}
     >>> concrete_value = segment.value.compute(state)
 
 References:
@@ -48,7 +48,7 @@ References:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -91,7 +91,8 @@ class BCValueProvider(Protocol):
                 - 'm_current': Current FP density array
                 - 'U_current': Current value function array
                 - 'geometry': Problem geometry object
-                - 'sigma': Diffusion coefficient
+                - 'diffusion': Diffusion coefficient (canonical)
+                - 'sigma': Diffusion coefficient (legacy alias, deprecated)
                 - 't': Current time (for time-dependent problems)
                 - 'iteration': Current Picard iteration number
 
@@ -141,10 +142,10 @@ class AdjointConsistentProvider(BaseBCValueProvider):
     Computes the Robin BC value for reflecting boundaries that maintains
     adjoint consistency between HJB and FP equations:
 
-        g = -sigma^2/2 * d(ln m)/dn
+        g = -diffusion/2 * d(ln m)/dn
 
     where:
-        - sigma: diffusion coefficient
+        - diffusion: diffusion coefficient (σ²)
         - m: current FP density
         - d/dn: outward normal derivative at boundary
 
@@ -154,35 +155,77 @@ class AdjointConsistentProvider(BaseBCValueProvider):
 
     Attributes:
         side: Boundary side ("left" or "right" for 1D)
-        sigma: Diffusion coefficient (can be None to read from state)
+        diffusion: Diffusion coefficient (can be None to read from state)
         regularization: Small constant to prevent log(0)
 
     Example:
-        >>> provider = AdjointConsistentProvider(side="left", sigma=0.2)
+        >>> provider = AdjointConsistentProvider(side="left", diffusion=0.04)
         >>> state = {'m_current': m_array, 'geometry': geom}
         >>> g_left = provider.compute(state)  # Robin BC value at left boundary
     """
 
+    # Side name aliases: map various conventions to canonical form
+    # Canonical: "left"/"right" for 1D, "{axis}_min"/"{axis}_max" for nD
+    _SIDE_ALIASES: ClassVar[dict[str, str]] = {
+        # 1D aliases (all map to left/right)
+        "left": "left",
+        "right": "right",
+        "x_min": "left",
+        "x_max": "right",
+        "min": "left",
+        "max": "right",
+        # 2D/3D aliases (for future nD support)
+        "y_min": "y_min",
+        "y_max": "y_max",
+        "z_min": "z_min",
+        "z_max": "z_max",
+        "bottom": "y_min",
+        "top": "y_max",
+        "front": "z_min",
+        "back": "z_max",
+    }
+
     def __init__(
         self,
         side: str,
-        sigma: float | None = None,
+        diffusion: float | None = None,
         regularization: float = 1e-10,
+        *,
+        sigma: float | None = None,  # Legacy alias, deprecated
     ) -> None:
         """
         Initialize adjoint-consistent BC provider.
 
         Args:
-            side: Boundary side identifier ("left", "right" for 1D;
-                  will extend to "x_min", "x_max", etc. for nD)
-            sigma: Diffusion coefficient. If None, reads from state['sigma'].
+            side: Boundary side identifier. Accepts multiple conventions:
+                - 1D: "left", "right", "x_min", "x_max", "min", "max"
+                - 2D: "y_min", "y_max", "bottom", "top"
+                - 3D: "z_min", "z_max", "front", "back"
+            diffusion: Diffusion coefficient (σ²). If None, reads from state.
             regularization: Small positive constant added to density
                            to prevent log(0). Default 1e-10.
+            sigma: DEPRECATED. Use diffusion instead.
         """
-        if side not in ("left", "right", "x_min", "x_max"):
-            raise ValueError(f"side must be 'left', 'right', 'x_min', or 'x_max', got '{side}'")
-        self.side = side
-        self.sigma = sigma
+        import warnings
+
+        if side not in self._SIDE_ALIASES:
+            valid = sorted(self._SIDE_ALIASES.keys())
+            raise ValueError(f"side must be one of {valid}, got '{side}'")
+
+        # Handle sigma as legacy alias (deprecated)
+        if sigma is not None:
+            warnings.warn(
+                "Parameter 'sigma' is deprecated. Use 'diffusion' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if diffusion is None:
+                diffusion = sigma
+
+        # Store both original and normalized side names
+        self._original_side = side
+        self.side = self._SIDE_ALIASES[side]  # Normalize to canonical form
+        self.diffusion = diffusion
         self.regularization = regularization
 
     def compute(self, state: dict[str, Any]) -> float:
@@ -193,10 +236,11 @@ class AdjointConsistentProvider(BaseBCValueProvider):
             state: Must contain:
                 - 'm_current': FP density array (interior points)
                 - 'geometry': Geometry object with get_grid_spacing()
-                - 'sigma': Diffusion coefficient (if not set in __init__)
+                - 'diffusion' or 'sigma': Diffusion coefficient σ
+                  (if not set in __init__). 'diffusion' takes priority.
 
         Returns:
-            Robin BC value: g = -sigma^2/2 * d(ln m)/dn
+            Robin BC value: g = -σ²/2 * d(ln m)/dn
 
         Raises:
             KeyError: If required state keys missing
@@ -216,35 +260,73 @@ class AdjointConsistentProvider(BaseBCValueProvider):
         if geometry is None:
             raise KeyError("AdjointConsistentProvider requires 'geometry' in state")
 
-        dx = geometry.get_grid_spacing()[0]
-
-        # Get sigma
-        sigma = self.sigma
-        if sigma is None:
-            sigma = state.get("sigma")
-            if sigma is None:
-                raise KeyError("AdjointConsistentProvider: sigma not set and not in state")
+        # Get diffusion coefficient (try constructor, then state)
+        diffusion = self.diffusion
+        if diffusion is None:
+            # Look for 'diffusion' first (canonical), then 'sigma' (legacy)
+            diffusion = state.get("diffusion")
+            if diffusion is None:
+                diffusion = state.get("sigma")
+            if diffusion is None:
+                raise KeyError(
+                    "AdjointConsistentProvider: diffusion not set in constructor "
+                    "and neither 'diffusion' nor 'sigma' found in state"
+                )
 
         # Compute log-density gradient at boundary
-        from mfg_pde.geometry.boundary.bc_coupling import (
-            compute_boundary_log_density_gradient_1d,
-        )
+        # Delegate to dimension-aware function in bc_coupling module
+        grad_ln_m = self._compute_boundary_log_gradient(m, geometry, self.side, self.regularization)
 
-        # Normalize side name
-        side = self.side
-        if side == "x_min":
-            side = "left"
-        elif side == "x_max":
-            side = "right"
+        # Robin BC value: g = -σ²/2 * d(ln m)/dn
+        return -(diffusion**2) / 2 * grad_ln_m
 
-        grad_ln_m = compute_boundary_log_density_gradient_1d(m, dx, side, self.regularization)
+    def _compute_boundary_log_gradient(
+        self,
+        m: NDArray[np.floating],
+        geometry: Any,
+        side: str,
+        regularization: float,
+    ) -> float:
+        """
+        Compute ∂ln(m)/∂n at boundary using geometry-appropriate method.
 
-        # Robin BC value: g = -sigma^2/2 * d(ln m)/dn
-        return -(sigma**2) / 2 * grad_ln_m
+        This method dispatches to dimension-specific implementations.
+        For nD support, geometry should provide gradient operators.
+
+        Args:
+            m: Density array (interior points)
+            geometry: Geometry object with get_grid_spacing()
+            side: Normalized boundary side identifier
+            regularization: Small constant to prevent log(0)
+
+        Returns:
+            Outward normal derivative of ln(m) at boundary
+
+        Note:
+            Current implementation: 1D only (uses finite differences)
+            Future (Issue #624): Use geometry.get_gradient_operator() for nD
+        """
+        dimension = getattr(geometry, "dimension", 1)
+
+        if dimension == 1 or side in ("left", "right"):
+            # 1D case: use finite difference implementation
+            from mfg_pde.geometry.boundary.bc_coupling import (
+                compute_boundary_log_density_gradient_1d,
+            )
+
+            dx = geometry.get_grid_spacing()[0]
+            return compute_boundary_log_density_gradient_1d(m, dx, side, regularization)
+        else:
+            # nD case: requires geometry gradient operators (Issue #624)
+            raise NotImplementedError(
+                f"AdjointConsistentProvider: {dimension}D not yet implemented. "
+                f"See Issue #624 for nD adjoint-consistent BC support."
+            )
 
     def __repr__(self) -> str:
-        sigma_str = f"{self.sigma}" if self.sigma is not None else "from_state"
-        return f"AdjointConsistentProvider(side='{self.side}', sigma={sigma_str})"
+        diff_str = f"{self.diffusion}" if self.diffusion is not None else "from_state"
+        # Show original side name for user clarity
+        return f"AdjointConsistentProvider(side='{self._original_side}', diffusion={diff_str})"
 
 
 class ConstantProvider(BaseBCValueProvider):
@@ -319,12 +401,14 @@ def resolve_provider(
 
 if __name__ == "__main__":
     """Quick validation of provider architecture."""
+    import warnings
+
     print("Testing BC value providers...")
     print()
 
     # Test 1: Protocol check
     print("Test 1: Protocol compliance")
-    provider = AdjointConsistentProvider(side="left", sigma=0.2)
+    provider = AdjointConsistentProvider(side="left", diffusion=0.2)
     assert isinstance(provider, BCValueProvider), "Should implement protocol"
     assert is_provider(provider), "is_provider() should return True"
     assert not is_provider(1.5), "Float should not be a provider"
@@ -346,19 +430,19 @@ if __name__ == "__main__":
     state = {
         "m_current": m,
         "geometry": MockGeometry(),
-        "sigma": 0.2,
+        "diffusion": 0.2,  # Canonical parameter name
     }
 
     # Left boundary: outward normal is -x, so d(ln m)/dn = -(-1) = 1
     # g = -0.2^2/2 * 1 = -0.02
-    left_provider = AdjointConsistentProvider(side="left", sigma=0.2)
+    left_provider = AdjointConsistentProvider(side="left", diffusion=0.2)
     g_left = left_provider.compute(state)
     expected_left = -(0.2**2) / 2 * 1.0  # -0.02
     print(f"  Left BC value: {g_left:.6f} (expected ~ {expected_left:.6f})")
 
     # Right boundary: outward normal is +x, so d(ln m)/dn = -1
     # g = -0.2^2/2 * (-1) = 0.02
-    right_provider = AdjointConsistentProvider(side="right", sigma=0.2)
+    right_provider = AdjointConsistentProvider(side="right", diffusion=0.2)
     g_right = right_provider.compute(state)
     expected_right = -(0.2**2) / 2 * (-1.0)  # 0.02
     print(f"  Right BC value: {g_right:.6f} (expected ~ {expected_right:.6f})")
@@ -373,12 +457,36 @@ if __name__ == "__main__":
     print("  resolve_provider works correctly")
     print()
 
-    # Test 4: Sigma from state
-    print("Test 4: Sigma from state (not constructor)")
-    provider_no_sigma = AdjointConsistentProvider(side="left", sigma=None)
-    g_from_state = provider_no_sigma.compute(state)
-    assert abs(g_from_state - g_left) < 1e-10, "Should use sigma from state"
-    print("  Sigma correctly read from state when not in constructor")
+    # Test 4: Diffusion from state (not constructor)
+    print("Test 4: Diffusion from state (not constructor)")
+    provider_no_diff = AdjointConsistentProvider(side="left", diffusion=None)
+    g_from_state = provider_no_diff.compute(state)
+    assert abs(g_from_state - g_left) < 1e-10, "Should use diffusion from state"
+    print("  Diffusion correctly read from state when not in constructor")
+    print()
+
+    # Test 5: Legacy 'sigma' in state (backward compatibility)
+    print("Test 5: Legacy 'sigma' in state (backward compatibility)")
+    state_legacy = {
+        "m_current": m,
+        "geometry": MockGeometry(),
+        "sigma": 0.2,  # Legacy parameter name
+    }
+    provider_legacy = AdjointConsistentProvider(side="left", diffusion=None)
+    g_legacy = provider_legacy.compute(state_legacy)
+    assert abs(g_legacy - g_left) < 1e-10, "Should accept 'sigma' in state for backward compat"
+    print("  Legacy 'sigma' key in state works correctly")
+    print()
+
+    # Test 6: Deprecated 'sigma' parameter (backward compatibility)
+    print("Test 6: Deprecated 'sigma' parameter (shows warning)")
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        provider_deprecated = AdjointConsistentProvider(side="left", sigma=0.2)
+        assert len(w) == 1, "Should emit deprecation warning"
+        assert "deprecated" in str(w[0].message).lower()
+        assert provider_deprecated.diffusion == 0.2, "sigma should map to diffusion"
+    print("  Deprecated 'sigma' parameter works with warning")
     print()
 
     print("All provider tests passed!")
