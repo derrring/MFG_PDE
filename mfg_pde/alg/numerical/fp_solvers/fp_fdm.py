@@ -155,11 +155,9 @@ class FPFDMSolver(BaseFPSolver):
             raise ValueError(f"Invalid advection_scheme: '{advection_scheme}'. Valid options: {sorted(valid_schemes)}")
 
         self.advection_scheme = advection_scheme
-        # Keep conservative attribute for internal use (True for divergence forms)
-        self.conservative = advection_scheme in ("divergence_upwind", "divergence_centered")
 
-        # Detect problem dimension first (needed for BC creation)
-        self.dimension = self._detect_dimension(problem)
+        # Detect problem dimension first (inherited from BaseNumericalSolver, Issue #633)
+        self.dimension = self._detect_dimension()
 
         # Validate geometry capabilities (Issue #596 Phase 2.2A)
         # FP solver requires Laplacian operator for diffusion term
@@ -228,35 +226,7 @@ class FPFDMSolver(BaseFPSolver):
 
                 self.boundary_conditions = no_flux_bc(dimension=self.dimension)
 
-    def _detect_dimension(self, problem: Any) -> int:
-        """
-        Detect the dimension of the problem.
-
-        Issue #543 Phase 2: Replace hasattr with try/except cascade.
-
-        Returns
-        -------
-        int
-            Problem dimension (1, 2, 3, ...)
-        """
-        # Try geometry.dimension first (unified interface)
-        try:
-            return problem.geometry.dimension
-        except AttributeError:
-            pass  # Try next method
-
-        # Fall back to problem.dimension
-        try:
-            return problem.dimension
-        except AttributeError:
-            pass  # Try legacy detection
-
-        # Legacy 1D detection
-        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
-            return 1
-
-        # Default to 1D for backward compatibility
-        return 1
+    # _detect_dimension() inherited from BaseNumericalSolver (Issue #633)
 
     def solve_fp_system(
         self,
@@ -265,6 +235,7 @@ class FPFDMSolver(BaseFPSolver):
         diffusion_field: float | np.ndarray | Callable | None = None,
         tensor_diffusion_field: np.ndarray | Callable | None = None,
         show_progress: bool = True,
+        progress_callback: Callable[[int], None] | None = None,  # Issue #640
         # Deprecated parameter name for backward compatibility
         m_initial_condition: np.ndarray | None = None,
     ) -> np.ndarray:
@@ -453,6 +424,7 @@ class FPFDMSolver(BaseFPSolver):
                 diffusion_field=diffusion_field,
                 drift_field=drift_field,
                 advection_scheme=self.advection_scheme,
+                progress_callback=progress_callback,
             )
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
@@ -493,6 +465,7 @@ class FPFDMSolver(BaseFPSolver):
                 diffusion_field=None,
                 tensor_diffusion_field=tensor_diffusion_field,
                 advection_scheme=self.advection_scheme,
+                progress_callback=progress_callback,
             )
 
         # Handle diffusion_field parameter (scalar diffusion)
@@ -508,73 +481,56 @@ class FPFDMSolver(BaseFPSolver):
             effective_sigma = diffusion_field
         elif callable(diffusion_field):
             # State-dependent diffusion - Phase 2.2/2.4
-            # Route based on same logic as use_nd_path to ensure consistency
-            # Issue #562: Previously callable path bypassed the BC-based routing
-            bc_type = _get_bc_type(self.boundary_conditions)
-            use_legacy_1d_callable = (
-                self.dimension == 1
-                and not self.conservative
-                and bc_type not in ("no_flux", "neumann")  # These work better in nD solver
-            )
-            if use_legacy_1d_callable:
-                return self._solve_fp_1d_with_callable(
-                    m_initial_condition=M_initial,
-                    drift_field=effective_U,
-                    diffusion_callable=diffusion_field,
-                    show_progress=show_progress,
-                )
-            else:
-                # nD or 1D with no_flux/neumann/conservative: use unified nD solver
-                effective_sigma = diffusion_field
+            # Issue #641: Always route to unified nD solver (handles 1D too)
+            # Legacy _solve_fp_1d_with_callable is deprecated
+            effective_sigma = diffusion_field
         else:
             raise TypeError(
                 f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
             )
 
-        # Route to appropriate solver based on dimension, conservative mode, and BC type
-        #
-        # Unified nD solver path: Used for:
-        # - All dimensions >= 2
-        # - 1D with conservative=True (unified flux-based discretization)
-        # - 1D with no_flux BC (can use nD path, more maintainable)
-        #
-        # Legacy 1D path: Used for backward compatibility with:
-        # - 1D with periodic or dirichlet BC (special handling needed)
-        # - 1D with conservative=False (legacy gradient-based discretization)
-
-        use_nd_path = (
-            self.dimension > 1
-            or self.conservative  # Conservative mode always uses unified nD solver
-            or _get_bc_type(self.boundary_conditions) == "no_flux"  # no_flux works in nD solver
+        # Issue #641: Always route to unified nD solver (works for all dimensions)
+        # The legacy _solve_fp_1d methods are deprecated in favor of this unified path.
+        # This eliminates the code path complexity and ensures consistent behavior.
+        return _solve_fp_nd_full_system(
+            m_initial_condition=M_initial,
+            U_solution_for_drift=effective_U,
+            problem=self.problem,
+            boundary_conditions=self.boundary_conditions,
+            show_progress=show_progress,
+            backend=self.backend,
+            diffusion_field=effective_sigma if diffusion_field is not None else None,
+            advection_scheme=self.advection_scheme,
+            progress_callback=progress_callback,
         )
 
-        if use_nd_path:
-            # Unified nD solver (works for any dimension including 1D)
-            return _solve_fp_nd_full_system(
-                m_initial_condition=M_initial,
-                U_solution_for_drift=effective_U,
-                problem=self.problem,
-                boundary_conditions=self.boundary_conditions,
-                show_progress=show_progress,
-                backend=self.backend,
-                diffusion_field=effective_sigma if diffusion_field is not None else None,
-                advection_scheme=self.advection_scheme,
-            )
-        else:
-            # Legacy 1D solver for periodic/dirichlet BC with non-conservative mode
-            original_sigma = self.problem.sigma
-            if diffusion_field is not None and not callable(diffusion_field):
-                self.problem.sigma = effective_sigma
-
-            try:
-                return self._solve_fp_1d(M_initial, effective_U, show_progress)
-            finally:
-                self.problem.sigma = original_sigma
-
     def _solve_fp_1d(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray,
+        show_progress: bool = True,
+        progress_callback: Callable[[int], None] | None = None,  # Issue #640
     ) -> np.ndarray:
-        """Original 1D FP solver implementation."""
+        """
+        Original 1D FP solver implementation.
+
+        .. deprecated:: 0.17.1
+            This method is deprecated in favor of `solve_fp_nd_full_system` which
+            handles all dimensions including 1D. Will be removed in v1.0.0.
+
+            The unified nD solver provides:
+            - Consistent behavior across all dimensions
+            - Full BC support (no_flux, neumann, robin, periodic, dirichlet)
+            - Cleaner codebase with less code path branching
+        """
+        import warnings
+
+        warnings.warn(
+            "_solve_fp_1d is deprecated. Use solve_fp_system() which now routes "
+            "all cases through the unified nD solver. Will be removed in v1.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         # Use geometry-based interface (geometry is always available)
         Nx = self.problem.geometry.get_grid_shape()[0]
         Dx = self.problem.geometry.get_grid_spacing()[0]
@@ -623,10 +579,13 @@ class FPFDMSolver(BaseFPSolver):
 
         # Progress bar for forward timesteps
         # Forward FP loop: (n_time_points - 1) steps from index 0 to (n_time_points - 2)
-        from mfg_pde.utils.progress import RichProgressBar
-
+        # Issue #640: When progress_callback is provided (from HierarchicalProgress),
+        # suppress internal bar to avoid duplicate progress display
+        use_external_progress = progress_callback is not None
         timestep_range = range(n_time_points - 1)
-        if show_progress:
+        if show_progress and not use_external_progress:
+            from mfg_pde.utils.progress import RichProgressBar
+
             timestep_range = RichProgressBar(
                 timestep_range,
                 desc="FP (forward)",
@@ -752,11 +711,12 @@ class FPFDMSolver(BaseFPSolver):
                             data_values.append(val_A_i_ip1)
 
             elif bc_type == "no_flux":
-                # Two discretization modes:
-                # - conservative=True: Flux FDM with interface velocities (mass-preserving)
-                # - conservative=False: Gradient FDM (original, may lose mass)
+                # Two discretization modes based on advection_scheme:
+                # - divergence_*: Flux FDM with interface velocities (mass-preserving)
+                # - gradient_*: Gradient FDM (original, may lose mass)
+                is_conservative_scheme = self.advection_scheme.startswith("divergence")
 
-                if self.conservative:
+                if is_conservative_scheme:
                     # Conservative Flux FDM: discretize div(alpha * m) as flux differences
                     # Interface velocity: alpha_{i+1/2} = -coupling * (u[i+1] - u[i]) / Dx
                     # Upwind flux: F_{i+1/2} = alpha * m_upwind
@@ -958,6 +918,10 @@ class FPFDMSolver(BaseFPSolver):
                 # Ensure non-negativity
                 m[k_idx_fp + 1, :] = np.maximum(m[k_idx_fp + 1, :], 0)
 
+            # Issue #640: Report progress to hierarchical progress bar
+            if progress_callback is not None:
+                progress_callback(1)
+
         return m
 
     def _validate_callable_output(
@@ -1024,6 +988,10 @@ class FPFDMSolver(BaseFPSolver):
         """
         Solve 1D FP equation with callable (state-dependent) diffusion.
 
+        .. deprecated:: 0.17.1
+            This method is deprecated in favor of `solve_fp_nd_full_system` which
+            handles callable diffusion for all dimensions. Will be removed in v1.0.0.
+
         Uses bootstrap strategy: evaluate callable at each timestep using
         the already-computed density m[k] to solve for m[k+1].
 
@@ -1044,6 +1012,14 @@ class FPFDMSolver(BaseFPSolver):
         np.ndarray
             Density evolution, shape (Nt, Nx)
         """
+        import warnings
+
+        warnings.warn(
+            "_solve_fp_1d_with_callable is deprecated. Use solve_fp_system() which now routes "
+            "callable diffusion through the unified nD solver. Will be removed in v1.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         from mfg_pde.types.pde_coefficients import DiffusionCallable
 
         # Validate callable signature using protocol
@@ -1146,178 +1122,10 @@ class FPFDMSolver(BaseFPSolver):
 
         return m_solution
 
-    def _solve_fp_1d_with_callable_drift(
-        self,
-        m_initial_condition: np.ndarray,
-        drift_callable: Callable,
-        diffusion_field: float | np.ndarray | Callable | None = None,
-        show_progress: bool = True,
-    ) -> np.ndarray:
-        """
-        Solve 1D FP equation with callable (state-dependent) drift.
-
-        Uses bootstrap strategy: evaluate drift callable at each timestep using
-        the current density m[k] to compute drift, then solve for m[k+1].
-
-        The drift is converted to an equivalent pseudo-U field where:
-            α = -∇U/λ  =>  U[i] ≈ -λ * cumsum(α) * dx
-
-        Parameters
-        ----------
-        m_initial_condition : np.ndarray
-            Initial density, shape (Nx,)
-        drift_callable : callable
-            Function α(t, x, m) -> drift velocity field
-            Signature: (float, np.ndarray, np.ndarray) -> np.ndarray
-        diffusion_field : float, np.ndarray, callable, or None
-            Diffusion coefficient (uses problem.sigma if None)
-        show_progress : bool
-            Show progress bar
-
-        Returns
-        -------
-        np.ndarray
-            Density evolution, shape (Nt, Nx)
-
-        Examples
-        --------
-        >>> # State-dependent drift: crowd avoidance
-        >>> def crowd_drift(t, x, m):
-        ...     grad_m = np.gradient(m, x[1] - x[0])
-        ...     return -0.5 * grad_m  # Move away from high density
-        >>> M = solver.solve_fp_system(m0, drift_field=crowd_drift)
-
-        >>> # Time-varying drift: oscillating field
-        >>> def oscillating_drift(t, x, m):
-        ...     return np.sin(2 * np.pi * t) * np.ones_like(x)
-        >>> M = solver.solve_fp_system(m0, drift_field=oscillating_drift)
-        """
-        from mfg_pde.types.pde_coefficients import DriftCallable
-
-        # Validate callable signature using protocol
-        if not isinstance(drift_callable, DriftCallable):
-            raise TypeError(
-                "drift_field callable does not match DriftCallable protocol. "
-                "Expected signature: (t: float, x: ndarray, m: ndarray) -> ndarray"
-            )
-
-        # Get problem dimensions from geometry
-        Nx = self.problem.geometry.get_grid_shape()[0]
-        Dt = self.problem.dt
-        Dx = self.problem.geometry.get_grid_spacing()[0]
-        bounds = self.problem.geometry.get_bounds()
-        xmin, xmax = bounds[0][0], bounds[1][0]
-        coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
-
-        # Get number of time points
-        Nt = self.problem.Nt + 1
-
-        # Create spatial grid for callable evaluation
-        x_grid = np.linspace(xmin, xmax, Nx)
-
-        # Allocate solution array
-        if self.backend is not None:
-            m_solution = self.backend.zeros((Nt, Nx))
-        else:
-            m_solution = np.zeros((Nt, Nx))
-
-        m_solution[0, :] = m_initial_condition
-        m_solution[0, :] = np.maximum(m_solution[0, :], 0)
-
-        # Apply boundary conditions to initial condition
-        if _get_bc_type(self.boundary_conditions) == "dirichlet":
-            m_solution[0, 0] = _get_bc_value(self.boundary_conditions, "x_min")
-            m_solution[0, -1] = _get_bc_value(self.boundary_conditions, "x_max")
-
-        # Handle diffusion field
-        if diffusion_field is None:
-            sigma_base = self.problem.sigma
-            sigma_is_callable = False
-        elif callable(diffusion_field):
-            sigma_base = None
-            sigma_is_callable = True
-            diffusion_callable = diffusion_field
-        else:
-            sigma_base = diffusion_field
-            sigma_is_callable = False
-
-        # Progress bar for forward timesteps
-        from mfg_pde.utils.progress import RichProgressBar
-
-        timestep_range = range(Nt - 1)
-        if show_progress:
-            timestep_range = RichProgressBar(
-                timestep_range,
-                desc="FP (callable drift)",
-                unit="step",
-                disable=False,
-            )
-
-        # Bootstrap forward iteration: use m[k] to evaluate callable and compute m[k+1]
-        for k in timestep_range:
-            t_current = k * Dt
-            m_current = m_solution[k, :]
-
-            # Evaluate drift callable at current state
-            drift_at_k = drift_callable(t_current, x_grid, m_current)
-
-            # Validate drift output
-            drift_at_k = self._validate_callable_output(
-                drift_at_k,
-                expected_shape=(Nx,),
-                param_name="drift_field",
-                timestep=k,
-            )
-
-            # Convert drift velocity α to pseudo-U field
-            # If α = -∇U/λ, then ∇U = -λα
-            # Integrate: U[i] = U[0] - λ * Σ_{j=0}^{i-1} α[j] * dx
-            # We set U[0] = 0 (arbitrary constant)
-            pseudo_U = np.zeros(Nx)
-            pseudo_U[1:] = -coupling_coefficient * np.cumsum(drift_at_k[:-1]) * Dx
-
-            # Evaluate diffusion at current state if callable
-            if sigma_is_callable:
-                from mfg_pde.types.pde_coefficients import DiffusionCallable
-
-                if not isinstance(diffusion_callable, DiffusionCallable):
-                    raise TypeError("diffusion_field callable does not match DiffusionCallable protocol.")
-                sigma_at_k = diffusion_callable(t_current, x_grid, m_current)
-                sigma_at_k = self._validate_callable_output(
-                    sigma_at_k,
-                    expected_shape=(Nx,),
-                    param_name="diffusion_field",
-                    timestep=k,
-                )
-            else:
-                sigma_at_k = sigma_base
-
-            # Store original sigma and temporarily set to evaluated value
-            original_sigma = self.problem.sigma
-            self.problem.sigma = sigma_at_k
-
-            try:
-                # Create temporary arrays for single-step solve
-                m_temp = np.zeros((2, Nx))
-                m_temp[0, :] = m_current
-                U_temp = np.zeros((2, Nx))
-                U_temp[0, :] = pseudo_U
-
-                # Call _solve_fp_1d for single timestep
-                m_result = self._solve_fp_1d(
-                    m_initial_condition=m_current,
-                    U_solution_for_drift=U_temp,
-                    show_progress=False,
-                )
-
-                # Extract result at next timestep
-                m_solution[k + 1, :] = m_result[1, :]
-
-            finally:
-                # Restore original sigma
-                self.problem.sigma = original_sigma
-
-        return m_solution
+    # NOTE: _solve_fp_1d_with_callable_drift was removed in v0.17.1 (Issue #641)
+    # It was dead code - never called from solve_fp_system().
+    # Callable drift now routes directly to _solve_fp_nd_full_system() which
+    # handles all dimensions including 1D.
 
 
 if __name__ == "__main__":
@@ -1329,27 +1137,26 @@ if __name__ == "__main__":
     from mfg_pde.geometry import TensorProductGrid
     from mfg_pde.geometry.boundary import no_flux_bc
 
-    # Test 1D problem using geometry-based API (unified with nD solver)
-    print("\n1. Testing 1D FDM (conservative vs non-conservative)...")
+    # Test 1D problem using geometry-based API (unified nD solver, Issue #641)
+    print("\n1. Testing 1D FDM (advection schemes)...")
 
     # Create 1D grid with TensorProductGrid
     Nx = 40  # Number of cells (grid points = Nx + 1)
     grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1])
-    dx = grid_1d.get_mesh_spacing()[0]
-    x_points = grid_1d.get_spatial_grid()
+    dx_1d = grid_1d.get_grid_spacing()[0]
 
     problem_1d = MFGProblem(
         geometry=grid_1d,
         Nt=25,
         T=1.0,
-        sigma=0.1,
+        diffusion=0.1,  # Use 'diffusion' instead of deprecated 'sigma'
         coupling_coefficient=1.0,
     )
 
     # Create initial density (Gaussian) and drift field
-    x = np.array(x_points)
+    x = np.array(grid_1d.coordinates[0])  # 1D coordinates
     m_init_1d = np.exp(-((x - 0.5) ** 2) / 0.05)
-    m_init_1d /= m_init_1d.sum() * dx  # Normalize using sum*dx (consistent with 2D)
+    m_init_1d /= m_init_1d.sum() * dx_1d  # Normalize using sum*dx (consistent with 2D)
 
     # Create drift pushing mass to right (advection test)
     Nt = problem_1d.Nt + 1
@@ -1357,37 +1164,45 @@ if __name__ == "__main__":
     for t in range(Nt):
         U_test_1d[t] = -x  # Drift to the right (alpha = -dU/dx = +1)
 
-    # Test non-conservative 1D solver
-    solver_1d_nc = FPFDMSolver(problem_1d, boundary_conditions=no_flux_bc(dimension=1), conservative=False)
-    assert solver_1d_nc.dimension == 1
-    assert solver_1d_nc.fp_method_name == "FDM"
-    assert solver_1d_nc.conservative is False
+    # Test gradient_upwind (gradient form: v·∇m)
+    solver_1d_gu = FPFDMSolver(
+        problem_1d,
+        boundary_conditions=no_flux_bc(dimension=1),
+        advection_scheme="gradient_upwind",
+    )
+    assert solver_1d_gu.dimension == 1
+    assert solver_1d_gu.fp_method_name == "FDM"
+    assert solver_1d_gu.advection_scheme == "gradient_upwind"
 
-    M_1d_nc = solver_1d_nc.solve_fp_system(m_init_1d, U_test_1d, show_progress=False)
-    assert M_1d_nc.shape == (Nt, Nx + 1)
-    assert not has_nan_or_inf(M_1d_nc)
+    M_1d_gu = solver_1d_gu.solve_fp_system(m_init_1d, U_test_1d, show_progress=False)
+    assert M_1d_gu.shape == (Nt, Nx + 1)
+    assert not has_nan_or_inf(M_1d_gu)
 
-    # Test conservative 1D solver
-    solver_1d_c = FPFDMSolver(problem_1d, boundary_conditions=no_flux_bc(dimension=1), conservative=True)
-    assert solver_1d_c.conservative is True
+    # Test divergence_upwind (divergence form: ∇·(vm))
+    solver_1d_du = FPFDMSolver(
+        problem_1d,
+        boundary_conditions=no_flux_bc(dimension=1),
+        advection_scheme="divergence_upwind",
+    )
+    assert solver_1d_du.advection_scheme == "divergence_upwind"
 
-    M_1d_c = solver_1d_c.solve_fp_system(m_init_1d, U_test_1d, show_progress=False)
-    assert M_1d_c.shape == (Nt, Nx + 1)
-    assert not has_nan_or_inf(M_1d_c)
+    M_1d_du = solver_1d_du.solve_fp_system(m_init_1d, U_test_1d, show_progress=False)
+    assert M_1d_du.shape == (Nt, Nx + 1)
+    assert not has_nan_or_inf(M_1d_du)
 
     # Calculate mass drift for both (using sum*dx for consistency with 2D)
-    initial_mass_1d = m_init_1d.sum() * dx
-    final_mass_1d_nc = M_1d_nc[-1].sum() * dx
-    final_mass_1d_c = M_1d_c[-1].sum() * dx
-    mass_drift_1d_nc = abs(final_mass_1d_nc - initial_mass_1d) / initial_mass_1d
-    mass_drift_1d_c = abs(final_mass_1d_c - initial_mass_1d) / initial_mass_1d
+    initial_mass_1d = m_init_1d.sum() * dx_1d
+    final_mass_1d_gu = M_1d_gu[-1].sum() * dx_1d
+    final_mass_1d_du = M_1d_du[-1].sum() * dx_1d
+    mass_drift_1d_gu = abs(final_mass_1d_gu - initial_mass_1d) / initial_mass_1d
+    mass_drift_1d_du = abs(final_mass_1d_du - initial_mass_1d) / initial_mass_1d
 
     print(f"   Initial mass: {initial_mass_1d:.6f}")
-    print(f"   Non-conservative: final={final_mass_1d_nc:.6f}, drift={mass_drift_1d_nc:.2%}")
-    print(f"   Conservative:     final={final_mass_1d_c:.6f}, drift={mass_drift_1d_c:.2%}")
+    print(f"   gradient_upwind:   final={final_mass_1d_gu:.6f}, drift={mass_drift_1d_gu:.2%}")
+    print(f"   divergence_upwind: final={final_mass_1d_du:.6f}, drift={mass_drift_1d_du:.2%}")
 
-    # Test 2D problem with conservative mode
-    print("\n2. Testing 2D FDM (conservative vs non-conservative)...")
+    # Test 2D problem with advection schemes
+    print("\n2. Testing 2D FDM (advection schemes)...")
 
     # Create 2D problem
     grid_2d = TensorProductGrid(
@@ -1399,7 +1214,7 @@ if __name__ == "__main__":
         geometry=grid_2d,
         Nt=20,
         T=0.5,
-        sigma=0.2,
+        diffusion=0.2,  # Use 'diffusion' instead of deprecated 'sigma'
         coupling_coefficient=1.0,
     )
 
@@ -1418,45 +1233,44 @@ if __name__ == "__main__":
     for t in range(Nt):
         U_drift[t] = -(X + Y)
 
-    # Test non-conservative solver
-    solver_nc = FPFDMSolver(
+    # Test gradient_upwind (non-conservative)
+    solver_2d_gu = FPFDMSolver(
         problem_2d,
         boundary_conditions=no_flux_bc(dimension=2),
-        conservative=False,
+        advection_scheme="gradient_upwind",
     )
-    M_nc = solver_nc.solve_fp_system(m_init_2d, U_drift, show_progress=False)
+    M_2d_gu = solver_2d_gu.solve_fp_system(m_init_2d, U_drift, show_progress=False)
 
-    # Test conservative solver
-    solver_c = FPFDMSolver(
+    # Test divergence_upwind (conservative)
+    solver_2d_du = FPFDMSolver(
         problem_2d,
         boundary_conditions=no_flux_bc(dimension=2),
-        conservative=True,
+        advection_scheme="divergence_upwind",
     )
-    M_c = solver_c.solve_fp_system(m_init_2d, U_drift, show_progress=False)
+    M_2d_du = solver_2d_du.solve_fp_system(m_init_2d, U_drift, show_progress=False)
 
-    # Calculate mass drift for both (dx, dy already computed above)
+    # Calculate mass drift for both
     initial_mass_2d = m_init_2d.sum() * cell_volume
 
-    final_mass_nc = M_nc[-1].sum() * cell_volume
-    mass_drift_nc = abs(final_mass_nc - initial_mass_2d) / initial_mass_2d
+    final_mass_gu = M_2d_gu[-1].sum() * cell_volume
+    mass_drift_gu = abs(final_mass_gu - initial_mass_2d) / initial_mass_2d
 
-    final_mass_c = M_c[-1].sum() * cell_volume
-    mass_drift_c = abs(final_mass_c - initial_mass_2d) / initial_mass_2d
+    final_mass_du = M_2d_du[-1].sum() * cell_volume
+    mass_drift_du = abs(final_mass_du - initial_mass_2d) / initial_mass_2d
 
     print(f"   Initial mass: {initial_mass_2d:.6f}")
-    print(f"   Non-conservative: final={final_mass_nc:.6f}, drift={mass_drift_nc:.2%}")
-    print(f"   Conservative:     final={final_mass_c:.6f}, drift={mass_drift_c:.2%}")
+    print(f"   gradient_upwind:   final={final_mass_gu:.6f}, drift={mass_drift_gu:.2%}")
+    print(f"   divergence_upwind: final={final_mass_du:.6f}, drift={mass_drift_du:.2%}")
 
-    # Conservative should have better mass conservation
-    # (Note: with no-flux BC, both should be reasonable, but conservative is exact)
-    assert not has_nan_or_inf(M_nc), "Non-conservative solution has NaN/Inf"
-    assert not has_nan_or_inf(M_c), "Conservative solution has NaN/Inf"
-    assert np.all(M_nc >= -1e-10), "Non-conservative: density should be non-negative"
-    assert np.all(M_c >= -1e-10), "Conservative: density should be non-negative"
+    # Verify solutions are valid
+    assert not has_nan_or_inf(M_2d_gu), "gradient_upwind solution has NaN/Inf"
+    assert not has_nan_or_inf(M_2d_du), "divergence_upwind solution has NaN/Inf"
+    assert np.all(M_2d_gu >= -1e-10), "gradient_upwind: density should be non-negative"
+    assert np.all(M_2d_du >= -1e-10), "divergence_upwind: density should be non-negative"
 
-    # Verify conservative flag is properly set
-    assert solver_nc.conservative is False
-    assert solver_c.conservative is True
+    # Verify advection_scheme is properly set
+    assert solver_2d_gu.advection_scheme == "gradient_upwind"
+    assert solver_2d_du.advection_scheme == "divergence_upwind"
 
     print("\n" + "=" * 60)
     print("All smoke tests passed!")

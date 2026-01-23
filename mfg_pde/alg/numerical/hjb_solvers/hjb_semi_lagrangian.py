@@ -259,6 +259,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         if self.use_jax:
             self._setup_jax_functions()
 
+    # _detect_dimension() inherited from BaseNumericalSolver (Issue #633)
+
     def _setup_jax_functions(self):
         """Setup JAX-accelerated functions for performance."""
         if not self.use_jax:

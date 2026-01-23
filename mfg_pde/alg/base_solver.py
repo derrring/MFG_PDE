@@ -236,6 +236,39 @@ class BaseNumericalSolver(BaseMFGSolver):
         super().__init__(problem, config)
         self.convergence_history: list[float] = []
 
+    def _detect_dimension(self) -> int:
+        """
+        Detect spatial dimension from geometry (unified interface).
+
+        Issue #633: Centralized dimension detection for all numerical solvers.
+
+        Returns
+        -------
+        int
+            Problem dimension (1, 2, 3, ...)
+
+        Raises
+        ------
+        ValueError
+            If dimension cannot be determined from problem.
+        """
+        # Primary: Use geometry.dimension (standard for all modern problems)
+        try:
+            return self.problem.geometry.dimension
+        except AttributeError:
+            pass
+
+        # Fallback: problem.dimension attribute
+        try:
+            return self.problem.dimension
+        except AttributeError:
+            pass
+
+        raise ValueError(
+            "Cannot determine problem dimension. "
+            "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
+        )
+
     @abstractmethod
     def discretize(self) -> None:
         """Set up the spatial and temporal discretization."""

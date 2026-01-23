@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
+from mfg_pde.geometry import TensorProductGrid  # Required to check geometry type
 from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
 from mfg_pde.utils.pde_coefficients import CoefficientField
@@ -60,6 +61,8 @@ def is_diagonal_tensor(Sigma: NDArray, rtol: float = 1e-10) -> bool:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import NDArray
 
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -225,8 +228,8 @@ class HJBFDMSolver(BaseHJBSolver):
             "tolerance": self.newton_tolerance,
         }
 
-        # Detect dimension
-        self.dimension = self._detect_dimension(problem)
+        # Detect dimension (inherited from BaseNumericalSolver, Issue #633)
+        self.dimension = self._detect_dimension()
         # Backward compatibility: 1D uses "FDM", nD uses "FDM-{d}D-{solver_type}"
         if self.dimension == 1:
             self.hjb_method_name = "FDM"
@@ -246,11 +249,9 @@ class HJBFDMSolver(BaseHJBSolver):
 
         # For nD, extract grid info and create nonlinear solver
         if self.dimension > 1:
-            # Import at runtime to avoid circular dependency
-            from mfg_pde.geometry.base import CartesianGrid
-
-            if not isinstance(problem.geometry, CartesianGrid):
-                raise ValueError("nD FDM requires problem with CartesianGrid geometry (TensorProductGrid)")
+            # We already imported TensorProductGrid at the top.
+            if not isinstance(problem.geometry, TensorProductGrid):
+                raise ValueError("nD FDM requires problem with TensorProductGrid geometry")
 
             self.grid = problem.geometry  # Geometry IS the grid
             self.shape = tuple(self.grid.get_grid_shape())
@@ -281,7 +282,7 @@ class HJBFDMSolver(BaseHJBSolver):
                     jacobian=None,  # Use automatic finite differences
                 )
 
-            # Create BC applicator for enforcing boundary values (Issue #542)
+            # Create BC applicator using FDMApplicator (Issue #516)
             from mfg_pde.geometry.boundary.applicator_fdm import FDMApplicator
 
             self.bc_applicator = FDMApplicator(dimension=self.dimension)
@@ -294,27 +295,7 @@ class HJBFDMSolver(BaseHJBSolver):
         # Initialize warning flags (Issue #545 - NO hasattr pattern)
         self._bc_warning_emitted: bool = False
 
-    def _detect_dimension(self, problem) -> int:
-        """Detect spatial dimension from geometry (unified interface)."""
-        # Primary: Use geometry.dimension (standard for all modern problems)
-        # Issue #545: Use try/except instead of hasattr
-        try:
-            return problem.geometry.dimension
-        except AttributeError:
-            pass
-
-        # Fallback: problem.dimension attribute
-        # Note: We prioritize explicit geometry protocol but allow problem.dimension
-        # if it's explicitly set (e.g. legacy 1D init sets self.dimension)
-        try:
-            return problem.dimension
-        except AttributeError:
-            pass
-
-        raise ValueError(
-            "Cannot determine problem dimension. "
-            "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
-        )
+    # _detect_dimension() inherited from BaseNumericalSolver (Issue #633)
 
     def solve_hjb_system(
         self,
@@ -324,6 +305,7 @@ class HJBFDMSolver(BaseHJBSolver):
         diffusion_field: float | NDArray | None = None,
         tensor_diffusion_field: NDArray | None = None,
         bc_values: dict[str, float] | None = None,
+        progress_callback: Callable[[int], None] | None = None,  # Issue #640
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: NDArray | None = None,
         U_final_condition_at_T: NDArray | None = None,
@@ -534,6 +516,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 U_coupling_prev,
                 diffusion_field,
                 tensor_diffusion_field,
+                progress_callback=progress_callback,
             )
 
     def _solve_hjb_nd(
@@ -543,10 +526,16 @@ class HJBFDMSolver(BaseHJBSolver):
         U_prev: NDArray,
         diffusion_field: float | NDArray | None = None,
         tensor_diffusion_field: NDArray | None = None,
+        progress_callback: Callable[[int], None] | None = None,  # Issue #640
     ) -> NDArray:
         """Solve nD HJB using centralized nonlinear solvers with variable diffusion support.
 
         Supports scalar, array, and callable diffusion coefficients.
+
+        Args:
+            progress_callback: Optional callback called after each timestep.
+                If provided, internal progress bar is suppressed.
+                Typically a subtask.advance callable from HierarchicalProgress.
 
         Note: tensor_diffusion_field is accepted but not yet fully implemented.
         """
@@ -568,18 +557,24 @@ class HJBFDMSolver(BaseHJBSolver):
         if n_time_points <= 1:
             return U_solution
 
-        # Progress bar for backward time stepping
-        from mfg_pde.utils.progress import RichProgressBar
+        # Issue #640: Use progress_callback if provided, else show own progress bar
+        use_external_progress = progress_callback is not None
 
-        # Backward time loop: problem.Nt steps from index (n_time_points-2) down to 0
-        timestep_range = RichProgressBar(
-            range(n_time_points - 2, -1, -1),
-            desc=f"HJB {self.dimension}D-FDM ({self.solver_type})",
-            unit="step",
-        )
+        if use_external_progress:
+            # External progress manager - just iterate, callback handles updates
+            timestep_iter = range(n_time_points - 2, -1, -1)
+        else:
+            # Standalone mode - show own progress bar
+            from mfg_pde.utils.progress import RichProgressBar
+
+            timestep_iter = RichProgressBar(
+                range(n_time_points - 2, -1, -1),
+                desc=f"HJB {self.dimension}D-FDM ({self.solver_type})",
+                unit="step",
+            )
 
         # Backward time loop
-        for n in timestep_range:
+        for n in timestep_iter:
             U_next = U_solution[n + 1]
             M_next = M_density[n + 1]
             U_guess = U_prev[n]
@@ -619,6 +614,10 @@ class HJBFDMSolver(BaseHJBSolver):
             U_solution[n] = self._solve_single_timestep(
                 U_next, M_next, U_guess, sigma_at_n, Sigma_at_n, time=t_current, constraint=self.constraint
             )
+
+            # Issue #640: Update external progress if callback provided
+            if progress_callback is not None:
+                progress_callback(1)
 
         return U_solution
 
@@ -685,8 +684,6 @@ class HJBFDMSolver(BaseHJBSolver):
 
         # Enforce BC on solution (Issue #542 - nD extension, Issue #527 - centralized BC access)
         # BC-aware gradients use ghost cells for derivatives, but boundary values must be explicitly set
-        # This extends the 1D fix from base_hjb.py to nD FDM solver path
-        # Refactored to use FDMApplicator.enforce_values() for proper separation of concerns
         bc = self.get_boundary_conditions()
         if bc is not None:
             U_solution = self.bc_applicator.enforce_values(

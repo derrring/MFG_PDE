@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.deprecation import deprecated_alias
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -687,3 +689,286 @@ def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]
         return tuple(coords)
     else:
         raise AttributeError("Problem must have geometry.coordinates attribute")
+
+
+class _DriftDispatcher:
+    """
+    Internal data dispatcher for drift/velocity in FP equation (Issue #641).
+
+    This is an **internal** class for FP solver plumbing. For user-facing
+    MFG drift computation, use `DriftField` instead.
+
+    Handles data dispatch (when/how to get drift values):
+    1. Zero drift (None): Pure diffusion, no advection
+    2. Array drift (ndarray): Precomputed U field, gradient computed in solver
+    3. Callable drift (callable): Custom velocity function α(t, x, m)
+
+    Parameters
+    ----------
+    drift_field : None | ndarray | Callable
+        Drift specification:
+        - None: Zero drift (pure diffusion)
+        - ndarray: Precomputed U field, shape (Nt, *spatial_shape)
+        - Callable: State-dependent drift α(t, x, m) -> velocity
+    Nt : int
+        Number of timesteps (used for zero drift allocation)
+    spatial_shape : tuple
+        Spatial grid shape
+    dimension : int
+        Spatial dimension
+    """
+
+    def __init__(
+        self,
+        drift_field: None | np.ndarray | Callable,
+        Nt: int,
+        spatial_shape: tuple,
+        dimension: int = 1,
+    ):
+        self.field = drift_field
+        self.Nt = Nt
+        self.spatial_shape = spatial_shape
+        self.dimension = dimension
+
+        # Cache type checks
+        self._is_none = drift_field is None
+        self._is_array = isinstance(drift_field, np.ndarray)
+        self._is_callable = callable(drift_field) and not isinstance(drift_field, np.ndarray)
+
+        # For zero drift, create lazily
+        self._zero_U: np.ndarray | None = None
+
+    def is_callable(self) -> bool:
+        """Check if using callable (state-dependent) drift."""
+        return self._is_callable
+
+    def is_zero(self) -> bool:
+        """Check if using zero drift (pure diffusion)."""
+        return self._is_none
+
+    def is_array(self) -> bool:
+        """Check if using precomputed array drift."""
+        return self._is_array
+
+    def get_U_at(self, timestep_idx: int) -> np.ndarray:
+        """
+        Get U slice at specific timestep for array/MFG drift.
+
+        For implicit solvers that compute gradients internally.
+
+        Parameters
+        ----------
+        timestep_idx : int
+            Timestep index
+
+        Returns
+        -------
+        ndarray
+            U values at timestep, shape matches spatial_shape
+
+        Raises
+        ------
+        ValueError
+            If called on callable drift (use evaluate_velocity_at instead)
+        """
+        if self._is_callable:
+            raise ValueError("Cannot get U slice for callable drift. Use evaluate_velocity_at() instead.")
+
+        if self._is_none:
+            # Lazy creation of zero U field
+            if self._zero_U is None:
+                self._zero_U = np.zeros((self.Nt, *self.spatial_shape))
+            return self._zero_U[timestep_idx]
+
+        if self._is_array:
+            return self.field[timestep_idx]
+
+        raise TypeError(f"Unexpected drift_field type: {type(self.field)}")
+
+    def evaluate_velocity_at(
+        self,
+        timestep_idx: int,
+        grid: np.ndarray | tuple[np.ndarray, ...],
+        density: np.ndarray,
+        dt: float | None = None,
+    ) -> np.ndarray:
+        """
+        Evaluate velocity field at specific timestep for callable drift.
+
+        For explicit solvers that use velocity directly.
+
+        Parameters
+        ----------
+        timestep_idx : int
+            Timestep index
+        grid : ndarray | tuple[ndarray, ...]
+            Spatial coordinates
+        density : ndarray
+            Current density field
+        dt : float | None
+            Timestep size for computing physical time
+
+        Returns
+        -------
+        ndarray
+            Velocity field at timestep
+
+        Raises
+        ------
+        ValueError
+            If called on non-callable drift (use get_U_at instead)
+        """
+        if not self._is_callable:
+            raise ValueError("Cannot evaluate velocity for non-callable drift. Use get_U_at() instead.")
+
+        # Compute physical time
+        t_current = timestep_idx * dt if dt is not None else float(timestep_idx)
+
+        # Call the velocity function
+        result = self.field(t_current, grid, density)
+
+        # Validate output
+        if isinstance(result, (int, float)):
+            result = np.full(self.spatial_shape, float(result))
+        elif not isinstance(result, np.ndarray):
+            raise TypeError(f"Drift callable must return float or ndarray, got {type(result)}")
+
+        # Check for NaN/Inf
+        if np.any(np.isnan(result)) or np.any(np.isinf(result)):
+            raise ValueError(f"Drift callable returned NaN or Inf at timestep {timestep_idx}")
+
+        return result
+
+
+class DriftField:
+    """
+    MFG drift field: computes optimal control α* from value function U (Issue #623).
+
+    Encapsulates the complete MFG coupling:
+    1. Extract U slice at timestep
+    2. Compute gradient ∇U using geometry
+    3. Apply optimal control formula via ControlCostBase
+
+    This is the user-facing class for MFG drift computation. Use this when you have:
+    - A value function U from HJB solver
+    - A control cost specification (quadratic, L1, bounded, etc.)
+    - A geometry that provides gradient computation
+
+    Parameters
+    ----------
+    U_solution : ndarray
+        Value function from HJB solver, shape (Nt, *spatial_shape)
+    control_cost : ControlCostBase
+        Control cost specification (determines optimal_control formula)
+    geometry : BaseGeometry
+        Geometry providing gradient computation
+    coupling_coefficient : float, optional
+        Scaling factor for drift (default: 1.0)
+
+    Examples
+    --------
+    Standard MFG coupling:
+    >>> from mfg_pde.core import QuadraticControlCost, OptimizationSense
+    >>> cost = QuadraticControlCost(sense=OptimizationSense.MINIMIZE, control_cost=1.0)
+    >>> drift = DriftField(U_solution, cost, problem.geometry)
+    >>> velocity = drift.get_velocity_at(k, density)
+
+    L1 (bang-bang) control:
+    >>> from mfg_pde.core import L1ControlCost
+    >>> cost = L1ControlCost(control_cost=0.5)
+    >>> drift = DriftField(U_solution, cost, problem.geometry)
+    >>> velocity = drift.get_velocity_at(k, density)  # Returns ±1 or 0
+    """
+
+    def __init__(
+        self,
+        U_solution: np.ndarray,
+        control_cost: Any,  # ControlCostBase, use Any to avoid import cycle
+        geometry: Any,  # BaseGeometry
+        coupling_coefficient: float = 1.0,
+    ):
+        self.U_solution = U_solution
+        self.control_cost = control_cost
+        self.geometry = geometry
+        self.coupling_coefficient = coupling_coefficient
+
+        # Cache dimensions
+        self.Nt = U_solution.shape[0]
+        self.spatial_shape = U_solution.shape[1:]
+
+    def get_U_at(self, timestep_idx: int) -> np.ndarray:
+        """Get value function slice at timestep."""
+        return self.U_solution[timestep_idx]
+
+    def get_gradient_at(self, timestep_idx: int) -> np.ndarray:
+        """
+        Compute gradient ∇U at timestep.
+
+        Uses geometry's gradient computation if available,
+        otherwise falls back to finite differences.
+        """
+        U_k = self.get_U_at(timestep_idx)
+
+        # Try geometry-based gradient
+        if hasattr(self.geometry, "compute_gradient"):
+            return self.geometry.compute_gradient(U_k)
+
+        # Fallback: simple finite differences
+        spacing = self.geometry.get_grid_spacing()
+        ndim = len(self.spatial_shape)
+
+        if ndim == 1:
+            # Central differences for interior, one-sided at boundaries
+            grad = np.zeros_like(U_k)
+            grad[1:-1] = (U_k[2:] - U_k[:-2]) / (2 * spacing[0])
+            grad[0] = (U_k[1] - U_k[0]) / spacing[0]
+            grad[-1] = (U_k[-1] - U_k[-2]) / spacing[0]
+            return grad
+        else:
+            # For nD, return tuple of gradients per dimension
+            grads = []
+            for dim in range(ndim):
+                grad = np.gradient(U_k, spacing[dim], axis=dim)
+                grads.append(grad)
+            return np.stack(grads, axis=0)
+
+    def get_velocity_at(self, timestep_idx: int, density: np.ndarray | None = None) -> np.ndarray:
+        """
+        Compute optimal control velocity α* at timestep.
+
+        This is the primary method for MFG coupling:
+        α* = control_cost.optimal_control(∇U)
+
+        Parameters
+        ----------
+        timestep_idx : int
+            Timestep index
+        density : ndarray | None
+            Current density (for state-dependent control costs)
+            Currently unused, reserved for future extensions
+
+        Returns
+        -------
+        ndarray
+            Optimal control velocity α*
+        """
+        # Get gradient
+        grad_U = self.get_gradient_at(timestep_idx)
+
+        # Apply coupling coefficient
+        momentum = self.coupling_coefficient * grad_U
+
+        # Apply optimal control formula
+        return self.control_cost.optimal_control(momentum)
+
+    def is_callable(self) -> bool:
+        """DriftField is never callable (it's U-based)."""
+        return False
+
+    def is_zero(self) -> bool:
+        """Check if all U values are zero."""
+        return np.allclose(self.U_solution, 0)
+
+
+# Backward compatibility alias (deprecated in v0.17.1)
+MFGDriftField = deprecated_alias("MFGDriftField", DriftField, "v0.17.1")

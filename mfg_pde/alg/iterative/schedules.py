@@ -215,10 +215,7 @@ def get_schedule(name: str | Callable[[int], float]) -> Callable[[int], float]:
         return name
 
     if name not in LEARNING_RATE_SCHEDULES:
-        raise ValueError(
-            f"Unknown learning rate schedule: {name}. "
-            f"Available: {list(LEARNING_RATE_SCHEDULES.keys())}"
-        )
+        raise ValueError(f"Unknown learning rate schedule: {name}. Available: {list(LEARNING_RATE_SCHEDULES.keys())}")
 
     return LEARNING_RATE_SCHEDULES[name]
 

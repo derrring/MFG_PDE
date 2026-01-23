@@ -286,10 +286,22 @@ def main() -> int:
         return 0
 
     # Phase 2: Check production code
-    deprecated_names = set(deprecated_registry.keys())
+    # Only check symbols where internal_usage blocker has been CLEARED
+    # If "internal_usage" is still in removal_blockers, internal usage is expected
+    symbols_to_check = {
+        name: symbol
+        for name, symbol in deprecated_registry.items()
+        if "internal_usage" not in (symbol.removal_blockers or [])
+    }
+
+    if symbols_to_check:
+        print(f"🔍 Checking {len(symbols_to_check)} symbol(s) with cleared internal_usage blocker...")
+    else:
+        print("ℹ️  All deprecated symbols have 'internal_usage' blocker (migration in progress)")
+
     violations = check_production_code(
         src_path,
-        deprecated_names,
+        set(symbols_to_check.keys()),
         exclude_files={"deprecation.py"},  # Exclude the decorator itself
         exclude_dirs={"compat"},  # Exclude compat module (defines backward-compat wrappers)
     )

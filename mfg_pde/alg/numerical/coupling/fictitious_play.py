@@ -34,16 +34,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.utils.solver_result import SolverResult
-
 # Import shared iteration utilities (Issue #630)
 from mfg_pde.alg.iterative.schedules import (
     LEARNING_RATE_SCHEDULES,
     get_schedule,
     harmonic_schedule,
-    polynomial_schedule,
-    sqrt_schedule,
 )
+from mfg_pde.utils.solver_result import SolverResult
 
 from .base_mfg import BaseMFGSolver
 from .fixed_point_utils import (
