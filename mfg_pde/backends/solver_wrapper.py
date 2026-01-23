@@ -63,14 +63,17 @@ class AcceleratedSolverWrapper:
         Returns:
             The modified solver (same instance, for chaining)
         """
-        # Wrap the main solve methods
-        if hasattr(self._solver, "solve_hjb_system"):
+        # Wrap the main solve methods (Issue #643: getattr+callable pattern)
+        solve_hjb = getattr(self._solver, "solve_hjb_system", None)
+        if solve_hjb is not None and callable(solve_hjb):
             self._wrap_method("solve_hjb_system")
 
-        if hasattr(self._solver, "solve_fp_system"):
+        solve_fp = getattr(self._solver, "solve_fp_system", None)
+        if solve_fp is not None and callable(solve_fp):
             self._wrap_method("solve_fp_system")
 
-        if hasattr(self._solver, "solve"):
+        solve = getattr(self._solver, "solve", None)
+        if solve is not None and callable(solve):
             self._wrap_method("solve")
 
         return self._solver
@@ -92,6 +95,8 @@ class AcceleratedSolverWrapper:
             result = original_method(*backend_args, **backend_kwargs)
 
             # Convert outputs back to NumPy
+            # Issue #643: hasattr(r, "shape") is acceptable for array duck-typing
+            # (NumPy, PyTorch, JAX arrays all have .shape attribute)
             if isinstance(result, tuple):
                 return tuple(self._wrapper.to_numpy(r) if hasattr(r, "shape") else r for r in result)
             elif hasattr(result, "shape"):
@@ -202,6 +207,7 @@ def with_backend(backend: str):
             result = method(self, *backend_args, **backend_kwargs)
 
             # Convert outputs
+            # Issue #643: hasattr(r, "shape") is acceptable for array duck-typing
             if isinstance(result, tuple):
                 return tuple(wrapper_obj.to_numpy(r) if hasattr(r, "shape") else r for r in result)
             elif hasattr(result, "shape"):
