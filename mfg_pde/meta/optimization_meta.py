@@ -293,10 +293,12 @@ class JITSolverFactory:
     def _infer_performance_profile(self, problem) -> PerformanceProfile:
         """Infer performance profile from problem characteristics."""
 
-        # Estimate problem size
-        if hasattr(problem, "geometry") and hasattr(problem, "Nt"):
-            grid_shape = problem.geometry.get_grid_shape()
-            problem_size = int(np.prod(grid_shape)) * problem.Nt
+        # Estimate problem size (Issue #643: getattr pattern)
+        geometry = getattr(problem, "geometry", None)
+        Nt = getattr(problem, "Nt", None)
+        if geometry is not None and Nt is not None:
+            grid_shape = geometry.get_grid_shape()
+            problem_size = int(np.prod(grid_shape)) * Nt
         else:
             raise ValueError(
                 "Cannot infer problem size: problem must have 'geometry' and 'Nt'. "
@@ -341,8 +343,9 @@ class JITSolverFactory:
                 ]
 
                 for method_name in methods_to_optimize:
-                    if hasattr(self, method_name):
-                        original_method = getattr(self, method_name)
+                    # Issue #643: getattr pattern with callable check
+                    original_method = getattr(self, method_name, None)
+                    if original_method is not None and callable(original_method):
                         optimized_method = self.compiler.optimize_function(original_method, profile)
                         setattr(self, method_name, optimized_method)
 
@@ -374,10 +377,12 @@ def create_optimized_solver(
 
     factory = JITSolverFactory()
 
-    # Create performance profile
-    if hasattr(problem, "geometry") and hasattr(problem, "Nt"):
-        grid_shape = problem.geometry.get_grid_shape()
-        problem_size = int(np.prod(grid_shape)) * problem.Nt
+    # Create performance profile (Issue #643: getattr pattern)
+    geometry = getattr(problem, "geometry", None)
+    Nt = getattr(problem, "Nt", None)
+    if geometry is not None and Nt is not None:
+        grid_shape = geometry.get_grid_shape()
+        problem_size = int(np.prod(grid_shape)) * Nt
     else:
         raise ValueError(
             "Cannot create optimized solver: problem missing 'geometry' or 'Nt'. "
@@ -407,27 +412,33 @@ def jit_optimize(backend: str = "auto", optimization_level: str = "balanced"):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            # Get self (solver instance) if method
-            if args and hasattr(args[0], "__class__"):
+            # Get self (solver instance) if method (Issue #643: getattr pattern)
+            if args:
                 solver = args[0]
 
                 # Create performance profile if not exists
-                if not hasattr(solver, "_optimization_profile"):
+                opt_profile = getattr(solver, "_optimization_profile", None)
+                if opt_profile is None:
                     # Optimization profile requires a valid problem with size metrics
-                    if not hasattr(solver, "problem"):
+                    problem = getattr(solver, "problem", None)
+                    if problem is None:
                         raise AttributeError("Optimization failed: solver missing 'problem' attribute.")
 
                     # Try to get problem size explicitly or via modern attributes
-                    if hasattr(solver.problem, "geometry") and hasattr(solver.problem, "Nt"):
-                        grid_shape = solver.problem.geometry.get_grid_shape()
-                        problem_size = int(np.prod(grid_shape)) * solver.problem.Nt
-                    elif hasattr(solver.problem, "Nx") and hasattr(solver.problem, "Nt"):
-                        # Support legacy 1D for now but raise if missing
-                        problem_size = solver.problem.Nx * solver.problem.Nt
+                    geometry = getattr(problem, "geometry", None)
+                    Nt = getattr(problem, "Nt", None)
+                    if geometry is not None and Nt is not None:
+                        grid_shape = geometry.get_grid_shape()
+                        problem_size = int(np.prod(grid_shape)) * Nt
                     else:
-                        raise ValueError(
-                            "Cannot determine problem size for JIT optimization. Problem must have 'geometry' and 'Nt'."
-                        )
+                        # Fallback to legacy 1D attributes
+                        Nx = getattr(problem, "Nx", None)
+                        if Nx is not None and Nt is not None:
+                            problem_size = Nx * Nt
+                        else:
+                            raise ValueError(
+                                "Cannot determine problem size for JIT optimization. Problem must have 'geometry' and 'Nt'."
+                            )
 
                     solver._optimization_profile = PerformanceProfile(
                         problem_size=problem_size,
@@ -435,15 +446,15 @@ def jit_optimize(backend: str = "auto", optimization_level: str = "balanced"):
                         target_precision=1e-6,
                         optimization_level=optimization_level,
                     )
+                    opt_profile = solver._optimization_profile
 
                 # Optimize function if not already done
                 cache_key = f"{func.__name__}_optimized"
-                if not hasattr(solver, cache_key):
+                optimized_func = getattr(solver, cache_key, None)
+                if optimized_func is None:
                     compiler = OptimizationCompiler(backend)
-                    optimized_func = compiler.optimize_function(func, solver._optimization_profile)
+                    optimized_func = compiler.optimize_function(func, opt_profile)
                     setattr(solver, cache_key, optimized_func)
-                else:
-                    optimized_func = getattr(solver, cache_key)
 
                 return optimized_func(*args, **kwargs)
             else:
@@ -463,16 +474,18 @@ def adaptive_backend(backends: list[str] | None = None):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            # Extract problem information
+            # Extract problem information (Issue #643: getattr pattern)
             problem_size = 1000  # Default
 
-            if args and hasattr(args[0], "problem"):
+            if args:
                 solver = args[0]
-                if hasattr(solver.problem, "geometry") and hasattr(solver.problem, "Nt"):
-                    import numpy as np
-
-                    grid_shape = solver.problem.geometry.get_grid_shape()
-                    problem_size = int(np.prod(grid_shape)) * solver.problem.Nt
+                problem = getattr(solver, "problem", None)
+                if problem is not None:
+                    geometry = getattr(problem, "geometry", None)
+                    Nt = getattr(problem, "Nt", None)
+                    if geometry is not None and Nt is not None:
+                        grid_shape = geometry.get_grid_shape()
+                        problem_size = int(np.prod(grid_shape)) * Nt
 
             # Select backend based on problem size
             if problem_size > 10000 and "jax" in backends:

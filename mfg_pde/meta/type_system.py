@@ -132,8 +132,11 @@ class TypedMFGProblem[T]:
     def _validate_function_spaces(self):
         """Validate function space requirements."""
         # Check if state space is appropriate for problem domain
-        if hasattr(self.problem_data, "xmin") and hasattr(self.problem_data, "xmax"):
-            if self.problem_data.xmin == 0 and self.problem_data.xmax == 1:
+        # Use getattr pattern for optional attributes (Issue #643)
+        xmin = getattr(self.problem_data, "xmin", None)
+        xmax = getattr(self.problem_data, "xmax", None)
+        if xmin is not None and xmax is not None:
+            if xmin == 0 and xmax == 1:
                 if self.mfg_type.state_space not in [
                     MathematicalSpace.UNIT_INTERVAL,
                     MathematicalSpace.REAL_LINE,
@@ -142,8 +145,9 @@ class TypedMFGProblem[T]:
 
     def _validate_regularity(self):
         """Validate regularity requirements."""
-        # Check if Hamiltonian has required smoothness
-        if hasattr(self.problem_data, "hamiltonian"):
+        # Check if Hamiltonian has required smoothness (Issue #643: getattr pattern)
+        hamiltonian = getattr(self.problem_data, "hamiltonian", None)
+        if hamiltonian is not None:
             # Would check actual function properties in practice
             pass
 
@@ -153,8 +157,10 @@ class TypedMFGProblem[T]:
 
         if constraints is not None and "max_dt" in constraints:
             max_dt = constraints["max_dt"]
-            if hasattr(self.problem_data, "dt") and self.problem_data.dt > max_dt:
-                raise TypeError(f"Time step {self.problem_data.dt} exceeds stability limit {max_dt}")
+            # Issue #643: getattr pattern for optional attribute
+            problem_dt = getattr(self.problem_data, "dt", None)
+            if problem_dt is not None and problem_dt > max_dt:
+                raise TypeError(f"Time step {problem_dt} exceeds stability limit {max_dt}")
 
     def get_compatible_solvers(self) -> list[type]:
         """Get list of solver types compatible with this problem type."""
@@ -232,16 +238,16 @@ class SolverMetaclass(type):
     def __new__(mcs, name, bases, namespace, **kwargs):
         cls = super().__new__(mcs, name, bases, namespace)
 
-        # Extract type information from class
-        if hasattr(cls, "compatible_types"):
-            compatible_types = cls.compatible_types
+        # Extract type information from class (Issue #643: getattr pattern)
+        compatible_types = getattr(cls, "compatible_types", None)
+        if compatible_types:
             for mfg_type in compatible_types:
                 SolverRegistry.register_solver(cls, mfg_type)
 
-        # Add type checking to solve method
-        if hasattr(cls, "solve"):
-            original_solve = cls.solve
-            cls.solve = mcs._add_type_checking(original_solve)
+        # Add type checking to solve method (Issue #643: getattr pattern)
+        solve_method = getattr(cls, "solve", None)
+        if solve_method is not None:
+            cls.solve = mcs._add_type_checking(solve_method)
 
         return cls
 
@@ -275,9 +281,10 @@ class SolverRegistry:
             cls._solvers[mfg_type] = []
         cls._solvers[mfg_type].append(solver_class)
 
-        # Also register by method if available
-        if hasattr(solver_class, "method_type"):
-            cls._method_map[solver_class.method_type] = solver_class
+        # Also register by method if available (Issue #643: getattr pattern)
+        method_type = getattr(solver_class, "method_type", None)
+        if method_type is not None:
+            cls._method_map[method_type] = solver_class
 
     @classmethod
     def get_solver_for_type(cls, mfg_type: MFGType) -> type | None:
@@ -300,8 +307,10 @@ class SolverRegistry:
 
         for solvers in cls._solvers.values():
             for solver_class in solvers:
-                if hasattr(solver_class, "method_type"):
-                    if problem.mfg_type.is_compatible_with(solver_class.method_type):
+                # Issue #643: getattr pattern for optional attribute
+                method_type = getattr(solver_class, "method_type", None)
+                if method_type is not None:
+                    if problem.mfg_type.is_compatible_with(method_type):
                         compatible.append(solver_class)
 
         return compatible
@@ -334,7 +343,9 @@ class DynamicSolver(metaclass=SolverMetaclass):
             max_dt_constraint = mfg_type.get_stability_constraint("max_dt")
             if max_dt_constraint is not None:
                 max_dt = max_dt_constraint
-                if hasattr(self.config, "dt") and self.config.dt > max_dt:
+                # Issue #643: getattr pattern for optional attribute
+                config_dt = getattr(self.config, "dt", None)
+                if config_dt is not None and config_dt > max_dt:
                     self.config.dt = max_dt * 0.9  # Safety margin
 
 
@@ -388,13 +399,14 @@ PERIODIC_MFG_TYPE = MFGType(
 
 def infer_mfg_type(problem) -> MFGType:
     """Infer MFG type from problem characteristics."""
-    # Simple inference based on problem attributes
-    if hasattr(problem, "geometry"):
-        bounds = problem.geometry.get_bounds()
+    # Simple inference based on problem attributes (Issue #643: getattr pattern)
+    geometry = getattr(problem, "geometry", None)
+    if geometry is not None:
+        bounds = geometry.get_bounds()
         xmin, xmax = bounds[0][0], bounds[1][0]
         if xmin == 0 and xmax == 1:
             state_space = MathematicalSpace.UNIT_INTERVAL
-        elif hasattr(problem, "periodic") and problem.periodic:
+        elif getattr(problem, "periodic", False):
             state_space = MathematicalSpace.TORUS
         else:
             state_space = MathematicalSpace.REAL_LINE
@@ -404,7 +416,7 @@ def infer_mfg_type(problem) -> MFGType:
     # Infer other properties
     control_space = MathematicalSpace.REAL_LINE
     density_space = MathematicalSpace.PROBABILITY_MEASURES
-    time_horizon = "finite" if hasattr(problem, "T") else "infinite"
+    time_horizon = "finite" if getattr(problem, "T", None) is not None else "infinite"
 
     return MFGType(
         state_space=state_space,
