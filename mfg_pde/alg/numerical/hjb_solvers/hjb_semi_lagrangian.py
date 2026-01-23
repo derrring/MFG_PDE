@@ -259,6 +259,26 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         if self.use_jax:
             self._setup_jax_functions()
 
+    def _detect_dimension(self) -> int:
+        """Detect spatial dimension from geometry (unified interface)."""
+        problem = self.problem
+        # Primary: Use geometry.dimension (standard for all modern problems)
+        try:
+            return problem.geometry.dimension
+        except AttributeError:
+            pass
+
+        # Fallback: problem.dimension attribute
+        try:
+            return problem.dimension
+        except AttributeError:
+            pass
+
+        raise ValueError(
+            "Cannot determine problem dimension. "
+            "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
+        )
+
     def _setup_jax_functions(self):
         """Setup JAX-accelerated functions for performance."""
         if not self.use_jax:
