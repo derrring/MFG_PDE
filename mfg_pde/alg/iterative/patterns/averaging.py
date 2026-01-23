@@ -30,8 +30,8 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, runtime_checkable
 
-from ..convergence import ConvergenceResult, ConvergenceTracker, check_convergence
-from ..schedules import get_schedule, harmonic_schedule
+from ..convergence import ConvergenceResult
+from ..schedules import get_schedule
 from .picard import FixedPointIteratorBase
 
 if TYPE_CHECKING:
