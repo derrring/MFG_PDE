@@ -1,40 +1,75 @@
 """
 Generic Convergence Utilities for Iterative Methods.
 
-Provides convergence checking and damping utilities that are
-algorithm-agnostic and can be used across paradigms:
+This module provides paradigm-agnostic utilities for iterative algorithms:
 - Numerical PDE solvers (MFG coupling)
 - Neural network training (PINN)
 - Reinforcement learning (Policy Iteration)
 - Optimization (Alternating minimization)
 
-These utilities operate on generic state types, not specific to
-grid-based or PDE representations.
+Architecture (DRY - Issue #630):
+    - **This module**: Generic iteration utilities (damping, simple convergence checks)
+    - **utils/convergence/**: PDE-aware utilities (grid-scaled errors, Wasserstein, etc.)
+
+For PDE-specific metrics with grid scaling, use:
+    from mfg_pde.utils.convergence import calculate_error, RollingConvergenceMonitor
+
+This module provides simpler interfaces for paradigm-agnostic iteration.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generic, Protocol, TypeVar
+from typing import TYPE_CHECKING, Protocol, TypeVar
 
 import numpy as np
-from numpy.typing import NDArray
+
+# =============================================================================
+# RE-EXPORTS FROM utils/convergence FOR CONVENIENCE (DRY)
+# =============================================================================
+# These provide PDE-aware metrics for users who need grid scaling
+from mfg_pde.utils.convergence import (
+    ConvergenceChecker,
+    ConvergenceConfig,
+    RollingConvergenceMonitor,
+    calculate_error,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
 
 # Generic type for iteration state
 T = TypeVar("T")
 
 
+# =============================================================================
+# PROTOCOLS
+# =============================================================================
+
+
 class MetricComputable(Protocol):
     """Protocol for objects that can compute distance metrics."""
 
-    def compute_distance(self, other: "MetricComputable") -> float:
+    def compute_distance(self, other: MetricComputable) -> float:
         """Compute distance/difference from another state."""
         ...
 
 
+# =============================================================================
+# RESULT TYPES
+# =============================================================================
+
+
 @dataclass
 class ConvergenceResult:
-    """Result of convergence check."""
+    """
+    Result of convergence check for iterative patterns.
+
+    Simple result type for paradigm-agnostic iteration.
+    For PDE-specific results with more metrics, see utils/convergence.
+    """
 
     converged: bool
     reason: str
@@ -42,11 +77,16 @@ class ConvergenceResult:
     absolute_error: float
 
 
+# =============================================================================
+# DAMPING UTILITIES (UNIQUE TO ITERATIVE PATTERNS)
+# =============================================================================
+
+
 def apply_damping_generic(
     new_value: T,
     old_value: T,
     alpha: float,
-    combine_fn=None,
+    combine_fn: Callable[[T, T, float], T] | None = None,
 ) -> T:
     """
     Apply damping to iteration update (generic version).
@@ -99,6 +139,11 @@ def apply_damping_arrays(
         ... )
     """
     return tuple(alpha * new + (1 - alpha) * old for new, old in zip(new_arrays, old_arrays, strict=True))
+
+
+# =============================================================================
+# SIMPLE CONVERGENCE CHECKS (PARADIGM-AGNOSTIC)
+# =============================================================================
 
 
 def check_convergence(
@@ -172,13 +217,20 @@ def check_convergence_simple(
     return False, ""
 
 
+# =============================================================================
+# SIMPLE ERROR COMPUTATION (PARADIGM-AGNOSTIC)
+# =============================================================================
+# For PDE-aware error computation with grid scaling, use:
+#   from mfg_pde.utils.convergence import calculate_error
+
+
 def compute_relative_change(
     new_value: NDArray,
     old_value: NDArray,
     epsilon: float = 1e-10,
 ) -> float:
     """
-    Compute relative change between iterations.
+    Compute relative change between iterations (simple L2 norm).
 
     Formula: ||new - old|| / (||old|| + epsilon)
 
@@ -189,10 +241,14 @@ def compute_relative_change(
 
     Returns:
         Relative change (dimensionless)
+
+    Note:
+        For PDE-aware computation with grid scaling, use:
+        calculate_error(new, old, dx=dx, norm='l2')['relative']
     """
     diff_norm = np.linalg.norm(new_value - old_value)
     old_norm = np.linalg.norm(old_value)
-    return diff_norm / (old_norm + epsilon)
+    return float(diff_norm / (old_norm + epsilon))
 
 
 def compute_absolute_change(
@@ -200,7 +256,7 @@ def compute_absolute_change(
     old_value: NDArray,
 ) -> float:
     """
-    Compute absolute change between iterations.
+    Compute absolute change between iterations (L2 norm).
 
     Formula: ||new - old||
 
@@ -210,15 +266,31 @@ def compute_absolute_change(
 
     Returns:
         Absolute change (same units as input)
+
+    Note:
+        For PDE-aware computation with grid scaling, use:
+        calculate_error(new, old, dx=dx, norm='l2')['absolute']
     """
     return float(np.linalg.norm(new_value - old_value))
+
+
+# =============================================================================
+# CONVERGENCE TRACKER (SIMPLE HISTORY FOR ITERATION PATTERNS)
+# =============================================================================
+# For advanced statistical monitoring, use:
+#   from mfg_pde.utils.convergence import RollingConvergenceMonitor
 
 
 class ConvergenceTracker:
     """
     Track convergence history over iterations.
 
-    Stores error history and provides analysis utilities.
+    Simple history tracker for iteration patterns. Pre-allocates arrays
+    for efficient tracking of named quantities (e.g., "U", "M").
+
+    For advanced statistical convergence monitoring (rolling windows,
+    quantile-based stopping), use:
+        from mfg_pde.utils.convergence import RollingConvergenceMonitor
     """
 
     def __init__(self, max_iterations: int, tracked_quantities: list[str] | None = None):
@@ -330,5 +402,12 @@ if __name__ == "__main__":
     history = tracker.get_history()
     assert len(history["U_rel"]) == 2
     print("  ConvergenceTracker works")
+
+    # Test re-exports from utils/convergence (DRY verification)
+    assert calculate_error is not None
+    assert RollingConvergenceMonitor is not None
+    assert ConvergenceChecker is not None
+    assert ConvergenceConfig is not None
+    print("  Re-exports from utils/convergence work")
 
     print("All smoke tests passed!")
