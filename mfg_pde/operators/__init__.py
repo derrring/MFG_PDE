@@ -50,6 +50,16 @@ from mfg_pde.operators.reconstruction import (
     compute_weno5_godunov_upwind_1d,
 )
 
+# Low-level stencils
+from mfg_pde.operators.stencils import (
+    gradient_backward,
+    gradient_central,
+    gradient_forward,
+    gradient_upwind,
+    laplacian_stencil_1d,
+    laplacian_stencil_nd,
+)
+
 __all__ = [
     # Differential operators
     "LaplacianOperator",
@@ -65,4 +75,11 @@ __all__ = [
     # Reconstruction
     "compute_weno5_derivative_1d",
     "compute_weno5_godunov_upwind_1d",
+    # Stencils (low-level)
+    "gradient_central",
+    "gradient_forward",
+    "gradient_backward",
+    "gradient_upwind",
+    "laplacian_stencil_1d",
+    "laplacian_stencil_nd",
 ]
