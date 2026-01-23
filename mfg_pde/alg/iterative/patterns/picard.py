@@ -19,12 +19,9 @@ the forward_step() method for their specific problem type.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, runtime_checkable
+from typing import Generic, Protocol, TypeVar, runtime_checkable
 
 from ..convergence import ConvergenceResult, ConvergenceTracker, check_convergence
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 # Generic type for iteration state
 StateT = TypeVar("StateT")
@@ -200,7 +197,6 @@ class FixedPointIteratorBase(ABC, Generic[StateT]):
 
     def on_iteration_start(self, iteration: int, state: StateT) -> None:
         """Hook called at start of each iteration."""
-        pass
 
     def on_iteration_end(
         self,
@@ -210,7 +206,6 @@ class FixedPointIteratorBase(ABC, Generic[StateT]):
         errors: dict[str, float],
     ) -> None:
         """Hook called at end of each iteration."""
-        pass
 
     def solve(
         self,
@@ -245,7 +240,6 @@ class FixedPointIteratorBase(ABC, Generic[StateT]):
         self._tracker = ConvergenceTracker(max_iter)
 
         # Main iteration loop
-        converged = False
         final_result = ConvergenceResult(
             converged=False,
             reason="Maximum iterations reached",
@@ -273,7 +267,7 @@ class FixedPointIteratorBase(ABC, Generic[StateT]):
             errors = self.compute_error(old_state, state)
 
             # Separate relative and absolute errors
-            rel_errors = {k: v for k, v in errors.items() if "_rel" in k or not ("_abs" in k)}
+            rel_errors = {k: v for k, v in errors.items() if "_rel" in k or "_abs" not in k}
             abs_errors = {k: v for k, v in errors.items() if "_abs" in k}
 
             # If no explicit separation, treat all as relative
@@ -291,7 +285,6 @@ class FixedPointIteratorBase(ABC, Generic[StateT]):
             result = check_convergence(rel_errors, abs_errors, tol)
             if result.converged:
                 final_result = result
-                converged = True
                 break
 
             final_result = result
