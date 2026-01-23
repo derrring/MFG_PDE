@@ -177,14 +177,20 @@ class FDMApplicator(BaseStructuredApplicator):
         Returns:
             Padded field with ghost cells
         """
-        if self._dimension == 1:
-            return apply_boundary_conditions_1d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
-        elif self._dimension == 2:
-            return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
-        elif self._dimension == 3:
-            return apply_boundary_conditions_3d(field, boundary_conditions, domain_bounds, time, self._config, geometry)
-        else:
+        # Issue #645: Use dimension-agnostic pad_array_with_ghosts()
+        # For region-based BCs that need geometry, fall back to legacy path.
+        has_region_based = False
+        if hasattr(boundary_conditions, "segments"):
+            for seg in boundary_conditions.segments:
+                if getattr(seg, "region_name", None) is not None:
+                    has_region_based = True
+                    break
+
+        if has_region_based:
+            # Region-based BCs need geometry parameter - use legacy path
             return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, self._config, geometry)
+
+        return pad_array_with_ghosts(field, boundary_conditions, ghost_depth=1, time=time)
 
     @staticmethod
     def apply_1d(
@@ -195,7 +201,8 @@ class FDMApplicator(BaseStructuredApplicator):
         config: GhostCellConfig | None = None,
     ) -> NDArray[np.floating]:
         """Static method for 1D BC application."""
-        return apply_boundary_conditions_1d(field, boundary_conditions, domain_bounds, time, config)
+        # Issue #645: Use dimension-agnostic pad_array_with_ghosts()
+        return pad_array_with_ghosts(field, boundary_conditions, ghost_depth=1, time=time)
 
     @staticmethod
     def apply_2d(
@@ -206,7 +213,8 @@ class FDMApplicator(BaseStructuredApplicator):
         config: GhostCellConfig | None = None,
     ) -> NDArray[np.floating]:
         """Static method for 2D BC application."""
-        return apply_boundary_conditions_2d(field, boundary_conditions, domain_bounds, time, config)
+        # Issue #645: Use dimension-agnostic pad_array_with_ghosts()
+        return pad_array_with_ghosts(field, boundary_conditions, ghost_depth=1, time=time)
 
     @staticmethod
     def apply_3d(
@@ -217,7 +225,8 @@ class FDMApplicator(BaseStructuredApplicator):
         config: GhostCellConfig | None = None,
     ) -> NDArray[np.floating]:
         """Static method for 3D BC application."""
-        return apply_boundary_conditions_3d(field, boundary_conditions, domain_bounds, time, config)
+        # Issue #645: Use dimension-agnostic pad_array_with_ghosts()
+        return pad_array_with_ghosts(field, boundary_conditions, ghost_depth=1, time=time)
 
     @staticmethod
     def apply_nd(
@@ -228,7 +237,8 @@ class FDMApplicator(BaseStructuredApplicator):
         config: GhostCellConfig | None = None,
     ) -> NDArray[np.floating]:
         """Static method for nD BC application."""
-        return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, config)
+        # Issue #645: Use dimension-agnostic pad_array_with_ghosts()
+        return pad_array_with_ghosts(field, boundary_conditions, ghost_depth=1, time=time)
 
     def enforce_values(
         self,

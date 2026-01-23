@@ -24,11 +24,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from .applicator_base import DiscretizationType
 
 if TYPE_CHECKING:
+    import numpy as np
     from numpy.typing import NDArray
 
     from mfg_pde.geometry.protocol import GeometryProtocol
@@ -158,55 +157,49 @@ def apply_bc(
     if isinstance(discretization, str):
         discretization = DiscretizationType[discretization.upper()]
 
-    # Get domain bounds from geometry
-    bounds = geometry.get_bounds()
-    if bounds is None:
-        # Unbounded domain - use field range or default
-        domain_bounds = None
-    else:
-        min_coords, max_coords = bounds
-        domain_bounds = np.column_stack([min_coords, max_coords])
-
     if discretization == DiscretizationType.FDM:
-        # Use dimension-specific FDM applicators
-        dim = geometry.dimension
+        # Issue #645: Use dimension-agnostic pad_array_with_ghosts()
+        # for simple BCs. For region-based BCs that need geometry,
+        # fall back to apply_boundary_conditions_nd (until geometry
+        # support is added to pad_array_with_ghosts).
+        from .applicator_fdm import pad_array_with_ghosts
 
-        if dim == 1:
-            from .applicator_fdm import apply_boundary_conditions_1d
+        # Check if any BC segment uses region_name (requires geometry)
+        has_region_based = False
+        if hasattr(boundary_conditions, "segments"):
+            for seg in boundary_conditions.segments:
+                if getattr(seg, "region_name", None) is not None:
+                    has_region_based = True
+                    break
 
-            return apply_boundary_conditions_1d(
-                field,
-                boundary_conditions,
-                domain_bounds=domain_bounds,
-                time=time,
-            )
-        elif dim == 2:
-            from .applicator_fdm import apply_boundary_conditions_2d
+        if has_region_based:
+            # Region-based BCs need geometry parameter - use legacy path
+            from ._compat import apply_boundary_conditions_nd
 
-            return apply_boundary_conditions_2d(
-                field,
-                boundary_conditions,
-                domain_bounds=domain_bounds,
-                time=time,
-            )
-        elif dim == 3:
-            from .applicator_fdm import apply_boundary_conditions_3d
+            # Get domain bounds from geometry
+            bounds = geometry.get_bounds()
+            if bounds is not None:
+                import numpy as np
 
-            return apply_boundary_conditions_3d(
-                field,
-                boundary_conditions,
-                domain_bounds=domain_bounds,
-                time=time,
-            )
-        else:
-            from .applicator_fdm import apply_boundary_conditions_nd
+                min_coords, max_coords = bounds
+                domain_bounds = np.column_stack([min_coords, max_coords])
+            else:
+                domain_bounds = None
 
             return apply_boundary_conditions_nd(
                 field,
                 boundary_conditions,
                 domain_bounds=domain_bounds,
                 time=time,
+                geometry=geometry,
             )
+
+        return pad_array_with_ghosts(
+            field,
+            boundary_conditions,
+            ghost_depth=ghost_depth,
+            time=time,
+        )
 
     elif discretization in (DiscretizationType.GFDM, DiscretizationType.MESHFREE):
         # Meshfree: use MeshfreeApplicator with unified API

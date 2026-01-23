@@ -74,7 +74,7 @@ class GhostCellConfig:
 @deprecated(
     since="v0.17.0",
     replacement="Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
-    removal_blockers=["internal_usage"],  # Migration in progress (Issue #577)
+    # Issue #645: internal_usage blocker cleared - dispatch.py and applicator_fdm.py migrated
 )
 def apply_boundary_conditions_2d(
     field: NDArray[np.floating],
