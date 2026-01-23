@@ -32,10 +32,13 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
+    from .conditions import BoundaryConditions
+
 from mfg_pde.geometry.protocol import GeometryProtocol
 
 # Import base class for inheritance
 from .applicator_base import BaseMeshfreeApplicator
+from .types import BCType
 
 
 class MeshfreeApplicator(BaseMeshfreeApplicator):
@@ -313,6 +316,173 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
             Dictionary mapping region names to region info
         """
         return self.geometry.get_boundary_regions()
+
+    # =========================================================================
+    # Unified API (Issue #636 Phase 2)
+    # =========================================================================
+
+    def apply(
+        self,
+        field: NDArray[np.floating],
+        boundary_conditions: BoundaryConditions,
+        points: NDArray[np.floating],
+        time: float = 0.0,
+    ) -> NDArray[np.floating]:
+        """
+        Apply boundary conditions to field values using unified BoundaryConditions.
+
+        This is the unified API that accepts BoundaryConditions objects,
+        mapping BCType to internal methods automatically.
+
+        Args:
+            field: Field values at collocation points - shape (N,)
+            boundary_conditions: BC specification (unified BoundaryConditions)
+            points: Collocation point positions - shape (N, d)
+            time: Current time for time-dependent BC values
+
+        Returns:
+            Updated field values with BC applied
+
+        BC Type Mapping:
+            - BCType.DIRICHLET → Direct value assignment at boundary
+            - BCType.NEUMANN → Not directly applicable (raises error)
+            - BCType.ROBIN → Penalty method with α, β weights
+            - BCType.PERIODIC → Not applicable for field values
+            - BCType.NO_FLUX → Zero gradient (extrapolation)
+
+        Examples:
+            >>> from mfg_pde.geometry.boundary import dirichlet_bc
+            >>> bc = dirichlet_bc(dimension=2, value=0.0)
+            >>> u_with_bc = applicator.apply(u, bc, points)
+        """
+        field = field.copy()
+        points = np.atleast_2d(points)
+
+        # Find boundary points
+        on_boundary = self.geometry.is_on_boundary(points)
+
+        if not np.any(on_boundary):
+            return field
+
+        # Get BC type (uniform BC for now)
+        bc_type = boundary_conditions.default_bc
+
+        if bc_type == BCType.DIRICHLET:
+            # Get Dirichlet value
+            bc_value = boundary_conditions.default_value
+            if bc_value is None:
+                bc_value = 0.0
+            field[on_boundary] = bc_value
+
+        elif bc_type == BCType.NEUMANN:
+            # Neumann BC requires derivative operators
+            raise NotImplementedError(
+                "Neumann BC for meshfree methods requires solver-specific derivative operators. "
+                "Use the solver's infrastructure to enforce Neumann conditions."
+            )
+
+        elif bc_type == BCType.ROBIN:
+            # Robin BC: α*u + β*du/dn = g
+            # For meshfree without derivative info, use penalty approximation
+            alpha = getattr(boundary_conditions, "alpha", 1.0)
+            beta = getattr(boundary_conditions, "beta", 0.0)
+            bc_value = boundary_conditions.default_value
+            if bc_value is None:
+                bc_value = 0.0
+
+            if np.isclose(beta, 0.0):
+                # Pure Dirichlet: u = g/α
+                field[on_boundary] = bc_value / alpha if not np.isclose(alpha, 0.0) else bc_value
+            else:
+                # Use penalty method as approximation
+                penalty_weight = abs(alpha / beta) if not np.isclose(beta, 0.0) else 1e6
+                field[on_boundary] = (field[on_boundary] + penalty_weight * bc_value) / (1 + penalty_weight)
+
+        elif bc_type == BCType.NO_FLUX:
+            # Zero flux: du/dn = 0
+            # For meshfree, this means boundary values should match nearby interior
+            # We approximate by keeping current values (no modification)
+            pass
+
+        elif bc_type == BCType.PERIODIC:
+            # Periodic BC doesn't apply directly to field values at points
+            # Would need to handle during interpolation/evaluation
+            raise NotImplementedError(
+                "Periodic BC for field values requires special handling during interpolation. "
+                "Use apply_particles() for particle-based periodic BC."
+            )
+
+        else:
+            raise ValueError(f"Unsupported BC type for meshfree: {bc_type}")
+
+        return field
+
+    def apply_particles(
+        self,
+        particles: NDArray[np.floating],
+        boundary_conditions: BoundaryConditions,
+    ) -> NDArray[np.floating]:
+        """
+        Apply boundary conditions to particle positions using unified BoundaryConditions.
+
+        This is the unified API that accepts BoundaryConditions objects,
+        mapping BCType to particle BC behavior automatically.
+
+        Args:
+            particles: Particle positions - shape (N, d)
+            boundary_conditions: BC specification (unified BoundaryConditions)
+
+        Returns:
+            Updated particle positions
+
+        BC Type Mapping:
+            - BCType.NEUMANN (zero-flux) → Reflecting BC
+            - BCType.NO_FLUX → Reflecting BC
+            - BCType.DIRICHLET → Absorbing BC (particles removed at boundary)
+            - BCType.PERIODIC → Wrap-around BC
+            - BCType.ROBIN with β >> α → Reflecting BC
+            - BCType.ROBIN with α >> β → Absorbing BC
+
+        Examples:
+            >>> from mfg_pde.geometry.boundary import neumann_bc
+            >>> bc = neumann_bc(dimension=2)  # Zero-flux = reflecting
+            >>> particles_updated = applicator.apply_particles(particles, bc)
+        """
+        bc_type = boundary_conditions.default_bc
+
+        if bc_type == BCType.NEUMANN:
+            # Zero-flux Neumann → reflecting BC for particles
+            return self.apply_particle_bc(particles, "reflecting")
+
+        elif bc_type == BCType.NO_FLUX:
+            # Explicit no-flux → reflecting BC
+            return self.apply_particle_bc(particles, "reflecting")
+
+        elif bc_type == BCType.DIRICHLET:
+            # Dirichlet → absorbing BC (particles "exit" at boundary)
+            return self.apply_particle_bc(particles, "absorbing")
+
+        elif bc_type == BCType.PERIODIC:
+            # Periodic → wrap-around
+            return self.apply_particle_bc(particles, "periodic")
+
+        elif bc_type == BCType.ROBIN:
+            # Robin: behavior depends on α/β ratio
+            alpha = getattr(boundary_conditions, "alpha", 1.0)
+            beta = getattr(boundary_conditions, "beta", 0.0)
+
+            if np.isclose(beta, 0.0):
+                # Pure Dirichlet-like → absorbing
+                return self.apply_particle_bc(particles, "absorbing")
+            elif np.isclose(alpha, 0.0):
+                # Pure Neumann-like → reflecting
+                return self.apply_particle_bc(particles, "reflecting")
+            else:
+                # Mixed Robin → default to reflecting (mass conservation)
+                return self.apply_particle_bc(particles, "reflecting")
+
+        else:
+            raise ValueError(f"Unsupported BC type for particles: {bc_type}")
 
 
 class SDFParticleBCHandler:

@@ -68,7 +68,7 @@ def get_applicator_for_geometry(
     """
     # Normalize discretization type
     if isinstance(discretization, str):
-        discretization = DiscretizationType(discretization.upper())
+        discretization = DiscretizationType[discretization.upper()]
 
     dim = geometry.dimension
 
@@ -115,6 +115,7 @@ def apply_bc(
     time: float = 0.0,
     discretization: DiscretizationType | str = DiscretizationType.FDM,
     ghost_depth: int = 1,
+    points: NDArray[np.floating] | None = None,
 ) -> NDArray[np.floating]:
     """
     Apply boundary conditions to a field using geometry-appropriate method.
@@ -131,6 +132,8 @@ def apply_bc(
         time: Time for time-dependent BCs (default: 0.0)
         discretization: Discretization method (default: FDM)
         ghost_depth: Ghost cell depth for FDM (default: 1)
+        points: Collocation points for meshfree methods (optional).
+                If not provided, uses geometry.get_collocation_points().
 
     Returns:
         Field with BCs applied (padded for FDM, modified for FEM/GFDM)
@@ -153,7 +156,7 @@ def apply_bc(
     """
     # Normalize discretization type
     if isinstance(discretization, str):
-        discretization = DiscretizationType(discretization.upper())
+        discretization = DiscretizationType[discretization.upper()]
 
     # Get domain bounds from geometry
     bounds = geometry.get_bounds()
@@ -206,12 +209,17 @@ def apply_bc(
             )
 
     elif discretization in (DiscretizationType.GFDM, DiscretizationType.MESHFREE):
-        # Meshfree: use MeshfreeApplicator
+        # Meshfree: use MeshfreeApplicator with unified API
         from .applicator_meshfree import MeshfreeApplicator
 
         applicator = MeshfreeApplicator(geometry=geometry)
-        # MeshfreeApplicator applies BCs differently (modifies at collocation points)
-        return applicator.apply_dirichlet(field, boundary_conditions)
+
+        # Get collocation points if not provided
+        if points is None:
+            points = geometry.get_collocation_points()
+
+        # Use unified apply() method (Issue #636 Phase 2)
+        return applicator.apply(field, boundary_conditions, points, time=time)
 
     elif discretization == DiscretizationType.FEM:
         # FEM: would modify matrix/rhs, not field directly
@@ -253,7 +261,7 @@ def validate_bc_compatibility(
 
     # Normalize discretization
     if isinstance(discretization, str):
-        discretization = DiscretizationType(discretization.upper())
+        discretization = DiscretizationType[discretization.upper()]
 
     # Check dimension match
     if boundary_conditions.dimension != geometry.dimension:
