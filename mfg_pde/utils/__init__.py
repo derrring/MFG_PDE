@@ -8,12 +8,19 @@ For visualization, use:
     from mfg_pde.visualization import create_visualization_manager
     from mfg_pde.visualization import plot_convergence, plot_results
 
+For logging (preferred import path):
+    from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
+
 Organization:
-- logging/: Logging utilities and decorators
+- mfg_logging/: Logging utilities and decorators (preferred import path)
 - performance/: Performance monitoring and optimization
 - notebooks/: Jupyter notebook integration
 - numerical/: Numerical computation utilities
 - data/: Data handling and validation
+
+Deprecation Note (v0.19.0):
+    Logging re-exports at this level (e.g., `from mfg_pde.utils import get_logger`)
+    are deprecated. Import directly from `mfg_pde.utils.mfg_logging` instead.
 """
 
 # NOTE: The `logging` alias (from . import mfg_logging as logging) was removed in v0.17.0
@@ -106,6 +113,12 @@ from .geometry import (
     create_sphere_obstacle,
 )
 from .hamiltonian_adapter import HamiltonianAdapter, adapt_hamiltonian, create_hamiltonian_adapter
+
+# =============================================================================
+# Logging utilities - DEPRECATED at this level (Issue #620 Phase 2)
+# Prefer: from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
+# These re-exports will be removed in v0.19.0
+# =============================================================================
 from .mfg_logging.decorators import (
     LoggingMixin,
     add_logging_to_class,
