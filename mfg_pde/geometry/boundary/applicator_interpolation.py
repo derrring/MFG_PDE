@@ -284,9 +284,11 @@ class InterpolationApplicator(BaseBCApplicator):
 
         # Unified BoundaryConditions
         # Try to get value from get_bc_value_at_boundary if available
-        if hasattr(bc, "get_bc_value_at_boundary"):
+        # Issue #643: getattr+callable pattern
+        get_bc_value_method = getattr(bc, "get_bc_value_at_boundary", None)
+        if get_bc_value_method is not None and callable(get_bc_value_method):
             try:
-                value = bc.get_bc_value_at_boundary(boundary_name, time=time)
+                value = get_bc_value_method(boundary_name, time=time)
                 return float(value) if value is not None else None
             except (AttributeError, ValueError, KeyError):
                 pass
