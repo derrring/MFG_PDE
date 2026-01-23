@@ -538,12 +538,16 @@ class FPFDMSolver(BaseFPSolver):
                 self.problem.sigma = effective_sigma
 
             try:
-                return self._solve_fp_1d(M_initial, effective_U, show_progress)
+                return self._solve_fp_1d(M_initial, effective_U, show_progress, progress_callback)
             finally:
                 self.problem.sigma = original_sigma
 
     def _solve_fp_1d(
-        self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray, show_progress: bool = True
+        self,
+        m_initial_condition: np.ndarray,
+        U_solution_for_drift: np.ndarray,
+        show_progress: bool = True,
+        progress_callback: Callable[[int], None] | None = None,  # Issue #640
     ) -> np.ndarray:
         """Original 1D FP solver implementation."""
         # Use geometry-based interface (geometry is always available)
@@ -594,10 +598,13 @@ class FPFDMSolver(BaseFPSolver):
 
         # Progress bar for forward timesteps
         # Forward FP loop: (n_time_points - 1) steps from index 0 to (n_time_points - 2)
-        from mfg_pde.utils.progress import RichProgressBar
-
+        # Issue #640: When progress_callback is provided (from HierarchicalProgress),
+        # suppress internal bar to avoid duplicate progress display
+        use_external_progress = progress_callback is not None
         timestep_range = range(n_time_points - 1)
-        if show_progress:
+        if show_progress and not use_external_progress:
+            from mfg_pde.utils.progress import RichProgressBar
+
             timestep_range = RichProgressBar(
                 timestep_range,
                 desc="FP (forward)",
@@ -928,6 +935,10 @@ class FPFDMSolver(BaseFPSolver):
                 # No additional enforcement needed - no-flux is built into the discretization
                 # Ensure non-negativity
                 m[k_idx_fp + 1, :] = np.maximum(m[k_idx_fp + 1, :], 0)
+
+            # Issue #640: Report progress to hierarchical progress bar
+            if progress_callback is not None:
+                progress_callback(1)
 
         return m
 
