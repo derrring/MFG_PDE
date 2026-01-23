@@ -19,16 +19,13 @@ the forward_step() method for their specific problem type.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, Protocol, TypeVar, runtime_checkable
+from typing import Protocol, runtime_checkable
 
-from ..convergence import ConvergenceResult, ConvergenceTracker, check_convergence
-
-# Generic type for iteration state
-StateT = TypeVar("StateT")
+from mfg_pde.alg.iterative.convergence import ConvergenceResult, ConvergenceTracker, check_convergence
 
 
 @runtime_checkable
-class PicardPattern(Protocol[StateT]):
+class PicardPattern[StateT](Protocol):
     """
     Protocol for Picard (fixed-point) iteration.
 
@@ -86,7 +83,7 @@ class PicardPattern(Protocol[StateT]):
         ...
 
 
-class FixedPointIteratorBase(ABC, Generic[StateT]):
+class FixedPointIteratorBase[StateT](ABC):
     """
     Base class for fixed-point (Picard) iterators.
 
@@ -195,17 +192,17 @@ class FixedPointIteratorBase(ABC, Generic[StateT]):
         """
         return state
 
-    def on_iteration_start(self, iteration: int, state: StateT) -> None:
-        """Hook called at start of each iteration."""
+    def on_iteration_start(self, iteration: int, state: StateT) -> None:  # noqa: B027
+        """Hook called at start of each iteration (subclass override point)."""
 
-    def on_iteration_end(
+    def on_iteration_end(  # noqa: B027
         self,
         iteration: int,
         old_state: StateT,
         new_state: StateT,
         errors: dict[str, float],
     ) -> None:
-        """Hook called at end of each iteration."""
+        """Hook called at end of each iteration (subclass override point)."""
 
     def solve(
         self,
