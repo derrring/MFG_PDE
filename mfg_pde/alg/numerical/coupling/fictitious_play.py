@@ -36,6 +36,15 @@ import numpy as np
 
 from mfg_pde.utils.solver_result import SolverResult
 
+# Import shared iteration utilities (Issue #630)
+from mfg_pde.alg.iterative.schedules import (
+    LEARNING_RATE_SCHEDULES,
+    get_schedule,
+    harmonic_schedule,
+    polynomial_schedule,
+    sqrt_schedule,
+)
+
 from .base_mfg import BaseMFGSolver
 from .fixed_point_utils import (
     check_convergence_criteria,
@@ -51,29 +60,6 @@ if TYPE_CHECKING:
     from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
     from mfg_pde.config import MFGSolverConfig
     from mfg_pde.problem.base_mfg_problem import MFGProblem
-
-
-# Learning rate schedule functions
-def harmonic_schedule(k: int) -> float:
-    """Harmonic learning rate: alpha(k) = 1 / (k + 1)."""
-    return 1.0 / (k + 1)
-
-
-def sqrt_schedule(k: int) -> float:
-    """Square root learning rate: alpha(k) = 1 / sqrt(k + 1)."""
-    return 1.0 / np.sqrt(k + 1)
-
-
-def polynomial_schedule(k: int, power: float = 0.6) -> float:
-    """Polynomial learning rate: alpha(k) = 1 / (k + 1)^power."""
-    return 1.0 / (k + 1) ** power
-
-
-LEARNING_RATE_SCHEDULES: dict[str, Callable[[int], float]] = {
-    "harmonic": harmonic_schedule,
-    "sqrt": sqrt_schedule,
-    "polynomial": lambda k: polynomial_schedule(k, power=0.6),
-}
 
 
 class FictitiousPlayIterator(BaseMFGSolver):
@@ -152,18 +138,9 @@ class FictitiousPlayIterator(BaseMFGSolver):
         self.min_learning_rate = min_learning_rate
         self.damp_value_function = damp_value_function
 
-        # Set up learning rate schedule
-        if isinstance(learning_rate_schedule, str):
-            if learning_rate_schedule not in LEARNING_RATE_SCHEDULES:
-                raise ValueError(
-                    f"Unknown learning rate schedule: {learning_rate_schedule}. "
-                    f"Available: {list(LEARNING_RATE_SCHEDULES.keys())}"
-                )
-            self._lr_schedule_fn = LEARNING_RATE_SCHEDULES[learning_rate_schedule]
-            self._lr_schedule_name = learning_rate_schedule
-        else:
-            self._lr_schedule_fn = learning_rate_schedule
-            self._lr_schedule_name = "custom"
+        # Set up learning rate schedule (Issue #630: use shared schedules)
+        self._lr_schedule_fn = get_schedule(learning_rate_schedule)
+        self._lr_schedule_name = learning_rate_schedule if isinstance(learning_rate_schedule, str) else "custom"
 
         # PDE coefficient overrides
         self.diffusion_field = diffusion_field
