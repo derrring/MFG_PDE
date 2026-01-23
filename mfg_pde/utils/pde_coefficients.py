@@ -689,35 +689,17 @@ def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]
         raise AttributeError("Problem must have geometry.coordinates attribute")
 
 
-class DriftField:
+class _DriftDispatcher:
     """
-    Unified interface for drift/velocity field in FP equation (Issue #641).
+    Internal data dispatcher for drift/velocity in FP equation (Issue #641).
 
-    Handles three drift modes:
-    1. Zero drift (drift_field=None): Pure diffusion case
-    2. Array drift (drift_field=ndarray): Precomputed U field for MFG coupling
-    3. Callable drift (drift_field=callable): State-dependent velocity α(t, x, m)
+    This is an **internal** class for FP solver plumbing. For user-facing
+    MFG drift computation, use `DriftField` instead.
 
-    The key difference from CoefficientField is that DriftField handles two output modes:
-    - **Callable mode**: Returns velocity field directly
-    - **Array/MFG mode**: Returns U slice (gradient computed in timestep solver)
-
-    This dual-mode design matches the FP solver architecture where:
-    - Callable drift provides velocity directly to explicit solvers
-    - Array drift provides U values for implicit solvers that compute gradients internally
-
-    Relationship to HamiltonianBase (Issue #623):
-        DriftField handles **data management** (when/how to evaluate).
-        HamiltonianBase (future) handles **physics** (what drift should be).
-
-        In full MFG coupling:
-        1. DriftField.get_U_at(k) extracts U slice
-        2. Gradient operator computes ∇U
-        3. HamiltonianBase.compute_drift(∇U) returns α* = -∇U/λ (or +∇U/λ for utility)
-        4. FP solver uses α* as drift
-
-        Currently, step (3) is embedded in timestep solvers. Issue #623 will
-        extract it into a formal Hamiltonian abstraction.
+    Handles data dispatch (when/how to get drift values):
+    1. Zero drift (None): Pure diffusion, no advection
+    2. Array drift (ndarray): Precomputed U field, gradient computed in solver
+    3. Callable drift (callable): Custom velocity function α(t, x, m)
 
     Parameters
     ----------
@@ -732,23 +714,6 @@ class DriftField:
         Spatial grid shape
     dimension : int
         Spatial dimension
-
-    Examples
-    --------
-    Zero drift (pure diffusion):
-    >>> drift = DriftField(None, Nt=100, spatial_shape=(50,), dimension=1)
-    >>> u_k = drift.get_U_at(timestep=10)  # Returns zeros
-
-    MFG coupling (array U):
-    >>> U_solution = np.zeros((100, 50))  # From HJB solver
-    >>> drift = DriftField(U_solution, Nt=100, spatial_shape=(50,), dimension=1)
-    >>> u_k = drift.get_U_at(timestep=10)  # Returns U[10, :]
-
-    Callable velocity:
-    >>> def velocity(t, x, m):
-    ...     return -np.sin(2 * np.pi * x)  # Wind field
-    >>> drift = DriftField(velocity, Nt=100, spatial_shape=(50,), dimension=1)
-    >>> v = drift.evaluate_velocity_at(10, x_coords, density, dt=0.01)
     """
 
     def __init__(
@@ -873,17 +838,16 @@ class DriftField:
         return result
 
 
-class MFGDriftField:
+class DriftField:
     """
-    Full MFG drift computation from value function U and control cost (Issue #623).
+    MFG drift field: computes optimal control α* from value function U (Issue #623).
 
-    This class encapsulates the complete MFG coupling:
+    Encapsulates the complete MFG coupling:
     1. Extract U slice at timestep
     2. Compute gradient ∇U using geometry
     3. Apply optimal control formula via ControlCostBase
 
-    This is the "physics-aware" drift field that understands the relationship
-    between value function and drift. Use this when you have:
+    This is the user-facing class for MFG drift computation. Use this when you have:
     - A value function U from HJB solver
     - A control cost specification (quadratic, L1, bounded, etc.)
     - A geometry that provides gradient computation
@@ -904,13 +868,13 @@ class MFGDriftField:
     Standard MFG coupling:
     >>> from mfg_pde.core import QuadraticControlCost, OptimizationSense
     >>> cost = QuadraticControlCost(sense=OptimizationSense.MINIMIZE, control_cost=1.0)
-    >>> drift = MFGDriftField(U_solution, cost, problem.geometry)
+    >>> drift = DriftField(U_solution, cost, problem.geometry)
     >>> velocity = drift.get_velocity_at(k, density)
 
     L1 (bang-bang) control:
     >>> from mfg_pde.core import L1ControlCost
     >>> cost = L1ControlCost(control_cost=0.5)
-    >>> drift = MFGDriftField(U_solution, cost, problem.geometry)
+    >>> drift = DriftField(U_solution, cost, problem.geometry)
     >>> velocity = drift.get_velocity_at(k, density)  # Returns ±1 or 0
     """
 
@@ -996,9 +960,26 @@ class MFGDriftField:
         return self.control_cost.optimal_control(momentum)
 
     def is_callable(self) -> bool:
-        """MFGDriftField is never callable (it's U-based)."""
+        """DriftField is never callable (it's U-based)."""
         return False
 
     def is_zero(self) -> bool:
         """Check if all U values are zero."""
         return np.allclose(self.U_solution, 0)
+
+
+def MFGDriftField(*args, **kwargs):
+    """
+    Deprecated alias for DriftField.
+
+    .. deprecated:: 0.17.1
+        Use `DriftField` instead. Will be removed in v1.0.0.
+    """
+    import warnings
+
+    warnings.warn(
+        "MFGDriftField is deprecated since v0.17.1. Use DriftField instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return DriftField(*args, **kwargs)

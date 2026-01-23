@@ -65,7 +65,7 @@ from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.boundary.applicator_base import (
     LinearConstraint,
 )
-from mfg_pde.utils.pde_coefficients import CoefficientField, DriftField
+from mfg_pde.utils.pde_coefficients import CoefficientField, _DriftDispatcher
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -529,8 +529,8 @@ def solve_fp_nd_full_system(
     else:
         raise ValueError("Either U_solution_for_drift must be provided or drift_field must be callable")
 
-    # Issue #641: Create unified DriftField for cleaner time loop
-    drift = DriftField(
+    # Issue #641: Create unified _DriftDispatcher for cleaner time loop
+    drift = _DriftDispatcher(
         drift_field=drift_field if use_callable_drift else U_solution_for_drift,
         Nt=Nt,
         spatial_shape=shape,
@@ -617,7 +617,7 @@ def solve_fp_nd_full_system(
     for k in timestep_range:
         M_current = M_solution[k]
 
-        # Determine drift source using DriftField evaluator (Issue #641)
+        # Determine drift source using _DriftDispatcher evaluator (Issue #641)
         if drift.is_callable():
             # Callable drift: evaluate velocity directly
             # Drift callable signature: (t, x_coords, m) -> drift_array
