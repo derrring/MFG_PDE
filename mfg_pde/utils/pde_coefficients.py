@@ -687,3 +687,187 @@ def get_spatial_grid(problem: MFGProblem) -> np.ndarray | tuple[np.ndarray, ...]
         return tuple(coords)
     else:
         raise AttributeError("Problem must have geometry.coordinates attribute")
+
+
+class DriftField:
+    """
+    Unified interface for drift/velocity field in FP equation (Issue #641).
+
+    Handles three drift modes:
+    1. Zero drift (drift_field=None): Pure diffusion case
+    2. Array drift (drift_field=ndarray): Precomputed U field for MFG coupling
+    3. Callable drift (drift_field=callable): State-dependent velocity α(t, x, m)
+
+    The key difference from CoefficientField is that DriftField handles two output modes:
+    - **Callable mode**: Returns velocity field directly
+    - **Array/MFG mode**: Returns U slice (gradient computed in timestep solver)
+
+    This dual-mode design matches the FP solver architecture where:
+    - Callable drift provides velocity directly to explicit solvers
+    - Array drift provides U values for implicit solvers that compute gradients internally
+
+    Relationship to HamiltonianBase (Issue #623):
+        DriftField handles **data management** (when/how to evaluate).
+        HamiltonianBase (future) handles **physics** (what drift should be).
+
+        In full MFG coupling:
+        1. DriftField.get_U_at(k) extracts U slice
+        2. Gradient operator computes ∇U
+        3. HamiltonianBase.compute_drift(∇U) returns α* = -∇U/λ (or +∇U/λ for utility)
+        4. FP solver uses α* as drift
+
+        Currently, step (3) is embedded in timestep solvers. Issue #623 will
+        extract it into a formal Hamiltonian abstraction.
+
+    Parameters
+    ----------
+    drift_field : None | ndarray | Callable
+        Drift specification:
+        - None: Zero drift (pure diffusion)
+        - ndarray: Precomputed U field, shape (Nt, *spatial_shape)
+        - Callable: State-dependent drift α(t, x, m) -> velocity
+    Nt : int
+        Number of timesteps (used for zero drift allocation)
+    spatial_shape : tuple
+        Spatial grid shape
+    dimension : int
+        Spatial dimension
+
+    Examples
+    --------
+    Zero drift (pure diffusion):
+    >>> drift = DriftField(None, Nt=100, spatial_shape=(50,), dimension=1)
+    >>> u_k = drift.get_U_at(timestep=10)  # Returns zeros
+
+    MFG coupling (array U):
+    >>> U_solution = np.zeros((100, 50))  # From HJB solver
+    >>> drift = DriftField(U_solution, Nt=100, spatial_shape=(50,), dimension=1)
+    >>> u_k = drift.get_U_at(timestep=10)  # Returns U[10, :]
+
+    Callable velocity:
+    >>> def velocity(t, x, m):
+    ...     return -np.sin(2 * np.pi * x)  # Wind field
+    >>> drift = DriftField(velocity, Nt=100, spatial_shape=(50,), dimension=1)
+    >>> v = drift.evaluate_velocity_at(10, x_coords, density, dt=0.01)
+    """
+
+    def __init__(
+        self,
+        drift_field: None | np.ndarray | Callable,
+        Nt: int,
+        spatial_shape: tuple,
+        dimension: int = 1,
+    ):
+        self.field = drift_field
+        self.Nt = Nt
+        self.spatial_shape = spatial_shape
+        self.dimension = dimension
+
+        # Cache type checks
+        self._is_none = drift_field is None
+        self._is_array = isinstance(drift_field, np.ndarray)
+        self._is_callable = callable(drift_field) and not isinstance(drift_field, np.ndarray)
+
+        # For zero drift, create lazily
+        self._zero_U: np.ndarray | None = None
+
+    def is_callable(self) -> bool:
+        """Check if using callable (state-dependent) drift."""
+        return self._is_callable
+
+    def is_zero(self) -> bool:
+        """Check if using zero drift (pure diffusion)."""
+        return self._is_none
+
+    def is_array(self) -> bool:
+        """Check if using precomputed array drift."""
+        return self._is_array
+
+    def get_U_at(self, timestep_idx: int) -> np.ndarray:
+        """
+        Get U slice at specific timestep for array/MFG drift.
+
+        For implicit solvers that compute gradients internally.
+
+        Parameters
+        ----------
+        timestep_idx : int
+            Timestep index
+
+        Returns
+        -------
+        ndarray
+            U values at timestep, shape matches spatial_shape
+
+        Raises
+        ------
+        ValueError
+            If called on callable drift (use evaluate_velocity_at instead)
+        """
+        if self._is_callable:
+            raise ValueError("Cannot get U slice for callable drift. Use evaluate_velocity_at() instead.")
+
+        if self._is_none:
+            # Lazy creation of zero U field
+            if self._zero_U is None:
+                self._zero_U = np.zeros((self.Nt, *self.spatial_shape))
+            return self._zero_U[timestep_idx]
+
+        if self._is_array:
+            return self.field[timestep_idx]
+
+        raise TypeError(f"Unexpected drift_field type: {type(self.field)}")
+
+    def evaluate_velocity_at(
+        self,
+        timestep_idx: int,
+        grid: np.ndarray | tuple[np.ndarray, ...],
+        density: np.ndarray,
+        dt: float | None = None,
+    ) -> np.ndarray:
+        """
+        Evaluate velocity field at specific timestep for callable drift.
+
+        For explicit solvers that use velocity directly.
+
+        Parameters
+        ----------
+        timestep_idx : int
+            Timestep index
+        grid : ndarray | tuple[ndarray, ...]
+            Spatial coordinates
+        density : ndarray
+            Current density field
+        dt : float | None
+            Timestep size for computing physical time
+
+        Returns
+        -------
+        ndarray
+            Velocity field at timestep
+
+        Raises
+        ------
+        ValueError
+            If called on non-callable drift (use get_U_at instead)
+        """
+        if not self._is_callable:
+            raise ValueError("Cannot evaluate velocity for non-callable drift. Use get_U_at() instead.")
+
+        # Compute physical time
+        t_current = timestep_idx * dt if dt is not None else float(timestep_idx)
+
+        # Call the velocity function
+        result = self.field(t_current, grid, density)
+
+        # Validate output
+        if isinstance(result, (int, float)):
+            result = np.full(self.spatial_shape, float(result))
+        elif not isinstance(result, np.ndarray):
+            raise TypeError(f"Drift callable must return float or ndarray, got {type(result)}")
+
+        # Check for NaN/Inf
+        if np.any(np.isnan(result)) or np.any(np.isinf(result)):
+            raise ValueError(f"Drift callable returned NaN or Inf at timestep {timestep_idx}")
+
+        return result

@@ -65,7 +65,7 @@ from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.boundary.applicator_base import (
     LinearConstraint,
 )
-from mfg_pde.utils.pde_coefficients import CoefficientField
+from mfg_pde.utils.pde_coefficients import CoefficientField, DriftField
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -529,6 +529,14 @@ def solve_fp_nd_full_system(
     else:
         raise ValueError("Either U_solution_for_drift must be provided or drift_field must be callable")
 
+    # Issue #641: Create unified DriftField for cleaner time loop
+    drift = DriftField(
+        drift_field=drift_field if use_callable_drift else U_solution_for_drift,
+        Nt=Nt,
+        spatial_shape=shape,
+        dimension=ndim,
+    )
+
     # Handle tensor diffusion (Phase 3.0) vs scalar diffusion
     use_tensor_diffusion = tensor_diffusion_field is not None
 
@@ -608,19 +616,19 @@ def solve_fp_nd_full_system(
     # Time evolution loop (forward in time)
     for k in timestep_range:
         M_current = M_solution[k]
-        t_current = k * dt
 
-        # Determine drift source
-        if use_callable_drift:
-            # Evaluate callable drift directly
+        # Determine drift source using DriftField evaluator (Issue #641)
+        if drift.is_callable():
+            # Callable drift: evaluate velocity directly
             # Drift callable signature: (t, x_coords, m) -> drift_array
             # For 1D: drift_array shape is (N,)
             # For nD: drift_array shape is (ndim, N1, N2, ...) for vector drift
-            drift_values = drift_field(t_current, grid.coordinates, M_current)
+            drift_values = drift.evaluate_velocity_at(k, grid.coordinates, M_current, dt)
             U_current = None  # Not needed when drift is provided directly
         else:
+            # Array/MFG drift: get U slice for gradient computation in solver
             drift_values = None
-            U_current = U_solution_for_drift[k]
+            U_current = drift.get_U_at(k)
 
         if use_tensor_diffusion:
             # Tensor diffusion path - explicit timestepping
@@ -639,7 +647,7 @@ def solve_fp_nd_full_system(
                 k,
                 drift=drift_values,
             )
-        elif use_callable_drift:
+        elif drift.is_callable():
             # Callable drift with scalar diffusion - use explicit Forward Euler
             # This avoids the mathematically incorrect synthetic U approach
             diffusion = CoefficientField(sigma_base, problem.sigma, "diffusion_field", dimension=ndim)
