@@ -158,8 +158,8 @@ class FPFDMSolver(BaseFPSolver):
         # Keep conservative attribute for internal use (True for divergence forms)
         self.conservative = advection_scheme in ("divergence_upwind", "divergence_centered")
 
-        # Detect problem dimension first (needed for BC creation)
-        self.dimension = self._detect_dimension(problem)
+        # Detect problem dimension first (inherited from BaseNumericalSolver, Issue #633)
+        self.dimension = self._detect_dimension()
 
         # Validate geometry capabilities (Issue #596 Phase 2.2A)
         # FP solver requires Laplacian operator for diffusion term
@@ -228,36 +228,6 @@ class FPFDMSolver(BaseFPSolver):
 
                 self.boundary_conditions = no_flux_bc(dimension=self.dimension)
 
-    def _detect_dimension(self, problem: Any) -> int:
-        """
-        Detect the dimension of the problem.
-
-        Issue #543 Phase 2: Replace hasattr with try/except cascade.
-
-        Returns
-        -------
-        int
-            Problem dimension (1, 2, 3, ...)
-        """
-        # Try geometry.dimension first (unified interface)
-        try:
-            return problem.geometry.dimension
-        except AttributeError:
-            pass  # Try next method
-
-        # Fall back to problem.dimension
-        try:
-            return problem.dimension
-        except AttributeError:
-            pass  # Try legacy detection
-
-        # Legacy 1D detection
-        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
-            return 1
-
-        # Default to 1D for backward compatibility
-        return 1
-
     def solve_fp_system(
         self,
         M_initial: np.ndarray | None = None,
@@ -265,6 +235,7 @@ class FPFDMSolver(BaseFPSolver):
         diffusion_field: float | np.ndarray | Callable | None = None,
         tensor_diffusion_field: np.ndarray | Callable | None = None,
         show_progress: bool = True,
+        progress_callback: Callable[[int], None] | None = None,  # Issue #640
         # Deprecated parameter name for backward compatibility
         m_initial_condition: np.ndarray | None = None,
     ) -> np.ndarray:

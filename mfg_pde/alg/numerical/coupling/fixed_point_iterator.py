@@ -369,38 +369,40 @@ class FixedPointIterator(BaseMFGSolver):
                 # 1. Solve HJB backward with current M (transient subtask)
                 # Issue #614: Use hierarchical subtask for inner solver visibility
                 # Issue #625: Resolve BC providers before HJB solve
-                with progress.subtask("HJB", total=num_time_steps) as hjb_subtask:
-                    # Use context manager to resolve any BC providers (Issue #625)
-                    with self.problem.using_resolved_bc(bc_resolution_state):
-                        # Issue #543 Phase 2: Use cached signature instead of hasattr
-                        show_hjb_progress = False  # Subtask replaces inner progress
-                        if self._hjb_sig_params is not None:
-                            # Method exists and signature is cached
-                            params = self._hjb_sig_params
-                            kwargs = {}
-                            if "show_progress" in params:
-                                kwargs["show_progress"] = show_hjb_progress
-                            if "diffusion_field" in params and self.diffusion_field is not None:
-                                kwargs["diffusion_field"] = self.diffusion_field
+                with (
+                    progress.subtask("HJB", total=num_time_steps) as hjb_subtask,
+                    self.problem.using_resolved_bc(bc_resolution_state),
+                ):
+                    # Issue #543 Phase 2: Use cached signature instead of hasattr
+                    if self._hjb_sig_params is not None:
+                        # Method exists and signature is cached
+                        params = self._hjb_sig_params
+                        kwargs = {}
+                        if "show_progress" in params:
+                            kwargs["show_progress"] = False  # Subtask replaces inner bar
+                        if "diffusion_field" in params and self.diffusion_field is not None:
+                            kwargs["diffusion_field"] = self.diffusion_field
+                        # Issue #640: Pass progress callback for incremental updates
+                        if "progress_callback" in params:
+                            kwargs["progress_callback"] = hjb_subtask.advance
 
-                            U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
-                        else:
-                            # No signature cached - use basic call
-                            U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
-                    # Advance subtask to completion (HJB solver completes all time steps)
-                    hjb_subtask.advance(num_time_steps)
+                        U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
+                    else:
+                        # No signature cached - use basic call
+                        U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
+                        # Fallback: advance all at once if no callback support
+                        hjb_subtask.advance(num_time_steps)
 
                 # 2. Solve FP forward with new U (transient subtask)
                 # Issue #614: Use hierarchical subtask for inner solver visibility
                 with progress.subtask("FP", total=num_time_steps) as fp_subtask:
                     # Issue #543 Phase 2: Use cached signature instead of hasattr
-                    show_fp_progress = False  # Subtask replaces inner progress
                     if self._fp_sig_params is not None:
                         # Method exists and signature is cached
                         params = self._fp_sig_params
                         kwargs = {}
                         if "show_progress" in params:
-                            kwargs["show_progress"] = show_fp_progress
+                            kwargs["show_progress"] = False  # Subtask replaces inner bar
 
                         # Determine drift field: override or MFG drift from U
                         if self.drift_field is not None:
@@ -420,17 +422,25 @@ class FixedPointIterator(BaseMFGSolver):
                         if "diffusion_field" in params and self.diffusion_field is not None:
                             kwargs["diffusion_field"] = self.diffusion_field
 
+                        # Issue #640: Pass progress callback for incremental updates
+                        if "progress_callback" in params:
+                            kwargs["progress_callback"] = fp_subtask.advance
+
                         # Call with appropriate arguments
                         if "drift_field" in params:
                             M_new = self.fp_solver.solve_fp_system(M_initial, **kwargs)
                         else:
                             # Legacy interface: second positional arg is U for drift
                             M_new = self.fp_solver.solve_fp_system(M_initial, effective_drift, **kwargs)
+
+                        # If no callback support, advance all at once
+                        if "progress_callback" not in params:
+                            fp_subtask.advance(num_time_steps)
                     else:
                         # No signature cached - use basic call
                         M_new = self.fp_solver.solve_fp_system(M_initial, U_new)
-                    # Advance subtask to completion (FP solver completes all time steps)
-                    fp_subtask.advance(num_time_steps)
+                        # Fallback: advance all at once
+                        fp_subtask.advance(num_time_steps)
 
                 # 3. Apply damping or Anderson acceleration
                 if self.use_anderson and self.anderson_accelerator is not None:

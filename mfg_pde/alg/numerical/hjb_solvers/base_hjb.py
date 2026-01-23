@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 # BC-aware gradient computation (Issue #542 fix)
 # Validated in: mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
+# Issue #638: Import Robin BC ghost cell computation
+from mfg_pde.geometry.boundary.applicator_base import ghost_cell_robin
 from mfg_pde.utils.numerical.tensor_calculus import gradient as tensor_gradient
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
 
@@ -158,9 +160,9 @@ def _compute_laplacian_ghost_values_1d(
     """
     from mfg_pde.geometry.boundary.types import BCType
 
-    # Get BC types and values at each boundary
-    left_type, left_value = _get_bc_type_and_value_1d(bc, "left", time)
-    right_type, right_value = _get_bc_type_and_value_1d(bc, "right", time)
+    # Issue #638: Use _get_bc_info_1d to get full Robin BC parameters (alpha, beta)
+    left_type, left_value, left_alpha, left_beta = _get_bc_info_1d(bc, "left", time)
+    right_type, right_value, right_alpha, right_beta = _get_bc_info_1d(bc, "right", time)
 
     # Issue #574: bc_values parameter deprecated - BC framework now handles Robin BC automatically
     # No manual override needed - proper Robin BC segments are created in HJBFDMSolver
@@ -185,8 +187,24 @@ def _compute_laplacian_ghost_values_1d(
     elif left_type == BCType.DIRICHLET:
         # For Dirichlet u(0) = g: ghost = 2*g - U[0] (linear extrapolation)
         ghost_left = 2 * left_value - U_array[0]
-    else:  # Periodic or unknown - fall back to periodic
+    elif left_type == BCType.ROBIN:
+        # Issue #638: Robin BC alpha*u + beta*du/dn = g
+        # Left boundary has outward normal pointing in -x direction (sign = -1)
+        ghost_left = ghost_cell_robin(
+            interior_value=U_array[0],
+            rhs_value=left_value,
+            alpha=left_alpha,
+            beta=left_beta,
+            dx=Dx,
+            outward_normal_sign=-1.0,
+        )
+    elif left_type == BCType.PERIODIC:
         ghost_left = U_array[-1]
+    else:
+        # Issue #638: Fail fast - unknown BC type should not silently fallback
+        raise ValueError(
+            f"Unsupported BC type '{left_type}' at left boundary. Supported types: DIRICHLET, NEUMANN, ROBIN, PERIODIC."
+        )
 
     # Compute ghost for right boundary (x_max)
     if right_type == BCType.NEUMANN:
@@ -196,8 +214,25 @@ def _compute_laplacian_ghost_values_1d(
     elif right_type == BCType.DIRICHLET:
         # For Dirichlet u(L) = g: ghost = 2*g - U[-1] (linear extrapolation)
         ghost_right = 2 * right_value - U_array[-1]
-    else:  # Periodic or unknown - fall back to periodic
+    elif right_type == BCType.ROBIN:
+        # Issue #638: Robin BC alpha*u + beta*du/dn = g
+        # Right boundary has outward normal pointing in +x direction (sign = +1)
+        ghost_right = ghost_cell_robin(
+            interior_value=U_array[-1],
+            rhs_value=right_value,
+            alpha=right_alpha,
+            beta=right_beta,
+            dx=Dx,
+            outward_normal_sign=+1.0,
+        )
+    elif right_type == BCType.PERIODIC:
         ghost_right = U_array[0]
+    else:
+        # Issue #638: Fail fast - unknown BC type should not silently fallback
+        raise ValueError(
+            f"Unsupported BC type '{right_type}' at right boundary. "
+            f"Supported types: DIRICHLET, NEUMANN, ROBIN, PERIODIC."
+        )
 
     return ghost_left, ghost_right
 
@@ -281,6 +316,64 @@ def _get_bc_type_and_value_1d(
 
     # Default to Neumann zero
     return BCType.NEUMANN, 0.0
+
+
+def _get_bc_info_1d(
+    bc: BoundaryConditions,
+    side: str,
+    time: float = 0.0,
+) -> tuple:
+    """
+    Extract full BC info for a given side from BoundaryConditions (Issue #638).
+
+    Returns (bc_type, value, alpha, beta) to support Robin BC:
+        alpha*u + beta*du/dn = value
+
+    For non-Robin BC, alpha=1.0, beta=0.0 (Dirichlet-like encoding).
+
+    Args:
+        bc: Boundary conditions object
+        side: "left" or "right"
+        time: Current time for time-dependent BCs
+
+    Returns:
+        Tuple (BCType, value, alpha, beta)
+    """
+    from mfg_pde.geometry.boundary.types import BCType
+
+    boundary_key = "x_min" if side == "left" else "x_max"
+    default_alpha, default_beta = 1.0, 0.0
+
+    # Priority 1: Try segment-based access (supports Robin with alpha/beta)
+    try:
+        for seg in bc.segments:
+            if seg.boundary == boundary_key:
+                value = seg.value
+                if callable(value):
+                    value = value(time)
+                value = value if value is not None else 0.0
+                # Extract Robin coefficients if present
+                alpha = getattr(seg, "alpha", default_alpha)
+                beta = getattr(seg, "beta", default_beta)
+                return seg.bc_type, value, alpha, beta
+        # No matching segment - use default
+        default_value = getattr(bc, "default_value", 0.0)
+        return bc.default_type, default_value, default_alpha, default_beta
+    except AttributeError:
+        pass  # No segments attribute, try unified interface
+
+    # Priority 2: Try unified interface (get_boundary_type method)
+    try:
+        bc_type = bc.get_boundary_type(boundary_key)
+        bc_value = bc.get_boundary_value(boundary_key, time=time)
+        if bc_value is None:
+            bc_value = 0.0
+        return bc_type, bc_value, default_alpha, default_beta
+    except AttributeError:
+        pass
+
+    # Default to Neumann zero
+    return BCType.NEUMANN, 0.0, default_alpha, default_beta
 
 
 class BaseHJBSolver(BaseNumericalSolver):
@@ -1176,11 +1269,8 @@ def solve_hjb_timestep_newton(
         else:
             dx = 1.0  # Fallback (should not happen in practice)
 
-        # Left boundary
-        left_type, left_value = _get_bc_type_and_value_1d(bc, "left", current_time)
-        # Issue #574: Override BC value if bc_values provided (adjoint-consistent mode)
-        if bc_values is not None and "x_min" in bc_values and left_type == BCType.NEUMANN:
-            left_value = bc_values["x_min"]
+        # Left boundary - Issue #638: Use _get_bc_info_1d for Robin BC support
+        left_type, left_value, left_alpha, left_beta = _get_bc_info_1d(bc, "left", current_time)
 
         if left_type == BCType.DIRICHLET:
             # Dirichlet: Set boundary value directly
@@ -1195,12 +1285,32 @@ def solve_hjb_timestep_newton(
                 U_n_current_newton_iterate[0] = U_n_current_newton_iterate[1] - backend.array([left_value * dx])[0]
             else:
                 U_n_current_newton_iterate[0] = U_n_current_newton_iterate[1] - left_value * dx
+        elif left_type == BCType.ROBIN:
+            # Issue #638: Robin BC enforcement: alpha*u + beta*du/dn = g
+            # At left boundary, outward normal is -x, so du/dn = (u[0] - u[1])/dx
+            # alpha*u[0] + beta*(u[0] - u[1])/dx = g
+            # u[0]*(alpha + beta/dx) = g + beta*u[1]/dx
+            # u[0] = (g + beta*u[1]/dx) / (alpha + beta/dx)
+            denom = left_alpha + left_beta / dx
+            if abs(denom) > 1e-14:
+                u1 = U_n_current_newton_iterate[1]
+                if backend is not None:
+                    u1_val = u1.item() if hasattr(u1, "item") else float(u1)
+                    new_val = (left_value + left_beta * u1_val / dx) / denom
+                    U_n_current_newton_iterate[0] = backend.array([new_val])[0]
+                else:
+                    U_n_current_newton_iterate[0] = (left_value + left_beta * u1 / dx) / denom
+        elif left_type == BCType.PERIODIC:
+            # Periodic: No enforcement needed - values wrap around via ghost cells
+            pass
+        else:
+            raise ValueError(
+                f"Unsupported BC type '{left_type}' at left boundary for enforcement. "
+                f"Supported types: DIRICHLET, NEUMANN, ROBIN, PERIODIC."
+            )
 
-        # Right boundary
-        right_type, right_value = _get_bc_type_and_value_1d(bc, "right", current_time)
-        # Issue #574: Override BC value if bc_values provided (adjoint-consistent mode)
-        if bc_values is not None and "x_max" in bc_values and right_type == BCType.NEUMANN:
-            right_value = bc_values["x_max"]
+        # Right boundary - Issue #638: Use _get_bc_info_1d for Robin BC support
+        right_type, right_value, right_alpha, right_beta = _get_bc_info_1d(bc, "right", current_time)
 
         if right_type == BCType.DIRICHLET:
             # Dirichlet: Set boundary value directly
@@ -1215,6 +1325,29 @@ def solve_hjb_timestep_newton(
                 U_n_current_newton_iterate[-1] = U_n_current_newton_iterate[-2] + backend.array([right_value * dx])[0]
             else:
                 U_n_current_newton_iterate[-1] = U_n_current_newton_iterate[-2] + right_value * dx
+        elif right_type == BCType.ROBIN:
+            # Issue #638: Robin BC enforcement: alpha*u + beta*du/dn = g
+            # At right boundary, outward normal is +x, so du/dn = (u[-1] - u[-2])/dx
+            # alpha*u[-1] + beta*(u[-1] - u[-2])/dx = g
+            # u[-1]*(alpha + beta/dx) = g + beta*u[-2]/dx
+            # u[-1] = (g + beta*u[-2]/dx) / (alpha + beta/dx)
+            denom = right_alpha + right_beta / dx
+            if abs(denom) > 1e-14:
+                u_m2 = U_n_current_newton_iterate[-2]
+                if backend is not None:
+                    u_m2_val = u_m2.item() if hasattr(u_m2, "item") else float(u_m2)
+                    new_val = (right_value + right_beta * u_m2_val / dx) / denom
+                    U_n_current_newton_iterate[-1] = backend.array([new_val])[0]
+                else:
+                    U_n_current_newton_iterate[-1] = (right_value + right_beta * u_m2 / dx) / denom
+        elif right_type == BCType.PERIODIC:
+            # Periodic: No enforcement needed - values wrap around via ghost cells
+            pass
+        else:
+            raise ValueError(
+                f"Unsupported BC type '{right_type}' at right boundary for enforcement. "
+                f"Supported types: DIRICHLET, NEUMANN, ROBIN, PERIODIC."
+            )
 
     return U_n_current_newton_iterate
 

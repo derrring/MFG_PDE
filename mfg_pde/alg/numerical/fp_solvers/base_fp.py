@@ -157,6 +157,7 @@ class BaseFPSolver(BaseNumericalSolver):
         drift_field: np.ndarray | Callable | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
+        progress_callback: Callable[[int], None] | None = None,  # Issue #640
     ) -> np.ndarray:
         """
         Solves the full Fokker-Planck (FP) system forward in time.
