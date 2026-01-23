@@ -226,34 +226,7 @@ class FPFDMSolver(BaseFPSolver):
 
                 self.boundary_conditions = no_flux_bc(dimension=self.dimension)
 
-    def _detect_dimension(self) -> int:
-        """
-        Detect the dimension of the problem.
-
-        Issue #543 Phase 2: Replace hasattr with try/except cascade.
-
-        Returns
-        -------
-        int
-            Problem dimension (1, 2, 3, ...)
-        """
-        problem = self.problem
-        # Try geometry.dimension first (unified interface)
-        try:
-            return problem.geometry.dimension
-        except AttributeError:
-            pass  # Try next method
-
-        # Fall back to problem.dimension
-        try:
-            return problem.dimension
-        except AttributeError:
-            pass
-
-        raise ValueError(
-            "Cannot determine problem dimension. "
-            "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
-        )
+    # _detect_dimension() inherited from BaseNumericalSolver (Issue #633)
 
     def solve_fp_system(
         self,
