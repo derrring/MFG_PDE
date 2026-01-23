@@ -424,6 +424,7 @@ class FPFDMSolver(BaseFPSolver):
                 diffusion_field=diffusion_field,
                 drift_field=drift_field,
                 advection_scheme=self.advection_scheme,
+                progress_callback=progress_callback,
             )
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
@@ -464,6 +465,7 @@ class FPFDMSolver(BaseFPSolver):
                 diffusion_field=None,
                 tensor_diffusion_field=tensor_diffusion_field,
                 advection_scheme=self.advection_scheme,
+                progress_callback=progress_callback,
             )
 
         # Handle diffusion_field parameter (scalar diffusion)
@@ -530,6 +532,7 @@ class FPFDMSolver(BaseFPSolver):
                 backend=self.backend,
                 diffusion_field=effective_sigma if diffusion_field is not None else None,
                 advection_scheme=self.advection_scheme,
+                progress_callback=progress_callback,
             )
         else:
             # Legacy 1D solver for periodic/dirichlet BC with non-conservative mode

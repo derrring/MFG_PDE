@@ -68,6 +68,8 @@ from mfg_pde.geometry.boundary.applicator_base import (
 from mfg_pde.utils.pde_coefficients import CoefficientField
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mfg_pde.geometry import BoundaryConditions
 
 # Import from responsibility-based modules per issue #388
@@ -423,6 +425,8 @@ def solve_fp_nd_full_system(
     advection_scheme: str = "divergence_upwind",
     # Callable drift support (Phase 2 - Issue #487)
     drift_field: Callable | None = None,
+    # Progress callback for HierarchicalProgress (Issue #640)
+    progress_callback: Callable[[int], None] | None = None,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
@@ -587,10 +591,13 @@ def solve_fp_nd_full_system(
 
     # Progress bar for forward timesteps
     # n_time_points - 1 steps to go from t=0 to t=T
-    from mfg_pde.utils.progress import RichProgressBar
-
+    # Issue #640: When progress_callback is provided (from HierarchicalProgress),
+    # suppress internal bar to avoid duplicate progress display
+    use_external_progress = progress_callback is not None
     timestep_range = range(Nt - 1)
-    if show_progress:
+    if show_progress and not use_external_progress:
+        from mfg_pde.utils.progress import RichProgressBar
+
         timestep_range = RichProgressBar(
             timestep_range,
             desc=f"FP {ndim}D (full system)",
@@ -676,6 +683,10 @@ def solve_fp_nd_full_system(
         if bc_type == "dirichlet" and ndim == 1:
             M_solution[k + 1, 0] = _get_bc_value(boundary_conditions, "x_min")
             M_solution[k + 1, -1] = _get_bc_value(boundary_conditions, "x_max")
+
+        # Issue #640: Report progress to hierarchical progress bar
+        if progress_callback is not None:
+            progress_callback(1)
 
     return M_solution
 
