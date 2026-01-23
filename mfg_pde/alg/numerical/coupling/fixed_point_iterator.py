@@ -11,6 +11,7 @@ Modern fixed-point iterator for MFG systems with full feature support:
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -30,6 +31,10 @@ if TYPE_CHECKING:
     from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
     from mfg_pde.config import MFGSolverConfig
     from mfg_pde.problem.base_mfg_problem import MFGProblem
+
+# Type alias for iteration callback (Issue #614)
+# Signature: callback(iteration, U, M, error_U, error_M) -> bool
+IterationCallback = Callable[[int, np.ndarray, np.ndarray, float, float], bool | None]
 
 
 class FixedPointIterator(BaseMFGSolver):
@@ -238,6 +243,7 @@ class FixedPointIterator(BaseMFGSolver):
         max_iterations: int | None = None,
         tolerance: float | None = None,
         return_tuple: bool = False,
+        iteration_callback: IterationCallback | None = None,
         **kwargs: Any,
     ) -> SolverResult | tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray]:
         """
@@ -248,10 +254,23 @@ class FixedPointIterator(BaseMFGSolver):
             max_iterations: Maximum iterations (legacy parameter)
             tolerance: Convergence tolerance (legacy parameter)
             return_tuple: Return legacy tuple format instead of SolverResult
+            iteration_callback: Optional callback called after each Picard iteration.
+                Signature: callback(iteration, U, M, error_U, error_M) -> bool
+                Return True to continue, False to stop early.
+                If None (default), no callback is invoked.
             **kwargs: Additional parameters for backward compatibility
 
         Returns:
             SolverResult object (or tuple if return_tuple=True)
+
+        Example:
+            >>> def monitor(i, U, M, err_U, err_M):
+            ...     print(f"Iteration {i}: err_U={err_U:.2e}, err_M={err_M:.2e}")
+            ...     # Save checkpoint every 10 iterations
+            ...     if i % 10 == 0:
+            ...         np.save(f"checkpoint_{i}.npy", {"U": U, "M": M})
+            ...     return True  # Continue
+            >>> result = solver.solve(iteration_callback=monitor)
         """
         # Use provided config or fall back to instance config
         solve_config = config or self.config
@@ -482,6 +501,20 @@ class FixedPointIterator(BaseMFGSolver):
                     time=f"{iter_time:.1f}s",
                     acc=accel_tag,
                 )
+
+                # Issue #614: Invoke user callback if provided
+                if iteration_callback is not None:
+                    should_continue = iteration_callback(
+                        iiter,
+                        self.U,
+                        self.M,
+                        self.l2distu_rel[iiter],
+                        self.l2distm_rel[iiter],
+                    )
+                    if should_continue is False:
+                        converged = True
+                        convergence_reason = "callback_stopped"
+                        break
 
                 # Check convergence
                 converged, convergence_reason = check_convergence_criteria(
