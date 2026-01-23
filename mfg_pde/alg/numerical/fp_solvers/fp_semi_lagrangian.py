@@ -23,7 +23,7 @@ Validated in: mfg-research/experiments/crowd_evacuation_2d/runners/exp14j_fp_sem
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -112,7 +112,7 @@ class FPSLSolver(BaseFPSolver):
         self.characteristic_solver = characteristic_solver
 
         # Detect problem dimension
-        self.dimension = self._detect_dimension(problem)
+        self.dimension = self._detect_dimension()  # Issue #633: Use inherited method
 
         if self.dimension > 1:
             raise NotImplementedError(
@@ -133,24 +133,6 @@ class FPSLSolver(BaseFPSolver):
         else:
             # Try to get BC from problem/geometry
             self.boundary_conditions = self._get_boundary_conditions_from_problem()
-
-    def _detect_dimension(self, problem: Any) -> int:
-        """Detect problem dimension."""
-        try:
-            return problem.geometry.dimension
-        except AttributeError:
-            pass
-
-        try:
-            return problem.dimension
-        except AttributeError:
-            pass
-
-        # Legacy 1D detection
-        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
-            return 1
-
-        return 1  # Default to 1D
 
     def _get_boundary_conditions_from_problem(self) -> BoundaryConditions | None:
         """Get boundary conditions from problem or geometry."""
