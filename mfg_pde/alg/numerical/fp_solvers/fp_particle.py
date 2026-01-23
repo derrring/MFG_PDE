@@ -33,17 +33,13 @@ from mfg_pde.utils.numerical.particle import (
 from mfg_pde.utils.numerical.tensor_calculus import gradient_simple
 
 from .base_fp import BaseFPSolver
+from .fp_particle_bc import apply_boundary_conditions as _apply_bc
+from .fp_particle_bc import enforce_obstacle_boundary as _enforce_obstacle
+from .fp_particle_bc import get_topology_per_dimension as _get_topology
+from .fp_particle_bc import needs_segment_aware_bc as _needs_segment_bc
+from .fp_particle_density import generate_brownian_increment as _gen_brownian
+from .fp_particle_density import normalize_density as _normalize
 from .particle_result import FPParticleResult
-
-# Mapping from dimension index to boundary name prefix
-_DIM_TO_AXIS_PREFIX = {0: "x", 1: "y", 2: "z"}
-
-
-def _get_axis_prefix(dim_idx: int) -> str:
-    """Get axis prefix for dimension index (x, y, z, dim3, dim4, ...)."""
-    if dim_idx < 3:
-        return _DIM_TO_AXIS_PREFIX[dim_idx]
-    return f"dim{dim_idx}"
 
 
 class KDENormalization(str, Enum):
@@ -143,7 +139,8 @@ class FPParticleSolver(BaseFPSolver):
         if normalize_kde_output is not None or normalize_only_initial is not None:
             warnings.warn(
                 "Parameters 'normalize_kde_output' and 'normalize_only_initial' are deprecated. "
-                "Use 'kde_normalization' instead with KDENormalization.NONE, KDENormalization.INITIAL_ONLY, or KDENormalization.ALL",
+                "Use 'kde_normalization' instead with KDENormalization.NONE, "
+                "KDENormalization.INITIAL_ONLY, or KDENormalization.ALL",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -346,6 +343,158 @@ class FPParticleSolver(BaseFPSolver):
         backend = self.backend if use_backend else None
         return gradient_simple(U_array, spacings, backend=backend)
 
+    # =========================================================================
+    # DRY Helper Methods (Issue #635 cleanup)
+    # =========================================================================
+
+    def _should_normalize_density(self) -> bool:
+        """
+        Determine if density should be normalized based on KDE normalization strategy.
+
+        Returns True if normalization should be applied for the current time step.
+        """
+        if self.kde_normalization == KDENormalization.NONE:
+            return False
+        elif self.kde_normalization == KDENormalization.INITIAL_ONLY:
+            return self._time_step_counter == 0
+        return True  # KDENormalization.ALL
+
+    def _increment_time_step(self) -> None:
+        """Increment time step counter for KDE normalization strategy tracking."""
+        self._time_step_counter += 1
+
+    def _compute_total_mass(
+        self,
+        density: np.ndarray,
+        spacing: float | list[float],
+        use_backend: bool = False,
+    ) -> float:
+        """
+        Compute total mass from density and grid spacing(s).
+
+        Parameters
+        ----------
+        density : np.ndarray
+            Density array (1D or nD)
+        spacing : float or list[float]
+            Grid spacing (single value for 1D, list for nD)
+        use_backend : bool
+            If True, use backend array module
+
+        Returns
+        -------
+        float
+            Total mass (integral of density over domain)
+        """
+        # Compute volume element
+        if isinstance(spacing, (list, tuple)):
+            dV = float(np.prod(spacing))
+        else:
+            dV = float(spacing) if spacing > 1e-14 else 1.0
+
+        if use_backend and self.backend is not None:
+            xp = self.backend.array_module
+            mass = xp.sum(density) * dV
+            try:
+                return mass.item()  # PyTorch tensor → scalar
+            except AttributeError:
+                return float(mass)
+        else:
+            return float(np.sum(density) * dV)
+
+    def _finalize_particle_solve(
+        self,
+        M_density_on_grid: np.ndarray,
+        particles_trajectory: np.ndarray | list,
+        Nt: int,
+        dimension: int,
+        use_segment_aware_bc: bool = False,
+    ) -> np.ndarray | FPParticleResult:
+        """
+        Finalize particle solve: store trajectory, build history, return result.
+
+        Extracts common post-loop logic from all solve methods.
+
+        Parameters
+        ----------
+        M_density_on_grid : np.ndarray
+            Density evolution on grid
+        particles_trajectory : np.ndarray or list
+            Particle positions over time (array for uniform BC, list for segment-aware)
+        Nt : int
+            Number of time points in trajectory
+        dimension : int
+            Spatial dimension
+        use_segment_aware_bc : bool
+            Whether segment-aware BC was used (affects trajectory format)
+
+        Returns
+        -------
+        np.ndarray or FPParticleResult
+            Grid density or FPParticleResult with particle history
+        """
+        # Store trajectory
+        self.M_particles_trajectory = particles_trajectory
+
+        # Build particle history for direct query mode (Issue #489)
+        if self._particle_history is not None:
+            if use_segment_aware_bc:
+                # List of arrays with variable particle counts
+                for t_particles in particles_trajectory:
+                    if t_particles.ndim == 1:
+                        self._particle_history.append(t_particles.reshape(-1, 1))
+                    else:
+                        self._particle_history.append(t_particles)
+            elif dimension == 1 and particles_trajectory.ndim == 2:
+                # 1D: 2D array (Nt, num_particles) -> List of (num_particles, 1)
+                for t in range(Nt):
+                    self._particle_history.append(particles_trajectory[t, :].reshape(-1, 1))
+            else:
+                # nD: 3D array (Nt, num_particles, dimension) -> List of (num_particles, dimension)
+                for t in range(Nt):
+                    self._particle_history.append(particles_trajectory[t, :, :])
+
+        # Return FPParticleResult if particle history was stored (Issue #489)
+        if self._particle_history is not None:
+            time_grid = np.linspace(0, self.problem.T, Nt)
+            return FPParticleResult(
+                M_grid=M_density_on_grid,
+                time_grid=time_grid,
+                particle_history=self._particle_history,
+                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
+            )
+
+        # Backward compatible: return grid density only
+        return M_density_on_grid
+
+    def _create_timestep_range(self, n_steps: int, desc: str = "FP Particle"):
+        """
+        Create timestep iterator with optional progress bar.
+
+        Parameters
+        ----------
+        n_steps : int
+            Number of time steps
+        desc : str
+            Progress bar description
+
+        Returns
+        -------
+        range or RichProgressBar
+            Iterator over timestep indices
+        """
+        from mfg_pde.utils.progress import RichProgressBar
+
+        timestep_range = range(n_steps)
+        if self._show_progress:
+            timestep_range = RichProgressBar(
+                timestep_range,
+                desc=desc,
+                unit="step",
+                disable=False,
+            )
+        return timestep_range
+
     def _normalize_density(self, M_array, Dx: float, use_backend: bool = False):
         """
         Normalize density to unit mass.
@@ -366,29 +515,11 @@ class FPParticleSolver(BaseFPSolver):
         -------
         Normalized density array (same type as input)
         """
-        # Determine if we should normalize based on strategy
-        if self.kde_normalization == KDENormalization.NONE:
-            should_normalize = False
-        elif self.kde_normalization == KDENormalization.INITIAL_ONLY:
-            should_normalize = self._time_step_counter == 0
-        else:  # KDENormalization.ALL
-            should_normalize = True
-
-        if not should_normalize:
+        if not self._should_normalize_density():
             return M_array  # Return raw density without normalization
 
-        # Proceed with normalization
-        if use_backend and self.backend is not None:
-            xp = self.backend.array_module
-            mass = xp.sum(M_array) * Dx if Dx > 1e-14 else xp.sum(M_array)
-            # Handle PyTorch tensors (Issue #543: use try/except instead of hasattr)
-            try:
-                mass_val = mass.item()  # PyTorch tensor → scalar
-            except AttributeError:
-                mass_val = float(mass)  # NumPy or Python number
-        else:
-            xp = np
-            mass_val = float(np.sum(M_array) * Dx) if Dx > 1e-14 else float(np.sum(M_array))
+        # Compute total mass using helper
+        mass_val = self._compute_total_mass(M_array, Dx, use_backend)
 
         if mass_val > 1e-9:
             return M_array / mass_val
@@ -444,6 +575,8 @@ class FPParticleSolver(BaseFPSolver):
         """
         Generate d-dimensional Brownian increment for SDE evolution.
 
+        Delegates to unified generate_brownian_increment() from fp_particle_density module.
+
         Parameters
         ----------
         num_particles : int
@@ -460,16 +593,17 @@ class FPParticleSolver(BaseFPSolver):
         dW : np.ndarray
             Brownian increments, shape (num_particles, dimension)
         """
-        if Dt < 1e-14:
-            return np.zeros((num_particles, dimension))
-
-        # Independent Brownian motion in each dimension
-        # dX = sigma * dW where dW ~ N(0, sqrt(dt))
-        return sigma * np.random.normal(0, np.sqrt(Dt), (num_particles, dimension))
+        result = _gen_brownian(num_particles, dimension, Dt, sigma)
+        # Ensure 2D output for backward compatibility (this method always returns 2D)
+        if result.ndim == 1:
+            return result[:, np.newaxis]
+        return result
 
     def _needs_segment_aware_bc(self) -> bool:
         """
         Check if boundary conditions require segment-aware handling.
+
+        Delegates to unified needs_segment_aware_bc() from fp_particle_bc module.
 
         Returns True if:
         - BC has multiple segments with different types
@@ -477,25 +611,7 @@ class FPParticleSolver(BaseFPSolver):
 
         Returns False for uniform periodic/reflecting BC where fast path can be used.
         """
-        bc = self.boundary_conditions
-
-        if bc is None:
-            return False
-
-        # Check if uniform BC (same type everywhere) - Issue #543: use getattr instead of hasattr
-        is_uniform = getattr(bc, "is_uniform", False)
-        if is_uniform:
-            # Uniform BC - use fast path unless it's DIRICHLET (absorbing)
-            segments = getattr(bc, "segments", [])
-            return len(segments) > 0 and segments[0].bc_type == BCType.DIRICHLET
-
-        # Mixed BC with segments - need segment-aware handling
-        segments = getattr(bc, "segments", [])
-        if len(segments) > 1:
-            return True
-
-        # Check for DIRICHLET segments (absorbing BC)
-        return any(segment.bc_type == BCType.DIRICHLET for segment in segments)
+        return _needs_segment_bc(self.boundary_conditions)
 
     def _get_topology_per_dimension(
         self,
@@ -504,14 +620,11 @@ class FPParticleSolver(BaseFPSolver):
         """
         Get grid topology for each dimension from boundary conditions.
 
+        Delegates to unified get_topology_per_dimension() from fp_particle_bc module.
+
         This determines the INDEXING STRATEGY for particles, not the physical BC:
         - "periodic": Space wraps around (particles use modular arithmetic)
         - "bounded": Space has walls (particles reflect at boundaries)
-
-        Note: This is about topology (how space connects), not physics (what values
-        are prescribed). For particles, all non-periodic boundaries are treated as
-        reflecting walls, regardless of whether the underlying BC is Dirichlet,
-        Neumann, Robin, or no-flux.
 
         Parameters
         ----------
@@ -523,52 +636,13 @@ class FPParticleSolver(BaseFPSolver):
         topologies : list[str]
             Topology per dimension: ["periodic", "bounded", ...]
         """
-        bc = self.boundary_conditions
-
-        # Default to bounded (reflecting walls) for all dimensions
-        topologies = ["bounded"] * dimension
-
-        if bc is None:
-            return topologies
-
-        # For uniform BCs, check if periodic - Issue #543: use getattr instead of hasattr
-        is_uniform = getattr(bc, "is_uniform", False)
-        if is_uniform:
-            if bc.type == "periodic":
-                return ["periodic"] * dimension
-            return topologies
-
-        # For mixed BCs, check per dimension
-        # Periodic requires BOTH min and max to be periodic (topological constraint)
-        # Issue #543: use callable() for method existence check
-        if not callable(getattr(bc, "get_bc_type_at_boundary", None)):
-            return topologies  # Method doesn't exist, use default bounded
-
-        for d in range(dimension):
-            axis_prefix = _get_axis_prefix(d)
-            min_boundary = f"{axis_prefix}_min"
-            max_boundary = f"{axis_prefix}_max"
-
-            try:
-                bc_min = bc.get_bc_type_at_boundary(min_boundary)
-                bc_max = bc.get_bc_type_at_boundary(max_boundary)
-
-                # Periodic topology requires both boundaries to be periodic
-                if bc_min == BCType.PERIODIC and bc_max == BCType.PERIODIC:
-                    topologies[d] = "periodic"
-                # All other cases: bounded topology (reflecting for particles)
-            except (KeyError, AttributeError):
-                pass  # Keep default "bounded"
-
-        return topologies
+        return _get_topology(self.boundary_conditions, dimension)
 
     def _enforce_obstacle_boundary(self, particles: np.ndarray) -> np.ndarray:
         """
         Enforce obstacle boundaries via implicit domain geometry (Issue #533).
 
-        If an implicit domain with obstacles is defined, particles that have
-        entered obstacle regions (domain.contains() returns False) are projected
-        back to the valid domain using domain.project_to_domain().
+        Delegates to unified enforce_obstacle_boundary() from fp_particle_bc module.
 
         Parameters
         ----------
@@ -580,22 +654,7 @@ class FPParticleSolver(BaseFPSolver):
         particles : np.ndarray
             Updated particle positions with obstacle violations corrected
         """
-        if self._implicit_domain is None:
-            return particles
-
-        # Check which particles are outside the valid domain (inside obstacles)
-        inside_valid = self._implicit_domain.contains(particles)
-
-        # Handle scalar return (single particle case)
-        if np.isscalar(inside_valid):
-            inside_valid = np.array([inside_valid])
-
-        # Project invalid particles back to domain
-        if not np.all(inside_valid):
-            outside_indices = np.where(~inside_valid)[0]
-            particles[outside_indices] = self._implicit_domain.project_to_domain(particles[outside_indices])
-
-        return particles
+        return _enforce_obstacle(particles, self._implicit_domain)
 
     def _apply_boundary_conditions_nd(
         self,
@@ -605,6 +664,8 @@ class FPParticleSolver(BaseFPSolver):
     ) -> np.ndarray:
         """
         Apply boundary handling per dimension based on topology.
+
+        Delegates to unified apply_boundary_conditions() from fp_particle_bc module.
 
         Parameters
         ----------
@@ -619,44 +680,9 @@ class FPParticleSolver(BaseFPSolver):
         Returns
         -------
         particles : np.ndarray
-            Updated particle positions (modified in place)
+            Updated particle positions
         """
-        dimension = particles.shape[1] if particles.ndim > 1 else 1
-
-        # Handle per-dimension topologies
-        if isinstance(topology, str):
-            topologies = [topology] * dimension
-        else:
-            topologies = topology
-
-        for d in range(dimension):
-            xmin, xmax = bounds[d]
-            Lx = xmax - xmin
-
-            if Lx < 1e-14:
-                continue  # Skip degenerate dimension
-
-            dim_topology = topologies[d] if d < len(topologies) else "bounded"
-
-            if dim_topology == "periodic":
-                # Periodic topology: wrap around
-                particles[:, d] = xmin + (particles[:, d] - xmin) % Lx
-
-            else:  # "bounded" -> reflecting walls
-                # Reflecting boundaries: use modular reflection for arbitrary displacement
-                # This handles particles that travel multiple domain widths in one step
-                # Uses "fold" reflection: position bounces back and forth within domain
-                shifted = particles[:, d] - xmin
-                period = 2 * Lx
-                # Position within one period [0, 2*Lx)
-                pos_in_period = shifted % period
-                # If in second half of period, reflect back
-                in_second_half = pos_in_period > Lx
-                pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
-                # Shift back to original domain
-                particles[:, d] = xmin + pos_in_period
-
-        return particles
+        return _apply_bc(particles, bounds, topology)
 
     def _apply_boundary_conditions_segment_aware(
         self,
@@ -930,24 +956,11 @@ class FPParticleSolver(BaseFPSolver):
                 raise RuntimeError(error_msg) from e
 
         # Normalization step (conditional based on kde_normalization strategy)
-        if self.kde_normalization == KDENormalization.NONE:
-            should_normalize = False
-        elif self.kde_normalization == KDENormalization.INITIAL_ONLY:
-            should_normalize = self._time_step_counter == 0
-        else:  # KDENormalization.ALL
-            should_normalize = True
-
-        if should_normalize:
-            if Dx > 1e-14:
-                current_mass = np.sum(m_density_estimated) * Dx
-                if current_mass > 1e-9:
-                    return m_density_estimated / current_mass
-                else:  # If estimated mass is zero, return zeros
-                    return np.zeros(Nx)
-            elif Nx == 1:  # Single point domain
-                sum_val = np.sum(m_density_estimated)
-                return m_density_estimated / sum_val if sum_val > 1e-9 else np.zeros(Nx)
-            else:  # Dx is zero but Nx > 1 (should not happen if Nx=1 handled above)
+        if self._should_normalize_density():
+            current_mass = self._compute_total_mass(m_density_estimated, Dx)
+            if current_mass > 1e-9:
+                return m_density_estimated / current_mass
+            else:
                 return np.zeros(Nx)
         else:
             return m_density_estimated  # Return raw KDE output on grid
@@ -1177,7 +1190,7 @@ class FPParticleSolver(BaseFPSolver):
             init_particles = current_M_particles_t[0, :]
 
         M_density_on_grid[0, :] = self._estimate_density_from_particles(init_particles)
-        self._time_step_counter += 1  # Increment after computing density at t=0
+        self._increment_time_step()  # Increment after computing density at t=0
 
         if Nt == 1:
             if use_segment_aware_bc:
@@ -1186,18 +1199,8 @@ class FPParticleSolver(BaseFPSolver):
                 self.M_particles_trajectory = current_M_particles_t
             return M_density_on_grid
 
-        # Progress bar for forward particle timesteps
-        # n_time_points - 1 steps to go from t=0 to t=T
-        from mfg_pde.utils.progress import RichProgressBar
-
-        timestep_range = range(Nt - 1)
-        if self._show_progress:
-            timestep_range = RichProgressBar(
-                timestep_range,
-                desc="FP (forward)",
-                unit="step",
-                disable=False,
-            )
+        # Progress bar for forward particle timesteps (n_time_points - 1 steps)
+        timestep_range = self._create_timestep_range(Nt - 1, desc="FP (forward)")
 
         for n_time_idx in timestep_range:
             # Get current particles from appropriate storage
@@ -1213,7 +1216,7 @@ class FPParticleSolver(BaseFPSolver):
                 if use_segment_aware_bc:
                     particles_list[n_time_idx + 1] = np.array([])
                 M_density_on_grid[n_time_idx + 1, :] = np.zeros(Nx)
-                self._time_step_counter += 1
+                self._increment_time_step()
                 continue
 
             U_at_tn = U_solution_for_drift[n_time_idx, :]
@@ -1264,41 +1267,13 @@ class FPParticleSolver(BaseFPSolver):
                 current_M_particles_t[n_time_idx + 1, :] = new_particles
 
             M_density_on_grid[n_time_idx + 1, :] = self._estimate_density_from_particles(new_particles)
-            self._time_step_counter += 1  # Increment after each time step
+            self._increment_time_step()  # Increment after each time step
 
-        # Store trajectory (different format for segment-aware BC)
-        if use_segment_aware_bc:
-            self.M_particles_trajectory = particles_list
-        else:
-            self.M_particles_trajectory = current_M_particles_t
-
-        # Build particle history for direct query mode (Issue #489)
-        if self._particle_history is not None:
-            # Convert stored trajectory to list of (num_particles, dimension) arrays
-            if use_segment_aware_bc:
-                # List of 1D arrays -> List of (num_particles_t, 1) arrays
-                for t_particles in particles_list:
-                    if t_particles.ndim == 1:
-                        self._particle_history.append(t_particles.reshape(-1, 1))
-                    else:
-                        self._particle_history.append(t_particles)
-            else:
-                # 2D array (Nt, num_particles) -> List of (num_particles, 1) arrays
-                for t in range(Nt):
-                    self._particle_history.append(current_M_particles_t[t, :].reshape(-1, 1))
-
-        # Return FPParticleResult if particle history was stored (Issue #489)
-        if self._particle_history is not None:
-            time_grid = np.linspace(0, self.problem.T, Nt)
-            return FPParticleResult(
-                M_grid=M_density_on_grid,
-                time_grid=time_grid,
-                particle_history=self._particle_history,
-                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
-            )
-
-        # Backward compatible: return grid density only
-        return M_density_on_grid
+        # Finalize: store trajectory, build history, return result
+        trajectory = particles_list if use_segment_aware_bc else current_M_particles_t
+        return self._finalize_particle_solve(
+            M_density_on_grid, trajectory, Nt, dimension=1, use_segment_aware_bc=use_segment_aware_bc
+        )
 
     def _solve_fp_system_cpu_nd(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """
@@ -1378,7 +1353,7 @@ class FPParticleSolver(BaseFPSolver):
         if self.kde_normalization != KDENormalization.NONE:
             M_density_on_grid[0] = self._normalize_density_nd(M_density_on_grid[0], spacings)
 
-        self._time_step_counter += 1
+        self._increment_time_step()
 
         if Nt == 1:
             if use_segment_aware_bc:
@@ -1387,18 +1362,8 @@ class FPParticleSolver(BaseFPSolver):
                 self.M_particles_trajectory = current_particles
             return M_density_on_grid
 
-        # Progress bar for forward particle timesteps (consistent with 1D solver)
-        # n_time_points - 1 steps to go from t=0 to t=T
-        from mfg_pde.utils.progress import RichProgressBar
-
-        timestep_range = range(Nt - 1)
-        if self._show_progress:
-            timestep_range = RichProgressBar(
-                timestep_range,
-                desc=f"FP {dimension}D (forward)",
-                unit="step",
-                disable=False,
-            )
+        # Progress bar for forward particle timesteps (n_time_points - 1 steps)
+        timestep_range = self._create_timestep_range(Nt - 1, desc=f"FP {dimension}D (forward)")
 
         # Main time evolution loop
         for t_idx in timestep_range:
@@ -1418,7 +1383,7 @@ class FPParticleSolver(BaseFPSolver):
                 if use_segment_aware_bc:
                     particles_list[t_idx + 1] = np.array([]).reshape(0, dimension)
                 M_density_on_grid[t_idx + 1] = np.zeros(grid_shape)
-                self._time_step_counter += 1
+                self._increment_time_step()
                 continue
 
             # Check if drift is precomputed or needs to be computed from U
@@ -1475,46 +1440,23 @@ class FPParticleSolver(BaseFPSolver):
             # Estimate density from particles
             M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(new_particles, coordinates, bounds)
 
-            # Normalize if requested
-            if self.kde_normalization == KDENormalization.ALL:
+            # Normalize if requested (respects kde_normalization strategy)
+            if self._should_normalize_density():
                 M_density_on_grid[t_idx + 1] = self._normalize_density_nd(M_density_on_grid[t_idx + 1], spacings)
 
-            self._time_step_counter += 1
+            self._increment_time_step()
 
-        # Store trajectory (different format for segment-aware BC)
-        if use_segment_aware_bc:
-            # Store as list of arrays (variable particle counts)
-            self.M_particles_trajectory = particles_list
-        else:
-            self.M_particles_trajectory = current_particles
-
-        # Build particle history for direct query mode (Issue #489)
-        if self._particle_history is not None:
-            # Convert stored trajectory to list of (num_particles, dimension) arrays
-            if use_segment_aware_bc:
-                # List already in correct format: (num_particles_t, dimension)
-                self._particle_history.extend(particles_list)
-            else:
-                # 3D array (Nt, num_particles, dimension) -> List of (num_particles, dimension)
-                for t in range(Nt):
-                    self._particle_history.append(current_particles[t, :, :])
-
-        # Return FPParticleResult if particle history was stored (Issue #489)
-        if self._particle_history is not None:
-            time_grid = np.linspace(0, self.problem.T, Nt)
-            return FPParticleResult(
-                M_grid=M_density_on_grid,
-                time_grid=time_grid,
-                particle_history=self._particle_history,
-                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
-            )
-
-        # Backward compatible: return grid density only
-        return M_density_on_grid
+        # Finalize: store trajectory, build history, return result
+        trajectory = particles_list if use_segment_aware_bc else current_particles
+        return self._finalize_particle_solve(
+            M_density_on_grid, trajectory, Nt, dimension=dimension, use_segment_aware_bc=use_segment_aware_bc
+        )
 
     def _normalize_density_nd(self, density: np.ndarray, spacings: list[float]) -> np.ndarray:
         """
         Normalize density to integrate to 1 for nD grids.
+
+        Delegates to unified normalize_density() from fp_particle_density module.
 
         Args:
             density: Density array, shape (N1, N2, ..., Nd)
@@ -1523,12 +1465,7 @@ class FPParticleSolver(BaseFPSolver):
         Returns:
             Normalized density array
         """
-        # Volume element = dx1 * dx2 * ... * dxd
-        dV = np.prod(spacings)
-        total_mass = np.sum(density) * dV
-        if total_mass > 1e-14:
-            return density / total_mass
-        return density
+        return _normalize(density, spacings)
 
     def _solve_fp_system_gpu(self, m_initial_condition: np.ndarray, U_solution_for_drift: np.ndarray) -> np.ndarray:
         """
@@ -1606,7 +1543,7 @@ class FPParticleSolver(BaseFPSolver):
         if self.kde_normalization != KDENormalization.NONE:
             M_density_gpu[0, :] = self._normalize_density(M_density_gpu[0, :], Dx, use_backend=True)
 
-        self._time_step_counter += 1  # Increment after computing density at t=0
+        self._increment_time_step()  # Increment after computing density at t=0
 
         if Nt == 1:
             self.M_particles_trajectory = self.backend.to_numpy(X_particles_gpu)
@@ -1662,31 +1599,15 @@ class FPParticleSolver(BaseFPSolver):
             if self.kde_normalization != KDENormalization.NONE:
                 M_density_gpu[t + 1, :] = self._normalize_density(M_density_gpu[t + 1, :], Dx, use_backend=True)
 
-            self._time_step_counter += 1  # Increment after each time step
+            self._increment_time_step()  # Increment after each time step
 
         # Store trajectory and convert to NumPy ONCE at end
         X_particles_np = self.backend.to_numpy(X_particles_gpu)
         M_density_np = self.backend.to_numpy(M_density_gpu)
-        self.M_particles_trajectory = X_particles_np
 
-        # Build particle history for direct query mode (Issue #489)
-        if self._particle_history is not None:
-            # Convert 2D array (Nt, num_particles) to list of (num_particles, 1) arrays
-            for t in range(Nt):
-                self._particle_history.append(X_particles_np[t, :].reshape(-1, 1))
-
-        # Return FPParticleResult if particle history was stored (Issue #489)
-        if self._particle_history is not None:
-            time_grid = np.linspace(0, self.problem.T, Nt)
-            return FPParticleResult(
-                M_grid=M_density_np,
-                time_grid=time_grid,
-                particle_history=self._particle_history,
-                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
-            )
-
-        # Backward compatible: return grid density only
-        return M_density_np
+        # Finalize: store trajectory, build history, return result
+        # GPU solver is 1D only, uses Nt time points
+        return self._finalize_particle_solve(M_density_np, X_particles_np, Nt, dimension=1)
 
     def _solve_fp_system_callable_drift(
         self,
@@ -1771,7 +1692,7 @@ class FPParticleSolver(BaseFPSolver):
         M_density_on_grid[0] = M_initial.copy()
 
         # Normalize initial if requested
-        if self.kde_normalization == KDENormalization.ALL:
+        if self._should_normalize_density():
             M_density_on_grid[0] = self._normalize_density_nd(M_density_on_grid[0], spacings)
 
         # Progress bar
@@ -1860,32 +1781,17 @@ class FPParticleSolver(BaseFPSolver):
             # Estimate density from particles
             M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(new_particles, coordinates, bounds)
 
-            # Normalize if requested
-            if self.kde_normalization == KDENormalization.ALL:
+            # Normalize if requested (respects kde_normalization strategy)
+            if self._should_normalize_density():
                 M_density_on_grid[t_idx + 1] = self._normalize_density_nd(M_density_on_grid[t_idx + 1], spacings)
 
-            self._time_step_counter += 1
+            self._increment_time_step()
 
-        self.M_particles_trajectory = current_particles
-
-        # Build particle history for direct query mode (Issue #489)
-        if self._particle_history is not None:
-            # Convert 3D array (Nt+1, num_particles, dimension) to list
-            for t in range(Nt + 1):
-                self._particle_history.append(current_particles[t, :, :])
-
-        # Return FPParticleResult if particle history was stored (Issue #489)
-        if self._particle_history is not None:
-            time_grid = np.linspace(0, self.problem.T, Nt + 1)
-            return FPParticleResult(
-                M_grid=M_density_on_grid,
-                time_grid=time_grid,
-                particle_history=self._particle_history,
-                bandwidth=self.kde_bandwidth if isinstance(self.kde_bandwidth, (int, float)) else None,
-            )
-
-        # Backward compatible: return grid density only
-        return M_density_on_grid
+        # Finalize: store trajectory, build history, return result
+        # Note: callable drift uses Nt+1 time points (0 to Nt inclusive)
+        return self._finalize_particle_solve(
+            M_density_on_grid, current_particles, Nt + 1, dimension=dimension, use_segment_aware_bc=False
+        )
 
     def _interpolate_field_at_particles(
         self,

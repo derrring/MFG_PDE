@@ -12,6 +12,10 @@ Semi-Lagrangian Variants:
 - FPSLSolver: Backward SL (gather/interpolate) - for standalone FP problems
 - FPSLAdjointSolver: Forward SL (scatter/splat) - adjoint of HJB SL for MFG duality
 
+Internal modules (Issue #635 refactoring):
+- fp_particle_density: Dimension-agnostic density estimation utilities
+- fp_particle_bc: Dimension-agnostic boundary condition handling
+
 Note: Network solvers have been moved to `mfg_pde.alg.numerical.network_solvers`.
 FPNetworkSolver is re-exported here for backward compatibility.
 """
