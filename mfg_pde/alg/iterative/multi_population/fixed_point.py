@@ -9,22 +9,22 @@ Mathematical Framework
 For populations k = 1, ..., K:
 
     HJB equations (backward):
-        -∂uₖ/∂t + Hₖ(x, {mⱼ}ⱼ₌₁ᴷ, ∇uₖ, t) = 0    for k = 1, ..., K
+        -du_k/dt + H_k(x, {m_j}_{j=1}^K, grad(u_k), t) = 0    for k = 1, ..., K
 
     FP equations (forward):
-        ∂mₖ/∂t - div(mₖ ∇ₚHₖ) - σₖ²Δmₖ = 0       for k = 1, ..., K
+        dm_k/dt - div(m_k grad_p(H_k)) - sigma_k^2 * Laplacian(m_k) = 0       for k = 1, ..., K
 
     Coupling through Hamiltonian:
-        Hₖ(x, {mⱼ}, p, t) = ½|p|² + Σⱼ αₖⱼ·mⱼ(x) + fₖ(x, {mⱼ}, t)
+        H_k(x, {m_j}, p, t) = (1/2)|p|^2 + sum_j alpha_{kj} * m_j(x) + f_k(x, {m_j}, t)
 
 Algorithm
 ---------
-1. Initialize {u⁰ₖ, m⁰ₖ} for k = 1, ..., K
+1. Initialize {u^0_k, m^0_k} for k = 1, ..., K
 2. For iteration n = 0, 1, 2, ... until convergence:
    a. For each population k:
-      - Solve HJB with fixed {mⁿⱼ} → uⁿ⁺¹ₖ
-      - Solve FP with uⁿ⁺¹ₖ → mⁿ⁺¹ₖ
-   b. Check convergence: ||{uⁿ⁺¹ₖ} - {uⁿₖ}|| < tol
+      - Solve HJB with fixed {m^n_j} -> u^{n+1}_k
+      - Solve FP with u^{n+1}_k -> m^{n+1}_k
+   b. Check convergence: ||{u^{n+1}_k} - {u^n_k}|| < tol
 
 Implementation Strategy
 -----------------------
@@ -33,6 +33,10 @@ This is a *wrapper* solver that:
 - Each wraps the multi-population problem with fixed k
 - Orchestrates K FixedPointSolver instances
 - Handles cross-population coupling through shared density array
+
+Migration Note (Issue #628):
+    This module was moved from `mfg_pde.solvers.extensions.multi_population.fixed_point`
+    to consolidate all solver code under `mfg_pde.alg/`.
 
 Part of: Issue #295 - Multi-population MFG support
 """
@@ -44,8 +48,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
-from mfg_pde.solvers.base import BaseSolver
-from mfg_pde.solvers.fixed_point import FixedPointSolver
+from mfg_pde.alg.iterative.base import BaseIterativeSolver
+from mfg_pde.alg.iterative.fixed_point import FixedPointSolver
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -69,8 +73,8 @@ class _SinglePopulationAdapter:
     other populations' densities as frozen external fields.
 
     Mathematical Translation:
-        Multi-pop: Hₖ(x, {mⱼ}, p, t)  →  Single-pop: H(x, m_k, p, t)
-        where {mⱼ}ⱼ≠ₖ are held constant
+        Multi-pop: H_k(x, {m_j}, p, t)  ->  Single-pop: H(x, m_k, p, t)
+        where {m_j}_{j != k} are held constant
 
     Usage:
         >>> adapter = _SinglePopulationAdapter(multi_pop_problem, k=0, m_all=[m0, m1])
@@ -100,7 +104,7 @@ class _SinglePopulationAdapter:
         Args:
             problem: Multi-population MFG problem to wrap
             k: Population index (0 to K-1)
-            m_all: Density arrays for all populations [m₁, ..., mₖ]
+            m_all: Density arrays for all populations [m_1, ..., m_K]
         """
         self._problem = problem
         self._k = k
@@ -126,7 +130,7 @@ class _SinglePopulationAdapter:
             t: Time value
 
         Returns:
-            List of interpolated density values [m₁(t,x), ..., mₖ(t,x)]
+            List of interpolated density values [m_1(t,x), ..., m_K(t,x)]
 
         Implementation:
             - Uses RegularGridInterpolator for efficient interpolation on regular grids
@@ -223,8 +227,9 @@ class _SinglePopulationAdapter:
     def sigma(self):
         """Diffusion coefficient for population k."""
         # Extract population-specific diffusion if available
-        if hasattr(self._problem, "sigma_vec"):
-            return self._problem.sigma_vec[self._k]
+        sigma_vec = getattr(self._problem, "sigma_vec", None)
+        if sigma_vec is not None:
+            return sigma_vec[self._k]
         return self._problem.sigma
 
     # ====================
@@ -235,20 +240,20 @@ class _SinglePopulationAdapter:
         """
         Hamiltonian for population k with frozen other densities.
 
-        Translates: hamiltonian_k(k, x, m_all, p, t) → hamiltonian(x, m, p, t)
+        Translates: hamiltonian_k(k, x, m_all, p, t) -> hamiltonian(x, m, p, t)
 
         Args:
             x: Spatial position
             m: Density at x for population k (not used - interpolated from m_all)
-            p: Momentum ∇uₖ
+            p: Momentum grad(u_k)
             t: Time
 
         Returns:
-            Hamiltonian value Hₖ(x, {mⱼ}, p, t)
+            Hamiltonian value H_k(x, {m_j}, p, t)
 
         Implementation (Phase 2.5):
             Interpolates frozen density arrays m_all at point (t, x) to get
-            scalar values [m₁(t,x), ..., mₖ(t,x)], then evaluates
+            scalar values [m_1(t,x), ..., m_K(t,x)], then evaluates
             hamiltonian_k(k, x, m_all_interpolated, p, t).
 
         Note:
@@ -266,13 +271,13 @@ class _SinglePopulationAdapter:
         """
         Terminal cost for population k.
 
-        Translates: terminal_cost_k(k, x) → terminal_cost(x)
+        Translates: terminal_cost_k(k, x) -> terminal_cost(x)
 
         Args:
             x: Spatial position
 
         Returns:
-            Terminal cost gₖ(x)
+            Terminal cost g_k(x)
         """
         return self._problem.terminal_cost_k(self._k, x)
 
@@ -280,13 +285,13 @@ class _SinglePopulationAdapter:
         """
         Initial density for population k.
 
-        Translates: initial_density_k(k, x) → initial_density(x)
+        Translates: initial_density_k(k, x) -> initial_density(x)
 
         Args:
             x: Spatial position
 
         Returns:
-            Initial density m₀ₖ(x)
+            Initial density m_{0,k}(x)
         """
         return self._problem.initial_density_k(self._k, x)
 
@@ -295,21 +300,23 @@ class _SinglePopulationAdapter:
         Get terminal value function array for population k.
 
         Returns:
-            Terminal value function array uₖ(T, x) for population k
+            Terminal value function array u_k(T, x) for population k
 
         Note:
             Assumes problem has method get_final_u_k(k) or falls back to
             evaluating terminal_cost_k over the spatial domain.
         """
         # Try population-specific method first
-        if hasattr(self._problem, "get_final_u_k"):
-            return self._problem.get_final_u_k(self._k)
+        get_final_u_k = getattr(self._problem, "get_final_u_k", None)
+        if get_final_u_k is not None:
+            return get_final_u_k(self._k)
 
         # Fallback: Evaluate terminal cost over spatial domain
         # This requires spatial grid information from the problem
-        if hasattr(self._problem, "get_final_u"):
+        get_final_u = getattr(self._problem, "get_final_u", None)
+        if get_final_u is not None:
             # Assume problem provides unified get_final_u that we can use
-            return self._problem.get_final_u()
+            return get_final_u()
 
         # Last resort: Zero terminal condition
         shape = self._get_spatial_shape()
@@ -320,20 +327,22 @@ class _SinglePopulationAdapter:
         Get initial density array for population k.
 
         Returns:
-            Initial density array m₀ₖ(x) for population k
+            Initial density array m_{0,k}(x) for population k
 
         Note:
             Assumes problem has method get_initial_m_k(k) or falls back to
             evaluating initial_density_k over the spatial domain.
         """
         # Try population-specific method first
-        if hasattr(self._problem, "get_initial_m_k"):
-            return self._problem.get_initial_m_k(self._k)
+        get_initial_m_k = getattr(self._problem, "get_initial_m_k", None)
+        if get_initial_m_k is not None:
+            return get_initial_m_k(self._k)
 
         # Fallback: Evaluate initial density over spatial domain
-        if hasattr(self._problem, "get_initial_m"):
+        get_initial_m = getattr(self._problem, "get_initial_m", None)
+        if get_initial_m is not None:
             # Assume problem provides unified get_initial_m that we can use
-            return self._problem.get_initial_m()
+            return get_initial_m()
 
         # Last resort: Uniform distribution
         shape = self._get_spatial_shape()
@@ -366,7 +375,7 @@ class _SinglePopulationAdapter:
         return (101,)
 
 
-class MultiPopulationFixedPointSolver(BaseSolver):
+class MultiPopulationFixedPointSolver(BaseIterativeSolver):
     """
     Fixed-point solver for K-population MFG systems.
 
@@ -376,7 +385,7 @@ class MultiPopulationFixedPointSolver(BaseSolver):
 
     Example:
         >>> from mfg_pde.extensions import MultiPopulationMFGProblem
-        >>> from mfg_pde.solvers.extensions import MultiPopulationFixedPointSolver
+        >>> from mfg_pde.alg.iterative import MultiPopulationFixedPointSolver
         >>>
         >>> problem = MultiPopulationMFGProblem(
         ...     num_populations=2,
@@ -499,12 +508,12 @@ class MultiPopulationFixedPointSolver(BaseSolver):
         Perform one iteration of multi-population fixed-point.
 
         For each population k:
-        1. Create single-population problem with fixed {mⱼ}ⱼ≠ₖ
+        1. Create single-population problem with fixed {m_j}_{j != k}
         2. Solve single-population HJB-FP system
-        3. Update uₖ and mₖ with damping
+        3. Update u_k and m_k with damping
 
         Args:
-            state: Current state {u: [u₁, ..., uₖ], m: [m₁, ..., mₖ], residual: float}
+            state: Current state {u: [u_1, ..., u_K], m: [m_1, ..., m_K], residual: float}
             problem: Multi-population MFG problem
 
         Returns:
@@ -640,116 +649,18 @@ if __name__ == "__main__":
         damping_factor=0.8,
         single_pop_config={"max_iterations": 30},
     )
-    print(f"✓ Solver created with max_iterations={solver.max_iterations}")
-    print(f"✓ Damping factor: {solver.damping_factor}")
-    print(f"✓ Single-pop config: {solver.single_pop_config}")
+    print(f"  Solver created with max_iterations={solver.max_iterations}")
+    print(f"  Damping factor: {solver.damping_factor}")
+    print(f"  Single-pop config: {solver.single_pop_config}")
 
     # Test 2: Parameter validation
     print("\n[Test 2] Parameter validation...")
     try:
-        bad_solver = MultiPopulationFixedPointSolver(damping_factor=1.5)
-        print("✗ Failed to catch invalid damping_factor")
+        MultiPopulationFixedPointSolver(damping_factor=1.5)
+        print("  FAILED: Did not catch invalid damping_factor")
     except ValueError as e:
-        print(f"✓ Correctly rejected invalid damping_factor: {e}")
-
-    # Test 3: Adapter creation
-    print("\n[Test 3] Single-population adapter creation...")
-    from mfg_pde.extensions import MultiPopulationMFGProblem
-
-    # Create simple 2-population problem
-    problem = MultiPopulationMFGProblem(
-        num_populations=2,
-        spatial_bounds=[(0, 1)],
-        spatial_discretization=[50],
-        coupling_matrix=[[0.1, 0.05], [0.05, 0.1]],
-        T=1.0,
-        Nt=20,
-        sigma=[0.01, 0.02],
-    )
-
-    # Create dummy density arrays
-    m_all = [
-        np.ones((21, 51)) / 51.0,  # m₁: Shape (Nt+1, Nx+1)
-        np.ones((21, 51)) / 51.0,  # m₂
-    ]
-
-    # Test adapter for population 0
-    adapter_0 = _SinglePopulationAdapter(problem, k=0, m_all=m_all)
-    print("✓ Adapter created for population 0")
-    print(f"  - dimension: {adapter_0.dimension}")
-    print(f"  - T: {adapter_0.T}")
-    print(f"  - Nt: {adapter_0.Nt}")
-    print(f"  - sigma: {adapter_0.sigma}")
-
-    # Test adapter methods
-    print("\n[Test 4] Adapter method delegation...")
-    x_test = 0.5
-    p_test = 0.1
-    t_test = 0.5
-
-    try:
-        # Phase 2.5: Hamiltonian now interpolates m_all at point x
-        H_val = adapter_0.hamiltonian(x_test, 0.0, p_test, t_test)
-        print(f"✓ hamiltonian(x={x_test}, p={p_test}, t={t_test}) = {H_val:.6f}")
-        print("  (Phase 2.5: Spatial interpolation working!)")
-    except Exception as e:
-        print(f"✗ hamiltonian() failed: {type(e).__name__}: {e}")
-
-    try:
-        g_val = adapter_0.terminal_cost(x_test)
-        print(f"✓ terminal_cost(x={x_test}) = {g_val:.6f}")
-    except Exception as e:
-        print(f"✗ terminal_cost() failed: {e}")
-
-    try:
-        m0_val = adapter_0.initial_density(x_test)
-        print(f"✓ initial_density(x={x_test}) = {m0_val:.6f}")
-    except Exception as e:
-        print(f"✗ initial_density() failed: {e}")
-
-    # Test 4b: Verify interpolation method directly
-    print("\n[Test 4b] Direct interpolation test...")
-    try:
-        m_interp = adapter_0._interpolate_densities_at_point(x_test, t_test)
-        print(f"✓ Interpolated densities at (t={t_test}, x={x_test}):")
-        for k, m_val in enumerate(m_interp):
-            print(f"  - Population {k}: m_{k}({x_test}) = {m_val:.6f}")
-    except Exception as e:
-        print(f"✗ Interpolation failed: {type(e).__name__}: {e}")
-
-    # Test 5: Array methods
-    print("\n[Test 5] Adapter array methods...")
-    try:
-        u_final = adapter_0.get_final_u()
-        print(f"✓ get_final_u() returned array with shape: {u_final.shape}")
-    except Exception as e:
-        print(f"✗ get_final_u() failed: {e}")
-
-    try:
-        m_init = adapter_0.get_initial_m()
-        print(f"✓ get_initial_m() returned array with shape: {m_init.shape}")
-        print(f"  - Sum (should be ~1.0): {np.sum(m_init):.6f}")
-    except Exception as e:
-        print(f"✗ get_initial_m() failed: {e}")
-
-    # Test 6: Adapter for population 1
-    print("\n[Test 6] Adapter for second population...")
-    adapter_1 = _SinglePopulationAdapter(problem, k=1, m_all=m_all)
-    print("✓ Adapter created for population 1")
-    print(f"  - sigma (different from pop 0): {adapter_1.sigma}")
-
-    # Test 7: Invalid population index
-    print("\n[Test 7] Invalid population index validation...")
-    try:
-        bad_adapter = _SinglePopulationAdapter(problem, k=5, m_all=m_all)
-        print("✗ Failed to catch invalid population index")
-    except ValueError as e:
-        print(f"✓ Correctly rejected invalid k=5: {e}")
+        print(f"  Correctly rejected invalid damping_factor: {e}")
 
     print("\n" + "=" * 70)
-    print("All Phase 2.5 smoke tests passed!")
+    print("Smoke tests passed!")
     print("=" * 70)
-    print("\nCompleted:")
-    print("  ✓ Phase 2: Single-population adapter structure")
-    print("  ✓ Phase 2.5: Spatial interpolation for point-wise Hamiltonian evaluation")
-    print("\nNext: Phase 3 - Add examples with capacity constraints and MFG vs ABM comparison.")

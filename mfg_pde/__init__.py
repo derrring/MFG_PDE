@@ -12,6 +12,10 @@ from .utils.numpy_compat import ensure_numpy_compatibility
 _numpy_info = ensure_numpy_compatibility()
 
 from .alg.numerical.fp_solvers.fp_particle import KDENormalization  # noqa: E402
+from .alg.optimization.variational_problem import (  # noqa: E402
+    VariationalMFGComponents,
+    VariationalMFGProblem,
+)
 from .config import MFGSolverConfig  # noqa: E402
 from .core.mfg_problem import (  # noqa: E402
     MFGComponents,
@@ -46,12 +50,6 @@ from .geometry import (  # noqa: E402
     create_network,
     get_backend_manager,
     set_preferred_backend,
-)
-from .solvers.variational import (  # noqa: E402
-    VariationalMFGComponents,
-    VariationalMFGProblem,
-    create_obstacle_variational_mfg,
-    create_quadratic_variational_mfg,
 )
 from .types import NumericalScheme  # noqa: E402
 
@@ -146,8 +144,6 @@ __all__ = [
     "create_general_mfg_problem",
     "create_grid_mfg_problem",
     "create_network",
-    "create_obstacle_variational_mfg",
-    "create_quadratic_variational_mfg",
     "create_random_mfg_problem",
     "create_scale_free_mfg_problem",
     "create_solver",
