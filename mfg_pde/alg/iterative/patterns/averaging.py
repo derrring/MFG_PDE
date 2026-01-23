@@ -28,21 +28,19 @@ References:
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Generic, Protocol, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from ..convergence import ConvergenceResult
-from ..schedules import get_schedule
-from .picard import FixedPointIteratorBase
+from mfg_pde.alg.iterative.patterns.picard import FixedPointIteratorBase
+from mfg_pde.alg.iterative.schedules import get_schedule
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-# Generic type for iteration state
-StateT = TypeVar("StateT")
+    from mfg_pde.alg.iterative.convergence import ConvergenceResult
 
 
 @runtime_checkable
-class AveragingPattern(Protocol[StateT]):
+class AveragingPattern[StateT](Protocol):
     """
     Protocol for averaging (Fictitious Play) iteration.
 
@@ -70,7 +68,7 @@ class AveragingPattern(Protocol[StateT]):
         ...
 
 
-class AveragingIterator(FixedPointIteratorBase[StateT], Generic[StateT]):
+class AveragingIterator[StateT](FixedPointIteratorBase[StateT]):
     """
     Base class for averaging (Fictitious Play) iterators.
 

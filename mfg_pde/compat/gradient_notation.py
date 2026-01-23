@@ -68,7 +68,7 @@ from mfg_pde.utils.deprecation import deprecated
     since="v0.17.0",
     replacement="mfg_pde.core.DerivativeTensors",
     reason="legacy string-key gradient notation. Use DerivativeTensors.grad instead.",
-    removal_blockers=["internal_usage", "migration_docs"],
+    # Blockers cleared: no internal usage found, migration docs exist
 )
 def derivs_to_p_values_1d(derivs: dict[tuple[int], float]) -> dict[str, float]:
     """
@@ -95,7 +95,7 @@ def derivs_to_p_values_1d(derivs: dict[tuple[int], float]) -> dict[str, float]:
     since="v0.17.0",
     replacement="mfg_pde.core.DerivativeTensors",
     reason="legacy string-key gradient notation. Use DerivativeTensors.grad instead.",
-    removal_blockers=["internal_usage", "migration_docs"],
+    # Blockers cleared: no internal usage found, migration docs exist
 )
 def p_values_to_derivs_1d(p_values: dict[str, float], u_value: float = 0.0) -> dict[tuple[int], float]:
     """
@@ -131,7 +131,7 @@ def p_values_to_derivs_1d(p_values: dict[str, float], u_value: float = 0.0) -> d
     since="v0.17.0",
     replacement="mfg_pde.core.DerivativeTensors.from_gradient()",
     reason="Use DerivativeTensors for gradient representation instead of dict format.",
-    removal_blockers=["internal_usage", "migration_docs"],
+    # Blockers cleared: no internal usage found, migration docs exist
 )
 def gradient_tuple_to_derivs(grad: tuple[float, ...], u_value: float = 0.0) -> dict[tuple[int, ...], float]:
     """
@@ -198,7 +198,7 @@ def gradient_tuple_to_derivs(grad: tuple[float, ...], u_value: float = 0.0) -> d
     since="v0.17.0",
     replacement="mfg_pde.core.DerivativeTensors.grad",
     reason="Use DerivativeTensors.grad attribute instead of tuple extraction.",
-    removal_blockers=["internal_usage", "migration_docs"],
+    # Blockers cleared: no internal usage found, migration docs exist
 )
 def derivs_to_gradient_tuple(derivs: dict[tuple[int, ...], float]) -> tuple[float, ...]:
     """
@@ -254,7 +254,7 @@ def derivs_to_gradient_tuple(derivs: dict[tuple[int, ...], float]) -> tuple[floa
     since="v0.17.0",
     replacement="mfg_pde.core.DerivativeTensors.grad",
     reason="Use DerivativeTensors.grad attribute (already a NumPy array).",
-    removal_blockers=["internal_usage", "migration_docs"],
+    # Blockers cleared: no internal usage found, migration docs exist
 )
 def derivs_to_gradient_array(derivs: dict[tuple[int, ...], float], dimension: int) -> np.ndarray:
     """
@@ -293,7 +293,7 @@ def derivs_to_gradient_array(derivs: dict[tuple[int, ...], float], dimension: in
     since="v0.17.0",
     replacement="mfg_pde.core.DerivativeTensors.from_gradient()",
     reason="Use DerivativeTensors.from_gradient(array) instead of dict conversion.",
-    removal_blockers=["internal_usage", "migration_docs"],
+    # Blockers cleared: no internal usage found, migration docs exist
 )
 def gradient_array_to_derivs(p: np.ndarray, u_value: float = 0.0) -> dict[tuple[int, ...], float]:
     """
