@@ -871,3 +871,134 @@ class DriftField:
             raise ValueError(f"Drift callable returned NaN or Inf at timestep {timestep_idx}")
 
         return result
+
+
+class MFGDriftField:
+    """
+    Full MFG drift computation from value function U and control cost (Issue #623).
+
+    This class encapsulates the complete MFG coupling:
+    1. Extract U slice at timestep
+    2. Compute gradient ∇U using geometry
+    3. Apply optimal control formula via ControlCostBase
+
+    This is the "physics-aware" drift field that understands the relationship
+    between value function and drift. Use this when you have:
+    - A value function U from HJB solver
+    - A control cost specification (quadratic, L1, bounded, etc.)
+    - A geometry that provides gradient computation
+
+    Parameters
+    ----------
+    U_solution : ndarray
+        Value function from HJB solver, shape (Nt, *spatial_shape)
+    control_cost : ControlCostBase
+        Control cost specification (determines optimal_control formula)
+    geometry : BaseGeometry
+        Geometry providing gradient computation
+    coupling_coefficient : float, optional
+        Scaling factor for drift (default: 1.0)
+
+    Examples
+    --------
+    Standard MFG coupling:
+    >>> from mfg_pde.core import QuadraticControlCost, OptimizationSense
+    >>> cost = QuadraticControlCost(sense=OptimizationSense.MINIMIZE, control_cost=1.0)
+    >>> drift = MFGDriftField(U_solution, cost, problem.geometry)
+    >>> velocity = drift.get_velocity_at(k, density)
+
+    L1 (bang-bang) control:
+    >>> from mfg_pde.core import L1ControlCost
+    >>> cost = L1ControlCost(control_cost=0.5)
+    >>> drift = MFGDriftField(U_solution, cost, problem.geometry)
+    >>> velocity = drift.get_velocity_at(k, density)  # Returns ±1 or 0
+    """
+
+    def __init__(
+        self,
+        U_solution: np.ndarray,
+        control_cost: Any,  # ControlCostBase, use Any to avoid import cycle
+        geometry: Any,  # BaseGeometry
+        coupling_coefficient: float = 1.0,
+    ):
+        self.U_solution = U_solution
+        self.control_cost = control_cost
+        self.geometry = geometry
+        self.coupling_coefficient = coupling_coefficient
+
+        # Cache dimensions
+        self.Nt = U_solution.shape[0]
+        self.spatial_shape = U_solution.shape[1:]
+
+    def get_U_at(self, timestep_idx: int) -> np.ndarray:
+        """Get value function slice at timestep."""
+        return self.U_solution[timestep_idx]
+
+    def get_gradient_at(self, timestep_idx: int) -> np.ndarray:
+        """
+        Compute gradient ∇U at timestep.
+
+        Uses geometry's gradient computation if available,
+        otherwise falls back to finite differences.
+        """
+        U_k = self.get_U_at(timestep_idx)
+
+        # Try geometry-based gradient
+        if hasattr(self.geometry, "compute_gradient"):
+            return self.geometry.compute_gradient(U_k)
+
+        # Fallback: simple finite differences
+        spacing = self.geometry.get_grid_spacing()
+        ndim = len(self.spatial_shape)
+
+        if ndim == 1:
+            # Central differences for interior, one-sided at boundaries
+            grad = np.zeros_like(U_k)
+            grad[1:-1] = (U_k[2:] - U_k[:-2]) / (2 * spacing[0])
+            grad[0] = (U_k[1] - U_k[0]) / spacing[0]
+            grad[-1] = (U_k[-1] - U_k[-2]) / spacing[0]
+            return grad
+        else:
+            # For nD, return tuple of gradients per dimension
+            grads = []
+            for dim in range(ndim):
+                grad = np.gradient(U_k, spacing[dim], axis=dim)
+                grads.append(grad)
+            return np.stack(grads, axis=0)
+
+    def get_velocity_at(self, timestep_idx: int, density: np.ndarray | None = None) -> np.ndarray:
+        """
+        Compute optimal control velocity α* at timestep.
+
+        This is the primary method for MFG coupling:
+        α* = control_cost.optimal_control(∇U)
+
+        Parameters
+        ----------
+        timestep_idx : int
+            Timestep index
+        density : ndarray | None
+            Current density (for state-dependent control costs)
+            Currently unused, reserved for future extensions
+
+        Returns
+        -------
+        ndarray
+            Optimal control velocity α*
+        """
+        # Get gradient
+        grad_U = self.get_gradient_at(timestep_idx)
+
+        # Apply coupling coefficient
+        momentum = self.coupling_coefficient * grad_U
+
+        # Apply optimal control formula
+        return self.control_cost.optimal_control(momentum)
+
+    def is_callable(self) -> bool:
+        """MFGDriftField is never callable (it's U-based)."""
+        return False
+
+    def is_zero(self) -> bool:
+        """Check if all U values are zero."""
+        return np.allclose(self.U_solution, 0)

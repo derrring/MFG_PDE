@@ -13,6 +13,16 @@ from .derivatives import (
     from_multi_index_dict,
     to_multi_index_dict,
 )
+from .hamiltonian import (
+    BoundedControlCost,
+    BoundedHamiltonian,
+    ControlCostBase,
+    L1ControlCost,
+    L1Hamiltonian,
+    OptimizationSense,
+    QuadraticControlCost,
+    QuadraticHamiltonian,
+)
 from .mfg_components import (
     ConditionsMixin,
     HamiltonianMixin,
@@ -36,6 +46,15 @@ __all__ = [
     # Mixins
     "HamiltonianMixin",
     "ConditionsMixin",
+    # Hamiltonian/Lagrangian (Issue #623)
+    "OptimizationSense",
+    "ControlCostBase",
+    "QuadraticControlCost",
+    "QuadraticHamiltonian",
+    "L1ControlCost",
+    "L1Hamiltonian",
+    "BoundedControlCost",
+    "BoundedHamiltonian",
     # Capacity-constrained MFG
     "CapacityConstrainedMFGProblem",
     "CongestionModel",
