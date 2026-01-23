@@ -365,8 +365,9 @@ class FixedPointIterator(BaseMFGSolver):
             picard_task = progress.add_task(
                 "MFG Picard",
                 total=final_max_iterations,
-                error_U=0.0,
-                error_M=0.0,
+                iter=f"0/{final_max_iterations}",
+                err_U=0.0,
+                err_M=0.0,
             )
 
             for iiter in range(final_max_iterations):
@@ -493,13 +494,12 @@ class FixedPointIterator(BaseMFGSolver):
                 self.iterations_run = iiter + 1
 
                 # Update main task progress with metrics (Issue #614)
-                accel_tag = "A" if self.use_anderson else ""
                 progress.update(
                     picard_task,
-                    error_U=self.l2distu_rel[iiter],
-                    error_M=self.l2distm_rel[iiter],
+                    iter=f"{iiter + 1}/{final_max_iterations}",
+                    err_U=self.l2distu_rel[iiter],
+                    err_M=self.l2distm_rel[iiter],
                     time=f"{iter_time:.1f}s",
-                    acc=accel_tag,
                 )
 
                 # Issue #614: Invoke user callback if provided
