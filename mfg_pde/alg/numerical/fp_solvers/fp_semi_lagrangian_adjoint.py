@@ -25,7 +25,7 @@ Issue #578: Adjoint SL implementation for proper SL-SL MFG coupling
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.linalg import solve_banded
@@ -85,7 +85,7 @@ class FPSLAdjointSolver(BaseFPSolver):
         self.fp_method_name = "Adjoint Semi-Lagrangian"
 
         # Detect problem dimension
-        self.dimension = self._detect_dimension(problem)
+        self.dimension = self._detect_dimension()  # Issue #633: Use inherited method
 
         if self.dimension > 1:
             raise NotImplementedError(
@@ -106,18 +106,6 @@ class FPSLAdjointSolver(BaseFPSolver):
             self.boundary_conditions = boundary_conditions
         else:
             self.boundary_conditions = self._get_boundary_conditions_from_problem()
-
-    def _detect_dimension(self, problem: Any) -> int:
-        """Detect problem dimension."""
-        try:
-            return problem.geometry.dimension
-        except AttributeError:
-            pass
-        try:
-            return problem.dimension
-        except AttributeError:
-            pass
-        return 1  # Default to 1D
 
     def _get_boundary_conditions_from_problem(self) -> BoundaryConditions | None:
         """Get boundary conditions from problem or geometry."""
