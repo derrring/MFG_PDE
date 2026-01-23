@@ -1041,9 +1041,9 @@ def mixed_bc_from_regions(
         segments.append(segment)
 
     # Extract domain bounds from geometry if available
-    domain_bounds = None
-    if hasattr(geometry, "bounds"):
-        domain_bounds = np.array(geometry.bounds)
+    # Use getattr pattern per CLAUDE.md (no hasattr for optional attributes)
+    bounds = getattr(geometry, "bounds", None)
+    domain_bounds = np.array(bounds) if bounds is not None else None
 
     # Create BoundaryConditions object
     return BoundaryConditions(

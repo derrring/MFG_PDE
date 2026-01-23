@@ -11,6 +11,12 @@ providing alternatives to the classical HJB-FP system approach.
 
 from mfg_pde.alg.base_solver import BaseOptimizationSolver
 
+# Import variational problem formulation
+from .variational_problem import (
+    VariationalMFGComponents,
+    VariationalMFGProblem,
+)
+
 # Import variational solvers
 from .variational_solvers import (
     BaseVariationalSolver,
@@ -37,6 +43,9 @@ try:
     if OT_IMPORTS_AVAILABLE:
         __all__ = [
             "BaseOptimizationSolver",
+            # Variational Problem
+            "VariationalMFGComponents",
+            "VariationalMFGProblem",
             # Variational Solvers
             "BaseVariationalSolver",
             "PrimalDualMFGSolver",
@@ -53,6 +62,9 @@ try:
     else:
         __all__ = [
             "BaseOptimizationSolver",
+            # Variational Problem
+            "VariationalMFGComponents",
+            "VariationalMFGProblem",
             # Variational Solvers
             "BaseVariationalSolver",
             "PrimalDualMFGSolver",
@@ -65,6 +77,11 @@ except ImportError:
     OT_IMPORTS_AVAILABLE = False
     __all__ = [
         "BaseOptimizationSolver",
+        # Variational Problem
+        "VariationalMFGComponents",
+        "VariationalMFGProblem",
+        "create_obstacle_variational_mfg",
+        "create_quadratic_variational_mfg",
         # Variational Solvers
         "BaseVariationalSolver",
         "PrimalDualMFGSolver",

@@ -1,7 +1,7 @@
 # MFG_PDE Naming Conventions
 
-**Last Updated**: 2025-12-15
-**Status**: Current reference document (v0.17.0+)
+**Last Updated**: 2026-01-23
+**Status**: Current reference document (v0.17.1+)
 **Related**: See "Derivative Tensor Standard" section for the canonical derivative representation
 
 ---
@@ -585,11 +585,46 @@ For adaptive mesh refinement, use external libraries:
 
 | Parameter | Type | Meaning | Math Symbol |
 |-----------|------|---------|-------------|
-| `sigma` | float | Diffusion coefficient | σ |
+| `diffusion` | float | **Canonical** diffusion coefficient | σ |
+| `sigma` | float | **Deprecated** - use `diffusion` instead | σ |
 | `coupling_coefficient` | float | MFG coupling strength | λ |
 | `terminal_cost` | callable | Terminal cost function | g(x,m) |
 | `running_cost` | callable | Running cost function | f(x,m) |
 | `hamiltonian` | callable | Hamiltonian function | H(x,p,m) |
+
+### ⚠️ CRITICAL: Diffusion Coefficient Naming (v0.17.1+)
+
+**Canonical parameter**: `diffusion` (NOT `sigma`)
+
+**Mathematical definition**: `diffusion = σ` (the diffusion coefficient itself, NOT σ²)
+
+**In code formulas**:
+```python
+# Formula: g = -σ²/2 · ∂ln(m)/∂n
+# Code:
+g = -(diffusion**2) / 2 * grad_ln_m
+
+# Where:
+#   diffusion = σ (the diffusion coefficient)
+#   diffusion**2 = σ² (appears in formulas as σ²/2)
+```
+
+**Backward compatibility**:
+- Constructors: Accept `sigma` with `DeprecationWarning`, map to `diffusion`
+- State dicts: Look for `diffusion` first, fall back to `sigma`
+- Timeline: `sigma` will be removed in v1.0.0
+
+**Example**:
+```python
+# ✅ Modern (recommended)
+provider = AdjointConsistentProvider(side="left", diffusion=0.2)
+solver = HJBFDMSolver(problem, diffusion=0.2)
+
+# ⚠️ Deprecated (still works with warning)
+provider = AdjointConsistentProvider(side="left", sigma=0.2)  # Warns
+```
+
+**Common confusion**: `diffusion = σ`, NOT `σ²`. When you see `-σ²/2` in formulas, write `-(diffusion**2)/2` in code.
 
 ---
 
@@ -867,6 +902,7 @@ assert problem.Nt_points == 101
 
 | Old Name | New Name | Reason | Removal |
 |----------|----------|--------|---------|
+| `sigma` | `diffusion` | Canonical naming: `diffusion = σ` | v1.0.0 |
 | `num_points` | `Nx_points` | Unclear (which N?) | v1.0.0 |
 | `thetaUM` | `damping_factor` | Unclear acronym | Legacy |
 | `Niter_max` | `max_iterations` | Inconsistent capitalization | Legacy |

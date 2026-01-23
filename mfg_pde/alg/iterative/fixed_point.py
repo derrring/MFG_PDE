@@ -2,7 +2,12 @@
 Fixed Point Solver with Clean Interface
 
 A modern implementation of the fixed-point iteration solver that
-demonstrates the new clean API design with hooks support.
+demonstrates the clean API design with hooks support.
+
+Migration Note (Issue #628):
+    This module was moved from `mfg_pde.solvers.fixed_point` to consolidate
+    all solver code under `mfg_pde.alg/`. The original location remains
+    as a backward-compatible re-export.
 """
 
 from __future__ import annotations
@@ -13,10 +18,10 @@ import numpy as np
 
 from mfg_pde.types import ConvergenceInfo, MFGProblem, SolutionArray, SpatialTemporalState
 
-from .base import BaseSolver
+from .base import BaseIterativeSolver
 
 
-class FixedPointSolver(BaseSolver):
+class FixedPointSolver(BaseIterativeSolver):
     """
     Fixed-point iteration solver for MFG problems.
 

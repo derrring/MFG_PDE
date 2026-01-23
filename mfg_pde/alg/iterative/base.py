@@ -1,8 +1,8 @@
 """
 Base Solver with Hooks Support
 
-This module provides the base class for all MFG solvers using the new
-clean interface design with hooks pattern support.
+This module provides the base class for iterative MFG solvers using
+the clean interface design with hooks pattern support.
 
 Convergence Integration (Issue #456):
     Solvers can now accept optional `convergence` parameter with a
@@ -10,6 +10,11 @@ Convergence Integration (Issue #456):
     criteria. The base class provides default convergence checking, but
     subclasses can override `_create_convergence_checker()` to use
     specialized checkers (HJB, FP, MFG).
+
+Migration Note (Issue #628):
+    This module was moved from `mfg_pde.solvers.base` to consolidate
+    all solver code under `mfg_pde.alg/`. The original location remains
+    as a backward-compatible re-export.
 """
 
 from __future__ import annotations
@@ -28,16 +33,16 @@ if TYPE_CHECKING:
     from mfg_pde.utils.convergence import ConvergenceChecker
 
 
-class BaseSolver(ABC):
+class BaseIterativeSolver(ABC):
     """
-    Base class for all MFG solvers with hooks support.
+    Base class for iterative MFG solvers with hooks support.
 
     This class provides the common infrastructure for solver iteration,
     convergence checking, and hooks integration. Subclasses only need
     to implement the core algorithmic steps.
 
     Example:
-        class MyCustomSolver(BaseSolver):
+        class MyCustomSolver(BaseIterativeSolver):
             def _initialize_state(self, problem):
                 # Initialize solver state
                 return SpatialTemporalState(...)
@@ -349,3 +354,7 @@ class BaseSolver(ABC):
             },
             "config": self.config.copy(),
         }
+
+
+# Backward compatibility alias
+BaseSolver = BaseIterativeSolver

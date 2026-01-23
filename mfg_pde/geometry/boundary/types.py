@@ -471,9 +471,11 @@ class BCSegment:
             # This is a simplified implementation - may need refinement for general geometries
 
             # Try to get grid indices from geometry
-            if hasattr(geometry, "point_to_indices"):
+            # Use getattr pattern per CLAUDE.md (no hasattr for duck typing)
+            point_to_indices_method = getattr(geometry, "point_to_indices", None)
+            if callable(point_to_indices_method):
                 try:
-                    indices = geometry.point_to_indices(point)
+                    indices = point_to_indices_method(point)
                     # Check if indices are in region (region_mask is boolean array)
                     in_region = region_mask[tuple(indices)]
                     if not in_region:
@@ -486,12 +488,12 @@ class BCSegment:
             else:
                 # Geometry doesn't support point_to_indices
                 # For TensorProductGrid, we can compute indices manually
-                if hasattr(geometry, "bounds") and hasattr(geometry, "Nx_points"):
+                # Use getattr pattern per CLAUDE.md
+                bounds = getattr(geometry, "bounds", None)
+                Nx_points = getattr(geometry, "Nx_points", None)
+                if bounds is not None and Nx_points is not None:
                     try:
                         # Manual index computation for structured grids
-                        bounds = geometry.bounds
-                        Nx_points = geometry.Nx_points
-
                         indices = []
                         for dim_idx in range(len(point)):
                             x_min, x_max = bounds[dim_idx]
