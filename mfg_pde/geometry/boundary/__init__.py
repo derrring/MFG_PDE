@@ -175,6 +175,14 @@ from .applicator_graph import (
 )
 
 # =============================================================================
+# Interpolation Applicator (for Semi-Lagrangian, particle, RBF methods - Issue #636)
+# =============================================================================
+from .applicator_interpolation import (
+    InterpolationApplicator,
+    create_interpolation_applicator,
+)
+
+# =============================================================================
 # Meshfree Applicator (geometry-based, for collocation methods)
 # =============================================================================
 from .applicator_meshfree import (
@@ -221,6 +229,16 @@ from .dispatch import (
     apply_bc,
     get_applicator_for_geometry,
     validate_bc_compatibility,
+)
+
+# =============================================================================
+# Shared BC Enforcement Utilities (Issue #636)
+# =============================================================================
+from .enforcement import (
+    enforce_dirichlet_value_nd,
+    enforce_neumann_value_nd,
+    enforce_periodic_value_nd,
+    enforce_robin_value_nd,
 )
 
 # =============================================================================
@@ -387,6 +405,14 @@ __all__ = [
     # Helper functions
     "get_bc_class",
     "get_manager_class",
+    # Shared BC Enforcement Utilities (Issue #636)
+    "enforce_dirichlet_value_nd",
+    "enforce_neumann_value_nd",
+    "enforce_periodic_value_nd",
+    "enforce_robin_value_nd",
+    # Interpolation Applicator (Semi-Lagrangian, particle, RBF - Issue #636)
+    "InterpolationApplicator",
+    "create_interpolation_applicator",
     # Meshfree Applicator (geometry-based)
     "MeshfreeApplicator",
     "ParticleReflector",

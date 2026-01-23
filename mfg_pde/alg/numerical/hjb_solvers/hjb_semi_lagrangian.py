@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from scipy.optimize import minimize, minimize_scalar
 
+from mfg_pde.geometry.boundary.applicator_fdm import FDMApplicator
+from mfg_pde.geometry.boundary.applicator_interpolation import InterpolationApplicator
 from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
 
@@ -193,8 +195,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             logger.warning("JAX not available, falling back to NumPy")
             self.use_jax = False
 
-        # Detect problem dimension
-        self.dimension = self._detect_dimension(problem)
+        # Detect problem dimension (inherited from BaseNumericalSolver, Issue #633)
+        self.dimension = self._detect_dimension()
+
+        # Create boundary condition applicators
+        # FDMApplicator: for ghost cell operations (gradient computation)
+        self.bc_applicator = FDMApplicator(dimension=self.dimension)
+        # InterpolationApplicator: for post-interpolation BC enforcement (Issue #636)
+        self.interp_bc_applicator = InterpolationApplicator(dimension=self.dimension)
 
         # Validate geometry capabilities (Issue #596 Phase 2.1)
         # Semi-Lagrangian solver requires gradient operator for optimal control computation
@@ -329,42 +337,6 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         logger_local.warning(
             "RECOMMENDATION: Consider adaptive damping in Picard iteration (primary fix) "
             "or weaker coupling to prevent gradient amplification."
-        )
-
-    def _detect_dimension(self, problem) -> int:
-        """
-        Detect the dimension of the problem.
-
-        Args:
-            problem: MFGProblem instance (supports 1D, 2D, 3D, nD)
-
-        Returns:
-            dimension: 1 for 1D problems, 2 for 2D, 3 for 3D, etc.
-
-        Raises:
-            ValueError: If dimension cannot be determined
-        """
-        # Issue #545: Use try/except instead of hasattr
-        # Priority 1: geometry.dimension
-        try:
-            return problem.geometry.dimension
-        except AttributeError:
-            pass
-
-        # Priority 2: problem.dimension
-        try:
-            return problem.dimension
-        except AttributeError:
-            pass
-
-        # Legacy 1D detection
-        if getattr(problem, "Nx", None) is not None and getattr(problem, "Ny", None) is None:
-            return 1
-
-        # If we can't determine dimension, raise error
-        raise ValueError(
-            "Cannot determine problem dimension. "
-            "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
         )
 
     def _clip_gradient_with_monitoring(
@@ -767,66 +739,33 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         bc_type = self._get_bc_type_string(bc)
         return (bc_type, bc_type)
 
-    def _enforce_boundary_conditions_1d(self, U: np.ndarray) -> np.ndarray:
+    def _enforce_boundary_conditions(self, U: np.ndarray, time: float = 0.0) -> np.ndarray:
         """
-        Enforce boundary conditions on 1D solution array.
+        Enforce boundary conditions on solution array (dimension-agnostic).
 
         For Semi-Lagrangian, BC enforcement after each timestep ensures:
-        - **Neumann** (∂u/∂n=0): u[boundary] = u[interior neighbor] (zero gradient)
+        - **Neumann** (du/dn=0): 2nd-order extrapolation preserving zero gradient
         - **Dirichlet** (u=g): u[boundary] = g (prescribed value)
 
         This explicit enforcement is critical because Semi-Lagrangian's
         interpolation-based approach doesn't naturally preserve BCs.
 
+        Uses InterpolationApplicator (Issue #636) for unified BC handling
+        across all dimensions.
+
         Args:
-            U: Solution array of shape (Nx,)
+            U: Solution array of shape (Nx,) for 1D, (Ny, Nx) for 2D, etc.
+            time: Current time for time-dependent BC values
 
         Returns:
-            Solution with BCs enforced
-
-        Note:
-            This method modifies U in-place and returns it for chaining.
+            Solution with BCs enforced (modified in-place)
         """
         bc = self._get_boundary_conditions()
         if bc is None:
             return U
 
-        bc_type_min, bc_type_max = self._get_per_boundary_bc_types(bc)
-
-        # Enforce BC at x_min (index 0)
-        if bc_type_min in ("neumann", "no_flux"):
-            # Neumann: ∂u/∂x = 0 using 2nd-order extrapolation
-            # This preserves curvature while enforcing zero gradient:
-            # u[0] = (4*u[1] - u[2]) / 3  comes from Taylor expansion
-            # with ∂u/∂x|_{x=0} = 0
-            if len(U) >= 3:
-                U[0] = (4.0 * U[1] - U[2]) / 3.0
-            else:
-                U[0] = U[1]  # Fallback for very small arrays
-        elif bc_type_min == "dirichlet":
-            # Dirichlet: u = g at boundary
-            try:
-                g_min = bc.get_bc_value_at_boundary("x_min")
-                U[0] = g_min
-            except (AttributeError, ValueError):
-                pass  # Keep current value if BC value unavailable
-
-        # Enforce BC at x_max (index -1)
-        if bc_type_max in ("neumann", "no_flux"):
-            # Neumann: ∂u/∂x = 0 using 2nd-order extrapolation
-            if len(U) >= 3:
-                U[-1] = (4.0 * U[-2] - U[-3]) / 3.0
-            else:
-                U[-1] = U[-2]  # Fallback for very small arrays
-        elif bc_type_max == "dirichlet":
-            # Dirichlet: u = g at boundary
-            try:
-                g_max = bc.get_bc_value_at_boundary("x_max")
-                U[-1] = g_max
-            except (AttributeError, ValueError):
-                pass  # Keep current value if BC value unavailable
-
-        return U
+        # Use InterpolationApplicator for dimension-agnostic BC enforcement
+        return self.interp_bc_applicator.enforce_values(U, bc, time=time)
 
     def solve_hjb_system(
         self,
@@ -1053,9 +992,13 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # Step 2: Diffusion (using configured method)
             U_current = self._apply_diffusion(U_star, self.dt)
 
-            # Step 3: Enforce boundary conditions on solution
-            # This is critical for Neumann BC to ensure ∂u/∂x = 0 at walls
-            U_current = self._enforce_boundary_conditions_1d(U_current)
+            # Step 3: Enforce boundary conditions on solution using the applicator
+            bc = self._get_boundary_conditions()
+            if bc:
+                time = time_idx * self.dt
+                U_current = self.bc_applicator.enforce_values(
+                    U_current, boundary_conditions=bc, spacing=(self.dx,), time=time
+                )
 
             return U_current
 
@@ -1210,7 +1153,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             U_current = self._apply_diffusion(U_star, dt)
 
             # Step 3: Enforce boundary conditions on solution
-            U_current = self._enforce_boundary_conditions_1d(U_current)
+            U_current = self._enforce_boundary_conditions(U_current)
 
             return U_current
 
@@ -1269,6 +1212,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             # ADI diffusion with custom dt
             U_current_shaped = self._apply_diffusion(U_star, dt)
+
+            # Enforce boundary conditions (Issue #636 - nD support)
+            U_current_shaped = self._enforce_boundary_conditions(U_current_shaped)
 
             if U_next.ndim == 1:
                 return U_current_shaped.ravel()
