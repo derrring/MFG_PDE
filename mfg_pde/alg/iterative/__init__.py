@@ -18,6 +18,7 @@ This module provides:
    - check_convergence: Generic convergence checking
    - ConvergenceTracker: Track error history
    - apply_damping_generic: Generic damping
+   - Re-exports from utils/convergence: calculate_error, RollingConvergenceMonitor
 
 4. **Concrete Solvers** (for backward compatibility):
    - FixedPointSolver: High-level solver with hooks
@@ -39,6 +40,27 @@ Example (Concrete Solver):
 """
 
 # Abstract patterns (Issue #630)
+# Concrete solvers (backward compatibility)
+from .base import BaseIterativeSolver, BaseSolver
+
+# Convergence utilities (local)
+# Re-exports from utils/convergence for PDE-aware metrics (DRY - Issue #630)
+from .convergence import (
+    ConvergenceChecker,
+    ConvergenceConfig,
+    ConvergenceResult,
+    ConvergenceTracker,
+    RollingConvergenceMonitor,
+    apply_damping_arrays,
+    apply_damping_generic,
+    calculate_error,
+    check_convergence,
+    check_convergence_simple,
+    compute_absolute_change,
+    compute_relative_change,
+)
+from .fixed_point import FixedPointResult, FixedPointSolver
+from .multi_population import MultiPopulationFixedPointSolver
 from .patterns import (
     AveragingIterator,
     AveragingPattern,
@@ -56,23 +78,6 @@ from .schedules import (
     sqrt_schedule,
 )
 
-# Convergence utilities
-from .convergence import (
-    ConvergenceResult,
-    ConvergenceTracker,
-    apply_damping_arrays,
-    apply_damping_generic,
-    check_convergence,
-    check_convergence_simple,
-    compute_absolute_change,
-    compute_relative_change,
-)
-
-# Concrete solvers (backward compatibility)
-from .base import BaseIterativeSolver, BaseSolver
-from .fixed_point import FixedPointResult, FixedPointSolver
-from .multi_population import MultiPopulationFixedPointSolver
-
 __all__ = [
     # Abstract patterns
     "PicardPattern",
@@ -86,7 +91,7 @@ __all__ = [
     "constant_schedule",
     "get_schedule",
     "LEARNING_RATE_SCHEDULES",
-    # Convergence utilities
+    # Convergence utilities (local)
     "ConvergenceResult",
     "ConvergenceTracker",
     "check_convergence",
@@ -95,6 +100,11 @@ __all__ = [
     "apply_damping_arrays",
     "compute_relative_change",
     "compute_absolute_change",
+    # Re-exports from utils/convergence (DRY)
+    "calculate_error",
+    "RollingConvergenceMonitor",
+    "ConvergenceChecker",
+    "ConvergenceConfig",
     # Base classes
     "BaseIterativeSolver",
     "BaseSolver",  # Backward compatibility alias
