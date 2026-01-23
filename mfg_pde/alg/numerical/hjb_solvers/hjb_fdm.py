@@ -295,6 +295,29 @@ class HJBFDMSolver(BaseHJBSolver):
         # Initialize warning flags (Issue #545 - NO hasattr pattern)
         self._bc_warning_emitted: bool = False
 
+    def _detect_dimension(self) -> int:
+        """Detect spatial dimension from geometry (unified interface)."""
+        problem = self.problem
+        # Primary: Use geometry.dimension (standard for all modern problems)
+        # Issue #545: Use try/except instead of hasattr
+        try:
+            return problem.geometry.dimension
+        except AttributeError:
+            pass
+
+        # Fallback: problem.dimension attribute
+        # Note: We prioritize explicit geometry protocol but allow problem.dimension
+        # if it's explicitly set (e.g. legacy 1D init sets self.dimension)
+        try:
+            return problem.dimension
+        except AttributeError:
+            pass
+
+        raise ValueError(
+            "Cannot determine problem dimension. "
+            "Ensure problem has 'geometry' with 'dimension' attribute or 'dimension' property."
+        )
+
     def solve_hjb_system(
         self,
         M_density: NDArray | None = None,
