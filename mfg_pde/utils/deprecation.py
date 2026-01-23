@@ -322,9 +322,80 @@ def check_removal_readiness(
     }
 
 
+def deprecated_alias(
+    old_name: str,
+    new_class: type,
+    since: str,
+) -> Callable[..., Any]:
+    """
+    Create a deprecated alias for a renamed class or function.
+
+    Use this when renaming a class/function but keeping the old name for
+    backward compatibility. The alias will emit a deprecation warning
+    when used.
+
+    Args:
+        old_name: The deprecated name (for warning message)
+        new_class: The new class/function to redirect to
+        since: Version when deprecation started (e.g., "v0.17.1")
+
+    Returns:
+        A wrapper function that creates instances of new_class with warning
+
+    Example:
+        >>> # In module where class was renamed:
+        >>> class DriftField:  # New name
+        ...     def __init__(self, U, cost, geometry):
+        ...         ...
+        ...
+        >>> # Create deprecated alias
+        >>> MFGDriftField = deprecated_alias("MFGDriftField", DriftField, "v0.17.1")
+        >>>
+        >>> # Usage (will warn):
+        >>> drift = MFGDriftField(U, cost, grid)  # DeprecationWarning emitted
+
+    Note:
+        For simple renames, this creates a factory function that:
+        1. Emits DeprecationWarning
+        2. Returns new_class(*args, **kwargs)
+
+        For classes, isinstance checks will work with the new class name only.
+    """
+
+    def alias_wrapper(*args: Any, **kwargs: Any) -> Any:
+        warnings.warn(
+            f"{old_name} is deprecated since {since}. Use {new_class.__name__} instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return new_class(*args, **kwargs)
+
+    # Store metadata for discovery
+    alias_wrapper._deprecation_meta = {  # type: ignore[attr-defined]
+        "since": since,
+        "replacement": new_class.__name__,
+        "reason": f"Renamed to {new_class.__name__}",
+        "removal_blockers": ["internal_usage", "equivalence_test"],
+        "symbol": old_name,
+        "alias_for": new_class.__name__,
+    }
+
+    # Preserve docstring
+    alias_wrapper.__doc__ = f"""
+    Deprecated alias for {new_class.__name__}.
+
+    .. deprecated:: {since.lstrip("v")}
+        Use `{new_class.__name__}` instead. Will be removed in v1.0.0.
+    """
+    alias_wrapper.__name__ = old_name
+
+    return alias_wrapper
+
+
 __all__ = [
     "deprecated",
     "deprecated_parameter",
+    "deprecated_alias",
     "get_deprecation_metadata",
     "get_deprecated_parameters",
     "check_removal_readiness",

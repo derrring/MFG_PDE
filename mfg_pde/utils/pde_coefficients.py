@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.deprecation import deprecated_alias
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -968,18 +970,5 @@ class DriftField:
         return np.allclose(self.U_solution, 0)
 
 
-def MFGDriftField(*args, **kwargs):
-    """
-    Deprecated alias for DriftField.
-
-    .. deprecated:: 0.17.1
-        Use `DriftField` instead. Will be removed in v1.0.0.
-    """
-    import warnings
-
-    warnings.warn(
-        "MFGDriftField is deprecated since v0.17.1. Use DriftField instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return DriftField(*args, **kwargs)
+# Backward compatibility alias (deprecated in v0.17.1)
+MFGDriftField = deprecated_alias("MFGDriftField", DriftField, "v0.17.1")
