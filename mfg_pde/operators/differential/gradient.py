@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 # WENO5 scheme support (Issue #606)
 _WENO5_AVAILABLE = True
 try:
-    from mfg_pde.geometry.operators.schemes.weno5 import compute_weno5_derivative_1d
+    from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_1d
 except ImportError:
     _WENO5_AVAILABLE = False
 

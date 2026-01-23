@@ -31,6 +31,9 @@ Note: SimpleGrid1D/2D/3D have been removed. Use TensorProductGrid instead.
 
 from __future__ import annotations
 
+# Geometric operators (now in mfg_pde.operators, re-exported here for convenience)
+from mfg_pde.operators import GeometryProjector, ProjectionRegistry
+
 # AMR stub (for future library integration)
 from .amr import AdaptiveGeometry, AMRNotImplementedError, create_amr_grid, is_adaptive
 
@@ -145,12 +148,6 @@ from .masks import (
 # Mesh data structures (from meshes subdirectory)
 # Mesh geometry
 from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshData, MeshManager, MeshPipeline, MeshVisualizationMode
-
-# Geometric operators
-from .operators import GeometryProjector
-
-# Legacy projection imports (from old file names - now in operators subdirectory)
-from .operators.projection import ProjectionRegistry
 
 # Unified geometry protocol
 from .protocol import (

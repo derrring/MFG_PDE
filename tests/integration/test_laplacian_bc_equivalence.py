@@ -24,7 +24,7 @@ import scipy.sparse as sparse
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import _build_diffusion_matrix_with_bc
 from mfg_pde.geometry.boundary import dirichlet_bc, neumann_bc, no_flux_bc
 from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
-from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+from mfg_pde.operators.differential.laplacian import LaplacianOperator
 
 
 def test_laplacian_1d_neumann_equivalence():

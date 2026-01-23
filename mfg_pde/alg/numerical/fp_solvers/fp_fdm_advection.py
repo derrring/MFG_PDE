@@ -51,7 +51,7 @@ def _compute_upwind_advection(
     .. deprecated:: 0.18.0
         This function will be removed in v1.0.0. Use AdvectionOperator instead::
 
-            from mfg_pde.geometry.operators.advection import AdvectionOperator
+            from mfg_pde.operators import AdvectionOperator
             velocity_field = np.stack(drift_per_dim, axis=0)
             adv_op = AdvectionOperator(velocity_field, spacings, M.shape,
                                       scheme="upwind", form="divergence")
@@ -164,7 +164,7 @@ def compute_advection_term_nd(
     upwinding (not Godunov). This is correct for explicit time-stepping and
     residual evaluation.
     """
-    from mfg_pde.geometry.operators.advection import AdvectionOperator
+    from mfg_pde.operators import AdvectionOperator
 
     # Compute drift from U: alpha_d = -coupling_coefficient * grad_U_d
     drift_per_dim = []
@@ -235,7 +235,7 @@ def compute_advection_from_drift_nd(
     For MFG systems where drift comes from HJB via v = -λ∇U, use
     compute_advection_term_nd instead.
     """
-    from mfg_pde.geometry.operators.advection import AdvectionOperator
+    from mfg_pde.operators import AdvectionOperator
 
     # Parse drift into per-dimension arrays and convert to velocity field
     if ndim == 1:

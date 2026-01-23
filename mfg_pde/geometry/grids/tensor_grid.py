@@ -1427,7 +1427,7 @@ class TensorProductGrid(
             >>> # Or use @ syntax for flattened arrays
             >>> Lu_flat = L @ u.ravel()
         """
-        from mfg_pde.geometry.operators import LaplacianOperator
+        from mfg_pde.operators import LaplacianOperator
 
         # Use grid's BC if not provided
         if bc is None:
@@ -1471,7 +1471,7 @@ class TensorProductGrid(
             >>> du_dx = grad_x(u)
             >>> du_dy = grad_y(u)
         """
-        from mfg_pde.geometry.operators import create_gradient_operators
+        from mfg_pde.operators import create_gradient_operators
 
         # Use grid's BC
         bc = self.get_boundary_conditions()
@@ -1515,7 +1515,7 @@ class TensorProductGrid(
             >>> # Or use scipy interface:
             >>> div_F_flat = div_op @ F.ravel()  # Shape: (2601,)
         """
-        from mfg_pde.geometry.operators import DivergenceOperator
+        from mfg_pde.operators import DivergenceOperator
 
         # Use grid's BC
         bc = self.get_boundary_conditions()
@@ -1554,7 +1554,7 @@ class TensorProductGrid(
             >>> # Or use scipy interface:
             >>> div_mv_flat = adv_op @ m.ravel()
         """
-        from mfg_pde.geometry.operators import AdvectionOperator
+        from mfg_pde.operators import AdvectionOperator
 
         # Use grid's BC
         bc = self.get_boundary_conditions()
@@ -1602,7 +1602,7 @@ class TensorProductGrid(
             >>> # Or use scipy interface:
             >>> u_interp_flat = interp @ u.ravel()  # Shape: (100,)
         """
-        from mfg_pde.geometry.operators import InterpolationOperator
+        from mfg_pde.operators import InterpolationOperator
 
         return InterpolationOperator(
             grid_points=tuple(self.coordinates),

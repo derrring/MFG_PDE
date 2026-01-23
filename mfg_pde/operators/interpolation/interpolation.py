@@ -102,7 +102,7 @@ class InterpolationOperator(LinearOperator):
 
     Example (Semi-Lagrangian):
         >>> import numpy as np
-        >>> from mfg_pde.geometry.operators import InterpolationOperator
+        >>> from mfg_pde.operators import InterpolationOperator
         >>>
         >>> # Grid setup
         >>> Nx, Ny = 100, 100

@@ -182,7 +182,7 @@ def _build_diffusion_matrix_with_bc(
             M_star = sparse.linalg.spsolve(A_diffusion, b_rhs).reshape(shape)
 
             # NEW: Operator-based assembly with BoundaryConditions
-            from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+            from mfg_pde.operators.differential.laplacian import LaplacianOperator
             from mfg_pde.geometry.boundary import no_flux_bc
 
             bc = no_flux_bc(dimension=ndim)
@@ -388,7 +388,7 @@ def solve_timestep_explicit_with_drift(
         boundary_conditions = no_flux_bc(dimension=ndim)
 
     # Step 1: Implicit diffusion using LaplacianOperator (Issue #597 Milestone 2B)
-    from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+    from mfg_pde.operators.differential.laplacian import LaplacianOperator
 
     L_op = LaplacianOperator(spacings=list(spacing), field_shape=shape, bc=boundary_conditions)
     L_matrix = L_op.as_scipy_sparse()
