@@ -15,18 +15,17 @@ Created: 2026-01-18 (Issue #606 - WENO5 Operator Refactoring)
 Deprecated: 2026-01-24 (Operator module separation)
 """
 
-import warnings
+# Import actual implementation from new location
+from mfg_pde.operators.reconstruction.weno import (
+    compute_weno5_derivative_1d as _compute_weno5_derivative_1d,
+)
+from mfg_pde.utils.deprecation import deprecated_alias
 
-# Re-export from new location
-from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_1d
-
-# Emit deprecation warning
-warnings.warn(
-    "mfg_pde.geometry.operators.schemes is deprecated. "
-    "Use mfg_pde.operators.reconstruction instead. "
-    "This module will be removed in v0.20.0.",
-    DeprecationWarning,
-    stacklevel=2,
+# Create deprecated alias (warns on call)
+compute_weno5_derivative_1d = deprecated_alias(
+    "mfg_pde.geometry.operators.schemes.compute_weno5_derivative_1d",
+    _compute_weno5_derivative_1d,
+    since="v0.18.0",
 )
 
 __all__ = ["compute_weno5_derivative_1d"]
