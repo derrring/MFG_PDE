@@ -63,6 +63,8 @@ class DiscretizationType(Enum):
     DGM = auto()  # Discontinuous Galerkin Method
     MESHFREE = auto()  # Meshfree/particle methods
     GRAPH = auto()  # Graph-based discretization
+    IMPLICIT = auto()  # Implicit boundary (SDF-based, Issue #637)
+    SEMI_LAGRANGIAN = auto()  # Semi-Lagrangian methods (Issue #637)
 
 
 class GridType(Enum):

@@ -168,6 +168,14 @@ from .applicator_graph import (
 )
 
 # =============================================================================
+# Implicit Applicator (for dual geometry: structured grid + SDF boundary - Issue #637)
+# =============================================================================
+from .applicator_implicit import (
+    ImplicitApplicator,
+    create_implicit_applicator,
+)
+
+# =============================================================================
 # Interpolation Applicator (for Semi-Lagrangian, particle, RBF methods - Issue #636)
 # =============================================================================
 from .applicator_interpolation import (
@@ -397,6 +405,9 @@ __all__ = [
     "enforce_neumann_value_nd",
     "enforce_periodic_value_nd",
     "enforce_robin_value_nd",
+    # Implicit Applicator (dual geometry: grid + SDF - Issue #637)
+    "ImplicitApplicator",
+    "create_implicit_applicator",
     # Interpolation Applicator (Semi-Lagrangian, particle, RBF - Issue #636)
     "InterpolationApplicator",
     "create_interpolation_applicator",

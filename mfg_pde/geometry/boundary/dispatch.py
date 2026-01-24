@@ -102,6 +102,12 @@ def get_applicator_for_geometry(
 
         return MeshfreeApplicator(geometry=geometry)
 
+    elif discretization in (DiscretizationType.IMPLICIT, DiscretizationType.SEMI_LAGRANGIAN):
+        # Issue #637: Implicit boundary handling (SDF-based)
+        from .applicator_implicit import ImplicitApplicator
+
+        return ImplicitApplicator(geometry=geometry)
+
     else:
         raise ValueError(f"Unsupported discretization type: {discretization}")
 
@@ -188,6 +194,18 @@ def apply_bc(
         raise NotImplementedError(
             "FEM BC application requires matrix/rhs modification. Use FEMApplicator.apply(matrix, rhs, mesh) instead."
         )
+
+    elif discretization in (DiscretizationType.IMPLICIT, DiscretizationType.SEMI_LAGRANGIAN):
+        # Issue #637: Implicit boundary handling (SDF-based)
+        from .applicator_implicit import ImplicitApplicator
+
+        applicator = ImplicitApplicator(geometry=geometry)
+
+        # Get collocation points if not provided
+        if points is None:
+            points = geometry.get_collocation_points()
+
+        return applicator.apply(field, boundary_conditions, points, time=time)
 
     else:
         raise ValueError(f"Unsupported discretization type: {discretization}")
