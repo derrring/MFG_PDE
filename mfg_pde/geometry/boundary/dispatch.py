@@ -35,6 +35,29 @@ if TYPE_CHECKING:
     from .conditions import BoundaryConditions
 
 
+def _has_implicit_boundary(geometry: object) -> bool:
+    """
+    Check if geometry uses implicit (SDF-based) boundary definition.
+
+    ImplicitApplicator is used when geometry has SDF-based methods for
+    boundary detection but is NOT a structured grid (like TensorProductGrid).
+
+    Args:
+        geometry: Geometry object to check
+
+    Returns:
+        True if geometry has SDF-based boundary detection
+    """
+    # Check for SDF-based boundary detection methods
+    has_sdf = hasattr(geometry, "sdf") or hasattr(geometry, "is_on_boundary")
+
+    # Check if it's a structured grid (which uses FDMApplicator)
+    is_structured = hasattr(geometry, "grid_points") and hasattr(geometry, "spacing")
+
+    # Use ImplicitApplicator for SDF-based non-structured geometries
+    return has_sdf and not is_structured
+
+
 def get_applicator_for_geometry(
     geometry: GeometryProtocol,
     discretization: DiscretizationType | str = DiscretizationType.FDM,
@@ -98,15 +121,16 @@ def get_applicator_for_geometry(
         return GraphApplicator(num_nodes=num_nodes)
 
     elif discretization == DiscretizationType.MESHFREE:
-        from .applicator_meshfree import MeshfreeApplicator
+        # Issue #637: Use ImplicitApplicator if geometry has SDF-based boundaries
+        # Otherwise use MeshfreeApplicator
+        if _has_implicit_boundary(geometry):
+            from .applicator_implicit import ImplicitApplicator
 
-        return MeshfreeApplicator(geometry=geometry)
+            return ImplicitApplicator(geometry=geometry)
+        else:
+            from .applicator_meshfree import MeshfreeApplicator
 
-    elif discretization in (DiscretizationType.IMPLICIT, DiscretizationType.SEMI_LAGRANGIAN):
-        # Issue #637: Implicit boundary handling (SDF-based)
-        from .applicator_implicit import ImplicitApplicator
-
-        return ImplicitApplicator(geometry=geometry)
+            return MeshfreeApplicator(geometry=geometry)
 
     else:
         raise ValueError(f"Unsupported discretization type: {discretization}")
@@ -194,18 +218,6 @@ def apply_bc(
         raise NotImplementedError(
             "FEM BC application requires matrix/rhs modification. Use FEMApplicator.apply(matrix, rhs, mesh) instead."
         )
-
-    elif discretization in (DiscretizationType.IMPLICIT, DiscretizationType.SEMI_LAGRANGIAN):
-        # Issue #637: Implicit boundary handling (SDF-based)
-        from .applicator_implicit import ImplicitApplicator
-
-        applicator = ImplicitApplicator(geometry=geometry)
-
-        # Get collocation points if not provided
-        if points is None:
-            points = geometry.get_collocation_points()
-
-        return applicator.apply(field, boundary_conditions, points, time=time)
 
     else:
         raise ValueError(f"Unsupported discretization type: {discretization}")
