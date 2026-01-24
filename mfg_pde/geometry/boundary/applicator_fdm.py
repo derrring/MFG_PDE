@@ -1050,21 +1050,39 @@ class PreallocatedGhostBuffer:
                     buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
 
         elif bc_type == BCType.ROBIN:
-            # Robin: treat as Neumann-like for now (reflection about boundary)
+            # Robin: alpha*u + beta*du/dn = g
+            # For uniform BC, we assume alpha=0, beta=1 (Neumann-like with non-zero flux)
+            # which reduces to: u_ghost = u_interior + 2*dx*g*sign
+            # Note: For full Robin BC with arbitrary alpha/beta, use mixed BC API.
             for axis in range(d):
-                for k in range(g):
-                    lo_ghost = [slice(None)] * d
-                    lo_ghost[axis] = k
-                    lo_interior = [slice(None)] * d
-                    lo_interior[axis] = 2 * g - k
-                    buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
+                # Get grid spacing for this axis
+                if self._grid_spacing is not None:
+                    dx = self._grid_spacing[axis]
+                else:
+                    dx = 1.0  # Fallback
+
+                # Get adjacent interior values (at index g for low, -g-1 for high)
+                lo_interior = [slice(None)] * d
+                lo_interior[axis] = g  # Adjacent interior cell
+                u_lo_interior = buf[tuple(lo_interior)]
+
+                hi_interior = [slice(None)] * d
+                hi_interior[axis] = -g - 1  # Adjacent interior cell
+                u_hi_interior = buf[tuple(hi_interior)]
 
                 for k in range(g):
+                    # Low boundary (outward normal = -1)
+                    lo_ghost = [slice(None)] * d
+                    lo_ghost[axis] = g - 1 - k  # Ghost cells from g-1 down to 0
+                    # u_ghost = u_interior + 2*dx*g*(-1) = u_interior - 2*dx*v
+                    buf[tuple(lo_ghost)] = u_lo_interior - 2.0 * dx * v
+
+                for k in range(g):
+                    # High boundary (outward normal = +1)
                     hi_ghost = [slice(None)] * d
-                    hi_ghost[axis] = -(k + 1)
-                    hi_interior = [slice(None)] * d
-                    hi_interior[axis] = -(2 * g + k + 1)  # Fixed to match Neumann
-                    buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
+                    hi_ghost[axis] = -(g - k)  # Ghost cells from -g up to -1
+                    # u_ghost = u_interior + 2*dx*g*(+1) = u_interior + 2*dx*v
+                    buf[tuple(hi_ghost)] = u_hi_interior + 2.0 * dx * v
 
     def _apply_poly_extrapolation(
         self,
@@ -1506,17 +1524,53 @@ class PreallocatedGhostBuffer:
 
         elif bc_type == BCType.ROBIN:
             # Robin: alpha*u + beta*du/dn = g
-            # Simplified implementation: treat as Neumann-like reflection
-            for k in range(g):
-                single_ghost = [slice(None)] * d
-                single_interior = [slice(None)] * d
-                if side == "min":
-                    single_ghost[axis] = k
-                    single_interior[axis] = 2 * g - k
-                else:
-                    single_ghost[axis] = -(k + 1)
-                    single_interior[axis] = -(2 * g + k + 1)
-                buf[tuple(single_ghost)] = buf[tuple(single_interior)]
+            # Issue #625 fix: Use correct ghost cell formula instead of reflection
+            alpha = getattr(segment, "alpha", 0.0)
+            beta = getattr(segment, "beta", 1.0)
+
+            # Get grid spacing for this axis
+            if self._grid_spacing is not None:
+                dx = self._grid_spacing[axis]
+            else:
+                dx = 1.0  # Fallback (may give incorrect results without proper dx)
+
+            # Outward normal sign: +1 for max, -1 for min
+            outward_sign = 1.0 if side == "max" else -1.0
+
+            # Ghost cell formula (cell-centered):
+            # alpha * (u_g + u_i)/2 + beta * (u_g - u_i)/(2*dx) * sign = g
+            # Solving for u_g:
+            # u_g * (alpha/2 + beta*sign/(2*dx)) = g - u_i * (alpha/2 - beta*sign/(2*dx))
+            coeff_ghost = alpha / 2.0 + beta * outward_sign / (2.0 * dx)
+            coeff_interior = alpha / 2.0 - beta * outward_sign / (2.0 * dx)
+
+            if abs(coeff_ghost) < 1e-12:
+                # Degenerate case: fall back to reflection
+                for k in range(g):
+                    single_ghost = [slice(None)] * d
+                    single_interior = [slice(None)] * d
+                    if side == "min":
+                        single_ghost[axis] = k
+                        single_interior[axis] = 2 * g - k
+                    else:
+                        single_ghost[axis] = -(k + 1)
+                        single_interior[axis] = -(2 * g + k + 1)
+                    buf[tuple(single_ghost)] = buf[tuple(single_interior)]
+            else:
+                # Apply proper Robin formula using adjacent interior cell
+                # For min boundary: ghost[k] uses interior[g] (first interior cell)
+                # For max boundary: ghost[-k-1] uses interior[-g-1] (last interior cell)
+                for k in range(g):
+                    single_ghost = [slice(None)] * d
+                    single_interior = [slice(None)] * d
+                    if side == "min":
+                        single_ghost[axis] = g - 1 - k  # Ghost cells from g-1 down to 0
+                        single_interior[axis] = g  # Adjacent interior at index g
+                    else:
+                        single_ghost[axis] = -(g - k)  # Ghost cells from -g up to -1
+                        single_interior[axis] = -g - 1  # Adjacent interior at index -g-1
+                    u_interior = buf[tuple(single_interior)]
+                    buf[tuple(single_ghost)] = (v - u_interior * coeff_interior) / coeff_ghost
 
         else:
             # Fallback for unknown BC types: use reflection
@@ -1626,9 +1680,15 @@ def pad_array_with_ghosts(
         >>> u_padded = pad_array_with_ghosts(u, bc)
         >>> # u_padded is [2.0, 1.0, 2.0, 3.0, 2.0] for Neumann BC
     """
+    # Extract domain_bounds from geometry if available (needed for Robin BC)
+    domain_bounds = None
+    if geometry is not None:
+        domain_bounds = getattr(geometry, "domain_bounds", None)
+
     buffer = PreallocatedGhostBuffer(
         interior_shape=array.shape,
         boundary_conditions=bc,
+        domain_bounds=domain_bounds,
         ghost_depth=ghost_depth,
         geometry=geometry,
     )
