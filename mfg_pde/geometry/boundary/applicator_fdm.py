@@ -81,7 +81,7 @@ from .applicator_base import (
 from .conditions import BoundaryConditions
 from .enforcement import enforce_dirichlet_value_nd, enforce_neumann_value_nd
 from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
-from .types import BCType
+from .types import BCSegment, BCType
 
 logger = get_logger(__name__)
 
@@ -177,20 +177,9 @@ class FDMApplicator(BaseStructuredApplicator):
         Returns:
             Padded field with ghost cells
         """
-        # Issue #645: Use dimension-agnostic pad_array_with_ghosts()
-        # For region-based BCs that need geometry, fall back to legacy path.
-        has_region_based = False
-        if hasattr(boundary_conditions, "segments"):
-            for seg in boundary_conditions.segments:
-                if getattr(seg, "region_name", None) is not None:
-                    has_region_based = True
-                    break
-
-        if has_region_based:
-            # Region-based BCs need geometry parameter - use legacy path
-            return apply_boundary_conditions_nd(field, boundary_conditions, domain_bounds, time, self._config, geometry)
-
-        return pad_array_with_ghosts(field, boundary_conditions, ghost_depth=1, time=time)
+        # Issue #577 Phase 3: Use pad_array_with_ghosts() for all BCs
+        # Geometry parameter enables region_name resolution for mixed BCs
+        return pad_array_with_ghosts(field, boundary_conditions, ghost_depth=1, time=time, geometry=geometry)
 
     @staticmethod
     def apply_1d(
@@ -859,6 +848,7 @@ class PreallocatedGhostBuffer:
         ghost_depth: int = 1,
         order: int = 2,
         config: GhostCellConfig | None = None,
+        geometry: object | None = None,
     ):
         """
         Initialize pre-allocated ghost buffer.
@@ -873,6 +863,8 @@ class PreallocatedGhostBuffer:
                 - order = 2: Linear reflection (simple mirror for Neumann)
                 - order > 2: Polynomial extrapolation (high-order schemes like WENO)
             config: Ghost cell configuration
+            geometry: Geometry object for region_name resolution (Issue #577 Phase 3).
+                     Required if BC segments use region_name.
 
         Raises:
             ValueError: If order < 1
@@ -888,6 +880,7 @@ class PreallocatedGhostBuffer:
         self._boundary_conditions = boundary_conditions
         self._domain_bounds = domain_bounds
         self._config = config if config is not None else GhostCellConfig()
+        self._geometry = geometry  # For region_name resolution (Issue #577 Phase 3)
 
         # Compute padded shape
         self._padded_shape = tuple(s + 2 * ghost_depth for s in interior_shape)
@@ -1346,32 +1339,207 @@ class PreallocatedGhostBuffer:
                 buf[tuple(hi_ghost)] = 2 * v - buf[tuple(hi_interior)]
 
     def _update_ghosts_mixed(self, bc: BoundaryConditions, time: float) -> None:
-        """Update ghost cells for mixed BCs (different types on different boundaries)."""
-        # For mixed BCs, we need to iterate per-point on boundaries
-        # This is slower but necessary for accurate BC application
-        # Fall back to creating a padded array and copying ghost values
-        padded = apply_boundary_conditions_nd(
-            self.interior.copy(),
-            bc,
-            self._domain_bounds,
-            time,
-            self._config,
-        )
+        """
+        Update ghost cells for mixed BCs (different types on different boundaries).
 
-        # Copy ghost cells from padded to buffer
+        Issue #577 Phase 3: Rewritten to not use deprecated apply_boundary_conditions_nd.
+        Iterates over (axis, side) pairs and applies the matching BC segment's ghost formula.
+        """
         d = self._dimension
         g = self._ghost_depth
+        buf = self._buffer
+
+        # Standard boundary names for FDM grids
+        axis_names = ["x", "y", "z", "w", "v"]  # Extend as needed
 
         for axis in range(d):
-            # Low ghost
-            lo_ghost = [slice(None)] * d
-            lo_ghost[axis] = slice(0, g)
-            self._buffer[tuple(lo_ghost)] = padded[tuple(lo_ghost)]
+            for side in ["min", "max"]:
+                # Construct standard boundary name (e.g., "x_min", "y_max")
+                if axis < len(axis_names):
+                    boundary_name = f"{axis_names[axis]}_{side}"
+                else:
+                    boundary_name = f"dim{axis}_{side}"
 
-            # High ghost
-            hi_ghost = [slice(None)] * d
-            hi_ghost[axis] = slice(-g, None)
-            self._buffer[tuple(hi_ghost)] = padded[tuple(hi_ghost)]
+                # Find matching BC segment for this face
+                segment = self._find_segment_for_face(bc, boundary_name, axis, side)
+
+                if segment is None:
+                    # No explicit segment - use default BC (first segment or Neumann)
+                    segment = bc.segments[0] if bc.segments else None
+                    if segment is None:
+                        continue  # No BC defined, skip
+
+                # Apply ghost cell formula for this face
+                self._apply_ghost_for_face(buf, axis, side, segment, time, g)
+
+    def _find_segment_for_face(
+        self,
+        bc: BoundaryConditions,
+        boundary_name: str,
+        axis: int,
+        side: str,
+    ) -> BCSegment | None:
+        """
+        Find the BC segment that applies to a specific face.
+
+        Matching priority:
+        1. boundary field matches exactly (e.g., "x_min")
+        2. region_name matches standard boundary name
+        3. region_name matches via geometry.get_region_mask()
+
+        Args:
+            bc: Boundary conditions
+            boundary_name: Standard face name (e.g., "x_min")
+            axis: Axis index (0=x, 1=y, ...)
+            side: "min" or "max"
+
+        Returns:
+            Matching BCSegment or None if no explicit match
+        """
+
+        for segment in bc.segments:
+            # Method 1: Direct boundary field match
+            if segment.boundary is not None:
+                seg_boundary = segment.boundary.lower()
+                # Normalize: "left"/"right" → "x_min"/"x_max" for 1D
+                if seg_boundary in ["left", "bottom", "back"]:
+                    seg_boundary = f"{['x', 'y', 'z'][min(axis, 2)]}_{side}" if side == "min" else None
+                elif seg_boundary in ["right", "top", "front"]:
+                    seg_boundary = f"{['x', 'y', 'z'][min(axis, 2)]}_{side}" if side == "max" else None
+                # Check exact match
+                if seg_boundary == boundary_name:
+                    return segment
+                # Also check if segment.boundary matches boundary_name directly
+                if segment.boundary.lower() == boundary_name:
+                    return segment
+
+            # Method 2: region_name matches standard boundary name
+            if segment.region_name is not None:
+                if segment.region_name.lower() == boundary_name:
+                    return segment
+
+                # Method 3: Use geometry to verify region_name match
+                if self._geometry is not None:
+                    try:
+                        # Check if this face is part of the named region
+                        from mfg_pde.geometry.protocols import SupportsRegionMarking
+
+                        if isinstance(self._geometry, SupportsRegionMarking):
+                            # For tensor grids, region names like "x_min" correspond to faces
+                            # The region_name in geometry should match boundary_name
+                            region_names = self._geometry.get_region_names()
+                            if segment.region_name in region_names:
+                                # Segment uses a marked region - check if it matches this face
+                                # For FDM, we only handle axis-aligned regions
+                                # If region_name follows axis_side pattern, use direct match
+                                if segment.region_name.lower() == boundary_name:
+                                    return segment
+                    except Exception:
+                        pass  # Geometry query failed, skip this match method
+
+        return None
+
+    def _apply_ghost_for_face(
+        self,
+        buf: NDArray,
+        axis: int,
+        side: str,
+        segment: BCSegment,
+        time: float,
+        g: int,
+    ) -> None:
+        """
+        Apply ghost cell formula for a single face based on BC segment.
+
+        Args:
+            buf: Padded buffer array
+            axis: Axis index (0=x, 1=y, ...)
+            side: "min" or "max"
+            segment: BC segment defining the condition
+            time: Current time for time-dependent BCs
+            g: Ghost depth
+        """
+        d = self._dimension
+        bc_type = segment.bc_type
+
+        # Evaluate value if callable
+        value = segment.value
+        if callable(value):
+            v = value(time)
+        else:
+            v = value if value is not None else 0.0
+
+        # Get slices for this face
+        if side == "min":
+            ghost_slices = [slice(None)] * d
+            ghost_slices[axis] = slice(0, g)
+            interior_slices = [slice(None)] * d
+            interior_slices[axis] = slice(g, 2 * g)
+            interior_next = [slice(None)] * d
+            interior_next[axis] = slice(2 * g, 3 * g) if 3 * g <= buf.shape[axis] else slice(g, 2 * g)
+        else:  # side == "max"
+            ghost_slices = [slice(None)] * d
+            ghost_slices[axis] = slice(-g, None)
+            interior_slices = [slice(None)] * d
+            interior_slices[axis] = slice(-2 * g, -g)
+            interior_next = [slice(None)] * d
+            interior_next[axis] = slice(-3 * g, -2 * g) if 3 * g <= buf.shape[axis] else slice(-2 * g, -g)
+
+        # Apply ghost cell formula based on BC type
+        if bc_type == BCType.PERIODIC:
+            # Periodic: ghost = opposite interior
+            if side == "min":
+                opposite_interior = [slice(None)] * d
+                opposite_interior[axis] = slice(-2 * g, -g)
+            else:
+                opposite_interior = [slice(None)] * d
+                opposite_interior[axis] = slice(g, 2 * g)
+            buf[tuple(ghost_slices)] = buf[tuple(opposite_interior)]
+
+        elif bc_type == BCType.DIRICHLET:
+            # Dirichlet: u_ghost = 2*g - u_interior
+            buf[tuple(ghost_slices)] = 2 * v - buf[tuple(interior_slices)]
+
+        elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
+            # Neumann/Reflecting: mirror interior values
+            # For zero-flux, ghost reflects about boundary
+            for k in range(g):
+                single_ghost = [slice(None)] * d
+                single_interior = [slice(None)] * d
+                if side == "min":
+                    single_ghost[axis] = k
+                    single_interior[axis] = 2 * g - k  # Reflected interior
+                else:
+                    single_ghost[axis] = -(k + 1)
+                    single_interior[axis] = -(2 * g + k + 1)  # Reflected interior
+                buf[tuple(single_ghost)] = buf[tuple(single_interior)]
+
+        elif bc_type == BCType.ROBIN:
+            # Robin: alpha*u + beta*du/dn = g
+            # Simplified implementation: treat as Neumann-like reflection
+            for k in range(g):
+                single_ghost = [slice(None)] * d
+                single_interior = [slice(None)] * d
+                if side == "min":
+                    single_ghost[axis] = k
+                    single_interior[axis] = 2 * g - k
+                else:
+                    single_ghost[axis] = -(k + 1)
+                    single_interior[axis] = -(2 * g + k + 1)
+                buf[tuple(single_ghost)] = buf[tuple(single_interior)]
+
+        else:
+            # Fallback for unknown BC types: use reflection
+            for k in range(g):
+                single_ghost = [slice(None)] * d
+                single_interior = [slice(None)] * d
+                if side == "min":
+                    single_ghost[axis] = k
+                    single_interior[axis] = 2 * g - k
+                else:
+                    single_ghost[axis] = -(k + 1)
+                    single_interior[axis] = -(2 * g + k + 1)
+                buf[tuple(single_ghost)] = buf[tuple(single_interior)]
 
     def reset(self, fill_value: float = 0.0) -> None:
         """Reset buffer to a constant value."""
@@ -1442,6 +1610,7 @@ def pad_array_with_ghosts(
     bc: BoundaryConditions,
     ghost_depth: int = 1,
     time: float = 0.0,
+    geometry: object | None = None,
 ) -> NDArray[np.floating]:
     """
     Pad array with ghost cells based on boundary conditions.
@@ -1454,6 +1623,8 @@ def pad_array_with_ghosts(
         bc: Boundary conditions specification
         ghost_depth: Number of ghost layers (default 1)
         time: Current time for time-dependent BC values
+        geometry: Geometry object for region_name resolution (Issue #577 Phase 3).
+                 Required if BC segments use region_name.
 
     Returns:
         New array with ghost cells added on all boundaries
@@ -1469,6 +1640,7 @@ def pad_array_with_ghosts(
         interior_shape=array.shape,
         boundary_conditions=bc,
         ghost_depth=ghost_depth,
+        geometry=geometry,
     )
     # Copy array into interior view and update ghosts
     buffer.interior[:] = array

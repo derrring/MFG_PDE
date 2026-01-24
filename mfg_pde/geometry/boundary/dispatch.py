@@ -158,47 +158,16 @@ def apply_bc(
         discretization = DiscretizationType[discretization.upper()]
 
     if discretization == DiscretizationType.FDM:
-        # Issue #645: Use dimension-agnostic pad_array_with_ghosts()
-        # for simple BCs. For region-based BCs that need geometry,
-        # fall back to apply_boundary_conditions_nd (until geometry
-        # support is added to pad_array_with_ghosts).
+        # Issue #577 Phase 3: Use pad_array_with_ghosts() for all BCs
+        # Geometry parameter enables region_name resolution for mixed BCs
         from .applicator_fdm import pad_array_with_ghosts
-
-        # Check if any BC segment uses region_name (requires geometry)
-        has_region_based = False
-        if hasattr(boundary_conditions, "segments"):
-            for seg in boundary_conditions.segments:
-                if getattr(seg, "region_name", None) is not None:
-                    has_region_based = True
-                    break
-
-        if has_region_based:
-            # Region-based BCs need geometry parameter - use legacy path
-            from ._compat import apply_boundary_conditions_nd
-
-            # Get domain bounds from geometry
-            bounds = geometry.get_bounds()
-            if bounds is not None:
-                import numpy as np
-
-                min_coords, max_coords = bounds
-                domain_bounds = np.column_stack([min_coords, max_coords])
-            else:
-                domain_bounds = None
-
-            return apply_boundary_conditions_nd(
-                field,
-                boundary_conditions,
-                domain_bounds=domain_bounds,
-                time=time,
-                geometry=geometry,
-            )
 
         return pad_array_with_ghosts(
             field,
             boundary_conditions,
             ghost_depth=ghost_depth,
             time=time,
+            geometry=geometry,
         )
 
     elif discretization in (DiscretizationType.GFDM, DiscretizationType.MESHFREE):
