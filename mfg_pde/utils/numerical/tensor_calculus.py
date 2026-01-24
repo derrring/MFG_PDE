@@ -1,71 +1,50 @@
 """
-Tensor Calculus Operators for Regular Grids.
+DEPRECATED: Tensor Calculus Operators for Regular Grids.
 
-This module provides a complete set of discrete differential operators for
-solving PDEs on regular (tensor-product) grids. All operators in classical
-tensor calculus are implemented with consistent API and BC handling.
+**Status**: DEPRECATED as of v0.18.0 (2026-01-24)
+**Removal**: Scheduled for v0.20.0
 
-Operator Hierarchy:
--------------------
-    First-Order:
-        gradient(u)       : scalar → vector   ∇u
-        divergence(F)     : vector → scalar   ∇·F
+This module has been superseded by the operators framework:
 
-    Second-Order:
-        laplacian(u)      : scalar → scalar   Δu = ∇·∇u
-        hessian(u)        : scalar → tensor   ∇²u = [∂²u/∂xᵢ∂xⱼ]
+Migration Guide:
+    OLD (deprecated):
+        >>> from mfg_pde.utils.numerical.tensor_calculus import gradient, laplacian
+        >>> grad_u = gradient(u, spacings=[dx, dy])
 
-    Coefficient Operators:
-        diffusion(u, coeff) : scalar → scalar   ∇·(Σ∇u)
-            - coeff=scalar σ  → isotropic:  σ²Δu
-            - coeff=(d,d)     → anisotropic: ∇·(Σ∇u)
-            - coeff=(*,d,d)   → spatially varying
+    NEW (preferred):
+        >>> from mfg_pde.operators import LaplacianOperator, GradientComponentOperator
+        >>> from mfg_pde.operators.stencils import gradient_central, laplacian_stencil_nd
+        >>>
+        >>> # For LinearOperator interface (recommended for solvers):
+        >>> L = LaplacianOperator(spacings=[dx, dy], field_shape=u.shape, bc=bc)
+        >>> lap_u = L(u)
+        >>>
+        >>> # For direct stencil application (no BC handling):
+        >>> grad_u = gradient_central(u, axis=0, h=dx)
 
-    Transport:
-        advection(m, v)   : scalar → scalar   v·∇m or ∇·(vm)
+Why deprecated:
+    - Operators framework provides LinearOperator interface (scipy compatible)
+    - Better separation: stencils (low-level) vs operators (high-level)
+    - Unified BC handling via BoundaryConditions objects
+    - Composable operators: L1 + L2, alpha * L, L1 @ L2
 
-Design Principles:
-------------------
-- BC-aware: All operators handle boundary conditions via ghost cells
-- Backend-agnostic: Work with numpy or GPU backends
-- Scheme-configurable: Support central, upwind, high-order schemes
-- Performance: Numba JIT for 2D anisotropic diffusion (3-5x speedup)
+What to use instead:
+    - mfg_pde.operators.differential: LaplacianOperator, GradientComponentOperator, etc.
+    - mfg_pde.operators.stencils: gradient_central, laplacian_stencil_nd, etc.
+    - mfg_pde.geometry.TensorProductGrid: grid.get_laplacian_operator(), etc.
 
-Mathematical Note:
------------------
-On regular grids, the operators satisfy discrete analogues of the
-continuous identities:
-    - ∇·(∇u) = Δu
-    - ∇×(∇u) = 0  (curl of gradient is zero)
-    - ∇·(fu) = f∇·u + u·∇f  (product rule)
-
-Usage:
-------
-    from mfg_pde.utils.numerical.tensor_calculus import (
-        gradient, divergence, laplacian, hessian, diffusion, advection,
-    )
-
-    # Compute gradient
-    grad_u = gradient(u, spacings=[dx, dy])
-
-    # Compute Laplacian with BC
-    lap_u = laplacian(u, spacings, bc=neumann_bc)
-
-    # Isotropic diffusion: σ = 0.1
-    diff = diffusion(m, 0.1, spacings)
-
-    # Anisotropic diffusion: Σ = [[0.2, 0], [0, 0.05]]
-    diff = diffusion(m, Sigma, spacings, bc=bc)
+This module remains functional for backward compatibility but will be removed.
 
 References:
 -----------
+- docs/development/operator_architecture.md
 - LeVeque (2007): Finite Difference Methods for ODEs and PDEs
-- Trottenberg et al. (2001): Multigrid
 """
 
 from __future__ import annotations
 
 import os
+import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -100,6 +79,17 @@ elif USE_NUMBA.lower() in ("true", "1", "yes"):
 else:
     USE_NUMBA = False
 
+# =============================================================================
+# Deprecation Warning
+# =============================================================================
+warnings.warn(
+    "mfg_pde.utils.numerical.tensor_calculus is deprecated since v0.18.0. "
+    "Use mfg_pde.operators (LinearOperator classes) or "
+    "mfg_pde.operators.stencils (low-level stencils) instead. "
+    "This module will be removed in v0.20.0.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
