@@ -12,14 +12,19 @@ from mfg_pde.geometry.boundary import (
     BCSegment,
     BCType,
     MixedBoundaryConditions,
-    apply_boundary_conditions_2d,
-    apply_boundary_conditions_nd,
-    create_boundary_mask_2d,
     dirichlet_bc,
     neumann_bc,
     no_flux_bc,
     # Factory functions for creating BCs
     periodic_bc,
+)
+
+# Import deprecated functions from _compat for legacy testing
+# These are no longer publicly exported (Issue #577 Phase 3)
+from mfg_pde.geometry.boundary._compat import (
+    apply_boundary_conditions_2d,
+    apply_boundary_conditions_nd,
+    create_boundary_mask_2d,
 )
 from mfg_pde.geometry.boundary.applicator_fdm import GhostCellConfig
 
@@ -61,11 +66,13 @@ class TestUniformBC2D:
         padded = apply_boundary_conditions_2d(field, bc)
 
         assert padded.shape == (7, 7)
-        # Check ghost cells equal adjacent interior (edge padding)
-        assert padded[0, 3] == field[0, 2]  # Bottom ghost = first row
-        assert padded[-1, 3] == field[-1, 2]  # Top ghost = last row
-        assert padded[3, 0] == field[2, 0]  # Left ghost = first column
-        assert padded[3, -1] == field[2, -1]  # Right ghost = last column
+        # Issue #542: Neumann uses reflection (ghost = next interior, not adjacent)
+        # This gives O(h²) accurate ghost values for zero-flux BC
+        # padded[0, :] = padded[2, :] (reflect about index 1)
+        assert padded[0, 3] == field[1, 2]  # Low ghost = reflected (next interior row)
+        assert padded[-1, 3] == field[-2, 2]  # High ghost = reflected (prev interior row)
+        assert padded[3, 0] == field[2, 1]  # Left ghost = reflected (next interior col)
+        assert padded[3, -1] == field[2, -2]  # Right ghost = reflected (prev interior col)
 
     def test_no_flux_bc(self):
         """Test no_flux alias for Neumann BC."""
@@ -406,9 +413,10 @@ class TestRobinBC:
         field = np.arange(25).reshape(5, 5).astype(float)
         padded = apply_boundary_conditions_2d(field, mixed_bc)
 
-        # Neumann with g=0 means ghost = interior (zero gradient)
-        assert np.isclose(padded[3, 0], field[2, 0])  # Left: ghost = interior
-        assert np.isclose(padded[3, -1], field[2, -1])  # Right: ghost = interior
+        # Issue #542: Neumann uses reflection (ghost = next interior, not adjacent)
+        # For zero-flux (g=0): ghost = interior_next to maintain O(h²) accuracy
+        assert np.isclose(padded[3, 0], field[2, 1])  # Left: ghost = next interior (reflected)
+        assert np.isclose(padded[3, -1], field[2, -2])  # Right: ghost = next interior (reflected)
 
 
 class TestTimeDependentBC:
@@ -584,12 +592,8 @@ class TestExtrapolationBC:
 
     def test_linear_extrapolation_1d(self):
         """Test linear extrapolation BC in 1D via apply_boundary_conditions_1d."""
-        from mfg_pde.geometry.boundary import (
-            BCSegment,
-            BCType,
-            BoundaryConditions,
-            apply_boundary_conditions_1d,
-        )
+        from mfg_pde.geometry.boundary import BCSegment, BCType, BoundaryConditions
+        from mfg_pde.geometry.boundary._compat import apply_boundary_conditions_1d
 
         # Create a linear field: f(x) = x, on [0, 1] with 5 points
         # x = [0, 0.25, 0.5, 0.75, 1.0]
@@ -615,12 +619,8 @@ class TestExtrapolationBC:
 
     def test_quadratic_extrapolation_1d(self):
         """Test quadratic extrapolation BC in 1D."""
-        from mfg_pde.geometry.boundary import (
-            BCSegment,
-            BCType,
-            BoundaryConditions,
-            apply_boundary_conditions_1d,
-        )
+        from mfg_pde.geometry.boundary import BCSegment, BCType, BoundaryConditions
+        from mfg_pde.geometry.boundary._compat import apply_boundary_conditions_1d
 
         # Create a quadratic field: f(x) = x^2, on [0, 1] with 5 points
         # x = [0, 0.25, 0.5, 0.75, 1.0]

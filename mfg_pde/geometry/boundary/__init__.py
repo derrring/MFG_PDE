@@ -28,9 +28,9 @@ Usage:
     wall = BCSegment(name="wall", bc_type=BCType.NEUMANN)
     bc = mixed_bc([exit, wall], dimension=2, domain_bounds=bounds)
 
-    # FDM application
-    padded = apply_boundary_conditions_2d(field, bc, bounds)
-    # or
+    # FDM application (preferred API)
+    padded = pad_array_with_ghosts(field, bc)
+    # or using class-based API
     applicator = FDMApplicator(dimension=2)
     padded = applicator.apply(field, bc, domain_bounds=bounds)
 
@@ -102,15 +102,8 @@ from .applicator_fdm import (
     GhostBuffer,
     GhostCellConfig,
     PreallocatedGhostBuffer,
-    # Deprecated function APIs (will be removed in v0.19.0)
-    apply_boundary_conditions_1d,
-    apply_boundary_conditions_2d,
-    apply_boundary_conditions_3d,
-    apply_boundary_conditions_nd,
     bc_to_topology_calculator,
-    create_boundary_mask_2d,
     create_ghost_buffer_from_bc,
-    get_ghost_values_nd,
     # Concrete function API (Issue #577 - preferred)
     pad_array_with_ghosts,
 )
@@ -359,12 +352,6 @@ __all__ = [
     "GhostCellConfig",
     "PreallocatedGhostBuffer",
     "pad_array_with_ghosts",
-    "apply_boundary_conditions_1d",
-    "apply_boundary_conditions_2d",
-    "apply_boundary_conditions_3d",
-    "apply_boundary_conditions_nd",
-    "create_boundary_mask_2d",
-    "get_ghost_values_nd",
     # FEM Applicator - dispatchers
     "FEMApplicator",
     "MFGBoundaryHandlerFEM",
