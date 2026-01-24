@@ -1,7 +1,7 @@
 # MFG_PDE Logging System Guide
 
-**Date**: August 15, 2025  
-**Updated**: Based on comprehensive analysis and existing implementation  
+**Date**: August 15, 2025
+**Updated**: January 24, 2026 - Added thread safety documentation (Issue #620)  
 **Quality Score**: 8.7/10 - Excellent scientific computing logging infrastructure  
 **Purpose**: Complete guide for using the professional logging system in MFG_PDE
 
@@ -262,6 +262,61 @@ with LoggedOperation(logger, "Database query"):
 
 with LoggedOperation(logger, "Data processing", logging.DEBUG):
     processed_data = process(results)
+```
+
+## Thread Safety (Issue #620)
+
+The logging system is **fully thread-safe** for concurrent access. Multiple threads can safely call `get_logger()` simultaneously without risking duplicate handlers or race conditions.
+
+### How It Works
+
+The `MFGLogger` class uses **double-check locking** pattern for efficient thread-safe logger creation:
+
+```python
+# Internal implementation (simplified)
+class MFGLogger:
+    _lock = threading.Lock()
+    _loggers = {}
+
+    @classmethod
+    def get_logger(cls, name: str) -> logging.Logger:
+        # Fast path: return cached logger without lock (most common)
+        if name in cls._loggers:
+            return cls._loggers[name]
+
+        # Slow path: acquire lock for thread-safe creation
+        with cls._lock:
+            # Double-check after acquiring lock
+            if name not in cls._loggers:
+                logger = logging.getLogger(name)
+                if not logger.handlers:  # Avoid duplicates
+                    cls._setup_logger(logger)
+                cls._loggers[name] = logger
+
+        return cls._loggers[name]
+```
+
+### Thread Safety Guarantees
+
+1. **No duplicate handlers**: Even with 50+ concurrent threads requesting the same logger, handlers are created only once
+2. **Consistent logger instances**: All threads receive the same logger object for a given name
+3. **Cache coherence**: Logger cache is protected by lock during creation
+4. **Handler deduplication**: Handles mixed usage where some code uses `logging.getLogger()` directly
+
+### Safe Usage in Multi-threaded Code
+
+```python
+import concurrent.futures
+from mfg_pde.utils.mfg_logging import get_logger
+
+def worker(thread_id: int):
+    # Safe: get_logger is thread-safe
+    logger = get_logger("worker")
+    logger.info(f"Thread {thread_id} running")
+
+# Multiple threads can safely create/use loggers
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    executor.map(worker, range(50))
 ```
 
 ## Best Practices
@@ -662,6 +717,26 @@ from mfg_pde.utils import configure_logging, get_logger
 configure_logging(level="INFO", use_colors=True)
 logger = get_logger(__name__)
 ```
+
+### From `logging.getLogger()` (Issue #620 Migration)
+
+**Why migrate?** The `mfg_logging` system provides:
+- Thread-safe logger creation with handler deduplication
+- Consistent configuration across the codebase
+- Colored output and research session management
+- Ruff linting enforcement (TID251 rule)
+
+```python
+# Before (banned by ruff TID251)
+import logging
+logger = logging.getLogger(__name__)
+
+# After (preferred)
+from mfg_pde.utils.mfg_logging import get_logger
+logger = get_logger(__name__)
+```
+
+**Note**: Files that legitimately need `import logging` for constants/handlers (e.g., `FileHandler`, `logging.DEBUG`) should use per-file ignores in `pyproject.toml`.
 
 ---
 

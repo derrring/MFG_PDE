@@ -407,6 +407,7 @@ ignore = [
     "N802", "N806", "A003",  # Allow uppercase and shadowing in tests
     "B011",                  # Allow assert False in tests
     "PT011",                 # pytest.raises too broad
+    "TID251",                # Tests may use logging.getLogger for edge case testing
 ]
 "examples/**/*.py" = [
     "N803", "N806", "N816",  # Allow mathematical notation in examples
