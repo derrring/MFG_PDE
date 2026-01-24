@@ -1994,6 +1994,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         scheme: Any | None = None,
         hjb_solver: Any | None = None,
         fp_solver: Any | None = None,
+        strict_adjoint: bool = False,
     ) -> Any:
         """
         Solve this MFG problem using three-mode API (Issue #580).
@@ -2022,6 +2023,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             scheme: NumericalScheme for Safe Mode (FDM_UPWIND, SL_LINEAR, GFDM, etc.)
             hjb_solver: Pre-initialized HJB solver for Expert Mode
             fp_solver: Pre-initialized FP solver for Expert Mode
+            strict_adjoint: Enable strict Achdou adjoint mode (Issue #622, default: False)
+                When True, FP uses A_hjb^T (transpose of HJB's advection matrix) instead of
+                building its own. This guarantees exact adjoint consistency: L_FP = L_HJB^T.
+                Requires FDM solvers (HJBFDMSolver, FPFDMSolver) that support matrix sharing.
 
         Returns:
             SolverResult with U (value function), M (density), convergence info
@@ -2161,6 +2166,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
             config=config,
+            strict_adjoint=strict_adjoint,  # Issue #622: Achdou adjoint mode
         )
 
         return solver.solve(verbose=verbose)

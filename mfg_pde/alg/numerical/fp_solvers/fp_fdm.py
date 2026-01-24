@@ -504,6 +504,117 @@ class FPFDMSolver(BaseFPSolver):
             progress_callback=progress_callback,
         )
 
+    # =========================================================================
+    # Strict Adjoint Mode (Issue #622)
+    # =========================================================================
+
+    def solve_fp_step_with_matrix(
+        self,
+        M_current: np.ndarray,
+        A_advection_T: sparse.csr_matrix,
+        sigma: float | np.ndarray | None = None,
+        time: float = 0.0,
+    ) -> np.ndarray:
+        """
+        Solve single FP timestep using externally provided advection matrix.
+
+        This method is used in strict adjoint mode (Issue #622) where the
+        FP solver uses A^T from the HJB solver instead of building its own
+        advection matrix. This guarantees exact adjoint consistency:
+            L_FP = L_HJB^T
+
+        Mathematical Formulation:
+            FP equation: dm/dt + ∇·(vm) = (σ²/2) Δm
+
+            Discretized with A_advection_T (transpose of HJB's matrix):
+                (I/dt + A_advection_T + D) m^{k+1} = m^k / dt
+
+            where:
+            - A_advection_T: Advection matrix from HJB solver (transposed)
+            - D: Diffusion matrix (built internally, symmetric so D = D^T)
+            - I: Identity matrix
+
+        Args:
+            M_current: Current density at timestep k, shape (*spatial_shape)
+            A_advection_T: Transposed advection matrix from HJB solver.
+                Shape: (N_total, N_total) where N_total = prod(spatial_shape).
+                This is A_hjb.T where A_hjb was built by HJBFDMSolver.build_advection_matrix().
+            sigma: Diffusion coefficient (optional).
+                - None: Use problem.sigma
+                - float: Constant diffusion
+                - np.ndarray: Spatially varying diffusion
+            time: Current time for time-dependent BCs
+
+        Returns:
+            M_next: Density at timestep k+1, shape (*spatial_shape)
+
+        Example:
+            >>> # In FixedPointIterator with strict_adjoint=True:
+            >>> A_hjb = hjb_solver.build_advection_matrix(U_current)
+            >>> M_next = fp_solver.solve_fp_step_with_matrix(M_current, A_hjb.T)
+
+        Note:
+            The diffusion operator is symmetric (D = D^T), so using this method
+            with A_hjb.T ensures the full spatial operator satisfies L_FP = L_HJB^T
+            for the advection part while diffusion remains adjoint-consistent by symmetry.
+
+        See Also:
+            - Issue #622: Strict Achdou adjoint mode implementation
+            - HJBFDMSolver.build_advection_matrix(): Builds the advection matrix
+            - FixedPointIterator: Orchestrates matrix passing between solvers
+        """
+        # Get problem dimensions
+        shape = M_current.shape
+        N_total = int(np.prod(shape))
+        dt = self.problem.dt
+
+        # Validate matrix shape
+        if A_advection_T.shape != (N_total, N_total):
+            raise ValueError(
+                f"A_advection_T shape {A_advection_T.shape} doesn't match expected "
+                f"({N_total}, {N_total}) for density shape {shape}"
+            )
+
+        # Get diffusion coefficient
+        if sigma is None:
+            sigma_val = self.problem.sigma
+        else:
+            sigma_val = sigma
+
+        # Build diffusion matrix using LaplacianOperator
+        from mfg_pde.operators.differential.laplacian import LaplacianOperator
+
+        spacing = list(self.problem.geometry.get_grid_spacing())
+        bc = self.boundary_conditions
+
+        L_op = LaplacianOperator(spacings=spacing, field_shape=shape, bc=bc)
+        L_matrix = L_op.as_scipy_sparse()
+
+        # Compute diffusion coefficient
+        if isinstance(sigma_val, np.ndarray):
+            # For spatially varying diffusion, use mean (approximation)
+            # TODO: Support full spatially varying in matrix form
+            D = 0.5 * float(np.mean(sigma_val)) ** 2
+        else:
+            D = 0.5 * float(sigma_val) ** 2
+
+        # Build full system matrix: (I/dt + A_advection_T - D*Laplacian)
+        # Note: Laplacian has negative diagonal, so we SUBTRACT D*L
+        identity = sparse.eye(N_total)
+        A_system = identity / dt + A_advection_T - D * L_matrix
+
+        # Right-hand side
+        b_rhs = M_current.ravel() / dt
+
+        # Solve linear system
+        M_next_flat = sparse.linalg.spsolve(A_system, b_rhs)
+
+        # Reshape and ensure non-negativity
+        M_next = M_next_flat.reshape(shape)
+        M_next = np.maximum(M_next, 0.0)
+
+        return M_next
+
     def _solve_fp_1d(
         self,
         m_initial_condition: np.ndarray,

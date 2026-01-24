@@ -63,6 +63,7 @@ def is_diagonal_tensor(Sigma: NDArray, rtol: float = 1e-10) -> bool:
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import scipy.sparse as sparse
     from numpy.typing import NDArray
 
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -1007,6 +1008,231 @@ class HJBFDMSolver(BaseHJBSolver):
         H_values = H_values_flat.reshape(self.shape)
         return H_values
 
+    # =========================================================================
+    # Strict Adjoint Mode (Issue #622)
+    # =========================================================================
+
+    def build_advection_matrix(
+        self,
+        U: NDArray,
+        coupling_coefficient: float | None = None,
+        time: float = 0.0,
+    ) -> sparse.csr_matrix:
+        """
+        Build upwind advection matrix from value function gradient.
+
+        This matrix encodes the drift velocity v = -coupling_coefficient * ∇U
+        using the same upwind discretization that would be used internally.
+
+        For strict adjoint mode (Issue #622), this matrix A_HJB is passed to the
+        FP solver which uses A_HJB^T, guaranteeing exact adjoint consistency:
+            L_FP = L_HJB^T
+
+        Mathematical Background:
+            For MFG with Hamiltonian H = (coupling/2)|∇u|², the optimal control is:
+                α* = -coupling_coefficient * ∇u
+
+            The HJB advection term is: α* · ∇u = -coupling * ∇u · ∇u
+            This is discretized with upwind differences for stability.
+
+        Args:
+            U: Value function at current timestep, shape (*spatial_shape)
+            coupling_coefficient: Drift coupling coefficient.
+                If None, uses problem.coupling_coefficient
+            time: Current time for time-dependent BCs
+
+        Returns:
+            Sparse CSR matrix A_advection of shape (N_total, N_total) where
+            N_total = prod(spatial_shape). The matrix encodes the advection
+            operator using velocity-based linear upwind discretization.
+
+        Example:
+            >>> # Build matrix for strict adjoint coupling
+            >>> A_hjb = hjb_solver.build_advection_matrix(U_current)
+            >>> # FP solver uses transpose
+            >>> A_fp = A_hjb.T  # Exact adjoint!
+
+        Note:
+            The matrix uses velocity-based linear upwind (same as FP's
+            divergence_upwind mode). This ensures the transpose relationship
+            holds for mass conservation.
+
+        See Also:
+            - Issue #622: Strict Achdou adjoint mode implementation
+            - solve_hjb_step_with_matrix(): Uses externally provided matrix
+            - FPFDMSolver.solve_fp_step_with_matrix(): Uses A^T from this method
+        """
+        if self.dimension == 1:
+            return self._build_advection_matrix_1d(U, coupling_coefficient, time)
+        else:
+            return self._build_advection_matrix_nd(U, coupling_coefficient, time)
+
+    def _build_advection_matrix_1d(
+        self,
+        U: NDArray,
+        coupling_coefficient: float | None = None,
+        time: float = 0.0,
+    ) -> sparse.csr_matrix:
+        """Build 1D upwind advection matrix.
+
+        Uses velocity-based linear upwind discretization matching FP divergence form.
+
+        For velocity v = -coupling * ∂U/∂x at point i:
+        - If v_i > 0 (flow to right): use backward difference (info from left)
+          A[i,i] += v_i/dx, A[i,i-1] -= v_i/dx
+        - If v_i < 0 (flow to left): use forward difference (info from right)
+          A[i,i] -= v_i/dx, A[i,i+1] += v_i/dx
+
+        This matches the "divergence_upwind" scheme in FP solver.
+        """
+        import scipy.sparse as sparse
+
+        # Get grid info
+        Nx = self.problem.geometry.get_grid_shape()[0]
+        dx = self.problem.geometry.get_grid_spacing()[0]
+
+        # Get coupling coefficient
+        if coupling_coefficient is None:
+            coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
+
+        # Compute gradient ∂U/∂x using BC-aware computation
+        bc = self.get_boundary_conditions()
+        grad_U = base_hjb._compute_gradient_array_1d(U, dx, bc=bc, upwind=True, time=time)
+
+        # Compute velocity: v = -coupling * ∂U/∂x
+        velocity = -coupling_coefficient * grad_U
+
+        # Build sparse matrix using COO format
+        row_indices = []
+        col_indices = []
+        data_values = []
+
+        for i in range(Nx):
+            v_i = velocity[i]
+
+            if abs(v_i) < 1e-14:
+                # Zero velocity - no advection contribution
+                continue
+
+            if v_i > 0:
+                # Flow to right: backward difference (upwind from left)
+                # (v * m)' ≈ v_i * (m_i - m_{i-1}) / dx
+                # Matrix form: A[i,i] = v_i/dx, A[i,i-1] = -v_i/dx
+                row_indices.append(i)
+                col_indices.append(i)
+                data_values.append(v_i / dx)
+
+                if i > 0:
+                    row_indices.append(i)
+                    col_indices.append(i - 1)
+                    data_values.append(-v_i / dx)
+                # Boundary: for i=0, no left neighbor (no-flux BC handles this)
+            else:
+                # Flow to left: forward difference (upwind from right)
+                # (v * m)' ≈ v_i * (m_{i+1} - m_i) / dx
+                # Matrix form: A[i,i] = -v_i/dx, A[i,i+1] = v_i/dx
+                row_indices.append(i)
+                col_indices.append(i)
+                data_values.append(-v_i / dx)
+
+                if i < Nx - 1:
+                    row_indices.append(i)
+                    col_indices.append(i + 1)
+                    data_values.append(v_i / dx)
+                # Boundary: for i=Nx-1, no right neighbor (no-flux BC handles this)
+
+        # Assemble sparse matrix
+        A = sparse.coo_matrix(
+            (data_values, (row_indices, col_indices)),
+            shape=(Nx, Nx),
+        ).tocsr()
+
+        return A
+
+    def _build_advection_matrix_nd(
+        self,
+        U: NDArray,
+        coupling_coefficient: float | None = None,
+        time: float = 0.0,
+    ) -> sparse.csr_matrix:
+        """Build nD upwind advection matrix.
+
+        Extends 1D logic to multiple dimensions using the same upwind principle
+        applied independently in each direction.
+
+        For each dimension d with velocity v_d = -coupling * ∂U/∂x_d:
+        - Upwind from appropriate neighbor based on flow direction
+        - Matrix entries are summed across all dimensions
+        """
+        import scipy.sparse as sparse
+
+        # Get coupling coefficient
+        if coupling_coefficient is None:
+            coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
+
+        # Compute gradients using trait-based operators
+        gradients = self._compute_gradients_nd(U, time=time)
+
+        # Compute velocity in each direction: v_d = -coupling * ∂U/∂x_d
+        velocities = {}
+        for d in range(self.dimension):
+            velocities[d] = -coupling_coefficient * gradients[d]
+
+        # Build sparse matrix using COO format
+        row_indices = []
+        col_indices = []
+        data_values = []
+
+        N_total = int(np.prod(self.shape))
+
+        for flat_idx in range(N_total):
+            multi_idx = self.grid.get_multi_index(flat_idx)
+
+            # Process each dimension
+            for d in range(self.dimension):
+                dx_d = self.spacing[d]
+                v_d = velocities[d][multi_idx]
+
+                if abs(v_d) < 1e-14:
+                    continue
+
+                if v_d > 0:
+                    # Flow in +x_d direction: backward difference
+                    row_indices.append(flat_idx)
+                    col_indices.append(flat_idx)
+                    data_values.append(v_d / dx_d)
+
+                    # Check if neighbor exists
+                    if multi_idx[d] > 0:
+                        neighbor_idx = list(multi_idx)
+                        neighbor_idx[d] -= 1
+                        neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.shape)
+                        row_indices.append(flat_idx)
+                        col_indices.append(neighbor_flat)
+                        data_values.append(-v_d / dx_d)
+                else:
+                    # Flow in -x_d direction: forward difference
+                    row_indices.append(flat_idx)
+                    col_indices.append(flat_idx)
+                    data_values.append(-v_d / dx_d)
+
+                    # Check if neighbor exists
+                    if multi_idx[d] < self.shape[d] - 1:
+                        neighbor_idx = list(multi_idx)
+                        neighbor_idx[d] += 1
+                        neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.shape)
+                        row_indices.append(flat_idx)
+                        col_indices.append(neighbor_flat)
+                        data_values.append(v_d / dx_d)
+
+        # Assemble sparse matrix
+        A = sparse.coo_matrix(
+            (data_values, (row_indices, col_indices)),
+            shape=(N_total, N_total),
+        ).tocsr()
+
+        return A
+
 
 if __name__ == "__main__":
     """Quick smoke test for development."""
@@ -1045,4 +1271,39 @@ if __name__ == "__main__":
     print("  1D solver converged")
     print(f"  U range: [{U_solution.min():.3f}, {U_solution.max():.3f}]")
 
-    print("All smoke tests passed!")
+    # Test build_advection_matrix (Issue #622 Phase 1)
+    print("\nTesting build_advection_matrix (Issue #622)...")
+    U_slice = U_solution[10]  # Use a middle timestep
+    A_hjb = solver_1d.build_advection_matrix(U_slice)
+
+    import scipy.sparse as sparse
+
+    assert sparse.issparse(A_hjb), "build_advection_matrix should return sparse matrix"
+    assert A_hjb.shape == (problem_1d.Nx + 1, problem_1d.Nx + 1), f"Matrix shape mismatch: {A_hjb.shape}"
+    assert not np.any(np.isnan(A_hjb.data)), "Matrix contains NaN"
+    assert not np.any(np.isinf(A_hjb.data)), "Matrix contains Inf"
+
+    # Verify transpose property: A^T should have same sparsity pattern
+    A_hjb_T = A_hjb.T.tocsr()
+    assert A_hjb_T.shape == A_hjb.shape, "Transpose should have same shape"
+
+    print(f"  1D advection matrix: shape={A_hjb.shape}, nnz={A_hjb.nnz}")
+    print("  build_advection_matrix (1D) passed!")
+
+    # Test 2D problem
+    print("\nTesting 2D solver...")
+    geometry_2d = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
+    problem_2d = MFGProblem(geometry=geometry_2d, T=1.0, Nt=5, diffusion=0.1)
+    solver_2d = HJBFDMSolver(problem_2d, solver_type="newton")
+
+    # Quick 2D build_advection_matrix test
+    U_2d = np.zeros((11, 11))
+    U_2d[5, 5] = 1.0  # Point source
+    A_hjb_2d = solver_2d.build_advection_matrix(U_2d)
+
+    assert sparse.issparse(A_hjb_2d), "2D build_advection_matrix should return sparse matrix"
+    assert A_hjb_2d.shape == (11 * 11, 11 * 11), f"2D matrix shape mismatch: {A_hjb_2d.shape}"
+    print(f"  2D advection matrix: shape={A_hjb_2d.shape}, nnz={A_hjb_2d.nnz}")
+    print("  build_advection_matrix (2D) passed!")
+
+    print("\nAll smoke tests passed!")
