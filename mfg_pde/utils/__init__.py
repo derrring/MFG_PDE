@@ -129,7 +129,6 @@ from .mfg_logging.decorators import (
 )
 from .mfg_logging.logger import (
     LoggedOperation,
-    MFGLogger,
     configure_logging,
     configure_research_logging,
     get_logger,
@@ -349,7 +348,6 @@ __all__ = [
     "LoggedOperation",
     # Logging decorators
     "LoggingMixin",
-    "MFGLogger",
     "MFGSolverError",
     "MFGSolverResult",
     "NumericalInstabilityError",
