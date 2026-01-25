@@ -50,6 +50,9 @@ Usage:
 # =============================================================================
 # Base Classes and Protocols (applicator hierarchy)
 # =============================================================================
+# Deprecated ghost value functions (Issue #577)
+# DEPRECATED: Use pad_array_with_ghosts() instead
+from ._compat import get_ghost_values_nd
 from .applicator_base import (
     # Base classes
     BaseBCApplicator,
@@ -434,6 +437,8 @@ __all__ = [
     # 1D FDM boundary conditions
     "BoundaryConditions1DFDM",
     "LegacyBoundaryConditions1D",  # Backward compat alias
+    # Deprecated functions (Issue #577 - use pad_array_with_ghosts instead)
+    "get_ghost_values_nd",
     # BC Dispatch (unified entry point for solvers - Issue #527)
     "apply_bc",
     "get_applicator_for_geometry",
