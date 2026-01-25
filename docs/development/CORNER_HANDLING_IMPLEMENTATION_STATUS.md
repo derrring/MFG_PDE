@@ -1,8 +1,8 @@
 # Corner Handling Implementation Status
 
 **Issue**: #521
-**Last Updated**: 2025-01-25
-**Status**: Partially Implemented
+**Last Updated**: 2026-01-25
+**Status**: ✅ Core Complete (ready for PR)
 
 ## Overview
 
@@ -17,9 +17,9 @@ Corner handling in PDE solvers requires different strategies depending on the nu
 | Particles (Velocity-based/Billiard) | Specular Reflection | ✅ Done | `geometry/boundary/corner/velocity.py` |
 | GFDM/Meshfree | Fold Reflection | ✅ Done | `geometry/boundary/applicator_meshfree.py` |
 | SDF/Level Set | Mollify | ✅ Done | `geometry/base.py` |
-| FVM (Flux) | Zero/Ignore | ❌ TODO | — |
-| Eikonal (FMM/FSM) | Upwind | ❌ TODO | — |
-| Subgradient Methods | Subgradient Selection | ❌ TODO | — |
+| FVM (Flux) | Zero/Ignore | ❌ TODO | #663 |
+| Eikonal (FMM/FSM) | Upwind | ❌ TODO | #664 |
+| Subgradient Methods | Subgradient Selection | ❌ TODO | #665 |
 
 ---
 
