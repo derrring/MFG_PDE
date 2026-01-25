@@ -4,8 +4,8 @@ Particle Boundary Condition Utilities (1D, GPU/CPU).
 This module provides 1D boundary condition functions for particle-based
 MFG solvers. Supports both GPU and CPU backends.
 
-For n-D position reflection/wrapping, use mfg_pde.utils.geometry instead:
-    from mfg_pde.utils.geometry import reflect_positions, wrap_positions
+For n-D position reflection/wrapping, use mfg_pde.geometry.boundary.corner instead:
+    from mfg_pde.geometry.boundary.corner import reflect_positions, wrap_positions
 
 Key Functions:
 - apply_boundary_conditions_gpu: GPU-accelerated BC application (1D)
@@ -74,7 +74,7 @@ def apply_boundary_conditions_gpu(
     - no_flux: Particles reflect off boundaries (mass conserving)
     - dirichlet: Particles are clamped to domain (absorbing)
 
-    For n-D positions, use mfg_pde.utils.geometry.reflect_positions instead.
+    For n-D positions, use mfg_pde.geometry.boundary.corner.reflect_positions instead.
     """
     xp = backend.array_module
     Lx = xmax - xmin
@@ -146,7 +146,7 @@ def apply_boundary_conditions_numpy(
 
     Note
     ----
-    For n-D positions, use mfg_pde.utils.geometry.reflect_positions instead.
+    For n-D positions, use mfg_pde.geometry.boundary.corner.reflect_positions instead.
     """
     # Make a copy to avoid modifying input
     particles = particles.copy()
@@ -222,4 +222,4 @@ if __name__ == "__main__":
     print("  No-flux large displacement: passed")
 
     print("\nAll 1D smoke tests passed!")
-    print("\nNote: For n-D positions, use mfg_pde.utils.geometry.reflect_positions")
+    print("\nNote: For n-D positions, use mfg_pde.geometry.boundary.corner.reflect_positions")

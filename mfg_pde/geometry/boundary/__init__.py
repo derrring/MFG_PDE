@@ -227,6 +227,19 @@ from .constraint_protocol import ConstraintProtocol
 from .constraints import BilateralConstraint, ObstacleConstraint
 
 # =============================================================================
+# Corner Handling (Issue #521 - unified corner handling architecture)
+# =============================================================================
+from .corner import (
+    DEFAULT_CORNER_STRATEGY,
+    CornerStrategy,
+    CornerStrategyLiteral,
+    absorb_positions,
+    reflect_positions,
+    validate_corner_strategy,
+    wrap_positions,
+)
+
+# =============================================================================
 # BC Dispatch (unified entry point for solvers)
 # =============================================================================
 from .dispatch import (
@@ -443,4 +456,12 @@ __all__ = [
     "apply_bc",
     "get_applicator_for_geometry",
     "validate_bc_compatibility",
+    # Corner Handling (Issue #521)
+    "reflect_positions",
+    "wrap_positions",
+    "absorb_positions",
+    "CornerStrategy",
+    "CornerStrategyLiteral",
+    "DEFAULT_CORNER_STRATEGY",
+    "validate_corner_strategy",
 ]

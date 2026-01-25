@@ -130,14 +130,14 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
 
         For bounded domains (hyperrectangles), uses modular fold reflection
         which correctly handles particles that travel multiple domain widths.
-        Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
+        Uses canonical implementation from geometry.boundary.corner (Issue #521).
 
         At corners, all dimensions are processed simultaneously, producing
         diagonal reflection (equivalent to 'average' corner strategy).
 
         For other domains, falls back to projection to interior.
         """
-        from mfg_pde.utils.geo import reflect_positions
+        from .corner import reflect_positions
 
         bounds = self.geometry.get_bounds()
 
@@ -180,9 +180,9 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
         """
         Wrap particles around domain (periodic BC).
 
-        Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
+        Uses canonical implementation from geometry.boundary.corner (Issue #521).
         """
-        from mfg_pde.utils.geo import wrap_positions
+        from .corner import wrap_positions
 
         bounds = self.geometry.get_bounds()
         if bounds is None:

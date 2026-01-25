@@ -13,7 +13,7 @@ Corner handling in PDE solvers requires different strategies depending on the nu
 | Solver/Method | Strategy | Status | Location |
 |:-------------|:---------|:-------|:---------|
 | FDM (Grid) | Sequential (Implicit) | ✅ Done | `geometry/boundary/applicator_fdm.py` |
-| Particles (SDE/Position-based) | Fold Reflection | ✅ Done | `utils/geo/boundary_reflection.py` |
+| Particles (SDE/Position-based) | Fold Reflection | ✅ Done | `geometry/boundary/corner/position.py` |
 | Particles (Velocity-based/Billiard) | Normal Average | ❌ TODO | — |
 | GFDM/Meshfree | Fold Reflection | ✅ Done | `geometry/boundary/applicator_meshfree.py` |
 | SDF/Level Set | Mollify | ✅ Done | `geometry/base.py` |
@@ -46,7 +46,7 @@ Corner C = overwritten by Y-pass (last dimension)
 
 ### 2. Position-based Particle Reflection (✅ Done)
 
-**Location**: `mfg_pde/utils/geo/boundary_reflection.py`
+**Location**: `mfg_pde/geometry/boundary/corner/position.py`
 
 **Strategy**: Modular fold reflection per dimension. Diagonal reflection emerges naturally.
 
@@ -95,7 +95,7 @@ elif corner_strategy == "mollify":
 **Required Implementation**:
 
 ```python
-# Proposed location: mfg_pde/utils/geo/velocity_reflection.py
+# Proposed location: mfg_pde/geometry/boundary/corner/velocity_reflection.py
 
 def reflect_velocity(
     position: NDArray,
@@ -330,11 +330,11 @@ At corner of domain, value function $V$ may have kinks. The subgradient selectio
            │                  │                  │
            ▼                  ▼                  ▼
     ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-    │ utils/geo/  │    │ applicator_ │    │ applicator_ │
+    │ geometry/boundary/corner/  │    │ applicator_ │    │ applicator_ │
     │             │    │ fdm.py      │    │ meshfree.py │
     │ Position    │    │             │    │             │
     │ Reflection  │    │ Sequential  │    │ Uses        │
-    │ (fold)      │    │ Update      │    │ utils/geo/  │
+    │ (fold)      │    │ Update      │    │ geometry/boundary/corner/  │
     └─────────────┘    └─────────────┘    └─────────────┘
            │
            │ TODO

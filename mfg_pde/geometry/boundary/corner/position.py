@@ -1,5 +1,5 @@
 """
-Position reflection and wrapping at domain boundaries (Issue #521).
+Position-based boundary reflection and wrapping (Issue #521).
 
 This module provides the canonical implementation for position-based
 boundary handling. All particle BC handlers and meshfree applicators
@@ -21,7 +21,8 @@ Functions:
 Reference:
     See Issue #521 for corner handling architecture and design decisions.
 
-Created: 2026-01-25 (Issue #521)
+Created: 2025-01-25 (Issue #521)
+Migrated to geometry/boundary/corner/: 2026-01-25
 """
 
 from __future__ import annotations

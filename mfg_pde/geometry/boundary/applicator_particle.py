@@ -322,12 +322,12 @@ class ParticleApplicator:
         Reflect particle back into domain using modular fold reflection.
 
         Handles particles that may have traveled multiple domain widths.
-        Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
+        Uses canonical implementation from geometry.boundary.corner (Issue #521).
 
         At corners, all dimensions are processed simultaneously, producing
         diagonal reflection (equivalent to 'average' corner strategy).
         """
-        from mfg_pde.utils.geo import reflect_positions
+        from .corner import reflect_positions
 
         # Build bounds from domain_min and domain_max
         bounds = list(zip(domain_min, domain_max, strict=True))
@@ -342,9 +342,9 @@ class ParticleApplicator:
         """
         Wrap particle to opposite boundary (periodic BC).
 
-        Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
+        Uses canonical implementation from geometry.boundary.corner (Issue #521).
         """
-        from mfg_pde.utils.geo import wrap_positions
+        from .corner import wrap_positions
 
         # Build bounds from domain_min and domain_size
         bounds = [(domain_min[d], domain_min[d] + domain_size[d]) for d in range(len(domain_min))]
