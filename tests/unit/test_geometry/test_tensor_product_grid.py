@@ -54,23 +54,26 @@ class TestInitialization:
         assert grid.total_points() == 11 * 11 * 11
 
     def test_invalid_dimension_raises(self) -> None:
-        """Test that invalid dimension raises ValueError."""
-        # Dimension must be positive (dimension < 1 should raise)
-        with pytest.raises(ValueError, match="Dimension must be positive"):
-            TensorProductGrid(dimension=0, bounds=[], Nx_points=[])
+        """Test that invalid/empty bounds raises ValueError."""
+        # Empty bounds should raise (Issue #676: dimension inferred from bounds)
+        with pytest.raises(ValueError, match="bounds cannot be empty"):
+            TensorProductGrid(bounds=[], Nx_points=[])
 
-        with pytest.raises(ValueError, match="Dimension must be positive"):
-            TensorProductGrid(dimension=-1, bounds=[], Nx_points=[])
+        # Explicit dimension with empty bounds still raises empty bounds error
+        with pytest.raises(ValueError, match="bounds cannot be empty"):
+            TensorProductGrid(bounds=[], Nx_points=[], dimension=1)
 
     def test_mismatched_bounds_length_raises(self) -> None:
-        """Test that mismatched bounds length raises ValueError."""
-        with pytest.raises(ValueError, match="bounds and Nx/Nx_points must have length 2"):
-            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0)], Nx_points=[10, 10])
+        """Test that explicit dimension mismatching bounds raises ValueError."""
+        # Issue #676: dimension inferred from bounds, explicit dimension must match
+        with pytest.raises(ValueError, match="dimension=2 doesn't match len\\(bounds\\)=1"):
+            TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[10, 10], dimension=2)
 
     def test_mismatched_num_points_length_raises(self) -> None:
         """Test that mismatched Nx_points length raises ValueError."""
-        with pytest.raises(ValueError, match="bounds and Nx/Nx_points must have length 2"):
-            TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10])
+        # Issue #676: dimension inferred from len(bounds)=2, Nx_points must match
+        with pytest.raises(ValueError, match="Nx/Nx_points must have length 2"):
+            TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10])
 
     def test_custom_coordinates_grid(self) -> None:
         """Test grid with custom (non-uniform) coordinates."""
