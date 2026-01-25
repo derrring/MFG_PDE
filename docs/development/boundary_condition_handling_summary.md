@@ -492,13 +492,40 @@ For cell-centered grids where boundary lies at cell face:
 At reflecting boundaries with stall point:
 ```
 Standard Neumann: ∂U/∂n = 0  (wrong at stall points)
-Adjoint-consistent: ∂U/∂n = -σ²/2 · ∂ln(m)/∂n  (correct)
+Adjoint-consistent: ∂U/∂n = -σ²/2 · ∂ln(m)/∂n  (correct for boundary stall)
 ```
 
 Implemented as Robin BC with α=0, β=1:
 ```
 0·U + 1·∂U/∂n = g  where  g = -σ²/2 · ∂ln(m)/∂n
 ```
+
+**SCOPE LIMITATION (Issue #625 Validation):**
+
+The adjoint-consistent BC formula is derived from the **zero-flux equilibrium condition** at reflecting boundaries:
+```
+J·n = 0  where  J = -σ²/2·∇m + m·α*  and  α* = -∇U
+Rearranging:  ∂U/∂n = -σ²/2 · ∂ln(m)/∂n
+```
+
+**This derivation assumes the boundary IS the equilibrium point (stall).** When the stall point is in the domain interior:
+
+- At stall point: optimal drift α* = 0, so zero-flux condition holds naturally
+- At non-stall boundaries: optimal drift α* ≠ 0, agents have a preferred direction
+
+**Applicability:**
+
+| Configuration | AC BC | Neumann BC | Strict Adjoint |
+|---------------|-------|------------|----------------|
+| Boundary stall (x=0 or x=1) | **Best** | Moderate | Good |
+| Interior stall (x=0.5) | **Wrong** | Moderate | **Best** |
+
+**Validation results:**
+- Boundary stall: AC BC error 1.36 vs Neumann 2.09 (1.54x better)
+- Interior stall: AC BC error 5.88 vs Neumann 1.55 (3.8x worse!)
+- Strict Adjoint Mode (L_FP = L_HJB^T): Best for all cases
+
+**Recommendation:** Use `AdjointConsistentProvider` only for boundary stall problems. For interior stall or uncertain configurations, prefer Strict Adjoint Mode (Issue #622).
 
 ---
 

@@ -186,9 +186,29 @@ class AdjointConsistentProvider(BaseBCValueProvider):
         - m: current FP density
         - d/dn: outward normal derivative at boundary
 
-    This is used for reflecting boundaries where the stall point lies
-    at or near the domain boundary. The formula ensures the HJB and FP
-    BCs are consistent at equilibrium.
+    SCOPE LIMITATION (Issue #625 Validation):
+    -----------------------------------------
+    This provider is designed for **boundary stall configurations only**.
+
+    The formula is derived from the zero-flux equilibrium condition, which
+    assumes the boundary IS the equilibrium point (stall). For interior stall:
+    - The derivation doesn't apply (equilibrium flux is not zero at boundary)
+    - Results are worse than standard Neumann BC (validated experimentally)
+    - Use Strict Adjoint Mode (Issue #622) instead for universal applicability
+
+    Validation results:
+    - Boundary stall (x=0): AC BC error 1.36 vs Neumann 2.09 (1.54x better)
+    - Interior stall (x=0.5): AC BC error 5.88 vs Neumann 1.55 (3.8x WORSE)
+
+    When to use:
+    - Stall point at domain boundary (x_stall = 0 or x_stall = L)
+    - Reflecting (zero-flux) boundary conditions
+    - MFG problems with crowd-aversion coupling
+
+    When NOT to use:
+    - Interior stall points (use Strict Adjoint Mode instead)
+    - Absorbing boundaries
+    - Periodic boundaries
 
     Attributes:
         side: Boundary side ("left" or "right" for 1D)
@@ -196,9 +216,14 @@ class AdjointConsistentProvider(BaseBCValueProvider):
         regularization: Small constant to prevent log(0)
 
     Example:
+        >>> # Appropriate: boundary stall configuration
         >>> provider = AdjointConsistentProvider(side="left", diffusion=0.04)
         >>> state = {'m_current': m_array, 'geometry': geom}
         >>> g_left = provider.compute(state)  # Robin BC value at left boundary
+
+    See Also:
+        - Strict Adjoint Mode (Issue #622): Universal L_FP = L_HJB^T enforcement
+        - docs/development/boundary_condition_handling_summary.md for full analysis
     """
 
     # Side name aliases: map various conventions to canonical form
