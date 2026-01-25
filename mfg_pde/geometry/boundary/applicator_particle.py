@@ -327,7 +327,7 @@ class ParticleApplicator:
         At corners, all dimensions are processed simultaneously, producing
         diagonal reflection (equivalent to 'average' corner strategy).
         """
-        from mfg_pde.utils.boundary import reflect_positions
+        from mfg_pde.utils.geo import reflect_positions
 
         # Build bounds from domain_min and domain_max
         bounds = list(zip(domain_min, domain_max, strict=True))
@@ -344,7 +344,7 @@ class ParticleApplicator:
 
         Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
         """
-        from mfg_pde.utils.boundary import wrap_positions
+        from mfg_pde.utils.geo import wrap_positions
 
         # Build bounds from domain_min and domain_size
         bounds = [(domain_min[d], domain_min[d] + domain_size[d]) for d in range(len(domain_min))]

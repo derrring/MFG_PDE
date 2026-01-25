@@ -215,7 +215,7 @@ def apply_boundary_conditions(
     See Issue #521 for corner handling architecture. Position-based reflection
     uses fold reflection which implicitly produces diagonal corner reflection.
     """
-    from mfg_pde.utils.boundary import reflect_positions, wrap_positions
+    from mfg_pde.utils.geo import reflect_positions, wrap_positions
 
     particles = np.asarray(particles)
     bounds_list = list(bounds)

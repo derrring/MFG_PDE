@@ -137,7 +137,7 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
 
         For other domains, falls back to projection to interior.
         """
-        from mfg_pde.utils.boundary import reflect_positions
+        from mfg_pde.utils.geo import reflect_positions
 
         bounds = self.geometry.get_bounds()
 
@@ -182,7 +182,7 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
 
         Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
         """
-        from mfg_pde.utils.boundary import wrap_positions
+        from mfg_pde.utils.geo import wrap_positions
 
         bounds = self.geometry.get_bounds()
         if bounds is None:
