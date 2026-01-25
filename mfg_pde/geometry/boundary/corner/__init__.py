@@ -10,6 +10,13 @@ Position-based (implicit diagonal reflection):
     Position functions process all dimensions simultaneously, producing
     diagonal reflection at corners. No strategy parameter needed.
 
+Velocity-based (specular reflection with corner_strategy):
+    >>> from mfg_pde.geometry.boundary.corner import reflect_velocity
+    >>> v_new = reflect_velocity(position, velocity, bounds, corner_strategy="average")
+
+    For Billiard dynamics and hard-sphere collisions. Uses specular reflection:
+    v_new = v - 2(v·n)n
+
 Normal-based (explicit strategy selection):
     >>> from mfg_pde.geometry import DomainGeometry
     >>> geom = DomainGeometry(bounds)
@@ -17,12 +24,6 @@ Normal-based (explicit strategy selection):
 
     Normal queries are methods on DomainGeometry because they need access
     to geometry state. Available strategies: "average", "priority", "mollify".
-
-Velocity-based (TODO - Future):
-    >>> from mfg_pde.geometry.boundary.corner import reflect_velocity
-    >>> v_new = reflect_velocity(position, velocity, bounds, strategy="average")
-
-    Not yet implemented. For Billiard dynamics and hard-sphere collisions.
 
 Detection:
     >>> geom.is_near_corner(points)  # Boolean array
@@ -32,12 +33,13 @@ Module Structure:
     corner/
     ├── __init__.py      # This file - unified exports
     ├── position.py      # reflect_positions, wrap_positions, absorb_positions
+    ├── velocity.py      # reflect_velocity, reflect_velocity_with_normal
     └── strategies.py    # CornerStrategy enum, validation
 
 Architecture Notes:
     - Position functions are STATELESS (pure functions on arrays)
+    - Velocity functions are STATELESS (pure functions, include normal computation)
     - Normal queries need GEOMETRY STATE (methods on DomainGeometry)
-    - This split avoids circular imports while providing unified access
 
 See Also:
     - docs/development/CORNER_HANDLING_IMPLEMENTATION_STATUS.md
@@ -59,11 +61,19 @@ from .strategies import (
     validate_corner_strategy,
 )
 
+# =============================================================================
+# Velocity-based functions (specular reflection)
+# =============================================================================
+from .velocity import reflect_velocity, reflect_velocity_with_normal
+
 __all__ = [
     # Position-based (most common usage)
     "reflect_positions",
     "wrap_positions",
     "absorb_positions",
+    # Velocity-based (Billiard dynamics)
+    "reflect_velocity",
+    "reflect_velocity_with_normal",
     # Strategy definitions
     "CornerStrategy",
     "CornerStrategyLiteral",

@@ -235,6 +235,8 @@ from .corner import (
     CornerStrategyLiteral,
     absorb_positions,
     reflect_positions,
+    reflect_velocity,
+    reflect_velocity_with_normal,
     validate_corner_strategy,
     wrap_positions,
 )
@@ -460,6 +462,8 @@ __all__ = [
     "reflect_positions",
     "wrap_positions",
     "absorb_positions",
+    "reflect_velocity",
+    "reflect_velocity_with_normal",
     "CornerStrategy",
     "CornerStrategyLiteral",
     "DEFAULT_CORNER_STRATEGY",

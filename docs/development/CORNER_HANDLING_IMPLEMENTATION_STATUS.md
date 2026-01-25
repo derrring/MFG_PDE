@@ -14,7 +14,7 @@ Corner handling in PDE solvers requires different strategies depending on the nu
 |:-------------|:---------|:-------|:---------|
 | FDM (Grid) | Sequential (Implicit) | ✅ Done | `geometry/boundary/applicator_fdm.py` |
 | Particles (SDE/Position-based) | Fold Reflection | ✅ Done | `geometry/boundary/corner/position.py` |
-| Particles (Velocity-based/Billiard) | Normal Average | ❌ TODO | — |
+| Particles (Velocity-based/Billiard) | Specular Reflection | ✅ Done | `geometry/boundary/corner/velocity.py` |
 | GFDM/Meshfree | Fold Reflection | ✅ Done | `geometry/boundary/applicator_meshfree.py` |
 | SDF/Level Set | Mollify | ✅ Done | `geometry/base.py` |
 | FVM (Flux) | Zero/Ignore | ❌ TODO | — |
@@ -83,68 +83,36 @@ elif corner_strategy == "mollify":
 
 ---
 
-## TODO: Unimplemented Methods
+### 4. Velocity-based Particle Reflection (✅ Done)
 
-### 4. Velocity-based Particle Reflection (❌ TODO)
+**Location**: `mfg_pde/geometry/boundary/corner/velocity.py`
 
-**Priority**: Medium
-**Use Case**: Billiard dynamics, hard-sphere collisions, deterministic particle systems
-
-**Challenge**: Zeno trap at corners when velocity reflects infinitely fast.
-
-**Required Implementation**:
+**Strategy**: Specular reflection with corner_strategy parameter.
 
 ```python
-# Proposed location: mfg_pde/geometry/boundary/corner/velocity_reflection.py
+from mfg_pde.geometry.boundary.corner import reflect_velocity
 
-def reflect_velocity(
-    position: NDArray,
-    velocity: NDArray,
-    bounds: list[tuple[float, float]],
-    corner_strategy: Literal["average", "priority", "mollify"] = "average",
-) -> NDArray:
-    """
-    Reflect velocity at boundary using specified corner strategy.
+# Basic usage
+v_new = reflect_velocity(position, velocity, bounds)
 
-    At corners, multiple normals exist. Strategy determines which to use:
-    - "average": Use averaged normal (diagonal reflection)
-    - "priority": Use first face's normal (dimension 0 priority)
-    - "mollify": Use mollified normal (smooth transition)
+# With corner strategy
+v_new = reflect_velocity(position, velocity, bounds, corner_strategy="average")
 
-    Args:
-        position: Current position at boundary
-        velocity: Incoming velocity vector
-        bounds: Domain bounds [(xmin, xmax), ...]
-        corner_strategy: How to handle corners
-
-    Returns:
-        Reflected velocity: v_new = v - 2(v·n)n
-    """
-    from mfg_pde.geometry.base import DomainGeometry
-
-    geom = DomainGeometry(bounds)
-    normal = geom.get_boundary_normal(position, corner_strategy=corner_strategy)
-
-    # Specular reflection: v_new = v - 2(v·n)n
-    v_dot_n = np.dot(velocity, normal)
-    return velocity - 2 * v_dot_n * normal
+# With anti-Zeno damping
+v_new = reflect_velocity(position, velocity, bounds, damping=0.9)
 ```
 
-**Anti-Zeno safeguard** (optional):
-
-```python
-def reflect_with_damping(velocity, normal, damping=0.99):
-    """Slight energy loss prevents infinite corner bounces."""
-    v_dot_n = np.dot(velocity, normal)
-    return damping * (velocity - 2 * v_dot_n * normal)
-```
-
-**Tests needed**:
-- Corner reflection produces diagonal bounce with `average`
-- No infinite loops (Zeno trap) in corner
-- Energy conservation (or controlled dissipation)
+**Features**:
+- Specular reflection: `v_new = v - 2(v·n)n`
+- Corner strategies: `"average"`, `"priority"`, `"mollify"`
+- Anti-Zeno damping parameter (default 1.0 = elastic)
+- Only reflects if moving into boundary (`v·n > 0`)
+- Batch processing support
+- Low-level API: `reflect_velocity_with_normal()` for pre-computed normals
 
 ---
+
+## TODO: Unimplemented Methods
 
 ### 5. FVM Corner Flux (❌ TODO)
 
@@ -329,28 +297,33 @@ At corner of domain, value function $V$ may have kinks. The subgradient selectio
            ┌──────────────────┼──────────────────┐
            │                  │                  │
            ▼                  ▼                  ▼
+    ┌───────────────────────────────────────────────────────────────┐
+    │           geometry/boundary/corner/ (IMPLEMENTED)             │
+    │  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐  │
+    │  │ position.py     │  │ velocity.py     │  │ strategies.py│  │
+    │  │ - reflect_pos   │  │ - reflect_vel   │  │ - CornerStrat│  │
+    │  │ - wrap_pos      │  │ - specular      │  │ - validate   │  │
+    │  │ - absorb_pos    │  │ - damping       │  │              │  │
+    │  └─────────────────┘  └─────────────────┘  └──────────────┘  │
+    └───────────────────────────────────────────────────────────────┘
+                              │
+           ┌──────────────────┼──────────────────┐
+           │                  │                  │
+           ▼                  ▼                  ▼
     ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-    │ geometry/boundary/corner/  │    │ applicator_ │    │ applicator_ │
-    │             │    │ fdm.py      │    │ meshfree.py │
-    │ Position    │    │             │    │             │
-    │ Reflection  │    │ Sequential  │    │ Uses        │
-    │ (fold)      │    │ Update      │    │ geometry/boundary/corner/  │
+    │ applicator_ │    │ applicator_ │    │ applicator_ │
+    │ particle.py │    │ fdm.py      │    │ meshfree.py │
+    │ (uses       │    │ (Sequential │    │ (uses       │
+    │  corner/)   │    │  Update)    │    │  corner/)   │
     └─────────────┘    └─────────────┘    └─────────────┘
-           │
-           │ TODO
-           ▼
+
     ┌─────────────────────────────────────────────────────────────┐
-    │                    Future Extensions                        │
-    │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-    │  │ velocity_   │  │ fvm/corner_ │  │ eikonal/corner_     │ │
-    │  │ reflection  │  │ flux.py     │  │ update.py           │ │
-    │  │ .py         │  │             │  │                     │ │
-    │  │ (Billiard)  │  │ (FVM)       │  │ (FMM/FSM)           │ │
-    │  └─────────────┘  └─────────────┘  └─────────────────────┘ │
-    │  ┌─────────────────────────────────────────────────────┐   │
-    │  │ hjb_solvers/subgradient.py                          │   │
-    │  │ (Non-smooth optimization)                           │   │
-    │  └─────────────────────────────────────────────────────┘   │
+    │                    Future Extensions (TODO)                  │
+    │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+    │  │ fvm/corner_ │  │ eikonal/    │  │ hjb_solvers/        │  │
+    │  │ flux.py     │  │ corner_     │  │ subgradient.py      │  │
+    │  │ (FVM)       │  │ update.py   │  │ (Non-smooth opt)    │  │
+    │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
     └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -358,14 +331,15 @@ At corner of domain, value function $V$ may have kinks. The subgradient selectio
 
 ## Implementation Priority
 
-| Method | Priority | Effort | Dependency |
-|:-------|:---------|:-------|:-----------|
-| Velocity-based Reflection | Medium | Small | `geometry/base.py` |
-| Eikonal Corner Update | Medium | Medium | New solver |
-| Subgradient Selection | Low | Medium | HJB refactor |
-| FVM Corner Flux | Low | Small | FVM solver |
+| Method | Priority | Effort | Status |
+|:-------|:---------|:-------|:-------|
+| Position-based Reflection | High | Done | ✅ `corner/position.py` |
+| Velocity-based Reflection | Medium | Done | ✅ `corner/velocity.py` |
+| Eikonal Corner Update | Medium | Medium | ❌ TODO |
+| Subgradient Selection | Low | Medium | ❌ TODO |
+| FVM Corner Flux | Low | Small | ❌ TODO |
 
-**Recommended order**: Velocity reflection → Eikonal → Subgradient → FVM
+**Recommended order**: Eikonal → Subgradient → FVM
 
 ---
 
