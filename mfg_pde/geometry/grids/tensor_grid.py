@@ -1471,26 +1471,36 @@ class TensorProductGrid(
             >>> du_dx = grad_x(u)
             >>> du_dy = grad_y(u)
         """
-        from mfg_pde.operators import create_gradient_operators
+        from mfg_pde.operators import PartialDerivOperator
 
         # Use grid's BC
         bc = self.get_boundary_conditions()
 
-        # Create all gradient operators
-        operators = create_gradient_operators(
-            spacings=self.spacing,
-            field_shape=tuple(self.Nx_points),
-            scheme=scheme,
-            bc=bc,
-            time=time,
-        )
-
-        # Return specific direction or all
+        # Create operator(s)
         if direction is not None:
             if direction >= self.dimension:
                 raise ValueError(f"direction {direction} >= dimension {self.dimension}")
-            return operators[direction]
-        return operators
+            return PartialDerivOperator(
+                direction=direction,
+                spacings=self.spacing,
+                field_shape=tuple(self.Nx_points),
+                scheme=scheme,
+                bc=bc,
+                time=time,
+            )
+
+        # Return all directions
+        return tuple(
+            PartialDerivOperator(
+                direction=d,
+                spacings=self.spacing,
+                field_shape=tuple(self.Nx_points),
+                scheme=scheme,
+                bc=bc,
+                time=time,
+            )
+            for d in range(self.dimension)
+        )
 
     def get_divergence_operator(
         self,

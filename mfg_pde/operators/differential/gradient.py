@@ -69,9 +69,8 @@ class PartialDerivOperator(LinearOperator):
         ...                             field_shape=(50, 50))
         >>> du_dx = d_dx(u)
         >>>
-        >>> # Or use create_gradient_operators for all directions
-        >>> grad_x, grad_y = create_gradient_operators(spacings=[0.1, 0.1],
-        ...                                            field_shape=(50, 50))
+        >>> # All gradient components
+        >>> grad_ops = tuple(PartialDerivOperator(d, spacings, shape) for d in range(ndim))
 
     Note:
         Renamed from GradientComponentOperator in v0.18.0 (Issue #658).
@@ -229,70 +228,6 @@ class PartialDerivOperator(LinearOperator):
         )
 
 
-def create_gradient_operators(
-    spacings: Sequence[float],
-    field_shape: tuple[int, ...] | int,
-    scheme: Literal["central", "upwind", "one_sided", "weno5"] = "central",
-    bc: BoundaryConditions | None = None,
-    time: float = 0.0,
-) -> tuple[PartialDerivOperator, ...]:
-    """
-    Create partial derivative operators for all spatial dimensions.
-
-    Returns a tuple of operators (d/dx0, d/dx1, ..., d/dx_{d-1}).
-
-    Args:
-        spacings: Grid spacing per dimension [h0, h1, ..., h_{d-1}]
-        field_shape: Shape of field arrays (Nx, Ny, ...) or Nx for 1D
-        scheme: Difference scheme ("central", "upwind", "one_sided", "weno5")
-            - "central": 2nd-order central differences (default)
-            - "upwind": Godunov upwind (monotone, 1st-order)
-            - "one_sided": Forward at left, backward at right
-            - "weno5": 5th-order WENO reconstruction (1D only, high-order)
-        bc: Boundary conditions (None for periodic)
-        time: Time for time-dependent BCs
-
-    Returns:
-        Tuple of PartialDerivOperator, one per dimension
-
-    Example:
-        >>> # 2D gradient
-        >>> grad_x, grad_y = create_gradient_operators(
-        ...     spacings=[0.1, 0.1],
-        ...     field_shape=(50, 50),
-        ...     scheme="central"
-        ... )
-        >>> u = np.random.rand(50, 50)
-        >>> du_dx = grad_x(u)
-        >>> du_dy = grad_y(u)
-        >>>
-        >>> # Can also use @ syntax
-        >>> du_dx_flat = grad_x @ u.ravel()
-    """
-    # Handle 1D shape
-    if isinstance(field_shape, int):
-        field_shape = (field_shape,)
-    else:
-        field_shape = tuple(field_shape)
-
-    dimension = len(field_shape)
-
-    # Create operator for each direction
-    operators = tuple(
-        PartialDerivOperator(
-            direction=d,
-            spacings=spacings,
-            field_shape=field_shape,
-            scheme=scheme,
-            bc=bc,
-            time=time,
-        )
-        for d in range(dimension)
-    )
-
-    return operators
-
-
 # =============================================================================
 # Deprecated Alias (Issue #658)
 # =============================================================================
@@ -317,7 +252,7 @@ if __name__ == "__main__":
     dx = x[1] - x[0]
     u_1d = np.sin(x)
 
-    (grad_x,) = create_gradient_operators(spacings=[dx], field_shape=100, scheme="central")
+    grad_x = PartialDerivOperator(direction=0, spacings=[dx], field_shape=(100,), scheme="central")
     print(f"  Operator shape: {grad_x.shape}")
     print(f"  Field shape: {grad_x.field_shape}")
     print(f"  Grid spacing: dx={dx:.4f}")
@@ -331,13 +266,13 @@ if __name__ == "__main__":
 
     # Check interior (boundaries may have larger error)
     error = np.max(np.abs(du_dx[10:-10] - expected[10:-10]))
-    print(f"  ∂sin(x)/∂x interior error: {error:.2e} (expected = cos(x))")
+    print(f"  d sin(x)/dx interior error: {error:.2e} (expected = cos(x))")
     assert error < 0.01, f"Error too large: {error}"
 
     # Test @ syntax
     du_dx_matvec = grad_x @ u_1d.ravel()
     assert np.allclose(du_dx.ravel(), du_dx_matvec)
-    print("  ✓ grad_x(u) == grad_x @ u.ravel()")
+    print("  OK: grad_x(u) == grad_x @ u.ravel()")
 
     # Test 2D
     print("\n[2D Gradient]")
@@ -347,14 +282,11 @@ if __name__ == "__main__":
     dx, dy = x[1] - x[0], y[1] - y[0]
     X, Y = np.meshgrid(x, y, indexing="ij")
 
-    # Test on u = x² + y³, ∂u/∂x = 2x, ∂u/∂y = 3y²
+    # Test on u = x^2 + y^3, du/dx = 2x, du/dy = 3y^2
     u_2d = X**2 + Y**3
 
-    grad_x, grad_y = create_gradient_operators(
-        spacings=[dx, dy],
-        field_shape=(Nx, Ny),
-        scheme="central",
-    )
+    grad_x = PartialDerivOperator(direction=0, spacings=[dx, dy], field_shape=(Nx, Ny), scheme="central")
+    grad_y = PartialDerivOperator(direction=1, spacings=[dx, dy], field_shape=(Nx, Ny), scheme="central")
 
     print(f"  Operator shapes: {grad_x.shape}, {grad_y.shape}")
     print(f"  Field shape: {grad_x.field_shape}")
@@ -374,19 +306,19 @@ if __name__ == "__main__":
     error_dx = np.max(np.abs(du_dx[10:-10, 10:-10] - expected_dx[10:-10, 10:-10]))
     error_dy = np.max(np.abs(du_dy[10:-10, 10:-10] - expected_dy[10:-10, 10:-10]))
 
-    print(f"  ∂u/∂x interior error: {error_dx:.2e} (expected = 2x)")
-    print(f"  ∂u/∂y interior error: {error_dy:.2e} (expected = 3y²)")
-    # Quadratic function (x²) should have near-machine-precision error
-    assert error_dx < 1e-10, f"∂u/∂x error too large: {error_dx}"
-    # Cubic function (y³) has O(h²) discretization error
-    assert error_dy < 1e-3, f"∂u/∂y error too large: {error_dy}"
-    print("  ✓ Gradient accuracy check passed")
+    print(f"  du/dx interior error: {error_dx:.2e} (expected = 2x)")
+    print(f"  du/dy interior error: {error_dy:.2e} (expected = 3y^2)")
+    # Quadratic function (x^2) should have near-machine-precision error
+    assert error_dx < 1e-10, f"du/dx error too large: {error_dx}"
+    # Cubic function (y^3) has O(h^2) discretization error
+    assert error_dy < 1e-3, f"du/dy error too large: {error_dy}"
+    print("  OK: Gradient accuracy check passed")
 
     # Test scipy compatibility
     print("\n[scipy compatibility]")
     assert isinstance(grad_x, LinearOperator)
     assert isinstance(grad_y, LinearOperator)
-    print("  ✓ isinstance(grad_*, scipy.sparse.linalg.LinearOperator)")
+    print("  OK: isinstance(grad_*, scipy.sparse.linalg.LinearOperator)")
 
     # Test repr
     print("\n[String representation]")
@@ -400,7 +332,7 @@ if __name__ == "__main__":
         dx_weno = x_weno[1] - x_weno[0]
 
         # Create WENO5 operator
-        (grad_weno5,) = create_gradient_operators(spacings=[dx_weno], field_shape=100, scheme="weno5")
+        grad_weno5 = PartialDerivOperator(direction=0, spacings=[dx_weno], field_shape=(100,), scheme="weno5")
 
         # Test on linear function (should be exact)
         u_linear = 2 * x_weno + 1
@@ -412,12 +344,12 @@ if __name__ == "__main__":
         print(f"  Interior error: {interior_error_weno5:.6e} (expect ~machine precision)")
 
         assert interior_error_weno5 < 1e-10, "WENO5 should be exact for linear functions"
-        print("  ✓ WENO5 scheme integration working!")
+        print("  OK: WENO5 scheme integration working!")
 
         # Test @ syntax
         du_weno5_matvec = grad_weno5 @ u_linear.ravel()
         assert np.allclose(du_weno5.ravel(), du_weno5_matvec)
-        print("  ✓ grad_weno5(u) == grad_weno5 @ u.ravel()")
+        print("  OK: grad_weno5(u) == grad_weno5 @ u.ravel()")
 
         # Test smooth function accuracy
         u_smooth = np.sin(2 * np.pi * x_weno)
@@ -425,11 +357,11 @@ if __name__ == "__main__":
         du_weno5_smooth = grad_weno5(u_smooth)
 
         interior_error_smooth = np.max(np.abs(du_weno5_smooth[2:-2] - du_exact_smooth[2:-2]))
-        print("  Smooth function (sin(2πx)):")
+        print("  Smooth function (sin(2*pi*x)):")
         print(f"  Interior error: {interior_error_smooth:.6e}")
-        print("  ✓ WENO5 high-order accuracy verified!")
+        print("  OK: WENO5 high-order accuracy verified!")
 
     except ImportError:
-        print("  ⚠ WENO5 scheme not available (schemes module not found)")
+        print("  WENO5 scheme not available (schemes module not found)")
 
-    print("\n✅ All GradientOperator tests passed!")
+    print("\nAll PartialDerivOperator tests passed!")

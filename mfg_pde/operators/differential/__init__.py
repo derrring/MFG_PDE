@@ -25,10 +25,10 @@ Usage:
     ...                       field_shape=(Nx, Ny), bc=bc)
     >>> Du = D(u)
     >>>
-    >>> # Partial derivatives (gradient components)
-    >>> from mfg_pde.operators.differential import PartialDerivOperator, create_gradient_operators
-    >>> grad_x, grad_y = create_gradient_operators(spacings=[dx, dy], field_shape=(Nx, Ny))
-    >>> du_dx = grad_x(u)
+    >>> # Partial derivatives
+    >>> from mfg_pde.operators.differential import PartialDerivOperator
+    >>> d_dx = PartialDerivOperator(direction=0, spacings=[dx, dy], field_shape=(Nx, Ny))
+    >>> du_dx = d_dx(u)
 """
 
 from mfg_pde.operators.differential.advection import AdvectionOperator
@@ -37,7 +37,6 @@ from mfg_pde.operators.differential.divergence import DivergenceOperator
 from mfg_pde.operators.differential.gradient import (
     GradientComponentOperator,  # Deprecated alias (v0.18.0)
     PartialDerivOperator,
-    create_gradient_operators,
 )
 from mfg_pde.operators.differential.interface_jump import InterfaceJumpOperator
 from mfg_pde.operators.differential.laplacian import LaplacianOperator
@@ -53,6 +52,4 @@ __all__ = [
     "AdvectionOperator",
     # Interface operators
     "InterfaceJumpOperator",
-    # Factory functions
-    "create_gradient_operators",
 ]

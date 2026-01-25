@@ -20,9 +20,13 @@ LinearOperator Classes:
     - Iterative solvers: gmres(L, b), cg(L, b)
 
 Usage:
-    >>> from mfg_pde.operators import LaplacianOperator, GradientComponentOperator
+    >>> from mfg_pde.operators import LaplacianOperator, PartialDerivOperator
     >>> L = LaplacianOperator(spacings=[0.1, 0.1], field_shape=(50, 50), bc=bc)
     >>> Lu = L(u)
+    >>>
+    >>> # Partial derivative
+    >>> d_dx = PartialDerivOperator(direction=0, spacings=[0.1, 0.1], field_shape=(50, 50))
+    >>> du_dx = d_dx(u)
 
 Created: 2026-01-24 (Operator module separation from geometry)
 """
@@ -31,10 +35,10 @@ Created: 2026-01-24 (Operator module separation from geometry)
 from mfg_pde.operators.differential import (
     AdvectionOperator,
     DivergenceOperator,
-    GradientComponentOperator,
+    GradientComponentOperator,  # Deprecated alias for PartialDerivOperator
     InterfaceJumpOperator,
     LaplacianOperator,
-    create_gradient_operators,
+    PartialDerivOperator,
 )
 
 # Interpolation operators
@@ -63,11 +67,11 @@ from mfg_pde.operators.stencils import (
 __all__ = [
     # Differential operators
     "LaplacianOperator",
-    "GradientComponentOperator",
+    "PartialDerivOperator",
+    "GradientComponentOperator",  # Deprecated alias
     "DivergenceOperator",
     "AdvectionOperator",
     "InterfaceJumpOperator",
-    "create_gradient_operators",
     # Interpolation
     "InterpolationOperator",
     "GeometryProjector",
