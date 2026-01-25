@@ -25,12 +25,14 @@ except ImportError:  # pragma: no cover - graceful fallback when SciPy missing
 
 from mfg_pde.geometry.boundary.applicator_particle import ParticleApplicator
 from mfg_pde.geometry.boundary.types import BCType
+
+# Issue #625: Migrated from tensor_calculus to operators/stencils
+from mfg_pde.operators.stencils.finite_difference import gradient_nd
 from mfg_pde.utils.numerical.particle import (
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
     sample_from_density,
 )
-from mfg_pde.utils.numerical.tensor_calculus import gradient_simple
 
 from .base_fp import BaseFPSolver
 from .fp_particle_bc import apply_boundary_conditions as _apply_bc
@@ -335,13 +337,16 @@ class FPParticleSolver(BaseFPSolver):
         use_backend: bool = False,
     ) -> list:
         """
-        Compute spatial gradient using grid_operators utility.
+        Compute spatial gradient using stencils.
 
-        Uses gradient_simple (central differences, no BC handling).
+        Uses gradient_nd (central differences, no BC handling).
         BC handling for particles is done separately in _apply_boundary_conditions_nd.
+
+        Issue #625: Migrated from tensor_calculus.gradient_simple to stencils.gradient_nd
         """
-        backend = self.backend if use_backend else None
-        return gradient_simple(U_array, spacings, backend=backend)
+        # Get array module (numpy or backend-specific like cupy)
+        xp = self.backend.array_module if use_backend and self.backend else np
+        return gradient_nd(U_array, spacings, xp=xp)
 
     # =========================================================================
     # DRY Helper Methods (Issue #635 cleanup)

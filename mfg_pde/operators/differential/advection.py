@@ -2,7 +2,7 @@
 Advection operator for tensor product grids.
 
 This module provides LinearOperator implementation of discrete advection
-for structured grids, wrapping the tensor_calculus infrastructure.
+for structured grids, using finite difference stencils.
 
 Mathematical Background:
     Advection operator models transport by a velocity field v:
@@ -31,6 +31,7 @@ References:
 
 Created: 2026-01-17 (Issue #595 Phase 2 - Operator Refactoring)
 Part of: Geometry Operator LinearOperator Migration
+Migrated: 2026-01-25 (Issue #625 - tensor_calculus → stencils migration)
 """
 
 from __future__ import annotations
@@ -56,8 +57,8 @@ class AdvectionOperator(LinearOperator):
     Implements scipy.sparse.linalg.LinearOperator interface for compatibility
     with iterative solvers and operator composition.
 
-    The operator wraps mfg_pde.utils.numerical.tensor_calculus.advection with
-    grid-specific parameters and velocity field curried into the operator object.
+    Uses finite difference stencils with grid-specific parameters and velocity
+    field curried into the operator object.
 
     **Mathematical Context**:
         Advection describes transport by a velocity/drift field:
@@ -200,10 +201,6 @@ class AdvectionOperator(LinearOperator):
         if len(self.spacings) != self.dimension:
             raise ValueError(f"spacings length {len(self.spacings)} != field_shape dimensions {self.dimension}")
 
-        # Convert velocity_field to list format expected by tensor_calculus
-        # tensor_calculus.advection expects v as list [vx, vy, ...]
-        self._v_list = [self.velocity_field[d] for d in range(self.dimension)]
-
         # Compute operator shape (N, N) - scalar field to scalar field
         N = int(np.prod(field_shape))
         super().__init__(shape=(N, N), dtype=np.float64)
@@ -221,22 +218,60 @@ class AdvectionOperator(LinearOperator):
             Advection term, flattened, shape (N,)
                 - Gradient form: v·∇m
                 - Divergence form: ∇·(vm)
+
+        Note:
+            Issue #625: Migrated from tensor_calculus to stencils module.
         """
-        from mfg_pde.utils.numerical.tensor_calculus import advection
+        from mfg_pde.operators.stencils.finite_difference import (
+            gradient_central,
+            gradient_upwind,
+        )
+
+        # Select gradient function based on scheme
+        grad_fn = gradient_upwind if self.scheme == "upwind" else gradient_central
 
         # Reshape to field
         m = m_flat.reshape(self.field_shape)
 
-        # Apply advection
-        adv_m = advection(
-            m,
-            self._v_list,
-            self.spacings,
-            form=self.form,
-            method=self.scheme,
-            bc=self.bc,
-            time=self.time,
-        )
+        # Apply ghost cell padding if BC provided (for non-periodic)
+        if self.bc is not None:
+            from mfg_pde.geometry.boundary import pad_array_with_ghosts
+
+            m_work = pad_array_with_ghosts(m, self.bc, ghost_depth=1, time=self.time)
+            # Also pad velocity field
+            v_work = np.stack(
+                [
+                    pad_array_with_ghosts(self.velocity_field[d], self.bc, ghost_depth=1, time=self.time)
+                    for d in range(self.dimension)
+                ],
+                axis=0,
+            )
+        else:
+            m_work = m
+            v_work = self.velocity_field
+
+        if self.form == "gradient":
+            # Gradient form: v·∇m = ∑ vᵢ * ∂m/∂xᵢ
+            adv_m = np.zeros_like(m_work)
+            for d in range(self.dimension):
+                h = self.spacings[d]
+                dm_dxi = grad_fn(m_work, axis=d, h=h)
+                adv_m += v_work[d] * dm_dxi
+
+        elif self.form == "divergence":
+            # Divergence form: ∇·(vm) = ∑ ∂(vᵢ*m)/∂xᵢ
+            adv_m = np.zeros_like(m_work)
+            for d in range(self.dimension):
+                h = self.spacings[d]
+                flux = v_work[d] * m_work  # flux component
+                adv_m += grad_fn(flux, axis=d, h=h)
+        else:
+            raise ValueError(f"Unknown form: {self.form}")
+
+        # Extract interior if ghost cells were added
+        if self.bc is not None:
+            slices = [slice(1, -1)] * len(self.field_shape)
+            adv_m = adv_m[tuple(slices)]
 
         # Return flattened
         return adv_m.ravel()

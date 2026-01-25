@@ -142,13 +142,14 @@ class LaplacianOperator(LinearOperator):
         Returns:
             Laplacian of u, flattened, shape (N,)
         """
-        from mfg_pde.utils.numerical.tensor_calculus import laplacian
+        # Issue #625: Migrated from tensor_calculus to stencils
+        from mfg_pde.operators.stencils.finite_difference import laplacian_with_bc
 
         # Reshape to field
         u = u_flat.reshape(self.field_shape)
 
-        # Apply Laplacian
-        Lu = laplacian(u, self.spacings, bc=self.bc, time=self.time)
+        # Apply Laplacian using stencil with BC handling
+        Lu = laplacian_with_bc(u, self.spacings, bc=self.bc, time=self.time)
 
         # Return flattened
         return Lu.ravel()

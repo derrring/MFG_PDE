@@ -2,7 +2,7 @@
 Gradient operator for tensor product grids.
 
 This module provides LinearOperator implementation of the discrete gradient
-for structured grids, wrapping the tensor_calculus infrastructure.
+for structured grids, using finite difference stencils.
 
 Mathematical Background:
     Gradient operator: ∇u = (∂u/∂x₁, ∂u/∂x₂, ..., ∂u/∂xd)
@@ -18,6 +18,7 @@ References:
 
 Created: 2026-01-17 (Issue #595 - Operator Refactoring)
 Part of: Issue #590 Phase 1.2 - TensorProductGrid Operator Traits
+Migrated: 2026-01-25 (Issue #625 - tensor_calculus → stencils migration)
 """
 
 from __future__ import annotations
@@ -114,6 +115,10 @@ class GradientComponentOperator(LinearOperator):
 
         Returns:
             Directional derivative, flattened, shape (N,)
+
+        Note:
+            Issue #625: Migrated from tensor_calculus to stencils module.
+            Now computes only the requested component (more efficient).
         """
         # Reshape to field
         u = u_flat.reshape(self.field_shape)
@@ -132,16 +137,41 @@ class GradientComponentOperator(LinearOperator):
 
             return du_dxi.ravel()
 
-        # Standard schemes: use tensor_calculus
-        from mfg_pde.utils.numerical.tensor_calculus import gradient
+        # Standard schemes: use stencils module directly (Issue #625)
+        from mfg_pde.operators.stencils.finite_difference import (
+            fix_boundaries_one_sided,
+            gradient_central,
+            gradient_upwind,
+        )
 
-        # Compute full gradient (all components)
-        grad_components = gradient(u, self.spacings, scheme=self.scheme, bc=self.bc, time=self.time)
+        h = self.spacings[self.direction]
+        axis = self.direction
 
-        # Extract requested component
-        du_dxi = grad_components[self.direction]
+        # Apply ghost cell padding if BC provided (for non-periodic)
+        if self.bc is not None:
+            from mfg_pde.geometry.boundary import pad_array_with_ghosts
 
-        # Return flattened
+            u_work = pad_array_with_ghosts(u, self.bc, ghost_depth=1, time=self.time)
+        else:
+            u_work = u
+
+        # Compute gradient based on scheme
+        if self.scheme == "central":
+            du_dxi = gradient_central(u_work, axis=axis, h=h)
+        elif self.scheme == "upwind":
+            du_dxi = gradient_upwind(u_work, axis=axis, h=h)
+        elif self.scheme == "one_sided":
+            # Central interior, one-sided at boundaries
+            du_dxi = gradient_central(u_work, axis=axis, h=h)
+            du_dxi = fix_boundaries_one_sided(du_dxi, u_work, axis=axis, h=h)
+        else:
+            raise ValueError(f"Unknown scheme: {self.scheme}")
+
+        # Extract interior if ghost cells were added
+        if self.bc is not None:
+            slices = [slice(1, -1)] * len(self.field_shape)
+            du_dxi = du_dxi[tuple(slices)]
+
         return du_dxi.ravel()
 
     def __call__(self, u: NDArray) -> NDArray:
