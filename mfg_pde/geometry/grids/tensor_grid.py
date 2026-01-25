@@ -150,7 +150,10 @@ class TensorProductGrid(
                 Note: For d>3, grid requires O(N^d) memory/computation.
             spacing_type: "uniform" or "custom"
             custom_coordinates: Optional list of 1D coordinate arrays
-            boundary_conditions: Spatial BC specification.
+            boundary_conditions: **REQUIRED** - Spatial BC specification.
+                Must be explicitly provided (Issue #674 - Fail Fast principle).
+                Use no_flux_bc(), neumann_bc(), dirichlet_bc(), or periodic_bc()
+                from mfg_pde.geometry.boundary.
                 This is the SSOT for spatial BC - both HJB and FP solvers
                 query this geometry for consistent boundary conditions.
 
@@ -161,6 +164,7 @@ class TensorProductGrid(
 
         Raises:
             ValueError: If bounds is empty
+            ValueError: If boundary_conditions is not provided
             ValueError: If dimension is provided and doesn't match len(bounds)
             ValueError: If none or multiple of Nx/Nx_points/num_points specified
             UserWarning: If dimension > 3 (performance warning)
@@ -267,10 +271,16 @@ class TensorProductGrid(
                 raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {self._Nx_points[i]}")
 
         # Store boundary conditions (SSOT for spatial BC)
-        # Use lazy binding to set/validate dimension
-        if boundary_conditions is not None:
-            # bind_dimension returns a new BC with dimension set, or validates if already set
-            boundary_conditions = boundary_conditions.bind_dimension(dimension)
+        # Issue #674: Require explicit BC specification (Fail Fast principle)
+        if boundary_conditions is None:
+            raise ValueError(
+                "boundary_conditions must be explicitly specified. "
+                "Use no_flux_bc(), neumann_bc(), dirichlet_bc(), or periodic_bc() "
+                "from mfg_pde.geometry.boundary. "
+                "Example: boundary_conditions=no_flux_bc(dimension=1)"
+            )
+        # bind_dimension returns a new BC with dimension set, or validates if already set
+        boundary_conditions = boundary_conditions.bind_dimension(dimension)
         self._boundary_conditions = boundary_conditions
 
         # Cache for flattened grid (computed lazily, perf optimization)
