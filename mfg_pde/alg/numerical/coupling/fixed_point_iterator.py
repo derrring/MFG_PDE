@@ -80,7 +80,7 @@ class FixedPointIterator(BaseMFGSolver):
             When True, the FP solver uses A_hjb^T (transpose of HJB advection matrix)
             instead of building its own advection discretization. This guarantees
             exact adjoint consistency: L_FP = L_HJB^T, ensuring mass conservation.
-            Requires solvers with build_advection_matrix() and solve_fp_step_with_matrix().
+            Requires solvers with build_advection_matrix() and solve_fp_step_adjoint_mode().
     """
 
     def __init__(
@@ -175,7 +175,7 @@ class FixedPointIterator(BaseMFGSolver):
 
         Checks:
         1. HJB solver has build_advection_matrix() method
-        2. FP solver has solve_fp_step_with_matrix() method
+        2. FP solver has solve_fp_step_adjoint_mode() method
 
         Raises:
             TypeError: If solvers don't support strict adjoint mode
@@ -188,10 +188,10 @@ class FixedPointIterator(BaseMFGSolver):
                 f"Use HJBFDMSolver for strict adjoint mode."
             )
 
-        # Check FP solver has solve_fp_step_with_matrix
-        if not callable(getattr(self.fp_solver, "solve_fp_step_with_matrix", None)):
+        # Check FP solver has solve_fp_step_adjoint_mode
+        if not callable(getattr(self.fp_solver, "solve_fp_step_adjoint_mode", None)):
             raise TypeError(
-                f"strict_adjoint=True requires FP solver with solve_fp_step_with_matrix() method. "
+                f"strict_adjoint=True requires FP solver with solve_fp_step_adjoint_mode() method. "
                 f"{type(self.fp_solver).__name__} does not support this. "
                 f"Use FPFDMSolver for strict adjoint mode."
             )
@@ -208,7 +208,7 @@ class FixedPointIterator(BaseMFGSolver):
 
         Instead of FP building its own advection matrix, this method:
         1. Uses HJB's build_advection_matrix() at each timestep
-        2. Passes the TRANSPOSED matrix to FP's solve_fp_step_with_matrix()
+        2. Passes the TRANSPOSED matrix to FP's solve_fp_step_adjoint_mode()
         3. Guarantees exact adjoint consistency: L_FP = L_HJB^T
 
         This ensures mass conservation is exactly dual to HJB's gradient computation,
@@ -246,7 +246,7 @@ class FixedPointIterator(BaseMFGSolver):
 
             # Solve single FP timestep with provided matrix
             M_current = M_solution[k]
-            M_next = self.fp_solver.solve_fp_step_with_matrix(
+            M_next = self.fp_solver.solve_fp_step_adjoint_mode(
                 M_current,
                 A_hjb_T,
                 sigma=sigma,

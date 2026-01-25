@@ -508,7 +508,7 @@ class FPFDMSolver(BaseFPSolver):
     # Strict Adjoint Mode (Issue #622)
     # =========================================================================
 
-    def solve_fp_step_with_matrix(
+    def solve_fp_step_adjoint_mode(
         self,
         M_current: np.ndarray,
         A_advection_T: sparse.csr_matrix,
@@ -551,7 +551,7 @@ class FPFDMSolver(BaseFPSolver):
         Example:
             >>> # In FixedPointIterator with strict_adjoint=True:
             >>> A_hjb = hjb_solver.build_advection_matrix(U_current)
-            >>> M_next = fp_solver.solve_fp_step_with_matrix(M_current, A_hjb.T)
+            >>> M_next = fp_solver.solve_fp_step_adjoint_mode(M_current, A_hjb.T)
 
         Note:
             The diffusion operator is symmetric (D = D^T), so using this method

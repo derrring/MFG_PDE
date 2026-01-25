@@ -1060,7 +1060,7 @@ class HJBFDMSolver(BaseHJBSolver):
         See Also:
             - Issue #622: Strict Achdou adjoint mode implementation
             - solve_hjb_step_with_matrix(): Uses externally provided matrix
-            - FPFDMSolver.solve_fp_step_with_matrix(): Uses A^T from this method
+            - FPFDMSolver.solve_fp_step_adjoint_mode(): Uses A^T from this method
         """
         if self.dimension == 1:
             return self._build_advection_matrix_1d(U, coupling_coefficient, time)
