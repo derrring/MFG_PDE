@@ -14,7 +14,7 @@ import numpy as np
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BCSegment, mixed_bc
+from mfg_pde.geometry.boundary import BCSegment, mixed_bc, no_flux_bc
 from mfg_pde.geometry.boundary.types import BCType
 
 
@@ -31,7 +31,7 @@ def test_particle_solver_multi_exit_1d():
     Drift: Particles pushed toward edges → some exit left, some exit right
     """
     # Create 1D domain
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 10.0)], Nx_points=[101])
+    geometry = TensorProductGrid(bounds=[(0.0, 10.0)], Nx_points=[101], boundary_conditions=no_flux_bc(1))
     problem = MFGProblem(geometry=geometry, T=3.0, Nt=60, diffusion=0.05, coupling_coefficient=1.0)
 
     # Multi-exit BC: two DIRICHLET exits on opposite ends
@@ -120,9 +120,9 @@ def test_particle_solver_multi_exit_2d():
     """
     # Create 2D domain
     geometry = TensorProductGrid(
-        dimension=2,
         bounds=[(0.0, 10.0), (0.0, 10.0)],
         Nx_points=[21, 21],
+        boundary_conditions=no_flux_bc(2),
     )
     problem = MFGProblem(geometry=geometry, T=3.0, Nt=30, diffusion=0.05)
     grid_shape = problem.geometry.get_grid_shape()
