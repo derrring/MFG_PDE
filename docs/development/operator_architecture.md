@@ -26,7 +26,7 @@ An **algorithm** (does NOT belong in `operators/`):
 ```
 mfg_pde/operators/
 ├── differential/          # Grid-based differential operators
-│   ├── gradient.py        # GradientComponentOperator
+│   ├── gradient.py        # PartialDerivOperator
 │   ├── laplacian.py       # LaplacianOperator
 │   ├── divergence.py      # DivergenceOperator
 │   ├── advection.py       # AdvectionOperator

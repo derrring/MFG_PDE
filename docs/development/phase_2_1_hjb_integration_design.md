@@ -328,8 +328,8 @@ def test_hjb_fdm_uses_gradient_operators():
     assert len(solver._gradient_operators) == grid.dimension
 
     # Verify operators are correct type
-    from mfg_pde.geometry.operators import GradientComponentOperator
-    assert all(isinstance(op, GradientComponentOperator) for op in solver._gradient_operators)
+    from mfg_pde.operators import PartialDerivOperator
+    assert all(isinstance(op, PartialDerivOperator) for op in solver._gradient_operators)
 ```
 
 ## Benefits
