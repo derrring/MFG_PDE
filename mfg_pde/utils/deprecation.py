@@ -392,6 +392,78 @@ def deprecated_alias(
     return alias_wrapper
 
 
+def validate_kwargs(
+    kwargs: dict[str, Any],
+    deprecated_kwargs: dict[str, str],
+    recognized_kwargs: set[str],
+    context: str = "function",
+    error_on_deprecated: bool = True,
+    warn_on_unrecognized: bool = True,
+) -> None:
+    """
+    Validate kwargs against deprecated and recognized sets.
+
+    Use this for functions/methods that accept **kwargs to prevent silent fail
+    when users pass deprecated or unrecognized parameters.
+
+    Args:
+        kwargs: The kwargs dict to validate
+        deprecated_kwargs: Mapping of deprecated kwarg names to their replacements
+            Example: {"hamiltonian": "MFGComponents.hamiltonian_func"}
+        recognized_kwargs: Set of valid kwargs that are actually consumed
+            Example: {"m_initial", "u_final", "boundary_conditions"}
+        context: Description for error messages (e.g., "MFGProblem", "create_solver")
+        error_on_deprecated: If True, raise ValueError for deprecated kwargs.
+            If False, emit DeprecationWarning.
+        warn_on_unrecognized: If True, emit UserWarning for unrecognized kwargs.
+
+    Raises:
+        ValueError: If deprecated kwargs are passed and error_on_deprecated=True
+
+    Example:
+        >>> DEPRECATED = {"hamiltonian": "Use MFGComponents.hamiltonian_func"}
+        >>> RECOGNIZED = {"m_initial", "u_final"}
+        >>> validate_kwargs(
+        ...     kwargs={"hamiltonian": my_func, "typo_param": 123},
+        ...     deprecated_kwargs=DEPRECATED,
+        ...     recognized_kwargs=RECOGNIZED,
+        ...     context="MFGProblem",
+        ... )
+        ValueError: Deprecated kwargs in MFGProblem: 'hamiltonian' -> Use MFGComponents...
+
+    Issue #666: Prevents silent fail where user-provided kwargs are ignored.
+    """
+    # Check for deprecated kwargs
+    deprecated_found = []
+    for kwarg_name, replacement in deprecated_kwargs.items():
+        if kwarg_name in kwargs:
+            deprecated_found.append((kwarg_name, replacement))
+
+    if deprecated_found:
+        msg_lines = [f"Deprecated kwargs detected in {context}:", ""]
+        for name, replacement in deprecated_found:
+            msg_lines.append(f"  - '{name}' -> {replacement}")
+
+        msg = "\n".join(msg_lines)
+
+        if error_on_deprecated:
+            raise ValueError(msg)
+        else:
+            warnings.warn(msg, DeprecationWarning, stacklevel=3)
+
+    # Check for unrecognized kwargs (possibly typos)
+    if warn_on_unrecognized:
+        all_known = set(deprecated_kwargs.keys()) | recognized_kwargs
+        unrecognized = set(kwargs.keys()) - all_known
+        if unrecognized:
+            warnings.warn(
+                f"Unrecognized kwargs in {context}: {sorted(unrecognized)}. "
+                f"These may be silently ignored. Known kwargs: {sorted(recognized_kwargs)}",
+                UserWarning,
+                stacklevel=3,
+            )
+
+
 __all__ = [
     "deprecated",
     "deprecated_parameter",
@@ -399,4 +471,5 @@ __all__ = [
     "get_deprecation_metadata",
     "get_deprecated_parameters",
     "check_removal_readiness",
+    "validate_kwargs",
 ]

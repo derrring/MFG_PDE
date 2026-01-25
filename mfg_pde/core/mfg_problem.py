@@ -14,8 +14,8 @@ from mfg_pde.core.mfg_components import (
 # Issue #543: Runtime import for isinstance() checks
 from mfg_pde.geometry.protocol import GeometryProtocol  # noqa: TC001
 
-# Deprecation utilities (Issue #616)
-from mfg_pde.utils.deprecation import deprecated_parameter
+# Deprecation utilities (Issue #616, #666)
+from mfg_pde.utils.deprecation import deprecated_parameter, validate_kwargs
 
 # Use unified nD-capable BoundaryConditions from conditions.py
 
@@ -2010,63 +2010,45 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         Validate kwargs - fail fast on deprecated or unrecognized parameters.
 
         Issue #666: Prevents silent fail where user-provided kwargs are ignored.
+        Uses centralized validate_kwargs utility with MFGProblem-specific guidance.
 
         Raises:
             ValueError: If deprecated kwargs are passed (must use MFGComponents)
             UserWarning: If unrecognized kwargs are passed (probably a typo)
         """
-        import warnings
-
-        # Check for deprecated kwargs that need MFGComponents
-        deprecated_found = []
-        for kwarg_name, replacement in self._DEPRECATED_KWARGS.items():
-            if kwarg_name in kwargs:
-                deprecated_found.append((kwarg_name, replacement))
-
-        if deprecated_found:
-            msg_lines = [
-                "Deprecated kwargs detected (Issue #666):",
-                "",
-            ]
-            for name, replacement in deprecated_found:
-                msg_lines.append(f"  - '{name}' -> Use '{replacement}'")
-
-            msg_lines.extend(
-                [
-                    "",
-                    "The old kwargs-based Hamiltonian API is no longer supported.",
-                    "Use MFGComponents for custom problem definitions:",
-                    "",
-                    "  from mfg_pde.core.mfg_problem import MFGComponents",
-                    "",
-                    "  components = MFGComponents(",
-                    "      hamiltonian_func=my_hamiltonian,",
-                    "      hamiltonian_dm_func=my_dH_dm,",
-                    "      initial_density_func=my_m0,",
-                    "  )",
-                    "",
-                    "  problem = MFGProblem(",
-                    "      geometry=my_geometry,",
-                    "      T=T, Nt=Nt,",
-                    "      diffusion=sigma,",
-                    "      components=components,",
-                    "  )",
-                    "",
-                    "See: docs/migration/HAMILTONIAN_API.md",
-                ]
+        try:
+            validate_kwargs(
+                kwargs=kwargs,
+                deprecated_kwargs=self._DEPRECATED_KWARGS,
+                recognized_kwargs=self._RECOGNIZED_KWARGS,
+                context="MFGProblem",
+                error_on_deprecated=True,
+                warn_on_unrecognized=True,
             )
-            raise ValueError("\n".join(msg_lines))
+        except ValueError as e:
+            # Enhance error with MFGProblem-specific migration guide
+            migration_guide = """
 
-        # Check for completely unrecognized kwargs (probably typos)
-        unrecognized = set(kwargs.keys()) - self._RECOGNIZED_KWARGS
-        if unrecognized:
-            # Emit warning but don't fail - could be parameters for mixins
-            warnings.warn(
-                f"Unrecognized kwargs in MFGProblem: {sorted(unrecognized)}. "
-                f"These may be silently ignored. Known kwargs: {sorted(self._RECOGNIZED_KWARGS)}",
-                UserWarning,
-                stacklevel=4,
-            )
+The old kwargs-based Hamiltonian API is no longer supported.
+Use MFGComponents for custom problem definitions:
+
+  from mfg_pde.core.mfg_problem import MFGComponents
+
+  components = MFGComponents(
+      hamiltonian_func=my_hamiltonian,
+      hamiltonian_dm_func=my_dH_dm,
+      initial_density_func=my_m0,
+  )
+
+  problem = MFGProblem(
+      geometry=my_geometry,
+      T=T, Nt=Nt,
+      diffusion=sigma,
+      components=components,
+  )
+
+See: docs/migration/HAMILTONIAN_API.md"""
+            raise ValueError(str(e) + migration_guide) from None
 
     # ============================================================================
     # Solve Method - Primary API for solving MFG problems
