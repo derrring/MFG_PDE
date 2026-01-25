@@ -13,7 +13,9 @@ from mfg_pde.geometry import TensorProductGrid, no_flux_bc
 def test_kde_normalization():
     print("=== Testing KDE Mass Conservation ===")
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])  # Nx=20 -> 21 points
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
+    )  # Nx=20 -> 21 points
     problem = MFGProblem(geometry=geometry, T=0.1, Nt=5, diffusion=1.0, coupling_coefficient=0.5)
 
     bc = no_flux_bc(dimension=1)

@@ -78,7 +78,7 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
     np.random.seed(seed)
 
     # Create problem
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[52])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[52], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,

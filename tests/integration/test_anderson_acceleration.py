@@ -26,7 +26,7 @@ def run_solver(use_anderson: bool = False, backend: str | None = None):
     np.random.seed(42)
 
     # Problem setup
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[26])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[26], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,

@@ -42,7 +42,7 @@ class TestMassConservation1DSimple:
     @pytest.fixture
     def problem(self):
         """Create standard MFG problem with Neumann BC."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 2.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 2.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         return MFGProblem(
             geometry=geometry,
             T=1.0,

@@ -24,7 +24,9 @@ class TestFDMSolversMFGIntegration:
     def test_fixed_point_iterator_with_fdm(self):
         """Test FixedPointIterator with FDM HJB and FP solvers."""
         # Create problem with moderate resolution
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])  # Nx=50 -> 51 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=50 -> 51 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
         # Create FDM solvers
@@ -47,7 +49,9 @@ class TestFDMSolversMFGIntegration:
 
     def test_fdm_mass_conservation(self):
         """Test that FDM FP solver conserves mass in MFG context."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])  # Nx=40 -> 41 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=40 -> 41 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         # Use no-flux boundary conditions for mass conservation
@@ -78,7 +82,9 @@ class TestFDMSolversMFGIntegration:
     def test_fdm_convergence_with_refinement(self):
         """Test that FDM solution converges with grid refinement."""
         # Solve with coarse grid
-        geometry_coarse = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])  # Nx=20 -> 21 points
+        geometry_coarse = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=20 -> 21 points
         problem_coarse = MFGProblem(geometry=geometry_coarse, T=1.0, Nt=20)
         hjb_solver_coarse = HJBFDMSolver(problem_coarse)
         fp_solver_coarse = FPFDMSolver(problem_coarse)
@@ -88,7 +94,9 @@ class TestFDMSolversMFGIntegration:
         result_coarse = mfg_solver_coarse.solve(max_iterations=5, tolerance=1e-3)
 
         # Solve with fine grid
-        geometry_fine = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])  # Nx=40 -> 41 points
+        geometry_fine = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=40 -> 41 points
         problem_fine = MFGProblem(geometry=geometry_fine, T=1.0, Nt=40)
         hjb_solver_fine = HJBFDMSolver(problem_fine)
         fp_solver_fine = FPFDMSolver(problem_fine)
@@ -107,7 +115,9 @@ class TestFDMSolversMFGIntegration:
 
     def test_fdm_solution_non_negativity(self):
         """Test that FDM FP solver maintains non-negative density."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])  # Nx=30 -> 31 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=30 -> 31 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         hjb_solver = HJBFDMSolver(problem)
@@ -123,7 +133,9 @@ class TestFDMSolversMFGIntegration:
 
     def test_fdm_periodic_bc_solution(self):
         """Test FDM solution with periodic boundary conditions."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])  # Nx=40 -> 41 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=40 -> 41 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         bc = periodic_bc()
@@ -144,7 +156,9 @@ class TestFDMSolversMFGIntegration:
     @pytest.mark.xfail(reason="Unified BC API not fully integrated with 1D FDM solver")
     def test_fdm_dirichlet_bc_solution(self):
         """Test FDM solution with Dirichlet boundary conditions."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])  # Nx=40 -> 41 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=40 -> 41 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         bc = dirichlet_bc(value=0.0, dimension=1)
@@ -168,7 +182,9 @@ class TestFDMSolversCoupling:
 
     def test_hjb_fp_coupling(self):
         """Test that HJB and FP solutions are properly coupled."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])  # Nx=30 -> 31 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=30 -> 31 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         hjb_solver = HJBFDMSolver(problem)
@@ -198,7 +214,9 @@ class TestFDMSolversCoupling:
     @pytest.mark.slow
     def test_fixed_point_iteration_convergence(self):
         """Test that fixed-point iteration converges for FDM solvers."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[26])  # Nx=25 -> 26 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[26], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=25 -> 26 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=25)
 
         hjb_solver = HJBFDMSolver(problem)
@@ -217,7 +235,9 @@ class TestFDMSolversNumericalProperties:
 
     def test_solution_smoothness(self):
         """Test that solutions have reasonable smoothness."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])  # Nx=50 -> 51 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=50 -> 51 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         hjb_solver = HJBFDMSolver(problem)
@@ -242,7 +262,9 @@ class TestFDMSolversNumericalProperties:
 
     def test_terminal_condition_satisfaction(self):
         """Test that HJB terminal condition is satisfied."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])  # Nx=40 -> 41 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=40 -> 41 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         hjb_solver = HJBFDMSolver(problem)
@@ -267,7 +289,9 @@ class TestFDMSolversNumericalProperties:
 
     def test_initial_condition_satisfaction(self):
         """Test that FP initial condition is satisfied."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])  # Nx=40 -> 41 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=40 -> 41 points
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         fp_solver = FPFDMSolver(problem)

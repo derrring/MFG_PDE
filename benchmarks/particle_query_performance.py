@@ -24,6 +24,7 @@ import numpy as np
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 @dataclass
@@ -71,7 +72,7 @@ def benchmark_1d_sparse_queries():
     print("Benchmark 1: 1D Sparse Queries (HJB-FP Coupling Pattern)")
     print("=" * 70)
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=0.5, Nt=1, diffusion=0.05)
 
     num_particles = 10000
@@ -152,7 +153,7 @@ def benchmark_1d_scaling():
     results = []
 
     for Nx in grid_sizes:
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=1, diffusion=0.05)
 
         solver = FPParticleSolver(problem, num_particles=num_particles, density_mode="hybrid")
@@ -225,7 +226,9 @@ def benchmark_2d_semi_lagrangian():
     results = []
 
     for Nx, Ny in grid_sizes:
-        geometry = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[Nx, Ny])
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[Nx, Ny], boundary_conditions=no_flux_bc(dimension=2)
+        )
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=1, diffusion=0.05)
 
         solver = FPParticleSolver(problem, num_particles=num_particles, density_mode="hybrid")
@@ -303,7 +306,7 @@ def benchmark_query_methods():
     print("Benchmark 4: Query Method Comparison (kernel vs knn vs hybrid)")
     print("=" * 70)
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=0.5, Nt=1, diffusion=0.05)
 
     num_particles = 10000

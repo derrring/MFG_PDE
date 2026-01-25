@@ -11,6 +11,7 @@ import numpy as np
 
 from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 @pytest.mark.slow
@@ -27,7 +28,9 @@ class TestCommonNoiseMFGSolver:
         def simple_hamiltonian(x, p, m, theta):
             return 0.5 * p**2 + 0.1 * m
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])  # Nx=21 -> 22 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=21 -> 22 points
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -49,7 +52,9 @@ class TestCommonNoiseMFGSolver:
         from mfg_pde.core import MFGProblem
 
         # Regular MFG problem without noise
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])  # Nx=21 -> 22 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=21 -> 22 points
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=11)
 
         # Should raise ValueError
@@ -65,7 +70,9 @@ class TestCommonNoiseMFGSolver:
         def simple_hamiltonian(x, p, m, theta):
             return 0.5 * p**2
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])  # Nx=21 -> 22 points
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=21 -> 22 points
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,

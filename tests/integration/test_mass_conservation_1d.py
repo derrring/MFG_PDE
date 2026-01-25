@@ -70,7 +70,11 @@ class SimpleMFGProblem1D:
         self.xSpace = np.linspace(self.xmin, self.xmax, self.Nx + 1)
 
         # Geometry API compatibility
-        self.geometry = TensorProductGrid(dimension=1, bounds=[(self.xmin, self.xmax)], Nx_points=[self.Nx + 1])
+        self.geometry = TensorProductGrid(
+            bounds=[(self.xmin, self.xmax)],
+            Nx_points=[self.Nx + 1],
+            boundary_conditions=no_flux_bc(dimension=1),
+        )
 
         # Terminal cost: g(x) = (x - L/2)²
         self.terminal_cost_weight = 1.0
@@ -214,7 +218,7 @@ class TestMassConservation1D:
         """Create standard test problem using built-in MFGProblem."""
         # Create problem with custom initial and terminal conditions
         L = 2.0
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, L)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, L)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             T=1.0,

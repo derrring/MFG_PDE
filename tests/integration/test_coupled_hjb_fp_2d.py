@@ -42,9 +42,9 @@ class SimpleCoupledMFGProblem(MFGProblem):
 
         # Create geometry using geometry-first API
         geometry = TensorProductGrid(
-            dimension=2,
             bounds=[(domain_bounds[0], domain_bounds[1]), (domain_bounds[2], domain_bounds[3])],
             num_points=num_points,
+            boundary_conditions=no_flux_bc(dimension=2),
         )
 
         # Initialize MFGProblem with geometry

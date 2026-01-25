@@ -23,6 +23,7 @@ from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 # Mark all tests in this module as slow by default (Newton uses expensive Jacobian)
 pytestmark = pytest.mark.slow
@@ -35,7 +36,9 @@ class TestNewtonMFGSolverBasic:
     @pytest.fixture
     def simple_1d_problem(self):
         """Create a simple 1D MFG problem for testing."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[21]
+        )
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.2)
         return problem
 
@@ -112,7 +115,9 @@ class TestNewtonMFGSolverHybrid:
     @pytest.fixture
     def moderate_problem(self):
         """Create moderate-size problem for hybrid testing."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+        )
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=15, diffusion=0.15)
         return problem
 
@@ -184,7 +189,9 @@ class TestNewtonVsPicard:
     @pytest.fixture
     def comparison_problem(self):
         """Create problem for Picard vs Newton comparison."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[25])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[25]
+        )
         problem = MFGProblem(geometry=geometry, T=0.4, Nt=12, diffusion=0.18)
         return problem
 
@@ -234,7 +241,9 @@ class TestNewtonMFGSolverParameters:
     @pytest.fixture
     def param_test_problem(self):
         """Create problem for parameter testing."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[21]
+        )
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, diffusion=0.2)
         return problem
 
@@ -303,7 +312,9 @@ class TestMFGResidualComputation:
     @pytest.fixture
     def residual_test_problem(self):
         """Create problem for residual testing."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[21]
+        )
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, diffusion=0.2)
         return problem
 

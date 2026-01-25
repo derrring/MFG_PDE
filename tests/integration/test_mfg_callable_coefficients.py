@@ -15,6 +15,7 @@ from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 class TestMFGCallableCoefficients:
@@ -28,7 +29,9 @@ class TestMFGCallableCoefficients:
     def test_mfg_with_callable_diffusion(self):
         """Test MFG with state-dependent diffusion: porous medium."""
         # Create problem
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])  # Nx=30 intervals
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+        )  # Nx=30 intervals
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1)
 
         # Porous medium diffusion: D(m) = σ² m
@@ -64,7 +67,9 @@ class TestMFGCallableCoefficients:
     def test_mfg_with_density_dependent_diffusion(self):
         """Test MFG with crowd dynamics: D(m) = D0 + D1(1 - m/m_max)."""
         # Create problem
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])  # Nx=30 intervals
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+        )  # Nx=30 intervals
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1)
 
         # Crowd diffusion: lower diffusion in high-density regions
@@ -99,7 +104,9 @@ class TestMFGCallableCoefficients:
     def test_mfg_callable_vs_constant_convergence(self):
         """Test that callable returning constant matches constant diffusion."""
         # Create problem
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])  # Nx=30 intervals
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+        )  # Nx=30 intervals
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.15)
 
         # Callable returning constant
@@ -141,7 +148,9 @@ class TestMFGCallableCoefficients:
     def test_mfg_callable_diffusion_with_array(self):
         """Test MFG with array diffusion (non-callable) for comparison."""
         # Create problem
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])  # Nx=30 intervals
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+        )  # Nx=30 intervals
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1)
 
         # Spatially varying diffusion (higher at boundaries)
@@ -180,7 +189,9 @@ class TestMFGCallableCoefficients:
     def test_mfg_callable_with_small_iterations(self):
         """Test that callable diffusion works with few Picard iterations."""
         # Create small problem
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])  # Nx=20 intervals
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[21]
+        )  # Nx=20 intervals
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=10, diffusion=0.1)
 
         # Simple state-dependent diffusion

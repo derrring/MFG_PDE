@@ -14,7 +14,7 @@ import numpy as np
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BilateralConstraint, ObstacleConstraint, neumann_bc
+from mfg_pde.geometry.boundary import BilateralConstraint, ObstacleConstraint, neumann_bc, no_flux_bc
 
 
 class TestHJBWithLowerObstacle:
@@ -30,7 +30,9 @@ class TestHJBWithLowerObstacle:
         sigma = 0.1
         kappa = 0.5
 
-        grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
+        grid = TensorProductGrid(
+            dimension=1, bounds=[(x_min, x_max)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx]
+        )
         bc = neumann_bc(dimension=1)
 
         def running_cost(x_coords, alpha=None):
@@ -85,7 +87,9 @@ class TestHJBWithLowerObstacle:
         Nt = 10  # Reduced for speed
         sigma = 0.05
 
-        grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[Nx, Ny])
+        grid = TensorProductGrid(
+            dimension=2, bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx=[Nx, Ny]
+        )
         bc = neumann_bc(dimension=2)
 
         def terminal_cost(x_coords):
@@ -126,7 +130,7 @@ class TestHJBWithLowerObstacle:
         sigma = 0.08
         kappa = 0.3
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
         bc = neumann_bc(dimension=1)
 
         def terminal_cost(x_coords):
@@ -178,7 +182,7 @@ class TestHJBWithUpperObstacle:
         Nt = 50
         sigma = 0.1
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
         bc = neumann_bc(dimension=1)
 
         def terminal_cost(x_coords):
@@ -224,7 +228,7 @@ class TestHJBWithBilateralObstacle:
         Nt = 50
         sigma = 0.1
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
         bc = neumann_bc(dimension=1)
 
         def terminal_cost(x_coords):
@@ -274,7 +278,7 @@ class TestObstacleConvergenceProperties:
         sigma = 0.08
         kappa = 0.4
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
         bc = neumann_bc(dimension=1)
 
         def terminal_cost(x_coords):
@@ -321,7 +325,7 @@ class TestObstacleConvergenceProperties:
         sigma = 0.1
         kappa = 0.5
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
         bc = neumann_bc(dimension=1)
 
         def running_cost(x_coords, alpha=None):

@@ -12,6 +12,7 @@ import numpy as np
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 pytestmark = pytest.mark.optional_torch
@@ -35,7 +36,7 @@ class TestParticleGPUPipeline:
     def test_gpu_matches_cpu_numerically(self):
         """GPU pipeline should match CPU pipeline numerically."""
         # Create simple problem
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             Nt=20,
@@ -102,7 +103,7 @@ class TestParticleGPUPipeline:
 
     def test_gpu_pipeline_runs_without_errors(self):
         """GPU pipeline should complete without errors."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(-1.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(-1.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             Nt=10,
@@ -140,7 +141,7 @@ class TestParticleGPUPipeline:
 
     def test_boundary_conditions_gpu(self):
         """Test different boundary conditions on GPU."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             Nt=15,
@@ -180,7 +181,7 @@ class TestGPUPerformance:
         """GPU should be faster than CPU for large particle counts."""
         import time
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             Nt=50,
