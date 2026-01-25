@@ -1111,10 +1111,12 @@ class BaseStructuredApplicator(BaseBCApplicator):
 
         Robin BC: alpha*u + beta*du/dn = g at boundary
 
-        For cell-centered grid with boundary at cell face:
-            alpha * (u_ghost + u_interior)/2 + beta * (u_ghost - u_interior)/(2*dx) = g
-            => u_ghost * (alpha/2 + beta/(2*dx)) = g - u_interior * (alpha/2 - beta/(2*dx))
-            => u_ghost = (g - u_interior * (alpha/2 - beta/(2*dx))) / (alpha/2 + beta/(2*dx))
+        For cell-centered grid with boundary at cell face (ghost at -dx/2, interior at +dx/2):
+            u_boundary = (u_ghost + u_interior)/2
+            du/dn = (u_ghost - u_interior)/dx  (cell centers are dx apart)
+
+            alpha * (u_ghost + u_interior)/2 + beta * (u_ghost - u_interior)/dx = g
+            => u_ghost * (alpha/2 + beta/dx) = g - u_interior * (alpha/2 - beta/dx)
 
         Args:
             u_interior: Interior values adjacent to boundary
@@ -1130,6 +1132,7 @@ class BaseStructuredApplicator(BaseBCApplicator):
 
         Note:
             This formula is shared across 1D/2D/3D/nD to eliminate duplication.
+            Issue #XXX fix: Changed from /(2*dx) to /dx.
         """
         # Evaluate callable BC values
         if callable(g):
@@ -1138,8 +1141,9 @@ class BaseStructuredApplicator(BaseBCApplicator):
             g_val = g
 
         # Robin formula (valid for both left and right boundaries)
-        coeff_ghost = alpha / 2.0 + beta / (2.0 * dx)
-        coeff_interior = alpha / 2.0 - beta / (2.0 * dx)
+        # Cell centers are dx apart, not 2*dx
+        coeff_ghost = alpha / 2.0 + beta / dx
+        coeff_interior = alpha / 2.0 - beta / dx
 
         return (g_val - u_interior * coeff_interior) / coeff_ghost
 
@@ -1390,22 +1394,37 @@ def ghost_cell_robin(
     """
     Compute ghost cell value for Robin BC: alpha*u + beta*du/dn = g.
 
-    For cell-centered grids:
-        alpha * (u_ghost + u_interior)/2 + beta * (u_ghost - u_interior)/(2*dx) * sign = g
+    For cell-centered grids (ghost at -dx/2, interior at +dx/2, boundary at 0):
+        u_boundary = (u_ghost + u_interior) / 2
+        du/dn = (u_ghost - u_interior) / dx  (distance between cell centers is dx)
+
+        alpha * (u_ghost + u_interior)/2 + beta * (u_ghost - u_interior)/dx = g
 
     Solving for u_ghost:
-        u_ghost * (alpha/2 + beta*sign/(2*dx)) = g - u_interior * (alpha/2 - beta*sign/(2*dx))
+        u_ghost * (alpha/2 + beta/dx) = g - u_interior * (alpha/2 - beta/dx)
+
+    IMPORTANT: For cell-centered grids, du/dn = (u_ghost - u_interior)/dx for BOTH
+    boundaries because ghost is always "outside" and interior is always "inside"
+    regardless of left/right. The outward_normal_sign parameter is kept for backward
+    compatibility but is NOT used in the cell-centered formula.
+
+    For vertex-centered grids, the sign convention differs.
     """
     if grid_type == GridType.VERTEX_CENTERED:
-        # Simplified for vertex-centered
+        # Vertex-centered: sign matters because derivative direction differs
         if abs(alpha) > 1e-12:
             return (rhs_value - beta * outward_normal_sign * interior_value / dx) / alpha
         else:
             return interior_value + dx * rhs_value / beta * outward_normal_sign
 
-    # Cell-centered
-    coeff_ghost = alpha / 2.0 + beta * outward_normal_sign / (2.0 * dx)
-    coeff_interior = alpha / 2.0 - beta * outward_normal_sign / (2.0 * dx)
+    # Cell-centered: ghost and interior are dx apart
+    # CRITICAL: du/dn = (u_ghost - u_interior)/dx for BOTH left and right boundaries
+    # The outward_normal_sign is NOT used here because the geometry is symmetric:
+    # - At left boundary: ghost at -dx/2, interior at +dx/2
+    # - At right boundary: interior at L-dx/2, ghost at L+dx/2
+    # In both cases, (u_ghost - u_interior)/dx gives the outward normal derivative.
+    coeff_ghost = alpha / 2.0 + beta / dx
+    coeff_interior = alpha / 2.0 - beta / dx
 
     if abs(coeff_ghost) < 1e-12:
         raise ValueError("Robin BC coefficients lead to singular ghost cell formula")
