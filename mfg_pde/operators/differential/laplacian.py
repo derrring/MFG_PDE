@@ -277,36 +277,41 @@ class LaplacianOperator(LinearOperator):
 
                 # Handle BC
                 if bc_type in ("neumann", "no_flux") and is_boundary:
-                    # Neumann BC: Use one-sided stencil
-                    # At min boundary (i=0): Δu ≈ (u[1] - u[0]) / h²
-                    # At max boundary (i=n-1): Δu ≈ (u[n-2] - u[n-1]) / h²
+                    # Neumann BC: Use ghost point method (Issue #668 fix)
+                    # At boundary, ∂u/∂n = 0 means ghost point mirrors interior:
+                    #   u_{-1} = u_1 (left boundary), u_{n} = u_{n-2} (right boundary)
+                    #
+                    # Laplacian at left boundary (i=0):
+                    #   Δu = (u_1 - 2u_0 + u_{-1})/h² = (u_1 - 2u_0 + u_1)/h² = 2(u_1 - u_0)/h²
+                    #
+                    # Coefficients: diagonal = -2/h², neighbor = +2/h²
                     if at_min:
-                        # Diagonal contribution: -1/h²
+                        # Diagonal contribution: -2/h² (Issue #668 fix: was -1/h²)
                         row_indices.append(flat_idx)
                         col_indices.append(flat_idx)
-                        data_values.append(-1.0 / (h**2))
+                        data_values.append(-2.0 / (h**2))
 
-                        # Right neighbor contribution: +1/h²
+                        # Right neighbor contribution: +2/h² (Issue #668 fix: was +1/h²)
                         neighbor_idx = list(multi_idx)
                         neighbor_idx[d] = ip1
                         neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.field_shape)
                         row_indices.append(flat_idx)
                         col_indices.append(neighbor_flat)
-                        data_values.append(+1.0 / (h**2))
+                        data_values.append(+2.0 / (h**2))
 
                     elif at_max:
-                        # Diagonal contribution: -1/h²
+                        # Diagonal contribution: -2/h² (Issue #668 fix: was -1/h²)
                         row_indices.append(flat_idx)
                         col_indices.append(flat_idx)
-                        data_values.append(-1.0 / (h**2))
+                        data_values.append(-2.0 / (h**2))
 
-                        # Left neighbor contribution: +1/h²
+                        # Left neighbor contribution: +2/h² (Issue #668 fix: was +1/h²)
                         neighbor_idx = list(multi_idx)
                         neighbor_idx[d] = im1
                         neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.field_shape)
                         row_indices.append(flat_idx)
                         col_indices.append(neighbor_flat)
-                        data_values.append(+1.0 / (h**2))
+                        data_values.append(+2.0 / (h**2))
 
                 elif bc_type == "periodic" or bc_type is None:
                     # Periodic BC: Wrap indices
