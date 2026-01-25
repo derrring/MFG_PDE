@@ -4,7 +4,7 @@ Differential Operators for MFG_PDE.
 This module provides differential operators as scipy LinearOperator classes:
     - LaplacianOperator: Laplacian (second derivative)
     - DiffusionOperator: Unified diffusion operator (scalar or tensor)
-    - GradientComponentOperator: Gradient component (first derivative in one direction)
+    - PartialDerivOperator: Partial derivative (d/dxi)
     - DivergenceOperator: Divergence of vector fields
     - AdvectionOperator: Advection/transport operator
     - InterfaceJumpOperator: Jump conditions across interfaces
@@ -24,13 +24,19 @@ Usage:
     >>> D = DiffusionOperator(coefficient=sigma, spacings=[dx, dy],
     ...                       field_shape=(Nx, Ny), bc=bc)
     >>> Du = D(u)
+    >>>
+    >>> # Partial derivatives (gradient components)
+    >>> from mfg_pde.operators.differential import PartialDerivOperator, create_gradient_operators
+    >>> grad_x, grad_y = create_gradient_operators(spacings=[dx, dy], field_shape=(Nx, Ny))
+    >>> du_dx = grad_x(u)
 """
 
 from mfg_pde.operators.differential.advection import AdvectionOperator
 from mfg_pde.operators.differential.diffusion import DiffusionOperator
 from mfg_pde.operators.differential.divergence import DivergenceOperator
 from mfg_pde.operators.differential.gradient import (
-    GradientComponentOperator,
+    GradientComponentOperator,  # Deprecated alias (v0.18.0)
+    PartialDerivOperator,
     create_gradient_operators,
 )
 from mfg_pde.operators.differential.interface_jump import InterfaceJumpOperator
@@ -41,11 +47,12 @@ __all__ = [
     "LaplacianOperator",
     "DiffusionOperator",
     # First-order operators
-    "GradientComponentOperator",
+    "PartialDerivOperator",
+    "GradientComponentOperator",  # Deprecated alias for PartialDerivOperator
     "DivergenceOperator",
     "AdvectionOperator",
     # Interface operators
     "InterfaceJumpOperator",
-    # Factory functions (Issue #658: consider making internal)
+    # Factory functions
     "create_gradient_operators",
 ]

@@ -1,16 +1,16 @@
 """
-Gradient operator for tensor product grids.
+Partial derivative operators for tensor product grids.
 
-This module provides LinearOperator implementation of the discrete gradient
+This module provides LinearOperator implementation of discrete partial derivatives
 for structured grids, using finite difference stencils.
 
 Mathematical Background:
-    Gradient operator: ∇u = (∂u/∂x₁, ∂u/∂x₂, ..., ∂u/∂xd)
+    Partial derivative: ∂u/∂xᵢ
 
     Discretization (2nd-order central differences):
         ∂u/∂x ≈ (u[i+1] - u[i-1]) / (2h)
 
-    Returns d operators, one for each spatial direction.
+    The full gradient ∇u = (∂u/∂x₁, ..., ∂u/∂xd) is a tuple of PartialDerivOperators.
 
 References:
     - LeVeque (2007): Finite Difference Methods for ODEs and PDEs
@@ -19,6 +19,7 @@ References:
 Created: 2026-01-17 (Issue #595 - Operator Refactoring)
 Part of: Issue #590 Phase 1.2 - TensorProductGrid Operator Traits
 Migrated: 2026-01-25 (Issue #625 - tensor_calculus → stencils migration)
+Renamed: 2026-01-25 (Issue #658 - GradientComponentOperator → PartialDerivOperator)
 """
 
 from __future__ import annotations
@@ -27,6 +28,8 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from scipy.sparse.linalg import LinearOperator
+
+from mfg_pde.utils.deprecation import deprecated_alias
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -44,21 +47,35 @@ except ImportError:
     _WENO5_AVAILABLE = False
 
 
-class GradientComponentOperator(LinearOperator):
+class PartialDerivOperator(LinearOperator):
     """
-    Single component of gradient operator: ∂u/∂xᵢ.
+    Partial derivative operator: ∂u/∂xᵢ.
 
-    This represents one directional derivative operator.
-    The full gradient is a tuple of these operators.
+    Computes the partial derivative of a scalar field with respect to
+    one spatial direction. The full gradient is a tuple of these operators.
 
     Attributes:
         direction: Spatial direction (0=x, 1=y, 2=z, ...)
         spacings: Grid spacing per dimension [h₀, h₁, ..., hd₋₁]
         field_shape: Shape of input field (Nx, Ny, ...)
-        scheme: Difference scheme ("central", "upwind", "one_sided")
+        scheme: Difference scheme ("central", "upwind", "one_sided", "weno5")
         bc: Boundary conditions
-        shape: Operator shape (N, N) where N = ∏field_shape
+        shape: Operator shape (N, N) where N = prod(field_shape)
         dtype: Data type (float64)
+
+    Example:
+        >>> # Single partial derivative
+        >>> d_dx = PartialDerivOperator(direction=0, spacings=[0.1, 0.1],
+        ...                             field_shape=(50, 50))
+        >>> du_dx = d_dx(u)
+        >>>
+        >>> # Or use create_gradient_operators for all directions
+        >>> grad_x, grad_y = create_gradient_operators(spacings=[0.1, 0.1],
+        ...                                            field_shape=(50, 50))
+
+    Note:
+        Renamed from GradientComponentOperator in v0.18.0 (Issue #658).
+        The old name is available as a deprecated alias.
     """
 
     def __init__(
@@ -71,7 +88,7 @@ class GradientComponentOperator(LinearOperator):
         time: float = 0.0,
     ):
         """
-        Initialize gradient component operator.
+        Initialize partial derivative operator.
 
         Args:
             direction: Spatial direction (0=x, 1=y, 2=z, ...)
@@ -202,7 +219,7 @@ class GradientComponentOperator(LinearOperator):
         bc_str = f"bc={self.bc.bc_type.value}" if self.bc else "bc=periodic"
 
         return (
-            f"GradientComponentOperator(∂/∂{dim_name},\n"
+            f"PartialDerivOperator(d/d{dim_name},\n"
             f"  field_shape={self.field_shape},\n"
             f"  spacings={self.spacings},\n"
             f"  scheme='{self.scheme}',\n"
@@ -218,14 +235,14 @@ def create_gradient_operators(
     scheme: Literal["central", "upwind", "one_sided", "weno5"] = "central",
     bc: BoundaryConditions | None = None,
     time: float = 0.0,
-) -> tuple[GradientComponentOperator, ...]:
+) -> tuple[PartialDerivOperator, ...]:
     """
-    Create gradient operators for all spatial dimensions.
+    Create partial derivative operators for all spatial dimensions.
 
-    Returns a tuple of operators (∂/∂x₀, ∂/∂x₁, ..., ∂/∂xd₋₁).
+    Returns a tuple of operators (d/dx0, d/dx1, ..., d/dx_{d-1}).
 
     Args:
-        spacings: Grid spacing per dimension [h₀, h₁, ..., hd₋₁]
+        spacings: Grid spacing per dimension [h0, h1, ..., h_{d-1}]
         field_shape: Shape of field arrays (Nx, Ny, ...) or Nx for 1D
         scheme: Difference scheme ("central", "upwind", "one_sided", "weno5")
             - "central": 2nd-order central differences (default)
@@ -236,7 +253,7 @@ def create_gradient_operators(
         time: Time for time-dependent BCs
 
     Returns:
-        Tuple of GradientComponentOperator, one per dimension
+        Tuple of PartialDerivOperator, one per dimension
 
     Example:
         >>> # 2D gradient
@@ -262,7 +279,7 @@ def create_gradient_operators(
 
     # Create operator for each direction
     operators = tuple(
-        GradientComponentOperator(
+        PartialDerivOperator(
             direction=d,
             spacings=spacings,
             field_shape=field_shape,
@@ -276,9 +293,21 @@ def create_gradient_operators(
     return operators
 
 
+# =============================================================================
+# Deprecated Alias (Issue #658)
+# =============================================================================
+
+# Keep old name for backward compatibility
+GradientComponentOperator = deprecated_alias(
+    "GradientComponentOperator",
+    PartialDerivOperator,
+    "v0.18.0",
+)
+
+
 if __name__ == "__main__":
-    """Smoke test for GradientOperator."""
-    print("Testing GradientOperator...")
+    """Smoke test for PartialDerivOperator."""
+    print("Testing PartialDerivOperator...")
 
     # Test 1D
     print("\n[1D Gradient]")
