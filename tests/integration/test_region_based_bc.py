@@ -76,12 +76,10 @@ class TestRegionBasedBC1D:
         assert np.isclose(padded[0], 2 * 1.0 - field[0], atol=1e-10)
 
         # Right ghost (outlet): Neumann BC du/dx = 0
-        # For cell-centered grid: u_ghost = u_next_interior + 2*dx*g
-        # With g=0: u_ghost = u_next_interior
-        # Actually for Neumann: ghost = interior[1] - 2*dx*g for left
-        # For right: ghost = interior[-2] + 2*dx*g
-        # With g=0: ghost = interior[-2]
-        assert np.isclose(padded[-1], field[-2], atol=1e-10)
+        # For Neumann BC: ghost mirrors adjacent interior (reflection about boundary)
+        # ghost[-1] = interior[-1] (last interior point)
+        # Note: Test uses uniform field so field[-1] == field[-2], but correct check is field[-1]
+        assert np.isclose(padded[-1], field[-1], atol=1e-10)
 
     def test_boundary_vs_predicate_regions_1d(self):
         """Test boundary-specified vs predicate-specified regions give same result."""
