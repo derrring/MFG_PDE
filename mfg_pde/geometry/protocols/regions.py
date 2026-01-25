@@ -43,14 +43,17 @@ class SupportsBoundaryNormal(Protocol):
     """
     Geometry can compute outward normal vectors at boundary points.
 
-    Outward normals are essential for:
-    - Neumann BC (∂u/∂n = g): Need normal direction for derivative
-    - Robin BC (αu + β∂u/∂n = g): Need normal for mixed condition
-    - Flux computation: J·n where n is outward normal
-    - Reflecting BC (particles): Reflect velocity across normal
+    Universal Outward Normal Convention (Issue #661):
+        - n points FROM domain interior TO exterior
+        - ∂u/∂n > 0 means u increases in the outward direction
+        - For reflecting BC: velocity component along n reverses sign
+        - For SDF φ (with φ < 0 inside, φ > 0 outside): n = ∇φ / |∇φ|
 
-    Mathematical Definition:
-        For boundary ∂Ω with SDF φ: n = ∇φ / |∇φ| (points outward)
+    Applications:
+        - Neumann BC (∂u/∂n = g): Need normal direction for derivative
+        - Robin BC (αu + β∂u/∂n = g): Need normal for mixed condition
+        - Flux computation: J·n where n is outward normal
+        - Reflecting BC (particles): Reflect velocity across normal
 
     Discretization-Specific Implementations:
         - TensorProductGrid: Axis-aligned normals ([±1,0,0], [0,±1,0], etc.)

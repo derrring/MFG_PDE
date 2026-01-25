@@ -232,18 +232,37 @@ class GeometryProtocol(Protocol):
         points: NDArray[np.floating],
     ) -> NDArray[np.floating]:
         """
-        Get outward normal vectors at boundary points.
+        Get outward unit normal vectors at boundary points.
+
+        Universal Outward Normal Convention (Issue #661):
+            - n points FROM domain interior TO exterior
+            - ∂u/∂n > 0 means u increases in the outward direction
+            - For reflecting BC: particle velocity component along n reverses sign
+            - For SDF φ (with φ < 0 inside, φ > 0 outside): n = ∇φ / |∇φ|
 
         Args:
             points: Array of shape (n, d) - boundary points
 
         Returns:
             Array of shape (n, d) - unit outward normal at each point
+            Each row satisfies |n| = 1 (unit vector)
 
         Notes:
             - For non-boundary points, behavior is undefined
-            - For implicit domains: gradient of SDF
-            - For grids: axis-aligned normals
+            - For implicit domains: gradient of SDF → n = ∇φ / |∇φ|
+            - For rectangular grids: axis-aligned normals (e.g., [-1,0] at x_min)
+            - For unstructured mesh: element face normals from mesh topology
+
+        Example:
+            >>> # Rectangle [0,1] × [0,1]
+            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], ...)
+            >>> # Left boundary (x=0): outward normal points left
+            >>> n = grid.get_boundary_normal(np.array([[0.0, 0.5]]))
+            >>> assert np.allclose(n, [[-1.0, 0.0]])
+
+        See Also:
+            - get_outward_normal(): Alias with optional boundary_name parameter
+            - SupportsBoundaryNormal protocol in geometry/protocols/regions.py
         """
         ...
 

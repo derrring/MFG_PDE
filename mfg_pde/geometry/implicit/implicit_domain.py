@@ -334,6 +334,11 @@ class ImplicitDomain(
         signed distance function. For an exact SDF, ||∇φ|| = 1, but we
         normalize to handle approximate SDFs.
 
+        Universal Outward Normal Convention (Issue #661):
+            - n points FROM domain interior TO exterior
+            - ∂u/∂n > 0 means u increases in the outward direction
+            - For SDF φ with convention φ < 0 inside: n = ∇φ / |∇φ|
+
         Args:
             x: Point(s) to evaluate - shape (d,) or (N, d)
             eps: Finite difference step size for gradient computation
@@ -346,6 +351,8 @@ class ImplicitDomain(
             - For points not exactly on the boundary, this gives the normal
               to the closest boundary point
             - Uses central finite differences for gradient: O(eps²) accuracy
+            - Implementation delegates to outward_normal_from_sdf() for
+              consistency (Issue #662 consolidation)
 
         Example:
             >>> sphere = Hypersphere(center=[0, 0], radius=1.0)
@@ -353,38 +360,12 @@ class ImplicitDomain(
             >>> np.allclose(normal, [1.0, 0.0])  # Points radially outward
             True
         """
-        is_single = x.ndim == 1
-        if is_single:
-            x = x.reshape(1, -1)
+        # Use canonical implementation from operators/differential (Issue #662)
+        from mfg_pde.operators.differential.function_gradient import (
+            outward_normal_from_sdf,
+        )
 
-        n_points, d = x.shape
-        normals = np.zeros_like(x)
-
-        # Compute gradient via central finite differences
-        for i in range(n_points):
-            grad = np.zeros(d)
-            for j in range(d):
-                # Create perturbation vectors
-                x_plus = x[i].copy()
-                x_minus = x[i].copy()
-                x_plus[j] += eps
-                x_minus[j] -= eps
-
-                # Central difference: ∂φ/∂x_j ≈ (φ(x+eps*e_j) - φ(x-eps*e_j)) / (2*eps)
-                phi_plus = self.signed_distance(x_plus)
-                phi_minus = self.signed_distance(x_minus)
-                grad[j] = (phi_plus - phi_minus) / (2 * eps)
-
-            # Normalize to get unit normal
-            norm = np.linalg.norm(grad)
-            if norm > 1e-12:
-                normals[i] = grad / norm
-            else:
-                # Degenerate case: gradient is zero (e.g., at singular point)
-                # Return arbitrary unit vector
-                normals[i, 0] = 1.0
-
-        return normals[0] if is_single else normals
+        return outward_normal_from_sdf(self.signed_distance, x, eps=eps)
 
     def project_to_boundary(
         self,

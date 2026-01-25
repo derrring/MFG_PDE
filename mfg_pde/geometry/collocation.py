@@ -905,7 +905,13 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
         return projected
 
     def _compute_sdf_gradient(self, points: NDArray, eps: float = 1e-6) -> NDArray:
-        """Compute SDF gradient using finite differences (fallback)."""
+        """
+        Compute SDF gradient, preferring analytical if available.
+
+        Note:
+            Issue #662: Numerical fallback delegated to canonical implementation
+            in operators/differential/function_gradient.py
+        """
         # Issue #543: Use try/except for optional method instead of hasattr()
         # Try analytical gradient first
         try:
@@ -913,29 +919,30 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
         except AttributeError:
             pass
 
-        # Finite difference fallback
-        d = points.shape[1]
-        grad = np.zeros_like(points)
+        # Finite difference fallback (Issue #662: use canonical implementation)
+        from mfg_pde.operators.differential.function_gradient import function_gradient
 
-        for dim in range(d):
-            points_plus = points.copy()
-            points_minus = points.copy()
-            points_plus[:, dim] += eps
-            points_minus[:, dim] -= eps
-
-            sdf_plus = self.geometry.signed_distance(points_plus)
-            sdf_minus = self.geometry.signed_distance(points_minus)
-
-            grad[:, dim] = (sdf_plus - sdf_minus) / (2 * eps)
-
-        return grad
+        return function_gradient(self.geometry.signed_distance, points, eps=eps)
 
     def _compute_normals(self, points: NDArray) -> NDArray:
-        """Compute outward unit normals at boundary points."""
-        grad = self._compute_sdf_gradient(points)
-        norms = np.linalg.norm(grad, axis=1, keepdims=True)
-        norms = np.maximum(norms, 1e-12)
-        return grad / norms
+        """
+        Compute outward unit normals at boundary points.
+
+        Note:
+            Issue #662: Uses canonical implementation from operators/.
+        """
+        # Issue #662: Use canonical implementation
+        from mfg_pde.operators.differential.function_gradient import (
+            outward_normal_from_sdf,
+        )
+
+        # Try analytical gradient first, then numerical
+        try:
+            grad = self.geometry.signed_distance_gradient(points)
+            norms = np.linalg.norm(grad, axis=1, keepdims=True)
+            return grad / np.maximum(norms, 1e-12)
+        except AttributeError:
+            return outward_normal_from_sdf(self.geometry.signed_distance, points)
 
 
 class CollocationSampler:

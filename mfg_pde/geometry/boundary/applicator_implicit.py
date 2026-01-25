@@ -210,7 +210,7 @@ class ImplicitApplicator(BaseBCApplicator):
         eps: float = 1e-6,
     ) -> NDArray[np.floating]:
         """
-        Compute SDF gradient via central differences.
+        Compute outward unit normal via SDF gradient.
 
         Args:
             points: Coordinates (M, dim)
@@ -218,24 +218,16 @@ class ImplicitApplicator(BaseBCApplicator):
 
         Returns:
             Normalized gradient (outward normal)
+
+        Note:
+            Issue #662: Delegated to canonical implementation in
+            operators/differential/function_gradient.py
         """
-        dim = points.shape[1]
-        gradients = np.zeros_like(points)
+        from mfg_pde.operators.differential.function_gradient import (
+            outward_normal_from_sdf,
+        )
 
-        for d in range(dim):
-            points_plus = points.copy()
-            points_minus = points.copy()
-            points_plus[:, d] += eps
-            points_minus[:, d] -= eps
-
-            sdf_plus = self.geometry.sdf(points_plus)
-            sdf_minus = self.geometry.sdf(points_minus)
-            gradients[:, d] = (sdf_plus - sdf_minus) / (2 * eps)
-
-        # Normalize
-        norms = np.linalg.norm(gradients, axis=1, keepdims=True)
-        norms = np.maximum(norms, 1e-10)  # Avoid division by zero
-        return gradients / norms
+        return outward_normal_from_sdf(self.geometry.sdf, points, eps=eps)
 
     def _resolve_bc_value(
         self,

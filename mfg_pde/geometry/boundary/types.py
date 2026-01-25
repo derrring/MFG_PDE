@@ -16,87 +16,54 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.deprecation import deprecated
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from .providers import BCValueProvider
 
 
+@deprecated(
+    since="v0.18.0",
+    replacement="use mfg_pde.operators.differential.function_gradient() instead",
+    reason="Issue #662: Consolidated 3 duplicate SDF gradient implementations",
+)
 def _compute_sdf_gradient(
     point: np.ndarray,
     sdf_func: Callable[[np.ndarray], float],
     epsilon: float = 1e-5,
 ) -> np.ndarray:
     """
-    Compute SDF gradient using central finite differences with adaptive scaling.
+    Compute SDF gradient using central finite differences.
 
-    The gradient of an SDF points in the direction of steepest increase,
-    which is the outward normal direction at the boundary.
+    .. deprecated::
+        Use ``mfg_pde.operators.differential.function_gradient`` instead.
+        This function delegates to the canonical implementation in operators/.
 
     Args:
         point: Point at which to evaluate gradient (1D array)
         sdf_func: SDF function
-        epsilon: Base finite difference step size (will be scaled adaptively)
+        epsilon: Finite difference step size
 
     Returns:
         Gradient vector (same shape as point)
 
-    Raises:
-        ValueError: If SDF returns invalid (non-finite) values
-
     Note:
-        Uses adaptive epsilon scaling based on point coordinates to handle
-        both small and large domain scales. Validates SDF values at each
-        evaluation point.
+        Issue #662: Consolidated into operators/differential/function_gradient.py
     """
-    point = np.asarray(point, dtype=float)
-    d = len(point)
+    # Import canonical implementation (Issue #662)
+    from mfg_pde.operators.differential.function_gradient import function_gradient
 
-    # Validate input point
+    # Validate input
+    point = np.asarray(point, dtype=float)
     if not np.all(np.isfinite(point)):
         raise ValueError(f"SDF gradient: Point contains non-finite values: {point}")
 
-    # Evaluate SDF at center point for validation
-    phi0 = sdf_func(point)
-    if not np.isfinite(phi0):
-        raise ValueError(f"SDF returned non-finite value {phi0} at point {point}")
+    # Use canonical implementation with adaptive epsilon
+    grad = function_gradient(sdf_func, point, eps=epsilon, adaptive_eps=True)
 
-    # Adaptive epsilon based on domain scale
-    # Scale by characteristic length to handle both small and large domains
-    point_scale = np.maximum(np.abs(point), 1.0)
-    characteristic_length = np.linalg.norm(point_scale) / max(d, 1)
-    adaptive_eps = epsilon * characteristic_length
-
-    grad = np.zeros(d)
-
-    for i in range(d):
-        point_plus = point.copy()
-        point_minus = point.copy()
-        point_plus[i] += adaptive_eps
-        point_minus[i] -= adaptive_eps
-
-        # Evaluate SDF at perturbed points
-        phi_plus = sdf_func(point_plus)
-        phi_minus = sdf_func(point_minus)
-
-        # Validate SDF values
-        if not np.isfinite(phi_plus):
-            raise ValueError(
-                f"SDF returned non-finite value {phi_plus} at perturbed point {point_plus} (axis {i}, positive)"
-            )
-        if not np.isfinite(phi_minus):
-            raise ValueError(
-                f"SDF returned non-finite value {phi_minus} at perturbed point {point_minus} (axis {i}, negative)"
-            )
-
-        # Compute gradient component
-        grad[i] = (phi_plus - phi_minus) / (2 * adaptive_eps)
-
-    # Validate gradient
-    if not np.all(np.isfinite(grad)):
-        raise ValueError(f"SDF gradient contains non-finite values: {grad}")
-
-    # Warn if gradient is suspiciously small (possible degenerate SDF)
+    # Warn if gradient is suspiciously small (preserve original behavior)
     grad_norm = np.linalg.norm(grad)
     if grad_norm < 1e-10:
         import warnings

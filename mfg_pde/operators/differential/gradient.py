@@ -12,6 +12,17 @@ Mathematical Background:
 
     The full gradient ∇u = (∂u/∂x₁, ..., ∂u/∂xd) is a tuple of PartialDerivOperators.
 
+Relationship to DirectDerivOperator (Issue #658):
+    Mathematically, ∂u/∂xᵢ = eᵢ·∇u where eᵢ is the unit vector along axis i.
+    Thus PartialDerivOperator is a special case of DirectDerivOperator.
+
+    However, PartialDerivOperator is implemented independently for efficiency:
+    - Computes only ONE partial derivative directly
+    - DirectDerivOperator computes ALL partials and combines them
+
+    For general directional derivatives v·∇u, use DirectDerivOperator.
+    For boundary normal derivatives ∂u/∂n, use NormalDerivOperator.
+
 References:
     - LeVeque (2007): Finite Difference Methods for ODEs and PDEs
     - Strang (2007): Computational Science and Engineering
@@ -229,6 +240,145 @@ class PartialDerivOperator(LinearOperator):
 
 
 # =============================================================================
+# Gradient Operator (Issue #658 Phase 3)
+# =============================================================================
+
+
+class GradientOperator:
+    """
+    Full gradient operator: ∇u = (∂u/∂x₁, ..., ∂u/∂xd).
+
+    Computes the gradient of a scalar field, returning a vector field.
+    This is NOT a scipy LinearOperator because it changes dimensionality:
+    maps scalar field (N,) to vector field (N, d).
+
+    Mathematical Definition:
+        For scalar field u: Ω ⊂ ℝ^d → ℝ
+        ∇u = (∂u/∂x₁, ∂u/∂x₂, ..., ∂u/∂xd)
+
+    Attributes:
+        spacings: Grid spacing per dimension [h₀, h₁, ..., hd₋₁]
+        field_shape: Shape of input scalar field (N₁, N₂, ...)
+        scheme: Difference scheme for all components
+        components: Tuple of PartialDerivOperator for each dimension
+
+    Example:
+        >>> grad = GradientOperator(spacings=[dx, dy], field_shape=(Nx, Ny))
+        >>> gradient_field = grad(u)  # Shape: (Nx, Ny, 2)
+        >>>
+        >>> # Access individual components
+        >>> du_dx = grad.components[0](u)  # Just ∂u/∂x
+        >>> du_dy = grad.components[1](u)  # Just ∂u/∂y
+
+    Note:
+        For scalar output like v·∇u, use DirectDerivOperator instead.
+        For boundary normal derivative ∂u/∂n, use NormalDerivOperator.
+
+    Created: 2026-01-25 (Issue #658 Phase 3)
+    """
+
+    def __init__(
+        self,
+        spacings: Sequence[float],
+        field_shape: tuple[int, ...],
+        scheme: Literal["central", "upwind", "one_sided", "weno5"] = "central",
+        bc: BoundaryConditions | None = None,
+        time: float = 0.0,
+    ):
+        """
+        Initialize gradient operator.
+
+        Args:
+            spacings: Grid spacing per dimension [h₀, h₁, ..., hd₋₁]
+            field_shape: Shape of scalar field arrays (N₁, N₂, ...)
+            scheme: Difference scheme for all components
+                - "central": 2nd-order central differences (default)
+                - "upwind": Godunov upwind (monotone, 1st-order)
+                - "one_sided": Forward at left, backward at right
+                - "weno5": 5th-order WENO reconstruction
+            bc: Boundary conditions (None for periodic)
+            time: Time for time-dependent BCs (default 0.0)
+        """
+        self.spacings = list(spacings)
+        self.field_shape = tuple(field_shape)
+        self.scheme = scheme
+        self.bc = bc
+        self.time = time
+        self.ndim = len(field_shape)
+
+        # Validate
+        if len(spacings) != len(field_shape):
+            raise ValueError(f"spacings length {len(spacings)} != field_shape dimensions {len(field_shape)}")
+
+        # Create partial derivative operators for each dimension
+        self.components: tuple[PartialDerivOperator, ...] = tuple(
+            PartialDerivOperator(
+                direction=d,
+                spacings=spacings,
+                field_shape=field_shape,
+                scheme=scheme,
+                bc=bc,
+                time=time,
+            )
+            for d in range(self.ndim)
+        )
+
+    def __call__(self, u: NDArray) -> NDArray:
+        """
+        Compute gradient of scalar field.
+
+        Args:
+            u: Scalar field, shape field_shape or flattened (N,)
+
+        Returns:
+            Gradient vector field, shape (*field_shape, ndim)
+            Each point has ndim gradient components.
+
+        Example:
+            >>> u = np.sin(X) + np.cos(Y)  # Shape (50, 50)
+            >>> grad_u = grad(u)            # Shape (50, 50, 2)
+            >>> du_dx = grad_u[..., 0]      # ∂u/∂x
+            >>> du_dy = grad_u[..., 1]      # ∂u/∂y
+        """
+        # Handle flattened input
+        if u.ndim == 1:
+            u = u.reshape(self.field_shape)
+
+        if u.shape != self.field_shape:
+            raise ValueError(f"Input shape {u.shape} doesn't match field_shape {self.field_shape}")
+
+        # Stack gradient components along new last axis
+        components = [comp(u) for comp in self.components]
+        return np.stack(components, axis=-1)
+
+    def magnitude(self, u: NDArray) -> NDArray:
+        """
+        Compute gradient magnitude |∇u|.
+
+        Args:
+            u: Scalar field, shape field_shape
+
+        Returns:
+            Gradient magnitude, shape field_shape
+        """
+        grad_u = self(u)
+        return np.linalg.norm(grad_u, axis=-1)
+
+    def __repr__(self) -> str:
+        """String representation for debugging."""
+        bc_str = f"bc={self.bc.bc_type.value}" if self.bc else "bc=periodic"
+        return (
+            f"GradientOperator(\n"
+            f"  ndim={self.ndim},\n"
+            f"  field_shape={self.field_shape},\n"
+            f"  spacings={self.spacings},\n"
+            f"  scheme='{self.scheme}',\n"
+            f"  {bc_str}\n"
+            f")"
+        )
+
+
+# =============================================================================
 # Deprecated Alias (Issue #658)
 # =============================================================================
 
@@ -365,3 +515,114 @@ if __name__ == "__main__":
         print("  WENO5 scheme not available (schemes module not found)")
 
     print("\nAll PartialDerivOperator tests passed!")
+
+    # ==========================================================================
+    # GradientOperator Tests (Issue #658 Phase 3)
+    # ==========================================================================
+    print("\n" + "=" * 60)
+    print("Testing GradientOperator (Issue #658 Phase 3)")
+    print("=" * 60)
+
+    # Test 2D gradient
+    print("\n[2D Full Gradient]")
+    Nx, Ny = 50, 50
+    x = np.linspace(0, 1, Nx)
+    y = np.linspace(0, 1, Ny)
+    dx, dy = x[1] - x[0], y[1] - y[0]
+    X, Y = np.meshgrid(x, y, indexing="ij")
+
+    # Test on u = x^2 + y^3, ∇u = (2x, 3y^2)
+    u_2d = X**2 + Y**3
+
+    grad_op = GradientOperator(spacings=[dx, dy], field_shape=(Nx, Ny), scheme="central")
+    print(grad_op)
+
+    grad_u = grad_op(u_2d)
+    print(f"  Input shape: {u_2d.shape}")
+    print(f"  Output shape: {grad_u.shape}")
+    assert grad_u.shape == (Nx, Ny, 2), f"Expected (Nx, Ny, 2), got {grad_u.shape}"
+
+    # Check components
+    du_dx = grad_u[..., 0]
+    du_dy = grad_u[..., 1]
+
+    expected_dx = 2 * X
+    expected_dy = 3 * Y**2
+
+    # Interior error (boundaries have larger error)
+    error_dx = np.max(np.abs(du_dx[10:-10, 10:-10] - expected_dx[10:-10, 10:-10]))
+    error_dy = np.max(np.abs(du_dy[10:-10, 10:-10] - expected_dy[10:-10, 10:-10]))
+
+    print(f"  ∂u/∂x interior error: {error_dx:.2e}")
+    print(f"  ∂u/∂y interior error: {error_dy:.2e}")
+    assert error_dx < 1e-10, f"∂u/∂x error too large: {error_dx}"
+    assert error_dy < 1e-3, f"∂u/∂y error too large: {error_dy}"
+
+    # Test gradient magnitude
+    print("\n[Gradient Magnitude]")
+    grad_mag = grad_op.magnitude(u_2d)
+    expected_mag = np.sqrt((2 * X) ** 2 + (3 * Y**2) ** 2)
+
+    error_mag = np.max(np.abs(grad_mag[10:-10, 10:-10] - expected_mag[10:-10, 10:-10]))
+    print(f"  |∇u| interior error: {error_mag:.2e}")
+    assert error_mag < 1e-3, f"|∇u| error too large: {error_mag}"
+
+    # Test access to individual components
+    print("\n[Component Access]")
+    assert len(grad_op.components) == 2
+    du_dx_direct = grad_op.components[0](u_2d)
+    du_dy_direct = grad_op.components[1](u_2d)
+
+    assert np.allclose(du_dx, du_dx_direct), "Component[0] mismatch"
+    assert np.allclose(du_dy, du_dy_direct), "Component[1] mismatch"
+    print("  OK: grad.components[i](u) == grad(u)[..., i]")
+
+    # Test 1D case
+    print("\n[1D Full Gradient]")
+    x_1d = np.linspace(0, 2 * np.pi, 100)
+    dx_1d = x_1d[1] - x_1d[0]
+    u_1d = np.sin(x_1d)
+
+    grad_1d = GradientOperator(spacings=[dx_1d], field_shape=(100,))
+    grad_u_1d = grad_1d(u_1d)
+
+    print(f"  Input shape: {u_1d.shape}")
+    print(f"  Output shape: {grad_u_1d.shape}")
+    assert grad_u_1d.shape == (100, 1), f"Expected (100, 1), got {grad_u_1d.shape}"
+
+    error_1d = np.max(np.abs(grad_u_1d[10:-10, 0] - np.cos(x_1d)[10:-10]))
+    print(f"  d sin(x)/dx interior error: {error_1d:.2e}")
+    assert error_1d < 0.01, f"1D gradient error too large: {error_1d}"
+
+    # Test 3D case
+    print("\n[3D Full Gradient]")
+    Nx3, Ny3, Nz3 = 20, 20, 20
+    x3 = np.linspace(0, 1, Nx3)
+    y3 = np.linspace(0, 1, Ny3)
+    z3 = np.linspace(0, 1, Nz3)
+    dx3, dy3, dz3 = x3[1] - x3[0], y3[1] - y3[0], z3[1] - z3[0]
+    X3, Y3, Z3 = np.meshgrid(x3, y3, z3, indexing="ij")
+
+    # u = x + 2y + 3z, ∇u = (1, 2, 3)
+    u_3d = X3 + 2 * Y3 + 3 * Z3
+
+    grad_3d = GradientOperator(spacings=[dx3, dy3, dz3], field_shape=(Nx3, Ny3, Nz3))
+    grad_u_3d = grad_3d(u_3d)
+
+    print(f"  Input shape: {u_3d.shape}")
+    print(f"  Output shape: {grad_u_3d.shape}")
+    assert grad_u_3d.shape == (Nx3, Ny3, Nz3, 3)
+
+    # Linear function should have near-exact gradient
+    error_3d_x = np.max(np.abs(grad_u_3d[5:-5, 5:-5, 5:-5, 0] - 1.0))
+    error_3d_y = np.max(np.abs(grad_u_3d[5:-5, 5:-5, 5:-5, 1] - 2.0))
+    error_3d_z = np.max(np.abs(grad_u_3d[5:-5, 5:-5, 5:-5, 2] - 3.0))
+
+    print(f"  ∂u/∂x error: {error_3d_x:.2e} (expect ~0)")
+    print(f"  ∂u/∂y error: {error_3d_y:.2e} (expect ~0)")
+    print(f"  ∂u/∂z error: {error_3d_z:.2e} (expect ~0)")
+    assert error_3d_x < 1e-10, f"3D ∂u/∂x error: {error_3d_x}"
+    assert error_3d_y < 1e-10, f"3D ∂u/∂y error: {error_3d_y}"
+    assert error_3d_z < 1e-10, f"3D ∂u/∂z error: {error_3d_z}"
+
+    print("\nAll GradientOperator tests passed!")
