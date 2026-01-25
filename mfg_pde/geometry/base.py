@@ -455,20 +455,36 @@ class Geometry(ABC):
     def get_boundary_normal(
         self,
         points: NDArray,
+        corner_strategy: str = "average",
     ) -> NDArray:
         """
         Get outward normal vectors at boundary points.
 
+        Universal Outward Normal Convention (Issue #661):
+            - n points FROM domain interior TO exterior
+            - du/dn > 0 means u increases in the outward direction
+
+        Corner Handling (Issue #521):
+            At corners (where multiple boundaries meet), the normal is ambiguous.
+            The corner_strategy parameter controls behavior:
+            - "average": Average of adjacent face normals (recommended for particles)
+            - "priority": First boundary found (legacy behavior)
+            - "mollify": Treat corner as curved (for SDF-like behavior)
+
         Args:
             points: Array of shape (n, d) - boundary points
+            corner_strategy: How to handle corners ("average", "priority", "mollify")
 
         Returns:
             Array of shape (n, d) - unit outward normal at each point
 
-        Default implementation assumes axis-aligned boundaries.
-        Override for curved or complex boundaries.
+        Note:
+            FDM solvers typically don't call this at corners - they use
+            sequential ghost cell updates which handle corners implicitly.
+            This method is primarily for particle methods and geometry queries.
         """
         points = np.atleast_2d(points)
+        n_points, d = points.shape
         normals = np.zeros_like(points)
         bounds_result = self.get_bounds()
 
@@ -478,28 +494,137 @@ class Geometry(ABC):
         min_coords, max_coords = bounds_result
         tolerance = 1e-10
 
-        # Vectorized boundary detection
-        near_min = np.abs(points - min_coords) < tolerance  # shape: (n, d)
-        near_max = np.abs(points - max_coords) < tolerance  # shape: (n, d)
+        # Detect which boundaries each point is on (n, d) for min and max
+        near_min = np.abs(points - min_coords) < tolerance
+        near_max = np.abs(points - max_coords) < tolerance
 
-        # For each point, find first dimension at boundary (prioritize min over max)
-        # Use argmax to get first True along dimension axis
-        min_boundary_dim = np.argmax(near_min, axis=1)  # First dim at min boundary
-        max_boundary_dim = np.argmax(near_max, axis=1)  # First dim at max boundary
-        has_min_boundary = np.any(near_min, axis=1)
-        has_max_boundary = np.any(near_max, axis=1)
+        # Count how many boundaries each point touches
+        n_boundaries = np.sum(near_min | near_max, axis=1)  # shape: (n,)
 
-        # Set normals for points at min boundary
-        rows_min = np.where(has_min_boundary)[0]
-        if len(rows_min) > 0:
-            normals[rows_min, min_boundary_dim[rows_min]] = -1.0
-
-        # Set normals for points at max boundary (only if not already at min)
-        rows_max = np.where(has_max_boundary & ~has_min_boundary)[0]
-        if len(rows_max) > 0:
-            normals[rows_max, max_boundary_dim[rows_max]] = 1.0
+        for i in range(n_points):
+            if n_boundaries[i] == 0:
+                # Not on boundary - return zero normal
+                continue
+            elif n_boundaries[i] == 1 or corner_strategy == "priority":
+                # Single boundary or priority mode: use first boundary found
+                for dim in range(d):
+                    if near_min[i, dim]:
+                        normals[i, dim] = -1.0
+                        break
+                    elif near_max[i, dim]:
+                        normals[i, dim] = 1.0
+                        break
+            else:
+                # Corner case: multiple boundaries
+                if corner_strategy == "average":
+                    # Sum all face normals and normalize
+                    for dim in range(d):
+                        if near_min[i, dim]:
+                            normals[i, dim] -= 1.0
+                        if near_max[i, dim]:
+                            normals[i, dim] += 1.0
+                    # Normalize to unit vector
+                    norm = np.linalg.norm(normals[i])
+                    if norm > 1e-12:
+                        normals[i] /= norm
+                elif corner_strategy == "mollify":
+                    # Treat as if corner is rounded: normal points from corner vertex
+                    # toward the point (projected onto boundary)
+                    corner_vertex = np.where(near_min[i], min_coords, max_coords)
+                    direction = points[i] - corner_vertex
+                    norm = np.linalg.norm(direction)
+                    if norm > 1e-12:
+                        normals[i] = direction / norm
+                    else:
+                        # At exact corner, use average
+                        for dim in range(d):
+                            if near_min[i, dim]:
+                                normals[i, dim] -= 1.0
+                            if near_max[i, dim]:
+                                normals[i, dim] += 1.0
+                        norm = np.linalg.norm(normals[i])
+                        if norm > 1e-12:
+                            normals[i] /= norm
 
         return normals
+
+    def is_near_corner(
+        self,
+        points: NDArray,
+        tolerance: float = 1e-10,
+    ) -> NDArray:
+        """
+        Check if points are near domain corners (where multiple boundaries meet).
+
+        Dimension-agnostic implementation (Issue #521):
+            - 1D: No corners (endpoints are faces, not corners)
+            - 2D: 4 corners (2 boundaries meet)
+            - 3D: 8 corners (3 boundaries) + 12 edges (2 boundaries)
+            - nD: 2^d corners + various lower-dimensional intersections
+
+        Args:
+            points: Array of shape (n, d) - points to check
+            tolerance: Distance tolerance for boundary detection
+
+        Returns:
+            Boolean array of shape (n,) - True if point is near corner/edge
+        """
+        points = np.atleast_2d(points)
+        bounds_result = self.get_bounds()
+
+        if bounds_result is None:
+            return np.zeros(len(points), dtype=bool)
+
+        min_coords, max_coords = bounds_result
+
+        # Detect boundaries
+        near_min = np.abs(points - min_coords) < tolerance
+        near_max = np.abs(points - max_coords) < tolerance
+
+        # Corner = touching 2+ boundaries
+        n_boundaries = np.sum(near_min | near_max, axis=1)
+        return n_boundaries >= 2
+
+    def get_boundary_faces_at_point(
+        self,
+        point: NDArray,
+        tolerance: float = 1e-10,
+    ) -> list[tuple[int, str]]:
+        """
+        Get list of boundary faces that a point lies on.
+
+        Dimension-agnostic implementation for mixed BC and corner handling.
+
+        Args:
+            point: Single point, shape (d,)
+            tolerance: Distance tolerance for boundary detection
+
+        Returns:
+            List of (dimension, side) tuples:
+            - dimension: 0=x, 1=y, 2=z, ...
+            - side: "min" or "max"
+
+        Example:
+            >>> # Point at corner (0, 0) of [0,1]x[0,1]
+            >>> faces = geometry.get_boundary_faces_at_point([0.0, 0.0])
+            >>> # Returns: [(0, "min"), (1, "min")]
+        """
+        point = np.asarray(point)
+        bounds_result = self.get_bounds()
+
+        if bounds_result is None:
+            return []
+
+        min_coords, max_coords = bounds_result
+        faces = []
+
+        for dim in range(len(point)):
+            if abs(point[dim] - min_coords[dim]) < tolerance:
+                faces.append((dim, "min"))
+            if abs(point[dim] - max_coords[dim]) < tolerance:
+                faces.append((dim, "max"))
+
+        return faces
 
     def project_to_boundary(
         self,

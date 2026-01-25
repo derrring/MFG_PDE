@@ -868,6 +868,7 @@ class TensorProductGrid(
         self,
         points: NDArray,
         boundary_name: str | None = None,
+        corner_strategy: str = "average",
     ) -> NDArray:
         """
         Compute outward unit normal vectors at boundary points.
@@ -878,11 +879,18 @@ class TensorProductGrid(
         - y_min boundary: [0, -1, 0, ...]
         - etc.
 
+        Corner Handling (Issue #521):
+            At corners, the corner_strategy parameter controls behavior:
+            - "average": Diagonal normal (e.g., [-1,-1]/sqrt(2) at origin)
+            - "priority": First boundary found (legacy behavior)
+            - "mollify": Same as average for axis-aligned grids
+
         Args:
             points: Points at which to evaluate normal, shape (num_points, dimension)
                     or (dimension,) for single point
             boundary_name: Optional boundary region name (e.g., "x_min", "y_max").
-                           If None, infers boundary from point location.
+                           If provided, corner_strategy is ignored.
+            corner_strategy: How to handle corners ("average", "priority", "mollify")
 
         Returns:
             Outward unit normals, shape (num_points, dimension) or (dimension,)
@@ -893,8 +901,12 @@ class TensorProductGrid(
 
         Example:
             >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
-            >>> normal = grid.get_outward_normal(np.array([0.0, 0.5]), boundary_name="x_min")
-            >>> assert np.allclose(normal, [-1.0, 0.0])
+            >>> # Face normal
+            >>> n = grid.get_outward_normal(np.array([0.0, 0.5]), boundary_name="x_min")
+            >>> assert np.allclose(n, [-1.0, 0.0])
+            >>> # Corner normal with averaging
+            >>> n = grid.get_outward_normal(np.array([0.0, 0.0]), corner_strategy="average")
+            >>> assert np.allclose(n, [-1/np.sqrt(2), -1/np.sqrt(2)])
         """
         # Handle single point
         single_point = points.ndim == 1
@@ -928,29 +940,39 @@ class TensorProductGrid(
             else:
                 raise ValueError(f"Unknown side: {side}. Expected 'min' or 'max'")
         else:
-            # Infer boundary from point location (find closest boundary)
+            # Infer boundary from point location
             tolerance = 1e-10
+            min_coords, max_coords = self.get_bounds()
+
             for i, point in enumerate(points):
-                min_coords, max_coords = self.get_bounds()
+                # Detect which boundaries this point is on
+                on_min = np.abs(point - min_coords) < tolerance
+                on_max = np.abs(point - max_coords) < tolerance
+                n_boundaries = np.sum(on_min | on_max)
 
-                # Find which boundary this point is closest to
-                dist_to_min = np.abs(point - min_coords)
-                dist_to_max = np.abs(point - max_coords)
-
-                # Check if on any boundary
-                on_min = dist_to_min < tolerance
-                on_max = dist_to_max < tolerance
-
-                if not np.any(on_min | on_max):
+                if n_boundaries == 0:
                     raise ValueError(f"Point {point} not on boundary (tolerance={tolerance})")
 
-                # Prioritize first boundary found (for corner points)
-                if np.any(on_min):
-                    dim_idx = np.argmax(on_min)
-                    normals[i, dim_idx] = -1.0
+                if n_boundaries == 1 or corner_strategy == "priority":
+                    # Single boundary or priority mode: first boundary found
+                    for dim in range(self._dimension):
+                        if on_min[dim]:
+                            normals[i, dim] = -1.0
+                            break
+                        elif on_max[dim]:
+                            normals[i, dim] = 1.0
+                            break
                 else:
-                    dim_idx = np.argmax(on_max)
-                    normals[i, dim_idx] = 1.0
+                    # Corner: use averaging (mollify is same for axis-aligned)
+                    for dim in range(self._dimension):
+                        if on_min[dim]:
+                            normals[i, dim] -= 1.0
+                        if on_max[dim]:
+                            normals[i, dim] += 1.0
+                    # Normalize
+                    norm = np.linalg.norm(normals[i])
+                    if norm > 1e-12:
+                        normals[i] /= norm
 
         if single_point:
             return normals[0]
