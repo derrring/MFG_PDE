@@ -258,8 +258,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
             # Mode 6: Dual geometry (Issue #257) - Separate geometries for HJB and FP
             from mfg_pde.geometry import TensorProductGrid
-            hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])  # Fine grid for HJB
-            fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[21, 21])  # Coarse grid for FP
+            from mfg_pde.geometry.boundary import no_flux_bc
+            hjb_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[51, 51], boundary_conditions=no_flux_bc(2))
+            fp_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[21, 21], boundary_conditions=no_flux_bc(2))
             problem = MFGProblem(
                 hjb_geometry=hjb_grid,
                 fp_geometry=fp_grid,
@@ -565,10 +566,15 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         Nx_scalar = Nx[0]
 
         # Create TensorProductGrid geometry object (unified internal representation)
+        # Use default no_flux_bc for legacy _init_1d_legacy path (Issue #674)
+        # Note: This is a deprecated code path; users should use geometry-first API
+        from mfg_pde.geometry.boundary import no_flux_bc
+
         geometry = TensorProductGrid(
             dimension=1,
             bounds=[(xmin_scalar, xmax_scalar)],
             Nx_points=[Nx_scalar + 1],
+            boundary_conditions=no_flux_bc(dimension=1),
         )
 
         # Store geometry for unified interface
@@ -1490,6 +1496,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         if state.get("geometry") is None and state.get("xmin") is not None:
             try:
                 from mfg_pde.geometry import TensorProductGrid
+                from mfg_pde.geometry.boundary import no_flux_bc
 
                 # Reconstruct geometry from legacy attributes
                 xmin = state.get("xmin")
@@ -1507,10 +1514,13 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                     bounds = list(zip(xmin, xmax, strict=True))
                     Nx_points = [n + 1 for n in Nx]
 
+                # Use default no_flux_bc for legacy pickle migration (Issue #674)
+                dimension = len(bounds)
                 state["geometry"] = TensorProductGrid(
-                    dimension=len(bounds),
+                    dimension=dimension,
                     bounds=bounds,
                     Nx_points=Nx_points,
+                    boundary_conditions=no_flux_bc(dimension=dimension),
                 )
             except (KeyError, ImportError) as e:
                 import warnings
