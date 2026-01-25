@@ -296,7 +296,7 @@ class TestNewtonMFGSolverParameters:
         assert np.all(np.isfinite(M))
 
 
-@pytest.mark.not_slow  # Fast tests - no Newton iterations
+@pytest.mark.fast  # Fast tests - no Newton iterations
 class TestMFGResidualComputation:
     """Test MFGResidual class functionality (fast, no Jacobian computation)."""
 

@@ -31,10 +31,7 @@ from mfg_pde.operators.differential.divergence import (
     DivergenceOperator as _DivergenceOperator,
 )
 from mfg_pde.operators.differential.gradient import (
-    GradientComponentOperator as _GradientComponentOperator,
-)
-from mfg_pde.operators.differential.gradient import (
-    create_gradient_operators as _create_gradient_operators,
+    PartialDerivOperator as _PartialDerivOperator,
 )
 from mfg_pde.operators.differential.interface_jump import (
     InterfaceJumpOperator as _InterfaceJumpOperator,
@@ -61,7 +58,12 @@ LaplacianOperator = deprecated_alias(
 )
 GradientComponentOperator = deprecated_alias(
     "mfg_pde.geometry.operators.GradientComponentOperator",
-    _GradientComponentOperator,
+    _PartialDerivOperator,  # Points to new name
+    since="v0.18.0",
+)
+PartialDerivOperator = deprecated_alias(
+    "mfg_pde.geometry.operators.PartialDerivOperator",
+    _PartialDerivOperator,
     since="v0.18.0",
 )
 DivergenceOperator = deprecated_alias(
@@ -94,11 +96,6 @@ ProjectionRegistry = deprecated_alias(
     _ProjectionRegistry,
     since="v0.18.0",
 )
-create_gradient_operators = deprecated_alias(
-    "mfg_pde.geometry.operators.create_gradient_operators",
-    _create_gradient_operators,
-    since="v0.18.0",
-)
 
 __all__ = [
     # Projection
@@ -106,11 +103,10 @@ __all__ = [
     "ProjectionRegistry",
     # Differential operators
     "LaplacianOperator",
-    "GradientComponentOperator",
+    "PartialDerivOperator",
+    "GradientComponentOperator",  # Deprecated alias for PartialDerivOperator
     "DivergenceOperator",
     "AdvectionOperator",
     "InterpolationOperator",
     "InterfaceJumpOperator",
-    # Factory functions
-    "create_gradient_operators",
 ]

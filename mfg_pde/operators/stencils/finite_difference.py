@@ -47,6 +47,8 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from mfg_pde.geometry.boundary import BoundaryConditions
+
 
 # =============================================================================
 # First-Order Derivative Stencils
@@ -314,17 +316,108 @@ def get_laplacian_stencil_coefficients(h: float) -> tuple[list[int], list[float]
     return [-1, 0, 1], [1.0 / h2, -2.0 / h2, 1.0 / h2]
 
 
+def gradient_nd(
+    u: NDArray,
+    spacings: list[float] | tuple[float, ...],
+    xp: type = np,
+) -> list[NDArray]:
+    """
+    Compute gradient in all dimensions using central differences.
+
+    This is a simple wrapper that applies gradient_central to each dimension.
+    No boundary condition handling - uses periodic wrapping via np.roll.
+
+    Replaces tensor_calculus.gradient_simple for particle methods where
+    BC is handled separately.
+
+    Args:
+        u: Input n-dimensional array
+        spacings: Grid spacing per dimension [h₀, h₁, ..., hd₋₁]
+        xp: Array module (numpy or cupy for GPU)
+
+    Returns:
+        List of gradient arrays, one per dimension: [∂u/∂x₀, ∂u/∂x₁, ...]
+
+    Example:
+        >>> u = np.sin(np.linspace(0, 2*np.pi, 100))
+        >>> grad = gradient_nd(u, spacings=[0.1])
+        >>> # grad[0] contains ∂u/∂x
+
+    Note:
+        Issue #625: Added to replace tensor_calculus.gradient_simple
+    """
+    gradients = []
+    for axis, h in enumerate(spacings):
+        if h > 1e-14:
+            gradients.append(gradient_central(u, axis=axis, h=h, xp=xp))
+        else:
+            gradients.append(xp.zeros_like(u))
+    return gradients
+
+
+def laplacian_with_bc(
+    u: NDArray,
+    spacings: list[float] | tuple[float, ...],
+    bc: BoundaryConditions | None = None,
+    time: float = 0.0,
+) -> NDArray:
+    """
+    Compute Laplacian with boundary condition handling.
+
+    This function combines ghost cell padding from geometry/boundary
+    with the laplacian_stencil_nd computation.
+
+    Replaces tensor_calculus.laplacian for cases needing BC-aware Laplacian.
+
+    Args:
+        u: Input n-dimensional array
+        spacings: Grid spacing per dimension [h₀, h₁, ..., hd₋₁]
+        bc: Boundary conditions. If None, uses periodic BC.
+        time: Current time for time-dependent BCs
+
+    Returns:
+        Laplacian of u with same shape as input
+
+    Example:
+        >>> from mfg_pde.geometry.boundary import neumann_bc
+        >>> u = np.sin(np.linspace(0, np.pi, 50))
+        >>> lap_u = laplacian_with_bc(u, spacings=[0.1], bc=neumann_bc(1))
+
+    Note:
+        Issue #625: Added to replace tensor_calculus.laplacian
+    """
+    from mfg_pde.geometry.boundary import pad_array_with_ghosts
+
+    # Apply ghost cells if BC provided
+    if bc is not None:
+        u_work = pad_array_with_ghosts(u, bc, ghost_depth=1, time=time)
+    else:
+        u_work = u
+
+    # Compute laplacian
+    lap = laplacian_stencil_nd(u_work, spacings)
+
+    # Extract interior if ghost cells were added
+    if bc is not None:
+        slices = [slice(1, -1)] * u.ndim
+        lap = lap[tuple(slices)]
+
+    return lap
+
+
 __all__ = [
     # First-order derivatives
     "gradient_central",
     "gradient_forward",
     "gradient_backward",
     "gradient_upwind",
+    "gradient_nd",
     # Boundary handling
     "fix_boundaries_one_sided",
     # Second-order derivatives
     "laplacian_stencil_1d",
     "laplacian_stencil_nd",
+    "laplacian_with_bc",
     # Coefficients for matrix assembly
     "get_gradient_stencil_coefficients",
     "get_laplacian_stencil_coefficients",

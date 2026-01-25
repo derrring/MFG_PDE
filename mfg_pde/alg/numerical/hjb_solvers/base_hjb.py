@@ -16,8 +16,13 @@ if TYPE_CHECKING:
 # BC-aware gradient computation (Issue #542 fix)
 # Validated in: mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
 # Issue #638: Import Robin BC ghost cell computation
+# Issue #625: Migrated from tensor_calculus to operators/stencils (tensor_calculus deprecated v0.18.0)
+from mfg_pde.geometry.boundary import pad_array_with_ghosts
 from mfg_pde.geometry.boundary.applicator_base import ghost_cell_robin
-from mfg_pde.utils.numerical.tensor_calculus import gradient as tensor_gradient
+from mfg_pde.operators.stencils.finite_difference import (
+    gradient_central,
+    gradient_upwind,
+)
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
 
 logger = get_logger(__name__)
@@ -42,7 +47,7 @@ def _compute_gradient_array_1d(
     """
     Compute gradient for entire 1D array using BC-aware computation.
 
-    Uses tensor_calculus.gradient() with proper boundary condition handling.
+    Uses operators/stencils with ghost cell padding from geometry/boundary.
     Falls back to periodic BC if bc is None (backward compatibility).
 
     Args:
@@ -59,15 +64,30 @@ def _compute_gradient_array_1d(
         Issue #542 fix. Validated in:
         mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
         Achieves 23x error reduction (47.98% -> 2.06%) for Tower-on-Beach problem.
+
+        Issue #625: Migrated from tensor_calculus to operators/stencils.
     """
     Nx = len(U_array)
     if Nx <= 1 or abs(Dx) < 1e-14:
         return np.zeros(Nx)
 
-    scheme = "upwind" if upwind else "central"
-    # tensor_gradient handles bc=None by using periodic BC
-    grads = tensor_gradient(U_array, spacings=[Dx], scheme=scheme, bc=bc, time=time)
-    return grads[0]  # First component for 1D
+    # Apply ghost cells if BC provided
+    if bc is not None:
+        u_work = pad_array_with_ghosts(U_array, bc, ghost_depth=1, time=time)
+    else:
+        u_work = U_array
+
+    # Compute gradient with selected scheme
+    if upwind:
+        grad = gradient_upwind(u_work, axis=0, h=Dx)
+    else:
+        grad = gradient_central(u_work, axis=0, h=Dx)
+
+    # Extract interior if ghost cells were added
+    if bc is not None:
+        grad = grad[1:-1]
+
+    return grad
 
 
 def _compute_laplacian_1d(

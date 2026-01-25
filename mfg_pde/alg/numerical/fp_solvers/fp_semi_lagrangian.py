@@ -33,10 +33,10 @@ from scipy.linalg import solve_banded
 from mfg_pde.alg.numerical.hjb_solvers.hjb_sl_characteristics import (
     apply_boundary_conditions_1d,
 )
-from mfg_pde.utils.mfg_logging import get_logger
 
-# Use tensor_calculus for proper differential operators with BC handling
-from mfg_pde.utils.numerical.tensor_calculus import laplacian as tensor_laplacian
+# Issue #625: Migrated from tensor_calculus to operators/stencils
+from mfg_pde.operators.stencils.finite_difference import laplacian_with_bc
+from mfg_pde.utils.mfg_logging import get_logger
 
 from .base_fp import BaseFPSolver
 
@@ -295,7 +295,7 @@ class FPSLSolver(BaseFPSolver):
         """
         Compute div(alpha) = div(-grad(U)) = -Laplacian(U).
 
-        Uses the tensor_calculus.laplacian with proper BC handling instead of
+        Uses laplacian_with_bc from stencils with proper BC handling instead of
         compound gradient (which causes 50% boundary error).
 
         Issue #579: Compound gradient np.gradient(np.gradient(U)) gives
@@ -307,6 +307,8 @@ class FPSLSolver(BaseFPSolver):
         We use quadratic extrapolation BC (EXTRAPOLATION_QUADRATIC) because the
         potential U does not satisfy Neumann BC - it has non-zero gradient at
         boundaries.
+
+        Issue #625: Migrated from tensor_calculus to stencils.laplacian_with_bc
         """
         # Use quadratic extrapolation BC for fields that don't satisfy Neumann BC
         from mfg_pde.geometry.boundary import BCSegment, BCType, mixed_bc
@@ -320,7 +322,7 @@ class FPSLSolver(BaseFPSolver):
         )
 
         # Compute Laplacian with proper ghost cell handling
-        lap_U = tensor_laplacian(U, spacings=[self.dx], bc=extrap_bc)
+        lap_U = laplacian_with_bc(U, spacings=[self.dx], bc=extrap_bc)
 
         return -lap_U
 

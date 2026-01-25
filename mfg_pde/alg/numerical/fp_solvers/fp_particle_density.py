@@ -37,11 +37,12 @@ except ImportError:  # pragma: no cover - graceful fallback when SciPy missing
     scipy_gaussian_kde = None
     SCIPY_AVAILABLE = False
 
+# Issue #625: Migrated from tensor_calculus to operators/stencils
+from mfg_pde.operators.stencils.finite_difference import gradient_nd
 from mfg_pde.utils.numerical.particle import (
     interpolate_particles_to_grid,
     sample_from_density,
 )
-from mfg_pde.utils.numerical.tensor_calculus import gradient_simple
 
 # =============================================================================
 # Density Normalization (unified)
@@ -108,7 +109,7 @@ def compute_gradient(
     """
     Compute gradient of a scalar field on a grid (dimension-agnostic).
 
-    Uses central differences via gradient_simple utility.
+    Uses central differences via stencils.gradient_nd utility.
 
     Parameters
     ----------
@@ -130,6 +131,9 @@ def compute_gradient(
     >>> grad_1d = compute_gradient(field_1d, 0.02)  # shape (50,)
     >>> field_2d = X**2 + Y**2  # meshgrid
     >>> grad_2d = compute_gradient(field_2d, [0.05, 0.05])  # shape (Nx, Ny, 2)
+
+    Note:
+        Issue #625: Migrated from tensor_calculus.gradient_simple to stencils.gradient_nd
     """
     # Normalize spacings to list
     if isinstance(spacings, (int, float)):
@@ -137,8 +141,8 @@ def compute_gradient(
     else:
         spacings = list(spacings)
 
-    # gradient_simple returns list of arrays (one per dimension)
-    grad_components = gradient_simple(grid_values, spacings)
+    # gradient_nd returns list of arrays (one per dimension)
+    grad_components = gradient_nd(grid_values, spacings)
 
     if len(grad_components) == 1:
         # 1D: return flat array (backward compatible)

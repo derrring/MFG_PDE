@@ -2,7 +2,7 @@
 Divergence operator for tensor product grids.
 
 This module provides LinearOperator implementation of the discrete divergence
-for structured grids, wrapping the tensor_calculus infrastructure.
+for structured grids, using finite difference stencils.
 
 Mathematical Background:
     Divergence operator: div(F) = ∇·F = ∑ᵢ ∂Fᵢ/∂xᵢ
@@ -22,6 +22,7 @@ References:
 
 Created: 2026-01-17 (Issue #595 Phase 2 - Operator Refactoring)
 Part of: Geometry Operator LinearOperator Migration
+Migrated: 2026-01-25 (Issue #625 - tensor_calculus → stencils migration)
 """
 
 from __future__ import annotations
@@ -46,8 +47,8 @@ class DivergenceOperator(LinearOperator):
     Implements scipy.sparse.linalg.LinearOperator interface for compatibility
     with iterative solvers and operator composition.
 
-    The operator wraps mfg_pde.utils.numerical.tensor_calculus.divergence with
-    grid-specific parameters (spacings, BC) curried into the operator object.
+    Uses finite difference stencils with grid-specific parameters (spacings, BC)
+    curried into the operator object.
 
     **Mathematical Context**:
         Divergence measures the "outflow" of a vector field:
@@ -158,14 +159,37 @@ class DivergenceOperator(LinearOperator):
         Example:
             >>> # 2D case: F.shape = (2, 50, 50) → F_flat.shape = (5000,)
             >>> # Output: div_F_flat.shape = (2500,)
+
+        Note:
+            Issue #625: Migrated from tensor_calculus to stencils module.
         """
-        from mfg_pde.utils.numerical.tensor_calculus import divergence
+        from mfg_pde.operators.stencils.finite_difference import gradient_central
 
         # Reshape to vector field (dimension, Nx, Ny, ...)
         F = F_flat.reshape((self.dimension, *self.field_shape))
 
-        # Apply divergence: (dimension, Nx, Ny, ...) → (Nx, Ny, ...)
-        div_F = divergence(F, self.spacings, bc=self.bc, time=self.time)
+        # Apply ghost cell padding if BC provided (for non-periodic)
+        if self.bc is not None:
+            from mfg_pde.geometry.boundary import pad_array_with_ghosts
+
+            # Pad each component separately
+            F_work = np.stack(
+                [pad_array_with_ghosts(F[d], self.bc, ghost_depth=1, time=self.time) for d in range(self.dimension)],
+                axis=0,
+            )
+        else:
+            F_work = F
+
+        # Compute divergence: sum of ∂Fᵢ/∂xᵢ for each component
+        div_F = np.zeros(F_work[0].shape, dtype=F.dtype)
+        for d in range(self.dimension):
+            h = self.spacings[d]
+            div_F += gradient_central(F_work[d], axis=d, h=h)
+
+        # Extract interior if ghost cells were added
+        if self.bc is not None:
+            slices = [slice(1, -1)] * len(self.field_shape)
+            div_F = div_F[tuple(slices)]
 
         # Return flattened
         return div_F.ravel()

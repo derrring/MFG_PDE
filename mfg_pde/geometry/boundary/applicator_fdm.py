@@ -1426,21 +1426,24 @@ class PreallocatedGhostBuffer:
                 if segment.region_name.lower() == boundary_name:
                     return segment
 
-                # Method 3: Use geometry to verify region_name match
+                # Method 3: Use geometry to check if region covers this boundary face
                 if self._geometry is not None:
                     try:
-                        # Check if this face is part of the named region
                         from mfg_pde.geometry.protocols import SupportsRegionMarking
 
                         if isinstance(self._geometry, SupportsRegionMarking):
-                            # For tensor grids, region names like "x_min" correspond to faces
-                            # The region_name in geometry should match boundary_name
                             region_names = self._geometry.get_region_names()
                             if segment.region_name in region_names:
-                                # Segment uses a marked region - check if it matches this face
-                                # For FDM, we only handle axis-aligned regions
-                                # If region_name follows axis_side pattern, use direct match
-                                if segment.region_name.lower() == boundary_name:
+                                # Get region mask and check if boundary point is in region
+                                mask = self._geometry.get_region_mask(segment.region_name)
+                                # For FDM, check boundary index
+                                # side="min" -> index 0, side="max" -> index -1
+                                d = self._dimension
+                                boundary_idx = [slice(None)] * d
+                                boundary_idx[axis] = 0 if side == "min" else -1
+                                # Check if any point on this face is in the region
+                                face_mask = mask[tuple(boundary_idx)]
+                                if np.any(face_mask):
                                     return segment
                     except Exception:
                         pass  # Geometry query failed, skip this match method

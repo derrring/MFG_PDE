@@ -62,14 +62,20 @@ def _compute_gradients_nd(self, U: NDArray, time: float = 0.0) -> dict[int, NDAr
 Added `time` parameter to `get_gradient_operator()` to support time-dependent BCs:
 ```python
 def get_gradient_operator(self, direction=None, order=2, scheme="central", time=0.0):
-    operators = create_gradient_operators(
-        spacings=self.spacing,
-        field_shape=tuple(self.Nx_points),
-        scheme=scheme,
-        bc=self.get_boundary_conditions(),
-        time=time,  # Pass time for time-dependent BCs
+    # Returns PartialDerivOperator instances directly (Issue #658)
+    if direction is not None:
+        return PartialDerivOperator(
+            direction=direction,
+            spacings=self.spacing,
+            field_shape=tuple(self.Nx_points),
+            scheme=scheme,
+            bc=self.get_boundary_conditions(),
+            time=time,
+        )
+    return tuple(
+        PartialDerivOperator(direction=d, spacings=..., ...)
+        for d in range(self.dimension)
     )
-    return operators if direction is None else operators[direction]
 ```
 
 ## Test Results

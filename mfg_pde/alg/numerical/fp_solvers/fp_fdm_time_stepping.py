@@ -753,7 +753,7 @@ def solve_timestep_tensor_explicit(
     np.ndarray
         Updated density at next timestep
     """
-    from mfg_pde.utils.numerical.tensor_calculus import diffusion as tensor_diffusion_op
+    from mfg_pde.operators.differential.diffusion import apply_diffusion
 
     # Evaluate tensor at current state
     if callable(tensor_field):
@@ -789,7 +789,8 @@ def solve_timestep_tensor_explicit(
         raise TypeError(f"tensor_field must be np.ndarray or callable, got {type(tensor_field)}")
 
     # Compute tensor diffusion term: div(Sigma * grad(m))
-    diffusion_term = tensor_diffusion_op(M_current, Sigma, list(spacing), bc=boundary_conditions)
+    # Issue #625: Migrated from tensor_calculus to operators/differential
+    diffusion_term = apply_diffusion(M_current, Sigma, list(spacing), bc=boundary_conditions)
 
     # Compute advection term: div(alpha * m)
     # Use upwind scheme from fp_fdm_advection module
