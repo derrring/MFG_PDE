@@ -12,6 +12,7 @@ import numpy as np
 from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGResult, CommonNoiseMFGSolver
 from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils.numerical.particle.sampling import MCConfig
 
 
@@ -134,7 +135,9 @@ class TestCommonNoiseSolverInitialization:
         def simple_hamiltonian(x, p, m, theta):
             return 0.5 * p**2 + 0.1 * m
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         return StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -207,7 +210,9 @@ class TestCommonNoiseSolverInitialization:
         """Test that solver raises error for problem without common noise."""
         from mfg_pde.core import MFGProblem
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])  # Nx=21 intervals -> 22 points
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )  # Nx=21 intervals -> 22 points
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=11)
 
         with pytest.raises(ValueError, match="must have common noise"):
@@ -224,7 +229,9 @@ class TestCommonNoiseSolverNoiseSampling:
         def simple_hamiltonian(x, p, m, theta):
             return 0.5 * p**2
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         return StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -301,7 +308,9 @@ class TestCommonNoiseSolverAggregation:
 
         # Create a dummy solver just to access the method
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -337,7 +346,9 @@ class TestCommonNoiseSolverAggregation:
         noise_paths = [np.zeros(12)] * 3
 
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -365,7 +376,9 @@ class TestCommonNoiseSolverAggregation:
         noise_paths = [np.zeros(12)] * K
 
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -393,7 +406,9 @@ class TestCommonNoiseSolverAggregation:
         noise_paths = [np.zeros(12)] * 10
 
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -418,7 +433,9 @@ class TestCommonNoiseSolverAggregation:
         noise_paths = [np.zeros(12)] * 10
 
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -442,7 +459,9 @@ class TestCommonNoiseSolverEdgeCases:
     def test_single_noise_sample(self):
         """Test solver with K=1 noise sample."""
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -460,7 +479,9 @@ class TestCommonNoiseSolverEdgeCases:
     def test_large_number_of_noise_samples(self):
         """Test solver can handle large K (doesn't run solve, just checks setup)."""
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -481,7 +502,9 @@ class TestCommonNoiseSolverConfiguration:
     def test_default_conditional_solver_factory(self):
         """Test that default solver factory is created when none provided."""
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -498,7 +521,9 @@ class TestCommonNoiseSolverConfiguration:
     def test_mc_config_created_when_not_provided(self):
         """Test that MCConfig is created with appropriate defaults."""
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -520,7 +545,9 @@ class TestCommonNoiseSolverConfiguration:
     def test_num_workers_configuration(self):
         """Test that num_workers is properly stored."""
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,

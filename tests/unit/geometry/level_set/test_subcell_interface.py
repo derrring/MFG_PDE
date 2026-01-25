@@ -10,6 +10,7 @@ import pytest
 import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.level_set import LevelSetFunction
 
 
@@ -19,7 +20,7 @@ class TestSubcellInterface1D:
     def test_linear_interface_exact(self):
         """Linear level set should give exact interface location."""
         # Grid and linear level set: phi = x - 0.5
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
         phi = x - 0.5  # Interface at x = 0.5
 
@@ -36,7 +37,7 @@ class TestSubcellInterface1D:
     def test_accuracy_vs_argmin(self):
         """Subcell method should be more accurate than argmin."""
         # Grid with interface NOT on grid point
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[51])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[51], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
         dx = x[1] - x[0]
 
@@ -70,7 +71,7 @@ class TestSubcellInterface1D:
         """Subcell should improve accuracy for nonlinear level sets."""
         # Quadratic level set: phi = (x - 0.5)^2 - 0.015^2
         # Zero crossing at x = 0.5 - 0.015 = 0.485 (between grid points)
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
         dx = x[1] - x[0]
 
@@ -100,7 +101,7 @@ class TestSubcellInterface1D:
     def test_no_zero_crossing_raises(self):
         """Should raise ValueError if no zero crossing exists."""
         # All positive values
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[50])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
         phi = x + 1.0  # All positive
 
@@ -113,7 +114,7 @@ class TestSubcellInterface1D:
     def test_multiple_crossings_uses_first(self):
         """If multiple crossings, should use the first one."""
         # Create level set with multiple crossings
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[200])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[200], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
 
         # phi = sin(4π(x - 0.1)) starts negative, crosses at x ≈ 0.1, 0.35, 0.6, 0.85
@@ -130,7 +131,9 @@ class TestSubcellInterface1D:
     def test_interface_at_grid_point(self):
         """If interface is exactly on grid point, should handle correctly."""
         # Interface exactly at x = 0.5 (grid point)
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])  # 101 points, 0.5 is on grid
+        grid = TensorProductGrid(
+            dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1)
+        )  # 101 points, 0.5 is on grid
         x = grid.coordinates[0]
         phi = x - 0.5
 
@@ -150,7 +153,7 @@ class TestSubcellInterface1D:
         errors = []
 
         for N in resolutions:
-            grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[N])
+            grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[N], boundary_conditions=no_flux_bc(dimension=1))
             x = grid.coordinates[0]
             phi = (x - 0.5) ** 2 - 0.0173**2
 
@@ -189,7 +192,9 @@ class TestSubcellInterfaceHigherDimensions:
 
     def test_2d_not_implemented(self):
         """2D subcell extraction should raise NotImplementedError."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[50, 50])
+        grid = TensorProductGrid(
+            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
+        )
         X, Y = grid.meshgrid()
 
         # Circle level set

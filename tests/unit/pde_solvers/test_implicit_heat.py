@@ -21,7 +21,7 @@ class TestImplicitHeatSolver1D:
 
     def test_initialization(self):
         """Test solver initializes correctly."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=neumann_bc(dimension=1))
         bc = neumann_bc(dimension=1)
 
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
@@ -32,7 +32,7 @@ class TestImplicitHeatSolver1D:
 
     def test_theta_validation(self):
         """Test theta parameter is validated."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=neumann_bc(dimension=1))
         bc = neumann_bc(dimension=1)
 
         # Valid theta
@@ -45,7 +45,7 @@ class TestImplicitHeatSolver1D:
 
     def test_gaussian_diffusion(self):
         """Test diffusion of Gaussian pulse."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=neumann_bc(dimension=1))
         bc = neumann_bc(dimension=1)
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 
@@ -64,7 +64,7 @@ class TestImplicitHeatSolver1D:
 
     def test_large_cfl_stability(self):
         """Test that solver is stable with CFL >> 1 (implicit advantage)."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=neumann_bc(dimension=1))
         bc = neumann_bc(dimension=1)
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 
@@ -87,7 +87,7 @@ class TestImplicitHeatSolver1D:
 
     def test_multiple_steps(self):
         """Test solve_multiple_steps method."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[50])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[50], boundary_conditions=neumann_bc(dimension=1))
         bc = neumann_bc(dimension=1)
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 
@@ -104,7 +104,7 @@ class TestImplicitHeatSolver1D:
 
     def test_energy_conservation_neumann(self):
         """Test energy is conserved with Neumann BC (no flux)."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=neumann_bc(dimension=1))
         bc = neumann_bc(dimension=1)
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 
@@ -127,7 +127,7 @@ class TestImplicitHeatSolver1D:
 
     def test_crank_nicolson_vs_backward_euler(self):
         """Test both Crank-Nicolson (θ=0.5) and Backward Euler (θ=1.0) schemes."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=neumann_bc(dimension=1))
         bc = neumann_bc(dimension=1)
 
         x = grid.coordinates[0]
@@ -160,7 +160,7 @@ class TestImplicitHeatSolver1D:
 
     def test_periodic_bc(self):
         """Test periodic boundary conditions."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=neumann_bc(dimension=1))
         bc = periodic_bc(dimension=1)
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 
@@ -186,7 +186,9 @@ class TestImplicitHeatSolver2D:
 
     def test_2d_gaussian_diffusion(self):
         """Test 2D Gaussian diffusion."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20])
+        grid = TensorProductGrid(
+            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=neumann_bc(dimension=2)
+        )
         bc = neumann_bc(dimension=2)
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 
@@ -204,7 +206,9 @@ class TestImplicitHeatSolver2D:
 
     def test_2d_large_cfl(self):
         """Test 2D solver with CFL >> 1."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20])
+        grid = TensorProductGrid(
+            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=neumann_bc(dimension=2)
+        )
         bc = neumann_bc(dimension=2)
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 
@@ -229,7 +233,7 @@ class TestImplicitHeatConvergence:
 
     def test_temporal_convergence_crank_nicolson(self):
         """Verify Crank-Nicolson achieves O(dt²) temporal convergence."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=neumann_bc(dimension=1))
         bc = neumann_bc(dimension=1)
         solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 
