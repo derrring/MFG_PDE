@@ -352,7 +352,9 @@ def add_boundary_no_flux_entries_divergence_centered(
             u_plus = u_flat[flat_idx_plus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion: one-sided for no-flux
+            # Diffusion (conservative flux formulation):
+            # For flux-based scheme: F_{1/2} = -D*(m_1 - m_0)/dx, F_{-1/2} = 0
+            # Matrix contribution: +D/dx² to diagonal, -D/dx² to off-diagonal
             diagonal_value += D / dx_sq
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_plus)
@@ -383,7 +385,9 @@ def add_boundary_no_flux_entries_divergence_centered(
             u_minus = u_flat[flat_idx_minus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion: one-sided for no-flux
+            # Diffusion (conservative flux formulation):
+            # For flux-based scheme: F_{N-1/2} = -D*(m_N - m_{N-1})/dx, F_{N+1/2} = 0
+            # Matrix contribution: +D/dx² to diagonal, -D/dx² to off-diagonal
             diagonal_value += D / dx_sq
             row_indices.append(flat_idx)
             col_indices.append(flat_idx_minus)

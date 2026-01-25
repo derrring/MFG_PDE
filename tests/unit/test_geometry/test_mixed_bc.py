@@ -232,8 +232,8 @@ class TestBCSegment:
         """Test validation rejects multiple region specifications."""
         import pytest
 
-        # Conflict: boundary + region_name
-        with pytest.raises(ValueError, match="Only one region specification method"):
+        # Conflict: boundary + region_name (different categories)
+        with pytest.raises(ValueError, match="Cannot mix region specification methods"):
             BCSegment(
                 name="bad",
                 bc_type=BCType.DIRICHLET,
@@ -242,8 +242,8 @@ class TestBCSegment:
                 region_name="inlet",
             )
 
-        # Conflict: region + region_name
-        with pytest.raises(ValueError, match="Only one region specification method"):
+        # Conflict: region + region_name (different categories)
+        with pytest.raises(ValueError, match="Cannot mix region specification methods"):
             BCSegment(
                 name="bad",
                 bc_type=BCType.DIRICHLET,
@@ -252,8 +252,8 @@ class TestBCSegment:
                 region_name="inlet",
             )
 
-        # Conflict: sdf_region + region_name
-        with pytest.raises(ValueError, match="Only one region specification method"):
+        # Conflict: sdf_region + region_name (different categories)
+        with pytest.raises(ValueError, match="Cannot mix region specification methods"):
             BCSegment(
                 name="bad",
                 bc_type=BCType.DIRICHLET,
@@ -262,8 +262,8 @@ class TestBCSegment:
                 region_name="inlet",
             )
 
-        # Conflict: normal_direction + region_name
-        with pytest.raises(ValueError, match="Only one region specification method"):
+        # Conflict: normal_direction + region_name (different categories)
+        with pytest.raises(ValueError, match="Cannot mix region specification methods"):
             BCSegment(
                 name="bad",
                 bc_type=BCType.DIRICHLET,

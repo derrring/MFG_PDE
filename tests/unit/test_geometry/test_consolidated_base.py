@@ -73,10 +73,13 @@ class TestSolverOperations:
         X, Y = np.meshgrid(x, y, indexing="ij")
         u = X**2 + Y**2
 
+        # Compute full Laplacian field
+        lap_field = laplacian(u)
+
         # Test at several interior points (avoid boundaries)
         test_points = [(5, 5), (10, 10), (15, 15), (8, 12)]
         for idx in test_points:
-            lap_value = laplacian(u, idx)
+            lap_value = lap_field[idx]
             # FD Laplacian should be close to 4.0
             assert np.isclose(lap_value, 4.0, rtol=0.05), f"Laplacian at {idx}: {lap_value}, expected 4.0"
 
@@ -94,18 +97,24 @@ class TestSolverOperations:
         x = np.linspace(0, 1, 21)
         u = 2 * x
 
+        # Compute full Laplacian field
+        lap_field = laplacian(u)
+
         # Test at interior points
         for idx in [(5,), (10,), (15,)]:
-            lap_value = laplacian(u, idx)
+            lap_value = lap_field[idx]
             # Laplacian of linear function should be 0
             assert np.isclose(lap_value, 0.0, atol=1e-10), f"Laplacian at {idx}: {lap_value}, expected 0.0"
 
     def test_gradient_operator_exists(self):
-        """Test that gradient operator is callable."""
+        """Test that gradient operator returns tuple of callable operators."""
         grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
 
-        gradient = grid.get_gradient_operator()
-        assert callable(gradient)
+        gradient_ops = grid.get_gradient_operator()
+        # Returns tuple of PartialDerivOperator (one per dimension)
+        assert isinstance(gradient_ops, tuple)
+        assert len(gradient_ops) == 2
+        assert all(callable(op) for op in gradient_ops)
 
     def test_gradient_on_linear_function_2d(self):
         """
@@ -115,7 +124,7 @@ class TestSolverOperations:
         """
         grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
-        gradient = grid.get_gradient_operator()
+        grad_ops = grid.get_gradient_operator()  # Returns tuple of partial derivative operators
 
         # Create test function: u(x,y) = 2*x + 3*y
         x = np.linspace(0, 1, 21)
@@ -123,10 +132,14 @@ class TestSolverOperations:
         X, Y = np.meshgrid(x, y, indexing="ij")
         u = 2 * X + 3 * Y
 
+        # Compute full gradient fields
+        du_dx_field = grad_ops[0](u)
+        du_dy_field = grad_ops[1](u)
+
         # Test at several interior points
         test_points = [(5, 5), (10, 10), (15, 15), (8, 12)]
         for idx in test_points:
-            grad = gradient(u, idx)
+            grad = np.array([du_dx_field[idx], du_dy_field[idx]])
             assert grad.shape == (2,)
             # Gradient should be [2, 3]
             assert np.allclose(grad, [2.0, 3.0], rtol=0.05), f"Gradient at {idx}: {grad}, expected [2, 3]"
@@ -139,17 +152,19 @@ class TestSolverOperations:
         """
         grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
 
-        gradient = grid.get_gradient_operator()
+        grad_ops = grid.get_gradient_operator()  # Returns tuple with single operator in 1D
 
         # Create test function: u(x) = x²
         x = np.linspace(0, 1, 21)
         u = x**2
 
+        # Compute full gradient field
+        du_dx_field = grad_ops[0](u)
+
         # Test at x=0.5 (index 10)
-        grad = gradient(u, (10,))
-        assert grad.shape == (1,)
+        grad_value = du_dx_field[10]
         # At x=0.5, du/dx = 2*0.5 = 1.0
-        assert np.isclose(grad[0], 1.0, rtol=0.05), f"Gradient at x=0.5: {grad[0]}, expected 1.0"
+        assert np.isclose(grad_value, 1.0, rtol=0.05), f"Gradient at x=0.5: {grad_value}, expected 1.0"
 
     def test_interpolator_exists(self):
         """Test that interpolator is callable."""
@@ -265,23 +280,27 @@ class TestDataInterface:
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
-    def test_laplacian_wrong_index_dimension(self):
-        """Test that Laplacian raises error for wrong index dimension."""
+    def test_laplacian_wrong_field_shape(self):
+        """Test that Laplacian raises error for wrong field shape."""
         grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
         laplacian = grid.get_laplacian_operator()
-        u = np.random.rand(10, 10)
 
-        with pytest.raises(ValueError, match="Index must have length 2"):
-            laplacian(u, (5,))  # 1D index for 2D grid
+        # Wrong shape field
+        u_wrong = np.random.rand(5, 5)  # Expected (10, 10)
 
-    def test_gradient_wrong_index_dimension(self):
-        """Test that gradient raises error for wrong index dimension."""
+        with pytest.raises(ValueError):
+            laplacian(u_wrong)
+
+    def test_gradient_wrong_field_shape(self):
+        """Test that gradient raises error for wrong field shape."""
         grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
-        gradient = grid.get_gradient_operator()
-        u = np.random.rand(10, 10)
+        grad_ops = grid.get_gradient_operator()
 
-        with pytest.raises(ValueError, match="Index must have length 2"):
-            gradient(u, (5, 5, 5))  # 3D index for 2D grid
+        # Wrong shape field
+        u_wrong = np.random.rand(5, 5)  # Expected (10, 10)
+
+        with pytest.raises(ValueError):
+            grad_ops[0](u_wrong)
 
     def test_interpolator_wrong_point_dimension(self):
         """Test that interpolator raises error for wrong point dimension."""

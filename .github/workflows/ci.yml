@@ -190,15 +190,11 @@ jobs:
       if: github.event_name != 'release'
       timeout-minutes: 30
       run: |
+        # Note: test_backends/ and test_visualization/ excluded due to platform-specific failures
+        # (MPS device tests on non-Mac, legacy plotting issues)
         pytest tests/ -v \
-          --ignore=tests/unit/test_geometry/ \
-          --ignore=tests/unit/test_utils/ \
-          --ignore=tests/unit/test_config/ \
           --ignore=tests/unit/test_backends/ \
           --ignore=tests/unit/test_visualization/ \
-          --ignore=tests/unit/test_workflow/ \
-          --ignore=tests/unit/geometry/ \
-          --ignore=tests/unit/utils/ \
           -m "not slow and not optional_torch and not benchmark and not experimental and not environment" \
           --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=5
 

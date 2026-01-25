@@ -216,9 +216,11 @@ def add_boundary_no_flux_entries_gradient_centered(
                 multi_idx_plus[d] = 1
                 flat_idx_plus = grid.get_index(tuple(multi_idx_plus))
 
-                # Diffusion with no-flux: (m_1 - m_0) / dx² (one-sided)
-                diagonal_value += sigma**2 / (2 * dx_sq)
-                coeff_plus = -(sigma**2) / (2 * dx_sq)
+                # Diffusion: Neumann BC via ghost point reflection
+                # No-flux: dm/dx = 0 → m_{-1} = m_1, so Laplacian = 2(m_1 - m_0)/dx²
+                # Issue #668 fix: coefficient is σ²/dx², not σ²/(2*dx²)
+                diagonal_value += sigma**2 / dx_sq
+                coeff_plus = -(sigma**2) / dx_sq
 
                 row_indices.append(flat_idx)
                 col_indices.append(flat_idx_plus)
@@ -230,9 +232,11 @@ def add_boundary_no_flux_entries_gradient_centered(
                 multi_idx_minus[d] = shape[d] - 2
                 flat_idx_minus = grid.get_index(tuple(multi_idx_minus))
 
-                # Diffusion with no-flux
-                diagonal_value += sigma**2 / (2 * dx_sq)
-                coeff_minus = -(sigma**2) / (2 * dx_sq)
+                # Diffusion: Neumann BC via ghost point reflection
+                # No-flux: dm/dx = 0 → m_{N+1} = m_{N-1}, so Laplacian = 2(m_{N-1} - m_N)/dx²
+                # Issue #668 fix: coefficient is σ²/dx², not σ²/(2*dx²)
+                diagonal_value += sigma**2 / dx_sq
+                coeff_minus = -(sigma**2) / dx_sq
 
                 row_indices.append(flat_idx)
                 col_indices.append(flat_idx_minus)

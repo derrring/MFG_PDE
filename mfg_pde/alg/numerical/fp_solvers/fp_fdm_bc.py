@@ -144,10 +144,12 @@ def add_boundary_no_flux_entries(
             u_plus = u_flat[flat_idx_plus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion: one-sided gives (m_1 - m_0)/dx^2 for no-flux (ghost = m_0)
-            # This adds: +D/dx^2 to diagonal, -D/dx^2 to coeff_plus
-            diagonal_value += D / dx_sq
-            coeff_plus = -D / dx_sq
+            # Diffusion: Neumann BC via ghost point reflection
+            # No-flux BC: dm/dx = 0 → (m_1 - m_{-1})/(2dx) = 0 → m_{-1} = m_1
+            # Laplacian: (m_1 - 2m_0 + m_{-1})/dx² = (m_1 - 2m_0 + m_1)/dx² = 2(m_1 - m_0)/dx²
+            # Issue #668 fix: coefficient is 2*D/dx², not D/dx²
+            diagonal_value += 2 * D / dx_sq
+            coeff_plus = -2 * D / dx_sq
 
             # Advection: use upwind with proper no-flux handling
             # alpha = -lambda*grad(U)
@@ -183,10 +185,12 @@ def add_boundary_no_flux_entries(
             u_minus = u_flat[flat_idx_minus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion: one-sided gives (m_{-1} - m_N)/dx^2 for no-flux
-            # This adds: +D/dx^2 to diagonal, -D/dx^2 to coeff_minus
-            diagonal_value += D / dx_sq
-            coeff_minus = -D / dx_sq
+            # Diffusion: Neumann BC via ghost point reflection
+            # No-flux BC: dm/dx = 0 → (m_{N+1} - m_{N-1})/(2dx) = 0 → m_{N+1} = m_{N-1}
+            # Laplacian: (m_{N+1} - 2m_N + m_{N-1})/dx² = 2(m_{N-1} - m_N)/dx²
+            # Issue #668 fix: coefficient is 2*D/dx², not D/dx²
+            diagonal_value += 2 * D / dx_sq
+            coeff_minus = -2 * D / dx_sq
 
             # Advection: use upwind with proper no-flux handling
             grad_U = (u_center - u_minus) / dx
@@ -307,8 +311,12 @@ def add_boundary_no_flux_entries_conservative(
             u_plus = u_flat[flat_idx_plus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion: one-sided for no-flux (ghost = m_0)
-            # d^2m/dx^2 ~ (m_1 - m_0)/dx^2 when ghost = m_0
+            # Diffusion (conservative flux formulation):
+            # For flux-based scheme: F_{1/2} = -D*(m_1 - m_0)/dx, F_{-1/2} = 0
+            # Divergence: (F_{1/2} - F_{-1/2})/dx = -D*(m_1 - m_0)/dx²
+            # Matrix contribution: +D/dx² to diagonal, -D/dx² to off-diagonal
+            # Note: This differs from Laplacian-based (factor of 2) because we
+            # compute face fluxes, not point Laplacians. See Issue #668 discussion.
             diagonal_value += D / (dx * dx)
 
             row_indices.append(flat_idx)
@@ -339,7 +347,10 @@ def add_boundary_no_flux_entries_conservative(
             u_minus = u_flat[flat_idx_minus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion: one-sided for no-flux (ghost = m_N)
+            # Diffusion (conservative flux formulation):
+            # For flux-based scheme: F_{N-1/2} = -D*(m_N - m_{N-1})/dx, F_{N+1/2} = 0
+            # Divergence: (F_{N+1/2} - F_{N-1/2})/dx = D*(m_N - m_{N-1})/dx²
+            # Matrix contribution: +D/dx² to diagonal, -D/dx² to off-diagonal
             diagonal_value += D / (dx * dx)
 
             row_indices.append(flat_idx)

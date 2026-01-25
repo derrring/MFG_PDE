@@ -271,9 +271,11 @@ def add_boundary_no_flux_entries_gradient_upwind(
             u_plus = u_flat[flat_idx_plus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion: one-sided gives (m_1 - m_0)/dx² for no-flux (ghost = m_0)
-            diagonal_value += D / dx_sq
-            coeff_plus = -D / dx_sq
+            # Diffusion: Neumann BC via ghost point reflection
+            # No-flux: dm/dx = 0 → m_{-1} = m_1, so Laplacian = 2(m_1 - m_0)/dx²
+            # Issue #668 fix: coefficient is 2*D/dx², not D/dx²
+            diagonal_value += 2 * D / dx_sq
+            coeff_plus = -2 * D / dx_sq
 
             # Advection: use upwind with proper no-flux handling
             grad_U = (u_plus - u_center) / dx
@@ -302,9 +304,11 @@ def add_boundary_no_flux_entries_gradient_upwind(
             u_minus = u_flat[flat_idx_minus]
             u_center = u_flat[flat_idx]
 
-            # Diffusion: one-sided gives (m_{-1} - m_N)/dx² for no-flux
-            diagonal_value += D / dx_sq
-            coeff_minus = -D / dx_sq
+            # Diffusion: Neumann BC via ghost point reflection
+            # No-flux: dm/dx = 0 → m_{N+1} = m_{N-1}, so Laplacian = 2(m_{N-1} - m_N)/dx²
+            # Issue #668 fix: coefficient is 2*D/dx², not D/dx²
+            diagonal_value += 2 * D / dx_sq
+            coeff_minus = -2 * D / dx_sq
 
             # Advection: use upwind with proper no-flux handling
             grad_U = (u_center - u_minus) / dx
