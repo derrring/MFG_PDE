@@ -88,18 +88,24 @@ class TensorProductGrid(
         boundary_conditions: Spatial BC specification (SSOT for MFG solvers)
 
     Example:
-        >>> # Create 2D grid: [0,10] × [0,5] with 100×50 intervals (101×51 points)
-        >>> grid = TensorProductGrid(
-        ...     dimension=2,
-        ...     bounds=[(0.0, 10.0), (0.0, 5.0)],
-        ...     Nx=[100, 50]  # intervals
+        >>> # 1D grid: scalar Nx auto-converted to list (Issue #675)
+        >>> grid_1d = TensorProductGrid(
+        ...     bounds=[(0.0, 1.0)],
+        ...     Nx=100  # scalar OK for 1D, same as Nx=[100]
         ... )
+        >>> grid_1d.dimension  # 1 (inferred from bounds)
+
+        >>> # 2D grid: dimension inferred from bounds (Issue #676)
+        >>> grid = TensorProductGrid(
+        ...     bounds=[(0.0, 10.0), (0.0, 5.0)],  # 2D domain
+        ...     Nx=[100, 50]  # 100×50 intervals → 101×51 points
+        ... )
+        >>> grid.dimension    # 2 (inferred from len(bounds))
         >>> grid.Nx          # [100, 50] - intervals
         >>> grid.Nx_points   # [101, 51] - points
 
         >>> # Alternative: specify points directly
         >>> grid = TensorProductGrid(
-        ...     dimension=2,
         ...     bounds=[(0.0, 10.0), (0.0, 5.0)],
         ...     Nx_points=[101, 51]  # points
         ... )
@@ -107,9 +113,8 @@ class TensorProductGrid(
         >>> x, y = grid.meshgrid()  # Get coordinate matrices
         >>> flat_points = grid.flatten()  # Get all grid points as (N,2) array
 
-        >>> # Create 4D grid (with performance warning)
+        >>> # High-dimensional grid (4D, with performance warning)
         >>> grid_4d = TensorProductGrid(
-        ...     dimension=4,
         ...     bounds=[(0.0, 1.0)] * 4,
         ...     Nx=[9] * 4  # 9 intervals per dim = 10^4 = 10,000 points
         ... )
@@ -117,12 +122,12 @@ class TensorProductGrid(
 
     def __init__(
         self,
-        dimension: int,
         bounds: Sequence[tuple[float, float]],
         *,
-        Nx: Sequence[int] | None = None,
-        Nx_points: Sequence[int] | None = None,
+        Nx: Sequence[int] | int | None = None,
+        Nx_points: Sequence[int] | int | None = None,
         num_points: Sequence[int] | None = None,  # Deprecated alias for Nx_points
+        dimension: int | None = None,  # Optional: inferred from len(bounds) if not provided
         spacing_type: str = "uniform",
         custom_coordinates: Sequence[NDArray] | None = None,
         boundary_conditions: BoundaryConditions | None = None,
@@ -131,18 +136,21 @@ class TensorProductGrid(
         Initialize tensor product grid.
 
         Args:
-            dimension: Spatial dimension (any positive integer).
-                Note: For d>3, grid requires O(N^d) memory/computation.
-                Consider meshfree methods for high-dimensional problems.
-            bounds: List of (min, max) bounds for each dimension
+            bounds: List of (min, max) bounds for each dimension.
+                This is the SSOT for spatial domain - dimension is inferred from len(bounds).
             Nx: Number of intervals along each dimension.
-                For example, Nx=[100, 50] creates 101×51 grid points.
+                For 1D: can be a single int (auto-converted to [Nx]).
+                For nD: list of ints, e.g., Nx=[100, 50] creates 101×51 grid points.
             Nx_points: Number of grid points along each dimension.
-                For example, Nx_points=[101, 51] creates 100×50 intervals.
+                For 1D: can be a single int (auto-converted to [Nx_points]).
+                For nD: list of ints, e.g., Nx_points=[101, 51] creates 100×50 intervals.
             num_points: Deprecated alias for Nx_points. Use Nx_points instead.
+            dimension: Optional explicit dimension. If not provided, inferred from len(bounds).
+                If provided, must match len(bounds) (validated for consistency).
+                Note: For d>3, grid requires O(N^d) memory/computation.
             spacing_type: "uniform" or "custom"
             custom_coordinates: Optional list of 1D coordinate arrays
-            boundary_conditions: Spatial BC specification (default: no-flux).
+            boundary_conditions: Spatial BC specification.
                 This is the SSOT for spatial BC - both HJB and FP solvers
                 query this geometry for consistent boundary conditions.
 
@@ -152,12 +160,26 @@ class TensorProductGrid(
             - Nx_points (points): Nx = Nx_points - 1
 
         Raises:
-            ValueError: If dimension < 1
-            ValueError: If bounds length != dimension
+            ValueError: If bounds is empty
+            ValueError: If dimension is provided and doesn't match len(bounds)
             ValueError: If none or multiple of Nx/Nx_points/num_points specified
             UserWarning: If dimension > 3 (performance warning)
             DeprecationWarning: If num_points is used (use Nx_points instead)
         """
+        # Infer dimension from bounds (SSOT: bounds defines the domain)
+        if not bounds:
+            raise ValueError("bounds cannot be empty")
+        inferred_dimension = len(bounds)
+
+        # Validate or set dimension (Issue #676: dimension inferred from bounds)
+        if dimension is not None:
+            if dimension != inferred_dimension:
+                raise ValueError(
+                    f"dimension={dimension} doesn't match len(bounds)={inferred_dimension}. "
+                    f"Dimension is inferred from bounds; explicit dimension is optional."
+                )
+        dimension = inferred_dimension
+
         if dimension < 1:
             raise ValueError(f"Dimension must be positive, got {dimension}")
 
@@ -167,6 +189,12 @@ class TensorProductGrid(
             raise ValueError("Must specify one of: Nx (intervals) or Nx_points (points)")
         if specified > 1:
             raise ValueError("Cannot specify multiple of: Nx, Nx_points, num_points")
+
+        # Normalize scalar to list (Issue #675: convenience for 1D)
+        if isinstance(Nx, int):
+            Nx = [Nx]
+        if isinstance(Nx_points, int):
+            Nx_points = [Nx_points]
 
         if num_points is not None:
             import warnings
@@ -201,10 +229,9 @@ class TensorProductGrid(
                 stacklevel=2,
             )
 
-        if len(bounds) != dimension or len(self._Nx_points) != dimension:
-            raise ValueError(
-                f"bounds and Nx/Nx_points must have length {dimension}, got {len(bounds)} and {len(self._Nx_points)}"
-            )
+        # Validate Nx/Nx_points length matches dimension (bounds length already defines dimension)
+        if len(self._Nx_points) != dimension:
+            raise ValueError(f"Nx/Nx_points must have length {dimension} (matching bounds), got {len(self._Nx_points)}")
 
         self._dimension = dimension
         self.bounds = list(bounds)

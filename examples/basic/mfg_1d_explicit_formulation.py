@@ -223,9 +223,8 @@ boundary_conditions = no_flux_bc(dimension=1)
 # =============================================================================
 
 geometry = TensorProductGrid(
-    dimension=1,
-    bounds=[(x_min, x_max)],
-    Nx=[Nx - 1],  # TensorProductGrid uses interval count (Nx-1 intervals = Nx points)
+    bounds=[(x_min, x_max)],  # 1D domain; dimension inferred (Issue #676)
+    Nx=Nx - 1,  # Scalar OK for 1D (Issue #675); intervals = Nx-1 → Nx points
     boundary_conditions=boundary_conditions,  # Explicit BC specification
 )
 
