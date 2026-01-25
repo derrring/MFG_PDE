@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 
@@ -497,6 +497,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             all_params = {**self.components.parameters, **kwargs}
         else:
             all_params = kwargs
+
+        # Validate kwargs - fail fast on deprecated/unrecognized parameters (Issue #666)
+        self._validate_kwargs(all_params)
 
         # Initialize arrays
         self.f_potential: NDArray
@@ -1980,6 +1983,90 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 "time": {"T": self.T, "Nt": self.Nt},
                 "coefficients": {"sigma": self.sigma, "coupling_coefficient": self.coupling_coefficient},
             }
+
+    # ============================================================================
+    # Kwargs Validation - Fail Fast on Deprecated/Unrecognized Parameters
+    # ============================================================================
+
+    # Deprecated kwargs that should use MFGComponents instead (Issue #666)
+    _DEPRECATED_KWARGS: ClassVar[dict[str, str]] = {
+        "hamiltonian": "MFGComponents.hamiltonian_func",
+        "dH_dm": "MFGComponents.hamiltonian_dm_func",
+        "dH_dp": "MFGComponents.hamiltonian_dp_func",
+        "potential": "MFGComponents.potential_func",
+        "running_cost": "MFGComponents.hamiltonian_func",
+        "terminal_cost": "MFGComponents.final_value_func",
+    }
+
+    # Known valid kwargs that are consumed by _initialize_functions or mixins
+    _RECOGNIZED_KWARGS: ClassVar[set[str]] = {
+        "m_initial",  # Initial density (Callable or array)
+        "u_final",  # Final value function (Callable or array)
+        "boundary_conditions",  # BC object
+    }
+
+    def _validate_kwargs(self, kwargs: dict[str, Any]) -> None:
+        """
+        Validate kwargs - fail fast on deprecated or unrecognized parameters.
+
+        Issue #666: Prevents silent fail where user-provided kwargs are ignored.
+
+        Raises:
+            ValueError: If deprecated kwargs are passed (must use MFGComponents)
+            UserWarning: If unrecognized kwargs are passed (probably a typo)
+        """
+        import warnings
+
+        # Check for deprecated kwargs that need MFGComponents
+        deprecated_found = []
+        for kwarg_name, replacement in self._DEPRECATED_KWARGS.items():
+            if kwarg_name in kwargs:
+                deprecated_found.append((kwarg_name, replacement))
+
+        if deprecated_found:
+            msg_lines = [
+                "Deprecated kwargs detected (Issue #666):",
+                "",
+            ]
+            for name, replacement in deprecated_found:
+                msg_lines.append(f"  - '{name}' -> Use '{replacement}'")
+
+            msg_lines.extend(
+                [
+                    "",
+                    "The old kwargs-based Hamiltonian API is no longer supported.",
+                    "Use MFGComponents for custom problem definitions:",
+                    "",
+                    "  from mfg_pde.core.mfg_problem import MFGComponents",
+                    "",
+                    "  components = MFGComponents(",
+                    "      hamiltonian_func=my_hamiltonian,",
+                    "      hamiltonian_dm_func=my_dH_dm,",
+                    "      initial_density_func=my_m0,",
+                    "  )",
+                    "",
+                    "  problem = MFGProblem(",
+                    "      geometry=my_geometry,",
+                    "      T=T, Nt=Nt,",
+                    "      diffusion=sigma,",
+                    "      components=components,",
+                    "  )",
+                    "",
+                    "See: docs/migration/HAMILTONIAN_API.md",
+                ]
+            )
+            raise ValueError("\n".join(msg_lines))
+
+        # Check for completely unrecognized kwargs (probably typos)
+        unrecognized = set(kwargs.keys()) - self._RECOGNIZED_KWARGS
+        if unrecognized:
+            # Emit warning but don't fail - could be parameters for mixins
+            warnings.warn(
+                f"Unrecognized kwargs in MFGProblem: {sorted(unrecognized)}. "
+                f"These may be silently ignored. Known kwargs: {sorted(self._RECOGNIZED_KWARGS)}",
+                UserWarning,
+                stacklevel=4,
+            )
 
     # ============================================================================
     # Solve Method - Primary API for solving MFG problems

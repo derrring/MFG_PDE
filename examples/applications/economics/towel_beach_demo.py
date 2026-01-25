@@ -5,37 +5,38 @@ This example demonstrates spatial competition where agents choose positions on a
 balancing proximity to an ice cream stall against crowding from other agents.
 
 Mathematical Formulation:
-    State: x ∈ [0, L] (position on beach)
+    State: x in [0, L] (position on beach)
     Ice cream stall location: x_stall
 
     Running cost:
-        L(x, u, m) = |x - x_stall| + λ log(m(x)) + (1/2)|u|²
-        [proximity]      [congestion]   [movement]
+        L(x, u, m) = |x - x_stall| + lambda * log(m(x)) + (1/2)|u|^2
+        [proximity]      [congestion]         [movement]
 
     HJB equation:
-        -∂u/∂t + H(x, ∂u/∂x, m) - (σ²/2)∂²u/∂x² = 0
-        H(x, p, m) = (1/2)p² - |x - x_stall| - λ log(m)
+        -du/dt + H(x, du/dx, m) - (sigma^2/2) * d^2u/dx^2 = 0
+        H(x, p, m) = (1/2)p^2 - |x - x_stall| - lambda * log(m)
 
     FPK equation:
-        ∂m/∂t - ∂/∂x(m · ∂u/∂x) - (σ²/2)∂²m/∂x² = 0
+        dm/dt - d/dx(m * du/dx) - (sigma^2/2) * d^2m/dx^2 = 0
 
-Phase Transitions (controlled by λ - crowd aversion parameter):
-    - Low λ (λ < 1): Single peak at stall (proximity dominates)
-    - Medium λ (λ ≈ 1): Transition regime
-    - High λ (λ > 1): Crater equilibrium (avoid crowding at stall)
+Phase Transitions (controlled by lambda - crowd aversion parameter):
+    - Low lambda (lambda < 1): Single peak at stall (proximity dominates)
+    - Medium lambda (lambda ~ 1): Transition regime
+    - High lambda (lambda > 1): Crater equilibrium (avoid crowding at stall)
 
 Key Features:
     - Continuous spatial state
     - Proximity-congestion trade-off
-    - Phase transitions via parameter λ
+    - Phase transitions via parameter lambda
     - Log-barrier congestion term
 
 References:
     - docs/theory/spatial_competition_mfg.md: Full mathematical formulation
+    - docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md: Validation protocol
     - Lasry & Lions (2007): Mean field games with congestion
 
 Example Usage:
-    python examples/basic/towel_beach_demo.py
+    python examples/applications/economics/towel_beach_demo.py
 """
 
 from pathlib import Path
@@ -44,7 +45,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
+from mfg_pde.core.mfg_problem import MFGComponents
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import neumann_bc
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -53,7 +56,7 @@ logger = get_logger(__name__)
 
 # Output directory
 EXAMPLE_DIR = Path(__file__).parent
-OUTPUT_DIR = EXAMPLE_DIR.parent / "outputs" / "basic"
+OUTPUT_DIR = EXAMPLE_DIR.parent.parent / "outputs" / "applications"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -67,12 +70,12 @@ def create_towel_beach_problem(
     sigma: float = 0.3,
 ):
     """
-    Create Towel on Beach MFG problem.
+    Create Towel on Beach MFG problem using MFGComponents API.
 
     Args:
         beach_length: Length of beach [0, L]
         stall_position: Ice cream stall location
-        crowd_aversion: Congestion parameter λ (controls phase transition)
+        crowd_aversion: Congestion parameter lambda (controls phase transition)
         Nx: Number of spatial grid points
         T: Time horizon
         Nt: Number of time steps
@@ -82,44 +85,68 @@ def create_towel_beach_problem(
         MFGProblem for spatial competition
     """
 
-    def hamiltonian(x, p, m):
+    # Hamiltonian function with correct signature for MFGComponents
+    # H(x, p, m) = (1/2)|p|^2 - |x - x_stall| - lambda * log(m)
+    def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
         """
-        H(x, p, m) = (1/2)|p|² - |x - x_stall| - λ log(m)
+        Hamiltonian for Towel-on-Beach problem.
 
-        Args:
-            x: Position on beach
-            p: Momentum (gradient of value function)
-            m: Density distribution
+        H(x, p, m) = (1/2)|p|^2 - V(x) - lambda * log(m)
 
-        Returns:
-            Hamiltonian value
+        where V(x) = |x - x_stall| is the proximity cost.
         """
+        # Get gradient from derivs (p = du/dx)
+        if isinstance(derivs, dict):
+            p = derivs.get((1,), 0.0)
+        else:
+            p = derivs.grad[0] if hasattr(derivs, "grad") else 0.0
+
         # Kinetic energy (quadratic control cost)
         kinetic = 0.5 * p**2
 
-        # Proximity cost to stall
-        proximity = -np.abs(x - stall_position)
+        # Proximity cost to stall (V(x) = |x - x_stall|)
+        # Note: Hamiltonian has -V(x) term
+        proximity = -abs(x_position - stall_position)
 
-        # Congestion cost (log-barrier)
-        m_reg = np.maximum(m, 1e-10)  # Regularization to avoid log(0)
+        # Congestion cost (log-barrier): -lambda * log(m)
+        m_reg = max(m_at_x, 1e-10)  # Regularization to avoid log(0)
         congestion = -crowd_aversion * np.log(m_reg)
 
         return kinetic + proximity + congestion
+
+    # Hamiltonian derivative w.r.t. density
+    # dH/dm = -lambda / m
+    def hamiltonian_dm_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+        """Derivative of Hamiltonian with respect to density."""
+        m_reg = max(m_at_x, 1e-10)
+        return -crowd_aversion / m_reg
+
+    # Create MFGComponents
+    components = MFGComponents(
+        hamiltonian_func=hamiltonian_func,
+        hamiltonian_dm_func=hamiltonian_dm_func,
+    )
 
     # Initial distribution: Uniform with small perturbation
     def initial_density_func(x):
         """Slightly perturbed uniform distribution."""
         return 1.0 + 0.1 * np.cos(2 * np.pi * x / beach_length)
 
-    # Create problem
+    # Create geometry with Neumann (reflecting) boundary conditions
+    geometry = TensorProductGrid(
+        dimension=1,
+        bounds=[(0.0, beach_length)],
+        Nx_points=[Nx],
+    )
+    geometry.set_boundary_conditions(neumann_bc(dimension=1))
+
+    # Create problem with MFGComponents
     problem = MFGProblem(
-        xmin=0.0,
-        xmax=beach_length,
-        Nx=Nx,
+        geometry=geometry,
         T=T,
         Nt=Nt,
         diffusion=sigma,
-        hamiltonian=hamiltonian,
+        components=components,
         m_initial=initial_density_func,
     )
 
@@ -128,7 +155,7 @@ def create_towel_beach_problem(
 
 def plot_phase_transition(beach_length, stall_position):
     """
-    Demonstrate phase transition for different λ values.
+    Demonstrate phase transition for different lambda values.
 
     Args:
         beach_length: Length of beach
@@ -136,12 +163,12 @@ def plot_phase_transition(beach_length, stall_position):
     """
     lambda_values = [0.5, 1.0, 2.0]  # Low, medium, high crowd aversion
     colors = ["blue", "green", "red"]
-    labels = ["Low λ=0.5 (peak)", "Medium λ=1.0 (transition)", "High λ=2.0 (crater)"]
+    labels = ["Low lambda=0.5 (peak)", "Medium lambda=1.0 (transition)", "High lambda=2.0 (crater)"]
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
     for idx, (lam, color, label) in enumerate(zip(lambda_values, colors, labels, strict=False)):
-        logger.info(f"\n  Solving for λ = {lam}...")
+        logger.info(f"\n  Solving for lambda = {lam}...")
 
         # Create and solve problem
         problem = create_towel_beach_problem(
@@ -151,11 +178,10 @@ def plot_phase_transition(beach_length, stall_position):
             Nx=151,
             T=5.0,
             Nt=51,
-            sigma=0.3,  # Function parameter still uses sigma
+            sigma=0.3,
         )
 
-        solver = create_standard_solver(problem)
-        result = solver.solve(max_iterations=30, tolerance=1e-3)
+        result = problem.solve(max_iterations=50, tolerance=1e-3, verbose=False)
 
         # Extract final equilibrium
         bounds = problem.geometry.get_bounds()
@@ -216,7 +242,7 @@ def main():
 
     logger.info(f"\n  Beach length: {beach_length}")
     logger.info(f"  Stall position: {stall_position}")
-    logger.info("\n  Demonstrating phase transition for λ ∈ {0.5, 1.0, 2.0}...")
+    logger.info("\n  Demonstrating phase transition for lambda in {0.5, 1.0, 2.0}...")
 
     # Generate phase transition plot
     fig = plot_phase_transition(beach_length, stall_position)
@@ -231,10 +257,10 @@ def main():
     logger.info("Towel Beach Demo Complete!")
     logger.info("=" * 70)
     logger.info("\nKey Insights:")
-    logger.info("  - λ < 1: Proximity dominates → peak at stall")
-    logger.info("  - λ ≈ 1: Transition regime")
-    logger.info("  - λ > 1: Crowding dominates → crater at stall")
-    logger.info("  - Phase transition controlled by crowd aversion parameter λ")
+    logger.info("  - lambda < 1: Proximity dominates -> peak at stall")
+    logger.info("  - lambda ~ 1: Transition regime")
+    logger.info("  - lambda > 1: Crowding dominates -> crater at stall")
+    logger.info("  - Phase transition controlled by crowd aversion parameter lambda")
 
 
 if __name__ == "__main__":
