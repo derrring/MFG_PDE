@@ -21,6 +21,7 @@ import numpy as np
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 class TestWenoFamilySolver:
@@ -29,7 +30,9 @@ class TestWenoFamilySolver:
     @pytest.fixture
     def simple_problem(self) -> MFGProblem:
         """Create simple MFG problem for testing using modern geometry-first API."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[33])
+        domain = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[33], boundary_conditions=no_flux_bc(dimension=1)
+        )
         return MFGProblem(geometry=domain, T=0.1, Nt=10, diffusion=0.1)
 
     @pytest.fixture
@@ -300,7 +303,9 @@ class TestWenoSolverIntegration:
     @pytest.fixture
     def integration_problem(self) -> MFGProblem:
         """Create MFG problem for integration testing using modern geometry-first API."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])
+        domain = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
+        )
         return MFGProblem(geometry=domain, T=1.0, Nt=30, diffusion=0.1)
 
     def test_solve_hjb_system_shape(self, integration_problem):

@@ -20,6 +20,7 @@ import pytest
 import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils.experiment_manager import (
     calculate_total_mass,
     load_experiment_data,
@@ -200,7 +201,9 @@ def test_calculate_total_mass_conservation():
 @pytest.mark.unit
 def test_save_experiment_data_basic(capsys):
     """Test basic experiment data saving."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[6])
+    geometry = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[6], boundary_conditions=no_flux_bc(dimension=1)
+    )
     problem = MockMFGProblem(geometry=geometry, Nt=10)
     U_sol = np.random.rand(problem.Nt, problem.Nx)
     M_sol = np.random.rand(problem.Nt, problem.Nx)
@@ -261,7 +264,9 @@ def test_save_experiment_data_creates_directory(capsys):
 @pytest.mark.unit
 def test_save_experiment_data_filename_components():
     """Test that filename includes problem parameters."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+    geometry = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+    )
     problem = MockMFGProblem(geometry=geometry, T=2.0, Nt=50)
     U_sol = np.random.rand(problem.Nt, problem.Nx)
     M_sol = np.random.rand(problem.Nt, problem.Nx)
@@ -352,7 +357,9 @@ def test_save_experiment_data_error_handling(capsys):
 @pytest.mark.unit
 def test_load_experiment_data_basic(capsys):
     """Test basic experiment data loading."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[6])
+    geometry = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[6], boundary_conditions=no_flux_bc(dimension=1)
+    )
     problem = MockMFGProblem(geometry=geometry, Nt=10)
     U_sol = np.random.rand(problem.Nt, problem.Nx)
     M_sol = np.random.rand(problem.Nt, problem.Nx)
@@ -387,7 +394,9 @@ def test_load_experiment_data_basic(capsys):
 @pytest.mark.unit
 def test_load_experiment_data_arrays():
     """Test that loaded arrays match saved arrays."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[6])
+    geometry = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[6], boundary_conditions=no_flux_bc(dimension=1)
+    )
     problem = MockMFGProblem(geometry=geometry, Nt=10)
     U_sol = np.random.rand(problem.Nt, problem.Nx)
     M_sol = np.random.rand(problem.Nt, problem.Nx)
@@ -419,7 +428,9 @@ def test_load_experiment_data_arrays():
 @pytest.mark.unit
 def test_load_experiment_data_metadata():
     """Test that loaded metadata matches saved metadata."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    geometry = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
+    )
     problem = MockMFGProblem(geometry=geometry, T=2.0, Nt=100)
     U_sol = np.random.rand(problem.Nt, problem.Nx)
     M_sol = np.random.rand(problem.Nt, problem.Nx)
@@ -631,7 +642,9 @@ def test_load_experiments_from_dir_mixed_files():
 @pytest.mark.unit
 def test_save_load_round_trip_preserves_data():
     """Test that save-load round trip preserves all data."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+    geometry = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
+    )
     problem = MockMFGProblem(geometry=geometry, T=1.5, Nt=30)
     U_sol = np.random.rand(problem.Nt, problem.Nx)
     M_sol = np.random.rand(problem.Nt, problem.Nx)

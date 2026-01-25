@@ -12,6 +12,7 @@ import numpy as np
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 @pytest.fixture
@@ -23,7 +24,9 @@ def standard_problem():
     - Time: T=1.0 with 51 time steps
     - Diffusion: diffusion=1.0
     """
-    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    domain = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
+    )
     return MFGProblem(geometry=domain, T=1.0, Nt=51, diffusion=1.0)
 
 

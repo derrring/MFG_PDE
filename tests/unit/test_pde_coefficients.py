@@ -12,6 +12,7 @@ import numpy as np
 
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
 
 
@@ -307,7 +308,9 @@ class TestGetSpatialGrid:
 
     def test_geometry_based_api_1d(self):
         """Test grid extraction with geometry-based API (1D)."""
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        domain = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = MFGProblem(geometry=domain, T=1.0, Nt=50, diffusion=0.1)
 
         grid = get_spatial_grid(problem)
@@ -319,7 +322,9 @@ class TestGetSpatialGrid:
     def test_legacy_api_1d(self):
         """Test grid extraction with legacy API (1D)."""
         # This test now uses Geometry-First API instead of deprecated legacy API
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1)
 
         grid = get_spatial_grid(problem)

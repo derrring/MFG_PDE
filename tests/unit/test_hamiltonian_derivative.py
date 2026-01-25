@@ -12,12 +12,13 @@ import numpy as np
 from mfg_pde import MFGProblem
 from mfg_pde.core.derivatives import DerivativeTensors
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 @pytest.fixture
 def simple_problem():
     """Create a simple 1D MFG problem for testing."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[10])
+    geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[10], boundary_conditions=no_flux_bc(dimension=1))
     return MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
 

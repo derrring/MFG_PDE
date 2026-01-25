@@ -13,6 +13,7 @@ import numpy as np
 from scipy.special import erf
 
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.level_set import TimeDependentDomain
 
 
@@ -79,7 +80,9 @@ class TestNeumannSolution:
         s0 = 0.5
 
         # Grid
-        grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
+        grid = TensorProductGrid(
+            dimension=1, bounds=[(x_min, x_max)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1)
+        )
         x = grid.coordinates[0]
         dx = grid.spacing[0]
 
@@ -158,7 +161,7 @@ class TestNeumannSolution:
         T_hot = 1.0
         s0 = 0.5
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
         dx = grid.spacing[0]
         dt = 0.2 * dx**2 / alpha
@@ -227,7 +230,9 @@ class TestNeumannSolution:
         grid_sizes = [100, 200, 400]
 
         for Nx in grid_sizes:
-            grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+            grid = TensorProductGrid(
+                dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1)
+            )
             x = grid.coordinates[0]
             dx = grid.spacing[0]
             dt = 0.2 * dx**2 / alpha
@@ -274,7 +279,7 @@ class TestStefanEnergyConservation:
         T_hot = 1.0
         s0 = 0.5
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
         dx = grid.spacing[0]
         dt = 0.2 * dx**2 / alpha

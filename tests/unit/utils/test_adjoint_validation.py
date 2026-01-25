@@ -8,6 +8,7 @@ import pytest
 
 from mfg_pde.alg import SchemeFamily
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils import (
     DualityStatus,
     DualityValidationResult,
@@ -283,7 +284,9 @@ class TestCheckSolverDualityInstances:
         from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 
         # Create a minimal problem for initialization
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = MFGProblem(geometry=geometry, Nt=5, T=1.0)
 
         hjb_instance = HJBFDMSolver(problem)

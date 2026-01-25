@@ -23,6 +23,7 @@ import pytest
 
 from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 class TestLegacy1DMode:
@@ -165,7 +166,9 @@ class TestModeDetection:
 
     def test_unambiguous_1d_mode(self):
         """Test that 1D mode is detected correctly."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1)
         assert problem.dimension == 1
 
@@ -178,7 +181,9 @@ class TestModeDetection:
 
     def test_ambiguous_mode_raises_error(self):
         """Test that ambiguous initialization raises error."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+        )
         with pytest.raises(ValueError, match="Ambiguous initialization"):
             MFGProblem(
                 geometry=geometry, spatial_bounds=[(0, 1)], spatial_discretization=[50], T=1.0, Nt=50, diffusion=0.1
@@ -205,7 +210,9 @@ class TestSolverCompatibility:
 
     def test_fdm_compatibility_1d(self):
         """Test FDM compatibility with 1D grid."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1)
         assert "fdm" in problem.solver_compatible
 
@@ -285,7 +292,9 @@ class TestBackwardCompatibility:
 
     def test_old_1d_interface(self):
         """Test that old 1D interface still works."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1)
 
         # Old attributes should exist (for backward compatibility)
@@ -322,7 +331,9 @@ class TestComplexityEstimation:
 
     def test_1d_complexity(self):
         """Test 1D problem complexity estimation."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1)
         info = problem.get_solver_info()
 
@@ -382,7 +393,9 @@ class TestEdgeCases:
         """Test that negative time raises error or warning."""
         # Note: Current implementation may not validate this - test what actually happens
         try:
-            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+            geometry = TensorProductGrid(
+                dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+            )
             problem = MFGProblem(geometry=geometry, T=-1.0, Nt=50, diffusion=0.1)
             # If no error, just check that problem was created
             assert problem.T == -1.0  # May need validation in future
@@ -393,7 +406,9 @@ class TestEdgeCases:
         """Test that zero timesteps raises error or creates problem."""
         # Note: Current implementation may not validate this
         try:
-            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+            geometry = TensorProductGrid(
+                dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+            )
             problem = MFGProblem(geometry=geometry, T=1.0, Nt=0, diffusion=0.1)
             # If no error, check problem was created
             assert problem.Nt == 0
@@ -404,7 +419,9 @@ class TestEdgeCases:
         """Test that negative diffusion raises error or creates problem."""
         # Note: Current implementation may not validate this
         try:
-            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+            geometry = TensorProductGrid(
+                dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+            )
             problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=-0.1)
             # If no error, check problem was created
             assert problem.sigma == -0.1  # Access via deprecated alias still works
@@ -429,7 +446,9 @@ class TestCustomComponentExceptionPropagation:
         def working_dh_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
             return 0.0
 
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
+        domain = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
+        )
         components = MFGComponents(
             hamiltonian_func=broken_hamiltonian,
             hamiltonian_dm_func=working_dh_dm,
@@ -458,7 +477,9 @@ class TestCustomComponentExceptionPropagation:
         def broken_dh_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
             raise RuntimeError("Intentional error in dH/dm")
 
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
+        domain = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
+        )
         components = MFGComponents(
             hamiltonian_func=working_hamiltonian,
             hamiltonian_dm_func=broken_dh_dm,
