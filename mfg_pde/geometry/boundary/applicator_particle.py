@@ -322,24 +322,16 @@ class ParticleApplicator:
         Reflect particle back into domain using modular fold reflection.
 
         Handles particles that may have traveled multiple domain widths.
+        Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
+
+        At corners, all dimensions are processed simultaneously, producing
+        diagonal reflection (equivalent to 'average' corner strategy).
         """
-        result = particle.copy()
+        from mfg_pde.utils.boundary import reflect_positions
 
-        for d in range(len(particle)):
-            if domain_size[d] < 1e-14:
-                continue
-
-            # Modular fold reflection
-            shifted = result[d] - domain_min[d]
-            period = 2 * domain_size[d]
-            pos_in_period = shifted % period
-
-            if pos_in_period > domain_size[d]:
-                pos_in_period = period - pos_in_period
-
-            result[d] = domain_min[d] + pos_in_period
-
-        return result
+        # Build bounds from domain_min and domain_max
+        bounds = list(zip(domain_min, domain_max, strict=True))
+        return reflect_positions(particle, bounds)
 
     def _wrap_particle(
         self,
@@ -347,16 +339,16 @@ class ParticleApplicator:
         domain_min: NDArray[np.floating],
         domain_size: NDArray[np.floating],
     ) -> NDArray[np.floating]:
-        """Wrap particle to opposite boundary (periodic BC)."""
-        result = particle.copy()
+        """
+        Wrap particle to opposite boundary (periodic BC).
 
-        for d in range(len(particle)):
-            if domain_size[d] < 1e-14:
-                continue
+        Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
+        """
+        from mfg_pde.utils.boundary import wrap_positions
 
-            result[d] = domain_min[d] + (particle[d] - domain_min[d]) % domain_size[d]
-
-        return result
+        # Build bounds from domain_min and domain_size
+        bounds = [(domain_min[d], domain_min[d] + domain_size[d]) for d in range(len(domain_min))]
+        return wrap_positions(particle, bounds)
 
 
 __all__ = ["ParticleApplicator"]

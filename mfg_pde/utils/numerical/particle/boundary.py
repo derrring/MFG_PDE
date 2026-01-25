@@ -1,12 +1,15 @@
 """
-Particle Boundary Condition Utilities.
+Particle Boundary Condition Utilities (1D, GPU/CPU).
 
-This module provides functions for applying boundary conditions to particles
-in particle-based MFG solvers. Supports both GPU and CPU backends.
+This module provides 1D boundary condition functions for particle-based
+MFG solvers. Supports both GPU and CPU backends.
+
+For n-D position reflection/wrapping, use mfg_pde.utils.geometry instead:
+    from mfg_pde.utils.geometry import reflect_positions, wrap_positions
 
 Key Functions:
-- apply_boundary_conditions_gpu: GPU-accelerated BC application
-- apply_boundary_conditions_numpy: CPU fallback
+- apply_boundary_conditions_gpu: GPU-accelerated BC application (1D)
+- apply_boundary_conditions_numpy: CPU fallback (1D)
 
 Boundary Types:
 - periodic: Wrap particles around domain boundaries
@@ -42,7 +45,7 @@ def apply_boundary_conditions_gpu(
     backend: BaseBackend,
 ):
     """
-    Apply boundary conditions to particles on GPU.
+    Apply boundary conditions to particles on GPU (1D).
 
     Supports periodic, no-flux (reflecting), and Dirichlet boundaries.
     All operations performed in parallel on GPU.
@@ -70,6 +73,8 @@ def apply_boundary_conditions_gpu(
     - periodic: Particles wrap around the domain
     - no_flux: Particles reflect off boundaries (mass conserving)
     - dirichlet: Particles are clamped to domain (absorbing)
+
+    For n-D positions, use mfg_pde.utils.geometry.reflect_positions instead.
     """
     xp = backend.array_module
     Lx = xmax - xmin
@@ -115,7 +120,7 @@ def apply_boundary_conditions_numpy(
     bc_type: str,
 ) -> NDArray[np.floating]:
     """
-    CPU fallback for applying boundary conditions.
+    CPU fallback for applying boundary conditions (1D).
 
     Parameters
     ----------
@@ -138,6 +143,10 @@ def apply_boundary_conditions_numpy(
     >>> particles = np.array([-0.5, 0.5, 1.5, 2.5])
     >>> result = apply_boundary_conditions_numpy(particles, 0.0, 2.0, "periodic")
     >>> # particles wrap around: -0.5 -> 1.5, 2.5 -> 0.5
+
+    Note
+    ----
+    For n-D positions, use mfg_pde.utils.geometry.reflect_positions instead.
     """
     # Make a copy to avoid modifying input
     particles = particles.copy()
@@ -178,8 +187,8 @@ __all__ = [
 # =============================================================================
 
 if __name__ == "__main__":
-    """Quick smoke test for particle boundary utilities."""
-    print("Testing particle boundary utilities...")
+    """Quick smoke test for 1D particle boundary utilities."""
+    print("Testing 1D particle boundary utilities...")
 
     # Test periodic BC
     particles = np.array([-0.5, 0.5, 1.5, 2.5])
@@ -206,13 +215,11 @@ if __name__ == "__main__":
     print("  No mutation: passed")
 
     # Test no-flux with large displacements (multiple domain widths)
-    # Domain [0, 2], Lx = 2
-    # -5.0: shift=-5, period=4, pos_in_period=(-5)%4=3, in_second_half, result=4-3=1
-    # 7.0: shift=7, period=4, pos_in_period=7%4=3, in_second_half, result=4-3=1
     particles = np.array([-5.0, 7.0, -3.0, 5.0])
     result = apply_boundary_conditions_numpy(particles.copy(), 0.0, 2.0, "no_flux")
     expected = np.array([1.0, 1.0, 1.0, 1.0])  # All fold back to 1.0
     assert np.allclose(result, expected), f"Large displacement test failed: {result} vs {expected}"
     print("  No-flux large displacement: passed")
 
-    print("\nAll smoke tests passed!")
+    print("\nAll 1D smoke tests passed!")
+    print("\nNote: For n-D positions, use mfg_pde.utils.geometry.reflect_positions")

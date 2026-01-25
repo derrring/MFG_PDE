@@ -180,6 +180,13 @@ def apply_boundary_conditions(
     """
     Apply boundary handling per dimension based on topology (dimension-agnostic).
 
+    This function delegates to the canonical implementations in
+    mfg_pde.utils.numerical.particle.boundary (Issue #521).
+
+    At corners, all dimensions are processed simultaneously (not sequentially),
+    producing diagonal reflection. This is equivalent to 'average' corner
+    strategy for position-based reflection.
+
     Parameters
     ----------
     particles : np.ndarray
@@ -202,9 +209,16 @@ def apply_boundary_conditions(
     >>> particles_1d = np.array([1.5, -0.2, 0.5])  # Some outside [0, 1]
     >>> apply_boundary_conditions(particles_1d, [(0, 1)], "bounded")
     >>> # particles_1d now reflected into [0, 1]
+
+    Note
+    ----
+    See Issue #521 for corner handling architecture. Position-based reflection
+    uses fold reflection which implicitly produces diagonal corner reflection.
     """
+    from mfg_pde.utils.boundary import reflect_positions, wrap_positions
+
     particles = np.asarray(particles)
-    bounds = list(bounds)
+    bounds_list = list(bounds)
 
     # Handle 1D case: convert to 2D for uniform processing
     is_1d_flat = particles.ndim == 1
@@ -219,38 +233,45 @@ def apply_boundary_conditions(
     else:
         topologies = list(topology)
 
-    for d in range(dimension):
-        xmin, xmax = bounds[d]
-        Lx = xmax - xmin
+    # Check if all dimensions have same topology (common case)
+    all_periodic = all(t == "periodic" for t in topologies)
+    all_bounded = all(t != "periodic" for t in topologies)
 
-        if Lx < 1e-14:
-            continue  # Skip degenerate dimension
+    if all_periodic:
+        # Fast path: all periodic
+        result = wrap_positions(particles, bounds_list)
+    elif all_bounded:
+        # Fast path: all bounded (reflecting)
+        result = reflect_positions(particles, bounds_list)
+    else:
+        # Mixed topology: process dimension by dimension
+        result = particles.copy()
+        for d in range(dimension):
+            xmin, xmax = bounds_list[d]
+            Lx = xmax - xmin
 
-        dim_topology = topologies[d] if d < len(topologies) else "bounded"
+            if Lx < 1e-14:
+                continue  # Skip degenerate dimension
 
-        if dim_topology == "periodic":
-            # Periodic topology: wrap around
-            particles[:, d] = xmin + (particles[:, d] - xmin) % Lx
+            dim_topology = topologies[d] if d < len(topologies) else "bounded"
 
-        else:  # "bounded" -> reflecting walls
-            # Reflecting boundaries: use modular reflection for arbitrary displacement
-            # This handles particles that travel multiple domain widths in one step
-            # Uses "fold" reflection: position bounces back and forth within domain
-            shifted = particles[:, d] - xmin
-            period = 2 * Lx
-            # Position within one period [0, 2*Lx)
-            pos_in_period = shifted % period
-            # If in second half of period, reflect back
-            in_second_half = pos_in_period > Lx
-            pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
-            # Shift back to original domain
-            particles[:, d] = xmin + pos_in_period
+            if dim_topology == "periodic":
+                # Periodic: wrap around
+                result[:, d] = xmin + (result[:, d] - xmin) % Lx
+            else:
+                # Bounded: fold reflection
+                shifted = result[:, d] - xmin
+                period = 2 * Lx
+                pos_in_period = shifted % period
+                in_second_half = pos_in_period > Lx
+                pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
+                result[:, d] = xmin + pos_in_period
 
     # Convert back to 1D if input was 1D
     if is_1d_flat:
-        return particles.ravel()
+        return result.ravel()
 
-    return particles
+    return result
 
 
 # =============================================================================

@@ -130,31 +130,22 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
 
         For bounded domains (hyperrectangles), uses modular fold reflection
         which correctly handles particles that travel multiple domain widths.
+        Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
+
+        At corners, all dimensions are processed simultaneously, producing
+        diagonal reflection (equivalent to 'average' corner strategy).
 
         For other domains, falls back to projection to interior.
         """
+        from mfg_pde.utils.boundary import reflect_positions
+
         bounds = self.geometry.get_bounds()
 
         if bounds is not None:
             # For bounded domains, use modular fold reflection
-            # This is physically correct for elastic boundaries
             min_coords, max_coords = bounds
-            result = particles.copy()
-
-            for d in range(self.dimension):
-                xmin, xmax = min_coords[d], max_coords[d]
-                Lx = xmax - xmin
-
-                if Lx > 1e-14:
-                    # Modular fold: position bounces back and forth with period 2*Lx
-                    shifted = result[:, d] - xmin
-                    period = 2 * Lx
-                    pos_in_period = shifted % period
-                    in_second_half = pos_in_period > Lx
-                    pos_in_period[in_second_half] = period - pos_in_period[in_second_half]
-                    result[:, d] = xmin + pos_in_period
-
-            return result
+            bounds_list = list(zip(min_coords, max_coords, strict=True))
+            return reflect_positions(particles, bounds_list)
 
         # Fallback for unbounded/complex domains: project to interior
         return self.geometry.project_to_interior(particles)
@@ -186,20 +177,20 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
         self,
         particles: NDArray[np.floating],
     ) -> NDArray[np.floating]:
-        """Wrap particles around domain (periodic BC)."""
+        """
+        Wrap particles around domain (periodic BC).
+
+        Uses canonical implementation from utils.numerical.particle.boundary (Issue #521).
+        """
+        from mfg_pde.utils.boundary import wrap_positions
+
         bounds = self.geometry.get_bounds()
         if bounds is None:
             raise ValueError("Periodic BC requires bounded domain")
 
         min_coords, max_coords = bounds
-        domain_size = max_coords - min_coords
-
-        # Wrap particles using modulo
-        result = particles.copy()
-        for d in range(self.dimension):
-            result[:, d] = ((particles[:, d] - min_coords[d]) % domain_size[d]) + min_coords[d]
-
-        return result
+        bounds_list = list(zip(min_coords, max_coords, strict=True))
+        return wrap_positions(particles, bounds_list)
 
     # =========================================================================
     # Field Boundary Conditions (for collocation methods)
