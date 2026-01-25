@@ -650,10 +650,15 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         # Create TensorProductGrid for all dimensions (unified approach)
         from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import no_flux_bc
 
         # Convert discretization to Nx_points (add 1 for point count vs intervals)
         Nx_points = [n + 1 for n in spatial_discretization]
-        geometry = TensorProductGrid(dimension=dimension, bounds=spatial_bounds, Nx_points=Nx_points)
+        # Use default no_flux_bc for legacy _init_nd path (Issue #674)
+        # Note: This is a deprecated code path; users should use geometry-first API
+        geometry = TensorProductGrid(
+            bounds=spatial_bounds, Nx_points=Nx_points, boundary_conditions=no_flux_bc(dimension=dimension)
+        )
 
         # Store geometry for unified interface
         self.geometry = geometry
