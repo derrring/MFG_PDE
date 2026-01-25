@@ -33,6 +33,29 @@ Robin (alpha*u + beta*du/dn = g at boundary):
     => u_g * (alpha/2 + beta/(2*dx)) = g - u_i * (alpha/2 - beta/(2*dx))
     => u_g = (g - u_i * (alpha/2 - beta/(2*dx))) / (alpha/2 + beta/(2*dx))
 
+Corner Handling (Issue #521):
+-----------------------------
+FDM uses **sequential dimension updates** which implicitly handle corners without
+needing the geometry's `corner_strategy` configuration. The ghost cell values at
+corners are filled by applying face BCs for each dimension in sequence:
+
+    1. Apply BC for dimension 0 (fills x-face ghosts including corner columns)
+    2. Apply BC for dimension 1 (fills y-face ghosts including corner rows)
+    3. ...and so on for higher dimensions
+
+At corner ghost cells, the last dimension's BC "wins" and writes the final value.
+This is equivalent to a 'priority' corner strategy via dimension ordering.
+
+This approach works correctly for FDM because:
+- Finite difference stencils at corners use face ghost values, not corner ghosts
+- Corner ghost values only need to be finite (not NaN) for numerical stability
+- The sequential update is deterministic and consistent
+
+Other methods (particles, meshfree) use `geometry.get_boundary_normal(corner_strategy=)`
+to get proper diagonal normals at corners. FDM opts out of this mechanism entirely.
+
+Reference: See Issue #521 for corner strategy design and implementation details.
+
 Usage:
     from mfg_pde.geometry.boundary import apply_boundary_conditions_2d
 
@@ -1021,38 +1044,36 @@ class PreallocatedGhostBuffer:
                 buf[tuple(hi_ghost)] = 2 * v - buf[tuple(hi_interior)]
 
         elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
-            # No-flux/Neumann: Reflect interior values about boundary point.
-            # For boundary at grid point x_0 with interior at x_1, x_2, ...:
-            #   u_{-k} = u_k (reflecting x_k about x_0)
-            # This gives O(h^2) accurate ghost values for zero-flux BC.
+            # Zero-gradient Neumann: ghost = adjacent interior (simple reflection).
+            # For cell-centered grids with boundary at cell face:
+            #   du/dn|_{boundary} = (u_interior - u_ghost)/dx = 0
+            #   => u_ghost = u_interior (adjacent interior cell)
             #
-            # Padded array structure: [ghost_g-1, ..., ghost_0, boundary, interior_1, ...]
-            # Ghost at idx 0 should equal interior at idx 2*g (first interior)
-            # Ghost at idx k should equal interior at idx 2*g + g - 1 - k (reflected)
+            # Padded array structure: [ghost_0, ..., ghost_{g-1}, interior_0, interior_1, ...]
+            # For g=1: ghost at idx 0 should equal interior at idx 1 (adjacent).
             for axis in range(d):
-                # Low boundary: reflect interior values about boundary
-                # ghost[k] = interior[g-1-k] for k in 0..g-1
+                # Low boundary: ghost mirrors adjacent interior
                 for k in range(g):
                     lo_ghost = [slice(None)] * d
-                    lo_ghost[axis] = k  # Single ghost index
+                    lo_ghost[axis] = g - 1 - k  # Ghost cells from g-1 down to 0
                     lo_interior = [slice(None)] * d
-                    lo_interior[axis] = 2 * g - k  # Reflected interior index
+                    lo_interior[axis] = g + k  # Adjacent interior cells from g up
                     buf[tuple(lo_ghost)] = buf[tuple(lo_interior)]
 
-                # High boundary: reflect interior values about boundary
-                # ghost[-k-1] = interior[-(2*g+k+1)] for k in 0..g-1
-                # For g=1, k=0: buf[-1] = buf[-3] (skip adjacent, use next interior)
+                # High boundary: ghost mirrors adjacent interior
                 for k in range(g):
                     hi_ghost = [slice(None)] * d
-                    hi_ghost[axis] = -(k + 1)  # Single ghost index from end
+                    hi_ghost[axis] = -(k + 1)  # Ghost cells from -1 down to -g
                     hi_interior = [slice(None)] * d
-                    hi_interior[axis] = -(2 * g + k + 1)  # Reflected interior index (fixed)
+                    hi_interior[axis] = -(g + k + 1)  # Adjacent interior cells
                     buf[tuple(hi_ghost)] = buf[tuple(hi_interior)]
 
         elif bc_type == BCType.ROBIN:
             # Robin: alpha*u + beta*du/dn = g
             # For uniform BC, we assume alpha=0, beta=1 (Neumann-like with non-zero flux)
-            # which reduces to: u_ghost = u_interior + 2*dx*g*sign
+            # Cell-centered grids: ghost and interior are dx apart, not 2*dx.
+            # du/dn = (u_ghost - u_interior)/dx * sign, so:
+            # u_ghost = u_interior + dx*g*sign
             # Note: For full Robin BC with arbitrary alpha/beta, use mixed BC API.
             for axis in range(d):
                 # Get grid spacing for this axis
@@ -1074,15 +1095,15 @@ class PreallocatedGhostBuffer:
                     # Low boundary (outward normal = -1)
                     lo_ghost = [slice(None)] * d
                     lo_ghost[axis] = g - 1 - k  # Ghost cells from g-1 down to 0
-                    # u_ghost = u_interior + 2*dx*g*(-1) = u_interior - 2*dx*v
-                    buf[tuple(lo_ghost)] = u_lo_interior - 2.0 * dx * v
+                    # u_ghost = u_interior + dx*g*(-1) = u_interior - dx*v
+                    buf[tuple(lo_ghost)] = u_lo_interior - dx * v
 
                 for k in range(g):
                     # High boundary (outward normal = +1)
                     hi_ghost = [slice(None)] * d
                     hi_ghost[axis] = -(g - k)  # Ghost cells from -g up to -1
-                    # u_ghost = u_interior + 2*dx*g*(+1) = u_interior + 2*dx*v
-                    buf[tuple(hi_ghost)] = u_hi_interior + 2.0 * dx * v
+                    # u_ghost = u_interior + dx*g*(+1) = u_interior + dx*v
+                    buf[tuple(hi_ghost)] = u_hi_interior + dx * v
 
     def _apply_poly_extrapolation(
         self,
@@ -1512,17 +1533,18 @@ class PreallocatedGhostBuffer:
             buf[tuple(ghost_slices)] = 2 * v - buf[tuple(interior_slices)]
 
         elif bc_type in [BCType.NO_FLUX, BCType.NEUMANN, BCType.REFLECTING]:
-            # Neumann/Reflecting: mirror interior values
-            # For zero-flux, ghost reflects about boundary
+            # Zero-gradient Neumann: ghost = adjacent interior (simple reflection).
+            # For cell-centered grids: du/dn = (u_interior - u_ghost)/dx = 0
+            # => u_ghost = u_interior (adjacent)
             for k in range(g):
                 single_ghost = [slice(None)] * d
                 single_interior = [slice(None)] * d
                 if side == "min":
-                    single_ghost[axis] = k
-                    single_interior[axis] = 2 * g - k  # Reflected interior
+                    single_ghost[axis] = g - 1 - k  # Ghost cells from g-1 down to 0
+                    single_interior[axis] = g + k  # Adjacent interior cells from g up
                 else:
-                    single_ghost[axis] = -(k + 1)
-                    single_interior[axis] = -(2 * g + k + 1)  # Reflected interior
+                    single_ghost[axis] = -(k + 1)  # Ghost cells from -1 down to -g
+                    single_interior[axis] = -(g + k + 1)  # Adjacent interior cells
                 buf[tuple(single_ghost)] = buf[tuple(single_interior)]
 
         elif bc_type == BCType.ROBIN:
@@ -1541,11 +1563,15 @@ class PreallocatedGhostBuffer:
             outward_sign = 1.0 if side == "max" else -1.0
 
             # Ghost cell formula (cell-centered):
-            # alpha * (u_g + u_i)/2 + beta * (u_g - u_i)/(2*dx) * sign = g
+            # For cell-centered grids, ghost and interior cell centers are dx apart.
+            # Boundary value: u_b = (u_g + u_i)/2 (midpoint between ghost and interior)
+            # Normal derivative: du/dn = (u_g - u_i)/dx * sign (not 2*dx!)
+            # Robin BC: alpha * u_b + beta * du/dn = g
+            # => alpha * (u_g + u_i)/2 + beta * (u_g - u_i)/dx * sign = g
             # Solving for u_g:
-            # u_g * (alpha/2 + beta*sign/(2*dx)) = g - u_i * (alpha/2 - beta*sign/(2*dx))
-            coeff_ghost = alpha / 2.0 + beta * outward_sign / (2.0 * dx)
-            coeff_interior = alpha / 2.0 - beta * outward_sign / (2.0 * dx)
+            # u_g * (alpha/2 + beta*sign/dx) = g - u_i * (alpha/2 - beta*sign/dx)
+            coeff_ghost = alpha / 2.0 + beta * outward_sign / dx
+            coeff_interior = alpha / 2.0 - beta * outward_sign / dx
 
             if abs(coeff_ghost) < 1e-12:
                 # Degenerate case: fall back to reflection
