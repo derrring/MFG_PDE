@@ -130,8 +130,21 @@ class HamiltonianMixin:
         has_hamiltonian = self.components.hamiltonian_func is not None
         has_hamiltonian_dm = self.components.hamiltonian_dm_func is not None
 
+        # If hamiltonian_func provided without hamiltonian_dm_func, use zero placeholder
         if has_hamiltonian and not has_hamiltonian_dm:
-            raise ValueError("hamiltonian_dm_func is required when hamiltonian_func is provided")
+            import warnings
+
+            warnings.warn(
+                "hamiltonian_dm_func not provided - using zero placeholder. "
+                "This assumes your Hamiltonian has NO density dependence. "
+                "If H depends on m (e.g., congestion terms like log(m)), "
+                "you MUST provide hamiltonian_dm_func for correct results.",
+                UserWarning,
+                stacklevel=4,
+            )
+            # Create zero placeholder with correct signature (dataclass is mutable)
+            self.components.hamiltonian_dm_func = self._create_zero_hamiltonian_dm()
+            has_hamiltonian_dm = True
 
         if has_hamiltonian_dm and not has_hamiltonian:
             raise ValueError("hamiltonian_func is required when hamiltonian_dm_func is provided")
@@ -168,6 +181,32 @@ class HamiltonianMixin:
         if self.components.potential_func is not None:
             sig = inspect.signature(self.components.potential_func)
             self._potential_has_time = "t" in sig.parameters or "time" in sig.parameters
+
+    @staticmethod
+    def _create_zero_hamiltonian_dm() -> Callable:
+        """
+        Create a zero-returning placeholder for hamiltonian_dm_func.
+
+        Used when hamiltonian_func is provided without hamiltonian_dm_func,
+        assuming the Hamiltonian has no density dependence.
+
+        Returns:
+            Callable with correct signature returning 0.0
+        """
+
+        def zero_hamiltonian_dm(
+            x_idx: int,
+            x_position: float,
+            m_at_x: float,
+            derivs: dict,
+            t_idx: int,
+            current_time: float,
+            problem: object,
+        ) -> float:
+            """Zero placeholder for dH/dm (assumes no density dependence)."""
+            return 0.0
+
+        return zero_hamiltonian_dm
 
     def _validate_function_signature(
         self, func: Callable, name: str, expected_params: list, gradient_param_required: bool = False
