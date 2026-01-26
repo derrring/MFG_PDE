@@ -66,6 +66,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+# Issue #700: Import HamiltonianJacobians for jacobian_fd() method
+from mfg_pde.types import HamiltonianJacobians
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -660,6 +663,95 @@ class HamiltonianBase(MFGOperatorBase):
         """
         dH_dp = self.dp(x, m, p, t)
         return -self._sign * dH_dp
+
+    def jacobian_fd(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        dx: float,
+        t: float = 0.0,
+        scheme: str = "central",
+    ) -> HamiltonianJacobians:
+        """
+        Compute FD Jacobian components for Newton/policy iteration.
+
+        Uses chain rule: ∂H/∂U_j = ∂H/∂p · ∂p/∂U_j
+
+        This method connects the continuous derivative dp() with the discrete
+        finite difference Jacobian used by HJB solvers for Newton iteration.
+
+        Issue #700: Unifies Hamiltonian class with HamiltonianJacobians.
+
+        Parameters
+        ----------
+        x : NDArray
+            Position
+        m : float | NDArray
+            Density at x
+        p : NDArray
+            Momentum ∇u at x (current gradient estimate)
+        dx : float
+            Grid spacing
+        t : float
+            Time (default: 0.0)
+        scheme : str
+            FD scheme: "central", "upwind_forward", "upwind_backward"
+            - "central": p ≈ (U[i+1] - U[i-1])/(2dx)
+            - "upwind_forward": p ≈ (U[i+1] - U[i])/dx
+            - "upwind_backward": p ≈ (U[i] - U[i-1])/dx
+
+        Returns
+        -------
+        HamiltonianJacobians
+            Dataclass with diagonal, lower, upper tridiagonal components
+
+        Example
+        -------
+        >>> H = SeparableHamiltonian(control_cost=QuadraticControlCost(1.0))
+        >>> jac = H.jacobian_fd(x, m, p, dx=0.01, scheme="central")
+        >>> # Use in Newton iteration:
+        >>> A_diag = diffusion_diag + jac.diagonal
+        >>> A_lower = diffusion_lower + jac.lower
+        >>> A_upper = diffusion_upper + jac.upper
+        """
+        # Get ∂H/∂p from the class method
+        dH_dp = self.dp(x, m, p, t)
+        dH_dp_scalar = float(dH_dp[0]) if hasattr(dH_dp, "__len__") else float(dH_dp)
+
+        if scheme == "central":
+            # p ≈ (U[i+1] - U[i-1]) / (2dx)
+            # ∂p/∂U[i+1] = +1/(2dx)
+            # ∂p/∂U[i-1] = -1/(2dx)
+            # ∂p/∂U[i] = 0
+            coeff = dH_dp_scalar / (2 * dx)
+            return HamiltonianJacobians(
+                diagonal=np.array([0.0]),
+                lower=np.array([-coeff]),  # ∂H/∂U[i-1]
+                upper=np.array([coeff]),  # ∂H/∂U[i+1]
+            )
+        elif scheme == "upwind_forward":
+            # p ≈ (U[i+1] - U[i]) / dx
+            # ∂p/∂U[i+1] = +1/dx
+            # ∂p/∂U[i] = -1/dx
+            coeff = dH_dp_scalar / dx
+            return HamiltonianJacobians(
+                diagonal=np.array([-coeff]),
+                lower=np.array([0.0]),
+                upper=np.array([coeff]),
+            )
+        elif scheme == "upwind_backward":
+            # p ≈ (U[i] - U[i-1]) / dx
+            # ∂p/∂U[i] = +1/dx
+            # ∂p/∂U[i-1] = -1/dx
+            coeff = dH_dp_scalar / dx
+            return HamiltonianJacobians(
+                diagonal=np.array([coeff]),
+                lower=np.array([-coeff]),
+                upper=np.array([0.0]),
+            )
+        else:
+            raise ValueError(f"Unknown FD scheme: {scheme}. Supported: 'central', 'upwind_forward', 'upwind_backward'")
 
     def _finite_diff_dp(
         self,

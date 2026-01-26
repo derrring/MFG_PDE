@@ -43,9 +43,31 @@ def default_geometry(bounds=None, Nx_points=None, dimension=1):
     )
 
 
+def default_hamiltonian():
+    """Create a default class-based Hamiltonian for testing.
+
+    Issue #673: Hamiltonian required (no default in MFGComponents)
+
+    Returns:
+        SeparableHamiltonian: H = ½|p|²/λ - m²
+    """
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: -(m**2),
+        coupling_dm=lambda m: -2 * m,
+    )
+
+
 def default_components():
-    """Create default MFGComponents with m_initial and u_final (Issue #670)."""
+    """Create default MFGComponents with Hamiltonian, m_initial, and u_final.
+
+    Issue #670: m_initial/u_final required
+    Issue #673: Hamiltonian required (no default)
+    """
     return MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian at center
         u_final=lambda x: x**2,  # Quadratic terminal cost
     )
@@ -262,7 +284,9 @@ def test_mfg_problem_with_custom_potential():
 
     geometry = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[11])
     # Issue #670: must provide m_initial and u_final
+    # Issue #673: Hamiltonian required
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         potential_func=custom_potential,
         m_initial=lambda x: 1.0,  # Uniform
         u_final=lambda x: 0.0,  # Zero terminal cost
@@ -286,7 +310,9 @@ def test_mfg_problem_with_custom_initial_density():
 
     geometry = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[11])
     # Issue #670: must provide both m_initial and u_final
+    # Issue #673: Hamiltonian required
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=custom_initial,
         u_final=lambda x: 0.0,  # Zero terminal cost
     )
@@ -311,7 +337,9 @@ def test_mfg_problem_with_custom_final_value():
 
     geometry = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[11])
     # Issue #670: must provide both m_initial and u_final
+    # Issue #673: Hamiltonian required
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         u_final=custom_final,
         m_initial=lambda x: 1.0,  # Uniform
     )
@@ -449,7 +477,9 @@ def test_get_boundary_conditions_custom():
     # Uses legacy 1D BC in components (lower priority)
     custom_bc = LegacyBoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
     # Issue #670: must provide m_initial and u_final
+    # Issue #673: Hamiltonian required
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         boundary_conditions=custom_bc,
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
@@ -606,6 +636,7 @@ def test_dual_geometry_specification():
 
     # Create 2D components
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
     )
@@ -638,6 +669,7 @@ def test_dual_geometry_backward_compatibility():
     )
 
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
     )
@@ -661,7 +693,7 @@ def test_dual_geometry_error_on_partial_specification():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
     # Test with only hjb_geometry
     with pytest.raises(ValueError, match="both 'hjb_geometry' AND 'fp_geometry' must be specified"):
         MFGProblem(hjb_geometry=grid, time_domain=(1.0, 50), components=components)
@@ -690,7 +722,7 @@ def test_dual_geometry_error_on_conflict():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
     # Test conflict: can't specify both geometry and dual geometries
     with pytest.raises(ValueError, match=r"Specify EITHER 'geometry'.*OR.*'hjb_geometry', 'fp_geometry'"):
         MFGProblem(geometry=grid1, hjb_geometry=grid2, fp_geometry=grid3, time_domain=(1.0, 50), components=components)
@@ -710,7 +742,7 @@ def test_dual_geometry_projector_attributes():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), components=components)
 
     projector = problem.geometry_projector
@@ -731,7 +763,7 @@ def test_dual_geometry_with_1d_grids():
     hjb_grid = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[101])  # Fine grid
     fp_grid = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[51])  # Coarse grid
 
-    components = MFGComponents(m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
     problem = MFGProblem(
         hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1, components=components
     )
@@ -962,6 +994,7 @@ def test_diffusion_field_with_geometry():
 
     # Issue #670: must provide m_initial and u_final
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
     )

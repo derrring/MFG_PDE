@@ -174,6 +174,8 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # MFG coupling parameters
         lambda_: float | None = None,  # Control cost (H uses |p|²/(2λ))
         gamma: float = 1.0,  # Density coupling strength (H uses -γm²)
+        # Class-based Hamiltonian (Issue #673 - recommended)
+        hamiltonian: Any | None = None,  # HamiltonianBase instance
         # Advanced
         components: MFGComponents | None = None,
         suppress_warnings: bool = False,
@@ -488,6 +490,23 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         # Note: has_obstacles and obstacles already initialized explicitly (lines 334-335)
         # Specialized init methods may override these defaults
+
+        # Issue #673: Handle class-based Hamiltonian parameter
+        # If hamiltonian= provided without components, create MFGComponents
+        if hamiltonian is not None and components is None:
+            # Import here to avoid circular import
+            from mfg_pde.core.hamiltonian import HamiltonianBase
+
+            if isinstance(hamiltonian, HamiltonianBase):
+                components = MFGComponents(hamiltonian=hamiltonian)
+            else:
+                raise TypeError(
+                    f"hamiltonian must be a HamiltonianBase instance, got {type(hamiltonian).__name__}.\n"
+                    "Use class-based Hamiltonian:\n"
+                    "  from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n"
+                    "  H = SeparableHamiltonian(control_cost=QuadraticControlCost(...))\n"
+                    "  problem = MFGProblem(hamiltonian=H, ...)"
+                )
 
         # Store custom components if provided
         self.components = components
@@ -1067,6 +1086,34 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             True
         """
         return getattr(self, "domain_type", None) == "implicit"
+
+    # =========================================================================
+    # Hamiltonian Properties (Issue #673)
+    # =========================================================================
+
+    @property
+    def hamiltonian_class(self) -> Any | None:
+        """
+        Get the class-based Hamiltonian object if available.
+
+        Returns the HamiltonianBase instance for direct access to:
+        - H(x, m, p, t): Hamiltonian value
+        - dp(x, m, p, t): ∂H/∂p (optimal control)
+        - dm(x, m, p, t): ∂H/∂m (density coupling)
+        - optimal_control(x, m, p, t): α* = ±∂H/∂p
+
+        Returns:
+            HamiltonianBase instance, or None if using function-based API
+
+        Example:
+            >>> from mfg_pde.core.hamiltonian import SeparableHamiltonian
+            >>> H = SeparableHamiltonian(...)
+            >>> problem = MFGProblem(hamiltonian=H, ...)
+            >>> problem.hamiltonian_class.dp(x, m, p, t)  # Direct access
+        """
+        if self.components is not None:
+            return getattr(self.components, "_hamiltonian_class", None)
+        return None
 
     # =========================================================================
     # Time Grid Properties

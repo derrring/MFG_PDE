@@ -103,10 +103,11 @@ class MFGComponents:
     hamiltonian: Any = None  # HamiltonianBase instance
     lagrangian: Any = None  # LagrangianBase instance (auto-converted to Hamiltonian)
 
-    # Function-based Hamiltonian (legacy, still supported)
-    hamiltonian_func: Callable | None = None  # H(x, m, p, t) -> float
-    hamiltonian_dm_func: Callable | None = None  # dH/dm(x, m, p, t) -> float
-    hamiltonian_dp_func: Callable | None = None  # dH/dp(x, m, p, t) -> array (optional)
+    # Function-based Hamiltonian (DEPRECATED - use hamiltonian= instead)
+    # Will be removed in v1.0.0
+    hamiltonian_func: Callable | None = None  # H(x, m, p, t) -> float [DEPRECATED]
+    hamiltonian_dm_func: Callable | None = None  # dH/dm(x, m, p, t) -> float [DEPRECATED]
+    hamiltonian_dp_func: Callable | None = None  # dH/dp(x, m, p, t) -> array [DEPRECATED]
 
     # Optional Jacobian for advanced solvers
     hamiltonian_jacobian_func: Callable | None = None  # Jacobian contribution
@@ -133,7 +134,31 @@ class MFGComponents:
 
     def __post_init__(self):
         """Validate and setup Hamiltonian from class-based specification."""
+        import warnings
+
         from mfg_pde.core.hamiltonian import HamiltonianBase, LagrangianBase
+
+        # Issue #673: Deprecation warning for function-based API
+        if self.hamiltonian_func is not None and self.hamiltonian is None:
+            warnings.warn(
+                "hamiltonian_func is deprecated. Use class-based 'hamiltonian=' instead.\n\n"
+                "Migration:\n"
+                "  # OLD (deprecated):\n"
+                "  components = MFGComponents(\n"
+                "      hamiltonian_func=my_func,\n"
+                "      hamiltonian_dm_func=my_dm_func,\n"
+                "  )\n\n"
+                "  # NEW (recommended):\n"
+                "  from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n"
+                "  H = SeparableHamiltonian(\n"
+                "      control_cost=QuadraticControlCost(control_cost=1.0),\n"
+                "      coupling=lambda m: -m**2,\n"
+                "  )\n"
+                "  components = MFGComponents(hamiltonian=H, ...)\n\n"
+                "Function-based API will be removed in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         # Convert Lagrangian to Hamiltonian via Legendre transform (Issue #651)
         if self.lagrangian is not None:
