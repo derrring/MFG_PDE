@@ -160,18 +160,24 @@ class GeneralMFGFactory:
             raise ValueError("hamiltonian_dm function is required")
 
         # Load optional functions
+        # Key mapping: config key -> create_from_functions kwarg name
+        # Issue #670: Use m_initial/u_final naming consistently
+        key_mapping = {
+            "potential": "potential_func",
+            "initial_density": "m_initial",  # Config alias for m_initial
+            "m_initial": "m_initial",  # Direct name also supported
+            "final_value": "u_final",  # Config alias for u_final
+            "u_final": "u_final",  # Direct name also supported
+            "jacobian": "jacobian_func",
+            "coupling": "coupling_func",
+        }
+
         optional_functions = {}
-        for key in [
-            "potential",
-            "initial_density",
-            "final_value",
-            "jacobian",
-            "coupling",
-        ]:
-            if key in functions_config:
-                func = self._load_function(functions_config[key])
+        for config_key, kwarg_name in key_mapping.items():
+            if config_key in functions_config:
+                func = self._load_function(functions_config[config_key])
                 if func is not None:
-                    optional_functions[f"{key}_func"] = func
+                    optional_functions[kwarg_name] = func
 
         # Extract configurations
         domain_config = config.get("domain", {"xmin": 0.0, "xmax": 1.0, "Nx": 51})
@@ -254,16 +260,21 @@ class GeneralMFGFactory:
         return None
 
     def create_template_config(self, filename: str) -> None:
-        """Create a template configuration file."""
+        """Create a template configuration file.
 
+        Note:
+            Template uses modern 'derivs' API (tuple keys) instead of legacy 'p_values'.
+            Uses Issue #670 standard naming: m_initial, u_final.
+        """
+        # Modern Hamiltonian signature uses 'derivs' with tuple keys: {(1,): du/dx}
         template = {
             "problem": {"description": "My custom MFG problem", "type": "custom"},
             "functions": {
-                "hamiltonian": "lambda x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem: 0.5 * problem.coupling_coefficient * (problem.utils.npart(p_values.get('forward', 0))**2 + problem.utils.ppart(p_values.get('backward', 0))**2) - problem.f_potential[x_idx] - m_at_x**2",
-                "hamiltonian_dm": "lambda x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem: -2.0 * m_at_x",
+                "hamiltonian": "lambda x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem: 0.5 * problem.coupling_coefficient * derivs.get((1,), 0.0)**2 - problem.f_potential[x_idx] - m_at_x**2",
+                "hamiltonian_dm": "lambda x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem: -2.0 * m_at_x",
                 "potential": "lambda x: 0.5 * x * (1 - x)",
-                "initial_density": "lambda x: np.exp(-10 * (x - 0.3)**2)",
-                "final_value": "lambda x: (x - 0.8)**2",
+                "m_initial": "lambda x: np.exp(-10 * (x - 0.3)**2)",  # Issue #670: standard name
+                "u_final": "lambda x: (x - 0.8)**2",  # Issue #670: standard name
             },
             "domain": {"xmin": 0.0, "xmax": 1.0, "Nx": 51},
             "time": {"T": 1.0, "Nt": 51},
