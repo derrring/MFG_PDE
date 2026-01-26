@@ -1992,8 +1992,8 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 "has_custom_potential": self.components.potential_func is not None,
                 "has_custom_initial": self.components.m_initial is not None,
                 "has_custom_final": self.components.u_final is not None,
-                "has_jacobian": self.components.hamiltonian_jacobian_func is not None,
-                "has_coupling": self.components.coupling_func is not None,
+                # Issue #673: jacobian_fd() always available on HamiltonianBase
+                "has_jacobian": self.components._hamiltonian_class is not None,
                 "parameters": self.components.parameters,
                 "domain": domain_info,
                 "time": {"T": self.T, "Nt": self.Nt},

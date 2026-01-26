@@ -1,35 +1,33 @@
 """
-Custom Hamiltonian with Multiple API Approaches.
+Custom Hamiltonian Demo with Class-Based API.
 
-This example demonstrates three different ways to define custom Hamiltonians:
+Issue #673: Updated to class-based Hamiltonian API only.
 
-1. **Advanced API (derivs)**: Function-based with MFGComponents and tuple notation
-2. **Simplified API (x, p, m)**: Function-based with direct MFGProblem
-3. **Class-based API (NEW)**: Object-oriented SeparableHamiltonian
+This example demonstrates how to define custom Hamiltonians using the
+class-based SeparableHamiltonian API - the recommended approach for MFG problems.
 
 Mathematical Formulation:
-    State: x ∈ [0, L]
+    State: x in [0, L]
 
     Custom Hamiltonian:
-        H(x, m, p, t) = (1/2λ)|p|² + |x - x_target| + γm
+        H(x, m, p, t) = (1/2 lambda)|p|^2 + |x - x_target| + gamma * m
 
     where:
-    - (1/2λ)|p|² is the control cost (quadratic)
+    - (1/2 lambda)|p|^2 is the control cost (quadratic)
     - |x - x_target| is the running cost (distance to target)
-    - γm is the congestion cost
+    - gamma * m is the congestion cost
 
 Key Features:
-    - Demonstrates derivs parameter with tuple notation (legacy)
-    - Shows simplified MFGProblem interface
-    - Introduces class-based SeparableHamiltonian (NEW, recommended)
-    - Validates all approaches produce equivalent results
+    - Class-based SeparableHamiltonian for composable, type-safe Hamiltonians
+    - Auto-differentiation for dp() and dm() methods
+    - Clean separation of control cost, potential, and coupling
+    - Legendre transform duality support (H <-> L)
 
 Usage:
-    python examples/basic/custom_hamiltonian_derivs_demo.py
+    python examples/basic/core_infrastructure/custom_hamiltonian_derivs_demo.py
 
 See Also:
     - mfg_pde/core/hamiltonian.py (class definitions)
-    - docs/migration_guides/phase3_gradient_notation_migration.md
 """
 
 from pathlib import Path
@@ -52,11 +50,11 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ==============================================================================
-# Method 1: Advanced API with MFGProblem and MFGComponents (NEW derivs format)
+# Class-based Hamiltonian API (Recommended)
 # ==============================================================================
 
 
-def create_custom_problem_advanced(
+def create_custom_problem(
     L: float = 10.0,
     target_x: float = 5.0,
     control_cost: float = 0.5,
@@ -67,248 +65,37 @@ def create_custom_problem_advanced(
     sigma: float = 0.3,
 ):
     """
-    Create custom MFG problem using advanced API with tuple notation.
+    Create custom MFG problem using the class-based Hamiltonian API.
 
-    This demonstrates the NEW recommended approach for custom Hamiltonians.
+    This demonstrates the recommended approach for custom Hamiltonians:
+    - Use SeparableHamiltonian with control_cost, potential, and coupling
+    - Pass directly to MFGComponents(hamiltonian=H)
+
+    The class-based approach offers:
+    - Type-safe, composable Hamiltonians
+    - Auto-differentiation for dp() and dm()
+    - Legendre transform duality (H <-> L)
+    - Clean separation of control cost, potential, and coupling
 
     Args:
         L: Domain length [0, L]
         target_x: Target position
-        control_cost: Coefficient for control cost
-        congestion_cost: Coefficient for congestion
+        control_cost: Coefficient for control cost (lambda)
+        congestion_cost: Coefficient for congestion (gamma)
         Nx: Number of spatial grid points
         T: Time horizon
         Nt: Number of time steps
         sigma: Diffusion coefficient
 
     Returns:
-        MFGProblem with custom Hamiltonian using derivs parameter
-    """
-
-    def hamiltonian_func(
-        x_idx: int,
-        x_position: float,
-        m_at_x: float,
-        derivs: dict[tuple, float],  # NEW: Tuple notation
-        t_idx: int | None,
-        current_time: float,
-        problem,
-    ) -> float:
-        """
-        Custom Hamiltonian H(x, ∇u, m) with tuple notation for gradients.
-
-        Args:
-            x_idx: Spatial grid index
-            x_position: Physical position x
-            m_at_x: Density at this position
-            derivs: Gradient dictionary with tuple keys:
-                   - (0,): u(x, t)           (function value)
-                   - (1,): ∂u/∂x             (first derivative)
-                   Higher-order derivatives available for WENO solvers
-            t_idx: Time index (optional)
-            current_time: Physical time t
-            problem: Reference to MFGProblem instance
-
-        Returns:
-            Hamiltonian value H(x, ∇u, m)
-        """
-        # Extract gradient using tuple notation
-        # Note: derivs[(0,)] contains function value u (not needed for this Hamiltonian)
-        du_dx = derivs.get((1,), 0.0)  # First derivative ∂u/∂x
-
-        # Control cost: (1/2λ)|∇u|²
-        kinetic_term = (du_dx**2) / (2.0 * control_cost)
-
-        # Running cost: Distance to target
-        distance_to_target = abs(x_position - target_x)
-        potential_term = distance_to_target
-
-        # Congestion cost: γ m(x, t)
-        congestion_term = congestion_cost * m_at_x
-
-        return kinetic_term + potential_term + congestion_term
-
-    def hamiltonian_dm_func(
-        x_idx: int,
-        x_position: float,
-        m_at_x: float,
-        derivs: dict[tuple, float],  # NEW: Tuple notation
-        t_idx: int | None,
-        current_time: float,
-        problem,
-    ) -> float:
-        """
-        Derivative of Hamiltonian with respect to density: ∂H/∂m.
-
-        For congestion cost γ m, we have ∂H/∂m = γ.
-        """
-        return congestion_cost
-
-    # Initial distribution: Gaussian near x=0
-    def initial_density_func(x):
-        return np.exp(-((x - 0.5) ** 2) / 0.5)
-
-    # Terminal value: zero (standard choice for running cost problems)
-    def terminal_value_func(x):
-        return 0.0
-
-    # Create components with custom Hamiltonian (Issue #670: m_initial/u_final in MFGComponents)
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-        m_initial=initial_density_func,
-        u_final=terminal_value_func,
-    )
-
-    # Create problem
-    problem = MFGProblem(
-        xmin=0.0,
-        xmax=L,
-        Nx=Nx,
-        T=T,
-        Nt=Nt,
-        sigma=sigma,
-        components=components,
-    )
-
-    return problem
-
-
-# ==============================================================================
-# Method 2: Simplified Hamiltonian with Wrapper (for comparison)
-# ==============================================================================
-
-
-def create_custom_problem_simple(
-    L: float = 10.0,
-    target_x: float = 5.0,
-    control_cost: float = 0.5,
-    congestion_cost: float = 0.2,
-    Nx: int = 101,
-    T: float = 3.0,
-    Nt: int = 51,
-    sigma: float = 0.3,
-):
-    """
-    Create custom MFG problem using simplified hamiltonian(x, p, m) signature.
-
-    This demonstrates how to write a Hamiltonian with a simple signature
-    and wrap it for MFGComponents. Users define H(x, p, m) directly, then
-    create a wrapper that extracts p from the derivs dictionary.
-
-    Note: This approach requires manual wrapping. For a cleaner API,
-    use Method 3 (class-based SeparableHamiltonian) instead.
-
-    Returns:
-        MFGProblem with wrapped custom Hamiltonian
-    """
-
-    def hamiltonian(x, p, m):
-        """
-        Simplified Hamiltonian signature H(x, p, m).
-
-        Args:
-            x: Position (float)
-            p: Momentum (float, equivalent to du/dx)
-            m: Density (float)
-
-        Returns:
-            Hamiltonian value
-        """
-        # Control cost: (1/2λ)|p|²
-        kinetic_term = (p**2) / (2.0 * control_cost)
-
-        # Running cost: Distance to target
-        distance_to_target = abs(x - target_x)
-        potential_term = distance_to_target
-
-        # Congestion cost: γ m
-        congestion_term = congestion_cost * m
-
-        return kinetic_term + potential_term + congestion_term
-
-    def hamiltonian_dm(x, p, m):
-        """Derivative dH/dm = γ (congestion coefficient)."""
-        return congestion_cost
-
-    # Wrap the simple (x, p, m) signature into the full derivs-based signature
-    def hamiltonian_func_wrapper(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """Adapter: converts derivs dict to simple p argument."""
-        p = derivs.get((1,), 0.0)  # Get du/dx from derivs
-        return hamiltonian(x_position, p, m_at_x)
-
-    def hamiltonian_dm_func_wrapper(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """Adapter for dH/dm."""
-        p = derivs.get((1,), 0.0)
-        return hamiltonian_dm(x_position, p, m_at_x)
-
-    # Initial distribution
-    def initial_density_func(x):
-        return np.exp(-((x - 0.5) ** 2) / 0.5)
-
-    # Terminal value
-    def terminal_value_func(x):
-        return 0.0
-
-    # Create components (Issue #670: m_initial/u_final in MFGComponents)
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func_wrapper,
-        hamiltonian_dm_func=hamiltonian_dm_func_wrapper,
-        m_initial=initial_density_func,
-        u_final=terminal_value_func,
-    )
-
-    # Create problem with simplified API
-    problem = MFGProblem(
-        xmin=0.0,
-        xmax=L,
-        Nx=Nx,
-        T=T,
-        Nt=Nt,
-        sigma=sigma,
-        components=components,
-    )
-
-    return problem
-
-
-# ==============================================================================
-# Method 3: Class-based API with SeparableHamiltonian (NEW, recommended)
-# ==============================================================================
-
-
-def create_custom_problem_class_based(
-    L: float = 10.0,
-    target_x: float = 5.0,
-    control_cost: float = 0.5,
-    congestion_cost: float = 0.2,
-    Nx: int = 101,
-    T: float = 3.0,
-    Nt: int = 51,
-    sigma: float = 0.3,
-):
-    """
-    Create custom MFG problem using the NEW class-based Hamiltonian API.
-
-    This demonstrates the RECOMMENDED approach for custom Hamiltonians:
-    - Use SeparableHamiltonian with control_cost, potential, and coupling
-    - Convert to legacy format via to_legacy_func() for MFGComponents
-
-    The class-based approach offers:
-    - Type-safe, composable Hamiltonians
-    - Auto-differentiation for dp() and dm()
-    - Legendre transform duality (H ↔ L)
-    - Clean separation of control cost, potential, and coupling
-
-    Returns:
         MFGProblem with class-based Hamiltonian
     """
 
     # Define the potential V(x, t) = |x - target|
-    def potential(x, t):
+    def potential(x, t=0.0):
         return float(np.abs(x[0] - target_x))
 
-    # Define the density coupling f(m) = γm and its derivative df/dm = γ
+    # Define the density coupling f(m) = gamma * m and its derivative df/dm = gamma
     def coupling(m):
         return congestion_cost * m
 
@@ -316,16 +103,13 @@ def create_custom_problem_class_based(
         return congestion_cost
 
     # Create class-based Hamiltonian: H = H_control(p) + V(x, t) + f(m)
+    # H(x, m, p, t) = (1/2 lambda)|p|^2 + |x - target| + gamma * m
     hamiltonian = SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=control_cost),
         potential=potential,
         coupling=coupling,
         coupling_dm=coupling_dm,
     )
-
-    # Convert to legacy function format for MFGComponents
-    # This provides backward compatibility with existing solver infrastructure
-    hamiltonian_func, hamiltonian_dm_func = hamiltonian.to_legacy_func()
 
     # Initial distribution: Gaussian near x=0
     def initial_density_func(x):
@@ -335,10 +119,9 @@ def create_custom_problem_class_based(
     def terminal_value_func(x):
         return 0.0
 
-    # Create components with the converted functions (Issue #670: m_initial/u_final in MFGComponents)
+    # Create components with class-based Hamiltonian (Issue #673)
     components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
+        hamiltonian=hamiltonian,  # Class-based API
         m_initial=initial_density_func,
         u_final=terminal_value_func,
     )
@@ -357,17 +140,77 @@ def create_custom_problem_class_based(
     return problem
 
 
-# ==============================================================================
-# Demonstration and Comparison
-# ==============================================================================
-
-
-def compare_approaches():
+def demonstrate_hamiltonian_methods():
     """
-    Compare all three approaches: advanced (derivs), simplified, and class-based.
+    Demonstrate the methods available on class-based Hamiltonians.
+
+    Shows:
+    - H(x, m, p, t): Hamiltonian evaluation
+    - dp(x, m, p, t): Optimal control (dH/dp)
+    - dm(x, m, p, t): Coupling derivative (dH/dm)
+    - legendre_transform(): Convert to Lagrangian
     """
+    logger.info("\n" + "=" * 70)
+    logger.info("Class-Based Hamiltonian Methods Demo")
     logger.info("=" * 70)
-    logger.info("Custom Hamiltonian Demo: Three API Approaches Compared")
+
+    # Create Hamiltonian
+    control_cost = 0.5
+    congestion_cost = 0.2
+    target_x = 5.0
+
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=control_cost),
+        potential=lambda x, t=0.0: float(np.abs(x[0] - target_x)),
+        coupling=lambda m: congestion_cost * m,
+        coupling_dm=lambda m: congestion_cost,
+    )
+
+    # Test point
+    x = np.array([3.0])  # Position
+    m = 0.5  # Density
+    p = np.array([1.0])  # Momentum
+    t = 0.0  # Time
+
+    logger.info("\nTest point:")
+    logger.info(f"  x = {x[0]}, m = {m}, p = {p[0]}, t = {t}")
+
+    # Evaluate Hamiltonian
+    H_val = hamiltonian(x, m, p, t)
+    logger.info(f"\nH(x, m, p, t) = {H_val:.4f}")
+    logger.info(f"  Expected: (1/2*{control_cost})*{p[0]}^2 + |{x[0]}-{target_x}| + {congestion_cost}*{m}")
+    expected = (p[0] ** 2) / (2 * control_cost) + abs(x[0] - target_x) + congestion_cost * m
+    logger.info(f"  Computed: {expected:.4f}")
+
+    # Optimal control (dH/dp)
+    dp_val = hamiltonian.dp(x, m, p, t)
+    logger.info(f"\ndH/dp (optimal control): {dp_val[0]:.4f}")
+    logger.info(f"  Expected: p / lambda = {p[0] / control_cost:.4f}")
+
+    # Coupling derivative (dH/dm)
+    dm_val = hamiltonian.dm(x, m, p, t)
+    logger.info(f"\ndH/dm (coupling derivative): {dm_val:.4f}")
+    logger.info(f"  Expected: gamma = {congestion_cost}")
+
+    # Legendre transform to Lagrangian
+    logger.info("\nLegendre Transform:")
+    lagrangian = hamiltonian.legendre_transform()
+    logger.info(f"  L type: {type(lagrangian).__name__}")
+
+    # Evaluate Lagrangian at optimal control
+    alpha = dp_val  # Optimal control = dH/dp
+    L_val = lagrangian(x, alpha, m, t)
+    logger.info(f"  L(x, alpha*, m, t) = {L_val:.4f}")
+
+    return hamiltonian
+
+
+def run_mfg_problem():
+    """
+    Run the MFG problem and visualize results.
+    """
+    logger.info("\n" + "=" * 70)
+    logger.info("Custom MFG Problem: Target Navigation with Congestion")
     logger.info("=" * 70)
 
     # Problem parameters
@@ -377,129 +220,75 @@ def compare_approaches():
     T = 3.0
     Nt = 51
 
-    # =========================================================================
-    # Method 1: Advanced API with tuple notation (legacy function-based)
-    # =========================================================================
-    logger.info("\n[1/5] Creating problem with advanced API (tuple notation)...")
-    problem_advanced = create_custom_problem_advanced(L=L, target_x=target_x, Nx=Nx, T=T, Nt=Nt)
-    logger.info("  Using: MFGProblem with MFGComponents")
-    logger.info("  Hamiltonian signature: hamiltonian_func(..., derivs, ...)")
-    logger.info("  Gradient access: derivs[(1,)] for du/dx")
+    logger.info("\nProblem Setup:")
+    logger.info(f"  Domain: [0, {L}]")
+    logger.info(f"  Target: x = {target_x}")
+    logger.info(f"  Time horizon: T = {T}")
+    logger.info(f"  Grid: {Nx} spatial points, {Nt} time steps")
 
-    logger.info("\n  Solving with advanced API...")
-    result_advanced = problem_advanced.solve(max_iterations=30, tolerance=1e-3)
-    logger.info(f"  Converged: {result_advanced.converged}")
-    logger.info(f"  Iterations: {result_advanced.iterations}")
+    # Create and solve problem
+    logger.info("\nCreating problem with class-based Hamiltonian...")
+    problem = create_custom_problem(L=L, target_x=target_x, Nx=Nx, T=T, Nt=Nt)
 
-    # =========================================================================
-    # Method 2: Simplified API (legacy function-based)
-    # =========================================================================
-    logger.info("\n[2/5] Creating problem with simplified API...")
-    problem_simple = create_custom_problem_simple(L=L, target_x=target_x, Nx=Nx, T=T, Nt=Nt)
-    logger.info("  Using: MFGProblem")
-    logger.info("  Hamiltonian signature: hamiltonian(x, p, m)")
-    logger.info("  Gradient access: p directly (no dictionary)")
+    logger.info("Solving MFG system...")
+    result = problem.solve(max_iterations=30, tolerance=1e-3)
 
-    logger.info("\n  Solving with simplified API...")
-    result_simple = problem_simple.solve(max_iterations=30, tolerance=1e-3)
-    logger.info(f"  Converged: {result_simple.converged}")
-    logger.info(f"  Iterations: {result_simple.iterations}")
+    logger.info("\nResults:")
+    logger.info(f"  Converged: {result.converged}")
+    logger.info(f"  Iterations: {result.iterations}")
+    if hasattr(result, "final_error_M"):
+        logger.info(f"  Final error (M): {result.final_error_M:.2e}")
+    if hasattr(result, "final_error_U"):
+        logger.info(f"  Final error (U): {result.final_error_U:.2e}")
 
-    # =========================================================================
-    # Method 3: Class-based API (NEW recommended approach)
-    # =========================================================================
-    logger.info("\n[3/5] Creating problem with class-based API (NEW)...")
-    problem_class = create_custom_problem_class_based(L=L, target_x=target_x, Nx=Nx, T=T, Nt=Nt)
-    logger.info("  Using: SeparableHamiltonian + to_legacy_func()")
-    logger.info("  Hamiltonian: H = H_control(p) + V(x,t) + f(m)")
-    logger.info("  Components: QuadraticControlCost, potential, coupling")
-
-    logger.info("\n  Solving with class-based API...")
-    result_class = problem_class.solve(max_iterations=30, tolerance=1e-3)
-    logger.info(f"  Converged: {result_class.converged}")
-    logger.info(f"  Iterations: {result_class.iterations}")
-
-    # =========================================================================
-    # Comparison
-    # =========================================================================
-    logger.info("\n[4/5] Comparing results...")
-
-    # Compare final equilibrium distributions
-    m_advanced = result_advanced.M[-1, :]
-    m_simple = result_simple.M[-1, :]
-    m_class = result_class.M[-1, :]
-
-    diff_adv_sim = np.linalg.norm(m_advanced - m_simple)
-    diff_adv_cls = np.linalg.norm(m_advanced - m_class)
-    diff_sim_cls = np.linalg.norm(m_simple - m_class)
-
-    logger.info(f"  Advanced vs Simplified (L2): {diff_adv_sim:.6e}")
-    logger.info(f"  Advanced vs Class-based (L2): {diff_adv_cls:.6e}")
-    logger.info(f"  Simplified vs Class-based (L2): {diff_sim_cls:.6e}")
-
-    max_diff = max(diff_adv_sim, diff_adv_cls, diff_sim_cls)
-    if max_diff < 1e-2:
-        logger.info("  All three APIs produce equivalent solutions!")
-    else:
-        logger.info(f"  Note: Maximum difference = {max_diff:.6e}")
-
-    # =========================================================================
     # Visualization
-    # =========================================================================
-    logger.info("\n[5/5] Generating visualizations...")
+    logger.info("\nGenerating visualizations...")
 
-    x_grid = np.linspace(problem_advanced.xmin, problem_advanced.xmax, Nx + 1)
+    x_grid = np.linspace(0, L, Nx + 1)
+    t_grid = np.linspace(0, T, Nt + 1)
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
-    # Panel 1: Final equilibrium comparison (all three approaches)
+    # Panel 1: Density evolution
     ax = axes[0, 0]
-    ax.plot(x_grid, m_advanced, "b-", linewidth=2.5, label="Advanced API (derivs)")
-    ax.plot(x_grid, m_simple, "r--", linewidth=2, label="Simplified API")
-    ax.plot(x_grid, m_class, "g:", linewidth=2, label="Class-based API (NEW)")
-    ax.axvline(target_x, color="orange", linestyle="-.", linewidth=1.5, label="Target", alpha=0.7)
+    for i, t_idx in enumerate([0, Nt // 4, Nt // 2, 3 * Nt // 4, Nt]):
+        t_val = t_grid[t_idx]
+        ax.plot(x_grid, result.M[t_idx, :], linewidth=2, label=f"t = {t_val:.1f}")
+    ax.axvline(target_x, color="orange", linestyle="--", linewidth=1.5, alpha=0.7, label="Target")
     ax.set_xlabel("Position x", fontsize=11)
-    ax.set_ylabel("Equilibrium density m(x)", fontsize=11)
-    ax.set_title("Final Equilibrium Comparison", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Density m(x, t)", fontsize=11)
+    ax.set_title("Density Evolution", fontsize=12, fontweight="bold")
     ax.legend(loc="best")
     ax.grid(True, alpha=0.3)
 
-    # Panel 2: Value function comparison (all three approaches)
+    # Panel 2: Value function evolution
     ax = axes[0, 1]
-    U_advanced = result_advanced.U[-1, :]
-    U_simple = result_simple.U[-1, :]
-    U_class = result_class.U[-1, :]
-    ax.plot(x_grid, U_advanced, "b-", linewidth=2.5, label="Advanced API")
-    ax.plot(x_grid, U_simple, "r--", linewidth=2, label="Simplified API")
-    ax.plot(x_grid, U_class, "g:", linewidth=2, label="Class-based API")
+    for i, t_idx in enumerate([0, Nt // 4, Nt // 2, 3 * Nt // 4, Nt]):
+        t_val = t_grid[t_idx]
+        ax.plot(x_grid, result.U[t_idx, :], linewidth=2, label=f"t = {t_val:.1f}")
     ax.set_xlabel("Position x", fontsize=11)
-    ax.set_ylabel("Value function u(x, T)", fontsize=11)
-    ax.set_title("Value Function Comparison", fontsize=12, fontweight="bold")
+    ax.set_ylabel("Value u(x, t)", fontsize=11)
+    ax.set_title("Value Function Evolution", fontsize=12, fontweight="bold")
     ax.legend(loc="best")
     ax.grid(True, alpha=0.3)
 
-    # Panel 3: Convergence history (all three approaches)
+    # Panel 3: Convergence history
     ax = axes[1, 0]
     ax.semilogy(
-        range(1, result_advanced.iterations + 1),
-        result_advanced.error_history_M[: result_advanced.iterations],
-        "b-",
+        range(1, result.iterations + 1),
+        result.error_history_M[: result.iterations],
+        "b-o",
         linewidth=2,
-        label="Advanced API",
+        markersize=4,
+        label="Density error",
     )
     ax.semilogy(
-        range(1, result_simple.iterations + 1),
-        result_simple.error_history_M[: result_simple.iterations],
-        "r--",
+        range(1, result.iterations + 1),
+        result.error_history_U[: result.iterations],
+        "r-s",
         linewidth=2,
-        label="Simplified API",
-    )
-    ax.semilogy(
-        range(1, result_class.iterations + 1),
-        result_class.error_history_M[: result_class.iterations],
-        "g:",
-        linewidth=2,
-        label="Class-based API",
+        markersize=4,
+        label="Value error",
     )
     ax.set_xlabel("Picard iteration", fontsize=11)
     ax.set_ylabel("L2 error", fontsize=11)
@@ -507,51 +296,54 @@ def compare_approaches():
     ax.legend(loc="best")
     ax.grid(True, alpha=0.3)
 
-    # Panel 4: Pairwise differences
+    # Panel 4: Space-time density heatmap
     ax = axes[1, 1]
-    diff_1 = np.abs(m_advanced - m_simple)
-    diff_2 = np.abs(m_advanced - m_class)
-    ax.plot(x_grid, diff_1, "r-", linewidth=2, label=f"Adv-Simp (L2={diff_adv_sim:.2e})")
-    ax.plot(x_grid, diff_2, "g--", linewidth=2, label=f"Adv-Class (L2={diff_adv_cls:.2e})")
+    X, T_mesh = np.meshgrid(x_grid, t_grid)
+    pcm = ax.pcolormesh(X, T_mesh, result.M, shading="auto", cmap="viridis")
+    ax.axvline(target_x, color="red", linestyle="--", linewidth=2, label="Target")
     ax.set_xlabel("Position x", fontsize=11)
-    ax.set_ylabel("|m_i - m_j|", fontsize=11)
-    ax.set_title("Pairwise Density Differences", fontsize=12, fontweight="bold")
-    ax.legend(loc="best")
-    ax.grid(True, alpha=0.3)
-    ax.set_yscale("log")
+    ax.set_ylabel("Time t", fontsize=11)
+    ax.set_title("Density m(x, t) Space-Time", fontsize=12, fontweight="bold")
+    ax.legend(loc="upper right")
+    plt.colorbar(pcm, ax=ax, label="Density")
 
     plt.tight_layout()
 
-    output_path = OUTPUT_DIR / "custom_hamiltonian_derivs_comparison.png"
+    output_path = OUTPUT_DIR / "custom_hamiltonian_class_based.png"
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
     logger.info(f"  Saved: {output_path}")
 
     # Show plot
     plt.show()
 
-    # =========================================================================
-    # Summary
-    # =========================================================================
-    logger.info("\n" + "=" * 70)
-    logger.info("Demo Complete!")
-    logger.info("=" * 70)
-    logger.info("\nKey Takeaways:")
-    logger.info("  1. Advanced API: Function-based with derivs dict for full control")
-    logger.info("  2. Simplified API: Simple (x, p, m) signature with wrapper")
-    logger.info("  3. Class-based API: SeparableHamiltonian (NEW, recommended)")
-    logger.info("  4. All three approaches produce equivalent results")
-    logger.info("\nRecommendation:")
-    logger.info("  - Use SeparableHamiltonian (class-based) for most applications")
-    logger.info("  - Benefits: composable, type-safe, auto-diff for dp()/dm()")
-    logger.info("  - Legendre transform: H.legendre_transform() <-> L.legendre_transform()")
-    logger.info("\nSee Also:")
-    logger.info("  - mfg_pde/core/hamiltonian.py (HamiltonianBase, SeparableHamiltonian)")
-    logger.info("  - docs/migration_guides/phase3_gradient_notation_migration.md")
+    return result
 
 
 def main():
     """Run the demonstration."""
-    compare_approaches()
+    logger.info("=" * 70)
+    logger.info("Custom Hamiltonian Demo: Class-Based API")
+    logger.info("=" * 70)
+    logger.info("\nThis demo showcases the recommended class-based Hamiltonian API.")
+
+    # Part 1: Demonstrate Hamiltonian methods
+    demonstrate_hamiltonian_methods()
+
+    # Part 2: Run MFG problem
+    run_mfg_problem()
+
+    # Summary
+    logger.info("\n" + "=" * 70)
+    logger.info("Demo Complete!")
+    logger.info("=" * 70)
+    logger.info("\nKey Takeaways:")
+    logger.info("  1. Use SeparableHamiltonian for most MFG problems")
+    logger.info("  2. Components: control_cost, potential, coupling, coupling_dm")
+    logger.info("  3. Methods: H(), dp(), dm(), legendre_transform()")
+    logger.info("  4. Pass directly to MFGComponents(hamiltonian=H)")
+    logger.info("\nSee Also:")
+    logger.info("  - mfg_pde/core/hamiltonian.py (HamiltonianBase, SeparableHamiltonian)")
+    logger.info("  - examples/basic/core_infrastructure/ (more examples)")
 
 
 if __name__ == "__main__":

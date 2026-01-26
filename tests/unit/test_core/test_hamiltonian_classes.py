@@ -336,55 +336,8 @@ class TestCreateHamiltonian:
             create_hamiltonian("invalid_type")
 
 
-class TestToLegacyFunc:
-    """Tests for to_legacy_func() conversion."""
-
-    def test_legacy_hamiltonian_func(self):
-        """Test conversion to legacy hamiltonian_func format."""
-        H = SeparableHamiltonian(
-            control_cost=QuadraticControlCost(control_cost=1.0),
-            coupling=lambda m: -(m**2),
-            coupling_dm=lambda m: -2 * m,
-        )
-        h_func, _h_dm_func = H.to_legacy_func()
-
-        # Test hamiltonian_func
-        derivs = {(1,): 2.0}  # p = 2.0 in 1D
-        H_val = h_func(
-            x_idx=0,
-            x_position=0.5,
-            m_at_x=0.3,
-            derivs=derivs,
-            t_idx=0,
-            current_time=0.0,
-            problem=None,
-        )
-
-        # H = ½|p|²/λ - m² = 0.5 * 4 / 1 - 0.09 = 1.91
-        expected = 0.5 * 4.0 - 0.09
-        assert abs(H_val - expected) < 1e-10
-
-    def test_legacy_hamiltonian_dm_func(self):
-        """Test conversion to legacy hamiltonian_dm_func format."""
-        H = SeparableHamiltonian(
-            control_cost=QuadraticControlCost(control_cost=1.0),
-            coupling=lambda m: -(m**2),
-            coupling_dm=lambda m: -2 * m,
-        )
-        _h_func, h_dm_func = H.to_legacy_func()
-
-        derivs = {(1,): 2.0}
-        dm_val = h_dm_func(
-            x_idx=0,
-            x_position=0.5,
-            m_at_x=0.3,
-            derivs=derivs,
-            t_idx=0,
-            current_time=0.0,
-            problem=None,
-        )
-
-        assert abs(dm_val - (-0.6)) < 1e-10
+# Issue #673: TestToLegacyFunc removed - to_legacy_func() method deleted
+# Class-based Hamiltonian API is now called directly (no legacy function wrappers)
 
 
 if __name__ == "__main__":

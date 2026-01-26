@@ -1,6 +1,8 @@
 """
 Factory for creating general MFG problems from configurations and function specifications.
 
+Issue #673: Updated to class-based Hamiltonian API only.
+
 This module provides high-level interfaces for creating any MFG problem
 through configuration files and programmatic function definitions.
 """
@@ -20,6 +22,8 @@ from mfg_pde.utils.mfg_logging.logger import get_logger
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from mfg_pde.core.hamiltonian import HamiltonianBase
+
 logger = get_logger(__name__)
 
 
@@ -27,78 +31,94 @@ class GeneralMFGFactory:
     """
     Factory for creating general MFG problems from various input formats.
 
+    Issue #673: Updated to class-based Hamiltonian API.
+
     This factory can create any MFG problem from:
-    - Python function definitions
-    - Configuration files with function references
-    - Inline lambda expressions in YAML
-    - Symbolic mathematical expressions (future extension)
+    - HamiltonianBase instances (recommended)
+    - Configuration files with Hamiltonian class references
+    - Inline Hamiltonian definitions in YAML
+
+    Example:
+        >>> from mfg_pde.factory import GeneralMFGFactory
+        >>> from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+        >>>
+        >>> factory = GeneralMFGFactory()
+        >>> H = SeparableHamiltonian(
+        ...     control_cost=QuadraticControlCost(control_cost=1.0),
+        ...     coupling=lambda m: m,
+        ...     coupling_dm=lambda m: 1.0,
+        ... )
+        >>> problem = factory.create_from_hamiltonian(
+        ...     hamiltonian=H,
+        ...     domain_config={"xmin": 0.0, "xmax": 1.0, "Nx": 51},
+        ...     time_config={"T": 1.0, "Nt": 51},
+        ...     m_initial=lambda x: np.exp(-10 * (x - 0.3)**2),
+        ...     u_final=lambda x: (x - 0.8)**2,
+        ... )
     """
 
     def __init__(self) -> None:
         """Initialize general MFG factory."""
+        self.hamiltonian_registry: dict[str, HamiltonianBase] = {}
         self.function_registry: dict[str, Callable[..., Any]] = {}
 
+    def register_hamiltonian(self, name: str, hamiltonian: HamiltonianBase) -> None:
+        """Register a named Hamiltonian for use in configurations."""
+        self.hamiltonian_registry[name] = hamiltonian
+        logger.info(f"Registered Hamiltonian: {name}")
+
     def register_functions(self, functions: dict[str, Callable[..., Any]]) -> None:
-        """Register named functions for use in configurations."""
+        """Register named functions (for initial/final conditions) in configurations."""
         self.function_registry.update(functions)
         logger.info(f"Registered {len(functions)} functions: {list(functions.keys())}")
 
-    def create_from_functions(
+    def create_from_hamiltonian(
         self,
-        hamiltonian_func: Callable[..., Any],
-        hamiltonian_dm_func: Callable[..., Any],
+        hamiltonian: HamiltonianBase,
         domain_config: dict[str, Any],
         time_config: dict[str, Any],
         solver_config: dict[str, Any] | None = None,
-        **optional_components: Any,
+        *,
+        m_initial: Callable | None = None,
+        u_final: Callable | None = None,
+        potential_func: Callable | None = None,
+        boundary_conditions: BoundaryConditions | None = None,
+        description: str = "MFG Problem",
+        parameters: dict[str, Any] | None = None,
     ) -> MFGProblem:
         """
-        Create MFG problem from function objects.
+        Create MFG problem from a class-based Hamiltonian.
 
         Args:
-            hamiltonian_func: Hamiltonian function H(...)
-            hamiltonian_dm_func: Hamiltonian derivative dH/dm(...)
+            hamiltonian: HamiltonianBase instance (SeparableHamiltonian, etc.)
             domain_config: Domain specification {"xmin": ..., "xmax": ..., "Nx": ...}
             time_config: Time specification {"T": ..., "Nt": ...}
             solver_config: Solver parameters {"sigma": ..., "coupling_coefficient": ...}
-            **optional_components: Additional components (potential_func, etc.)
+            m_initial: Initial density function m_0(x)
+            u_final: Terminal value function u_T(x)
+            potential_func: Additional potential V(x, t) if not in Hamiltonian
+            boundary_conditions: Boundary conditions
+            description: Problem description
+            parameters: Additional problem parameters
+
+        Returns:
+            MFGProblem instance
         """
-        # Build MFGComponents
-        component_kwargs = {
-            "hamiltonian_func": hamiltonian_func,
-            "hamiltonian_dm_func": hamiltonian_dm_func,
-        }
-
-        # Add optional components
-        if "potential_func" in optional_components:
-            component_kwargs["potential_func"] = optional_components["potential_func"]
-        if "m_initial" in optional_components:
-            component_kwargs["m_initial"] = optional_components["m_initial"]
-        if "u_final" in optional_components:
-            component_kwargs["u_final"] = optional_components["u_final"]
-        if "jacobian_func" in optional_components:
-            component_kwargs["jacobian_func"] = optional_components["jacobian_func"]
-        if "coupling_func" in optional_components:
-            component_kwargs["coupling_func"] = optional_components["coupling_func"]
-        if "description" in optional_components:
-            component_kwargs["description"] = optional_components["description"]
-        if "parameters" in optional_components:
-            component_kwargs["parameters"] = optional_components["parameters"]
-
-        components = MFGComponents(**component_kwargs)
+        # Build MFGComponents with class-based Hamiltonian
+        components = MFGComponents(
+            hamiltonian=hamiltonian,
+            m_initial=m_initial,
+            u_final=u_final,
+            potential_func=potential_func,
+            boundary_conditions=boundary_conditions,
+            description=description,
+            parameters=parameters or {},
+        )
 
         # Build MFGProblem
         problem_kwargs = {**domain_config, **time_config}
         if solver_config:
             problem_kwargs.update(solver_config)
-
-        # Handle boundary conditions
-        if "boundary_conditions" in optional_components:
-            bc = optional_components["boundary_conditions"]
-            if isinstance(bc, dict):
-                problem_kwargs["boundary_conditions"] = BoundaryConditions(**bc)
-            else:
-                problem_kwargs["boundary_conditions"] = bc
 
         problem_kwargs["components"] = components
 
@@ -108,17 +128,23 @@ class GeneralMFGFactory:
         """
         Create MFG problem from YAML configuration file.
 
+        Issue #673: Updated to class-based Hamiltonian API.
+
         Expected format:
         ```yaml
         problem:
           description: "My custom MFG problem"
           type: custom
 
+        hamiltonian:
+          type: separable  # or "quadratic", "custom"
+          control_cost: 1.0
+          coupling_coefficient: 1.0
+
         functions:
-          hamiltonian: "my_module.my_hamiltonian"
-          hamiltonian_dm: "my_module.my_hamiltonian_dm"
           potential: "lambda x: 0.5 * x**2"
-          initial_density: "lambda x: np.exp(-10*(x-0.5)**2)"
+          m_initial: "lambda x: np.exp(-10*(x-0.5)**2)"
+          u_final: "lambda x: (x - 0.8)**2"
 
         domain:
           xmin: 0.0
@@ -138,7 +164,6 @@ class GeneralMFGFactory:
           beta: 0.5
         ```
         """
-
         config_manager = OmegaConfManager()
         config = config_manager.load_config(config_path)
 
@@ -147,37 +172,32 @@ class GeneralMFGFactory:
     def create_from_config_dict(self, config: dict[str, Any]) -> MFGProblem:
         """Create MFG problem from configuration dictionary."""
 
-        # Extract function specifications
+        # Load Hamiltonian from config
+        hamiltonian_config = config.get("hamiltonian", {})
+        hamiltonian = self._load_hamiltonian(hamiltonian_config)
+
+        if hamiltonian is None:
+            raise ValueError(
+                "Hamiltonian specification is required.\n\n"
+                "Example config:\n"
+                "  hamiltonian:\n"
+                "    type: separable\n"
+                "    control_cost: 1.0\n"
+                "    coupling_coefficient: 1.0"
+            )
+
+        # Load optional functions (initial/final conditions)
         functions_config = config.get("functions", {})
 
-        # Load required functions
-        hamiltonian_func = self._load_function(functions_config.get("hamiltonian"))
-        hamiltonian_dm_func = self._load_function(functions_config.get("hamiltonian_dm"))
+        m_initial = self._load_function(functions_config.get("m_initial"))
+        u_final = self._load_function(functions_config.get("u_final"))
+        potential_func = self._load_function(functions_config.get("potential"))
 
-        if hamiltonian_func is None:
-            raise ValueError("hamiltonian function is required")
-        if hamiltonian_dm_func is None:
-            raise ValueError("hamiltonian_dm function is required")
-
-        # Load optional functions
-        # Key mapping: config key -> create_from_functions kwarg name
-        # Issue #670: Use m_initial/u_final naming consistently
-        key_mapping = {
-            "potential": "potential_func",
-            "initial_density": "m_initial",  # Config alias for m_initial
-            "m_initial": "m_initial",  # Direct name also supported
-            "final_value": "u_final",  # Config alias for u_final
-            "u_final": "u_final",  # Direct name also supported
-            "jacobian": "jacobian_func",
-            "coupling": "coupling_func",
-        }
-
-        optional_functions = {}
-        for config_key, kwarg_name in key_mapping.items():
-            if config_key in functions_config:
-                func = self._load_function(functions_config[config_key])
-                if func is not None:
-                    optional_functions[kwarg_name] = func
+        # Also support legacy aliases
+        if m_initial is None:
+            m_initial = self._load_function(functions_config.get("initial_density"))
+        if u_final is None:
+            u_final = self._load_function(functions_config.get("final_value"))
 
         # Extract configurations
         domain_config = config.get("domain", {"xmin": 0.0, "xmax": 1.0, "Nx": 51})
@@ -185,25 +205,79 @@ class GeneralMFGFactory:
         solver_config = config.get("solver", {"sigma": 1.0, "coupling_coefficient": 0.5})
 
         # Extract other components
+        boundary_conditions = None
         if "boundary_conditions" in config:
-            optional_functions["boundary_conditions"] = config["boundary_conditions"]
+            bc_config = config["boundary_conditions"]
+            if isinstance(bc_config, dict):
+                boundary_conditions = BoundaryConditions(**bc_config)
+            else:
+                boundary_conditions = bc_config
 
-        if "parameters" in config:
-            optional_functions["parameters"] = config["parameters"]
+        parameters = config.get("parameters", {})
+        description = "MFG Problem"
+        if "problem" in config and "description" in config["problem"]:
+            description = config["problem"]["description"]
 
-        if "problem" in config:
-            problem_info = config["problem"]
-            if "description" in problem_info:
-                optional_functions["description"] = problem_info["description"]
-
-        return self.create_from_functions(
-            hamiltonian_func=hamiltonian_func,
-            hamiltonian_dm_func=hamiltonian_dm_func,
+        return self.create_from_hamiltonian(
+            hamiltonian=hamiltonian,
             domain_config=domain_config,
             time_config=time_config,
             solver_config=solver_config,
-            **optional_functions,
+            m_initial=m_initial,
+            u_final=u_final,
+            potential_func=potential_func,
+            boundary_conditions=boundary_conditions,
+            description=description,
+            parameters=parameters,
         )
+
+    def _load_hamiltonian(self, hamiltonian_config: dict[str, Any] | str) -> HamiltonianBase | None:
+        """
+        Load Hamiltonian from configuration.
+
+        Supports:
+        - Registry name: "my_registered_hamiltonian"
+        - Type-based config: {"type": "separable", "control_cost": 1.0, ...}
+        """
+        from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+
+        if hamiltonian_config is None:
+            return None
+
+        # Check if it's a registry name
+        if isinstance(hamiltonian_config, str):
+            if hamiltonian_config in self.hamiltonian_registry:
+                return self.hamiltonian_registry[hamiltonian_config]
+            logger.warning(f"Hamiltonian '{hamiltonian_config}' not found in registry")
+            return None
+
+        # Type-based config
+        h_type = hamiltonian_config.get("type", "separable")
+
+        if h_type == "separable":
+            control_cost = hamiltonian_config.get("control_cost", 1.0)
+            coupling_coeff = hamiltonian_config.get("coupling_coefficient", 1.0)
+
+            return SeparableHamiltonian(
+                control_cost=QuadraticControlCost(control_cost=control_cost),
+                coupling=lambda m, c=coupling_coeff: c * m,
+                coupling_dm=lambda m, c=coupling_coeff: c,
+            )
+
+        elif h_type == "quadratic":
+            from mfg_pde.core.hamiltonian import QuadraticMFGHamiltonian
+
+            control_cost = hamiltonian_config.get("control_cost", 1.0)
+            coupling_coeff = hamiltonian_config.get("coupling_coefficient", 1.0)
+
+            return QuadraticMFGHamiltonian(
+                control_cost=control_cost,
+                coupling_coefficient=coupling_coeff,
+            )
+
+        else:
+            logger.warning(f"Unknown Hamiltonian type: {h_type}")
+            return None
 
     def _load_function(self, func_spec: str | None) -> Callable | None:
         """
@@ -214,7 +288,6 @@ class GeneralMFGFactory:
         - Lambda expressions: "lambda x: x**2"
         - Registry names: registered_function_name
         """
-
         if func_spec is None:
             return None
 
@@ -262,19 +335,19 @@ class GeneralMFGFactory:
     def create_template_config(self, filename: str) -> None:
         """Create a template configuration file.
 
-        Note:
-            Template uses modern 'derivs' API (tuple keys) instead of legacy 'p_values'.
-            Uses Issue #670 standard naming: m_initial, u_final.
+        Issue #673: Uses class-based Hamiltonian API.
         """
-        # Modern Hamiltonian signature uses 'derivs' with tuple keys: {(1,): du/dx}
         template = {
             "problem": {"description": "My custom MFG problem", "type": "custom"},
+            "hamiltonian": {
+                "type": "separable",
+                "control_cost": 1.0,
+                "coupling_coefficient": 1.0,
+            },
             "functions": {
-                "hamiltonian": "lambda x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem: 0.5 * problem.coupling_coefficient * derivs.get((1,), 0.0)**2 - problem.f_potential[x_idx] - m_at_x**2",
-                "hamiltonian_dm": "lambda x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem: -2.0 * m_at_x",
                 "potential": "lambda x: 0.5 * x * (1 - x)",
-                "m_initial": "lambda x: np.exp(-10 * (x - 0.3)**2)",  # Issue #670: standard name
-                "u_final": "lambda x: (x - 0.8)**2",  # Issue #670: standard name
+                "m_initial": "lambda x: np.exp(-10 * (x - 0.3)**2)",
+                "u_final": "lambda x: (x - 0.8)**2",
             },
             "domain": {"xmin": 0.0, "xmax": 1.0, "Nx": 51},
             "time": {"T": 1.0, "Nt": 51},
@@ -289,24 +362,21 @@ class GeneralMFGFactory:
 
     def validate_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """Validate configuration for general MFG problem."""
-
         validation: dict[str, Any] = {"valid": True, "errors": [], "warnings": []}
 
         # Check required sections
-        required_sections = ["functions", "domain", "time"]
+        required_sections = ["hamiltonian", "domain", "time"]
         for section in required_sections:
             if section not in config:
                 validation["valid"] = False
                 validation["errors"].append(f"Missing required section: {section}")
 
-        # Check required functions
-        if "functions" in config:
-            required_functions = ["hamiltonian", "hamiltonian_dm"]
-            functions = config["functions"]
-            for func in required_functions:
-                if func not in functions:
-                    validation["valid"] = False
-                    validation["errors"].append(f"Missing required function: {func}")
+        # Check Hamiltonian config
+        if "hamiltonian" in config:
+            h_config = config["hamiltonian"]
+            if isinstance(h_config, dict):
+                if "type" not in h_config:
+                    validation["warnings"].append("Hamiltonian type not specified, defaulting to 'separable'")
 
         # Check domain parameters
         if "domain" in config:
@@ -342,9 +412,44 @@ def get_general_factory() -> GeneralMFGFactory:
 
 
 def create_general_mfg_problem(
-    hamiltonian_func: Callable[..., Any], hamiltonian_dm_func: Callable[..., Any], **kwargs: Any
+    hamiltonian: HamiltonianBase,
+    **kwargs: Any,
 ) -> MFGProblem:
-    """Convenience function to create general MFG problem."""
+    """
+    Convenience function to create general MFG problem.
+
+    Issue #673: Updated to class-based Hamiltonian API.
+
+    Args:
+        hamiltonian: HamiltonianBase instance
+        **kwargs: Additional arguments including:
+            - xmin, xmax, Nx: Domain parameters
+            - T, Nt: Time parameters
+            - sigma, coupling_coefficient: Solver parameters
+            - m_initial, u_final: Initial/terminal conditions
+            - potential_func: Additional potential
+            - boundary_conditions: Boundary conditions
+
+    Returns:
+        MFGProblem instance
+
+    Example:
+        >>> from mfg_pde.factory import create_general_mfg_problem
+        >>> from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+        >>>
+        >>> H = SeparableHamiltonian(
+        ...     control_cost=QuadraticControlCost(control_cost=1.0),
+        ...     coupling=lambda m: m,
+        ...     coupling_dm=lambda m: 1.0,
+        ... )
+        >>> problem = create_general_mfg_problem(
+        ...     hamiltonian=H,
+        ...     xmin=0.0, xmax=1.0, Nx=51,
+        ...     T=1.0, Nt=51,
+        ...     m_initial=lambda x: np.exp(-10 * (x - 0.3)**2),
+        ...     u_final=lambda x: (x - 0.8)**2,
+        ... )
+    """
     factory = get_general_factory()
 
     # Extract configurations
@@ -361,11 +466,23 @@ def create_general_mfg_problem(
         "coupling_coefficient": kwargs.pop("coupling_coefficient", 0.5),
     }
 
-    return factory.create_from_functions(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
+    # Extract optional components
+    m_initial = kwargs.pop("m_initial", None)
+    u_final = kwargs.pop("u_final", None)
+    potential_func = kwargs.pop("potential_func", None)
+    boundary_conditions = kwargs.pop("boundary_conditions", None)
+    description = kwargs.pop("description", "MFG Problem")
+    parameters = kwargs.pop("parameters", None)
+
+    return factory.create_from_hamiltonian(
+        hamiltonian=hamiltonian,
         domain_config=domain_config,
         time_config=time_config,
         solver_config=solver_config,
-        **kwargs,
+        m_initial=m_initial,
+        u_final=u_final,
+        potential_func=potential_func,
+        boundary_conditions=boundary_conditions,
+        description=description,
+        parameters=parameters,
     )

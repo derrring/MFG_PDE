@@ -795,73 +795,7 @@ class HamiltonianBase(MFGOperatorBase):
 
         return float((H_plus - H_minus) / (2 * eps))
 
-    def to_legacy_func(self):
-        """
-        Convert to legacy function-based format for MFGComponents.
-
-        Returns a tuple (hamiltonian_func, hamiltonian_dm_func) compatible
-        with the old function-based API in MFGComponents.
-
-        Returns
-        -------
-        tuple[Callable, Callable]
-            (hamiltonian_func, hamiltonian_dm_func) with legacy signatures
-        """
-
-        def hamiltonian_func(
-            x_idx: int,
-            x_position: float | NDArray | None,
-            m_at_x: float,
-            derivs: dict,
-            t_idx: int | None,
-            current_time: float | None,
-            problem: object,
-        ) -> float:
-            """Legacy adapter for hamiltonian_func."""
-            # Extract p from derivs (tuple notation)
-            x = np.atleast_1d(x_position if x_position is not None else 0.0)
-
-            # Get dimension from derivs keys
-            if derivs:
-                # Find gradient components - keys with exactly one 1
-                dim = max(len(k) for k in derivs) if derivs else 1
-                p = np.zeros(dim)
-                for i in range(dim):
-                    # Key for ∂/∂x_i has 1 in position i, 0 elsewhere
-                    key = tuple(1 if j == i else 0 for j in range(dim))
-                    p[i] = derivs.get(key, 0.0)
-            else:
-                p = np.zeros(1)
-
-            t = current_time if current_time is not None else 0.0
-            return float(self(x, m_at_x, p, t))
-
-        def hamiltonian_dm_func(
-            x_idx: int,
-            x_position: float | NDArray | None,
-            m_at_x: float,
-            derivs: dict,
-            t_idx: int | None,
-            current_time: float | None,
-            problem: object,
-        ) -> float:
-            """Legacy adapter for hamiltonian_dm_func."""
-            x = np.atleast_1d(x_position if x_position is not None else 0.0)
-
-            # Get dimension from derivs keys
-            if derivs:
-                dim = max(len(k) for k in derivs) if derivs else 1
-                p = np.zeros(dim)
-                for i in range(dim):
-                    key = tuple(1 if j == i else 0 for j in range(dim))
-                    p[i] = derivs.get(key, 0.0)
-            else:
-                p = np.zeros(1)
-
-            t = current_time if current_time is not None else 0.0
-            return float(self.dm(x, m_at_x, p, t))
-
-        return hamiltonian_func, hamiltonian_dm_func
+    # Issue #673: to_legacy_func() removed - use class-based API directly
 
     def legendre_transform(
         self,
@@ -1765,25 +1699,26 @@ if __name__ == "__main__":
     # H = ½|p|²/λ = 0.5 * 1.0 / 2.0 = 0.25
     assert abs(H_factory_val - 0.25) < 1e-10, "Factory Hamiltonian failed"
 
-    # Test to_legacy_func conversion
-    print("\n8. to_legacy_func conversion:")
+    # Issue #673: to_legacy_func() removed - test class-based API directly
+    print("\n8. Class-based Hamiltonian direct calls:")
     H_class = SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=1.0),
         coupling=lambda m: -(m**2),
         coupling_dm=lambda m: -2 * m,
     )
-    h_func, h_dm_func = H_class.to_legacy_func()
 
-    derivs = {(1,): 2.0}  # p = 2.0 in 1D
-    legacy_H = h_func(x_idx=0, x_position=0.5, m_at_x=0.3, derivs=derivs, t_idx=0, current_time=0.0, problem=None)
+    # Call class-based API directly: H(x, m, p, t)
+    p_test = np.array([2.0])  # p = 2.0 in 1D
+    m_test = 0.3
+    H_direct = H_class(x, m_test, p_test, t_val)
     # H = ½|p|²/λ - m² = 0.5 * 4.0 / 1.0 - 0.09 = 2.0 - 0.09 = 1.91
-    print(f"   Legacy H with derivs={{(1,): 2.0}} = {legacy_H:.4f}")
+    print(f"   H(x, m=0.3, p=2.0, t) = {H_direct:.4f}")
     print("   Expected: 0.5 * 2² - 0.3² = 2.0 - 0.09 = 1.91")
-    assert abs(legacy_H - 1.91) < 1e-10, f"Legacy conversion failed: {legacy_H}"
+    assert abs(H_direct - 1.91) < 1e-10, f"Class-based H failed: {H_direct}"
 
-    legacy_dm = h_dm_func(x_idx=0, x_position=0.5, m_at_x=0.3, derivs=derivs, t_idx=0, current_time=0.0, problem=None)
-    print(f"   Legacy dH/dm = {legacy_dm:.4f}  (expected: -0.6)")
-    assert abs(legacy_dm - (-0.6)) < 1e-10, "Legacy dm conversion failed"
+    dm_direct = H_class.dm(x, m_test, p_test, t_val)
+    print(f"   H.dm(x, m=0.3, p, t) = {dm_direct:.4f}  (expected: -0.6)")
+    assert abs(dm_direct - (-0.6)) < 1e-10, "Class-based dm failed"
 
     print("\n" + "=" * 60)
     print("Testing Lagrangian and Legendre transform (Issue #651)...")
