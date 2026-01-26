@@ -526,6 +526,8 @@ class TestCustomComponentExceptionPropagation:
         components = MFGComponents(
             hamiltonian_func=broken_hamiltonian,
             hamiltonian_dm_func=working_dh_dm,
+            m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
+            u_final=lambda x: 0.0,
             problem_type="custom",
         )
 
@@ -555,6 +557,8 @@ class TestCustomComponentExceptionPropagation:
         components = MFGComponents(
             hamiltonian_func=working_hamiltonian,
             hamiltonian_dm_func=broken_dh_dm,
+            m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
+            u_final=lambda x: 0.0,
             problem_type="custom",
         )
 

@@ -203,10 +203,19 @@ def test_problem_type_detection():
 
     domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
 
+    # Default components for Issue #670 Fail Fast requirement
+    def m_initial(x):
+        return np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze()
+
+    def u_final(x):
+        return 0.0
+
     # Standard MFG
     components_standard = MFGComponents(
         hamiltonian_func=lambda x_idx, m_at_x, derivs: 0.5 * (derivs[0] if len(derivs) > 0 else 0.0) ** 2,
         hamiltonian_dm_func=lambda x_idx, m_at_x, derivs: 0.0,
+        m_initial=m_initial,
+        u_final=u_final,
         problem_type="standard",
     )
     problem = MFGProblem(geometry=domain, components=components_standard)
@@ -216,6 +225,8 @@ def test_problem_type_detection():
     components_stochastic = MFGComponents(
         hamiltonian_func=lambda x_idx, m_at_x, derivs: 0.5 * (derivs[0] if len(derivs) > 0 else 0.0) ** 2,
         hamiltonian_dm_func=lambda x_idx, m_at_x, derivs: 0.0,
+        m_initial=m_initial,
+        u_final=u_final,
         parameters={"noise_intensity": 0.5},
         problem_type="stochastic",
     )
