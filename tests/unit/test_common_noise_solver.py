@@ -10,10 +10,19 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGResult, CommonNoiseMFGSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils.numerical.particle.sampling import MCConfig
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
+        u_final=lambda x: 0.0,
+    )
 
 
 class TestCommonNoiseMFGResultDataclass:
@@ -142,6 +151,7 @@ class TestCommonNoiseSolverInitialization:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=simple_hamiltonian,
+            components=_default_components(),
         )
 
     def test_basic_initialization(self):
@@ -211,7 +221,7 @@ class TestCommonNoiseSolverInitialization:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=21 intervals -> 22 points
-        problem = MFGProblem(geometry=geometry, T=0.5, Nt=11)
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=11, components=_default_components())
 
         with pytest.raises(ValueError, match="must have common noise"):
             CommonNoiseMFGSolver(problem, num_noise_samples=10)
@@ -234,6 +244,7 @@ class TestCommonNoiseSolverNoiseSampling:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=simple_hamiltonian,
+            components=_default_components(),
         )
 
     def test_sample_noise_paths_standard_mc(self):
@@ -311,6 +322,7 @@ class TestCommonNoiseSolverAggregation:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=2)
 
@@ -347,6 +359,7 @@ class TestCommonNoiseSolverAggregation:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=3)
 
@@ -375,6 +388,7 @@ class TestCommonNoiseSolverAggregation:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=K)
 
@@ -403,6 +417,7 @@ class TestCommonNoiseSolverAggregation:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=10, variance_reduction=False)
 
@@ -428,6 +443,7 @@ class TestCommonNoiseSolverAggregation:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
 
         mc_config = MCConfig(num_samples=10, use_control_variates=True, sampling_method="sobol")
@@ -452,6 +468,7 @@ class TestCommonNoiseSolverEdgeCases:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
 
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=1)
@@ -470,6 +487,7 @@ class TestCommonNoiseSolverEdgeCases:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
 
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=1000)
@@ -491,6 +509,7 @@ class TestCommonNoiseSolverConfiguration:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
 
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=10)
@@ -508,6 +527,7 @@ class TestCommonNoiseSolverConfiguration:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
 
         # With variance reduction
@@ -530,6 +550,7 @@ class TestCommonNoiseSolverConfiguration:
             Nt=11,
             noise_process=noise_process,
             conditional_hamiltonian=lambda x, p, m, theta: 0.5 * p**2,
+            components=_default_components(),
         )
 
         # Default (None)

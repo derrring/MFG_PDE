@@ -13,7 +13,16 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
+        u_final=lambda x: 0.0,
+    )
 
 
 class TestNonQuadraticHamiltonians:
@@ -29,6 +38,7 @@ class TestNonQuadraticHamiltonians:
             Nt=20,
             sigma=0.1,
             coupling_coefficient=0.0,  # No coupling for unit tests
+            components=_default_components(),
         )
 
     @pytest.fixture

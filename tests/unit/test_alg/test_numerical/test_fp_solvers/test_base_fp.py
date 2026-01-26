@@ -16,7 +16,19 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
+        u_final=lambda x: 0.0,
+    )
+
 
 # ===================================================================
 # Mock Problem for Testing
@@ -27,10 +39,19 @@ class MockMFGProblem(MFGProblem):
     """Minimal mock MFG problem for testing."""
 
     def __init__(self):
-        super().__init__()
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)],
+            Nx_points=[101],
+            boundary_conditions=no_flux_bc(dimension=1),
+        )
+        super().__init__(
+            geometry=geometry,
+            T=1.0,
+            Nt=100,
+            diffusion=0.1,
+            components=_default_components(),
+        )
         self.dim = 1
-        self.T = 1.0
-        self.dt = 0.01
         self.dx = 0.01
 
 
