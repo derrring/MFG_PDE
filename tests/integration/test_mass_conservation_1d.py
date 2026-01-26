@@ -430,6 +430,7 @@ class TestMassConservation1D:
             f"Mass conservation violated: max error = {max_mass_error:.6e}\nMasses over time: {masses}"
         )
 
+    @pytest.mark.slow
     def test_compare_mass_conservation_methods(self, problem, boundary_conditions):
         """
         Compare mass conservation between FDM and GFDM methods.

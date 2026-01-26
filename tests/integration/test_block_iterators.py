@@ -138,6 +138,7 @@ class TestBlockIteratorConvergence:
         problem = MFGProblem(geometry=geometry, T=0.4, Nt=12, diffusion=0.18, components=_default_components())
         return problem
 
+    @pytest.mark.slow
     def test_gauss_seidel_converges(self, convergence_problem):
         """Test that Gauss-Seidel converges with sufficient iterations."""
         hjb_solver = HJBFDMSolver(convergence_problem)
@@ -160,6 +161,7 @@ class TestBlockIteratorConvergence:
             # Errors should generally decrease
             assert second_half < first_half * 5, "Errors not decreasing"
 
+    @pytest.mark.slow
     def test_gauss_seidel_faster_than_jacobi(self, convergence_problem):
         """Gauss-Seidel typically converges faster than Jacobi."""
         # Create separate solver instances

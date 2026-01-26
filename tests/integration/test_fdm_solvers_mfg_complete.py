@@ -242,6 +242,7 @@ class TestFDMSolversCoupling:
 class TestFDMSolversNumericalProperties:
     """Test numerical properties of FDM solutions."""
 
+    @pytest.mark.slow
     def test_solution_smoothness(self):
         """Test that solutions have reasonable smoothness."""
         geometry = TensorProductGrid(

@@ -408,6 +408,7 @@ class TestOperatorTraining:
         assert manager.config.device == "cpu"
         assert manager.device.type == "cpu"
 
+    @pytest.mark.slow
     def test_operator_training_workflow(self, sample_training_data):
         """Test complete training workflow."""
         # Create simple operator matching training data dimensions

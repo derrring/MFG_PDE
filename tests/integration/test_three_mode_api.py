@@ -266,6 +266,7 @@ class TestBackwardCompatibility:
 class TestConfigIntegration:
     """Test that config parameter works with three-mode API."""
 
+    @pytest.mark.slow
     def test_safe_mode_with_config(self):
         """Test Safe Mode with custom config."""
         from mfg_pde.config import MFGSolverConfig
@@ -282,6 +283,7 @@ class TestConfigIntegration:
 
         assert result is not None
 
+    @pytest.mark.slow
     def test_expert_mode_with_config(self):
         """Test Expert Mode with custom config."""
         from mfg_pde.config import MFGSolverConfig
