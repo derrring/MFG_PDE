@@ -31,7 +31,16 @@ import pytest
 import numpy as np
 
 from mfg_pde import MFGProblem
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.types import NumericalScheme
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
+        u_final=lambda x: 0.0,
+    )
 
 
 class TestDualityConvergence:
@@ -46,6 +55,7 @@ class TestDualityConvergence:
             Nt=20,
             T=1.0,
             diffusion=0.1,
+            components=_default_components(),
         )
 
         # Solve with dual FDM pair (Safe Mode)
@@ -77,6 +87,7 @@ class TestDualityConvergence:
             Nt=20,
             T=1.0,
             diffusion=0.1,
+            components=_default_components(),
         )
 
         result = problem.solve(
@@ -101,6 +112,7 @@ class TestDualityConvergence:
                 Nt=Nx // 2,  # Keep CFL condition reasonable
                 T=1.0,
                 diffusion=0.1,
+                components=_default_components(),
             )
 
             result = problem.solve(
@@ -129,7 +141,7 @@ class TestDualityConvergence:
         from mfg_pde.factory import create_paired_solvers
         from mfg_pde.utils import check_solver_duality
 
-        problem = MFGProblem(Nx=[20], Nt=10, T=1.0)
+        problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
 
         # Create pair via Safe Mode factory
         hjb, fp = create_paired_solvers(
@@ -149,7 +161,7 @@ class TestDualityConvergence:
         from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
         from mfg_pde.utils import check_solver_duality
 
-        problem = MFGProblem(Nx=[20], Nt=10, T=1.0)
+        problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
 
         # Create dual pair
         hjb_fdm = HJBFDMSolver(problem)
@@ -185,6 +197,7 @@ class TestConvergenceRate:
                 Nt=Nx,  # Match time steps to space steps
                 T=1.0,
                 diffusion=0.1,
+                components=_default_components(),
             )
 
             result = problem.solve(
@@ -218,6 +231,7 @@ class TestNumericalStability:
             Nt=20,
             T=1.0,
             diffusion=0.1,
+            components=_default_components(),
         )
 
         result = problem.solve(
@@ -240,6 +254,7 @@ class TestNumericalStability:
             Nt=20,
             T=1.0,
             diffusion=0.1,
+            components=_default_components(),
         )
 
         result = problem.solve(
@@ -262,7 +277,7 @@ if __name__ == "__main__":
 
     # Test 1: Verify dual pairing
     print("Test 1: Safe Mode duality guarantee")
-    problem = MFGProblem(Nx=[20], Nt=10, T=1.0)
+    problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
     hjb, fp = create_paired_solvers(problem, NumericalScheme.FDM_UPWIND)
     result = check_solver_duality(hjb, fp)
     assert result.is_valid_pairing()
@@ -272,7 +287,7 @@ if __name__ == "__main__":
 
     # Test 2: Verify convergence
     print("\nTest 2: Convergence with dual pair")
-    problem = MFGProblem(Nx=[40], Nt=20, T=1.0, diffusion=0.1)
+    problem = MFGProblem(Nx=[40], Nt=20, T=1.0, diffusion=0.1, components=_default_components())
     solve_result = problem.solve(
         scheme=NumericalScheme.FDM_UPWIND,
         max_iterations=30,
