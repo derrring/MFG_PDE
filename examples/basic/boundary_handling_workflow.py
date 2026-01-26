@@ -32,7 +32,6 @@ def main():
     print("=" * 70)
 
     geometry = TensorProductGrid(
-        dimension=2,
         bounds=[(0.0, 1.0), (0.0, 1.0)],
         Nx_points=[21, 21],  # 21x21 grid → 441 total points
         boundary_conditions=no_flux_bc(dimension=2),

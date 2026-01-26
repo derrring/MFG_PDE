@@ -69,9 +69,7 @@ class TestLQCommonNoiseAnalytical:
             return 0.5 * p**2 + 0.5 * x**2 + alpha * theta * x
 
         # Create stochastic problem
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(-2.0, 2.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[42]
-        )
+        geometry = TensorProductGrid(bounds=[(-2.0, 2.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[42])
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
@@ -180,9 +178,7 @@ class TestLQCommonNoiseAnalytical:
         def lq_hamiltonian(x, p, m, theta):
             return 0.5 * p**2 + 0.5 * x**2  # No noise coupling
 
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(-2.0, 2.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[42]
-        )
+        geometry = TensorProductGrid(bounds=[(-2.0, 2.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[42])
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,

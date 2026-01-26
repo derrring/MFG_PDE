@@ -17,7 +17,7 @@ Example:
     >>> from mfg_pde.geometry.boundary import no_flux_bc
     >>> from mfg_pde.geometry.projection import GeometryProjector
     >>>
-    >>> hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51],
+    >>> hjb_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[51, 51],
     ...                              boundary_conditions=no_flux_bc(dimension=2))
     >>> # Assume particle_geometry exists with particles
     >>>

@@ -628,7 +628,7 @@ class WorkflowManager:
             from mfg_pde.geometry.boundary import no_flux_bc
 
             geometry = TensorProductGrid(
-                dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1)
+                bounds=[(0.0, 1.0)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1)
             )
             problem = MFGProblem(geometry=geometry, diffusion=sigma, Nt=Nt)
             result = problem.solve()

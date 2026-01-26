@@ -46,9 +46,7 @@ def scenario_porous_medium():
         return 0.1 * m
 
     # Create problem with geometry-based API
-    domain = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    domain = TensorProductGrid(bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1))
 
     problem = MFGProblem(
         geometry=domain,
@@ -108,9 +106,7 @@ def scenario_crowd_dynamics():
         return D_min + (D_max - D_min) * (1 - m / m_max)
 
     # Create problem
-    domain = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    domain = TensorProductGrid(bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1))
 
     problem = MFGProblem(
         geometry=domain,
@@ -164,9 +160,7 @@ def scenario_spatially_varying():
         return 0.05 + 0.1 * x
 
     # Create problem
-    domain = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    domain = TensorProductGrid(bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1))
 
     problem = MFGProblem(
         geometry=domain,

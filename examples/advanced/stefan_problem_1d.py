@@ -149,7 +149,7 @@ print(f"  Interface velocity: V = λ·√(α/t) ≈ {lambda_neumann * np.sqrt(al
 # ========================================
 
 # Create grid
-grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
+grid = TensorProductGrid(bounds=[(x_min, x_max)], Nx=[Nx])
 x = grid.coordinates[0]
 dx = grid.spacing[0]
 

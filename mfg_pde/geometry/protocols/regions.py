@@ -85,7 +85,7 @@ class SupportsBoundaryNormal(Protocol):
             ValueError: If boundary_name not found in geometry
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], ...)
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], ...)
             >>> # Get normal at left boundary (x=0)
             >>> normal = grid.get_outward_normal(points=np.array([0.0, 0.5]), boundary_name="x_min")
             >>> assert np.allclose(normal, [-1.0, 0.0])  # Points left (outward)
@@ -135,7 +135,7 @@ class SupportsBoundaryProjection(Protocol):
             Projected points on boundary, same shape as input
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], ...)
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], ...)
             >>> # Particle outside domain
             >>> x_particle = np.array([1.2, 0.5])  # Outside x_max
             >>> x_boundary = grid.project_to_boundary(x_particle)

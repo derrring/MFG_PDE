@@ -32,7 +32,6 @@ def example_1_multiresolution():
     # Domain: [0, 1] × [0, 1]
     # Fine grid for HJB: 101×101 points
     hjb_grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0, 1), (0, 1)],
         num_points=[101, 101],
         boundary_conditions=no_flux_bc(dimension=2),
@@ -41,7 +40,6 @@ def example_1_multiresolution():
 
     # Coarse grid for FP: 26×26 points
     fp_grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0, 1), (0, 1)],
         num_points=[26, 26],
         boundary_conditions=no_flux_bc(dimension=2),
@@ -134,7 +132,6 @@ def example_2_compare_unified_vs_dual():
     # APPROACH 1: Unified Geometry (traditional)
     print("\n--- Approach 1: Unified Geometry (Traditional) ---")
     unified_grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0, 1), (0, 1)],
         num_points=[51, 51],
         boundary_conditions=no_flux_bc(dimension=2),
@@ -159,13 +156,11 @@ def example_2_compare_unified_vs_dual():
     # APPROACH 2: Dual Geometry (new in v0.11.0)
     print("\n--- Approach 2: Dual Geometry (New) ---")
     hjb_grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0, 1), (0, 1)],
         num_points=[101, 101],
         boundary_conditions=no_flux_bc(dimension=2),
     )
     fp_grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0, 1), (0, 1)],
         num_points=[26, 26],
         boundary_conditions=no_flux_bc(dimension=2),
@@ -231,13 +226,11 @@ def example_3_different_resolutions():
     print("\nTesting different HJB:FP resolution ratios:\n")
     for hjb_res, fp_res in ratios:
         hjb_grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0, 1), (0, 1)],
             num_points=[hjb_res + 1, hjb_res + 1],
             boundary_conditions=no_flux_bc(dimension=2),
         )
         fp_grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0, 1), (0, 1)],
             num_points=[fp_res + 1, fp_res + 1],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -267,13 +260,11 @@ def example_4_access_projector_directly():
 
     # Create geometries
     fine_grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0, 1), (0, 1)],
         num_points=[101, 101],
         boundary_conditions=no_flux_bc(dimension=2),
     )
     coarse_grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0, 1), (0, 1)],
         num_points=[26, 26],
         boundary_conditions=no_flux_bc(dimension=2),

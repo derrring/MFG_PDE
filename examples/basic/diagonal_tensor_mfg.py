@@ -43,7 +43,6 @@ print()
 
 # Create 2D domain: corridor [0, 1] × [0, 0.6]
 domain = TensorProductGrid(
-    dimension=2,
     bounds=[(0.0, 1.0), (0.0, 0.6)],
     num_points=[31, 21],  # Nx × Ny (resolution + 1)
 )

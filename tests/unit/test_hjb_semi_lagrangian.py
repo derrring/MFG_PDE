@@ -21,9 +21,7 @@ class TestHJBSemiLagrangianInitialization:
 
     def test_basic_initialization(self):
         """Test basic solver initialization with default parameters."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -35,9 +33,7 @@ class TestHJBSemiLagrangianInitialization:
 
     def test_custom_interpolation_method(self):
         """Test initialization with custom interpolation method."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBSemiLagrangianSolver(problem, interpolation_method="cubic")
 
@@ -45,9 +41,7 @@ class TestHJBSemiLagrangianInitialization:
 
     def test_custom_optimization_method(self):
         """Test initialization with custom optimization method."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBSemiLagrangianSolver(problem, optimization_method="golden")
 
@@ -55,9 +49,7 @@ class TestHJBSemiLagrangianInitialization:
 
     def test_custom_characteristic_solver(self):
         """Test initialization with custom characteristic solver."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="rk2")
 
@@ -65,9 +57,7 @@ class TestHJBSemiLagrangianInitialization:
 
     def test_custom_tolerance(self):
         """Test initialization with custom tolerance."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBSemiLagrangianSolver(problem, tolerance=1e-10)
 
@@ -75,9 +65,7 @@ class TestHJBSemiLagrangianInitialization:
 
     def test_grid_parameters_computed(self):
         """Test that grid parameters are properly computed."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -94,9 +82,7 @@ class TestHJBSemiLagrangianSolveHJBSystem:
 
     def test_solve_hjb_system_shape(self):
         """Test that solve_hjb_system returns correct shape."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -115,9 +101,7 @@ class TestHJBSemiLagrangianSolveHJBSystem:
 
     def test_solve_hjb_system_final_condition(self):
         """Test that final condition is preserved."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -137,9 +121,7 @@ class TestHJBSemiLagrangianSolveHJBSystem:
 
     def test_solve_hjb_system_backward_propagation(self):
         """Test that solution propagates backward in time."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -167,9 +149,7 @@ class TestHJBSemiLagrangianNumericalProperties:
     )
     def test_solution_finiteness(self):
         """Test that solution remains finite throughout."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=40)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -188,9 +168,7 @@ class TestHJBSemiLagrangianNumericalProperties:
     @pytest.mark.skip(reason="Semi-Lagrangian method can have numerical overflow issues with certain configurations")
     def test_solution_smoothness(self):
         """Test that solution has reasonable smoothness."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -213,9 +191,7 @@ class TestHJBSemiLagrangianIntegration:
 
     def test_solver_with_uniform_density(self):
         """Test solver with uniform density distribution."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -238,9 +214,7 @@ class TestHJBSemiLagrangianIntegration:
 
     def test_solver_with_gaussian_density(self):
         """Test solver with Gaussian density distribution."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem)
 
@@ -269,9 +243,7 @@ class TestHJBSemiLagrangianSolverNotAbstract:
         """Test that HJBSemiLagrangianSolver can be instantiated."""
         import inspect
 
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         # Should not raise TypeError about abstract methods
@@ -287,9 +259,7 @@ class TestCharacteristicTracingMethods:
 
     def test_explicit_euler_initialization(self):
         """Test that explicit_euler method initializes correctly."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="explicit_euler")
 
@@ -297,9 +267,7 @@ class TestCharacteristicTracingMethods:
 
     def test_rk2_initialization(self):
         """Test that rk2 method initializes correctly."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="rk2")
 
@@ -307,9 +275,7 @@ class TestCharacteristicTracingMethods:
 
     def test_rk4_initialization(self):
         """Test that rk4 method initializes correctly."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="rk4")
 
@@ -317,9 +283,7 @@ class TestCharacteristicTracingMethods:
 
     def test_euler_produces_valid_solution(self):
         """Test that explicit_euler produces valid solution."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="explicit_euler", use_jax=False)
 
@@ -337,9 +301,7 @@ class TestCharacteristicTracingMethods:
 
     def test_rk2_produces_valid_solution(self):
         """Test that rk2 produces valid solution."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="rk2", use_jax=False)
 
@@ -357,9 +319,7 @@ class TestCharacteristicTracingMethods:
 
     def test_rk4_produces_valid_solution(self):
         """Test that rk4 with scipy.solve_ivp produces valid solution."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="rk4", use_jax=False)
 
@@ -377,9 +337,7 @@ class TestCharacteristicTracingMethods:
 
     def test_rk2_consistency_with_euler(self):
         """Test that rk2 produces consistent results with euler on smooth problems."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.2, Nt=20)
 
         # Solve with euler
@@ -402,9 +360,7 @@ class TestCharacteristicTracingMethods:
 
     def test_rk4_consistency_with_euler(self):
         """Test that rk4 produces consistent results with euler on smooth problems."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.2, Nt=20)
 
         # Solve with euler
@@ -427,9 +383,7 @@ class TestCharacteristicTracingMethods:
 
     def test_trace_characteristic_backward_1d(self):
         """Test _trace_characteristic_backward method directly in 1D."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(problem, characteristic_solver="rk4", use_jax=False)
 
@@ -454,9 +408,7 @@ class TestInterpolationMethods:
 
     def test_linear_interpolation_initialization(self):
         """Test that linear interpolation initializes correctly."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem, interpolation_method="linear")
 
@@ -464,9 +416,7 @@ class TestInterpolationMethods:
 
     def test_cubic_interpolation_initialization(self):
         """Test that cubic interpolation initializes correctly."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem, interpolation_method="cubic")
 
@@ -475,9 +425,7 @@ class TestInterpolationMethods:
     @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_cubic_produces_valid_solution_1d(self):
         """Test that cubic interpolation produces valid solution in 1D."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(
             problem, interpolation_method="cubic", characteristic_solver="rk2", use_jax=False
@@ -498,9 +446,7 @@ class TestInterpolationMethods:
     @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_cubic_consistency_with_linear(self):
         """Test that cubic interpolation is consistent with linear on smooth problems."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=20)
 
         # Solve with linear
@@ -530,9 +476,7 @@ class TestInterpolationMethods:
     @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_cubic_improves_smoothness(self):
         """Test that cubic interpolation produces smoother solutions."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=20)
 
         Nx_points = problem.geometry.get_grid_shape()[0]
@@ -573,9 +517,7 @@ class TestRBFInterpolationFallback:
 
     def test_rbf_fallback_initialization_enabled(self):
         """Test that RBF fallback can be enabled."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem, use_rbf_fallback=True, rbf_kernel="thin_plate_spline")
 
@@ -584,9 +526,7 @@ class TestRBFInterpolationFallback:
 
     def test_rbf_fallback_initialization_disabled(self):
         """Test that RBF fallback can be disabled."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBSemiLagrangianSolver(problem, use_rbf_fallback=False)
 
@@ -594,9 +534,7 @@ class TestRBFInterpolationFallback:
 
     def test_rbf_kernel_options(self):
         """Test different RBF kernel options."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         kernels = ["thin_plate_spline", "multiquadric", "gaussian"]
@@ -607,9 +545,7 @@ class TestRBFInterpolationFallback:
 
     def test_rbf_fallback_produces_valid_solution(self):
         """Test that solver with RBF fallback produces valid solution."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(
             problem, use_rbf_fallback=True, rbf_kernel="thin_plate_spline", characteristic_solver="rk2", use_jax=False
@@ -630,9 +566,7 @@ class TestRBFInterpolationFallback:
 
     def test_rbf_consistency_with_no_fallback(self):
         """Test that RBF fallback doesn't change results on well-behaved problems."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=20)
 
         Nx_points = problem.geometry.get_grid_shape()[0]
@@ -666,9 +600,7 @@ class TestEnhancementsIntegration:
     @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_rk4_with_cubic_interpolation(self):
         """Test RK4 characteristic tracing with cubic interpolation."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(
             problem, characteristic_solver="rk4", interpolation_method="cubic", use_jax=False
@@ -688,9 +620,7 @@ class TestEnhancementsIntegration:
 
     def test_rk4_with_rbf_fallback(self):
         """Test RK4 characteristic tracing with RBF fallback."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(
             problem, characteristic_solver="rk4", use_rbf_fallback=True, rbf_kernel="thin_plate_spline", use_jax=False
@@ -711,9 +641,7 @@ class TestEnhancementsIntegration:
     @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_all_enhancements_together(self):
         """Test all enhancements working together: RK4 + cubic + RBF."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         solver = HJBSemiLagrangianSolver(
             problem,
@@ -739,9 +667,7 @@ class TestEnhancementsIntegration:
     @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_enhanced_vs_baseline_consistency(self):
         """Test that enhanced configuration produces consistent results with baseline."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=20)
 
         Nx_points = problem.geometry.get_grid_shape()[0]

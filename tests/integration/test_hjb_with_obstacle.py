@@ -30,9 +30,7 @@ class TestHJBWithLowerObstacle:
         sigma = 0.1
         kappa = 0.5
 
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(x_min, x_max)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx]
-        )
+        grid = TensorProductGrid(bounds=[(x_min, x_max)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
         # Terminal cost function (used locally for computing terminal values)
         def terminal_cost(x_coords):
@@ -77,9 +75,7 @@ class TestHJBWithLowerObstacle:
         Nt = 10  # Reduced for speed
         sigma = 0.05
 
-        grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx=[Nx, Ny]
-        )
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx=[Nx, Ny])
 
         # Terminal cost function (used locally for computing terminal values)
         def terminal_cost_2d(x_coords):
@@ -121,7 +117,7 @@ class TestHJBWithLowerObstacle:
         sigma = 0.08
         kappa = 0.3
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
         # Terminal cost function (used locally)
         def terminal_cost(x_coords):
@@ -174,7 +170,7 @@ class TestHJBWithUpperObstacle:
         Nt = 50
         sigma = 0.1
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
         # Terminal cost function (used locally)
         def terminal_cost(x_coords):
@@ -221,7 +217,7 @@ class TestHJBWithBilateralObstacle:
         Nt = 50
         sigma = 0.1
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
         # Terminal cost function (used locally)
         def terminal_cost(x_coords):
@@ -272,7 +268,7 @@ class TestObstacleConvergenceProperties:
         sigma = 0.08
         kappa = 0.4
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
         # Terminal cost function (used locally)
         def terminal_cost(x_coords):
@@ -320,7 +316,7 @@ class TestObstacleConvergenceProperties:
         sigma = 0.1
         kappa = 0.5
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
         bc = neumann_bc(dimension=1)
 
         # Running and terminal cost functions (used locally for computing values)

@@ -48,9 +48,7 @@ results_sigma = {}
 
 for sigma in sigma_values:
     print(f"Solving with sigma={sigma}...")
-    geometry = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
@@ -81,9 +79,7 @@ results_coupling = {}
 
 for coupling in coupling_values:
     print(f"Solving with coupling={coupling}...")
-    geometry = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
@@ -114,9 +110,7 @@ results_grid = {}
 
 for Nx in Nx_values:
     print(f"Solving with Nx={Nx} grid points...")
-    geometry = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
@@ -153,9 +147,7 @@ print()
 print("Mass Conservation Check (sigma variations):")
 for sigma, result in results_sigma.items():
     # Create a problem with matching grid to get dx
-    ref_geom = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    ref_geom = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=ref_geom, T=1.0, Nt=50, diffusion=sigma)
     dx = problem.geometry.get_grid_spacing()[0]
     initial_mass = np.sum(result.M[0, :]) * dx
@@ -195,9 +187,7 @@ try:
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     # Create reference problem for grid
-    ref_geom = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    ref_geom = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     ref_problem = MFGProblem(geometry=ref_geom, T=1.0, Nt=50, diffusion=0.15)
 
     # Plot 1: Diffusion comparison (final density)

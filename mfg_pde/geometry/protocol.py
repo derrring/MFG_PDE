@@ -255,7 +255,7 @@ class GeometryProtocol(Protocol):
 
         Example:
             >>> # Rectangle [0,1] × [0,1]
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], ...)
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], ...)
             >>> # Left boundary (x=0): outward normal points left
             >>> n = grid.get_boundary_normal(np.array([[0.0, 0.5]]))
             >>> assert np.allclose(n, [[-1.0, 0.0]])
@@ -540,7 +540,7 @@ def is_adaptive(geometry: object) -> bool:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid, is_adaptive
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx_points=[11])
         >>> is_adaptive(grid)  # Regular grids are not adaptive
         False
     """
@@ -562,7 +562,7 @@ def is_boundary_aware(geometry: object) -> bool:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid, Hyperrectangle
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx_points=[11])
         >>> is_boundary_aware(grid)
         True
         >>> is_boundary_aware(Hyperrectangle([[0, 1], [0, 1]]))
@@ -611,7 +611,7 @@ def detect_geometry_type(geometry: object) -> GeometryType:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx_points=[11])
         >>> detect_geometry_type(grid)
         <GeometryType.CARTESIAN_GRID: 'cartesian_grid'>
 
@@ -663,7 +663,7 @@ def is_geometry_compatible(geometry: object) -> bool:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx_points=[11])
         >>> is_geometry_compatible(grid)
         True
 
@@ -686,7 +686,7 @@ def validate_geometry(geometry: object) -> None:
 
     Examples:
         >>> from mfg_pde.geometry import TensorProductGrid
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx_points=[11])
         >>> validate_geometry(grid)  # No error
 
         >>> validate_geometry("invalid")

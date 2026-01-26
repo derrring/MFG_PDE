@@ -364,7 +364,7 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
                 # Convert legacy params to Geometry-First API
                 # Nx = intervals, so Nx_points = Nx + 1
                 geometry = TensorProductGrid(
-                    dimension=1, bounds=[(xmin, xmax)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1)
+                    bounds=[(xmin, xmax)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1)
                 )
                 super().__init__(geometry=geometry, T=T, Nt=Nt)
 

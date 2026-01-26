@@ -512,7 +512,7 @@ if __name__ == "__main__":
 
     # Create 1D grid
     Nx = 100
-    grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+    grid_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
     x = grid_1d.coordinates[0]
     dx = grid_1d.spacing[0]
 
@@ -559,7 +559,7 @@ if __name__ == "__main__":
     # Create 2D grid
     Nx, Ny = 50, 50
     grid_2d = TensorProductGrid(
-        dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[Nx, Ny], boundary_conditions=no_flux_bc(dimension=2)
+        bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[Nx, Ny], boundary_conditions=no_flux_bc(dimension=2)
     )
     X, Y = grid_2d.meshgrid()
     dx2d = grid_2d.spacing[0]

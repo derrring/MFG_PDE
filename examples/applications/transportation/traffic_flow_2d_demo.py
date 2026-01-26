@@ -63,7 +63,7 @@ def create_traffic_problem():
     Nt = 50
 
     # Create 2D tensor product grid
-    grid = TensorProductGrid(dimension=2, bounds=[(0.0, L), (0.0, L)], num_points=[Nx, Ny])
+    grid = TensorProductGrid(bounds=[(0.0, L), (0.0, L)], num_points=[Nx, Ny])
 
     # Physical parameters
     sigma = 0.5  # Diffusion (traffic randomness)

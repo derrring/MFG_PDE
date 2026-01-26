@@ -134,7 +134,6 @@ def create_towel_beach_problem(
 
     # Create geometry with Neumann (reflecting) boundary conditions
     geometry = TensorProductGrid(
-        dimension=1,
         bounds=[(0.0, beach_length)],
         Nx_points=[Nx],
     )

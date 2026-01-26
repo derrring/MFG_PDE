@@ -553,7 +553,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             "Manual grid construction in MFGProblem is deprecated and will be "
             "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
             "  from mfg_pde.geometry import TensorProductGrid\n"
-            f"  domain = TensorProductGrid(dimension=1, bounds=[({xmin[0]}, {xmax[0]})], Nx_points=[{Nx[0] + 1}])\n"
+            f"  domain = TensorProductGrid(bounds=[({xmin[0]}, {xmax[0]})], Nx_points=[{Nx[0] + 1}])\n"
             f"  problem = MFGProblem(geometry=domain, T={T}, Nt={Nt})\n\n"
             "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
             DeprecationWarning,
@@ -571,7 +571,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         from mfg_pde.geometry.boundary import no_flux_bc
 
         geometry = TensorProductGrid(
-            dimension=1,
             bounds=[(xmin_scalar, xmax_scalar)],
             Nx_points=[Nx_scalar + 1],
             boundary_conditions=no_flux_bc(dimension=1),
@@ -1517,7 +1516,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 # Use default no_flux_bc for legacy pickle migration (Issue #674)
                 dimension = len(bounds)
                 state["geometry"] = TensorProductGrid(
-                    dimension=dimension,
                     bounds=bounds,
                     Nx_points=Nx_points,
                     boundary_conditions=no_flux_bc(dimension=dimension),

@@ -21,7 +21,6 @@ class TestGeometryProtocolCompliance:
     def test_tensorproductgrid_is_geometry(self):
         """Verify TensorProductGrid satisfies Geometry ABC."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -33,7 +32,6 @@ class TestGeometryProtocolCompliance:
     def test_tensorproductgrid_has_required_properties(self):
         """Verify TensorProductGrid has all required Geometry properties."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -64,7 +62,6 @@ class TestSolverOperations:
     def test_laplacian_operator_exists(self):
         """Test that Laplacian operator is callable."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -80,7 +77,6 @@ class TestSolverOperations:
         Analytical Laplacian: Δu = 2 + 2 = 4 everywhere
         """
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[21, 21],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -110,9 +106,7 @@ class TestSolverOperations:
 
         Analytical Laplacian: Δu = 0 everywhere
         """
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
 
         laplacian = grid.get_laplacian_operator()
 
@@ -132,7 +126,6 @@ class TestSolverOperations:
     def test_gradient_operator_exists(self):
         """Test that gradient operator returns tuple of callable operators."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -151,7 +144,6 @@ class TestSolverOperations:
         Analytical gradient: ∇u = [2, 3]
         """
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[21, 21],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -183,9 +175,7 @@ class TestSolverOperations:
 
         Analytical gradient: du/dx = 2*x
         """
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
 
         grad_ops = grid.get_gradient_operator()  # Returns tuple with single operator in 1D
 
@@ -204,7 +194,6 @@ class TestSolverOperations:
     def test_interpolator_exists(self):
         """Test that interpolator is callable."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -220,7 +209,6 @@ class TestSolverOperations:
         Interpolated values should match analytical values at arbitrary points.
         """
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -250,7 +238,6 @@ class TestSolverOperations:
     def test_boundary_handler_exists(self):
         """Test that boundary handler is returned."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -266,7 +253,6 @@ class TestCartesianGridUtilities:
     def test_get_grid_spacing(self):
         """Test grid spacing calculation."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 2.0)],
             Nx_points=[11, 21],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -282,7 +268,6 @@ class TestCartesianGridUtilities:
     def test_get_grid_shape(self):
         """Test grid shape retrieval."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 20],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -294,7 +279,6 @@ class TestCartesianGridUtilities:
     def test_get_bounds(self):
         """Test bounding box retrieval."""
         grid = TensorProductGrid(
-            dimension=3,
             bounds=[(0.0, 1.0), (-1.0, 1.0), (0.0, 2.0)],
             Nx_points=[10, 10, 10],
             boundary_conditions=no_flux_bc(dimension=3),
@@ -310,17 +294,13 @@ class TestDataInterface:
 
     def test_dimension_property(self):
         """Test dimension property."""
-        grid_1d = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[10], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[10], boundary_conditions=no_flux_bc(dimension=1))
         grid_2d = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
         )
         grid_3d = TensorProductGrid(
-            dimension=3,
             bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)],
             Nx_points=[5, 5, 5],
             boundary_conditions=no_flux_bc(dimension=3),
@@ -333,7 +313,6 @@ class TestDataInterface:
     def test_num_spatial_points(self):
         """Test total spatial points calculation."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 20],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -344,7 +323,7 @@ class TestDataInterface:
     def test_get_spatial_grid(self):
         """Test spatial grid retrieval."""
         grid = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[5, 5], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[5, 5], boundary_conditions=no_flux_bc(dimension=2)
         )
 
         points = grid.get_spatial_grid()
@@ -353,7 +332,6 @@ class TestDataInterface:
     def test_get_problem_config(self):
         """Test problem configuration dictionary."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 2.0)],
             Nx_points=[10, 20],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -372,7 +350,6 @@ class TestEdgeCases:
     def test_laplacian_wrong_field_shape(self):
         """Test that Laplacian raises error for wrong field shape."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -388,7 +365,6 @@ class TestEdgeCases:
     def test_gradient_wrong_field_shape(self):
         """Test that gradient raises error for wrong field shape."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -404,7 +380,6 @@ class TestEdgeCases:
     def test_interpolator_wrong_point_dimension(self):
         """Test that interpolator raises error for wrong point dimension."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -422,7 +397,6 @@ class TestAdaptiveGeometryProtocol:
     def test_tensorproductgrid_is_not_adaptive(self):
         """Regular TensorProductGrid does not implement AdaptiveGeometry."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[10, 10],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -434,9 +408,7 @@ class TestAdaptiveGeometryProtocol:
 
     def test_is_adaptive_helper_function(self):
         """Test is_adaptive() helper function."""
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
 
         # is_adaptive should return False for non-adaptive geometries
         assert is_adaptive(grid) is False

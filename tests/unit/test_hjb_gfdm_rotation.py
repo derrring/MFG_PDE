@@ -24,7 +24,6 @@ class TestRotationMatrixCorrectness:
         """Create a minimal GFDM solver for testing rotation matrices."""
         # Create simple 2D geometry
         geometry = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 10.0), (0.0, 10.0)],
             Nx=[11, 11],
             boundary_conditions=neumann_bc(dimension=2),
@@ -157,7 +156,6 @@ class TestDerivativeRotationBackTransform:
     def solver(self):
         """Create a minimal GFDM solver for testing."""
         geometry = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 10.0), (0.0, 10.0)],
             Nx=[11, 11],
             boundary_conditions=neumann_bc(dimension=2),
@@ -240,7 +238,6 @@ def test_smoke_rotation_matrix():
 
     # Create simple geometry and problem
     geometry = TensorProductGrid(
-        dimension=2,
         bounds=[(0.0, 10.0), (0.0, 10.0)],
         Nx=[11, 11],
         boundary_conditions=neumann_bc(dimension=2),

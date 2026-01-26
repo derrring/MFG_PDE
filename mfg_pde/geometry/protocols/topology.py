@@ -110,7 +110,7 @@ class SupportsManifold(Protocol):
 
         Example:
             >>> # Flat Euclidean space
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> g = grid.get_metric_tensor(np.array([0.5, 0.5]))
             >>> assert np.allclose(g, np.eye(2))  # Identity metric
             >>>
@@ -190,7 +190,7 @@ class SupportsManifold(Protocol):
 
         Example:
             >>> # Flat space (Euclidean)
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> Gamma = grid.compute_christoffel_symbols(np.array([0.5, 0.5]))
             >>> assert np.allclose(Gamma, 0)  # All zero for flat metric
 
@@ -259,7 +259,7 @@ class SupportsLipschitz(Protocol):
 
         Example:
             >>> # Rectangular domain (axis-aligned boundary)
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], ...)
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], ...)
             >>> L = grid.get_lipschitz_constant()
             >>> assert np.isclose(L, 0)  # Piecewise constant (axis-aligned)
             >>>
@@ -297,7 +297,7 @@ class SupportsLipschitz(Protocol):
                 - message: Diagnostic message (empty if valid, error description if not)
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], ...)
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], ...)
             >>> valid, msg = grid.validate_lipschitz_regularity()
             >>> assert valid and msg == ""
             >>>

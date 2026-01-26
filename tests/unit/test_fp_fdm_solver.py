@@ -27,7 +27,7 @@ def standard_problem():
     - Time: T=1.0 with 51 time steps
     - Diffusion: diffusion=1.0
     """
-    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
     return MFGProblem(geometry=domain, T=1.0, Nt=51, diffusion=1.0)
 
 
@@ -729,7 +729,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_diagonal_tensor_2d(self):
         """Test diagonal anisotropic tensor in 2D."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[31, 21])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[31, 21])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
@@ -761,7 +761,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_full_tensor_with_cross_diffusion(self):
         """Test full anisotropic tensor with off-diagonal terms."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1)
 
         boundary_conditions = BoundaryConditions(type="periodic")
@@ -791,7 +791,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_spatially_varying_tensor(self):
         """Test spatially-varying tensor diffusion."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[26, 16])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[26, 16])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
@@ -827,7 +827,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_callable_tensor(self):
         """Test callable state-dependent tensor: Sigma(t, x, m)."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[21, 16])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[21, 16])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
@@ -856,7 +856,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_tensor_with_drift(self):
         """Test tensor diffusion combined with drift field."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1)
 
         boundary_conditions = BoundaryConditions(type="periodic")
@@ -889,7 +889,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_tensor_diffusion_mutual_exclusivity(self):
         """Test that tensor_diffusion_field and diffusion_field are mutually exclusive."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
@@ -926,7 +926,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_tensor_psd_validation(self):
         """Test that non-PSD tensor raises error."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=5, diffusion=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
@@ -946,7 +946,7 @@ class TestFPFDMSolverTensorDiffusion:
 
     def test_tensor_diffusion_mass_conservation(self):
         """Test mass conservation with tensor diffusion."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[31, 21])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[31, 21])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=50, diffusion=0.1)
 
         boundary_conditions = BoundaryConditions(type="no_flux")
@@ -1080,7 +1080,7 @@ class TestFPFDMSolverCallableDrift:
 
     def test_callable_drift_2d(self):
         """Test callable drift in 2D problem."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
         problem = MFGProblem(geometry=domain, T=0.1, Nt=10, diffusion=0.1)
 
         solver = FPFDMSolver(problem)

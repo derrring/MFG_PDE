@@ -80,9 +80,7 @@ def benchmark_backends(problem_sizes=None, num_runs=3):
         logger.info(f"Benchmarking problem size Nx={Nx}")
 
         # Create test problem using geometry-first API
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
         problem = BarProblemJAX(geometry=geometry, T=1.0, Nt=50, capacity=0.6)
 
         # Benchmark NumPy backend

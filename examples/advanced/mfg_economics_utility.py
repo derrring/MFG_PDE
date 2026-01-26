@@ -268,7 +268,7 @@ def main():
     control_cost_lambda = 1.0
     target_location = 0.7
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx])
     problem = MFGProblem(
         geometry=geometry,
         T=T,

@@ -29,16 +29,14 @@ from mfg_pde.geometry.boundary import no_flux_bc
 @pytest.fixture
 def simple_domain():
     """Create simple 1D domain for testing using TensorProductGrid."""
-    return TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    return TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
 
 
 @pytest.fixture
 def simple_2d_domain():
     """Create simple 2D domain for testing using TensorProductGrid."""
     return TensorProductGrid(
-        dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)
+        bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)
     )
 
 
@@ -203,9 +201,7 @@ def test_backward_compatibility_warning(simple_domain):
 def test_problem_type_detection():
     """Test automatic problem type detection."""
 
-    domain = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-    )
+    domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
 
     # Standard MFG
     components_standard = MFGComponents(

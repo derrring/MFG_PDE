@@ -56,7 +56,7 @@ class InterfaceJumpOperator:
     --------
     >>> # 1D Stefan problem: compute heat flux jump
     >>> from mfg_pde.geometry.boundary import no_flux_bc
-    >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100],
+    >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx=[100],
     ...                          boundary_conditions=no_flux_bc(dimension=1))
     >>> phi = x - 0.5  # Interface at x = 0.5
     >>> jump_op = InterfaceJumpOperator(grid, phi)
@@ -300,7 +300,7 @@ if __name__ == "__main__":
 
     # Test 1: 1D gradient jump
     print("\n[Test 1: 1D Gradient Jump]")
-    grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
+    grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
     x = grid.coordinates[0]
     dx = grid.spacing[0]
 

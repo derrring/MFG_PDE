@@ -19,7 +19,6 @@ class TestGeometryProjectorBasics:
     def test_same_geometry_no_projection(self):
         """Test that same geometry returns identity projection."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -40,13 +39,11 @@ class TestGeometryProjectorBasics:
     def test_factory_create(self):
         """Test factory method."""
         grid1 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
         )
         grid2 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[21, 21],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -66,13 +63,11 @@ class TestGrid1DProjections:
         """Test 1D grid → grid interpolation."""
         # Coarse grid (HJB)
         coarse_grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
+            bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
         )
 
         # Fine grid (FP)
-        fine_grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        fine_grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
 
         projector = GeometryProjector(hjb_geometry=coarse_grid, fp_geometry=fine_grid)
 
@@ -94,13 +89,11 @@ class TestGrid1DProjections:
     def test_grid_to_grid_1d_conservation(self):
         """Test that grid→grid projection preserves integral."""
         # Fine grid (FP solver) - 21 points
-        fine_grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        fine_grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
 
         # Coarse grid (HJB solver) - 11 points
         coarse_grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
+            bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
         )
 
         # Setup projector: FP (fine) → HJB (coarse)
@@ -129,10 +122,9 @@ class TestGrid2DProjections:
     def test_grid_to_grid_2d_shape(self):
         """Test 2D grid → grid projection shape."""
         grid_coarse = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid_fine = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -152,13 +144,11 @@ class TestGrid2DProjections:
     def test_grid_to_grid_2d_smooth_function(self):
         """Test 2D grid → grid interpolation accuracy."""
         grid1 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
         )
         grid2 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[21, 21],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -189,13 +179,11 @@ class TestGrid3DProjections:
     def test_grid_to_grid_3d_shape(self):
         """Test 3D grid → grid projection shape."""
         grid1 = TensorProductGrid(
-            dimension=3,
             bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)],
             Nx_points=[4, 4, 4],
             boundary_conditions=no_flux_bc(dimension=3),
         )
         grid2 = TensorProductGrid(
-            dimension=3,
             bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)],
             Nx_points=[7, 7, 7],
             boundary_conditions=no_flux_bc(dimension=3),
@@ -220,7 +208,6 @@ class TestParticleGridProjections:
         """Test projecting from fine grid to coarse grid (simulates particle → grid)."""
         # Fine grid simulates particle locations
         fine_grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[51, 51],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -228,7 +215,6 @@ class TestParticleGridProjections:
 
         # Coarse grid for HJB
         coarse_grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -260,13 +246,11 @@ class TestParticleGridProjections:
     def test_projection_preserves_peak_location(self):
         """Test that density peak location is preserved during projection."""
         fine_grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[31, 31],
             boundary_conditions=no_flux_bc(dimension=2),
         )
         coarse_grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -301,10 +285,9 @@ class TestProjectionMethods:
     def test_auto_detection_grid_to_grid(self):
         """Test auto-detection chooses appropriate method for grid→grid."""
         grid1 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid2 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -319,10 +302,9 @@ class TestProjectionMethods:
     def test_manual_method_override(self):
         """Test manual projection method override."""
         grid1 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid2 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -341,10 +323,9 @@ class TestEdgeCases:
     def test_empty_values(self):
         """Test projection with zero/empty values."""
         grid1 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid2 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -361,10 +342,9 @@ class TestEdgeCases:
     def test_constant_field(self):
         """Test projection of constant field."""
         grid1 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid2 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -419,10 +399,10 @@ class TestProjectionRegistry:
 
         # Create geometries
         grid1 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid2 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
 
         # Lookup should find exact match
@@ -443,10 +423,10 @@ class TestProjectionRegistry:
 
         # Create projector - should auto-detect and use registry
         grid1 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid2 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         projector = GeometryProjector(hjb_geometry=grid1, fp_geometry=grid2, projection_method="auto")
 
@@ -466,10 +446,9 @@ class TestProjectionRegistry:
 
         # Create projector with different resolutions
         grid1 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid2 = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -492,10 +471,10 @@ class TestProjectionRegistry:
 
         # Test with TensorProductGrid (which is a CartesianGrid)
         grid1 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
         grid2 = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
 
         # Should find category match
@@ -517,7 +496,7 @@ class TestProjectionRegistry:
             return values * 3.0
 
         grid = TensorProductGrid(
-            dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[6, 6], boundary_conditions=no_flux_bc(dimension=2)
         )
 
         # Check correct functions are returned for each direction

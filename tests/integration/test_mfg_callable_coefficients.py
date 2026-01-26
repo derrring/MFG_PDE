@@ -30,7 +30,7 @@ class TestMFGCallableCoefficients:
         """Test MFG with state-dependent diffusion: porous medium."""
         # Create problem
         geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+            bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
         )  # Nx=30 intervals
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1)
 
@@ -68,7 +68,7 @@ class TestMFGCallableCoefficients:
         """Test MFG with crowd dynamics: D(m) = D0 + D1(1 - m/m_max)."""
         # Create problem
         geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+            bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
         )  # Nx=30 intervals
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1)
 
@@ -105,7 +105,7 @@ class TestMFGCallableCoefficients:
         """Test that callable returning constant matches constant diffusion."""
         # Create problem
         geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+            bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
         )  # Nx=30 intervals
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.15)
 
@@ -149,7 +149,7 @@ class TestMFGCallableCoefficients:
         """Test MFG with array diffusion (non-callable) for comparison."""
         # Create problem
         geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
+            bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
         )  # Nx=30 intervals
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1)
 
@@ -190,7 +190,7 @@ class TestMFGCallableCoefficients:
         """Test that callable diffusion works with few Picard iterations."""
         # Create small problem
         geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[21]
+            bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[21]
         )  # Nx=20 intervals
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=10, diffusion=0.1)
 

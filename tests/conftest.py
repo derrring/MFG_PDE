@@ -74,7 +74,7 @@ def pytest_collection_modifyitems(config, items):
 def tiny_problem():
     """Very small problem for quick tests."""
     geometry = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[6], boundary_conditions=no_flux_bc(dimension=1)
+        bounds=[(0.0, 1.0)], Nx_points=[6], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=5 -> 6 points
     return MFGProblem(geometry=geometry, Nt=3, T=0.1)
 
@@ -83,7 +83,7 @@ def tiny_problem():
 def small_problem():
     """Small problem for unit tests."""
     geometry = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
+        bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=10 -> 11 points
     return MFGProblem(geometry=geometry, Nt=5, T=0.5)
 
@@ -92,7 +92,7 @@ def small_problem():
 def medium_problem():
     """Medium problem for integration tests."""
     geometry = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[26], boundary_conditions=no_flux_bc(dimension=1)
+        bounds=[(0.0, 1.0)], Nx_points=[26], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=25 -> 26 points
     return MFGProblem(geometry=geometry, Nt=12, T=1.0)
 
@@ -101,7 +101,7 @@ def medium_problem():
 def large_problem():
     """Large problem for performance tests."""
     geometry = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
+        bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=50 -> 51 points
     return MFGProblem(geometry=geometry, Nt=25, T=2.0)
 
@@ -117,7 +117,7 @@ def parametrized_problem(request):
     """Parametrized problem fixture for testing multiple configurations."""
     params = request.param
     geometry = TensorProductGrid(
-        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[params["Nx_points"]], boundary_conditions=no_flux_bc(dimension=1)
+        bounds=[(0.0, 1.0)], Nx_points=[params["Nx_points"]], boundary_conditions=no_flux_bc(dimension=1)
     )
     return MFGProblem(geometry=geometry, Nt=params["Nt"], T=params["T"])
 

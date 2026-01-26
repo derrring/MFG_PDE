@@ -20,7 +20,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_basic_initialization(self):
         """Test basic solver initialization with default parameters."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(problem)
 
@@ -31,7 +31,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_custom_newton_parameters(self):
         """Test initialization with custom Newton parameters."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(
             problem,
@@ -44,7 +44,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_deprecated_parameters_niter(self):
         """Test backward compatibility with deprecated NiterNewton parameter."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
         with pytest.warns(DeprecationWarning, match="Parameter.*NiterNewton.*deprecated"):
@@ -54,7 +54,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_deprecated_parameters_tolerance(self):
         """Test backward compatibility with deprecated l2errBoundNewton parameter."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
         with pytest.warns(DeprecationWarning, match="Parameter.*l2errBoundNewton.*deprecated"):
@@ -64,7 +64,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_both_deprecated_parameters(self):
         """Test backward compatibility with both deprecated parameters."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
         with pytest.warns(DeprecationWarning, match="Parameter.*deprecated"):
@@ -79,7 +79,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_new_overrides_deprecated(self):
         """Test that new parameters override deprecated ones."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
         with pytest.warns(DeprecationWarning, match="Parameter.*NiterNewton.*deprecated"):
@@ -93,7 +93,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_invalid_max_iterations(self):
         """Test that invalid max_newton_iterations raises error."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
         with pytest.raises(ValueError, match="max_newton_iterations must be >= 1"):
@@ -104,7 +104,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_invalid_tolerance(self):
         """Test that invalid newton_tolerance raises error."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
         with pytest.raises(ValueError, match="newton_tolerance must be > 0"):
@@ -115,7 +115,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_newton_config_storage(self):
         """Test that Newton configuration is properly stored."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(
             problem,
@@ -129,7 +129,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_backend_initialization(self):
         """Test that backend is properly initialized."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(problem)
 
@@ -138,7 +138,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_custom_backend(self):
         """Test initialization with custom backend."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(problem, backend="numpy")
 
@@ -148,7 +148,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_advection_scheme_default(self):
         """Test default advection_scheme is gradient_upwind."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(problem)
 
@@ -157,7 +157,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_advection_scheme_gradient_upwind(self):
         """Test explicit gradient_upwind advection scheme."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(problem, advection_scheme="gradient_upwind")
 
@@ -166,7 +166,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_advection_scheme_gradient_centered(self):
         """Test gradient_centered advection scheme."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(problem, advection_scheme="gradient_centered")
 
@@ -175,7 +175,7 @@ class TestHJBFDMSolverInitialization:
 
     def test_advection_scheme_invalid(self):
         """Test that invalid advection_scheme raises ValueError."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
         with pytest.raises(ValueError, match="Invalid advection_scheme"):
@@ -190,7 +190,7 @@ class TestHJBFDMSolverSolveHJBSystem:
 
     def test_solve_hjb_system_shape(self):
         """Test that solve_hjb_system returns correct shape."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
@@ -210,7 +210,7 @@ class TestHJBFDMSolverSolveHJBSystem:
 
     def test_solve_hjb_system_final_condition(self):
         """Test that final condition is preserved."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
@@ -232,7 +232,7 @@ class TestHJBFDMSolverSolveHJBSystem:
 
     def test_solve_hjb_system_backward_propagation(self):
         """Test that solution propagates backward in time."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
@@ -255,7 +255,7 @@ class TestHJBFDMSolverSolveHJBSystem:
 
     def test_solve_hjb_system_with_density_variation(self):
         """Test solving with non-uniform density."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
@@ -284,7 +284,7 @@ class TestHJBFDMSolverNumericalProperties:
 
     def test_solution_finiteness(self):
         """Test that solution remains finite throughout."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[41])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=40)
         solver = HJBFDMSolver(problem)
 
@@ -304,7 +304,7 @@ class TestHJBFDMSolverNumericalProperties:
 
     def test_solution_smoothness(self):
         """Test that solution has reasonable smoothness."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
         solver = HJBFDMSolver(problem)
 
@@ -330,7 +330,7 @@ class TestHJBFDMSolverParameterSensitivity:
 
     def test_different_newton_iterations(self):
         """Test solver with different Newton iteration counts."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21])
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         Nt_points = problem.Nt_points
         Nx_points = problem.geometry.get_grid_shape()[0]
@@ -348,7 +348,7 @@ class TestHJBFDMSolverParameterSensitivity:
 
     def test_different_tolerances(self):
         """Test solver with different Newton tolerances."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21])
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=20)
         Nt_points = problem.Nt_points
         Nx_points = problem.geometry.get_grid_shape()[0]
@@ -370,7 +370,7 @@ class TestHJBFDMSolverIntegration:
 
     def test_solver_with_uniform_density(self):
         """Test solver with uniform density distribution."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
@@ -395,7 +395,7 @@ class TestHJBFDMSolverIntegration:
 
     def test_solver_with_gaussian_density(self):
         """Test solver with Gaussian density distribution."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
         solver = HJBFDMSolver(problem)
 
@@ -426,7 +426,7 @@ class TestHJBFDMSolverNotAbstract:
         """Test that HJBFDMSolver can be instantiated."""
         import inspect
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
         # Should not raise TypeError about abstract methods
@@ -442,7 +442,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_2d(self):
         """Test HJB solver with constant diagonal tensor in 2D."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=5, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -478,7 +478,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_non_diagonal_tensor_warning(self):
         """Test that HJB solver warns for non-diagonal tensor."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=5, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -538,7 +538,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_spatially_varying(self):
         """Test HJB solver with spatially-varying diagonal tensor."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[16, 11])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=3, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -579,7 +579,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_callable(self):
         """Test HJB solver with callable diagonal tensor Σ(t, x, m)."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[11, 9])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[11, 9])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=3, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -617,7 +617,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_mutual_exclusivity(self):
         """Test that tensor_diffusion_field and diffusion_field are mutually exclusive."""
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[11, 9])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[11, 9])
         problem = MFGProblem(geometry=domain, T=0.05, Nt=3, diffusion=0.1)
 
         solver = HJBFDMSolver(problem, solver_type="newton")
@@ -708,7 +708,7 @@ class TestHJBFDMSolverGhostValueBC:
         from mfg_pde.geometry.boundary import no_flux_bc
 
         # Create problem with geometry that has BC
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
         # Set boundary conditions on geometry
         domain.boundary_conditions = no_flux_bc(dimension=2)
 
@@ -736,7 +736,7 @@ class TestHJBFDMSolverGhostValueBC:
         from mfg_pde.geometry.boundary import dirichlet_bc
 
         # Create 2D problem with Dirichlet BC
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8])
         domain.boundary_conditions = dirichlet_bc(dimension=2, value=0.0)
 
         problem = MFGProblem(geometry=domain, T=0.1, Nt=3, diffusion=0.1)
@@ -767,7 +767,7 @@ class TestHJBFDMSolverGhostValueBC:
         from mfg_pde.geometry.boundary import no_flux_bc
 
         # Create 2D problem
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[10, 10])
         domain.boundary_conditions = no_flux_bc(dimension=2)
 
         problem = MFGProblem(geometry=domain, T=0.1, Nt=3, diffusion=0.1)
@@ -828,7 +828,7 @@ class TestHJBFDMSolverGhostValueBC:
             return 0.0  # Simple value, we just want to track times
 
         # Create 2D problem with time-varying BC
-        domain = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8])
+        domain = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8])
         domain.boundary_conditions = dirichlet_bc(dimension=2, value=time_varying_value)
 
         T = 0.4

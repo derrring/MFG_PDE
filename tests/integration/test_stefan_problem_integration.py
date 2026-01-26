@@ -28,7 +28,7 @@ class TestStefanProblem1D:
         self.s0 = 0.5  # Initial interface
 
         self.grid = TensorProductGrid(
-            dimension=1, bounds=[(self.x_min, self.x_max)], boundary_conditions=no_flux_bc(dimension=1), Nx=[self.Nx]
+            bounds=[(self.x_min, self.x_max)], boundary_conditions=no_flux_bc(dimension=1), Nx=[self.Nx]
         )
         self.x = self.grid.coordinates[0]
         self.dx = self.grid.spacing[0]
@@ -147,7 +147,7 @@ class TestStefanProblem2D:
         self.alpha = 0.01
         self.T_hot = 1.0
         self.grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx=[self.Nx, self.Ny]
+            bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx=[self.Nx, self.Ny]
         )
         self.dx, self.dy = self.grid.spacing
         self.dt = 0.1 * min(self.dx, self.dy) ** 2 / (2 * self.alpha)
@@ -277,9 +277,7 @@ class TestLevelSetRobustness:
 
     def test_zero_velocity_preserves_interface(self):
         """Test that zero velocity keeps interface stationary."""
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[100]
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[100])
         x = grid.coordinates[0]
         phi0 = x - 0.5
 
@@ -299,9 +297,7 @@ class TestLevelSetRobustness:
 
     def test_rapid_velocity_changes(self):
         """Test stability with rapidly changing velocity."""
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[150]
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[150])
         x = grid.coordinates[0]
         phi0 = x - 0.5
         dx = grid.spacing[0]

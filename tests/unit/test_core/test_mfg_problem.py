@@ -109,7 +109,7 @@ def test_mfg_problem_default_initialization():
 @pytest.mark.unit
 def test_mfg_problem_custom_domain():
     """Test MFGProblem with custom domain parameters."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(-1.0, 2.0)], Nx_points=[101])  # Nx=100 intervals
+    geometry = TensorProductGrid(bounds=[(-1.0, 2.0)], Nx_points=[101])  # Nx=100 intervals
     problem = MFGProblem(geometry=geometry)
 
     assert problem.xmin == -1.0
@@ -143,7 +143,7 @@ def test_mfg_problem_custom_coefficients():
 @pytest.mark.unit
 def test_mfg_problem_spatial_grid():
     """Test MFGProblem spatial grid generation."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry)
 
     assert problem.geometry.get_grid_shape()[0] == 11  # Nx+1 points
@@ -175,7 +175,7 @@ def test_mfg_problem_temporal_grid():
 @pytest.mark.unit
 def test_mfg_problem_default_potential():
     """Test default potential function is initialized."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry)
 
     assert hasattr(problem, "f_potential")
@@ -188,7 +188,7 @@ def test_mfg_problem_default_potential():
 @pytest.mark.unit
 def test_mfg_problem_default_final_value():
     """Test default final value function is initialized."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry)
 
     assert hasattr(problem, "u_fin")
@@ -201,7 +201,7 @@ def test_mfg_problem_default_final_value():
 @pytest.mark.unit
 def test_mfg_problem_default_initial_density():
     """Test default initial density function is initialized."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry)
 
     assert hasattr(problem, "m_init")
@@ -225,7 +225,7 @@ def test_mfg_problem_with_custom_potential():
     def custom_potential(x, t):
         return x**2
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     components = MFGComponents(potential_func=custom_potential)
     problem = MFGProblem(geometry=geometry, components=components)
 
@@ -244,7 +244,7 @@ def test_mfg_problem_with_custom_initial_density():
     def custom_initial(x):
         return np.exp(-10 * (x - 0.5) ** 2)
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     components = MFGComponents(initial_density_func=custom_initial)
     problem = MFGProblem(geometry=geometry, components=components)
 
@@ -265,7 +265,7 @@ def test_mfg_problem_with_custom_final_value():
     def custom_final(x):
         return np.sin(x * np.pi)
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     components = MFGComponents(final_value_func=custom_final)
     problem = MFGProblem(geometry=geometry, components=components)
 
@@ -284,7 +284,7 @@ def test_mfg_problem_with_custom_final_value():
 @pytest.mark.unit
 def test_hamiltonian_h_default():
     """Test default Hamiltonian H computation."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry, diffusion=1.0, coupling_coefficient=0.5)
 
     x_idx = 5
@@ -302,7 +302,7 @@ def test_hamiltonian_h_default():
 @pytest.mark.unit
 def test_hamiltonian_dh_dm_default():
     """Test default Hamiltonian derivative dH/dm."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry)
 
     x_idx = 5
@@ -382,7 +382,7 @@ def test_get_boundary_conditions_custom():
 @pytest.mark.unit
 def test_get_potential_at_time():
     """Test get_potential_at_time returns array."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry, Nt=20)
 
     potential = problem.get_potential_at_time(t_idx=5)
@@ -396,7 +396,7 @@ def test_get_potential_at_time():
 @pytest.mark.unit
 def test_get_final_u():
     """Test get_final_u returns final value function."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry)
 
     u_final = problem.get_final_u()
@@ -409,7 +409,7 @@ def test_get_final_u():
 @pytest.mark.unit
 def test_get_initial_m():
     """Test get_initial_m returns initial density."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
     problem = MFGProblem(geometry=geometry)
 
     m_initial = problem.get_initial_m()
@@ -422,7 +422,7 @@ def test_get_initial_m():
 @pytest.mark.unit
 def test_get_problem_info():
     """Test get_problem_info returns comprehensive info dict."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])  # Nx=50 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])  # Nx=50 intervals
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, diffusion=0.5, coupling_coefficient=0.8)
 
     info = problem.get_problem_info()
@@ -457,7 +457,7 @@ def test_get_problem_info():
 )
 def test_mfg_problem_zero_nx():
     """Test MFGProblem handles Nx=0 gracefully."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[1])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[1])
     problem = MFGProblem(
         geometry=geometry,
     )
@@ -509,8 +509,8 @@ def test_dual_geometry_specification():
     from mfg_pde.geometry import TensorProductGrid
 
     # Create two different grids
-    hjb_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[51, 51])
-    fp_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
+    hjb_grid = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[51, 51])
+    fp_grid = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
     # Create problem with dual geometries
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1)
@@ -530,7 +530,7 @@ def test_dual_geometry_backward_compatibility():
     """Test that unified geometry mode still works (backward compatibility)."""
     from mfg_pde.geometry import TensorProductGrid
 
-    grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
+    grid = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
 
     # Create problem with unified geometry (old API)
     problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=0.1)
@@ -548,7 +548,7 @@ def test_dual_geometry_error_on_partial_specification():
     """Test that specifying only one of hjb_geometry/fp_geometry raises error."""
     from mfg_pde.geometry import TensorProductGrid
 
-    grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
+    grid = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
 
     # Test with only hjb_geometry
     with pytest.raises(ValueError, match="both 'hjb_geometry' AND 'fp_geometry' must be specified"):
@@ -564,9 +564,9 @@ def test_dual_geometry_error_on_conflict():
     """Test that specifying both geometry and dual geometries raises error."""
     from mfg_pde.geometry import TensorProductGrid
 
-    grid1 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
-    grid2 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
-    grid3 = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
+    grid1 = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
+    grid2 = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
+    grid3 = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
 
     # Test conflict: can't specify both geometry and dual geometries
     with pytest.raises(ValueError, match=r"Specify EITHER 'geometry'.*OR.*'hjb_geometry', 'fp_geometry'"):
@@ -578,8 +578,8 @@ def test_dual_geometry_projector_attributes():
     """Test that geometry projector has correct attributes."""
     from mfg_pde.geometry import TensorProductGrid
 
-    hjb_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[51, 51])
-    fp_grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
+    hjb_grid = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[51, 51])
+    fp_grid = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[31, 31])
 
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50))
 
@@ -600,8 +600,8 @@ def test_dual_geometry_with_1d_grids():
     from mfg_pde.geometry import TensorProductGrid
 
     # Create two 1D grids with different resolutions
-    hjb_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])  # Fine grid
-    fp_grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])  # Coarse grid
+    hjb_grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101])  # Fine grid
+    fp_grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])  # Coarse grid
 
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1)
 
@@ -615,7 +615,7 @@ def test_dual_geometry_with_1d_grids():
 def test_dual_geometry_legacy_mode_compatibility():
     """Test that legacy 1D mode sets hjb_geometry and fp_geometry correctly."""
     # Legacy mode creates its own grid internally
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])  # Nx=100 intervals
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101])  # Nx=100 intervals
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
 
     # Check that hjb_geometry and fp_geometry are set (to the same unified geometry)
@@ -821,7 +821,7 @@ def test_diffusion_field_with_geometry():
     """Test DiffusionField support works with geometry-based API."""
     from mfg_pde.geometry import TensorProductGrid
 
-    grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
+    grid = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21])
 
     def sigma_func(t, x, m):
         """2D state-dependent diffusion."""

@@ -22,9 +22,7 @@ class TestNonQuadraticHamiltonians:
     @pytest.fixture
     def problem_1d(self):
         """Create 1D test problem."""
-        geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         return MFGProblem(
             geometry=geometry,
             T=1.0,

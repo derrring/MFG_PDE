@@ -24,16 +24,12 @@ class TestRegionMarkingProtocolCompliance:
 
     def test_implements_protocol(self):
         """Verify TensorProductGrid implements SupportsRegionMarking."""
-        grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2))
         assert isinstance(grid, SupportsRegionMarking)
 
     def test_has_all_required_methods(self):
         """Verify all protocol methods are present."""
-        grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2))
 
         assert hasattr(grid, "mark_region")
         assert hasattr(grid, "get_region_mask")
@@ -48,9 +44,7 @@ class TestMarkRegionBasicFunctionality:
     @pytest.fixture
     def grid_2d(self):
         """Create 2D test grid."""
-        return TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        return TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2))
 
     def test_mark_region_with_predicate(self, grid_2d):
         """Test marking region with predicate function."""
@@ -133,9 +127,7 @@ class TestBoundaryRegionMarking:
     @pytest.fixture
     def grid_2d(self):
         """Create 2D test grid."""
-        return TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        return TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2))
 
     @pytest.mark.parametrize(
         ("boundary_name", "expected_count", "expected_coord_idx", "expected_value"),
@@ -172,9 +164,7 @@ class TestBoundaryRegionMarking:
 
     def test_3d_boundary_naming(self):
         """Test boundary naming for 3D grid."""
-        grid_3d = TensorProductGrid(
-            dimension=3, bounds=[(0, 1)] * 3, Nx=[5, 5, 5], boundary_conditions=no_flux_bc(dimension=3)
-        )
+        grid_3d = TensorProductGrid(bounds=[(0, 1)] * 3, Nx=[5, 5, 5], boundary_conditions=no_flux_bc(dimension=3))
 
         # Should support x, y, z boundaries
         grid_3d.mark_region("left", boundary="x_min")
@@ -188,9 +178,7 @@ class TestBoundaryRegionMarking:
 
     def test_high_dimensional_boundary_naming(self):
         """Test generic boundary naming for high-dimensional grids."""
-        grid_4d = TensorProductGrid(
-            dimension=4, bounds=[(0, 1)] * 4, Nx=[3, 3, 3, 3], boundary_conditions=no_flux_bc(dimension=4)
-        )
+        grid_4d = TensorProductGrid(bounds=[(0, 1)] * 4, Nx=[3, 3, 3, 3], boundary_conditions=no_flux_bc(dimension=4))
 
         # Use generic format: dim0_min, dim1_max, etc.
         grid_4d.mark_region("dim0_left", boundary="dim0_min")
@@ -207,9 +195,7 @@ class TestRegionRetrieval:
     @pytest.fixture
     def grid_with_regions(self):
         """Create grid with several marked regions."""
-        grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=no_flux_bc(dimension=2))
 
         grid.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
         grid.mark_region("outlet", predicate=lambda x: x[:, 0] > 0.9)
@@ -241,9 +227,7 @@ class TestRegionRetrieval:
 
     def test_get_region_names_empty_initially(self):
         """Test that new grid has no regions."""
-        grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[10, 10], boundary_conditions=no_flux_bc(dimension=2))
         assert grid.get_region_names() == []
 
 
@@ -253,9 +237,7 @@ class TestRegionOperations:
     @pytest.fixture
     def grid_with_overlapping_regions(self):
         """Create grid with overlapping regions."""
-        grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=no_flux_bc(dimension=2))
 
         # Left half
         grid.mark_region("left", predicate=lambda x: x[:, 0] < 0.5)
@@ -352,9 +334,7 @@ class TestRegionMarkingUseCases:
     def test_mixed_boundary_conditions_setup(self):
         """Test setting up regions for mixed boundary conditions."""
         # 2D domain with inlet, outlet, and walls
-        grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 10), (0, 5)], Nx=[100, 50], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        grid = TensorProductGrid(bounds=[(0, 10), (0, 5)], Nx=[100, 50], boundary_conditions=no_flux_bc(dimension=2))
 
         # Mark boundary regions
         grid.mark_region("inlet", boundary="x_min")  # Left
@@ -376,9 +356,7 @@ class TestRegionMarkingUseCases:
 
     def test_obstacle_region_marking(self):
         """Test marking obstacle/safe zone regions."""
-        grid = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], Nx=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
-        )
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[50, 50], boundary_conditions=no_flux_bc(dimension=2))
 
         # Mark circular obstacle at center
         center = np.array([0.5, 0.5])
@@ -400,7 +378,7 @@ class TestRegionMarkingUseCases:
 
     def test_1d_domain_region_marking(self):
         """Test region marking for 1D problems."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
+        grid = TensorProductGrid(bounds=[(0, 1)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
 
         # Mark regions by intervals
         grid.mark_region("left_third", predicate=lambda x: x[:, 0] < 1.0 / 3.0)

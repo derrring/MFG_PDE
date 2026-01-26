@@ -49,14 +49,12 @@ def demonstrate_fem_mesh_projection_basic():
         print("   Install gmsh: pip install gmsh")
         # Fallback to grid for demonstration
         mesh = TensorProductGrid(
-            dimension=2, bounds=[(0, 1), (0, 1)], num_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0, 1), (0, 1)], num_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)
         )
         mesh_data = None
 
     # Create regular grid for HJB
-    grid = TensorProductGrid(
-        dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51], boundary_conditions=no_flux_bc(dimension=2)
-    )
+    grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], num_points=[51, 51], boundary_conditions=no_flux_bc(dimension=2))
 
     grid_shape = grid.get_grid_shape()
     print(f"\nGrid points: {grid_shape[0] * grid_shape[1]:,}")
@@ -220,9 +218,7 @@ def demonstrate_fem_mesh_projection_optimized():
         mesh_size=0.05,
     )
 
-    grid = TensorProductGrid(
-        dimension=2, bounds=[(0, 1), (0, 1)], num_points=[51, 51], boundary_conditions=no_flux_bc(dimension=2)
-    )
+    grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], num_points=[51, 51], boundary_conditions=no_flux_bc(dimension=2))
 
     try:
         mesh_data = mesh.generate_mesh()

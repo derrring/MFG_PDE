@@ -41,7 +41,6 @@ def create_corridor_geometry() -> TensorProductGrid:
 
     # Create grid
     geometry = TensorProductGrid(
-        dimension=2,
         bounds=[(0, CORRIDOR_LENGTH), (0, CORRIDOR_HEIGHT)],
         Nx_points=[81, 21],  # Higher resolution in x
     )

@@ -596,7 +596,7 @@ class TestMMSHJB1D:
         for Nx in resolutions:
             # Pass BC to geometry - solvers retrieve BC via geometry.get_boundary_conditions()
             bc = periodic_bc(dimension=1)
-            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
+            geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
             problem = MFGProblem(geometry=geometry, T=T, Nt=Nx, diffusion=sigma)
 
             x_grid = geometry.coordinates[0]
@@ -647,7 +647,7 @@ class TestMMSHJB1D:
 
         # Pass BC to geometry - solvers retrieve BC via geometry.get_boundary_conditions()
         bc = periodic_bc(dimension=1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
         problem = MFGProblem(geometry=geometry, T=T, Nt=50, diffusion=sigma)
 
         x_grid = geometry.coordinates[0]
@@ -700,7 +700,7 @@ class TestCoupledHJBFPValidation:
 
         # Pass BC to geometry - both HJB and FP solvers retrieve BC via geometry
         bc = no_flux_bc(dimension=1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
         problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma)
 
         hjb_solver = HJBFDMSolver(problem)
@@ -757,7 +757,7 @@ class TestCoupledHJBFPValidation:
 
         # Pass BC to geometry - both HJB and FP solvers retrieve BC via geometry
         bc = no_flux_bc(dimension=1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
         problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma)
         dx = geometry.get_grid_spacing()[0]
 

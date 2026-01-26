@@ -758,7 +758,6 @@ class TestLazyDimensionBinding:
 
         # Create grid with BC - dimension should be bound automatically
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx=[10, 10],
             boundary_conditions=bc,

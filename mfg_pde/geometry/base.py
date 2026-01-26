@@ -48,7 +48,7 @@ class Geometry(ABC):
         >>> from mfg_pde.geometry import TensorProductGrid, CartesianGrid
         >>> from mfg_pde.solvers import HJBFDMSolver
         >>>
-        >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[50,50])
+        >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx_points=[50,50])
         >>> problem = MFGProblem(geometry=grid, T=1.0, Nt=100)
         >>>
         >>> # Solver checks geometry type
@@ -72,7 +72,7 @@ class Geometry(ABC):
             int: Dimension (1, 2, 3, ..., or 0 for networks)
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> grid.dimension
             2
         """
@@ -107,7 +107,7 @@ class Geometry(ABC):
             True if geometry_type is CARTESIAN_GRID
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> grid.is_cartesian
             True
             >>> network = create_network(NetworkType.RANDOM, 10)
@@ -128,7 +128,7 @@ class Geometry(ABC):
             >>> network = create_network(NetworkType.RANDOM, 10)
             >>> network.is_network
             True
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> grid.is_network
             False
         """
@@ -174,7 +174,7 @@ class Geometry(ABC):
             int: Number of grid points / mesh vertices / graph nodes
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, Nx_points=[10, 20])
+            >>> grid = TensorProductGrid(Nx_points=[10, 20])
             >>> grid.num_spatial_points
             200
         """
@@ -191,7 +191,7 @@ class Geometry(ABC):
             For networks: (N_nodes,) array or adjacency representation
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> points = grid.get_spatial_grid()
             >>> points.shape
             (200, 2)
@@ -207,7 +207,7 @@ class Geometry(ABC):
             (min_coords, max_coords) tuple of arrays, or None if unbounded/not applicable
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,2)])
             >>> min_coords, max_coords = grid.get_bounds()
             >>> min_coords
             array([0., 0.])
@@ -253,7 +253,7 @@ class Geometry(ABC):
             Function with signature: (u: NDArray, point_idx) -> float
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> laplacian = grid.get_laplacian_operator()
             >>> u = np.random.rand(10, 20)
             >>> lap_value = laplacian(u, (5, 10))  # Laplacian at grid point (5,10)
@@ -274,7 +274,7 @@ class Geometry(ABC):
             Function with signature: (u: NDArray, point_idx) -> NDArray
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> gradient = grid.get_gradient_operator()
             >>> u = np.random.rand(10, 20)
             >>> grad_u = gradient(u, (5, 10))  # Returns [du/dx, du/dy]
@@ -297,7 +297,7 @@ class Geometry(ABC):
             Function with signature: (u: NDArray, point: NDArray) -> float
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> interpolate = grid.get_interpolator()
             >>> u = np.random.rand(10, 20)
             >>> value = interpolate(u, np.array([0.5, 0.3]))  # Interpolate at (0.5, 0.3)
@@ -342,7 +342,7 @@ class Geometry(ABC):
         Default implementation returns None (override in Cartesian grid classes).
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], Nx_points=[10,20])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,2)], Nx_points=[10,20])
             >>> dx = grid.get_grid_spacing()
             >>> dx
             [0.111..., 0.105...]
@@ -359,7 +359,7 @@ class Geometry(ABC):
         Default implementation returns None (override in Cartesian grid classes).
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, Nx_points=[10, 20])
+            >>> grid = TensorProductGrid(Nx_points=[10, 20])
             >>> shape = grid.get_grid_shape()
             >>> shape
             (10, 20)
@@ -388,7 +388,7 @@ class Geometry(ABC):
             natural BC for HJB. Subclasses can override or accept BC in constructor.
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> bc = grid.get_boundary_conditions()
             >>> bc.is_uniform  # True (default is uniform no-flux)
 

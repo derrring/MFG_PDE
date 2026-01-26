@@ -19,9 +19,7 @@ class TestSparseMatrixBuilder:
 
     def test_laplacian_1d(self):
         """Test 1D Laplacian construction."""
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
 
         L = builder.build_laplacian(boundary_conditions="dirichlet")
@@ -48,7 +46,6 @@ class TestSparseMatrixBuilder:
     def test_laplacian_2d(self):
         """Test 2D Laplacian with 5-point stencil."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -83,7 +80,6 @@ class TestSparseMatrixBuilder:
     def test_laplacian_3d(self):
         """Test 3D Laplacian with 7-point stencil."""
         grid = TensorProductGrid(
-            dimension=3,
             bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)],
             Nx_points=[6, 6, 6],
             boundary_conditions=no_flux_bc(dimension=3),
@@ -110,9 +106,7 @@ class TestSparseMatrixBuilder:
 
     def test_gradient_1d(self):
         """Test 1D gradient matrix."""
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
 
         # Central difference
@@ -131,7 +125,6 @@ class TestSparseMatrixBuilder:
     def test_gradient_2d(self):
         """Test 2D gradient matrices."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[11, 11],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -155,9 +148,7 @@ class TestSparseMatrixBuilder:
 
     def test_format_conversion(self):
         """Test building matrices in different sparse formats."""
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
 
         for fmt in ["csr", "csc", "lil"]:
             builder = SparseMatrixBuilder(grid, matrix_format=fmt)
@@ -178,9 +169,7 @@ class TestSparseSolver:
     def test_direct_solver_1d(self):
         """Test direct solver on 1D Poisson equation."""
         # Solve: -u'' = f with u(0) = u(1) = 0
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
 
         L = builder.build_laplacian(boundary_conditions="dirichlet")
@@ -201,9 +190,7 @@ class TestSparseSolver:
 
     def test_iterative_solver_cg(self):
         """Test CG iterative solver."""
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
 
         # Symmetric positive definite system
@@ -222,7 +209,6 @@ class TestSparseSolver:
     def test_iterative_solver_gmres(self):
         """Test GMRES iterative solver."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[21, 21],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -244,9 +230,7 @@ class TestSparseSolver:
 
     def test_solver_convergence_callback(self):
         """Test solver callback for monitoring convergence."""
-        grid = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
-        )
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         builder = SparseMatrixBuilder(grid, matrix_format="csr")
 
         L = builder.build_laplacian(boundary_conditions="dirichlet")
@@ -291,7 +275,6 @@ class TestSparseUtilities:
     def test_estimate_sparsity(self):
         """Test sparsity analysis."""
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[50, 50],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -324,7 +307,6 @@ class TestIntegrationWithGrid:
         """Solve 2D Poisson equation: -Δu = f."""
         # Domain: [0,1] × [0,1]
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[31, 31],
             boundary_conditions=no_flux_bc(dimension=2),
@@ -367,9 +349,7 @@ class TestIntegrationWithGrid:
         errors = []
 
         for N in [11, 21, 41]:
-            grid = TensorProductGrid(
-                dimension=1, bounds=[(0.0, 1.0)], Nx_points=[N], boundary_conditions=no_flux_bc(dimension=1)
-            )
+            grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[N], boundary_conditions=no_flux_bc(dimension=1))
             builder = SparseMatrixBuilder(grid, matrix_format="csr")
 
             L = builder.build_laplacian(boundary_conditions="dirichlet")
@@ -408,7 +388,6 @@ class TestGPUSolver:
             pytest.skip("CuPy not available")
 
         grid = TensorProductGrid(
-            dimension=2,
             bounds=[(0.0, 1.0), (0.0, 1.0)],
             Nx_points=[51, 51],
             boundary_conditions=no_flux_bc(dimension=2),

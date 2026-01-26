@@ -32,7 +32,7 @@ class ProblemWithCallableSigma:
         self.T = 1.0
         self.Nt = 10
         self.geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
+            bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
         )
 
     def sigma(self, x):
@@ -67,7 +67,7 @@ class ProblemWithNumericSigma:
         self.Nt = 10
         self.sigma = 0.1  # Numeric constant
         self.geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
+            bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
         )
 
     def hamiltonian(self, x, m, p, t):
@@ -94,7 +94,7 @@ class ProblemWithNu:
         self.Nt = 10
         self.nu = 0.1  # Legacy attribute
         self.geometry = TensorProductGrid(
-            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
+            bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
         )
 
     def hamiltonian(self, x, m, p, t):
@@ -213,7 +213,7 @@ class TestBug15CallableSigma:
             T = 1.0
             Nt = 10
             geometry = TensorProductGrid(
-                dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
+                bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
             )
 
             def hamiltonian(self, x, m, p, t):

@@ -157,7 +157,6 @@ class TestBoundaryConditionRequirements:
 
         # Geometry with BCs
         geometry = TensorProductGrid(
-            dimension=1,
             bounds=[(0, 1)],
             Nx_points=[11],
             boundary_conditions=dirichlet_bc(dimension=1, value=0.0),
@@ -187,7 +186,6 @@ class TestBoundaryConditionRequirements:
 
         # Geometry with Dirichlet BC
         geometry = TensorProductGrid(
-            dimension=1,
             bounds=[(0, 1)],
             Nx_points=[11],
             boundary_conditions=dirichlet_bc(dimension=1, value=0.0),

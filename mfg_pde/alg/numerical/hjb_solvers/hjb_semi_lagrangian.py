@@ -1955,7 +1955,7 @@ if __name__ == "__main__":
 
     # Test 1: Solver initialization
     print("\n1. Testing solver initialization...")
-    geometry_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    geometry_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51])
     problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=100, diffusion=0.1)
     solver = HJBSemiLagrangianSolver(problem, interpolation_method="linear", optimization_method="brent")
 
