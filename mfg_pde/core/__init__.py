@@ -18,7 +18,11 @@ from .hamiltonian import (
     BoundedControlCost,
     BoundedHamiltonian,
     ControlCostBase,
+    # Backward-compatible aliases (deprecated since v0.17.2)
     DefaultMFGHamiltonian,
+    # Dual classes (Legendre transform)
+    DualHamiltonian,
+    DualLagrangian,
     # Full MFG Hamiltonian classes (Issue #673)
     HamiltonianBase,
     HamiltonianState,
@@ -33,6 +37,7 @@ from .hamiltonian import (
     OptimizationSense,
     QuadraticControlCost,
     QuadraticHamiltonian,
+    QuadraticMFGHamiltonian,
     SeparableHamiltonian,
     create_hamiltonian,
 )
@@ -75,10 +80,15 @@ __all__ = [
     "HamiltonianBase",
     "HamiltonianState",
     "SeparableHamiltonian",
-    "DefaultMFGHamiltonian",
+    "QuadraticMFGHamiltonian",
     "create_hamiltonian",
     # Lagrangian classes (Issue #651)
     "LagrangianBase",
+    # Dual classes (Legendre transform)
+    "DualHamiltonian",
+    "DualLagrangian",
+    # Backward-compatible aliases (deprecated since v0.17.2)
+    "DefaultMFGHamiltonian",
     "LegendreHamiltonian",
     "InverseLegendreeLagrangian",
     # Capacity-constrained MFG

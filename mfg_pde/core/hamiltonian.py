@@ -29,7 +29,7 @@ Architecture (v0.17.2+)
 -----------------------
 Two complementary class hierarchies:
 
-1. **HamiltonianBase** (Issue #673): Full MFG Hamiltonian H(x, m, p, t)
+1. **Hamiltonian** (Issue #673): Full MFG Hamiltonian H(x, m, p, t)
    - Clean callable API: `H(x, m, p, t)` or `H(x, m, derivs, t)`
    - Auto-computed derivatives via `dp()` and `dm()` (Issue #667)
    - Supports state-dependent terms (congestion, potential)
@@ -37,11 +37,11 @@ Two complementary class hierarchies:
 2. **ControlCostBase** (original): Pure control cost L(α) or H(p)
    - Simpler interface for control-only Hamiltonians
    - `optimal_control(p)`, `lagrangian(α)`, `hamiltonian(p)`
-   - Can be composed into HamiltonianBase
+   - Can be composed into Hamiltonian
 
-3. **LagrangianBase** (Issue #651): Running cost L(x, α, m, t)
+3. **Lagrangian** (Issue #651): Running cost L(x, α, m, t)
    - Legendre transform to Hamiltonian
-   - Duality: L ↔ H via `to_hamiltonian()` and `from_lagrangian()`
+   - Duality: L ↔ H via `to_hamiltonian()` and `to_lagrangian()`
 
 Design Philosophy
 -----------------
@@ -65,6 +65,8 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+from mfg_pde.utils.deprecation import deprecated_alias
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -370,7 +372,7 @@ BoundedHamiltonian = BoundedControlCost
 
 
 # ============================================================================
-# MFGOperatorBase: Common base for Hamiltonian and Lagrangian (Issue #651)
+# MFGOperator: Common base for Hamiltonian and Lagrangian (Issue #651)
 # ============================================================================
 
 
@@ -425,7 +427,7 @@ class MFGOperatorBase(ABC):
 
 
 # ============================================================================
-# HamiltonianBase: Full MFG Hamiltonian H(x, m, p, t) - Issue #673
+# Hamiltonian: Full MFG Hamiltonian H(x, m, p, t) - Issue #673
 # ============================================================================
 
 
@@ -463,7 +465,7 @@ class HamiltonianBase(MFGOperatorBase):
     Abstract base for full MFG Hamiltonians H(x, m, p, t).
 
     This is the primary interface for class-based Hamiltonians in MFG.
-    Unlike ControlCostBase (which handles only H(p)), HamiltonianBase
+    Unlike ControlCostBase (which handles only H(p)), Hamiltonian
     supports full state dependence including position x, density m, and time t.
 
     Key Features (Issue #673)
@@ -510,7 +512,13 @@ class HamiltonianBase(MFGOperatorBase):
     >>> H(x, m, p, t)  # Evaluate Hamiltonian
     >>> H.dp(x, m, p, t)  # Get ∂H/∂p (auto-computed)
     >>> H.dm(x, m, p, t)  # Get ∂H/∂m (auto-computed)
-    >>> L = H.to_lagrangian()  # Convert to Lagrangian (Issue #651)
+    >>> L = H.legendre_transform()  # Convert to Lagrangian (Issue #651)
+
+    See Also
+    --------
+    LagrangianBase : Running cost L(x, α, m, t)
+    DualHamiltonian : Hamiltonian from Lagrangian via Legendre transform
+    DualLagrangian : Lagrangian from Hamiltonian via inverse Legendre
     """
 
     @property
@@ -765,18 +773,19 @@ class HamiltonianBase(MFGOperatorBase):
 
         return hamiltonian_func, hamiltonian_dm_func
 
-    def to_lagrangian(
+    def legendre_transform(
         self,
         p_bounds: tuple[float, float] | None = None,
         n_search: int = 100,
     ) -> LagrangianBase:
         """
-        Convert Hamiltonian to Lagrangian via inverse Legendre transform.
+        Convert Hamiltonian to Lagrangian via Legendre transform.
 
         Computes L(x, α, m, t) = sup_p { p·α - H(x, p, m, t) }
 
-        This is the inverse of `LagrangianBase.to_hamiltonian()`, providing
-        symmetric duality between H and L (Issue #651).
+        The Legendre transform is involutive: applying it twice recovers
+        the original (up to convexification). This provides symmetric
+        duality between H and L (Issue #651).
 
         Parameters
         ----------
@@ -789,15 +798,16 @@ class HamiltonianBase(MFGOperatorBase):
         Returns
         -------
         LagrangianBase
-            The inverse Legendre-transformed Lagrangian
+            The Legendre-transformed Lagrangian (DualLagrangian)
 
         Examples
         --------
         >>> H = SeparableHamiltonian(control_cost=QuadraticControlCost(control_cost=2.0))
-        >>> L = H.to_lagrangian()
+        >>> L = H.legendre_transform()
         >>> # L(α) = ½λ|α|² (recovered from H = ½|p|²/λ)
+        >>> H_back = L.legendre_transform()  # Involutive: back to Hamiltonian
         """
-        return InverseLegendreeLagrangian(
+        return DualLagrangian(
             hamiltonian=self,
             sense=self.sense,
             p_bounds=p_bounds or (-10.0, 10.0),
@@ -806,7 +816,7 @@ class HamiltonianBase(MFGOperatorBase):
 
 
 # ============================================================================
-# LagrangianBase: Running cost L(x, α, m, t) with Legendre transform - Issue #651
+# Lagrangian: Running cost L(x, α, m, t) with Legendre transform - Issue #651
 # ============================================================================
 
 
@@ -860,8 +870,8 @@ class LagrangianBase(MFGOperatorBase):
     Convert to Hamiltonian and back:
 
     >>> L = QuadraticLagrangian(control_cost=2.0)
-    >>> H = L.to_hamiltonian()  # L → H via Legendre transform
-    >>> L2 = H.to_lagrangian()  # H → L via inverse Legendre transform
+    >>> H = L.legendre_transform()  # L → H via Legendre transform
+    >>> L2 = H.legendre_transform()  # H → L via inverse Legendre transform
     """
 
     @property
@@ -903,7 +913,7 @@ class LagrangianBase(MFGOperatorBase):
         """
         ...
 
-    def to_hamiltonian(
+    def legendre_transform(
         self,
         alpha_bounds: tuple[float, float] | None = None,
         n_search: int = 100,
@@ -912,6 +922,10 @@ class LagrangianBase(MFGOperatorBase):
         Convert Lagrangian to Hamiltonian via Legendre transform.
 
         Computes H(x, p, m, t) = sup_α { p·α - L(x, α, m, t) }
+
+        The Legendre transform is involutive: applying it twice recovers
+        the original (up to convexification). This provides symmetric
+        duality between H and L (Issue #651).
 
         For separable quadratic Lagrangians, this is done analytically.
         For general Lagrangians, numerical optimization is used.
@@ -927,9 +941,15 @@ class LagrangianBase(MFGOperatorBase):
         Returns
         -------
         HamiltonianBase
-            The Legendre-transformed Hamiltonian
+            The Legendre-transformed Hamiltonian (DualHamiltonian)
+
+        Examples
+        --------
+        >>> L = MyLagrangian()
+        >>> H = L.legendre_transform()  # L → H
+        >>> L_back = H.legendre_transform()  # Involutive: back to Lagrangian
         """
-        return LegendreHamiltonian(
+        return DualHamiltonian(
             lagrangian=self,
             sense=self.sense,
             alpha_bounds=alpha_bounds or (-10.0, 10.0),
@@ -937,12 +957,13 @@ class LagrangianBase(MFGOperatorBase):
         )
 
 
-class LegendreHamiltonian(HamiltonianBase):
+class DualHamiltonian(HamiltonianBase):
     """
     Hamiltonian defined via Legendre transform of a Lagrangian.
 
     This class computes H(x, p, m, t) = sup_α { p·α - L(x, α, m, t) }
-    numerically for general Lagrangians.
+    numerically for general Lagrangians. It is the "dual" of a given
+    Lagrangian in the sense of Legendre/convex duality.
 
     For separable quadratic Lagrangians, use SeparableHamiltonian instead
     which has analytic formulas.
@@ -963,6 +984,11 @@ class LegendreHamiltonian(HamiltonianBase):
     The numerical Legendre transform uses a two-stage approach:
     1. Grid search to find approximate optimum
     2. Local refinement using scipy.optimize (if available)
+
+    See Also
+    --------
+    DualLagrangian : Lagrangian created from Hamiltonian via Legendre transform
+    LagrangianBase.legendre_transform : Symmetric operation (L → H)
     """
 
     def __init__(
@@ -1095,12 +1121,13 @@ class LegendreHamiltonian(HamiltonianBase):
             return best_alpha
 
 
-class InverseLegendreeLagrangian(LagrangianBase):
+class DualLagrangian(LagrangianBase):
     """
     Lagrangian defined via inverse Legendre transform of a Hamiltonian.
 
     This class computes L(x, α, m, t) = sup_p { p·α - H(x, p, m, t) }
-    numerically for general Hamiltonians.
+    numerically for general Hamiltonians. It is the "dual" of a given
+    Hamiltonian in the sense of Legendre/convex duality.
 
     For separable quadratic Hamiltonians, the inverse transform gives
     back the quadratic Lagrangian analytically.
@@ -1115,6 +1142,11 @@ class InverseLegendreeLagrangian(LagrangianBase):
         Bounds on momentum for optimization
     n_search : int
         Number of points for initial grid search
+
+    See Also
+    --------
+    DualHamiltonian : Hamiltonian created from Lagrangian via Legendre transform
+    HamiltonianBase.legendre_transform : Symmetric operation (H → L)
     """
 
     def __init__(
@@ -1420,25 +1452,31 @@ class SeparableHamiltonian(HamiltonianBase):
         return self.control_cost.optimal_control(np.atleast_1d(p))
 
 
-class DefaultMFGHamiltonian(SeparableHamiltonian):
+class QuadraticMFGHamiltonian(SeparableHamiltonian):
     """
-    Default Hamiltonian matching MFGProblem's built-in: H = ½c|p|² - V(x) - m².
+    Standard quadratic MFG Hamiltonian: H = ½c|p|² - V(x) - m².
 
     This is the Hamiltonian used when no custom hamiltonian_func is provided
-    in MFGComponents. It provides a class-based equivalent.
+    in MFGComponents. It represents the most common form in MFG literature:
+
+    - Quadratic control cost: H_control = ½c|p|²
+    - Optional potential: V(x, t)
+    - Quadratic density coupling: f(m) = -m²
 
     Parameters
     ----------
     coupling_coefficient : float
         Coefficient c in ½c|p|² (default: 1.0)
     potential : Callable | None
-        Potential V(x) (default: None, meaning V=0)
+        Potential V(x, t) (default: None, meaning V=0)
     sense : OptimizationSense
         Optimization direction
 
     Notes
     -----
     The default coupling f(m) = -m² gives ∂H/∂m = -2m.
+    This Hamiltonian leads to the classical optimal control:
+    α* = -c·p (for MINIMIZE sense).
     """
 
     def __init__(
@@ -1516,7 +1554,7 @@ def create_hamiltonian(
     elif hamiltonian_type == "default":
         coupling_coefficient = kwargs.get("coupling_coefficient", 1.0)
         potential = kwargs.get("potential")
-        return DefaultMFGHamiltonian(
+        return QuadraticMFGHamiltonian(
             coupling_coefficient=coupling_coefficient,
             potential=potential,
             sense=sense,
@@ -1542,6 +1580,23 @@ def create_hamiltonian(
         raise ValueError(
             f"Unknown hamiltonian_type: {hamiltonian_type}. Valid types: quadratic, l1, bounded, default, separable"
         )
+
+
+# ============================================================================
+# Backward-Compatible Aliases (deprecated since v0.17.2, remove in v1.0.0)
+# ============================================================================
+
+# Old names → New names mapping:
+#   DefaultMFGHamiltonian → QuadraticMFGHamiltonian
+#   LegendreHamiltonian → DualHamiltonian
+#   InverseLegendreeLagrangian → DualLagrangian
+#
+# Note: MFGOperatorBase, HamiltonianBase, LagrangianBase keep their names.
+
+# Concrete classes: Use deprecated_alias for proper warnings
+DefaultMFGHamiltonian = deprecated_alias("DefaultMFGHamiltonian", QuadraticMFGHamiltonian, "v0.17.2")
+LegendreHamiltonian = deprecated_alias("LegendreHamiltonian", DualHamiltonian, "v0.17.2")
+InverseLegendreeLagrangian = deprecated_alias("InverseLegendreeLagrangian", DualLagrangian, "v0.17.2")
 
 
 if __name__ == "__main__":
@@ -1583,7 +1638,7 @@ if __name__ == "__main__":
     assert np.allclose(alpha_bounded, [-1, -1.5, -1.5]), "BoundedControlCost failed"
 
     print("\n" + "=" * 60)
-    print("Testing HamiltonianBase classes (Issue #673)...")
+    print("Testing Hamiltonian classes (Issue #673)...")
     print("=" * 60)
 
     # Test SeparableHamiltonian
@@ -1619,14 +1674,14 @@ if __name__ == "__main__":
     print(f"   α* = {alpha_opt}  (expected: -p/λ = [-0.5])")
     assert np.allclose(alpha_opt, [-0.5]), "SeparableHamiltonian optimal_control failed"
 
-    # Test DefaultMFGHamiltonian
-    print("\n6. DefaultMFGHamiltonian:")
-    H_default = DefaultMFGHamiltonian(coupling_coefficient=1.0)
+    # Test QuadraticMFGHamiltonian (and backward-compat alias DefaultMFGHamiltonian)
+    print("\n6. QuadraticMFGHamiltonian:")
+    H_default = QuadraticMFGHamiltonian(coupling_coefficient=1.0)
     H_default_val = H_default(x, m_val, p_val, t_val)
     # H = ½c|p|² - m² = 0.5 * 1.0 * 1.0 - 0.09 = 0.5 - 0.09 = 0.41
     print(f"   H(x={x}, m={m_val}, p={p_val}) = {H_default_val:.4f}")
     print("   Expected: 0.5 * 1.0 * 1.0² - 0.3² = 0.5 - 0.09 = 0.41")
-    assert abs(H_default_val - 0.41) < 1e-10, f"DefaultMFGHamiltonian failed: {H_default_val}"
+    assert abs(H_default_val - 0.41) < 1e-10, f"QuadraticMFGHamiltonian failed: {H_default_val}"
 
     # Test factory function
     print("\n7. create_hamiltonian factory:")
@@ -1658,7 +1713,7 @@ if __name__ == "__main__":
     assert abs(legacy_dm - (-0.6)) < 1e-10, "Legacy dm conversion failed"
 
     print("\n" + "=" * 60)
-    print("Testing LagrangianBase and Legendre transform (Issue #651)...")
+    print("Testing Lagrangian and Legendre transform (Issue #651)...")
     print("=" * 60)
 
     # Create a simple quadratic Lagrangian
@@ -1670,9 +1725,9 @@ if __name__ == "__main__":
         def __call__(self, x, alpha, m, t=0.0):
             return 0.5 * self.lam * np.sum(alpha**2)
 
-    print("\n9. LagrangianBase -> HamiltonianBase via Legendre transform:")
+    print("\n9. Lagrangian -> Hamiltonian via Legendre transform:")
     L = TestQuadraticLagrangian(lam=2.0)
-    H_legendre = L.to_hamiltonian()
+    H_legendre = L.legendre_transform()
 
     # For L = ½λ|α|², the Legendre transform gives H = ½|p|²/λ
     # With λ=2 and p=1: H = 0.5 * 1 / 2 = 0.25
@@ -1682,12 +1737,12 @@ if __name__ == "__main__":
     # Allow some tolerance for numerical Legendre transform
     assert abs(H_legendre_val - 0.25) < 0.05, f"Legendre transform failed: {H_legendre_val}"
 
-    print("\n10. HamiltonianBase -> LagrangianBase via inverse Legendre transform:")
+    print("\n10. Hamiltonian -> Lagrangian via inverse Legendre transform:")
     # Test symmetric duality: H -> L -> H should recover original
     H_orig = SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=2.0),
     )
-    L_from_H = H_orig.to_lagrangian()
+    L_from_H = H_orig.legendre_transform()
 
     # For H = ½|p|²/λ, the inverse Legendre transform gives L = ½λ|α|²
     # With λ=2 (control_cost=2): L(α=1) = 0.5 * 2 * 1 = 1.0
@@ -1699,8 +1754,8 @@ if __name__ == "__main__":
 
     print("\n11. Symmetric duality: L -> H -> L should recover original:")
     L_orig = TestQuadraticLagrangian(lam=2.0)
-    H_from_L = L_orig.to_hamiltonian()
-    L_recovered = H_from_L.to_lagrangian()
+    H_from_L = L_orig.legendre_transform()
+    L_recovered = H_from_L.legendre_transform()
 
     # L_recovered(α=1) should ≈ L_orig(α=1) = 0.5 * 2 * 1 = 1.0
     L_orig_val = L_orig(x, alpha_test, m_val, t_val)
@@ -1710,7 +1765,7 @@ if __name__ == "__main__":
     assert abs(L_recovered_val - L_orig_val) < 0.2, f"Duality cycle failed: {L_recovered_val} vs {L_orig_val}"
     print("   Duality cycle: L -> H -> L verified!")
 
-    print("\n12. MFGOperatorBase properties:")
+    print("\n12. MFGOperator properties:")
     print(f"   H.is_hamiltonian = {H_orig.is_hamiltonian}  (expected: True)")
     print(f"   H.is_lagrangian = {H_orig.is_lagrangian}    (expected: False)")
     print(f"   L.is_hamiltonian = {L_orig.is_hamiltonian}  (expected: False)")

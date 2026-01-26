@@ -15,14 +15,14 @@ import numpy as np
 from mfg_pde.core.hamiltonian import (
     # Control cost classes
     BoundedControlCost,
-    DefaultMFGHamiltonian,
-    # Base classes
-    InverseLegendreeLagrangian,
+    # Dual classes (Legendre transform)
+    DualHamiltonian,
+    DualLagrangian,
     L1ControlCost,
     LagrangianBase,
-    LegendreHamiltonian,
     OptimizationSense,
     QuadraticControlCost,
+    QuadraticMFGHamiltonian,
     SeparableHamiltonian,
     create_hamiltonian,
 )
@@ -209,9 +209,9 @@ class TestLagrangianBase:
 
     def test_lagrangian_to_hamiltonian(self, quadratic_lagrangian):
         """Test Legendre transform L -> H."""
-        H = quadratic_lagrangian.to_hamiltonian()
+        H = quadratic_lagrangian.legendre_transform()
 
-        assert isinstance(H, LegendreHamiltonian)
+        assert isinstance(H, DualHamiltonian)
 
         # For L = ½λ|α|², H = ½|p|²/λ
         # With λ=2, p=1: H = 0.5 * 1 / 2 = 0.25
@@ -232,9 +232,9 @@ class TestLegendreDuality:
         H = SeparableHamiltonian(
             control_cost=QuadraticControlCost(control_cost=2.0),
         )
-        L = H.to_lagrangian()
+        L = H.legendre_transform()
 
-        assert isinstance(L, InverseLegendreeLagrangian)
+        assert isinstance(L, DualLagrangian)
 
         # For H = ½|p|²/λ, L = ½λ|α|²
         # With λ=2, α=1: L = 0.5 * 2 * 1 = 1.0
@@ -258,8 +258,8 @@ class TestLegendreDuality:
                 return 0.5 * self.lam * np.sum(alpha**2)
 
         L_orig = QuadraticLagrangian(lam=2.0)
-        H_from_L = L_orig.to_hamiltonian()
-        L_recovered = H_from_L.to_lagrangian()
+        H_from_L = L_orig.legendre_transform()
+        L_recovered = H_from_L.legendre_transform()
 
         x = np.array([0.5])
         alpha = np.array([1.0])
@@ -273,12 +273,12 @@ class TestLegendreDuality:
         assert abs(L_recovered_val - L_orig_val) < 0.2
 
 
-class TestDefaultMFGHamiltonian:
-    """Tests for DefaultMFGHamiltonian."""
+class TestQuadraticMFGHamiltonian:
+    """Tests for QuadraticMFGHamiltonian."""
 
     def test_default_hamiltonian_matches_mfg_problem_default(self):
-        """Test DefaultMFGHamiltonian gives same result as MFGProblem default."""
-        H = DefaultMFGHamiltonian(coupling_coefficient=1.0)
+        """Test QuadraticMFGHamiltonian gives same result as MFGProblem default."""
+        H = QuadraticMFGHamiltonian(coupling_coefficient=1.0)
 
         x = np.array([0.5])
         m = 0.3
@@ -292,8 +292,8 @@ class TestDefaultMFGHamiltonian:
         assert abs(H_val - expected) < 1e-10
 
     def test_default_hamiltonian_dm(self):
-        """Test DefaultMFGHamiltonian.dm() = -2m."""
-        H = DefaultMFGHamiltonian(coupling_coefficient=1.0)
+        """Test QuadraticMFGHamiltonian.dm() = -2m."""
+        H = QuadraticMFGHamiltonian(coupling_coefficient=1.0)
 
         x = np.array([0.5])
         m = 0.3
@@ -327,7 +327,7 @@ class TestCreateHamiltonian:
         """Test creating default MFG Hamiltonian via factory."""
         H = create_hamiltonian("default", coupling_coefficient=2.0)
 
-        assert isinstance(H, DefaultMFGHamiltonian)
+        assert isinstance(H, QuadraticMFGHamiltonian)
         assert H.coupling_coefficient == 2.0
 
     def test_create_invalid_raises(self):
