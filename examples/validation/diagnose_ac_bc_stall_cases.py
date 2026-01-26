@@ -85,7 +85,6 @@ def create_towel_problem(
         return np.ones_like(x) / L
 
     geometry = TensorProductGrid(
-        dimension=1,
         bounds=[(0.0, L)],
         Nx_points=[Nx],
     )

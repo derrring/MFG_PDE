@@ -150,7 +150,10 @@ class TensorProductGrid(
                 Note: For d>3, grid requires O(N^d) memory/computation.
             spacing_type: "uniform" or "custom"
             custom_coordinates: Optional list of 1D coordinate arrays
-            boundary_conditions: Spatial BC specification.
+            boundary_conditions: **REQUIRED** - Spatial BC specification.
+                Must be explicitly provided (Issue #674 - Fail Fast principle).
+                Use no_flux_bc(), neumann_bc(), dirichlet_bc(), or periodic_bc()
+                from mfg_pde.geometry.boundary.
                 This is the SSOT for spatial BC - both HJB and FP solvers
                 query this geometry for consistent boundary conditions.
 
@@ -161,9 +164,11 @@ class TensorProductGrid(
 
         Raises:
             ValueError: If bounds is empty
+            ValueError: If boundary_conditions is not provided
             ValueError: If dimension is provided and doesn't match len(bounds)
             ValueError: If none or multiple of Nx/Nx_points/num_points specified
             UserWarning: If dimension > 3 (performance warning)
+            DeprecationWarning: If dimension is provided (redundant, inferred from bounds)
             DeprecationWarning: If num_points is used (use Nx_points instead)
         """
         # Infer dimension from bounds (SSOT: bounds defines the domain)
@@ -176,8 +181,18 @@ class TensorProductGrid(
             if dimension != inferred_dimension:
                 raise ValueError(
                     f"dimension={dimension} doesn't match len(bounds)={inferred_dimension}. "
-                    f"Dimension is inferred from bounds; explicit dimension is optional."
+                    f"Dimension is inferred from bounds; remove explicit dimension parameter."
                 )
+            # Issue #674: Fail Fast - warn on redundant parameter
+            import warnings
+
+            warnings.warn(
+                f"dimension={dimension} is redundant when bounds is provided. "
+                f"Dimension is inferred from len(bounds). "
+                f"Remove the dimension= parameter. Will error in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         dimension = inferred_dimension
 
         if dimension < 1:
@@ -267,10 +282,16 @@ class TensorProductGrid(
                 raise ValueError(f"Coordinate array {i} has length {len(coords)}, expected {self._Nx_points[i]}")
 
         # Store boundary conditions (SSOT for spatial BC)
-        # Use lazy binding to set/validate dimension
-        if boundary_conditions is not None:
-            # bind_dimension returns a new BC with dimension set, or validates if already set
-            boundary_conditions = boundary_conditions.bind_dimension(dimension)
+        # Issue #674: Require explicit BC specification (Fail Fast principle)
+        if boundary_conditions is None:
+            raise ValueError(
+                "boundary_conditions must be explicitly specified. "
+                "Use no_flux_bc(), neumann_bc(), dirichlet_bc(), or periodic_bc() "
+                "from mfg_pde.geometry.boundary. "
+                "Example: boundary_conditions=no_flux_bc(dimension=1)"
+            )
+        # bind_dimension returns a new BC with dimension set, or validates if already set
+        boundary_conditions = boundary_conditions.bind_dimension(dimension)
         self._boundary_conditions = boundary_conditions
 
         # Cache for flattened grid (computed lazily, perf optimization)
@@ -587,7 +608,7 @@ class TensorProductGrid(
             (min_coords, max_coords) tuple of arrays
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], Nx_points=[10,20])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,2)], Nx_points=[10,20])
             >>> min_coords, max_coords = grid.get_bounds()
             >>> min_coords
             array([0., 0.])
@@ -612,7 +633,7 @@ class TensorProductGrid(
 
         Examples:
             >>> # Default BC (no-flux)
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1),(0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1),(0,1)], Nx=[10,10])
             >>> bc = grid.get_boundary_conditions()
             >>> bc.is_uniform  # True
 
@@ -668,7 +689,7 @@ class TensorProductGrid(
             [dx1, dx2, ...] where dxi = (xmax_i - xmin_i) / (Ni - 1)
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,2)], Nx_points=[11,21])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,2)], Nx_points=[11,21])
             >>> dx = grid.get_grid_spacing()
             >>> dx
             [0.1, 0.1]
@@ -685,7 +706,7 @@ class TensorProductGrid(
             (Nx_points[0], Nx_points[1], ...) tuple of grid points
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, Nx_points=[10, 20])
+            >>> grid = TensorProductGrid(Nx_points=[10, 20])
             >>> shape = grid.get_grid_shape()
             >>> shape
             (10, 20)
@@ -701,7 +722,7 @@ class TensorProductGrid(
             and d is the spatial dimension.
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[5])
+            >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx_points=[5])
             >>> points = grid.get_collocation_points()
             >>> points.shape
             (5, 1)
@@ -732,7 +753,7 @@ class TensorProductGrid(
             - Multiple points (2D array of shape (N, dim)): returns NDArray of shape (N,)
 
         Examples:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx_points=[10,10])
             >>> interpolate = grid.get_interpolator()
             >>> u = np.random.rand(10, 10)
             >>> # Single point
@@ -927,7 +948,7 @@ class TensorProductGrid(
             ValueError: If boundary_name not recognized
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> # Face normal
             >>> n = grid.get_outward_normal(np.array([0.0, 0.5]), boundary_name="x_min")
             >>> assert np.allclose(n, [-1.0, 0.0])
@@ -1024,7 +1045,7 @@ class TensorProductGrid(
             Projected points on boundary, same shape as input
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> x_outside = np.array([1.2, 0.5])
             >>> x_boundary = grid.project_to_boundary(x_outside)
             >>> assert np.allclose(x_boundary, [1.0, 0.5])
@@ -1094,7 +1115,7 @@ class TensorProductGrid(
             Projected points in interior, same shape as input
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> x_outside = np.array([1.05, 0.5])
             >>> x_inside = grid.project_to_interior(x_outside, tolerance=1e-3)
             >>> assert x_inside[0] <= 1.0
@@ -1130,7 +1151,7 @@ class TensorProductGrid(
             Signed distances, shape (num_points,) or scalar
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> phi = grid.get_signed_distance(np.array([[0.5, 0.5], [1.0, 0.5], [1.5, 0.5]]))
             >>> assert phi[0] < 0  # Inside
             >>> assert np.isclose(phi[1], 0, atol=1e-10)  # On boundary
@@ -1185,7 +1206,7 @@ class TensorProductGrid(
                 - Multiple points: (num_points, dimension, dimension) stack of identities
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> g = grid.get_metric_tensor(np.array([0.5, 0.5]))
             >>> assert np.allclose(g, np.eye(2))
         """
@@ -1219,7 +1240,7 @@ class TensorProductGrid(
                 - Multiple points: (num_points, dimension, dimension)
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> basis = grid.get_tangent_space_basis(np.array([0.5, 0.5]))
             >>> assert np.allclose(basis, np.eye(2))
         """
@@ -1244,7 +1265,7 @@ class TensorProductGrid(
                 - Multiple points: (num_points, dimension, dimension, dimension) zeros
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> Gamma = grid.compute_christoffel_symbols(np.array([0.5, 0.5]))
             >>> assert np.allclose(Gamma, 0)
         """
@@ -1276,7 +1297,7 @@ class TensorProductGrid(
             Lipschitz constant L = 0 for axis-aligned boundaries
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> L = grid.get_lipschitz_constant()
             >>> assert L == 0.0
         """
@@ -1299,7 +1320,7 @@ class TensorProductGrid(
             (True, "") - Always valid for rectangular grids
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[10,10])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[10,10])
             >>> valid, msg = grid.validate_lipschitz_regularity()
             >>> assert valid and msg == ""
         """
@@ -1323,7 +1344,7 @@ class TensorProductGrid(
             >>> from mfg_pde.geometry.boundary import BoundaryConditions, BCType
             >>> # Periodic in x (dimension 0)
             >>> bc = BoundaryConditions(dimension=2, bc_type=BCType.PERIODIC)
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,2*np.pi),(0,1)],
+            >>> grid = TensorProductGrid(bounds=[(0,2*np.pi),(0,1)],
             ...                           Nx=[20,10], boundary_conditions=bc)
             >>> # Note: Current BC doesn't track per-dimension periodicity yet
         """
@@ -1351,7 +1372,7 @@ class TensorProductGrid(
 
         Example:
             >>> # Assuming periodic BC
-            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 2*np.pi)], Nx=[100])
+            >>> grid = TensorProductGrid(bounds=[(0, 2*np.pi)], Nx=[100])
             >>> periods = grid.get_periods()
             >>> # Returns {0: 2*pi} if periodic in x
         """
@@ -1379,7 +1400,7 @@ class TensorProductGrid(
 
         Example:
             >>> # Assuming 1D periodic domain [0, 2π)
-            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 2*np.pi)], Nx=[100])
+            >>> grid = TensorProductGrid(bounds=[(0, 2*np.pi)], Nx=[100])
             >>> x_wrapped = grid.wrap_coordinates(np.array([3*np.pi]))
             >>> # Returns [π] if periodic
         """
@@ -1420,7 +1441,7 @@ class TensorProductGrid(
 
         Example:
             >>> # 1D periodic [0, 1)
-            >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+            >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx=[100])
             >>> x1 = np.array([0.1])
             >>> x2 = np.array([0.9])
             >>> dist = grid.compute_periodic_distance(x1, x2)
@@ -1469,7 +1490,7 @@ class TensorProductGrid(
             LaplacianOperator: scipy LinearOperator for Laplacian
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[50, 50])
             >>> L = grid.get_laplacian_operator(order=2)
             >>> u = np.random.rand(51, 51)
             >>> Lu = L(u)  # Apply Laplacian
@@ -1514,7 +1535,7 @@ class TensorProductGrid(
                 Single GradientComponentOperator for that direction
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[50, 50])
             >>> grad_x, grad_y = grid.get_gradient_operator()
             >>> u = np.random.rand(51, 51)
             >>> du_dx = grad_x(u)
@@ -1567,7 +1588,7 @@ class TensorProductGrid(
             DivergenceOperator (scipy LinearOperator) that computes ∇·F
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[50, 50])
             >>> div_op = grid.get_divergence_operator()
             >>> F = np.random.rand(2, 51, 51)  # Vector field (Fx, Fy)
             >>> div_F = div_op(F)  # Shape: (51, 51)
@@ -1605,7 +1626,7 @@ class TensorProductGrid(
             AdvectionOperator (scipy LinearOperator) for transport
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[50, 50])
             >>> v = np.random.rand(2, 51, 51)  # Velocity field
             >>> adv_op = grid.get_advection_operator(v, scheme='upwind', conservative=True)
             >>> m = np.random.rand(51, 51)  # Density
@@ -1653,7 +1674,7 @@ class TensorProductGrid(
             InterpolationOperator (scipy LinearOperator) for grid-to-point evaluation
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[50, 50])
             >>> query_pts = np.random.rand(100, 2)  # 100 random points in [0,1]²
             >>> interp = grid.get_interpolation_operator(query_pts, order=1)
             >>> u = np.random.rand(51, 51)
@@ -1699,7 +1720,7 @@ class TensorProductGrid(
             ValueError: If mask has wrong shape
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[50, 50])
             >>>
             >>> # Mark inlet region using predicate
             >>> grid.mark_region(
@@ -1936,7 +1957,7 @@ if __name__ == "__main__":
     import numpy as np
 
     # Test 2D grid creation with Nx (intervals)
-    grid_2d = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], Nx=[10, 5])
+    grid_2d = TensorProductGrid(bounds=[(0.0, 10.0), (0.0, 5.0)], Nx=[10, 5])
 
     assert grid_2d.dimension == 2
     assert grid_2d.Nx == [10, 5]  # intervals
@@ -1947,7 +1968,7 @@ if __name__ == "__main__":
     print(f"  2D grid (Nx=[10, 5]): {grid_2d.Nx_points[0]}x{grid_2d.Nx_points[1]} = {grid_2d.total_points()} points")
 
     # Test with Nx_points directly
-    grid_2d_alt = TensorProductGrid(dimension=2, bounds=[(0.0, 10.0), (0.0, 5.0)], Nx_points=[11, 6])
+    grid_2d_alt = TensorProductGrid(bounds=[(0.0, 10.0), (0.0, 5.0)], Nx_points=[11, 6])
     assert grid_2d_alt.Nx == [10, 5]
     assert grid_2d_alt.Nx_points == [11, 6]
 

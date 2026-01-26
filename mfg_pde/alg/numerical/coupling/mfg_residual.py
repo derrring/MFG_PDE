@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
@@ -111,12 +112,12 @@ class MFGResidual:
 
         # Try to get initial density
         try:
-            self.M_initial = self.problem.get_m_init()
+            self.M_initial = self.problem.get_m_initial()
             if self.M_initial.shape != shape:
                 self.M_initial = self.M_initial.reshape(shape)
         except AttributeError:
             try:
-                self.M_initial = self.problem.m_init
+                self.M_initial = self.problem.m_initial  # Issue #670: unified naming
                 if self.M_initial is not None and self.M_initial.shape != shape:
                     self.M_initial = self.M_initial.reshape(shape)
             except AttributeError:
@@ -126,12 +127,12 @@ class MFGResidual:
 
         # Try to get terminal value
         try:
-            self.U_terminal = self.problem.get_u_fin()
+            self.U_terminal = self.problem.get_u_final()
             if self.U_terminal.shape != shape:
                 self.U_terminal = self.U_terminal.reshape(shape)
         except AttributeError:
             try:
-                self.U_terminal = self.problem.u_fin
+                self.U_terminal = self.problem.u_final  # Issue #670: unified naming
                 if self.U_terminal is not None and self.U_terminal.shape != shape:
                     self.U_terminal = self.U_terminal.reshape(shape)
             except AttributeError:
@@ -358,7 +359,7 @@ if __name__ == "__main__":
     from mfg_pde.geometry import TensorProductGrid
 
     # Create simple 1D problem
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.1)
 
     # Create solvers

@@ -138,7 +138,6 @@ def create_towel_problem_standard_bc(
 
     # Create geometry and set BC on it directly
     geometry = TensorProductGrid(
-        dimension=1,
         bounds=[(0.0, L)],
         Nx_points=[Nx],
     )
@@ -207,7 +206,6 @@ def create_towel_problem_adjoint_bc(
 
     # Create geometry first
     geometry = TensorProductGrid(
-        dimension=1,
         bounds=[(0.0, L)],
         Nx_points=[Nx],
     )

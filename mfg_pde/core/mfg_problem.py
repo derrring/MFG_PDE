@@ -258,8 +258,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
             # Mode 6: Dual geometry (Issue #257) - Separate geometries for HJB and FP
             from mfg_pde.geometry import TensorProductGrid
-            hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])  # Fine grid for HJB
-            fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[21, 21])  # Coarse grid for FP
+            from mfg_pde.geometry.boundary import no_flux_bc
+            hjb_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[51, 51], boundary_conditions=no_flux_bc(2))
+            fp_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[21, 21], boundary_conditions=no_flux_bc(2))
             problem = MFGProblem(
                 hjb_geometry=hjb_grid,
                 fp_geometry=fp_grid,
@@ -501,10 +502,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Validate kwargs - fail fast on deprecated/unrecognized parameters (Issue #666)
         self._validate_kwargs(all_params)
 
-        # Initialize arrays
+        # Initialize arrays (Issue #670: unified naming)
         self.f_potential: NDArray
-        self.u_fin: NDArray
-        self.m_init: NDArray
+        self.u_finalal: NDArray  # Terminal condition u(T, x)
+        self.m_initialial: NDArray  # Initial density m(0, x)
 
         # Initialize functions
         self._initialize_functions(**all_params)
@@ -552,7 +553,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             "Manual grid construction in MFGProblem is deprecated and will be "
             "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
             "  from mfg_pde.geometry import TensorProductGrid\n"
-            f"  domain = TensorProductGrid(dimension=1, bounds=[({xmin[0]}, {xmax[0]})], Nx_points=[{Nx[0] + 1}])\n"
+            f"  domain = TensorProductGrid(bounds=[({xmin[0]}, {xmax[0]})], Nx_points=[{Nx[0] + 1}])\n"
             f"  problem = MFGProblem(geometry=domain, T={T}, Nt={Nt})\n\n"
             "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
             DeprecationWarning,
@@ -565,10 +566,14 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         Nx_scalar = Nx[0]
 
         # Create TensorProductGrid geometry object (unified internal representation)
+        # Use default no_flux_bc for legacy _init_1d_legacy path (Issue #674)
+        # Note: This is a deprecated code path; users should use geometry-first API
+        from mfg_pde.geometry.boundary import no_flux_bc
+
         geometry = TensorProductGrid(
-            dimension=1,
             bounds=[(xmin_scalar, xmax_scalar)],
             Nx_points=[Nx_scalar + 1],
+            boundary_conditions=no_flux_bc(dimension=1),
         )
 
         # Store geometry for unified interface
@@ -650,10 +655,15 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         # Create TensorProductGrid for all dimensions (unified approach)
         from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import no_flux_bc
 
         # Convert discretization to Nx_points (add 1 for point count vs intervals)
         Nx_points = [n + 1 for n in spatial_discretization]
-        geometry = TensorProductGrid(dimension=dimension, bounds=spatial_bounds, Nx_points=Nx_points)
+        # Use default no_flux_bc for legacy _init_nd path (Issue #674)
+        # Note: This is a deprecated code path; users should use geometry-first API
+        geometry = TensorProductGrid(
+            bounds=spatial_bounds, Nx_points=Nx_points, boundary_conditions=no_flux_bc(dimension=dimension)
+        )
 
         # Store geometry for unified interface
         self.geometry = geometry
@@ -1485,6 +1495,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         if state.get("geometry") is None and state.get("xmin") is not None:
             try:
                 from mfg_pde.geometry import TensorProductGrid
+                from mfg_pde.geometry.boundary import no_flux_bc
 
                 # Reconstruct geometry from legacy attributes
                 xmin = state.get("xmin")
@@ -1502,10 +1513,12 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                     bounds = list(zip(xmin, xmax, strict=True))
                     Nx_points = [n + 1 for n in Nx]
 
+                # Use default no_flux_bc for legacy pickle migration (Issue #674)
+                dimension = len(bounds)
                 state["geometry"] = TensorProductGrid(
-                    dimension=len(bounds),
                     bounds=bounds,
                     Nx_points=Nx_points,
+                    boundary_conditions=no_flux_bc(dimension=dimension),
                 )
             except (KeyError, ImportError) as e:
                 import warnings
@@ -1777,81 +1790,84 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             "warnings": warnings_list,
         }
 
-    def _potential(self, x: float) -> float:
-        """Default potential function."""
-        Lx = self._get_domain_length() or 1.0  # Fallback to 1.0 if not 1D
-        return 50 * (
-            0.1 * np.cos(x * 2 * np.pi / Lx) + 0.25 * np.sin(x * 2 * np.pi / Lx) + 0.1 * np.sin(x * 4 * np.pi / Lx)
-        )
-
-    def _u_final(self, x: float) -> float:
-        """Default final value function."""
-        Lx = self._get_domain_length() or 1.0  # Fallback to 1.0 if not 1D
-        return 5 * (np.cos(x * 2 * np.pi / Lx) + 0.4 * np.sin(x * 4 * np.pi / Lx))
-
-    def _m_initial(self, x: float) -> float:
-        """Default initial density function."""
-        return 2 * np.exp(-200 * (x - 0.2) ** 2) + np.exp(-200 * (x - 0.8) ** 2)
+    # Issue #670/#671: Legacy default functions removed (Fail Fast principle)
+    # - _potential(): Removed - zero potential is now the explicit default
+    # - _u_final(): Removed - must be provided via MFGComponents.u_final
+    # - _m_initial(): Removed - must be provided via MFGComponents.m_initial
 
     def _initialize_functions(self, **kwargs: Any) -> None:
-        """Initialize potential, initial density, and final value functions."""
+        """Initialize potential, initial density, and final value functions.
 
+        Issue #670: u_final/m_initial must be provided via MFGComponents.
+        No silent defaults - Fail Fast principle.
+        """
         # Initialize arrays with correct shape for both 1D and n-D
         self.f_potential = np.zeros(self.spatial_shape)
-        self.u_fin = np.zeros(self.spatial_shape)
-        self.m_init = np.zeros(self.spatial_shape)
+        self.u_final = np.zeros(self.spatial_shape)
+        self.m_initial = np.zeros(self.spatial_shape)
 
-        # Handle custom vs default initialization
-        if self.is_custom and self.components is not None:
-            # Custom problem - use provided functions
-            if self.components.potential_func is not None:
-                self._setup_custom_potential()
-            else:
-                # Default potential for custom problem
-                self.f_potential[:] = 0.0
+        # Issue #670: u_final and m_initial MUST come from MFGComponents
+        has_components = self.components is not None
+        has_u_final = has_components and self.components.u_final is not None
+        has_m_initial = has_components and self.components.m_initial is not None
 
-            if self.components.final_value_func is not None:
-                self._setup_custom_final_value()
-            else:
-                # Default final value for custom problem
-                self.u_fin[:] = 0.0
-
-            if self.components.initial_density_func is not None:
-                self._setup_custom_initial_density()
-            else:
-                # Default initial density for custom problem
-                self._setup_default_initial_density()
+        # === u_final: MUST be in MFGComponents (Issue #670: no silent default) ===
+        if has_u_final:
+            self._setup_custom_final_value()
         else:
-            # Default problem - use built-in functions
-            if self.dimension == 1:
-                # 1D default functions (original behavior)
-                spatial_grid = self._get_spatial_grid_internal()
-                for i in range(self.spatial_shape[0]):
-                    # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
-                    x_i = float(spatial_grid[i, 0])
-                    self.f_potential[i] = self._potential(x_i)
-                    self.u_fin[i] = self._u_final(x_i)
-                    self.m_init[i] = self._m_initial(x_i)
-            else:
-                # n-D default functions (simple defaults)
-                # Potential: zero (can be customized later)
-                self.f_potential[:] = 0.0
+            raise ValueError(
+                "u_final (terminal condition) must be provided in MFGComponents. "
+                "Example: MFGComponents(u_final=lambda x: ..., m_initial=lambda x: ...). "
+                "See examples/basic/lq_mfg_classic.py for the classic LQ-MFG setup."
+            )
 
-                # Final value: zero (can be customized later)
-                self.u_fin[:] = 0.0
+        # === m_initial: MUST be in MFGComponents (Issue #670: no silent default) ===
+        if has_m_initial:
+            self._setup_custom_initial_density()
+        else:
+            raise ValueError(
+                "m_initial (initial density) must be provided in MFGComponents. "
+                "Example: MFGComponents(u_final=lambda x: ..., m_initial=lambda x: ...). "
+                "See examples/basic/lq_mfg_classic.py for the classic LQ-MFG setup."
+            )
 
-                # Initial density: Gaussian at center
-                self._setup_default_initial_density()
+        # === Potential: V(x,t) - defaults to zero (Issue #671: explicit default) ===
+        # Zero potential is a valid physical choice (many MFG problems have V=0).
+        # Unlike m_initial/u_final, zero potential doesn't require explicit specification.
+        has_potential = has_components and self.components.potential_func is not None
+        if has_potential:
+            self._setup_custom_potential()
+        else:
+            # Issue #671: Zero potential is the explicit default (physically meaningful)
+            self.f_potential[:] = 0.0
+
+        # === Issue #672: Validate m_initial before normalization (Fail Fast) ===
+        # Check 1: Non-negativity (density must be >= 0)
+        if np.any(self.m_initial < 0):
+            min_val = np.min(self.m_initial)
+            raise ValueError(
+                f"m_initial contains negative values (min={min_val:.6e}). "
+                "Initial density must be non-negative. "
+                "Check your m_initial function in MFGComponents."
+            )
+
+        # Check 2: Non-zero mass (must have some mass to normalize)
+        if np.sum(self.m_initial) < 1e-15:
+            raise ValueError(
+                "m_initial has zero or negligible total mass. "
+                "Initial density must integrate to a positive value. "
+                "Check your m_initial function in MFGComponents."
+            )
 
         # Normalize initial density
         if self.dimension == "network":
             # Network/graph: discrete probability mass, sum = 1
             # No cell volume - just normalize sum to 1
-            integral_m_init = np.sum(self.m_init)
+            integral_m_initial = np.sum(self.m_initial)
         elif self.dimension == 1:
             # 1D normalization (original)
             dx = self._get_spacing() or 1.0
-            integral_m_init = np.sum(self.m_init) * dx
+            integral_m_initial = np.sum(self.m_initial) * dx
         elif self.spatial_bounds is not None and self.spatial_discretization is not None:
             # n-D normalization (integrate over all dimensions)
             # For tensor product grid: integral = sum(m) * prod(dx_i)
@@ -1861,56 +1877,17 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                     for bounds, n in zip(self.spatial_bounds, self.spatial_discretization, strict=False)
                 ]
             )
-            integral_m_init = np.sum(self.m_init) * dx_prod
+            integral_m_initial = np.sum(self.m_initial) * dx_prod
         else:
             # For unstructured/implicit geometries: use uniform normalization
             # This is a rough approximation - for accurate integration, use proper
             # quadrature rules based on the geometry type
-            integral_m_init = np.sum(self.m_init) / self.num_spatial_points
+            integral_m_initial = np.sum(self.m_initial) / self.num_spatial_points
 
-        if integral_m_init > 1e-10:
-            self.m_init /= integral_m_init
+        if integral_m_initial > 1e-10:
+            self.m_initial /= integral_m_initial
 
-    def _setup_default_initial_density(self) -> None:
-        """Setup default initial density (Gaussian at center for n-D problems)."""
-        if self.dimension == 1:
-            # 1D: Use original default
-            spatial_grid = self._get_spatial_grid_internal()
-            for i in range(self.spatial_shape[0]):
-                # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
-                x_i = float(spatial_grid[i, 0])
-                self.m_init[i] = self._m_initial(x_i)
-        elif self.dimension == "network":
-            # Network/graph: uniform density on all nodes
-            self.m_init[:] = 1.0 / self.num_nodes
-        else:
-            # n-D: Gaussian at center of domain
-            # Use geometry interface instead of deprecated _grid
-            if self.geometry is not None:
-                # Get spatial grid from geometry (works for all geometry types)
-                spatial_grid = self.geometry.get_spatial_grid()
-
-                # For CartesianGrid geometries, spatial_grid is already (N, d) array
-                # For other geometries, it should also be (N, d)
-                if spatial_grid.ndim == 1:
-                    # 1D case or flattened - reshape if needed
-                    all_points = spatial_grid.reshape(-1, 1)
-                else:
-                    all_points = spatial_grid
-
-                # Center of domain
-                center = np.array([(b[0] + b[1]) / 2 for b in self.spatial_bounds])
-
-                # Gaussian: exp(-alpha * ||x - center||^2)
-                alpha = 100.0  # Width parameter
-                distances_sq = np.sum((all_points - center) ** 2, axis=1)
-                density_flat = np.exp(-alpha * distances_sq)
-
-                # Reshape to grid shape
-                self.m_init = density_flat.reshape(self.spatial_shape)
-            else:
-                # Fallback: uniform density
-                self.m_init[:] = 1.0
+    # Issue #670: _setup_default_initial_density() removed - m_initial must be explicit
 
     # Methods inherited from HamiltonianMixin:
     # - H(), dH_dm(), get_hjb_hamiltonian_jacobian_contrib()
@@ -1921,22 +1898,30 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     # - get_boundary_conditions()
     # - _setup_custom_initial_density(), _setup_custom_final_value()
 
-    def get_u_fin(self) -> np.ndarray:
-        """Get terminal condition u(T, x). Modern nD interface."""
-        return self.u_fin.copy()
+    def get_u_final(self) -> np.ndarray:
+        """Get terminal condition u(T, x). Issue #670: unified naming."""
+        return self.u_final.copy()
 
-    def get_m_init(self) -> np.ndarray:
-        """Get initial density m(0, x). Modern nD interface."""
-        return self.m_init.copy()
+    def get_m_initial(self) -> np.ndarray:
+        """Get initial density m(0, x). Issue #670: unified naming."""
+        return self.m_initial.copy()
 
     # Legacy aliases for backward compatibility
+    def get_u_fin(self) -> np.ndarray:
+        """Legacy alias for get_u_final()."""
+        return self.get_u_final()
+
+    def get_m_init(self) -> np.ndarray:
+        """Legacy alias for get_m_initial()."""
+        return self.get_m_initial()
+
     def get_final_u(self) -> np.ndarray:
-        """Legacy alias for get_u_fin()."""
-        return self.get_u_fin()
+        """Legacy alias for get_u_final()."""
+        return self.get_u_final()
 
     def get_initial_m(self) -> np.ndarray:
-        """Legacy alias for get_m_init()."""
-        return self.get_m_init()
+        """Legacy alias for get_m_initial()."""
+        return self.get_m_initial()
 
     def get_problem_info(self) -> dict[str, Any]:
         """Get information about the problem."""
@@ -1958,8 +1943,8 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 "is_custom": True,
                 "has_custom_hamiltonian": True,
                 "has_custom_potential": self.components.potential_func is not None,
-                "has_custom_initial": self.components.initial_density_func is not None,
-                "has_custom_final": self.components.final_value_func is not None,
+                "has_custom_initial": self.components.m_initial is not None,
+                "has_custom_final": self.components.u_final is not None,
                 "has_jacobian": self.components.hamiltonian_jacobian_func is not None,
                 "has_coupling": self.components.coupling_func is not None,
                 "parameters": self.components.parameters,
@@ -1988,20 +1973,22 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     # Kwargs Validation - Fail Fast on Deprecated/Unrecognized Parameters
     # ============================================================================
 
-    # Deprecated kwargs that should use MFGComponents instead (Issue #666)
+    # Deprecated kwargs that should use MFGComponents instead (Issue #666, #670)
     _DEPRECATED_KWARGS: ClassVar[dict[str, str]] = {
         "hamiltonian": "MFGComponents.hamiltonian_func",
         "dH_dm": "MFGComponents.hamiltonian_dm_func",
         "dH_dp": "MFGComponents.hamiltonian_dp_func",
         "potential": "MFGComponents.potential_func",
         "running_cost": "MFGComponents.hamiltonian_func",
-        "terminal_cost": "MFGComponents.final_value_func",
+        "terminal_cost": "MFGComponents.u_final",
+        # Issue #670: initial/terminal conditions now ONLY via MFGComponents
+        "m_initial": "MFGComponents.m_initial",
+        "u_final": "MFGComponents.u_final",
+        "initial_density": "MFGComponents.m_initial",
     }
 
     # Known valid kwargs that are consumed by _initialize_functions or mixins
     _RECOGNIZED_KWARGS: ClassVar[set[str]] = {
-        "m_initial",  # Initial density (Callable or array)
-        "u_final",  # Final value function (Callable or array)
         "boundary_conditions",  # BC object
     }
 
@@ -2037,7 +2024,7 @@ Use MFGComponents for custom problem definitions:
   components = MFGComponents(
       hamiltonian_func=my_hamiltonian,
       hamiltonian_dm_func=my_dH_dm,
-      initial_density_func=my_m0,
+      m_initial=my_m0,
   )
 
   problem = MFGProblem(

@@ -24,6 +24,7 @@ import numpy as np
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 @dataclass
@@ -71,7 +72,7 @@ def benchmark_1d_sparse_queries():
     print("Benchmark 1: 1D Sparse Queries (HJB-FP Coupling Pattern)")
     print("=" * 70)
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=0.5, Nt=1, diffusion=0.05)
 
     num_particles = 10000
@@ -80,7 +81,7 @@ def benchmark_1d_sparse_queries():
     # Solve to get particle distribution
     Nx = geometry.get_grid_shape()[0]
     U_zero = np.zeros((problem.Nt + 1, Nx))
-    result = solver.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero, show_progress=False)
+    result = solver.solve_fp_system(M_initial=problem.m_initial, drift_field=U_zero, show_progress=False)
 
     # Test various query counts
     query_counts = [10, 50, 100, 500, 1000]
@@ -152,14 +153,14 @@ def benchmark_1d_scaling():
     results = []
 
     for Nx in grid_sizes:
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=0.5, Nt=1, diffusion=0.05)
 
         solver = FPParticleSolver(problem, num_particles=num_particles, density_mode="hybrid")
 
         # Solve
         U_zero = np.zeros((problem.Nt + 1, Nx))
-        result = solver.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero, show_progress=False)
+        result = solver.solve_fp_system(M_initial=problem.m_initial, drift_field=U_zero, show_progress=False)
 
         # Query points
         query_points = np.random.rand(num_queries, 1)
@@ -225,7 +226,9 @@ def benchmark_2d_semi_lagrangian():
     results = []
 
     for Nx, Ny in grid_sizes:
-        geometry = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[Nx, Ny])
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[Nx, Ny], boundary_conditions=no_flux_bc(dimension=2)
+        )
         problem = MFGProblem(geometry=geometry, T=0.3, Nt=1, diffusion=0.05)
 
         solver = FPParticleSolver(problem, num_particles=num_particles, density_mode="hybrid")
@@ -233,7 +236,7 @@ def benchmark_2d_semi_lagrangian():
         # Solve
         grid_shape = geometry.get_grid_shape()
         U_zero = np.zeros((problem.Nt + 1, *grid_shape))
-        result = solver.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero, show_progress=False)
+        result = solver.solve_fp_system(M_initial=problem.m_initial, drift_field=U_zero, show_progress=False)
 
         # Semi-Lagrangian pattern: Query at characteristic endpoints
         # For simplicity, simulate N_grid queries (one per grid point)
@@ -303,7 +306,7 @@ def benchmark_query_methods():
     print("Benchmark 4: Query Method Comparison (kernel vs knn vs hybrid)")
     print("=" * 70)
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=0.5, Nt=1, diffusion=0.05)
 
     num_particles = 10000
@@ -312,7 +315,7 @@ def benchmark_query_methods():
     # Solve
     Nx = geometry.get_grid_shape()[0]
     U_zero = np.zeros((problem.Nt + 1, Nx))
-    result = solver.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero, show_progress=False)
+    result = solver.solve_fp_system(M_initial=problem.m_initial, drift_field=U_zero, show_progress=False)
 
     num_queries = 100
     query_points = np.random.rand(num_queries, 1)

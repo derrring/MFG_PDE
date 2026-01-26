@@ -1870,7 +1870,7 @@ if __name__ == "__main__":
     from mfg_pde.geometry import TensorProductGrid
 
     # Test 1D problem with particle solver
-    geometry_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+    geometry_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
     problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
     solver = FPParticleSolver(problem, num_particles=1000)
 
@@ -1883,7 +1883,7 @@ if __name__ == "__main__":
 
     Nx = problem.geometry.get_grid_shape()[0]
     U_test = np.zeros((problem.Nt + 1, Nx))
-    M_init = problem.m_init
+    M_init = problem.m_initial  # Issue #670: unified naming
 
     M_solution = solver.solve_fp_system(M_initial=M_init, drift_field=U_test)
 
@@ -1902,7 +1902,6 @@ if __name__ == "__main__":
     from mfg_pde.geometry import TensorProductGrid
 
     geometry_2d = TensorProductGrid(
-        dimension=2,
         bounds=[(0.0, 1.0), (0.0, 1.0)],
         Nx_points=[16, 16],
     )

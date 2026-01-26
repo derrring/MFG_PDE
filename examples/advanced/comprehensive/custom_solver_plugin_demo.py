@@ -85,7 +85,7 @@ class GradientDescentMFGSolver:
         self.sigma = problem.diffusion
 
         # Get initial/final conditions
-        self.m_init = problem.get_initial_m()
+        self.m_initial = problem.get_initial_m()
         self.g_final = problem.get_final_u()
 
         # Initialize solution arrays
@@ -93,7 +93,7 @@ class GradientDescentMFGSolver:
         self.M = np.zeros((Nt_points, Nx_points))
 
         # Set boundary conditions
-        self.M[0, :] = self.m_init
+        self.M[0, :] = self.m_initial
         self.U[-1, :] = self.g_final
 
     def solve(self) -> SolverResult:
@@ -126,7 +126,7 @@ class GradientDescentMFGSolver:
             self._update_density()
 
             # Restore boundary conditions (may drift during updates)
-            self.M[0, :] = self.m_init
+            self.M[0, :] = self.m_initial
             self.U[-1, :] = self.g_final
 
             # Check convergence (L² norms)

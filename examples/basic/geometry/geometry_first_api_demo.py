@@ -31,7 +31,7 @@ def demo_tensor_product_grid():
     from mfg_pde.geometry import TensorProductGrid
 
     # Create 2D grid: [0,1] × [0,1] with 51×51 points
-    geometry = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[51, 51])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[51, 51])
 
     print(f"\nGeometry: {geometry.geometry_type}")
     print(f"Dimension: {geometry.dimension}")
@@ -59,7 +59,7 @@ def demo_tensor_product_grid_1d():
     from mfg_pde.geometry.boundary import periodic_bc
 
     # Create 1D grid: [0,1] with 101 points
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[101])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], num_points=[101])
 
     # Create periodic boundary conditions
     bc = periodic_bc(dimension=1)
@@ -179,7 +179,6 @@ def demo_high_dimensional():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         geometry = TensorProductGrid(
-            dimension=4,
             bounds=[(0.0, 1.0)] * 4,
             num_points=[5, 5, 5, 5],  # 625 points
         )
@@ -208,7 +207,7 @@ def demo_geometry_reuse():
     from mfg_pde.geometry import TensorProductGrid
 
     # Create geometry once
-    geometry = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[51, 51])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[51, 51])
 
     print(f"\nCreated geometry: {geometry.num_spatial_points} points")
 
@@ -235,7 +234,7 @@ def demo_geometry_refinement():
     from mfg_pde.geometry import TensorProductGrid
 
     # Create coarse grid
-    coarse = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
+    coarse = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], num_points=[11, 11])
 
     print(f"\nCoarse grid: {coarse.num_spatial_points} points")
 

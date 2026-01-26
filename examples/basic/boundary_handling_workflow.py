@@ -17,6 +17,7 @@ Related:
 import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 def main():
@@ -31,9 +32,9 @@ def main():
     print("=" * 70)
 
     geometry = TensorProductGrid(
-        dimension=2,
         bounds=[(0.0, 1.0), (0.0, 1.0)],
         Nx_points=[21, 21],  # 21x21 grid → 441 total points
+        boundary_conditions=no_flux_bc(dimension=2),
     )
 
     print(f"\\nGeometry: {geometry.dimension}D grid")

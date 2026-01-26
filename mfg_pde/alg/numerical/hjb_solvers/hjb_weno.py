@@ -1486,7 +1486,7 @@ if __name__ == "__main__":
     from mfg_pde.geometry import TensorProductGrid
 
     # Test 1D problem
-    geometry_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+    geometry_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
     problem_1d = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
 
     # Test standard WENO variant

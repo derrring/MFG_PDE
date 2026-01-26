@@ -253,7 +253,7 @@ def main():
 
     # Setup problem
     print("\nSetting up 1D MFG problem...")
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101])
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,

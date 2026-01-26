@@ -183,9 +183,12 @@ def performance_benchmark_workflow(problem_sizes: list[tuple], solver_types: lis
 
         from mfg_pde import MFGProblem
         from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import no_flux_bc
 
         Nx, Nt = params["problem_size"]
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1])
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=Nt)
 
         # Use problem.solve() API

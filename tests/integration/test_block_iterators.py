@@ -22,8 +22,18 @@ from mfg_pde.alg.numerical.coupling import (
 )
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
 
 
 class TestBlockIteratorBasic:
@@ -32,8 +42,8 @@ class TestBlockIteratorBasic:
     @pytest.fixture
     def simple_problem(self):
         """Create a simple 1D MFG problem for testing."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
-        problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.2)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.2, components=_default_components())
         return problem
 
     @pytest.fixture
@@ -124,8 +134,8 @@ class TestBlockIteratorConvergence:
     @pytest.fixture
     def convergence_problem(self):
         """Problem sized for convergence testing."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[25])
-        problem = MFGProblem(geometry=geometry, T=0.4, Nt=12, diffusion=0.18)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[25], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(geometry=geometry, T=0.4, Nt=12, diffusion=0.18, components=_default_components())
         return problem
 
     def test_gauss_seidel_converges(self, convergence_problem):
@@ -182,8 +192,8 @@ class TestBlockIteratorParameters:
     @pytest.fixture
     def param_problem(self):
         """Small problem for parameter testing."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
-        problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, diffusion=0.2)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, diffusion=0.2, components=_default_components())
         return problem
 
     def test_no_damping(self, param_problem):
@@ -245,8 +255,8 @@ class TestBlockVsFixedPoint:
     @pytest.fixture
     def comparison_problem(self):
         """Problem for comparison testing."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
-        problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, diffusion=0.2)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, diffusion=0.2, components=_default_components())
         return problem
 
     def test_gauss_seidel_similar_to_fixed_point(self, comparison_problem):

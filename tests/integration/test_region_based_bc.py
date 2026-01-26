@@ -27,6 +27,7 @@ from mfg_pde.geometry.boundary import (
     BoundaryConditions,
     FDMApplicator,
     mixed_bc_from_regions,
+    no_flux_bc,
 )
 
 
@@ -36,7 +37,7 @@ class TestRegionBasedBC1D:
     def test_basic_inlet_outlet_1d(self):
         """Test basic inlet/outlet regions in 1D."""
         # Create 1D grid [0, 10] with 101 points
-        geometry = TensorProductGrid(dimension=1, bounds=[(0, 10)], Nx_points=[101])
+        geometry = TensorProductGrid(bounds=[(0, 10)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[101])
 
         # Mark inlet (x < 1.0) and outlet (x > 9.0) regions
         geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 1.0)
@@ -83,7 +84,7 @@ class TestRegionBasedBC1D:
 
     def test_boundary_vs_predicate_regions_1d(self):
         """Test boundary-specified vs predicate-specified regions give same result."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0, 1)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[51])
 
         # Method 1: Mark using boundary identifier
         geometry.mark_region("left_boundary", boundary="x_min")
@@ -101,7 +102,7 @@ class TestRegionBasedBC1D:
 
     def test_region_priority_1d(self):
         """Test priority resolution when regions overlap in 1D."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0, 1)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[51])
 
         # Mark overlapping regions
         geometry.mark_region("broad", predicate=lambda x: x[:, 0] < 0.5)
@@ -148,7 +149,9 @@ class TestRegionBasedBC2D:
     def test_corridor_flow_2d(self):
         """Test 2D corridor with inlet, outlet, and wall regions."""
         # Create 2D grid [0,2] x [0,1]
-        geometry = TensorProductGrid(dimension=2, bounds=[(0, 2), (0, 1)], Nx_points=[41, 21])
+        geometry = TensorProductGrid(
+            bounds=[(0, 2), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx_points=[41, 21]
+        )
 
         # Mark regions:
         # - Inlet: left boundary (x=0)
@@ -193,7 +196,9 @@ class TestRegionBasedBC2D:
 
     def test_predicate_based_inlet_2d(self):
         """Test inlet defined by predicate rather than boundary."""
-        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[21, 21])
+        geometry = TensorProductGrid(
+            bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx_points=[21, 21]
+        )
 
         # Mark inlet as left quarter of domain (x < 0.25)
         geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.25)
@@ -220,7 +225,9 @@ class TestRegionBasedBC2D:
 
     def test_region_intersection_2d(self):
         """Test overlapping regions with priority resolution in 2D."""
-        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[21, 21])
+        geometry = TensorProductGrid(
+            bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx_points=[21, 21]
+        )
 
         # Mark overlapping regions:
         # - Bottom half (y < 0.5)
@@ -272,7 +279,9 @@ class TestRegionBasedBCPerformance:
     def test_region_lookup_overhead(self):
         """Test that region-based BC has <5% overhead vs standard BC."""
         # Create moderately sized 2D grid
-        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])
+        geometry = TensorProductGrid(
+            bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx_points=[101, 101]
+        )
 
         # Standard BC (no regions)
         bc_standard = BoundaryConditions(
@@ -328,7 +337,7 @@ class TestRegionBasedBCEdgeCases:
     @pytest.mark.skip(reason="Error handling varies by BC type - not critical for integration test")
     def test_missing_geometry_parameter(self):
         """Test that region-based BC without geometry raises clear error."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0, 1)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[51])
         geometry.mark_region("inlet", boundary="x_min")
 
         bc_config = {"inlet": BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0)}
@@ -343,7 +352,7 @@ class TestRegionBasedBCEdgeCases:
 
     def test_nonexistent_region(self):
         """Test error when BC references non-existent region."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0, 1)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[51])
 
         # Try to create BC for region that doesn't exist
         bc_config = {"nonexistent": BCSegment(name="bad_bc", bc_type=BCType.DIRICHLET, value=1.0)}

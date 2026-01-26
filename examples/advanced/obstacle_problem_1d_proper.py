@@ -94,7 +94,7 @@ print(f"  Exit base cost: c_exit = {c_exit_base}")
 # ========================================
 # Create Geometry and Grid
 # ========================================
-grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
+grid = TensorProductGrid(bounds=[(x_min, x_max)], Nx=[Nx])
 x = grid.coordinates[0]
 Nx_actual = len(x)
 dx = x[1] - x[0]

@@ -71,7 +71,7 @@ def run_hybrid_solver_with_monitoring(problem, bc, max_iterations=100, verbose=T
     # Initialize
     Nx_points_init = problem.geometry.get_grid_shape()[0]
     U = np.zeros((problem.Nt + 1, Nx_points_init))
-    M = problem.m_init.copy()
+    M = problem.m_initial.copy()
 
     # History tracking
     errors_u = []

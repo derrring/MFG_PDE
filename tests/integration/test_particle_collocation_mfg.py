@@ -20,8 +20,22 @@ import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver, FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry.implicit import Hyperrectangle
+
+
+def _default_components_2d():
+    """Default MFGComponents for 2D testing (Issue #670: explicit specification required)."""
+
+    def m_initial_2d(x):
+        x_arr = np.asarray(x)
+        return np.exp(-10 * np.sum((x_arr - 0.5) ** 2))
+
+    return MFGComponents(
+        m_initial=m_initial_2d,
+        u_final=lambda x: 0.0,
+    )
 
 
 class SimpleLQMFG2D(MFGProblem):
@@ -37,6 +51,7 @@ class SimpleLQMFG2D(MFGProblem):
             diffusion=0.2,
             coupling_coefficient=0.5,
             dimension=2,
+            components=_default_components_2d(),
         )
         # GFDM solver expects problem.d for spatial dimension
         self.d = 2

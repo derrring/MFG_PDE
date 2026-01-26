@@ -10,8 +10,18 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
+        u_final=lambda x: 0.0,
+    )
 
 
 @pytest.fixture
@@ -23,8 +33,8 @@ def standard_problem():
     - Time: T=1.0 with 51 time steps
     - Diffusion: diffusion=1.0
     """
-    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
-    return MFGProblem(geometry=domain, T=1.0, Nt=51, diffusion=1.0)
+    domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
+    return MFGProblem(geometry=domain, T=1.0, Nt=51, diffusion=1.0, components=_default_components())
 
 
 class TestHJBGFDMSolverInitialization:

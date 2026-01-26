@@ -13,8 +13,32 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BilateralConstraint, ObstacleConstraint, neumann_bc
+from mfg_pde.geometry.boundary import BilateralConstraint, ObstacleConstraint, neumann_bc, no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(
+            -10 * (np.asarray(x) - 0.5) ** 2 if np.ndim(x) == 0 else -10 * np.sum((np.asarray(x) - 0.5) ** 2)
+        ),
+        u_final=lambda x: 0.0,
+    )
+
+
+def _default_components_2d():
+    """Default MFGComponents for 2D testing (Issue #670: explicit specification required)."""
+
+    def m_initial_2d(x):
+        x_arr = np.asarray(x)
+        return np.exp(-10 * np.sum((x_arr - 0.5) ** 2))
+
+    return MFGComponents(
+        m_initial=m_initial_2d,
+        u_final=lambda x: 0.0,
+    )
 
 
 class TestHJBWithLowerObstacle:
@@ -30,24 +54,14 @@ class TestHJBWithLowerObstacle:
         sigma = 0.1
         kappa = 0.5
 
-        grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
-        bc = neumann_bc(dimension=1)
+        grid = TensorProductGrid(bounds=[(x_min, x_max)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
-        def running_cost(x_coords, alpha=None):
-            return 0.5 * (x_coords[0] - 0.5) ** 2
-
+        # Terminal cost function (used locally for computing terminal values)
         def terminal_cost(x_coords):
             return (x_coords[0] - 0.5) ** 2
 
-        problem = MFGProblem(
-            geometry=grid,
-            T=T,
-            Nt=Nt,
-            diffusion=sigma,
-            bc=bc,
-            running_cost=running_cost,
-            terminal_cost=terminal_cost,
-        )
+        # Create MFGProblem with minimal parameters (HJB solver uses explicit inputs)
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         # Obstacle: ψ(x) = -κ(x - 0.5)²
         x = grid.coordinates[0]
@@ -85,13 +99,14 @@ class TestHJBWithLowerObstacle:
         Nt = 10  # Reduced for speed
         sigma = 0.05
 
-        grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[Nx, Ny])
-        bc = neumann_bc(dimension=2)
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], boundary_conditions=no_flux_bc(dimension=2), Nx=[Nx, Ny])
 
-        def terminal_cost(x_coords):
+        # Terminal cost function (used locally for computing terminal values)
+        def terminal_cost_2d(x_coords):
             return (x_coords[0] - 0.5) ** 2 + (x_coords[1] - 0.5) ** 2
 
-        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, bc=bc, terminal_cost=terminal_cost)
+        # Create MFGProblem with minimal parameters (HJB solver uses explicit inputs)
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components_2d())
 
         # Obstacle: Bowl-shaped
         X, Y = grid.meshgrid()
@@ -126,13 +141,14 @@ class TestHJBWithLowerObstacle:
         sigma = 0.08
         kappa = 0.3
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
-        bc = neumann_bc(dimension=1)
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
+        # Terminal cost function (used locally)
         def terminal_cost(x_coords):
             return (x_coords[0] - 0.5) ** 2
 
-        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, bc=bc, terminal_cost=terminal_cost)
+        # Create MFGProblem with minimal parameters
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         x = grid.coordinates[0]
         psi = -kappa * (x - 0.5) ** 2
@@ -178,13 +194,14 @@ class TestHJBWithUpperObstacle:
         Nt = 50
         sigma = 0.1
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
-        bc = neumann_bc(dimension=1)
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
+        # Terminal cost function (used locally)
         def terminal_cost(x_coords):
             return (x_coords[0] - 0.5) ** 2
 
-        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, bc=bc, terminal_cost=terminal_cost)
+        # Create MFGProblem with minimal parameters
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         # Upper obstacle: ceiling at ψ_upper = 0.3
         x = grid.coordinates[0]
@@ -224,13 +241,14 @@ class TestHJBWithBilateralObstacle:
         Nt = 50
         sigma = 0.1
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
-        bc = neumann_bc(dimension=1)
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
+        # Terminal cost function (used locally)
         def terminal_cost(x_coords):
             return 0.5 * (x_coords[0] - 0.5) ** 2
 
-        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, bc=bc, terminal_cost=terminal_cost)
+        # Create MFGProblem with minimal parameters
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         # Bilateral obstacle: corridor between -0.2 and 0.3
         x = grid.coordinates[0]
@@ -274,13 +292,14 @@ class TestObstacleConvergenceProperties:
         sigma = 0.08
         kappa = 0.4
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
-        bc = neumann_bc(dimension=1)
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
 
+        # Terminal cost function (used locally)
         def terminal_cost(x_coords):
             return (x_coords[0] - 0.5) ** 2
 
-        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, bc=bc, terminal_cost=terminal_cost)
+        # Create MFGProblem with minimal parameters
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         x = grid.coordinates[0]
         psi = -kappa * (x - 0.5) ** 2
@@ -321,24 +340,18 @@ class TestObstacleConvergenceProperties:
         sigma = 0.1
         kappa = 0.5
 
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[Nx])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx=[Nx])
         bc = neumann_bc(dimension=1)
 
+        # Running and terminal cost functions (used locally for computing values)
         def running_cost(x_coords, alpha=None):
             return 0.3 * (x_coords[0] - 0.5) ** 2
 
         def terminal_cost(x_coords):
             return (x_coords[0] - 0.5) ** 2
 
-        problem = MFGProblem(
-            geometry=grid,
-            T=T,
-            Nt=Nt,
-            diffusion=sigma,
-            bc=bc,
-            running_cost=running_cost,
-            terminal_cost=terminal_cost,
-        )
+        # Create MFGProblem with minimal parameters
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         x = grid.coordinates[0]
         psi = -kappa * (x - 0.5) ** 2

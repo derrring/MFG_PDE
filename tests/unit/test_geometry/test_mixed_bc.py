@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 from mfg_pde.geometry import BCSegment, BCType, MixedBoundaryConditions
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 class TestBCType:
@@ -309,8 +310,10 @@ class TestMixedBCFromRegions:
         from mfg_pde.geometry import TensorProductGrid
         from mfg_pde.geometry.boundary import mixed_bc_from_regions
 
-        # Setup geometry with marked regions
-        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        # Setup geometry with marked regions (placeholder BC, will be replaced by mixed_bc_from_regions)
+        geometry = TensorProductGrid(
+            bounds=[(0, 1), (0, 1)], Nx_points=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
+        )
         geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
         geometry.mark_region("outlet", boundary="x_max")
 
@@ -336,7 +339,7 @@ class TestMixedBCFromRegions:
         from mfg_pde.geometry import TensorProductGrid
         from mfg_pde.geometry.boundary import mixed_bc_from_regions
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0, 10)], Nx_points=[101])
+        geometry = TensorProductGrid(bounds=[(0, 10)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
         geometry.mark_region("left", boundary="x_min")
         geometry.mark_region("right", boundary="x_max")
 
@@ -362,7 +365,11 @@ class TestMixedBCFromRegions:
         from mfg_pde.geometry import TensorProductGrid
         from mfg_pde.geometry.boundary import mixed_bc_from_regions
 
-        geometry = TensorProductGrid(dimension=3, bounds=[(0, 1), (0, 1), (0, 1)], Nx_points=[10, 10, 10])
+        geometry = TensorProductGrid(
+            bounds=[(0, 1), (0, 1), (0, 1)],
+            Nx_points=[10, 10, 10],
+            boundary_conditions=no_flux_bc(dimension=3),
+        )
         geometry.mark_region("box", predicate=lambda x: np.all(x < 0.5, axis=1))
 
         bc_config = {"box": BCSegment(name="box_bc", bc_type=BCType.DIRICHLET, value=0.0)}
@@ -394,7 +401,9 @@ class TestMixedBCFromRegions:
         from mfg_pde.geometry import TensorProductGrid
         from mfg_pde.geometry.boundary import mixed_bc_from_regions
 
-        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        geometry = TensorProductGrid(
+            bounds=[(0, 1), (0, 1)], Nx_points=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
+        )
         geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
 
         # Try to reference non-existent region
@@ -408,7 +417,9 @@ class TestMixedBCFromRegions:
         from mfg_pde.geometry import TensorProductGrid
         from mfg_pde.geometry.boundary import mixed_bc_from_regions
 
-        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        geometry = TensorProductGrid(
+            bounds=[(0, 1), (0, 1)], Nx_points=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
+        )
         geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
 
         # No default BC specified
@@ -425,7 +436,9 @@ class TestMixedBCFromRegions:
         from mfg_pde.geometry import TensorProductGrid
         from mfg_pde.geometry.boundary import mixed_bc_from_regions
 
-        geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        geometry = TensorProductGrid(
+            bounds=[(0, 1), (0, 1)], Nx_points=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
+        )
         geometry.mark_region("special", predicate=lambda x: x[:, 0] < 0.1)
 
         # Create segment with many fields

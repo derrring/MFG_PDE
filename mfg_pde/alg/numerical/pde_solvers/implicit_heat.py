@@ -37,7 +37,7 @@ class ImplicitHeatSolver:
     --------
     >>> from mfg_pde.geometry import TensorProductGrid
     >>> from mfg_pde.geometry.boundary import neumann_bc
-    >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+    >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx=[100])
     >>> bc = neumann_bc(dimension=1)
     >>> solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
     >>>
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     from mfg_pde.geometry.boundary import neumann_bc
 
     # 1D heat equation test
-    grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[100])
+    grid = TensorProductGrid(bounds=[(0, 1)], Nx=[100])
     bc = neumann_bc(dimension=1)
     solver = ImplicitHeatSolver(grid, alpha=0.01, bc=bc, theta=0.5)
 

@@ -41,7 +41,7 @@ def main():
 
     # Get final state from solver internals
     Nx_points = problem.geometry.get_grid_shape()[0]
-    M = fp_solver._m_current if hasattr(fp_solver, "_m_current") else problem.m_init
+    M = fp_solver._m_current if hasattr(fp_solver, "_m_current") else problem.m_initial
     _ = hjb_solver._u_current if hasattr(hjb_solver, "_u_current") else np.zeros((problem.Nt + 1, Nx_points))
 
     # Compute masses

@@ -15,6 +15,7 @@ Run:
 
 from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 
 def demo_simple_usage():
@@ -45,7 +46,7 @@ def demo_custom_parameters():
     print("=" * 60)
 
     # Geometry-First API: create grid, then problem
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[81])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[81], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
 
     # Custom solve parameters
@@ -68,7 +69,7 @@ def demo_factory_api():
 
     from mfg_pde.factory import create_standard_solver
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=20)
 
     # Factory API for more control
@@ -90,7 +91,7 @@ def demo_direct_solver():
     from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
     from mfg_pde.config.core import SolverConfig
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=20)
 
     # Create solvers directly

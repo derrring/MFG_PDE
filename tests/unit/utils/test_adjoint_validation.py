@@ -6,14 +6,26 @@ Tests the check_solver_duality() function and DualityStatus classification.
 
 import pytest
 
+import numpy as np
+
 from mfg_pde.alg import SchemeFamily
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils import (
     DualityStatus,
     DualityValidationResult,
     check_solver_duality,
     validate_scheme_config,
 )
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
+        u_final=lambda x: 0.0,
+    )
 
 
 class TestDualityStatus:
@@ -283,8 +295,8 @@ class TestCheckSolverDualityInstances:
         from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
 
         # Create a minimal problem for initialization
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
-        problem = MFGProblem(geometry=geometry, Nt=5, T=1.0)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(geometry=geometry, Nt=5, T=1.0, components=_default_components())
 
         hjb_instance = HJBFDMSolver(problem)
         fp_instance = FPFDMSolver(problem)

@@ -367,7 +367,7 @@ if __name__ == "__main__":
     right_bc = BCSegment(name="right", bc_type=BCType.NEUMANN, value=0.0, boundary="x_max")
     bc = mixed_bc(segments=[left_bc, right_bc], dimension=1, domain_bounds=np.array([[X_MIN, X_MAX]]))
 
-    domain = TensorProductGrid(dimension=1, bounds=[(X_MIN, X_MAX)], Nx_points=[N + 1], boundary_conditions=bc)
+    domain = TensorProductGrid(bounds=[(X_MIN, X_MAX)], Nx_points=[N + 1], boundary_conditions=bc)
 
     problem = MFGProblem(
         geometry=domain,

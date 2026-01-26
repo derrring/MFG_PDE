@@ -36,6 +36,9 @@ from .problem_factories import (
     create_standard_problem,
     create_stochastic_problem,
     create_variational_problem,
+    # Classic LQ-MFG conditions (Issue #670)
+    lq_mfg_initial_density,
+    lq_mfg_terminal_cost,
 )
 
 # Scheme-based paired solver factory (Issue #580)
@@ -61,6 +64,9 @@ __all__ = [
     "create_highdim_problem",
     "create_lq_problem",
     "create_crowd_problem",
+    # Classic LQ-MFG conditions (Issue #670)
+    "lq_mfg_initial_density",
+    "lq_mfg_terminal_cost",
     # Solver
     "SolverFactory",
     "create_solver",

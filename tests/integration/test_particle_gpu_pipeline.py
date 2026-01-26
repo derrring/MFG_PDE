@@ -10,9 +10,20 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
+
 
 pytestmark = pytest.mark.optional_torch
 
@@ -35,13 +46,14 @@ class TestParticleGPUPipeline:
     def test_gpu_matches_cpu_numerically(self):
         """GPU pipeline should match CPU pipeline numerically."""
         # Create simple problem
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             Nt=20,
             T=1.0,
             sigma=0.1,
             coupling_coefficient=1.0,
+            components=_default_components(),
         )
 
         # Initial condition: Gaussian
@@ -102,12 +114,13 @@ class TestParticleGPUPipeline:
 
     def test_gpu_pipeline_runs_without_errors(self):
         """GPU pipeline should complete without errors."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(-1.0, 1.0)], Nx_points=[31])
+        geometry = TensorProductGrid(bounds=[(-1.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             Nt=10,
             T=0.5,
             sigma=0.2,
+            components=_default_components(),
         )
 
         m_initial = np.exp(-(problem.xSpace.squeeze() ** 2) / 0.2)
@@ -140,12 +153,13 @@ class TestParticleGPUPipeline:
 
     def test_boundary_conditions_gpu(self):
         """Test different boundary conditions on GPU."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[41])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             Nt=15,
             T=0.5,
             sigma=0.15,
+            components=_default_components(),
         )
 
         (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
@@ -180,12 +194,13 @@ class TestGPUPerformance:
         """GPU should be faster than CPU for large particle counts."""
         import time
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             Nt=50,
             T=1.0,
             sigma=0.1,
+            components=_default_components(),
         )
 
         m_initial = np.exp(-((problem.xSpace.squeeze() - 0.5) ** 2) / 0.1)

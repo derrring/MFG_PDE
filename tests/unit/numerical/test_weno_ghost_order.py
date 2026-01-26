@@ -7,20 +7,31 @@ for ghost cell generation, enabling true 5th-order boundary accuracy.
 
 import numpy as np
 
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
+        u_final=lambda x: 0.0,
+    )
 
 
 def test_weno_uses_high_order_ghosts():
     """Test that WENO solver creates ghost buffer with order=5."""
     # Create a simple 1D MFG problem using modern geometry-first API
-    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[50])
+    domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[50], boundary_conditions=no_flux_bc(dimension=1))
 
     problem = MFGProblem(
         geometry=domain,
         T=1.0,
         Nt=10,
         diffusion=0.1,
+        components=_default_components(),
     )
 
     # Import WENO solver
@@ -42,13 +53,14 @@ def test_weno_uses_high_order_ghosts():
 def test_weno_ghost_cells_work():
     """Test that WENO can update ghost cells with polynomial extrapolation."""
     # Create a simple 1D MFG problem using modern geometry-first API
-    domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[50])
+    domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[50], boundary_conditions=no_flux_bc(dimension=1))
 
     problem = MFGProblem(
         geometry=domain,
         T=1.0,
         Nt=10,
         diffusion=0.1,
+        components=_default_components(),
     )
 
     # Import WENO solver

@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 
 if TYPE_CHECKING:
@@ -126,19 +127,28 @@ class NetworkMFGProblem(MFGProblem):
         self.network_geometry = network_geometry
         self.network_data = network_geometry.network_data
 
-        # Override spatial properties for network (set as private to avoid property conflicts)
-        self._xmin = 0.0
-        self._xmax = float(network_geometry.num_nodes - 1)
-        self._Nx = network_geometry.num_nodes - 1
+        # Issue #670: Create default MFGComponents for parent class validation
+        # Network problems use NetworkMFGComponents internally, but parent MFGProblem
+        # requires explicit m_initial and u_final. Provide uniform defaults that
+        # will be overridden by network-specific methods (get_initial_density, get_terminal_value).
+        num_nodes = network_geometry.num_nodes
+        parent_components = MFGComponents(
+            m_initial=lambda x: 1.0 / num_nodes,  # Uniform initial density
+            u_final=lambda x: 0.0,  # Zero terminal value
+        )
 
-        # Initialize with dummy spatial parameters (networks are discrete)
-        super().__init__(T=T, Nt=Nt, xmin=self._xmin, xmax=self._xmax, Nx=self._Nx)
+        # Initialize parent with geometry (not deprecated xmin/xmax/Nx)
+        super().__init__(
+            T=T,
+            Nt=Nt,
+            geometry=network_geometry,
+            components=parent_components,
+        )
 
         self.components = components or NetworkMFGComponents()  # type: ignore[assignment]
         self.problem_name = problem_name
 
-        # Phase 3.1 integration: Set attributes expected by validation system
-        self.geometry = network_geometry  # Alias for compatibility
+        # Phase 3.1 integration: geometry is already set by parent
         self.domain_type = "network"  # Domain classification for solver selection
         self.dimension = "network"  # Special dimension indicator for network problems
 
@@ -478,42 +488,22 @@ class NetworkMFGProblem(MFGProblem):
     @property
     def Nx(self) -> int:
         """Number of spatial points (nodes in network)."""
-        return self._Nx
-
-    @Nx.setter
-    def Nx(self, value: int) -> None:
-        """Set number of spatial points."""
-        self._Nx = value
+        return self.num_nodes - 1
 
     @property
     def xmin(self) -> float:
         """Minimum spatial coordinate (dummy for networks)."""
-        return self._xmin
-
-    @xmin.setter
-    def xmin(self, value: float) -> None:
-        """Set minimum spatial coordinate."""
-        self._xmin = value
+        return 0.0
 
     @property
     def xmax(self) -> float:
         """Maximum spatial coordinate (dummy for networks)."""
-        return self._xmax
-
-    @xmax.setter
-    def xmax(self, value: float) -> None:
-        """Set maximum spatial coordinate."""
-        self._xmax = value
+        return float(self.num_nodes - 1)
 
     @property
     def Dx(self) -> float:
         """Spatial step size (dummy for networks)."""
-        return getattr(self, "_Dx", 1.0)
-
-    @Dx.setter
-    def Dx(self, value: float) -> None:
-        """Set spatial step size."""
-        self._Dx = value
+        return 1.0
 
     # Network-specific properties
 

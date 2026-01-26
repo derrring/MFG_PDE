@@ -80,7 +80,7 @@ print(f"  Obstacle strength: κ = {kappa}")
 # ========================================
 # Geometry and Problem
 # ========================================
-grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
+grid = TensorProductGrid(bounds=[(x_min, x_max)], Nx=[Nx])
 bc = neumann_bc(dimension=1)
 
 

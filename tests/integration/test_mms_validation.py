@@ -25,8 +25,17 @@ import pytest
 
 import numpy as np
 
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
 
 
 class ManufacturedSolution:
@@ -217,12 +226,15 @@ class TestMMSFokkerPlanck1D:
 
         for Nx in resolutions:
             # Create problem
-            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+            geometry = TensorProductGrid(
+                bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1)
+            )
             problem = MFGProblem(
                 geometry=geometry,
                 T=T,
                 Nt=Nx,  # Keep CFL-like ratio
                 diffusion=sigma,
+                components=_default_components(),
             )
 
             # Initial condition from manufactured solution
@@ -280,12 +292,13 @@ class TestMMSFokkerPlanck1D:
         manufactured = GaussianDensity1D(x0=x0, s0=s0, sigma=sigma)
 
         # Create problem on larger domain to avoid boundary effects
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             T=T,
             Nt=100,  # Fine time stepping
             diffusion=sigma,
+            components=_default_components(),
         )
 
         # Initial condition
@@ -327,8 +340,8 @@ class TestMMSFokkerPlanck1D:
         # Use sinusoidal with diffusion-correct decay
         manufactured = DiffusionSinusoid1D(sigma=sigma, amplitude=0.3)
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
-        problem = MFGProblem(geometry=geometry, T=T, Nt=50, diffusion=sigma)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(geometry=geometry, T=T, Nt=50, diffusion=sigma, components=_default_components())
 
         x_grid = geometry.coordinates[0]  # 1D grid
         m_init = manufactured.solution(0.0, x_grid)
@@ -394,10 +407,12 @@ class TestMMSConvergenceRates:
         errors = []
 
         for Nx in resolutions:
-            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+            geometry = TensorProductGrid(
+                bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1)
+            )
             # Use more time steps to minimize temporal error
             Nt = max(100, Nx * 2)
-            problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma)
+            problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
             x_grid = geometry.coordinates[0]  # 1D grid
             m_init = manufactured.solution(0.0, x_grid)
@@ -445,8 +460,8 @@ class TestMassConservationStress:
         Nx = 41
         Nt = 1000  # Many time steps
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
-        problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         x_grid = geometry.coordinates[0]  # 1D grid
         dx = geometry.get_grid_spacing()[0]
@@ -484,13 +499,14 @@ class TestMassConservationStress:
         Nx = 51
         Nt = 100
 
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(
             geometry=geometry,
             T=T,
             Nt=Nt,
             diffusion=sigma,
             coupling_coefficient=0.1,  # Weak coupling
+            components=_default_components(),
         )
 
         x_grid = geometry.coordinates[0]  # 1D grid
@@ -592,8 +608,8 @@ class TestMMSHJB1D:
         for Nx in resolutions:
             # Pass BC to geometry - solvers retrieve BC via geometry.get_boundary_conditions()
             bc = periodic_bc(dimension=1)
-            geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
-            problem = MFGProblem(geometry=geometry, T=T, Nt=Nx, diffusion=sigma)
+            geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
+            problem = MFGProblem(geometry=geometry, T=T, Nt=Nx, diffusion=sigma, components=_default_components())
 
             x_grid = geometry.coordinates[0]
 
@@ -643,8 +659,8 @@ class TestMMSHJB1D:
 
         # Pass BC to geometry - solvers retrieve BC via geometry.get_boundary_conditions()
         bc = periodic_bc(dimension=1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
-        problem = MFGProblem(geometry=geometry, T=T, Nt=50, diffusion=sigma)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
+        problem = MFGProblem(geometry=geometry, T=T, Nt=50, diffusion=sigma, components=_default_components())
 
         x_grid = geometry.coordinates[0]
 
@@ -696,8 +712,8 @@ class TestCoupledHJBFPValidation:
 
         # Pass BC to geometry - both HJB and FP solvers retrieve BC via geometry
         bc = no_flux_bc(dimension=1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
-        problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
+        problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         hjb_solver = HJBFDMSolver(problem)
         fp_solver = FPFDMSolver(problem)
@@ -753,8 +769,8 @@ class TestCoupledHJBFPValidation:
 
         # Pass BC to geometry - both HJB and FP solvers retrieve BC via geometry
         bc = no_flux_bc(dimension=1)
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
-        problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma)
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
+        problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
         dx = geometry.get_grid_spacing()[0]
 
         hjb_solver = HJBFDMSolver(problem)

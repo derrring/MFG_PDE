@@ -6,16 +6,29 @@ Test different weight functions in GFDM solver
 import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver as GFDMHJBSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
 
 
 def test_weight_functions():
     print("=== Testing Different Weight Functions in GFDM ===")
 
     # Simple problem
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])  # Nx=10 intervals
-    problem = MFGProblem(geometry=geometry, T=0.02, Nt=2, diffusion=0.1, coupling_coefficient=0.1)
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
+    )  # Nx=10 intervals
+    problem = MFGProblem(
+        geometry=geometry, T=0.02, Nt=2, diffusion=0.1, coupling_coefficient=0.1, components=_default_components()
+    )
 
     num_collocation_points = 5
     collocation_points = np.linspace(0.0, 1.0, num_collocation_points).reshape(-1, 1)

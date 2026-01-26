@@ -357,12 +357,15 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
         # Create problem instance
         # This is a simplified example - in practice, you'd load from problem_file
         from mfg_pde.geometry import TensorProductGrid
+        from mfg_pde.geometry.boundary import no_flux_bc
 
         class CLIMFGProblem(MFGProblem):
             def __init__(self, T, Nt, xmin, xmax, Nx):
                 # Convert legacy params to Geometry-First API
                 # Nx = intervals, so Nx_points = Nx + 1
-                geometry = TensorProductGrid(dimension=1, bounds=[(xmin, xmax)], Nx_points=[Nx + 1])
+                geometry = TensorProductGrid(
+                    bounds=[(xmin, xmax)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1)
+                )
                 super().__init__(geometry=geometry, T=T, Nt=Nt)
 
             def g(self, x):

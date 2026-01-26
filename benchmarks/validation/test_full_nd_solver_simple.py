@@ -26,9 +26,9 @@ def test_fp_2d_pure_diffusion():
 
     # Create 2D grid
     grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0.0, 1.0), (0.0, 1.0)],
         num_points=[12, 12],
+        boundary_conditions=no_flux_bc(dimension=2),
     )
 
     # Create minimal problem (just for solver initialization)
@@ -115,9 +115,9 @@ def test_fp_2d_with_advection():
 
     # Create 2D grid
     grid = TensorProductGrid(
-        dimension=2,
         bounds=[(0.0, 1.0), (0.0, 1.0)],
         num_points=[12, 12],
+        boundary_conditions=no_flux_bc(dimension=2),
     )
 
     # Create minimal problem

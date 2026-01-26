@@ -28,6 +28,8 @@ logger = get_logger(__name__)
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from numpy.typing import NDArray
+
     from mfg_pde.geometry.boundary.conditions import BoundaryConditions
 
 # Define a limit for values before squaring to prevent overflow within H
@@ -62,9 +64,9 @@ class MFGComponents:
     # Coupling terms (for advanced MFG formulations)
     coupling_func: Callable | None = None  # Additional coupling terms
 
-    # Initial and final conditions
-    initial_density_func: Callable | None = None  # m_0(x) -> float
-    final_value_func: Callable | None = None  # u_T(x) -> float
+    # Initial and terminal conditions (Issue #670: unified naming)
+    m_initial: Callable | NDArray | None = None  # m_0(x): initial density
+    u_final: Callable | NDArray | None = None  # u_T(x): terminal value
 
     # Boundary conditions
     boundary_conditions: BoundaryConditions | None = None
@@ -838,24 +840,25 @@ class ConditionsMixin:
 
     def _setup_custom_initial_density(self) -> None:
         """Setup custom initial density function m_0(x)."""
-        if self.components is None or self.components.initial_density_func is None:
+        if self.components is None or self.components.m_initial is None:
             return
 
-        initial_func = self.components.initial_density_func
+        initial_func = self.components.m_initial
         spatial_grid = self._get_spatial_grid_internal()
         num_intervals = self._get_num_intervals() or 0
 
         for i in range(num_intervals + 1):
             # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
             x_i = float(spatial_grid[i, 0])
-            self.m_init[i] = max(initial_func(x_i), 0.0)
+            # Issue #672: Remove silent clamping - validation happens in _initialize_functions()
+            self.m_initial[i] = initial_func(x_i)
 
     def _setup_custom_final_value(self) -> None:
         """Setup custom final value function u_T(x)."""
-        if self.components is None or self.components.final_value_func is None:
+        if self.components is None or self.components.u_final is None:
             return
 
-        final_func = self.components.final_value_func
+        final_func = self.components.u_final
 
         num_intervals = self._get_num_intervals()
         if self.dimension == 1 and num_intervals is not None:
@@ -863,7 +866,7 @@ class ConditionsMixin:
             for i in range(num_intervals + 1):
                 # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
                 x_i = float(spatial_grid[i, 0])
-                self.u_fin[i] = final_func(x_i)
+                self.u_final[i] = final_func(x_i)
         elif self.geometry is not None:
             spatial_grid = self.geometry.get_spatial_grid()
             num_points = spatial_grid.shape[0]
@@ -872,13 +875,13 @@ class ConditionsMixin:
             for i in range(num_points):
                 # Extract point coordinates properly
                 x_i = float(spatial_grid[i, 0]) if ndim == 1 else spatial_grid[i]
-                self.u_fin.flat[i] = final_func(x_i)
+                self.u_final.flat[i] = final_func(x_i)
         else:
             import warnings
 
             warnings.warn(
                 "Cannot setup custom final value: dimension not 1D and no geometry available. "
-                "Using default u_fin initialization.",
+                "Using default u_final initialization.",
                 UserWarning,
                 stacklevel=2,
             )

@@ -97,7 +97,7 @@ for Nx in grid_sizes:
     print(f"\n--- Grid: Nx = {Nx} ---")
 
     # Create grid
-    grid = TensorProductGrid(dimension=dimension, bounds=bounds, Nx=[Nx])
+    grid = TensorProductGrid(bounds=bounds, Nx=[Nx], boundary_conditions=neumann_bc(dimension=dimension))
     x = grid.coordinates[0]
     dx = grid.spacing[0]
 

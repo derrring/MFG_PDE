@@ -84,7 +84,7 @@ def get_applicator_for_geometry(
         >>> from mfg_pde.geometry import TensorProductGrid
         >>> from mfg_pde.geometry.boundary.dispatch import get_applicator_for_geometry
         >>>
-        >>> grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[11, 11])
+        >>> grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[11, 11])
         >>> applicator = get_applicator_for_geometry(grid)
         >>> # applicator is an FDMApplicator
     """
@@ -172,7 +172,7 @@ def apply_bc(
         >>> from mfg_pde.geometry.boundary import neumann_bc
         >>> from mfg_pde.geometry.boundary.dispatch import apply_bc
         >>>
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx_points=[11])
         >>> field = np.ones(11)
         >>> bc = neumann_bc(dimension=1)
         >>> padded = apply_bc(grid, field, bc)
@@ -244,7 +244,7 @@ def validate_bc_compatibility(
         >>> from mfg_pde.geometry.boundary import robin_bc
         >>> from mfg_pde.geometry.boundary.dispatch import validate_bc_compatibility
         >>>
-        >>> grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[11])
+        >>> grid = TensorProductGrid(bounds=[(0, 1)], Nx_points=[11])
         >>> bc = robin_bc(dimension=1, alpha=1.0, beta=1.0)
         >>> issues = validate_bc_compatibility(bc, grid, discretization="FDM")
         >>> # Robin BC is supported for FDM, so issues == []

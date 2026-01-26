@@ -15,8 +15,17 @@ import numpy as np
 from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
 
 
 class ProbabilisticConvergenceMonitor:
@@ -78,13 +87,14 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
     np.random.seed(seed)
 
     # Create problem
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[52])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[52], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
         Nt=51,
         sigma=1.0,
         coupling_coefficient=0.5,
+        components=_default_components(),
     )
 
     bc = no_flux_bc(dimension=1)
@@ -112,7 +122,7 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
     (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
     Nt_points = problem.Nt + 1  # Temporal grid points
     U = np.zeros((Nt_points, Nx_points))  # Terminal condition will be set by HJB solver
-    M = problem.m_init
+    M = problem.m_initial  # Issue #670: unified naming
 
     converged = False
     iteration = 0

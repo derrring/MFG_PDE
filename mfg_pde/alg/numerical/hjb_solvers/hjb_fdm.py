@@ -92,7 +92,7 @@ class HJBFDMSolver(BaseHJBSolver):
         >>> from mfg_pde import MFGProblem
         >>> from mfg_pde.geometry import TensorProductGrid
         >>>
-        >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
+        >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx=[50, 50])
         >>> problem = MFGProblem(geometry=grid, ...)
         >>> solver = HJBFDMSolver(problem, advection_scheme="gradient_upwind")
         >>> U_solution = solver.solve_hjb_system(M_density, U_final)
@@ -1242,7 +1242,7 @@ if __name__ == "__main__":
     from mfg_pde import MFGProblem
     from mfg_pde.geometry import TensorProductGrid
 
-    geometry_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31])
+    geometry_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
     problem_1d = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
     solver_1d = HJBFDMSolver(problem_1d, solver_type="newton")
 
@@ -1292,7 +1292,7 @@ if __name__ == "__main__":
 
     # Test 2D problem
     print("\nTesting 2D solver...")
-    geometry_2d = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
+    geometry_2d = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[11, 11])
     problem_2d = MFGProblem(geometry=geometry_2d, T=1.0, Nt=5, diffusion=0.1)
     solver_2d = HJBFDMSolver(problem_2d, solver_type="newton")
 

@@ -110,7 +110,7 @@ print(f"  Boundary temperature: T = {T_boundary}")
 # ========================================
 
 # Create 2D grid
-grid = TensorProductGrid(dimension=2, bounds=[(x_min, x_max), (y_min, y_max)], Nx=[Nx, Ny])
+grid = TensorProductGrid(bounds=[(x_min, x_max), (y_min, y_max)], Nx=[Nx, Ny])
 X, Y = grid.meshgrid()
 dx, dy = grid.spacing
 

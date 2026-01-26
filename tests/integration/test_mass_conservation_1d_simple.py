@@ -18,8 +18,17 @@ from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterat
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
 
 
 def compute_total_mass(density: np.ndarray, dx: float) -> float:
@@ -42,13 +51,14 @@ class TestMassConservation1DSimple:
     @pytest.fixture
     def problem(self):
         """Create standard MFG problem with Neumann BC."""
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 2.0)], Nx_points=[51])
+        geometry = TensorProductGrid(bounds=[(0.0, 2.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         return MFGProblem(
             geometry=geometry,
             T=1.0,
             Nt=20,
             diffusion=0.1,
             coupling_coefficient=1.0,
+            components=_default_components(),
         )
 
     @pytest.fixture

@@ -85,7 +85,7 @@ class SupportsLaplacian(Protocol):
             TypeError: If bc type incompatible with geometry method
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[51, 51])
+            >>> grid = TensorProductGrid(bounds=[(0,1), (0,1)], Nx_points=[51, 51])
             >>> laplacian = grid.get_laplacian_operator(order=2, bc=neumann_bc(dimension=2))
             >>> u = np.random.rand(51, 51)
             >>> Lu = laplacian @ u.ravel()  # or Lu = laplacian(u)
@@ -149,7 +149,7 @@ class SupportsGradient(Protocol):
             NotImplementedError: If geometry doesn't support gradients (e.g., GraphGeometry)
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> grad_x, grad_y = grid.get_gradient_operator()
             >>> u = np.random.rand(Nx, Ny)
             >>> ux = grad_x @ u.ravel()
@@ -202,7 +202,7 @@ class SupportsDivergence(Protocol):
             Output shape: (num_points,)
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> div_op = grid.get_divergence_operator(order=2)
             >>> v = np.random.rand(2, Nx*Ny)  # Vector field (vx, vy)
             >>> div_v = div_op @ v.ravel()  # or div_v = div_op(v)
@@ -271,7 +271,7 @@ class SupportsAdvection(Protocol):
             ValueError: If scheme not supported
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> alpha = np.random.rand(2, Nx*Ny)  # Drift field
             >>> adv_op = grid.get_advection_operator(alpha, scheme='upwind', conservative=True)
             >>> m = np.random.rand(Nx*Ny)  # Density
@@ -335,7 +335,7 @@ class SupportsInterpolation(Protocol):
             NotImplementedError: If order not supported by this geometry
 
         Example:
-            >>> grid = TensorProductGrid(dimension=2, ...)
+            >>> grid = TensorProductGrid(...)
             >>> # Characteristic foot points from semi-Lagrangian
             >>> foot_points = grid_points - dt * velocity
             >>> interp = grid.get_interpolation_operator(foot_points, order=1)

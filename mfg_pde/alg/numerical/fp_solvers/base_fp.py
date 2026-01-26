@@ -277,7 +277,7 @@ if __name__ == "__main__":
     from mfg_pde import MFGProblem
     from mfg_pde.geometry import TensorProductGrid
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21])
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
 
     try:

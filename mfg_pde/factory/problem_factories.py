@@ -64,6 +64,62 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 # =============================================================================
+# Classic LQ-MFG Default Conditions (Issue #670)
+# =============================================================================
+# These functions provide the classic Linear-Quadratic MFG setup that was
+# previously built-in. Users must now explicitly import and use them.
+# See examples/basic/lq_mfg_classic.py for usage.
+
+
+def lq_mfg_terminal_cost(Lx: float = 1.0):
+    """Classic LQ-MFG terminal cost: g(x) = 5*(cos(2πx/L) + 0.4*sin(4πx/L)).
+
+    Args:
+        Lx: Domain length (default 1.0)
+
+    Returns:
+        Callable that computes terminal cost at position x
+
+    Example:
+        >>> problem = MFGProblem(
+        ...     geometry=grid,
+        ...     u_final=lq_mfg_terminal_cost(Lx=1.0),
+        ...     m_initial=lq_mfg_initial_density(),
+        ... )
+    """
+    import numpy as np
+
+    def u_final(x: float) -> float:
+        return 5 * (np.cos(x * 2 * np.pi / Lx) + 0.4 * np.sin(x * 4 * np.pi / Lx))
+
+    return u_final
+
+
+def lq_mfg_initial_density():
+    """Classic LQ-MFG initial density: bimodal Gaussian at x=0.2 and x=0.8.
+
+    Returns:
+        Callable that computes initial density at position x
+
+    Note:
+        MFGProblem will automatically normalize the density to integrate to 1.
+
+    Example:
+        >>> problem = MFGProblem(
+        ...     geometry=grid,
+        ...     u_final=lq_mfg_terminal_cost(),
+        ...     m_initial=lq_mfg_initial_density(),
+        ... )
+    """
+    import numpy as np
+
+    def m_initial(x: float) -> float:
+        return 2 * np.exp(-200 * (x - 0.2) ** 2) + np.exp(-200 * (x - 0.8) ** 2)
+
+    return m_initial
+
+
+# =============================================================================
 # Problem Type Constants
 # =============================================================================
 
@@ -176,7 +232,7 @@ def create_mfg_problem(
     ...     hamiltonian_func=H,
     ...     hamiltonian_dm_func=dH_dm,
     ...     terminal_cost_func=g,
-    ...     initial_density_func=rho_0
+    ...     m_initial=rho_0
     ... )
     >>> problem = create_mfg_problem("standard", components, geometry=domain)
     >>>
@@ -335,8 +391,8 @@ def create_standard_problem(
     components = MFGComponents(
         hamiltonian_func=hamiltonian,
         hamiltonian_dm_func=hamiltonian_dm,
-        final_value_func=terminal_cost,
-        initial_density_func=initial_density,
+        u_final=terminal_cost,
+        m_initial=initial_density,
         potential_func=potential,
         boundary_conditions=boundary_conditions,
         problem_type="standard",
@@ -413,17 +469,17 @@ def create_network_problem(
     """
     # Convert initial density to function if array
     if callable(initial_density):
-        initial_density_func = initial_density
+        m_initial = initial_density
     else:
-        initial_density_func = lambda x: initial_density  # noqa: E731
+        m_initial = lambda x: initial_density  # noqa: E731
 
     components = MFGComponents(
         network_geometry=network_geometry,
         node_interaction_func=node_interaction,
         edge_cost_func=edge_cost,
         edge_interaction_func=edge_interaction,
-        initial_density_func=initial_density_func,
-        final_value_func=terminal_cost,
+        m_initial=m_initial,
+        u_final=terminal_cost,
         problem_type="network",
     )
 
@@ -515,7 +571,7 @@ def create_variational_problem(
         lagrangian_dv_func=lagrangian_dv,
         lagrangian_dm_func=lagrangian_dm,
         terminal_cost_func=terminal_cost,
-        initial_density_func=initial_density,
+        m_initial=initial_density,
         trajectory_cost_func=trajectory_cost,
         state_constraints=state_constraints,
         velocity_constraints=velocity_constraints,
@@ -612,8 +668,8 @@ def create_stochastic_problem(
     components = MFGComponents(
         hamiltonian_func=hamiltonian,
         hamiltonian_dm_func=hamiltonian_dm,
-        final_value_func=terminal_cost,
-        initial_density_func=initial_density,
+        u_final=terminal_cost,
+        m_initial=initial_density,
         potential_func=potential,
         parameters=stochastic_params,
         problem_type="stochastic",
@@ -695,8 +751,8 @@ def create_highdim_problem(
     components = MFGComponents(
         hamiltonian_func=hamiltonian,
         hamiltonian_dm_func=hamiltonian_dm,
-        final_value_func=terminal_cost,
-        initial_density_func=initial_density,
+        u_final=terminal_cost,
+        m_initial=initial_density,
         potential_func=potential,
         boundary_conditions=boundary_conditions,
         problem_type="highdim",

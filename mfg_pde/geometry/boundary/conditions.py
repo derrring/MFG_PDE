@@ -992,7 +992,7 @@ def mixed_bc_from_regions(
         >>> from mfg_pde.geometry.boundary import BCSegment, BCType, mixed_bc_from_regions
         >>>
         >>> # Setup geometry with marked regions
-        >>> geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
+        >>> geometry = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
         >>> geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
         >>> geometry.mark_region("outlet", boundary="x_max")
         >>>

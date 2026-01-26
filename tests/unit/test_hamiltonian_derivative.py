@@ -11,14 +11,24 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.core.derivatives import DerivativeTensors
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
+        u_final=lambda x: 0.0,
+    )
 
 
 @pytest.fixture
 def simple_problem():
     """Create a simple 1D MFG problem for testing."""
-    geometry = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[10])
-    return MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
+    geometry = TensorProductGrid(bounds=[(0, 1)], Nx=[10], boundary_conditions=no_flux_bc(dimension=1))
+    return MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1, components=_default_components())
 
 
 @pytest.fixture

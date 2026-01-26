@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.solver_result import SolverResult
 
@@ -166,12 +167,12 @@ class BlockIterator(BaseMFGSolver):
         """Initialize initial density and terminal value from problem."""
         # Try get_m_init() / get_u_fin() methods (preferred)
         try:
-            M_initial = self.problem.get_m_init()
+            M_initial = self.problem.get_m_initial()
             if M_initial.shape != shape:
                 M_initial = M_initial.reshape(shape)
         except AttributeError:
             try:
-                M_initial = self.problem.m_init
+                M_initial = self.problem.m_initial  # Issue #670: unified naming
                 if M_initial is not None and M_initial.shape != shape:
                     M_initial = M_initial.reshape(shape)
             except AttributeError:
@@ -179,12 +180,12 @@ class BlockIterator(BaseMFGSolver):
                 logger.warning("No initial density found, using uniform")
 
         try:
-            U_terminal = self.problem.get_u_fin()
+            U_terminal = self.problem.get_u_final()
             if U_terminal.shape != shape:
                 U_terminal = U_terminal.reshape(shape)
         except AttributeError:
             try:
-                U_terminal = self.problem.u_fin
+                U_terminal = self.problem.u_final  # Issue #670: unified naming
                 if U_terminal is not None and U_terminal.shape != shape:
                     U_terminal = U_terminal.reshape(shape)
             except AttributeError:
@@ -518,7 +519,7 @@ if __name__ == "__main__":
     from mfg_pde.geometry import TensorProductGrid
 
     # Create simple 1D problem
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.2)
 
     # Create solvers

@@ -12,6 +12,7 @@ import pytest
 import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.level_set.reinitialization import reinitialize
 
 
@@ -21,7 +22,7 @@ class TestReinitializationGlobal:
     def test_preserves_zero_level_set_1d(self):
         """Test that zero level set doesn't move significantly during reinitialization."""
         # 1D: φ = x - 0.5 (interface at x=0.5)
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
 
         # True SDF
@@ -42,7 +43,7 @@ class TestReinitializationGlobal:
 
     def test_improves_gradient_magnitude_1d(self):
         """Test that reinitialization improves |∇φ| ≈ 1."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
 
         # Create distorted level set: φ² (not SDF)
@@ -70,7 +71,7 @@ class TestReinitializationGlobal:
 
     def test_convergence_tolerance(self):
         """Test that reinitialization stops early when tolerance is met."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
 
         # Start with good SDF
@@ -85,7 +86,9 @@ class TestReinitializationGlobal:
 
     def test_circle_2d(self):
         """Test reinitialization on 2D circle."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[50, 50])
+        grid = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
+        )
         X, Y = grid.meshgrid()
 
         # Circle: φ = ||x - c|| - R
@@ -123,7 +126,9 @@ class TestReinitializationNarrowBand:
 
     def test_narrow_band_correctness_2d(self):
         """Test that narrow band produces same results as global near interface."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[100, 100])
+        grid = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[100, 100], boundary_conditions=no_flux_bc(dimension=2)
+        )
         X, Y = grid.meshgrid()
         dx = grid.spacing[0]
 
@@ -153,7 +158,9 @@ class TestReinitializationNarrowBand:
 
     def test_narrow_band_preserves_far_field(self):
         """Test that narrow band doesn't modify far-field values."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[50, 50])
+        grid = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
+        )
         X, Y = grid.meshgrid()
         dx = grid.spacing[0]
 
@@ -182,7 +189,9 @@ class TestReinitializationNarrowBand:
 
     def test_narrow_band_coverage(self):
         """Test that narrow band covers expected percentage of domain."""
-        grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[100, 100])
+        grid = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[100, 100], boundary_conditions=no_flux_bc(dimension=2)
+        )
         X, Y = grid.meshgrid()
         dx = grid.spacing[0]
 
@@ -207,7 +216,7 @@ class TestReinitializationNarrowBand:
 
     def test_narrow_band_backward_compatible(self):
         """Test that narrow_band_width=None behaves like original."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
 
         phi_distorted = (x - 0.5) ** 2 * np.sign(x - 0.5)
@@ -229,7 +238,7 @@ class TestReinitializationEdgeCases:
 
     def test_invalid_dtau_raises(self):
         """Test that invalid dtau raises ValueError."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
         phi = x - 0.5
 
@@ -242,7 +251,7 @@ class TestReinitializationEdgeCases:
 
     def test_handles_sign_zero(self):
         """Test that sign(0) = 0 is handled correctly."""
-        grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100])
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
 
         # Level set with exact zeros

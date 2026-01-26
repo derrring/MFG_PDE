@@ -37,6 +37,7 @@ from mfg_pde.alg.neural.pinn_solvers import (  # noqa: E402
 )
 from mfg_pde.core.mfg_problem import MFGProblem  # noqa: E402
 from mfg_pde.geometry import TensorProductGrid  # noqa: E402
+from mfg_pde.geometry.boundary import no_flux_bc  # noqa: E402
 
 try:
     torch_spec = importlib.util.find_spec("torch")
@@ -70,7 +71,7 @@ def create_mfg_problem() -> MFGProblem:
         return gaussian / np.trapz(gaussian, x)
 
     # Create MFG problem with Geometry-First API
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[65])
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[65], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=1.0, diffusion=0.1)
 
     # Set terminal and initial conditions

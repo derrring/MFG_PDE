@@ -1253,7 +1253,7 @@ if __name__ == "__main__":
 
     # Create 1D grid with TensorProductGrid
     Nx = 40  # Number of cells (grid points = Nx + 1)
-    grid_1d = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx + 1])
+    grid_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx + 1])
     dx_1d = grid_1d.get_grid_spacing()[0]
 
     problem_1d = MFGProblem(
@@ -1317,7 +1317,6 @@ if __name__ == "__main__":
 
     # Create 2D problem
     grid_2d = TensorProductGrid(
-        dimension=2,
         bounds=[(0.0, 1.0), (0.0, 1.0)],  # [(xmin, xmax), (ymin, ymax)]
         Nx_points=[11, 11],  # (nx+1, ny+1) grid points
     )

@@ -96,13 +96,13 @@ def test_flat_and_nested_access_consistency():
         return x**2
 
     components = MFGComponents(
-        standard=StandardMFGConfig(hamiltonian_func=my_H, potential_func=my_V, initial_density_func=lambda x: 1.0)
+        standard=StandardMFGConfig(hamiltonian_func=my_H, potential_func=my_V, m_initial=lambda x: 1.0)
     )
 
     # Both access patterns return same values
     assert components.hamiltonian_func is components.standard.hamiltonian_func
     assert components.potential_func is components.standard.potential_func
-    assert components.initial_density_func is components.standard.initial_density_func
+    assert components.m_initial is components.standard.m_initial
 
 
 def test_lazy_config_creation():
@@ -192,7 +192,7 @@ def test_validation_passes_for_valid_config():
     components = MFGComponents(
         standard=StandardMFGConfig(
             hamiltonian_func=lambda x, m, p, t: 0.5 * p**2,
-            initial_density_func=lambda x: 1.0,
+            m_initial=lambda x: 1.0,
         )
     )
 
@@ -216,11 +216,11 @@ def test_standard_mfg_pattern():
 
     # Nested style (recommended)
     components = MFGComponents(
-        standard=StandardMFGConfig(hamiltonian_func=H, initial_density_func=m0, potential_func=lambda x, t: 0)
+        standard=StandardMFGConfig(hamiltonian_func=H, m_initial=m0, potential_func=lambda x, t: 0)
     )
 
     assert components.hamiltonian_func(0, 1, 1, 0) == 2.5
-    assert components.initial_density_func(0) == 1.0
+    assert components.m_initial(0) == 1.0
 
 
 def test_neural_mfg_pattern():

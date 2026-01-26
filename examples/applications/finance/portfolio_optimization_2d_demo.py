@@ -70,7 +70,7 @@ def create_portfolio_problem():
     Nt = 50
 
     # Create 2D tensor product grid
-    grid = TensorProductGrid(dimension=2, bounds=[(W_min, W_max), (alpha_min, alpha_max)], num_points=[NW, Nalpha])
+    grid = TensorProductGrid(bounds=[(W_min, W_max), (alpha_min, alpha_max)], num_points=[NW, Nalpha])
 
     # Financial parameters
     r = 0.02  # Risk-free rate (bonds)

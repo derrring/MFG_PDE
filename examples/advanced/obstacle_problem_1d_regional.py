@@ -50,7 +50,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import ObstacleConstraint
+from mfg_pde.geometry.boundary import ObstacleConstraint, no_flux_bc
 
 print("=" * 70)
 print("Regional Constraint Problem - Protected Temperature Zone")
@@ -72,7 +72,7 @@ x_protected_max = 0.7
 
 # Create grid
 
-grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
+grid = TensorProductGrid(bounds=[(x_min, x_max)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
 x = grid.coordinates[0]
 Nx_actual = len(x)
 dx = x[1] - x[0]
