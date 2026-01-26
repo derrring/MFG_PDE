@@ -17,6 +17,20 @@ from .alg.optimization.variational_problem import (  # noqa: E402
     VariationalMFGProblem,
 )
 from .config import MFGSolverConfig  # noqa: E402
+from .core.hamiltonian import (  # noqa: E402
+    # Control cost classes (original)
+    ControlCostBase,
+    DefaultMFGHamiltonian,
+    # Full MFG Hamiltonian classes (Issue #673)
+    HamiltonianBase,
+    # Lagrangian classes (Issue #651)
+    LagrangianBase,
+    LegendreHamiltonian,
+    OptimizationSense,
+    QuadraticControlCost,
+    SeparableHamiltonian,
+    create_hamiltonian,
+)
 from .core.mfg_problem import (  # noqa: E402
     MFGComponents,
     MFGProblem,
@@ -121,6 +135,16 @@ __all__ = [
     "KDENormalization",
     "MFGComponents",
     "MFGProblem",
+    # Hamiltonian/Lagrangian classes (Issues #651, #667, #673)
+    "ControlCostBase",
+    "OptimizationSense",
+    "QuadraticControlCost",
+    "HamiltonianBase",
+    "SeparableHamiltonian",
+    "DefaultMFGHamiltonian",
+    "create_hamiltonian",
+    "LagrangianBase",
+    "LegendreHamiltonian",
     # Configuration
     "MFGSolverConfig",
     # Numerical schemes (Issue #580)

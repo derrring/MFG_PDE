@@ -48,9 +48,61 @@ class MFGComponents:
 
     This class holds all the mathematical components needed to fully specify
     an MFG problem, allowing users to provide custom implementations.
+
+    Hamiltonian/Lagrangian Specification (Issues #651, #667, #673)
+    --------------------------------------------------------------
+    Four ways to specify the MFG dynamics (in order of preference):
+
+    1. **Class-based Hamiltonian** (recommended, Issue #673):
+       ```python
+       from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+
+       H = SeparableHamiltonian(
+           control_cost=QuadraticControlCost(control_cost=1.0),
+           coupling=lambda m: -m**2,
+           coupling_dm=lambda m: -2*m,
+       )
+       components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)
+       ```
+       Auto-computes derivatives via `H.dp()` and `H.dm()` (Issue #667).
+
+    2. **Class-based Lagrangian** (Issue #651):
+       ```python
+       from mfg_pde.core.hamiltonian import LagrangianBase
+
+       class MyLagrangian(LagrangianBase):
+           def __call__(self, x, alpha, m, t=0.0):
+               return 0.5 * np.sum(alpha**2)  # Running cost L(x, α, m, t)
+
+       L = MyLagrangian()
+       components = MFGComponents(lagrangian=L, m_initial=..., u_final=...)
+       # Automatically converted to Hamiltonian via Legendre transform
+       ```
+       Useful when thinking in terms of running costs rather than value functions.
+
+    3. **Function-based** (legacy, still supported):
+       ```python
+       def my_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+           p = derivs.get((1,), 0.0)
+           return 0.5 * p**2 - m_at_x**2
+
+       components = MFGComponents(
+           hamiltonian_func=my_hamiltonian,
+           hamiltonian_dm_func=my_dH_dm,  # Required if H depends on m
+           m_initial=..., u_final=...
+       )
+       ```
+
+    4. **Default** (no explicit Hamiltonian):
+       Uses built-in H = ½c|p|² - V(x) - m² from MFGProblem.
     """
 
-    # Core Hamiltonian components
+    # Class-based Hamiltonian or Lagrangian (Issue #673, #651, preferred)
+    # Import here would cause circular import, so use string annotation
+    hamiltonian: Any = None  # HamiltonianBase instance
+    lagrangian: Any = None  # LagrangianBase instance (auto-converted to Hamiltonian)
+
+    # Function-based Hamiltonian (legacy, still supported)
     hamiltonian_func: Callable | None = None  # H(x, m, p, t) -> float
     hamiltonian_dm_func: Callable | None = None  # dH/dm(x, m, p, t) -> float
     hamiltonian_dp_func: Callable | None = None  # dH/dp(x, m, p, t) -> array (optional)
@@ -77,6 +129,68 @@ class MFGComponents:
     # Metadata
     description: str = "MFG Problem"
     problem_type: str = "mfg"
+
+    def __post_init__(self):
+        """Validate and setup Hamiltonian from class-based specification."""
+        from mfg_pde.core.hamiltonian import HamiltonianBase, LagrangianBase
+
+        # Convert Lagrangian to Hamiltonian via Legendre transform (Issue #651)
+        if self.lagrangian is not None:
+            if isinstance(self.lagrangian, LagrangianBase):
+                if self.hamiltonian is not None:
+                    import warnings
+
+                    warnings.warn(
+                        "Both 'hamiltonian' and 'lagrangian' provided. Using 'hamiltonian' (lagrangian ignored).",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                else:
+                    # Convert Lagrangian to Hamiltonian via Legendre transform
+                    self.hamiltonian = self.lagrangian.to_hamiltonian()
+
+        # If class-based Hamiltonian provided, convert to function-based for compatibility
+        if self.hamiltonian is not None:
+            if isinstance(self.hamiltonian, HamiltonianBase):
+                # Store the original class for direct access
+                self._hamiltonian_class = self.hamiltonian
+
+                # Convert to legacy function format for backward compatibility
+                h_func, h_dm_func = self.hamiltonian.to_legacy_func()
+
+                # Only override if not explicitly provided
+                if self.hamiltonian_func is None:
+                    self.hamiltonian_func = h_func
+                if self.hamiltonian_dm_func is None:
+                    self.hamiltonian_dm_func = h_dm_func
+
+                # Also create dp func from class
+                def h_dp_func(
+                    x_idx: int,
+                    x_position: float | NDArray | None,
+                    m_at_x: float,
+                    derivs: dict,
+                    t_idx: int | None,
+                    current_time: float | None,
+                    problem: object,
+                ) -> NDArray:
+                    """Legacy adapter for hamiltonian_dp_func."""
+                    import numpy as np
+
+                    x = np.atleast_1d(x_position if x_position is not None else 0.0)
+                    if derivs:
+                        dim = max(len(k) for k in derivs) if derivs else 1
+                        p = np.zeros(dim)
+                        for i in range(dim):
+                            key = tuple(1 if j == i else 0 for j in range(dim))
+                            p[i] = derivs.get(key, 0.0)
+                    else:
+                        p = np.zeros(1)
+                    t = current_time if current_time is not None else 0.0
+                    return self.hamiltonian.dp(x, m_at_x, p, t)
+
+                if self.hamiltonian_dp_func is None:
+                    self.hamiltonian_dp_func = h_dp_func
 
 
 # ============================================================================
