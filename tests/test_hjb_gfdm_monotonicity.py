@@ -10,16 +10,44 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import neumann_bc
+
+
+def _default_components_2d():
+    """Provide default components for 2D test problems."""
+
+    def m_initial_2d(x):
+        x_arr = np.asarray(x)
+        if x_arr.ndim == 1:
+            return np.exp(-10 * np.sum((x_arr - 0.5) ** 2))
+        return np.exp(-10 * np.sum((x_arr - 0.5) ** 2, axis=-1))
+
+    return MFGComponents(
+        m_initial=m_initial_2d,
+        u_final=lambda x: 0.0,
+    )
 
 
 class SimpleMFGProblem(MFGProblem):
     """Minimal MFG problem for testing GFDM solver."""
 
     def __init__(self):
-        super().__init__()
-        self.sigma = 0.1  # Diffusion coefficient
-        self.domain = [0.0, 1.0, 0.0, 1.0]  # 2D domain
-        self.T = 1.0
+        # Create a 2D geometry
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)],
+            Nx_points=[21, 21],
+            boundary_conditions=neumann_bc(dimension=2),
+        )
+        super().__init__(
+            geometry=geometry,
+            T=1.0,
+            Nt=10,
+            diffusion=0.1,
+            components=_default_components_2d(),
+        )
+        self.domain = [0.0, 1.0, 0.0, 1.0]  # 2D domain (legacy attribute)
 
     def hamiltonian(self, p, m, x, t):
         """Simple quadratic Hamiltonian."""

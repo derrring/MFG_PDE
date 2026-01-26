@@ -13,9 +13,33 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import BCSegment, mixed_bc, no_flux_bc
 from mfg_pde.geometry.boundary.types import BCType
+
+
+def _default_components_1d():
+    """Provide default components for 1D test problems."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-((np.asarray(x) - 5.0) ** 2) / 2.0),
+        u_final=lambda x: 0.0,
+    )
+
+
+def _default_components_2d():
+    """Provide default components for 2D test problems."""
+
+    def m_initial_2d(x):
+        x_arr = np.asarray(x)
+        if x_arr.ndim == 1:
+            return np.exp(-((x_arr[0] - 2.0) ** 2 + (x_arr[1] - 2.0) ** 2) / 2.0)
+        return np.exp(-((x_arr[..., 0] - 2.0) ** 2 + (x_arr[..., 1] - 2.0) ** 2) / 2.0)
+
+    return MFGComponents(
+        m_initial=m_initial_2d,
+        u_final=lambda x: 0.0,
+    )
 
 
 def test_particle_solver_multi_exit_1d():
@@ -32,7 +56,14 @@ def test_particle_solver_multi_exit_1d():
     """
     # Create 1D domain
     geometry = TensorProductGrid(bounds=[(0.0, 10.0)], Nx_points=[101], boundary_conditions=no_flux_bc(1))
-    problem = MFGProblem(geometry=geometry, T=3.0, Nt=60, diffusion=0.05, coupling_coefficient=1.0)
+    problem = MFGProblem(
+        geometry=geometry,
+        T=3.0,
+        Nt=60,
+        diffusion=0.05,
+        coupling_coefficient=1.0,
+        components=_default_components_1d(),
+    )
 
     # Multi-exit BC: two DIRICHLET exits on opposite ends
     bc_multi_exit = mixed_bc(
@@ -124,7 +155,13 @@ def test_particle_solver_multi_exit_2d():
         Nx_points=[21, 21],
         boundary_conditions=no_flux_bc(2),
     )
-    problem = MFGProblem(geometry=geometry, T=3.0, Nt=30, diffusion=0.05)
+    problem = MFGProblem(
+        geometry=geometry,
+        T=3.0,
+        Nt=30,
+        diffusion=0.05,
+        components=_default_components_2d(),
+    )
     grid_shape = problem.geometry.get_grid_shape()
 
     # Multi-exit BC: exits on right and top walls
