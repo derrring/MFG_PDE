@@ -181,6 +181,8 @@ def test_create_from_functions_minimal(factory, sample_functions, domain_config,
         hamiltonian_dm_func=sample_functions["hamiltonian_dm"],
         domain_config=domain_config,
         time_config=time_config,
+        m_initial=sample_functions["initial_density"],  # Required by Issue #670
+        u_final=sample_functions["final_value"],  # Required by Issue #670
     )
 
     assert problem is not None
@@ -198,6 +200,8 @@ def test_create_from_functions_with_solver_config(factory, sample_functions, dom
         domain_config=domain_config,
         time_config=time_config,
         solver_config=solver_config,
+        m_initial=sample_functions["initial_density"],  # Required by Issue #670
+        u_final=sample_functions["final_value"],  # Required by Issue #670
     )
 
     assert problem is not None
@@ -234,6 +238,8 @@ def test_create_from_functions_with_description(factory, sample_functions, domai
         domain_config=domain_config,
         time_config=time_config,
         description=description,
+        m_initial=sample_functions["initial_density"],  # Required by Issue #670
+        u_final=sample_functions["final_value"],  # Required by Issue #670
     )
 
     assert problem is not None
@@ -395,6 +401,12 @@ def test_create_general_mfg_problem_from_functions():
     def hamiltonian_dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem):
         return 0.0
 
+    def initial_density(x):
+        return np.exp(-10 * np.sum((x - 0.5) ** 2, axis=-1))
+
+    def final_value(x):
+        return 0.5 * np.sum(x**2, axis=-1)
+
     # Use convenience function with explicit parameters (not config dicts)
     problem = create_general_mfg_problem(
         hamiltonian_func=hamiltonian,
@@ -404,6 +416,8 @@ def test_create_general_mfg_problem_from_functions():
         Nx=20,
         T=1.0,
         Nt=10,
+        m_initial=initial_density,  # Required by Issue #670
+        u_final=final_value,  # Required by Issue #670
     )
 
     assert problem is not None
@@ -495,6 +509,8 @@ def test_multiple_problems_from_same_factory(factory, sample_functions, domain_c
         hamiltonian_dm_func=sample_functions["hamiltonian_dm"],
         domain_config=domain_config,
         time_config=time_config,
+        m_initial=sample_functions["initial_density"],  # Required by Issue #670
+        u_final=sample_functions["final_value"],  # Required by Issue #670
     )
 
     # Create second problem with different config
@@ -503,6 +519,8 @@ def test_multiple_problems_from_same_factory(factory, sample_functions, domain_c
         hamiltonian_dm_func=sample_functions["hamiltonian_dm"],
         domain_config={"xmin": 0.0, "xmax": 2.0, "Nx": 30},
         time_config={"T": 2.0, "Nt": 20},
+        m_initial=sample_functions["initial_density"],  # Required by Issue #670
+        u_final=sample_functions["final_value"],  # Required by Issue #670
     )
 
     # Both should be valid but different
