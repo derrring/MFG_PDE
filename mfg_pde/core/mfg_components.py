@@ -147,7 +147,7 @@ class MFGComponents:
                     )
                 else:
                     # Convert Lagrangian to Hamiltonian via Legendre transform
-                    self.hamiltonian = self.lagrangian.to_hamiltonian()
+                    self.hamiltonian = self.lagrangian.legendre_transform()
 
         # If class-based Hamiltonian provided, convert to function-based for compatibility
         if self.hamiltonian is not None:
