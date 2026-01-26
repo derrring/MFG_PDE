@@ -850,7 +850,8 @@ class ConditionsMixin:
         for i in range(num_intervals + 1):
             # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
             x_i = float(spatial_grid[i, 0])
-            self.m_initial[i] = max(initial_func(x_i), 0.0)
+            # Issue #672: Remove silent clamping - validation happens in _initialize_functions()
+            self.m_initial[i] = initial_func(x_i)
 
     def _setup_custom_final_value(self) -> None:
         """Setup custom final value function u_T(x)."""

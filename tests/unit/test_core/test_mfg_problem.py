@@ -324,6 +324,34 @@ def test_mfg_problem_with_custom_final_value():
     assert np.allclose(np.ravel(problem.u_final), np.ravel(expected))
 
 
+@pytest.mark.unit
+def test_mfg_problem_validates_negative_m_initial():
+    """Test that negative m_initial raises ValueError (Issue #672: Fail Fast)."""
+    geometry = default_geometry()
+    # Invalid: negative density
+    components = MFGComponents(
+        m_initial=lambda x: x - 0.5,  # Negative for x < 0.5
+        u_final=lambda x: 0.0,
+    )
+
+    with pytest.raises(ValueError, match="m_initial contains negative values"):
+        MFGProblem(geometry=geometry, components=components)
+
+
+@pytest.mark.unit
+def test_mfg_problem_validates_zero_mass_m_initial():
+    """Test that zero-mass m_initial raises ValueError (Issue #672: Fail Fast)."""
+    geometry = default_geometry()
+    # Invalid: zero everywhere
+    components = MFGComponents(
+        m_initial=lambda x: 0.0,  # Zero mass
+        u_final=lambda x: 0.0,
+    )
+
+    with pytest.raises(ValueError, match="m_initial has zero or negligible total mass"):
+        MFGProblem(geometry=geometry, components=components)
+
+
 # ===================================================================
 # Test Hamiltonian Methods
 # ===================================================================

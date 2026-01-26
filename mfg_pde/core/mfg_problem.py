@@ -1841,6 +1841,24 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             # Issue #671: Zero potential is the explicit default (physically meaningful)
             self.f_potential[:] = 0.0
 
+        # === Issue #672: Validate m_initial before normalization (Fail Fast) ===
+        # Check 1: Non-negativity (density must be >= 0)
+        if np.any(self.m_initial < 0):
+            min_val = np.min(self.m_initial)
+            raise ValueError(
+                f"m_initial contains negative values (min={min_val:.6e}). "
+                "Initial density must be non-negative. "
+                "Check your m_initial function in MFGComponents."
+            )
+
+        # Check 2: Non-zero mass (must have some mass to normalize)
+        if np.sum(self.m_initial) < 1e-15:
+            raise ValueError(
+                "m_initial has zero or negligible total mass. "
+                "Initial density must integrate to a positive value. "
+                "Check your m_initial function in MFGComponents."
+            )
+
         # Normalize initial density
         if self.dimension == "network":
             # Network/graph: discrete probability mass, sum = 1
