@@ -9,14 +9,13 @@ Modules:
     components: IC/BC validation (m_initial, u_final)
     functions: Custom function validation (Hamiltonian, drift, running_cost)
     arrays: Array validation (dtype, shape, dimension)
-    runtime: Runtime checks (NaN/Inf, divergence, bounds)
+    runtime: Runtime checks (NaN/Inf, bounds)
 
 Usage:
     from mfg_pde.utils.validation import (
         validate_components,
         validate_custom_functions,
         check_finite,
-        DivergenceMonitor,
     )
 
     # Validate components at problem construction
@@ -24,12 +23,8 @@ Usage:
     if not result.is_valid:
         raise ValidationError(result)
 
-    # Monitor divergence during solving
-    monitor = DivergenceMonitor(patience=5)
-    for iteration in range(max_iterations):
-        error = compute_error()
-        if monitor.update(error):
-            raise RuntimeError(f"Diverging: {monitor.diagnostic}")
+Note: For convergence/divergence monitoring during solving, use:
+    from mfg_pde.utils.convergence import DistributionConvergenceMonitor
 
 Issue #689: Validation module infrastructure
 Parent: #685 (Comprehensive Input Validation Initiative)
@@ -72,9 +67,8 @@ from mfg_pde.utils.validation.protocol import (
 )
 
 # Runtime validation (Issue #688)
+# Note: For convergence/divergence monitors, use mfg_pde.utils.convergence
 from mfg_pde.utils.validation.runtime import (
-    ConvergenceMonitor,
-    DivergenceMonitor,
     check_bounds,
     check_finite,
     validate_solver_output,
@@ -111,6 +105,4 @@ __all__ = [
     "check_finite",
     "check_bounds",
     "validate_solver_output",
-    "DivergenceMonitor",
-    "ConvergenceMonitor",
 ]

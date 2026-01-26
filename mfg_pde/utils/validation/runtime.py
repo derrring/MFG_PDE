@@ -9,7 +9,6 @@ Issue #688: Runtime safety (NaN/Inf detection, divergence, bounds checking)
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -128,166 +127,10 @@ def check_bounds(
     return result
 
 
-@dataclass
-class DivergenceMonitor:
-    """
-    Monitor error history to detect divergence in iterative solvers.
-
-    Tracks error values and detects if the solver is diverging
-    (error consistently increasing).
-
-    Args:
-        patience: Number of consecutive increases before flagging divergence
-        increase_threshold: Relative increase threshold (1.1 = 10% increase)
-
-    Usage:
-        monitor = DivergenceMonitor(patience=5)
-
-        for iteration in range(max_iterations):
-            error = compute_error()
-
-            if monitor.update(error):
-                raise RuntimeError(f"Solver diverging: {monitor.diagnostic}")
-
-            if error < tolerance:
-                break
-
-    Issue #688: Divergence detection
-    """
-
-    patience: int = 5
-    increase_threshold: float = 1.1
-    errors: list[float] = field(default_factory=list)
-    increasing_count: int = field(default=0, init=False)
-
-    def update(self, error: float) -> bool:
-        """
-        Update with new error value.
-
-        Args:
-            error: Current error value
-
-        Returns:
-            True if divergence detected, False otherwise
-        """
-        if self.errors and error > self.errors[-1] * self.increase_threshold:
-            self.increasing_count += 1
-        else:
-            self.increasing_count = 0
-
-        self.errors.append(error)
-        return self.is_diverging
-
-    @property
-    def is_diverging(self) -> bool:
-        """Check if currently in diverging state."""
-        return self.increasing_count >= self.patience
-
-    @property
-    def diagnostic(self) -> str:
-        """Get diagnostic string for divergence."""
-        recent = self.errors[-min(10, len(self.errors)) :]
-        return (
-            f"Error increased for {self.increasing_count} consecutive iterations. "
-            f"Recent errors: {[f'{e:.2e}' for e in recent]}"
-        )
-
-    def reset(self) -> None:
-        """Reset monitor state."""
-        self.errors.clear()
-        self.increasing_count = 0
-
-
-@dataclass
-class ConvergenceMonitor:
-    """
-    Monitor convergence in iterative solvers.
-
-    Tracks error history and provides convergence diagnostics.
-
-    Args:
-        tolerance: Convergence tolerance
-        stagnation_window: Window for detecting stagnation
-        stagnation_threshold: Relative improvement threshold for stagnation
-
-    Usage:
-        monitor = ConvergenceMonitor(tolerance=1e-6)
-
-        for iteration in range(max_iterations):
-            error = compute_error()
-            monitor.update(error)
-
-            if monitor.is_converged:
-                print(f"Converged in {iteration} iterations")
-                break
-
-            if monitor.is_stagnating:
-                print(f"Warning: convergence stagnating")
-
-    Issue #688: Convergence monitoring
-    """
-
-    tolerance: float = 1e-6
-    stagnation_window: int = 10
-    stagnation_threshold: float = 0.01
-    errors: list[float] = field(default_factory=list)
-
-    def update(self, error: float) -> None:
-        """Update with new error value."""
-        self.errors.append(error)
-
-    @property
-    def current_error(self) -> float | None:
-        """Get current (most recent) error."""
-        return self.errors[-1] if self.errors else None
-
-    @property
-    def is_converged(self) -> bool:
-        """Check if converged (error below tolerance)."""
-        return self.current_error is not None and self.current_error < self.tolerance
-
-    @property
-    def is_stagnating(self) -> bool:
-        """Check if convergence is stagnating."""
-        if len(self.errors) < self.stagnation_window:
-            return False
-
-        recent = self.errors[-self.stagnation_window :]
-        improvement = (recent[0] - recent[-1]) / (recent[0] + 1e-15)
-        return improvement < self.stagnation_threshold
-
-    @property
-    def convergence_rate(self) -> float | None:
-        """Estimate convergence rate from recent errors."""
-        if len(self.errors) < 2:
-            return None
-
-        # Estimate rate from last few errors
-        recent = self.errors[-min(5, len(self.errors)) :]
-        if len(recent) < 2:
-            return None
-
-        # Linear regression on log(error) vs iteration
-        log_errors = np.log(np.array(recent) + 1e-15)
-        n = len(log_errors)
-        x = np.arange(n)
-
-        slope = (n * np.sum(x * log_errors) - np.sum(x) * np.sum(log_errors)) / (
-            n * np.sum(x**2) - np.sum(x) ** 2 + 1e-15
-        )
-
-        return float(np.exp(slope))  # Rate per iteration
-
-    def get_summary(self) -> dict:
-        """Get convergence summary."""
-        return {
-            "n_iterations": len(self.errors),
-            "initial_error": self.errors[0] if self.errors else None,
-            "final_error": self.errors[-1] if self.errors else None,
-            "converged": self.is_converged,
-            "stagnating": self.is_stagnating,
-            "convergence_rate": self.convergence_rate,
-        }
+# Note: DivergenceMonitor and ConvergenceMonitor intentionally NOT included here.
+# Use mfg_pde.utils.convergence.convergence_monitors instead, which provides
+# comprehensive MFG-specific monitoring: DistributionConvergenceMonitor,
+# _ErrorHistoryTracker, ConvergenceWrapper, etc.
 
 
 def validate_solver_output(
