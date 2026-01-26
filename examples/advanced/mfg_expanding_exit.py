@@ -36,6 +36,7 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.level_set import LevelSetEvolver, TimeDependentDomain
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
@@ -81,7 +82,7 @@ print("\n" + "=" * 70)
 print("Initialization")
 print("=" * 70)
 
-grid = TensorProductGrid(dimension=1, bounds=[(0, L)], Nx=[Nx])
+grid = TensorProductGrid(dimension=1, bounds=[(0, L)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
 x = grid.coordinates[0]
 N_points = len(x)  # Actual number of grid points (Nx+1)
 dx = x[1] - x[0]

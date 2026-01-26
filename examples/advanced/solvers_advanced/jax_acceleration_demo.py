@@ -17,6 +17,7 @@ from mfg_pde.backends import create_backend
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.factory import print_backend_info
 from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 from mfg_pde.utils.numpy_compat import trapezoid
 
@@ -79,7 +80,9 @@ def benchmark_backends(problem_sizes=None, num_runs=3):
         logger.info(f"Benchmarking problem size Nx={Nx}")
 
         # Create test problem using geometry-first API
-        geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx])
+        geometry = TensorProductGrid(
+            dimension=1, bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1)
+        )
         problem = BarProblemJAX(geometry=geometry, T=1.0, Nt=50, capacity=0.6)
 
         # Benchmark NumPy backend

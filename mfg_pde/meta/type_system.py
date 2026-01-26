@@ -455,8 +455,11 @@ if __name__ == "__main__":
     # Create a typed problem
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import TensorProductGrid
+    from mfg_pde.geometry.boundary import no_flux_bc
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
+    geometry = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
+    )
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
     typed_problem = create_typed_problem(problem, QUADRATIC_MFG_TYPE)
 

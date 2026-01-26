@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 # Validated in: mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
 # Issue #638: Import Robin BC ghost cell computation
 # Issue #625: Migrated from tensor_calculus to operators/stencils (tensor_calculus deprecated v0.18.0)
-from mfg_pde.geometry.boundary import pad_array_with_ghosts
+from mfg_pde.geometry.boundary import no_flux_bc, pad_array_with_ghosts
 from mfg_pde.geometry.boundary.applicator_base import ghost_cell_robin
 from mfg_pde.operators.stencils.finite_difference import (
     gradient_central,
@@ -1531,7 +1531,9 @@ if __name__ == "__main__":
     from mfg_pde import MFGProblem
     from mfg_pde.geometry import TensorProductGrid
 
-    geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11])
+    geometry = TensorProductGrid(
+        dimension=1, bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
+    )
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=5, diffusion=0.1)
 
     try:

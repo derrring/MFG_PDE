@@ -55,9 +55,11 @@ class MultiDimVisualizer:
 
     Example:
         >>> from mfg_pde.geometry import TensorProductGrid
+        >>> from mfg_pde.geometry.boundary import no_flux_bc
         >>> from mfg_pde.visualization import MultiDimVisualizer
         >>>
-        >>> grid = TensorProductGrid(2, [(0,1), (0,1)], [51, 51])
+        >>> grid = TensorProductGrid(2, [(0,1), (0,1)], [51, 51],
+        ...                          boundary_conditions=no_flux_bc(dimension=2))
         >>> viz = MultiDimVisualizer(grid, backend='plotly')
         >>>
         >>> # Create 3D surface plot

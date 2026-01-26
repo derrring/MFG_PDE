@@ -39,7 +39,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import ObstacleConstraint
+from mfg_pde.geometry.boundary import ObstacleConstraint, no_flux_bc
 
 print("=" * 70)
 print("Heat Equation with Minimum Temperature Constraint")
@@ -57,7 +57,7 @@ cooling_rate = 0.5  # λ: cooling rate (heat loss to environment)
 
 # Create grid
 
-grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
+grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
 x = grid.coordinates[0]
 Nx_actual = len(x)
 dx = x[1] - x[0]

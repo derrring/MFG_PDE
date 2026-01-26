@@ -46,7 +46,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BilateralConstraint
+from mfg_pde.geometry.boundary import BilateralConstraint, no_flux_bc
 
 print("=" * 70)
 print("Bilateral Constraint Problem - Temperature Control")
@@ -63,7 +63,7 @@ sigma = 0.2  # Diffusion coefficient
 
 # Create grid
 
-grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx])
+grid = TensorProductGrid(dimension=1, bounds=[(x_min, x_max)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
 x = grid.coordinates[0]
 Nx_actual = len(x)
 dx = x[1] - x[0]
