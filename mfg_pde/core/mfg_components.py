@@ -37,6 +37,36 @@ if TYPE_CHECKING:
 VALUE_BEFORE_SQUARE_LIMIT = 1e150
 
 
+def _create_auto_dm_func_from_legacy(hamiltonian_func, eps: float = 1e-7):
+    """
+    Create auto-computed hamiltonian_dm_func from legacy hamiltonian_func.
+
+    Issue #667: Auto-compute dH/dm using finite differences when not provided.
+
+    Parameters
+    ----------
+    hamiltonian_func : Callable
+        Legacy 7-parameter Hamiltonian function:
+        H(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem)
+    eps : float
+        Finite difference step size (default: 1e-7)
+
+    Returns
+    -------
+    Callable
+        Auto-computed dH/dm function with same signature
+    """
+
+    def auto_dm_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+        """Auto-computed dH/dm using central finite differences."""
+        # Central difference: (H(m+eps) - H(m-eps)) / (2*eps)
+        H_plus = hamiltonian_func(x_idx, x_position, m_at_x + eps, derivs, t_idx, current_time, problem)
+        H_minus = hamiltonian_func(x_idx, x_position, m_at_x - eps, derivs, t_idx, current_time, problem)
+        return (H_plus - H_minus) / (2 * eps)
+
+    return auto_dm_func
+
+
 # ============================================================================
 # MFG Components for Custom Problem Definition
 # ============================================================================
@@ -159,6 +189,14 @@ class MFGComponents:
                 DeprecationWarning,
                 stacklevel=2,
             )
+
+            # Issue #667: Auto-compute hamiltonian_dm_func if not provided
+            if self.hamiltonian_dm_func is None:
+                self.hamiltonian_dm_func = _create_auto_dm_func_from_legacy(self.hamiltonian_func)
+                logger.info(
+                    "Auto-generated hamiltonian_dm_func using finite differences. "
+                    "For better accuracy, provide explicit hamiltonian_dm_func or use class-based Hamiltonian."
+                )
 
         # Convert Lagrangian to Hamiltonian via Legendre transform (Issue #651)
         if self.lagrangian is not None:
