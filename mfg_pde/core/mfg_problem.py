@@ -1790,21 +1790,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             "warnings": warnings_list,
         }
 
-    def _potential(self, x: float) -> float:
-        """Default potential function."""
-        Lx = self._get_domain_length() or 1.0  # Fallback to 1.0 if not 1D
-        return 50 * (
-            0.1 * np.cos(x * 2 * np.pi / Lx) + 0.25 * np.sin(x * 2 * np.pi / Lx) + 0.1 * np.sin(x * 4 * np.pi / Lx)
-        )
-
-    def _u_final(self, x: float) -> float:
-        """Default final value function."""
-        Lx = self._get_domain_length() or 1.0  # Fallback to 1.0 if not 1D
-        return 5 * (np.cos(x * 2 * np.pi / Lx) + 0.4 * np.sin(x * 4 * np.pi / Lx))
-
-    def _m_initial(self, x: float) -> float:
-        """Default initial density function."""
-        return 2 * np.exp(-200 * (x - 0.2) ** 2) + np.exp(-200 * (x - 0.8) ** 2)
+    # Issue #670/#671: Legacy default functions removed (Fail Fast principle)
+    # - _potential(): Removed - zero potential is now the explicit default
+    # - _u_final(): Removed - must be provided via MFGComponents.u_final
+    # - _m_initial(): Removed - must be provided via MFGComponents.m_initial
 
     def _initialize_functions(self, **kwargs: Any) -> None:
         """Initialize potential, initial density, and final value functions.
@@ -1842,12 +1831,14 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 "See examples/basic/lq_mfg_classic.py for the classic LQ-MFG setup."
             )
 
-        # === Potential: still allows defaults for now (Issue #671 will address) ===
+        # === Potential: V(x,t) - defaults to zero (Issue #671: explicit default) ===
+        # Zero potential is a valid physical choice (many MFG problems have V=0).
+        # Unlike m_initial/u_final, zero potential doesn't require explicit specification.
         has_potential = has_components and self.components.potential_func is not None
         if has_potential:
             self._setup_custom_potential()
         else:
-            # Default potential: zero (to be addressed in Issue #671)
+            # Issue #671: Zero potential is the explicit default (physically meaningful)
             self.f_potential[:] = 0.0
 
         # Normalize initial density
@@ -1878,46 +1869,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         if integral_m_initial > 1e-10:
             self.m_initial /= integral_m_initial
 
-    def _setup_default_initial_density(self) -> None:
-        """Setup default initial density (Gaussian at center for n-D problems)."""
-        if self.dimension == 1:
-            # 1D: Use original default
-            spatial_grid = self._get_spatial_grid_internal()
-            for i in range(self.spatial_shape[0]):
-                # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
-                x_i = float(spatial_grid[i, 0])
-                self.m_initial[i] = self._m_initial(x_i)
-        elif self.dimension == "network":
-            # Network/graph: uniform density on all nodes
-            self.m_initial[:] = 1.0 / self.num_nodes
-        else:
-            # n-D: Gaussian at center of domain
-            # Use geometry interface instead of deprecated _grid
-            if self.geometry is not None:
-                # Get spatial grid from geometry (works for all geometry types)
-                spatial_grid = self.geometry.get_spatial_grid()
-
-                # For CartesianGrid geometries, spatial_grid is already (N, d) array
-                # For other geometries, it should also be (N, d)
-                if spatial_grid.ndim == 1:
-                    # 1D case or flattened - reshape if needed
-                    all_points = spatial_grid.reshape(-1, 1)
-                else:
-                    all_points = spatial_grid
-
-                # Center of domain
-                center = np.array([(b[0] + b[1]) / 2 for b in self.spatial_bounds])
-
-                # Gaussian: exp(-alpha * ||x - center||^2)
-                alpha = 100.0  # Width parameter
-                distances_sq = np.sum((all_points - center) ** 2, axis=1)
-                density_flat = np.exp(-alpha * distances_sq)
-
-                # Reshape to grid shape
-                self.m_initial = density_flat.reshape(self.spatial_shape)
-            else:
-                # Fallback: uniform density
-                self.m_initial[:] = 1.0
+    # Issue #670: _setup_default_initial_density() removed - m_initial must be explicit
 
     # Methods inherited from HamiltonianMixin:
     # - H(), dH_dm(), get_hjb_hamiltonian_jacobian_contrib()
