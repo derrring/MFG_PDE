@@ -13,9 +13,19 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import BilateralConstraint, ObstacleConstraint, neumann_bc, no_flux_bc
+
+
+def _default_hamiltonian():
+    """Default Hamiltonian for testing."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
 
 
 def _default_components():
@@ -25,6 +35,7 @@ def _default_components():
             -10 * (np.asarray(x) - 0.5) ** 2 if np.ndim(x) == 0 else -10 * np.sum((np.asarray(x) - 0.5) ** 2)
         ),
         u_final=lambda x: 0.0,
+        hamiltonian=_default_hamiltonian(),
     )
 
 
@@ -38,6 +49,7 @@ def _default_components_2d():
     return MFGComponents(
         m_initial=m_initial_2d,
         u_final=lambda x: 0.0,
+        hamiltonian=_default_hamiltonian(),
     )
 
 

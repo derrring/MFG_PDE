@@ -18,7 +18,17 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
+
+
+def _default_hamiltonian():
+    """Default Hamiltonian for testing."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
 
 
 def _default_components_2d():
@@ -37,6 +47,7 @@ def _default_components_2d():
     return MFGComponents(
         m_initial=m_initial_2d,
         u_final=u_final_2d,
+        hamiltonian=_default_hamiltonian(),
     )
 
 
