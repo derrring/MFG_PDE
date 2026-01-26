@@ -336,6 +336,8 @@ class HamiltonianMixin:
             expected_params: List of required parameter names
             gradient_param_required: If True, requires EITHER 'derivs' OR 'p_values'
         """
+        import warnings
+
         sig = inspect.signature(func)
         params = list(sig.parameters.keys())
 
@@ -348,6 +350,23 @@ class HamiltonianMixin:
                     f"{name} must accept either 'derivs' (tuple notation, preferred) "
                     f"or 'p_values' (legacy string-key format) parameter. "
                     f"Current parameters: {params}"
+                )
+
+            # Deprecation warning for p_values format (Issue #670)
+            if has_p_values and not has_derivs:
+                warnings.warn(
+                    f"{name} uses deprecated 'p_values' parameter format. "
+                    f"Migrate to 'derivs' (tuple notation) for future compatibility:\n\n"
+                    f"  # Old format (deprecated):\n"
+                    f"  def {name}(..., p_values, ...):\n"
+                    f"      p = p_values.get('forward', 0.0)\n\n"
+                    f"  # New format (preferred):\n"
+                    f"  def {name}(..., derivs, ...):\n"
+                    f"      p = derivs.get((1,), 0.0)  # 1D gradient\n\n"
+                    f"See docs/development/DERIVATIVE_TENSORS_MIGRATION.md for full guide. "
+                    f"p_values support will be removed in v1.0.0.",
+                    DeprecationWarning,
+                    stacklevel=5,
                 )
 
         missing = [p for p in expected_params if p not in params]
