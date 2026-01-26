@@ -167,12 +167,12 @@ class BlockIterator(BaseMFGSolver):
         """Initialize initial density and terminal value from problem."""
         # Try get_m_init() / get_u_fin() methods (preferred)
         try:
-            M_initial = self.problem.get_m_init()
+            M_initial = self.problem.get_m_initial()
             if M_initial.shape != shape:
                 M_initial = M_initial.reshape(shape)
         except AttributeError:
             try:
-                M_initial = self.problem.m_init
+                M_initial = self.problem.m_initial  # Issue #670: unified naming
                 if M_initial is not None and M_initial.shape != shape:
                     M_initial = M_initial.reshape(shape)
             except AttributeError:
@@ -180,12 +180,12 @@ class BlockIterator(BaseMFGSolver):
                 logger.warning("No initial density found, using uniform")
 
         try:
-            U_terminal = self.problem.get_u_fin()
+            U_terminal = self.problem.get_u_final()
             if U_terminal.shape != shape:
                 U_terminal = U_terminal.reshape(shape)
         except AttributeError:
             try:
-                U_terminal = self.problem.u_fin
+                U_terminal = self.problem.u_final  # Issue #670: unified naming
                 if U_terminal is not None and U_terminal.shape != shape:
                     U_terminal = U_terminal.reshape(shape)
             except AttributeError:

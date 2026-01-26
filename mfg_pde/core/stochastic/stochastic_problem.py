@@ -335,11 +335,11 @@ class StochasticMFGProblem(MFGProblem):
 
         conditional_components.hamiltonian_func = conditional_H
         conditional_components.hamiltonian_dm_func = conditional_H_dm
-        conditional_components.final_value_func = conditional_g
+        conditional_components.u_final = conditional_g
 
         # Preserve other problem components
         if self.components is not None:
-            conditional_components.initial_density_func = self.components.initial_density_func
+            conditional_components.m_initial = self.components.m_initial
             conditional_components.boundary_conditions = self.components.boundary_conditions
             conditional_components.parameters = self.components.parameters.copy()
 

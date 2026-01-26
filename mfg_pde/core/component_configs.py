@@ -41,9 +41,9 @@ class StandardMFGConfig:
         Jacobian contribution for coupling terms.
     potential_func : Callable, optional
         V(x, t) -> float. External potential/forces.
-    initial_density_func : Callable, optional
+    m_initial : Callable, optional
         m_0(x) -> float. Initial agent distribution.
-    final_value_func : Callable, optional
+    u_final : Callable, optional
         u_T(x) -> float. Terminal cost/reward.
     boundary_conditions : BoundaryConditions, optional
         Boundary condition specification.
@@ -56,8 +56,8 @@ class StandardMFGConfig:
     hamiltonian_dp_func: Callable | None = None
     hamiltonian_jacobian_func: Callable | None = None
     potential_func: Callable | None = None
-    initial_density_func: Callable | None = None
-    final_value_func: Callable | None = None
+    m_initial: Callable | None = None
+    u_final: Callable | None = None
     boundary_conditions: BoundaryConditions | None = None
     coupling_func: Callable | None = None
 

@@ -268,8 +268,8 @@ class BaseVariationalSolver(BaseOptimizationSolver):
         if strategy == "uniform":
             # Uniform density maintained over time
             for i in range(n_time_points):
-                if self.problem.components.initial_density_func:
-                    density_guess[i, :] = [self.problem.components.initial_density_func(x) for x in self.x_grid]
+                if self.problem.components.m_initial:
+                    density_guess[i, :] = [self.problem.components.m_initial(x) for x in self.x_grid]
                 else:
                     density_guess[i, :] = 1.0 / (xmax - xmin)
 

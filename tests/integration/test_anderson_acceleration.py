@@ -76,7 +76,7 @@ def run_solver(use_anderson: bool = False, backend: str | None = None):
     except Exception as e:
         print(f"Exception (expected for stochastic): {str(e)[:80]}...")
         U = mfg_solver.U if hasattr(mfg_solver, "U") else np.zeros((26, 26))
-        M = mfg_solver.M if hasattr(mfg_solver, "M") else problem.m_init
+        M = mfg_solver.M if hasattr(mfg_solver, "M") else problem.m_initial
         converged = False
 
     elapsed_time = time.time() - start_time

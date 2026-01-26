@@ -338,8 +338,8 @@ class HighDimMFGBenchmark:
                 return MFGComponents(
                     hamiltonian_func=simple_hamiltonian,
                     hamiltonian_dm_func=hamiltonian_dm,
-                    initial_density_func=initial_density_grid,
-                    final_value_func=terminal_cost_grid,
+                    m_initial=initial_density_grid,
+                    u_final=terminal_cost_grid,
                 )
 
             def hamiltonian(self, x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
@@ -444,8 +444,8 @@ class HighDimMFGBenchmark:
                 return MFGComponents(
                     hamiltonian_func=simple_hamiltonian,
                     hamiltonian_dm_func=hamiltonian_dm,
-                    initial_density_func=initial_density_grid,
-                    final_value_func=terminal_cost_grid,
+                    m_initial=initial_density_grid,
+                    u_final=terminal_cost_grid,
                 )
 
             def hamiltonian(self, x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):

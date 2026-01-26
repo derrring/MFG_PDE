@@ -165,8 +165,8 @@ def test_create_mfg_problem_with_components(simple_domain):
     components = MFGComponents(
         hamiltonian_func=hamiltonian,
         hamiltonian_dm_func=hamiltonian_dm,
-        final_value_func=lambda x: x**2,
-        initial_density_func=lambda x: np.exp(-(x**2)),
+        u_final=lambda x: x**2,
+        m_initial=lambda x: np.exp(-(x**2)),
         problem_type="standard",
     )
 

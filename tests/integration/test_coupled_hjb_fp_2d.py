@@ -106,7 +106,7 @@ class SimpleCoupledMFGProblem(MFGProblem):
             """∂H/∂m = κ"""
             return coupling_strength
 
-        def initial_density_func(x_idx):
+        def m_initial(x_idx):
             """Gaussian initial density."""
             # Get physical position
             ndim = self.geometry.grid.dimension
@@ -133,8 +133,8 @@ class SimpleCoupledMFGProblem(MFGProblem):
         return MFGComponents(
             hamiltonian_func=hamiltonian_func,
             hamiltonian_dm_func=hamiltonian_dm,
-            initial_density_func=initial_density_func,
-            final_value_func=terminal_cost_func,
+            m_initial=m_initial,
+            u_final=terminal_cost_func,
         )
 
 

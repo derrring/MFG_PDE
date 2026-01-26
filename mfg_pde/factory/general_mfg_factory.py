@@ -72,10 +72,10 @@ class GeneralMFGFactory:
         # Add optional components
         if "potential_func" in optional_components:
             component_kwargs["potential_func"] = optional_components["potential_func"]
-        if "initial_density_func" in optional_components:
-            component_kwargs["initial_density_func"] = optional_components["initial_density_func"]
-        if "final_value_func" in optional_components:
-            component_kwargs["final_value_func"] = optional_components["final_value_func"]
+        if "m_initial" in optional_components:
+            component_kwargs["m_initial"] = optional_components["m_initial"]
+        if "u_final" in optional_components:
+            component_kwargs["u_final"] = optional_components["u_final"]
         if "jacobian_func" in optional_components:
             component_kwargs["jacobian_func"] = optional_components["jacobian_func"]
         if "coupling_func" in optional_components:

@@ -71,7 +71,7 @@ def main():
         print(f"\nSolver exception (expected for stochastic): {str(e)[:100]}...")
         # Get partial result
         _ = mfg_solver.U if hasattr(mfg_solver, "U") else np.zeros((26, 26))
-        M = mfg_solver.M if hasattr(mfg_solver, "M") else problem.m_init
+        M = mfg_solver.M if hasattr(mfg_solver, "M") else problem.m_initial
         _ = False  # converged
 
     # Compute mass conservation

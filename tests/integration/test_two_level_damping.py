@@ -72,7 +72,7 @@ def run_solver(name: str, use_anderson: bool, damping_factor: float, anderson_be
     except Exception as e:
         print(f"Exception: {str(e)[:80]}...")
         _ = mfg_solver.U if hasattr(mfg_solver, "U") else np.zeros((26, 26))
-        M = mfg_solver.M if hasattr(mfg_solver, "M") else problem.m_init
+        M = mfg_solver.M if hasattr(mfg_solver, "M") else problem.m_initial
 
     elapsed_time = time.time() - start_time
 

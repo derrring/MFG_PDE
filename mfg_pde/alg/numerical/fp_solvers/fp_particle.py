@@ -1883,7 +1883,7 @@ if __name__ == "__main__":
 
     Nx = problem.geometry.get_grid_shape()[0]
     U_test = np.zeros((problem.Nt + 1, Nx))
-    M_init = problem.m_init
+    M_init = problem.m_initial  # Issue #670: unified naming
 
     M_solution = solver.solve_fp_system(M_initial=M_init, drift_field=U_test)
 

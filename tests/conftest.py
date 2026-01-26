@@ -16,6 +16,7 @@ import numpy as np
 # Import main package components
 from mfg_pde import MFGProblem
 from mfg_pde.config import MFGSolverConfig
+from mfg_pde.factory import lq_mfg_initial_density, lq_mfg_terminal_cost
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
 
@@ -76,7 +77,13 @@ def tiny_problem():
     geometry = TensorProductGrid(
         bounds=[(0.0, 1.0)], Nx_points=[6], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=5 -> 6 points
-    return MFGProblem(geometry=geometry, Nt=3, T=0.1)
+    return MFGProblem(
+        geometry=geometry,
+        Nt=3,
+        T=0.1,
+        u_final=lq_mfg_terminal_cost(Lx=1.0),
+        m_initial=lq_mfg_initial_density(),
+    )
 
 
 @pytest.fixture
@@ -85,7 +92,13 @@ def small_problem():
     geometry = TensorProductGrid(
         bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=10 -> 11 points
-    return MFGProblem(geometry=geometry, Nt=5, T=0.5)
+    return MFGProblem(
+        geometry=geometry,
+        Nt=5,
+        T=0.5,
+        u_final=lq_mfg_terminal_cost(Lx=1.0),
+        m_initial=lq_mfg_initial_density(),
+    )
 
 
 @pytest.fixture
@@ -94,7 +107,13 @@ def medium_problem():
     geometry = TensorProductGrid(
         bounds=[(0.0, 1.0)], Nx_points=[26], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=25 -> 26 points
-    return MFGProblem(geometry=geometry, Nt=12, T=1.0)
+    return MFGProblem(
+        geometry=geometry,
+        Nt=12,
+        T=1.0,
+        u_final=lq_mfg_terminal_cost(Lx=1.0),
+        m_initial=lq_mfg_initial_density(),
+    )
 
 
 @pytest.fixture
@@ -103,7 +122,13 @@ def large_problem():
     geometry = TensorProductGrid(
         bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=50 -> 51 points
-    return MFGProblem(geometry=geometry, Nt=25, T=2.0)
+    return MFGProblem(
+        geometry=geometry,
+        Nt=25,
+        T=2.0,
+        u_final=lq_mfg_terminal_cost(Lx=1.0),
+        m_initial=lq_mfg_initial_density(),
+    )
 
 
 @pytest.fixture(
@@ -119,7 +144,13 @@ def parametrized_problem(request):
     geometry = TensorProductGrid(
         bounds=[(0.0, 1.0)], Nx_points=[params["Nx_points"]], boundary_conditions=no_flux_bc(dimension=1)
     )
-    return MFGProblem(geometry=geometry, Nt=params["Nt"], T=params["T"])
+    return MFGProblem(
+        geometry=geometry,
+        Nt=params["Nt"],
+        T=params["T"],
+        u_final=lq_mfg_terminal_cost(Lx=1.0),
+        m_initial=lq_mfg_initial_density(),
+    )
 
 
 @pytest.fixture(params=[0.1, 0.5, 1.0, 2.0])
@@ -459,7 +490,7 @@ def validate_mfg_solution(U, M, problem):
 
     # Check mass conservation (approximately)
     dx = problem.geometry.get_grid_spacing()[0]
-    initial_mass = np.sum(problem.m_init) * dx
+    initial_mass = np.sum(problem.m_initial) * dx  # Issue #670: unified naming
     for t in range(problem.Nt + 1):
         current_mass = np.sum(M[t, :]) * dx
         mass_error = abs(current_mass - initial_mass)

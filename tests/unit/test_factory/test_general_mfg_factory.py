@@ -213,8 +213,8 @@ def test_create_from_functions_with_optional_components(factory, sample_function
         domain_config=domain_config,
         time_config=time_config,
         potential_func=sample_functions["potential"],
-        initial_density_func=sample_functions["initial_density"],
-        final_value_func=sample_functions["final_value"],
+        m_initial=sample_functions["initial_density"],
+        u_final=sample_functions["final_value"],
     )
 
     assert problem is not None
@@ -472,8 +472,8 @@ def test_end_to_end_problem_creation(factory, sample_functions, domain_config, t
         time_config=time_config,
         solver_config=solver_config,
         potential_func=sample_functions["potential"],
-        initial_density_func=sample_functions["initial_density"],
-        final_value_func=sample_functions["final_value"],
+        m_initial=sample_functions["initial_density"],
+        u_final=sample_functions["final_value"],
     )
 
     # Verify problem has all components

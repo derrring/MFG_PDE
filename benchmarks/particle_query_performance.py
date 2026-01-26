@@ -81,7 +81,7 @@ def benchmark_1d_sparse_queries():
     # Solve to get particle distribution
     Nx = geometry.get_grid_shape()[0]
     U_zero = np.zeros((problem.Nt + 1, Nx))
-    result = solver.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero, show_progress=False)
+    result = solver.solve_fp_system(M_initial=problem.m_initial, drift_field=U_zero, show_progress=False)
 
     # Test various query counts
     query_counts = [10, 50, 100, 500, 1000]
@@ -160,7 +160,7 @@ def benchmark_1d_scaling():
 
         # Solve
         U_zero = np.zeros((problem.Nt + 1, Nx))
-        result = solver.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero, show_progress=False)
+        result = solver.solve_fp_system(M_initial=problem.m_initial, drift_field=U_zero, show_progress=False)
 
         # Query points
         query_points = np.random.rand(num_queries, 1)
@@ -236,7 +236,7 @@ def benchmark_2d_semi_lagrangian():
         # Solve
         grid_shape = geometry.get_grid_shape()
         U_zero = np.zeros((problem.Nt + 1, *grid_shape))
-        result = solver.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero, show_progress=False)
+        result = solver.solve_fp_system(M_initial=problem.m_initial, drift_field=U_zero, show_progress=False)
 
         # Semi-Lagrangian pattern: Query at characteristic endpoints
         # For simplicity, simulate N_grid queries (one per grid point)
@@ -315,7 +315,7 @@ def benchmark_query_methods():
     # Solve
     Nx = geometry.get_grid_shape()[0]
     U_zero = np.zeros((problem.Nt + 1, Nx))
-    result = solver.solve_fp_system(M_initial=problem.m_init, drift_field=U_zero, show_progress=False)
+    result = solver.solve_fp_system(M_initial=problem.m_initial, drift_field=U_zero, show_progress=False)
 
     num_queries = 100
     query_points = np.random.rand(num_queries, 1)

@@ -174,20 +174,20 @@ class MFGComponents:
         self.standard.potential_func = value
 
     @property
-    def initial_density_func(self) -> Callable | None:
-        return self.standard.initial_density_func
+    def m_initial(self) -> Callable | None:
+        return self.standard.m_initial
 
-    @initial_density_func.setter
-    def initial_density_func(self, value: Callable | None):
-        self.standard.initial_density_func = value
+    @m_initial.setter
+    def m_initial(self, value: Callable | None):
+        self.standard.m_initial = value
 
     @property
-    def final_value_func(self) -> Callable | None:
-        return self.standard.final_value_func
+    def u_final(self) -> Callable | None:
+        return self.standard.u_final
 
-    @final_value_func.setter
-    def final_value_func(self, value: Callable | None):
-        self.standard.final_value_func = value
+    @u_final.setter
+    def u_final(self, value: Callable | None):
+        self.standard.u_final = value
 
     @property
     def boundary_conditions(self) -> BoundaryConditions | None:

@@ -90,7 +90,7 @@ class VariationalMFGComponents:
     potential_dx_func: Callable | None = None  # ∂V/∂x
 
     # Initial conditions
-    initial_density_func: Callable | None = None  # m₀(x) -> float
+    m_initial: Callable | None = None  # m₀(x) -> float
 
     # Constraints (optional)
     state_constraints: list[Callable] | None = None  # c(t, x) ≤ 0
@@ -215,7 +215,7 @@ class VariationalMFGProblem:
             lagrangian_dv_func=default_lagrangian_dv,
             lagrangian_dm_func=default_lagrangian_dm,
             terminal_cost_func=default_terminal_cost,
-            initial_density_func=default_initial_density,
+            m_initial=default_initial_density,
             noise_intensity=self.sigma,
             parameters={"congestion_coefficient": 0.5},
         )
@@ -506,8 +506,8 @@ class VariationalMFGProblem:
             hamiltonian_dm_func=lambda x_idx, m_at_x, p_values, t_idx: hamiltonian_funcs["hamiltonian_dm"](
                 self.x[x_idx], p_values.get("forward", 0.0), m_at_x, self.t[t_idx]
             ),
-            initial_density_func=self.components.initial_density_func,
-            final_value_func=lambda x: -self.evaluate_terminal_cost(x),  # Value = -cost
+            m_initial=self.components.m_initial,
+            u_final=lambda x: -self.evaluate_terminal_cost(x),  # Value = -cost
             description=f"Hamiltonian formulation of {self.components.description}",
         )
 
@@ -589,7 +589,7 @@ def create_quadratic_variational_mfg(
         lagrangian_dv_func=lagrangian_dv,
         lagrangian_dm_func=lagrangian_dm,
         terminal_cost_func=lambda x: 0.0,
-        initial_density_func=lambda x: 1.0 / (xmax - xmin),
+        m_initial=lambda x: 1.0 / (xmax - xmin),
         noise_intensity=sigma,
         parameters={
             "kinetic_coefficient": kinetic_coefficient,
@@ -651,7 +651,7 @@ def create_obstacle_variational_mfg(
         lagrangian_dv_func=lambda t, x, v, m: v,
         lagrangian_dm_func=lambda t, x, v, m: 0.5,
         terminal_cost_func=lambda x: 0.0,
-        initial_density_func=lambda x: 1.0 / (xmax - xmin),
+        m_initial=lambda x: 1.0 / (xmax - xmin),
         state_constraints=[obstacle_constraint],
         noise_intensity=sigma,
         parameters={

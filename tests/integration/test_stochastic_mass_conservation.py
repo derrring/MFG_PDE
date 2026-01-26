@@ -112,7 +112,7 @@ def solve_with_stochastic_monitoring(seed=42, max_iterations=100, tolerance=1e-4
     (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
     Nt_points = problem.Nt + 1  # Temporal grid points
     U = np.zeros((Nt_points, Nx_points))  # Terminal condition will be set by HJB solver
-    M = problem.m_init
+    M = problem.m_initial  # Issue #670: unified naming
 
     converged = False
     iteration = 0
