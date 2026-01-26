@@ -13,7 +13,21 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid, neumann_bc
+
+
+def _default_components_2d():
+    """Default MFGComponents for 2D testing (Issue #670: explicit specification required)."""
+
+    def m_initial_2d(x):
+        x_arr = np.asarray(x)
+        return np.exp(-10 * np.sum((x_arr - 0.5) ** 2))
+
+    return MFGComponents(
+        m_initial=m_initial_2d,
+        u_final=lambda x: 0.0,
+    )
 
 
 class TestRotationMatrixCorrectness:
@@ -30,7 +44,7 @@ class TestRotationMatrixCorrectness:
         )
 
         # Create problem with geometry
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, components=_default_components_2d())
 
         # Get collocation points from geometry
         collocation_points = geometry.get_spatial_grid()
@@ -160,7 +174,7 @@ class TestDerivativeRotationBackTransform:
             Nx=[11, 11],
             boundary_conditions=neumann_bc(dimension=2),
         )
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, components=_default_components_2d())
         collocation_points = geometry.get_spatial_grid()
 
         solver = HJBGFDMSolver(
@@ -242,7 +256,7 @@ def test_smoke_rotation_matrix():
         Nx=[11, 11],
         boundary_conditions=neumann_bc(dimension=2),
     )
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, components=_default_components_2d())
     collocation_points = geometry.get_spatial_grid()
 
     solver = HJBGFDMSolver(

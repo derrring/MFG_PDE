@@ -19,9 +19,18 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
+        u_final=lambda x: 0.0,
+    )
 
 
 class TestWenoFamilySolver:
@@ -31,7 +40,7 @@ class TestWenoFamilySolver:
     def simple_problem(self) -> MFGProblem:
         """Create simple MFG problem for testing using modern geometry-first API."""
         domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[33], boundary_conditions=no_flux_bc(dimension=1))
-        return MFGProblem(geometry=domain, T=0.1, Nt=10, diffusion=0.1)
+        return MFGProblem(geometry=domain, T=0.1, Nt=10, diffusion=0.1, components=_default_components())
 
     @pytest.fixture
     def test_values(self) -> np.ndarray:
@@ -302,7 +311,7 @@ class TestWenoSolverIntegration:
     def integration_problem(self) -> MFGProblem:
         """Create MFG problem for integration testing using modern geometry-first API."""
         domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1))
-        return MFGProblem(geometry=domain, T=1.0, Nt=30, diffusion=0.1)
+        return MFGProblem(geometry=domain, T=1.0, Nt=30, diffusion=0.1, components=_default_components())
 
     def test_solve_hjb_system_shape(self, integration_problem):
         """Test that solve_hjb_system returns correct shape."""

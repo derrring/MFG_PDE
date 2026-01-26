@@ -11,7 +11,29 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver, KDENormalization
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
+
+
+def _default_components_2d():
+    """Default MFGComponents for 2D testing (Issue #670: explicit specification required)."""
+
+    def m_initial_2d(x):
+        x_arr = np.asarray(x)
+        return np.exp(-10 * np.sum((x_arr - 0.5) ** 2))
+
+    return MFGComponents(
+        m_initial=m_initial_2d,
+        u_final=lambda x: 0.0,
+    )
+
+
+def _default_components():
+    """Default MFGComponents for 1D testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
+        u_final=lambda x: 0.0,
+    )
 
 
 class Simple2DMFGProblem(MFGProblem):
@@ -27,6 +49,7 @@ class Simple2DMFGProblem(MFGProblem):
             diffusion=0.1,
             coupling_coefficient=0.5,
             dimension=2,
+            components=_default_components_2d(),
         )
 
 
@@ -161,7 +184,7 @@ class TestBoundaryConditionRequirements:
             Nx_points=[11],
             boundary_conditions=dirichlet_bc(dimension=1, value=0.0),
         )
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, components=_default_components())
 
         # Should work
         solver = FPParticleSolver(problem, num_particles=100)
@@ -172,7 +195,7 @@ class TestBoundaryConditionRequirements:
         from mfg_pde.geometry.boundary import periodic_bc
 
         # Problem without geometry
-        problem = MFGProblem(T=1.0, Nt=10)
+        problem = MFGProblem(T=1.0, Nt=10, components=_default_components())
 
         # Should work with explicit BC
         bc = periodic_bc(dimension=1)
@@ -190,7 +213,7 @@ class TestBoundaryConditionRequirements:
             Nx_points=[11],
             boundary_conditions=dirichlet_bc(dimension=1, value=0.0),
         )
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10)
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, components=_default_components())
 
         # Explicit periodic BC should take priority
         bc = periodic_bc(dimension=1)
