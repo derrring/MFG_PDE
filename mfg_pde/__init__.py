@@ -20,8 +20,6 @@ from .config import MFGSolverConfig  # noqa: E402
 from .core.hamiltonian import (  # noqa: E402
     # Control cost classes (original)
     ControlCostBase,
-    # Backward-compatible aliases (deprecated since v0.17.2)
-    DefaultMFGHamiltonian,
     # Dual classes (Legendre transform)
     DualHamiltonian,
     DualLagrangian,
@@ -29,7 +27,6 @@ from .core.hamiltonian import (  # noqa: E402
     HamiltonianBase,
     # Lagrangian classes (Issue #651)
     LagrangianBase,
-    LegendreHamiltonian,
     OptimizationSense,
     QuadraticControlCost,
     QuadraticMFGHamiltonian,
@@ -151,9 +148,6 @@ __all__ = [
     "LagrangianBase",
     "DualHamiltonian",
     "DualLagrangian",
-    # Backward-compatible aliases (deprecated since v0.17.2)
-    "DefaultMFGHamiltonian",
-    "LegendreHamiltonian",
     # Configuration
     "MFGSolverConfig",
     # Numerical schemes (Issue #580)

@@ -66,8 +66,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.utils.deprecation import deprecated_alias
-
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -1580,23 +1578,6 @@ def create_hamiltonian(
         raise ValueError(
             f"Unknown hamiltonian_type: {hamiltonian_type}. Valid types: quadratic, l1, bounded, default, separable"
         )
-
-
-# ============================================================================
-# Backward-Compatible Aliases (deprecated since v0.17.2, remove in v1.0.0)
-# ============================================================================
-
-# Old names → New names mapping:
-#   DefaultMFGHamiltonian → QuadraticMFGHamiltonian
-#   LegendreHamiltonian → DualHamiltonian
-#   InverseLegendreeLagrangian → DualLagrangian
-#
-# Note: MFGOperatorBase, HamiltonianBase, LagrangianBase keep their names.
-
-# Concrete classes: Use deprecated_alias for proper warnings
-DefaultMFGHamiltonian = deprecated_alias("DefaultMFGHamiltonian", QuadraticMFGHamiltonian, "v0.17.2")
-LegendreHamiltonian = deprecated_alias("LegendreHamiltonian", DualHamiltonian, "v0.17.2")
-InverseLegendreeLagrangian = deprecated_alias("InverseLegendreeLagrangian", DualLagrangian, "v0.17.2")
 
 
 if __name__ == "__main__":

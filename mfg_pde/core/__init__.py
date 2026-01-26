@@ -18,20 +18,16 @@ from .hamiltonian import (
     BoundedControlCost,
     BoundedHamiltonian,
     ControlCostBase,
-    # Backward-compatible aliases (deprecated since v0.17.2)
-    DefaultMFGHamiltonian,
     # Dual classes (Legendre transform)
     DualHamiltonian,
     DualLagrangian,
     # Full MFG Hamiltonian classes (Issue #673)
     HamiltonianBase,
     HamiltonianState,
-    InverseLegendreeLagrangian,
     L1ControlCost,
     L1Hamiltonian,
     # Lagrangian classes (Issue #651)
     LagrangianBase,
-    LegendreHamiltonian,
     # Common base (Issue #651)
     MFGOperatorBase,
     OptimizationSense,
@@ -87,10 +83,6 @@ __all__ = [
     # Dual classes (Legendre transform)
     "DualHamiltonian",
     "DualLagrangian",
-    # Backward-compatible aliases (deprecated since v0.17.2)
-    "DefaultMFGHamiltonian",
-    "LegendreHamiltonian",
-    "InverseLegendreeLagrangian",
     # Capacity-constrained MFG
     "CapacityConstrainedMFGProblem",
     "CongestionModel",
