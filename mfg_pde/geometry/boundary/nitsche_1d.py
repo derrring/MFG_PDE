@@ -37,6 +37,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy.sparse import csr_matrix, lil_matrix
 
+from mfg_pde.utils.numpy_compat import trapezoid
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -322,8 +324,8 @@ class Nitsche1DPoissonSolver:
         u_exact_nodes = u_exact(self.nodes)
         error_squared = (u_numerical - u_exact_nodes) ** 2
 
-        # Trapezoidal rule
-        l2_error_squared = np.trapz(error_squared, self.nodes)
+        # Trapezoidal rule (NumPy 2.0+ compatible)
+        l2_error_squared = trapezoid(error_squared, self.nodes)
 
         return np.sqrt(l2_error_squared)
 
