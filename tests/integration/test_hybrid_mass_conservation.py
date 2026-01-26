@@ -18,8 +18,17 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
 
 
 def compute_total_mass(density: np.ndarray, dx: float) -> float:
@@ -60,6 +69,7 @@ class TestHybridMassConservation:
             Nt=20,
             diffusion=0.1,
             coupling_coefficient=1.0,  # Running cost coefficient
+            components=_default_components(),
         )
 
     def test_hybrid_solver_mass_conservation_neumann_bc(self, simple_1d_problem):
@@ -200,7 +210,7 @@ class TestHybridMassConservationFast:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=20 -> 21 points
-        problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.1)
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.1, components=_default_components())
 
         bc = no_flux_bc(dimension=1)
         problem.boundary_conditions = bc

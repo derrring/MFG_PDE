@@ -18,6 +18,26 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
+
+
+def _default_components_2d():
+    """Default MFGComponents for 2D testing (Issue #670: explicit specification required)."""
+
+    def m_initial_2d(x):
+        """Gaussian centered at origin for 2D."""
+        x_arr = np.asarray(x)
+        return np.exp(-5 * np.sum(x_arr**2))
+
+    def u_final_2d(x):
+        """Quadratic terminal cost for 2D."""
+        x_arr = np.asarray(x)
+        return 0.5 * np.sum(x_arr**2)
+
+    return MFGComponents(
+        m_initial=m_initial_2d,
+        u_final=u_final_2d,
+    )
 
 
 class QuadraticHamiltonian2D(MFGProblem):
@@ -36,6 +56,7 @@ class QuadraticHamiltonian2D(MFGProblem):
             T=T,
             Nt=Nt,
             sigma=nu,
+            components=_default_components_2d(),
         )
         self.grid_resolution = N
 

@@ -13,8 +13,32 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import BilateralConstraint, ObstacleConstraint, neumann_bc, no_flux_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(
+            -10 * (np.asarray(x) - 0.5) ** 2 if np.ndim(x) == 0 else -10 * np.sum((np.asarray(x) - 0.5) ** 2)
+        ),
+        u_final=lambda x: 0.0,
+    )
+
+
+def _default_components_2d():
+    """Default MFGComponents for 2D testing (Issue #670: explicit specification required)."""
+
+    def m_initial_2d(x):
+        x_arr = np.asarray(x)
+        return np.exp(-10 * np.sum((x_arr - 0.5) ** 2))
+
+    return MFGComponents(
+        m_initial=m_initial_2d,
+        u_final=lambda x: 0.0,
+    )
 
 
 class TestHJBWithLowerObstacle:
@@ -37,7 +61,7 @@ class TestHJBWithLowerObstacle:
             return (x_coords[0] - 0.5) ** 2
 
         # Create MFGProblem with minimal parameters (HJB solver uses explicit inputs)
-        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma)
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
 
         # Obstacle: ψ(x) = -κ(x - 0.5)²
         x = grid.coordinates[0]
@@ -82,7 +106,7 @@ class TestHJBWithLowerObstacle:
             return (x_coords[0] - 0.5) ** 2 + (x_coords[1] - 0.5) ** 2
 
         # Create MFGProblem with minimal parameters (HJB solver uses explicit inputs)
-        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma)
+        problem = MFGProblem(geometry=grid, T=T, Nt=Nt, diffusion=sigma, components=_default_components_2d())
 
         # Obstacle: Bowl-shaped
         X, Y = grid.meshgrid()

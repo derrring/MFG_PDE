@@ -10,10 +10,20 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
+
 
 pytestmark = pytest.mark.optional_torch
 
@@ -43,6 +53,7 @@ class TestParticleGPUPipeline:
             T=1.0,
             sigma=0.1,
             coupling_coefficient=1.0,
+            components=_default_components(),
         )
 
         # Initial condition: Gaussian
@@ -109,6 +120,7 @@ class TestParticleGPUPipeline:
             Nt=10,
             T=0.5,
             sigma=0.2,
+            components=_default_components(),
         )
 
         m_initial = np.exp(-(problem.xSpace.squeeze() ** 2) / 0.2)
@@ -147,6 +159,7 @@ class TestParticleGPUPipeline:
             Nt=15,
             T=0.5,
             sigma=0.15,
+            components=_default_components(),
         )
 
         (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
@@ -187,6 +200,7 @@ class TestGPUPerformance:
             Nt=50,
             T=1.0,
             sigma=0.1,
+            components=_default_components(),
         )
 
         m_initial = np.exp(-((problem.xSpace.squeeze() - 0.5) ** 2) / 0.1)
