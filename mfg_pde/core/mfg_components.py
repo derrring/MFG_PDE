@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
-from mfg_pde.types import HamiltonianJacobians
-from mfg_pde.utils.aux_func import npart, ppart
+
+# Issue #670: npart, ppart imports removed - no default Hamiltonian
 from mfg_pde.utils.mfg_logging import get_logger
 
 logger = get_logger(__name__)
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.geometry.boundary.conditions import BoundaryConditions
+    from mfg_pde.types import HamiltonianJacobians
 
 # Define a limit for values before squaring to prevent overflow within H
 VALUE_BEFORE_SQUARE_LIMIT = 1e150
@@ -239,31 +240,51 @@ class HamiltonianMixin:
     _potential_has_time: bool | None = None
 
     def _validate_hamiltonian_components(self) -> None:
-        """Validate Hamiltonian-related components and cache signature info."""
+        """Validate Hamiltonian-related components and cache signature info.
+
+        Issue #670: All components must be explicitly provided - no defaults.
+        """
+        # Issue #670: components must be provided
         if self.components is None:
-            return
+            raise ValueError(
+                "MFGComponents must be provided. No default problem is supported.\n\n"
+                "Example:\n"
+                "  components = MFGComponents(\n"
+                "      hamiltonian_func=my_H,\n"
+                "      hamiltonian_dm_func=my_dH_dm,\n"
+                "      m_initial=my_m0,\n"
+                "      u_final=my_uT,\n"
+                "  )\n"
+                "  problem = MFGProblem(geometry=grid, components=components, ...)"
+            )
 
         has_hamiltonian = self.components.hamiltonian_func is not None
         has_hamiltonian_dm = self.components.hamiltonian_dm_func is not None
 
-        # If hamiltonian_func provided without hamiltonian_dm_func, use zero placeholder
-        if has_hamiltonian and not has_hamiltonian_dm:
-            import warnings
-
-            warnings.warn(
-                "hamiltonian_dm_func not provided - using zero placeholder. "
-                "This assumes your Hamiltonian has NO density dependence. "
-                "If H depends on m (e.g., congestion terms like log(m)), "
-                "you MUST provide hamiltonian_dm_func for correct results.",
-                UserWarning,
-                stacklevel=4,
+        # Issue #670: hamiltonian_func must be explicitly provided
+        if not has_hamiltonian:
+            raise ValueError(
+                "hamiltonian_func must be provided in MFGComponents. "
+                "No default Hamiltonian is supported.\n\n"
+                "Use class-based API (recommended):\n"
+                "  from mfg_pde.core.hamiltonian import SeparableHamiltonian\n"
+                "  H = SeparableHamiltonian(control_cost=..., coupling=..., coupling_dm=...)\n"
+                "  components = MFGComponents(hamiltonian=H, ...)\n\n"
+                "Or function-based API:\n"
+                "  components = MFGComponents(hamiltonian_func=my_H, hamiltonian_dm_func=my_dH_dm, ...)"
             )
-            # Create zero placeholder with correct signature (dataclass is mutable)
-            self.components.hamiltonian_dm_func = self._create_zero_hamiltonian_dm()
-            has_hamiltonian_dm = True
 
-        if has_hamiltonian_dm and not has_hamiltonian:
-            raise ValueError("hamiltonian_func is required when hamiltonian_dm_func is provided")
+        # Issue #670: hamiltonian_dm_func must be explicitly provided
+        if not has_hamiltonian_dm:
+            raise ValueError(
+                "hamiltonian_dm_func must be provided in MFGComponents. "
+                "No default dH/dm is supported.\n\n"
+                "If your Hamiltonian has no density dependence (dH/dm = 0), "
+                "provide a zero function:\n"
+                "  def zero_dH_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):\n"
+                "      return 0.0\n"
+                "  components = MFGComponents(hamiltonian_func=..., hamiltonian_dm_func=zero_dH_dm, ...)"
+            )
 
         # Validate function signatures and CACHE signature info (perf optimization)
         if has_hamiltonian:
@@ -298,31 +319,7 @@ class HamiltonianMixin:
             sig = inspect.signature(self.components.potential_func)
             self._potential_has_time = "t" in sig.parameters or "time" in sig.parameters
 
-    @staticmethod
-    def _create_zero_hamiltonian_dm() -> Callable:
-        """
-        Create a zero-returning placeholder for hamiltonian_dm_func.
-
-        Used when hamiltonian_func is provided without hamiltonian_dm_func,
-        assuming the Hamiltonian has no density dependence.
-
-        Returns:
-            Callable with correct signature returning 0.0
-        """
-
-        def zero_hamiltonian_dm(
-            x_idx: int,
-            x_position: float,
-            m_at_x: float,
-            derivs: dict,
-            t_idx: int,
-            current_time: float,
-            problem: object,
-        ) -> float:
-            """Zero placeholder for dH/dm (assumes no density dependence)."""
-            return 0.0
-
-        return zero_hamiltonian_dm
+    # Issue #670: _create_zero_hamiltonian_dm() removed - hamiltonian_dm_func must be explicit
 
     def _validate_function_signature(
         self, func: Callable, name: str, expected_params: list, gradient_param_required: bool = False
@@ -596,74 +593,24 @@ class HamiltonianMixin:
                     problem=self,
                 )
 
-        # Default Hamiltonian: H = 0.5*c*|p|^2 - V(x) - m^2
-        # Use DerivativeTensors.grad_norm_squared if available (preferred)
-        # Fall back to legacy dict format for backward compatibility
-        if derivs_tensor is not None:
-            # Modern path: use DerivativeTensors directly
-            p_norm_sq = derivs_tensor.grad_norm_squared
-        else:
-            # Legacy path: compute from dict (for backward compatibility)
-            dimension = getattr(self, "dimension", 1)
-            if self.geometry is not None:
-                # Intentional: Not all geometry types have dimension attribute
-                # Use default dimension from self if geometry.dimension not available
-                with contextlib.suppress(AttributeError):
-                    dimension = self.geometry.dimension
-
-            p_norm_sq = 0.0
-            if dimension == 1:
-                # 1D: gradient key is (1,)
-                p = derivs.get((1,), 0.0)
-                if np.isnan(p) or np.isinf(p):
-                    return np.nan
-                npart_val = float(npart(p))
-                ppart_val = float(ppart(p))
-                if abs(npart_val) > VALUE_BEFORE_SQUARE_LIMIT or abs(ppart_val) > VALUE_BEFORE_SQUARE_LIMIT:
-                    return np.nan
-                try:
-                    p_norm_sq = npart_val**2 + ppart_val**2
-                except OverflowError:
-                    return np.nan
-            else:
-                # nD: gradient keys are multi-index tuples with one 1 and rest 0s
-                for d in range(dimension):
-                    key = tuple(1 if i == d else 0 for i in range(dimension))
-                    p_d = derivs.get(key, 0.0)
-                    if np.isnan(p_d) or np.isinf(p_d):
-                        return np.nan
-                    if abs(p_d) > VALUE_BEFORE_SQUARE_LIMIT:
-                        return np.nan
-                    try:
-                        p_norm_sq += p_d**2
-                    except OverflowError:
-                        return np.nan
-
-        if np.isnan(m_at_x) or np.isinf(m_at_x):
-            return np.nan
-
-        if np.isinf(p_norm_sq) or np.isnan(p_norm_sq):
-            return np.nan
-
-        hamiltonian_control_part = 0.5 * self.coupling_coefficient * p_norm_sq
-
-        if np.isinf(hamiltonian_control_part) or np.isnan(hamiltonian_control_part):
-            return np.nan
-
-        # Get potential value using safe lookup
-        potential_V = self._get_potential_at_index(x_idx)
-
-        coupling_m_sq = m_at_x**2
-
-        if np.isinf(potential_V) or np.isnan(potential_V) or np.isinf(coupling_m_sq) or np.isnan(coupling_m_sq):
-            return np.nan
-
-        result = hamiltonian_control_part - potential_V - coupling_m_sq
-
-        if np.isinf(result) or np.isnan(result):
-            return np.nan
-
-        return result
+        # Issue #670: No default Hamiltonian - must be explicitly provided
+        raise ValueError(
+            "hamiltonian_func must be provided in MFGComponents. "
+            "No default Hamiltonian is supported.\n\n"
+            "Example:\n"
+            "  from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n\n"
+            "  H = SeparableHamiltonian(\n"
+            "      control_cost=QuadraticControlCost(control_cost=1.0),\n"
+            "      coupling=lambda m: -m**2,\n"
+            "      coupling_dm=lambda m: -2*m,\n"
+            "  )\n"
+            "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)\n\n"
+            "Or use function-based API:\n"
+            "  def my_H(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):\n"
+            "      p = derivs.get((1,), 0.0)\n"
+            "      return 0.5 * p**2 - m_at_x**2\n\n"
+            "  components = MFGComponents(hamiltonian_func=my_H, ...)"
+        )
 
     def dH_dm(
         self,
@@ -765,10 +712,14 @@ class HamiltonianMixin:
                     problem=self,
                 )
 
-        # Default: dH/dm = -2m
-        if np.isnan(m_at_x) or np.isinf(m_at_x):
-            return np.nan
-        return -2.0 * m_at_x
+        # Issue #670: No default dH/dm - must be explicitly provided
+        raise ValueError(
+            "hamiltonian_dm_func must be provided in MFGComponents. "
+            "No default dH/dm is supported.\n\n"
+            "If your Hamiltonian has no density dependence (dH/dm = 0), "
+            "provide a zero function:\n"
+            "  hamiltonian_dm_func=lambda x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem: 0.0"
+        )
 
     def dH_dp(
         self,
@@ -861,7 +812,8 @@ class HamiltonianMixin:
             HamiltonianJacobians dataclass with diagonal, lower, upper components,
             or None if not applicable.
         """
-        if self.is_custom and self.components is not None and self.components.hamiltonian_jacobian_func is not None:
+        # Issue #670: components always required, use custom jacobian if provided
+        if self.components is not None and self.components.hamiltonian_jacobian_func is not None:
             try:
                 return self.components.hamiltonian_jacobian_func(
                     U_for_jacobian_terms=U_for_jacobian_terms,
@@ -871,34 +823,7 @@ class HamiltonianMixin:
             except Exception as e:
                 logger.warning(f"Jacobian computation failed: {e}")
 
-        if not self.is_custom:
-            num_intervals = self._get_num_intervals() or 0
-            Nx = num_intervals + 1
-            dx = self._get_spacing() or 1.0
-            coupling_coefficient = self.coupling_coefficient
-
-            J_D_H = np.zeros(Nx)
-            J_L_H = np.zeros(Nx)
-            J_U_H = np.zeros(Nx)
-
-            if abs(dx) < 1e-14 or Nx <= 1:
-                return HamiltonianJacobians(diagonal=J_D_H, lower=J_L_H, upper=J_U_H)
-
-            U_curr = U_for_jacobian_terms
-
-            for i in range(Nx):
-                ip1 = (i + 1) % Nx
-                im1 = (i - 1 + Nx) % Nx
-
-                p1_i = (U_curr[ip1] - U_curr[i]) / dx
-                p2_i = (U_curr[i] - U_curr[im1]) / dx
-
-                J_D_H[i] = coupling_coefficient * (npart(p1_i) + ppart(p2_i)) / (dx**2)
-                J_L_H[i] = -coupling_coefficient * ppart(p2_i) / (dx**2)
-                J_U_H[i] = -coupling_coefficient * npart(p1_i) / (dx**2)
-
-            return HamiltonianJacobians(diagonal=J_D_H, lower=J_L_H, upper=J_U_H)
-
+        # No jacobian func provided - return None (solver will use FD approximation)
         return None
 
     def get_hjb_residual_m_coupling_term(
@@ -907,9 +832,12 @@ class HamiltonianMixin:
         U_n_current_guess_derivatives: dict[str, np.ndarray],
         x_idx: int,
         t_idx_n: int,
-    ) -> float:
-        """Optional coupling term for residual computation."""
-        if self.is_custom and self.components is not None and self.components.coupling_func is not None:
+    ) -> float | None:
+        """Optional coupling term for residual computation.
+
+        Issue #670: No default coupling term - must be explicitly provided if needed.
+        """
+        if self.components is not None and self.components.coupling_func is not None:
             try:
                 return self.components.coupling_func(
                     M_density_at_n_plus_1=M_density_at_n_plus_1,
@@ -922,21 +850,7 @@ class HamiltonianMixin:
                 logger.warning(f"Coupling term computation failed: {e}")
                 return np.nan
 
-        if not self.is_custom:
-            m_val = M_density_at_n_plus_1[x_idx]
-            # Convert numpy scalar or array to Python float
-            m_val = float(np.asarray(m_val))
-            if np.isnan(m_val) or np.isinf(m_val):
-                return np.nan
-            try:
-                term = -2 * (m_val**2)
-            except OverflowError:
-                return np.nan
-            if np.isinf(term) or np.isnan(term):
-                return np.nan
-            return term
-
-        # Custom problem without coupling_func: no coupling term
+        # No coupling func provided - return None (no additional coupling term)
         return None
 
 
