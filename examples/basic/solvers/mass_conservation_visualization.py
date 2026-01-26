@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
-Fast mass conservation test for hybrid particle-grid solver.
+Mass Conservation Visualization Demo for Hybrid Particle-Grid Solver.
 
-Reduced parameters for quick testing without acceleration.
+Demonstrates mass conservation properties of the FP Particle solver with
+reduced parameters for quick visualization. Generates a multi-panel plot
+showing density evolution, mass over time, and statistical analysis.
+
+This is a demonstration script, not a pytest test.
 """
 
 import matplotlib
@@ -202,10 +206,14 @@ NOTE: No Anderson acceleration
     plt.tight_layout()
     plt.suptitle("Fast Mass Conservation Test (Reduced Parameters)", y=1.00, fontsize=12, fontweight="bold")
 
-    # Save
-    output_file = "mass_conservation_fast.png"
+    # Save to examples/outputs (anchored to project root)
+    from pathlib import Path
+
+    output_dir = Path(__file__).resolve().parent.parent.parent / "outputs" / "basic"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / "mass_conservation_visualization.png"
     fig.savefig(output_file, dpi=150, bbox_inches="tight")
-    print(f"\n✅ Saved: {output_file}")
+    print(f"\nSaved: {output_file}")
     print("=" * 80)
 
 
