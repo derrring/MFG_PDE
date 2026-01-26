@@ -2043,9 +2043,9 @@ See: docs/migration/HAMILTONIAN_API.md"""
 
     def solve(
         self,
-        max_iterations: int = 100,
-        tolerance: float = 1e-6,
-        verbose: bool = True,
+        max_iterations: int | None = None,
+        tolerance: float | None = None,
+        verbose: bool | None = None,
         config: Any | None = None,
         scheme: Any | None = None,
         hjb_solver: Any | None = None,
@@ -2072,10 +2072,12 @@ See: docs/migration/HAMILTONIAN_API.md"""
             Analyzes geometry and selects appropriate scheme automatically.
 
         Args:
-            max_iterations: Maximum fixed-point iterations (default: 100)
-            tolerance: Convergence tolerance (default: 1e-6)
-            verbose: Show solver progress (default: True)
-            config: Optional MFGSolverConfig for advanced configuration
+            max_iterations: Maximum fixed-point iterations (default: from config or 100)
+            tolerance: Convergence tolerance (default: from config or 1e-6)
+            verbose: Show solver progress (default: from config or True)
+            config: Optional MFGSolverConfig for advanced configuration.
+                If config is provided, its values are used as defaults.
+                Explicit parameters (max_iterations, tolerance, verbose) override config.
             scheme: NumericalScheme for Safe Mode (FDM_UPWIND, SL_LINEAR, GFDM, etc.)
             hjb_solver: Pre-initialized HJB solver for Expert Mode
             fp_solver: Pre-initialized FP solver for Expert Mode
@@ -2113,10 +2115,14 @@ See: docs/migration/HAMILTONIAN_API.md"""
         if config is None:
             config = MFGSolverConfig()
 
-        # Override config with explicit parameters
-        config.picard.max_iterations = max_iterations
-        config.picard.tolerance = tolerance
-        config.picard.verbose = verbose
+        # Override config only with explicitly passed parameters (not None)
+        # This allows config values to be used when parameters are not specified
+        if max_iterations is not None:
+            config.picard.max_iterations = max_iterations
+        if tolerance is not None:
+            config.picard.tolerance = tolerance
+        if verbose is not None:
+            config.picard.verbose = verbose
 
         # ═══════════════════════════════════════════════════════════════════════
         # Phase 3: Three-Mode API (Issue #580)
