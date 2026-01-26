@@ -168,6 +168,7 @@ class TensorProductGrid(
             ValueError: If dimension is provided and doesn't match len(bounds)
             ValueError: If none or multiple of Nx/Nx_points/num_points specified
             UserWarning: If dimension > 3 (performance warning)
+            DeprecationWarning: If dimension is provided (redundant, inferred from bounds)
             DeprecationWarning: If num_points is used (use Nx_points instead)
         """
         # Infer dimension from bounds (SSOT: bounds defines the domain)
@@ -180,8 +181,18 @@ class TensorProductGrid(
             if dimension != inferred_dimension:
                 raise ValueError(
                     f"dimension={dimension} doesn't match len(bounds)={inferred_dimension}. "
-                    f"Dimension is inferred from bounds; explicit dimension is optional."
+                    f"Dimension is inferred from bounds; remove explicit dimension parameter."
                 )
+            # Issue #674: Fail Fast - warn on redundant parameter
+            import warnings
+
+            warnings.warn(
+                f"dimension={dimension} is redundant when bounds is provided. "
+                f"Dimension is inferred from len(bounds). "
+                f"Remove the dimension= parameter. Will error in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         dimension = inferred_dimension
 
         if dimension < 1:
