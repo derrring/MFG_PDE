@@ -13,8 +13,17 @@ import numpy as np
 from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid, dirichlet_bc, no_flux_bc, periodic_bc
+
+
+def _default_components():
+    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    return MFGComponents(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_final=lambda x: 0.0,  # Zero terminal cost
+    )
 
 
 class TestFDMSolversMFGIntegration:
@@ -27,7 +36,7 @@ class TestFDMSolversMFGIntegration:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=50 -> 51 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=50)
 
         # Create FDM solvers
         hjb_solver = HJBFDMSolver(problem)
@@ -52,7 +61,7 @@ class TestFDMSolversMFGIntegration:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=40 -> 41 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=30)
 
         # Use no-flux boundary conditions for mass conservation
         bc = no_flux_bc(dimension=1)
@@ -85,7 +94,7 @@ class TestFDMSolversMFGIntegration:
         geometry_coarse = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=20 -> 21 points
-        problem_coarse = MFGProblem(geometry=geometry_coarse, T=1.0, Nt=20)
+        problem_coarse = MFGProblem(geometry=geometry_coarse, components=_default_components(), T=1.0, Nt=20)
         hjb_solver_coarse = HJBFDMSolver(problem_coarse)
         fp_solver_coarse = FPFDMSolver(problem_coarse)
         mfg_solver_coarse = FixedPointIterator(
@@ -97,7 +106,7 @@ class TestFDMSolversMFGIntegration:
         geometry_fine = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=40 -> 41 points
-        problem_fine = MFGProblem(geometry=geometry_fine, T=1.0, Nt=40)
+        problem_fine = MFGProblem(geometry=geometry_fine, components=_default_components(), T=1.0, Nt=40)
         hjb_solver_fine = HJBFDMSolver(problem_fine)
         fp_solver_fine = FPFDMSolver(problem_fine)
         mfg_solver_fine = FixedPointIterator(
@@ -118,7 +127,7 @@ class TestFDMSolversMFGIntegration:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=30 -> 31 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=30)
 
         hjb_solver = HJBFDMSolver(problem)
         fp_solver = FPFDMSolver(problem)
@@ -136,7 +145,7 @@ class TestFDMSolversMFGIntegration:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=40 -> 41 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=30)
 
         bc = periodic_bc()
         fp_solver = FPFDMSolver(problem, boundary_conditions=bc)
@@ -159,7 +168,7 @@ class TestFDMSolversMFGIntegration:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=40 -> 41 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=30)
 
         bc = dirichlet_bc(value=0.0, dimension=1)
         fp_solver = FPFDMSolver(problem, boundary_conditions=bc)
@@ -185,7 +194,7 @@ class TestFDMSolversCoupling:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=30 -> 31 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=30)
 
         hjb_solver = HJBFDMSolver(problem)
         fp_solver = FPFDMSolver(problem)
@@ -217,7 +226,7 @@ class TestFDMSolversCoupling:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[26], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=25 -> 26 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=25)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=25)
 
         hjb_solver = HJBFDMSolver(problem)
         fp_solver = FPFDMSolver(problem)
@@ -238,7 +247,7 @@ class TestFDMSolversNumericalProperties:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=50 -> 51 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=30)
 
         hjb_solver = HJBFDMSolver(problem)
         fp_solver = FPFDMSolver(problem)
@@ -265,7 +274,7 @@ class TestFDMSolversNumericalProperties:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=40 -> 41 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=30)
 
         hjb_solver = HJBFDMSolver(problem)
 
@@ -292,7 +301,7 @@ class TestFDMSolversNumericalProperties:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1)
         )  # Nx=40 -> 41 points
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=30)
+        problem = MFGProblem(geometry=geometry, components=_default_components(), T=1.0, Nt=30)
 
         fp_solver = FPFDMSolver(problem)
 

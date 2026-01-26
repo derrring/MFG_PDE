@@ -104,7 +104,7 @@ jobs:
         monitor = MemoryMonitor(max_memory_gb=2.0)
 
         # Create problem with modern API (TensorProductGrid + explicit components)
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
+        domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
         components = MFGComponents(m_initial=lambda x: np.exp(-10*(x-0.5)**2), u_final=lambda x: 0.0)
         problem = MFGProblem(geometry=domain, T=1.0, Nt=10, diffusion=0.5, components=components)
 
@@ -154,7 +154,7 @@ jobs:
         import time
 
         # Create problem with modern API (TensorProductGrid + explicit components)
-        domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
+        domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
         components = MFGComponents(m_initial=lambda x: np.exp(-10*(x-0.5)**2), u_final=lambda x: 0.0)
         problem = MFGProblem(geometry=domain, T=1.0, Nt=20, diffusion=0.5, components=components)
 
