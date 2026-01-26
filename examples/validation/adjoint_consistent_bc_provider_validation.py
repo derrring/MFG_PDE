@@ -127,22 +127,26 @@ def create_towel_problem_standard_bc(
         m_reg = max(m_at_x, 1e-10)
         return lambda_crowd / m_reg
 
-    # Create components with custom Hamiltonian
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-    )
-
     def initial_density(x):
         return np.ones_like(x) / L  # Uniform
 
-    # Create geometry and set BC on it directly
+    def terminal_value(x):
+        return 0.0  # Zero terminal cost
+
+    # Create components with custom Hamiltonian (Issue #670: m_initial/u_final in MFGComponents)
+    components = MFGComponents(
+        hamiltonian_func=hamiltonian_func,
+        hamiltonian_dm_func=hamiltonian_dm_func,
+        m_initial=initial_density,
+        u_final=terminal_value,
+    )
+
+    # Create geometry with Neumann BC
     geometry = TensorProductGrid(
         bounds=[(0.0, L)],
         Nx_points=[Nx],
+        boundary_conditions=neumann_bc(dimension=1),
     )
-    # Standard Neumann BC (dU/dn = 0)
-    geometry.set_boundary_conditions(neumann_bc(dimension=1))
 
     problem = MFGProblem(
         geometry=geometry,
@@ -150,7 +154,6 @@ def create_towel_problem_standard_bc(
         Nt=Nt,
         diffusion=sigma,
         components=components,
-        m_initial=initial_density,
     )
 
     return problem
@@ -195,19 +198,18 @@ def create_towel_problem_adjoint_bc(
         m_reg = max(m_at_x, 1e-10)
         return lambda_crowd / m_reg
 
-    # Create components with custom Hamiltonian
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-    )
-
     def initial_density(x):
         return np.ones_like(x) / L  # Uniform
 
-    # Create geometry first
-    geometry = TensorProductGrid(
-        bounds=[(0.0, L)],
-        Nx_points=[Nx],
+    def terminal_value(x):
+        return 0.0  # Zero terminal cost
+
+    # Create components with custom Hamiltonian (Issue #670: m_initial/u_final in MFGComponents)
+    components = MFGComponents(
+        hamiltonian_func=hamiltonian_func,
+        hamiltonian_dm_func=hamiltonian_dm_func,
+        m_initial=initial_density,
+        u_final=terminal_value,
     )
 
     # Adjoint-consistent BC via provider pattern (Issue #625)
@@ -235,8 +237,12 @@ def create_towel_problem_adjoint_bc(
         dimension=1,
     )
 
-    # Set BC on geometry directly
-    geometry.set_boundary_conditions(bc)
+    # Create geometry with adjoint-consistent BC
+    geometry = TensorProductGrid(
+        bounds=[(0.0, L)],
+        Nx_points=[Nx],
+        boundary_conditions=bc,
+    )
 
     problem = MFGProblem(
         geometry=geometry,
@@ -244,7 +250,6 @@ def create_towel_problem_adjoint_bc(
         Nt=Nt,
         diffusion=sigma,
         components=components,
-        m_initial=initial_density,
     )
 
     return problem

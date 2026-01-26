@@ -76,21 +76,23 @@ def create_towel_problem(
         m_reg = max(m_at_x, 1e-10)
         return lambda_crowd / m_reg
 
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-    )
-
     def initial_density(x):
         return np.ones_like(x) / L
 
-    geometry = TensorProductGrid(
-        bounds=[(0.0, L)],
-        Nx_points=[Nx],
+    def terminal_value(x):
+        return 0.0
+
+    # Create components (Issue #670: m_initial/u_final in MFGComponents)
+    components = MFGComponents(
+        hamiltonian_func=hamiltonian_func,
+        hamiltonian_dm_func=hamiltonian_dm_func,
+        m_initial=initial_density,
+        u_final=terminal_value,
     )
 
+    # Determine boundary conditions
     if bc_type == "neumann":
-        geometry.set_boundary_conditions(neumann_bc(dimension=1))
+        bc = neumann_bc(dimension=1)
     elif bc_type == "adjoint_consistent":
         bc = BoundaryConditions(
             segments=[
@@ -113,9 +115,15 @@ def create_towel_problem(
             ],
             dimension=1,
         )
-        geometry.set_boundary_conditions(bc)
     else:
         raise ValueError(f"Unknown bc_type: {bc_type}")
+
+    # Create geometry with BC
+    geometry = TensorProductGrid(
+        bounds=[(0.0, L)],
+        Nx_points=[Nx],
+        boundary_conditions=bc,
+    )
 
     return MFGProblem(
         geometry=geometry,
@@ -123,7 +131,6 @@ def create_towel_problem(
         Nt=Nt,
         diffusion=sigma,
         components=components,
-        m_initial=initial_density,
     )
 
 

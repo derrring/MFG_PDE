@@ -121,23 +121,30 @@ def create_towel_beach_problem(
         m_reg = max(m_at_x, 1e-10)
         return -crowd_aversion / m_reg
 
-    # Create MFGComponents
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-    )
-
     # Initial distribution: Uniform with small perturbation
     def initial_density_func(x):
         """Slightly perturbed uniform distribution."""
         return 1.0 + 0.1 * np.cos(2 * np.pi * x / beach_length)
 
+    # Terminal value: zero (standard for running cost problems)
+    def terminal_value_func(x):
+        """Zero terminal cost."""
+        return 0.0
+
+    # Create MFGComponents (Issue #670: m_initial/u_final must be in MFGComponents)
+    components = MFGComponents(
+        hamiltonian_func=hamiltonian_func,
+        hamiltonian_dm_func=hamiltonian_dm_func,
+        m_initial=initial_density_func,
+        u_final=terminal_value_func,
+    )
+
     # Create geometry with Neumann (reflecting) boundary conditions
     geometry = TensorProductGrid(
         bounds=[(0.0, beach_length)],
         Nx_points=[Nx],
+        boundary_conditions=neumann_bc(dimension=1),
     )
-    geometry.set_boundary_conditions(neumann_bc(dimension=1))
 
     # Create problem with MFGComponents
     problem = MFGProblem(
@@ -146,7 +153,6 @@ def create_towel_beach_problem(
         Nt=Nt,
         diffusion=sigma,
         components=components,
-        m_initial=initial_density_func,
     )
 
     return problem
