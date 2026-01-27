@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 
@@ -127,12 +128,18 @@ class NetworkMFGProblem(MFGProblem):
         self.network_geometry = network_geometry
         self.network_data = network_geometry.network_data
 
-        # Issue #670: Create default MFGComponents for parent class validation
+        # Issue #670, #673: Create default MFGComponents for parent class validation
         # Network problems use NetworkMFGComponents internally, but parent MFGProblem
-        # requires explicit m_initial and u_final. Provide uniform defaults that
+        # requires explicit hamiltonian, m_initial, and u_final. Provide defaults that
         # will be overridden by network-specific methods (get_initial_density, get_terminal_value).
         num_nodes = network_geometry.num_nodes
+        default_hamiltonian = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+            coupling=lambda m: m,
+            coupling_dm=lambda m: 1.0,
+        )
         parent_components = MFGComponents(
+            hamiltonian=default_hamiltonian,
             m_initial=lambda x: 1.0 / num_nodes,  # Uniform initial density
             u_final=lambda x: 0.0,  # Zero terminal value
         )
