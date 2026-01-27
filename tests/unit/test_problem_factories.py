@@ -97,7 +97,7 @@ def test_create_lq_problem(simple_domain):
 
 
 def test_create_crowd_problem(simple_2d_domain):
-    """Test crowd dynamics MFG problem creation."""
+    """Test crowd dynamics MFG problem creation (Issue #673 class-based Hamiltonian)."""
     target = np.array([0.8, 0.8])
 
     def initial_density(x):
@@ -111,7 +111,9 @@ def test_create_crowd_problem(simple_2d_domain):
 
     assert isinstance(problem, MFGProblem)
     assert problem.components is not None
-    assert problem.components.potential_func is not None
+    # Issue #673: Potential is now embedded in SeparableHamiltonian, not separate potential_func
+    assert problem.components.hamiltonian is not None
+    assert hasattr(problem.components.hamiltonian, "potential")
 
 
 def test_create_stochastic_problem(simple_domain):
