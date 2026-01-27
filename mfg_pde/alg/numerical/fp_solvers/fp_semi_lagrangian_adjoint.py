@@ -30,6 +30,13 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy.linalg import solve_banded
 
+from mfg_pde.alg.numerical.hjb_solvers.hjb_sl_characteristics import (
+    apply_boundary_conditions_1d,
+)
+from mfg_pde.geometry.boundary.bc_utils import (
+    bc_type_to_geometric_operation,
+    get_bc_type_string,
+)
 from mfg_pde.utils.mfg_logging import get_logger
 
 from .base_fp import BaseFPSolver
@@ -79,7 +86,9 @@ class FPSLAdjointSolver(BaseFPSolver):
 
         Args:
             problem: MFG problem instance
-            boundary_conditions: Optional boundary conditions (defaults to absorbing)
+            boundary_conditions: Optional boundary conditions override.
+                If None, uses boundary conditions from problem.geometry.
+                The advection step uses reflecting BC for mass conservation.
         """
         super().__init__(problem)
         self.fp_method_name = "Adjoint Semi-Lagrangian"
@@ -118,6 +127,18 @@ class FPSLAdjointSolver(BaseFPSolver):
         except AttributeError:
             pass
         return None
+
+    def _get_bc_operation_type(self) -> str:
+        """
+        Get boundary operation type from boundary conditions.
+
+        Issue #702: Uses centralized bc_utils for consistent BC handling.
+
+        Returns:
+            Geometric operation: 'reflect', 'clamp', or 'periodic'
+        """
+        bc_type = get_bc_type_string(self.boundary_conditions)
+        return bc_type_to_geometric_operation(bc_type)
 
     def solve_fp_system(
         self,
@@ -231,11 +252,15 @@ class FPSLAdjointSolver(BaseFPSolver):
         This is the ADJOINT of the HJB backward interpolation, ensuring discrete
         duality for MFG convergence.
 
-        Mass Conservation Strategy:
-            We use a finite-volume interpretation where each grid point represents
-            a cell with volume dx (interior) or dx/2 (boundary). We splat CELL MASS
-            (density * cell_volume), then recover density by dividing by destination
-            cell volume. This preserves the trapezoidal integral exactly.
+        Mass Conservation (Issue #708):
+            The SL adjoint naturally conserves sum(m), not the trapezoidal integral.
+            This follows from the mathematical structure:
+            - HJB interpolation matrix P has row sums = 1
+            - FP splatting matrix P^T has column sums = 1
+            - Therefore sum(P^T @ m) = sum(m) is exact
+
+            Combined with Crank-Nicolson diffusion (which also preserves sum(m)
+            with Neumann BC), total mass sum(m) is conserved by construction.
 
         Args:
             m: Current density, shape (Nx,)
@@ -251,78 +276,91 @@ class FPSLAdjointSolver(BaseFPSolver):
         # Forward trace: where does mass at x go?
         x_dest = self.x_grid + alpha * dt
 
+        # Issue #702: Apply boundary conditions based on problem BC type
+        # This ensures adjoint consistency with HJB-SL solver
+        # Uses shared BC operations from hjb_sl_characteristics module
+        bc_op = self._get_bc_operation_type()
+        apply_bc = np.vectorize(lambda x: apply_boundary_conditions_1d(x, self.xmin, self.xmax, bc_op))
+        x_dest_bounded = apply_bc(x_dest)
+
         # Convert to grid indices (continuous)
-        pos_cont = (x_dest - self.xmin) / self.dx
+        pos_cont = (x_dest_bounded - self.xmin) / self.dx
 
         # Lower neighbor index
         j = np.floor(pos_cont).astype(int)
 
+        # Clamp j to valid range [0, Nx-2] for interior splatting
+        # (j and j+1 must both be valid indices)
+        j = np.clip(j, 0, self.Nx - 2)
+
         # Weight for upper neighbor (linear interpolation weights)
         w = pos_cont - j
+        w = np.clip(w, 0, 1)  # Safety clamp
 
-        # Finite-volume cell volumes for trapezoidal quadrature consistency
-        # Boundary cells have half volume, interior cells have full volume
-        cell_volume = np.ones(self.Nx) * self.dx
-        cell_volume[0] = self.dx / 2
-        cell_volume[-1] = self.dx / 2
-
-        # Convert density to cell mass (this is what we conserve)
-        cell_mass = m * cell_volume
-
-        # Initialize accumulated mass at destinations
-        mass_star = np.zeros_like(m)
-
-        # Scatter mass to destination cells (transpose of linear interpolation)
+        # Scatter density to destination cells (transpose of linear interpolation)
+        # Issue #708: Use sum(m) as mass measure (consistent with SL theory)
+        #
+        # The SL adjoint naturally conserves sum(m), not trapezoidal integral.
+        # From adjoint_discretization_mfg.md Section 6.4:
+        # - Interpolation matrix P has row sums = 1
+        # - Splatting matrix P^T has column sums = 1
+        # - Therefore sum(P^T @ m) = sum(m) is conserved exactly
+        #
         # This is the key difference from Backward SL:
-        # - Backward: m_new[i] = w * m_old[j] + (1-w) * m_old[j+1]  (gather)
-        # - Forward:  mass_new[j] += (1-w) * mass_old[i]; mass_new[j+1] += w * mass_old[i]
+        # - Backward (HJB): m_new[i] = (1-w)*m_old[j] + w*m_old[j+1]  (gather/interpolate)
+        # - Forward (FP):   m_new[j] += (1-w)*m_old[i]; m_new[j+1] += w*m_old[i]  (scatter)
 
-        # Handle boundary conditions: absorbing (mass leaving domain is lost)
-        valid_mask = (j >= 0) & (j < self.Nx - 1)
+        m_star = np.zeros_like(m)
 
         # Use np.add.at for atomic accumulation (handles overlapping destinations)
-        valid_j = j[valid_mask]
-        valid_w = w[valid_mask]
-        mass_source = cell_mass[valid_mask]
-
-        # Scatter to lower neighbor with weight (1-w)
-        np.add.at(mass_star, valid_j, mass_source * (1 - valid_w))
-
-        # Scatter to upper neighbor with weight w
-        np.add.at(mass_star, valid_j + 1, mass_source * valid_w)
-
-        # Handle particles that land exactly on last cell (j == Nx-1, w == 0)
-        exact_last = (j == self.Nx - 1) & (w == 0)
-        if np.any(exact_last):
-            np.add.at(mass_star, j[exact_last], cell_mass[exact_last])
-
-        # Convert accumulated mass back to density
-        # Avoid division by zero (cell_volume is always > 0)
-        m_star = mass_star / cell_volume
+        np.add.at(m_star, j, m * (1 - w))  # Scatter to lower neighbor
+        np.add.at(m_star, j + 1, m * w)  # Scatter to upper neighbor
 
         # Ensure non-negativity
         m_star = np.maximum(m_star, 0)
 
-        # Step 2: Diffusion via Crank-Nicolson
-        # ====================================
+        # Step 2: Diffusion via Crank-Nicolson (Finite Volume formulation)
+        # ================================================================
+        # Issue #708: Use zero-flux (finite volume) boundary stencil for mass conservation.
+        #
+        # The standard ghost-point method (m[-1] = m[1]) is Strong Form and breaks
+        # mass conservation. The correct approach is Flux Form (finite volume):
+        #
+        # Physical interpretation:
+        #   - Boundary flux J_{-1/2} = 0 (zero-flux BC)
+        #   - Interior flux J_{i+1/2} = -D * (m[i+1] - m[i]) / dx
+        #   - dm[i]/dt = -(J_{i+1/2} - J_{i-1/2}) / dx
+        #
+        # This gives boundary stencil: L[0] = (m[1] - m[0])/dx^2
+        # The resulting matrix has column sums = 0, ensuring mass conservation.
+        #
         D = sigma**2 / 2
         r = D * dt / (self.dx**2)
 
-        # Build RHS: (I + r/2 * L) * m_star
+        # Build RHS: (I + r/2 * L_fv) * m_star
+        # L_fv uses zero-flux (one-sided) boundary stencil
         rhs = np.zeros(self.Nx)
-        # Interior points
+        # Interior points: standard 3-point stencil
         rhs[1:-1] = m_star[1:-1] + (r / 2) * (m_star[:-2] - 2 * m_star[1:-1] + m_star[2:])
-        # Neumann BC: dm/dx = 0 at boundaries
-        rhs[0] = m_star[0] + (r / 2) * (2 * m_star[1] - 2 * m_star[0])
-        rhs[-1] = m_star[-1] + (r / 2) * (2 * m_star[-2] - 2 * m_star[-1])
+        # Boundary points: zero-flux (finite volume) stencil
+        # L[0] = (m[1] - m[0])/dx^2, so (I + r/2*L)[0] = m[0] + r/2*(m[1] - m[0])
+        rhs[0] = m_star[0] + (r / 2) * (m_star[1] - m_star[0])
+        rhs[-1] = m_star[-1] + (r / 2) * (m_star[-2] - m_star[-1])
 
-        # Build tridiagonal matrix (I - r/2 * L) for Crank-Nicolson
+        # Build tridiagonal matrix (I - r/2 * L_fv) for Crank-Nicolson
+        # Interior: (I - r/2*L) has [r/2, 1+r, r/2] pattern
+        # Boundary: zero-flux gives [-1, 1]/dx^2, so (I - r/2*L) has [1+r/2, -r/2]
         ab = np.zeros((3, self.Nx))
-        ab[1, :] = 1 + r
-        ab[0, 1:] = -r / 2
-        ab[2, :-1] = -r / 2
-        ab[0, 1] = -r  # Neumann BC at left
-        ab[2, -2] = -r  # Neumann BC at right
+        # Main diagonal
+        ab[1, :] = 1 + r  # Interior: 1 + r
+        ab[1, 0] = 1 + r / 2  # Left boundary: 1 + r/2
+        ab[1, -1] = 1 + r / 2  # Right boundary: 1 + r/2
+        # Upper diagonal (superdiagonal)
+        ab[0, 1:] = -r / 2  # Interior
+        ab[0, 1] = -r / 2  # Left boundary (same coefficient)
+        # Lower diagonal (subdiagonal)
+        ab[2, :-1] = -r / 2  # Interior
+        ab[2, -2] = -r / 2  # Right boundary (same coefficient)
 
         # Solve tridiagonal system
         m_new = solve_banded((1, 1), ab, rhs)
@@ -344,8 +382,10 @@ if __name__ == "__main__":
     print("=" * 60)
 
     from mfg_pde import MFGProblem
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+    from mfg_pde.core.mfg_problem import MFGComponents
     from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary import BCSegment, BCType, mixed_bc
+    from mfg_pde.geometry.boundary import BCSegment, BCType, BoundaryConditions
 
     # Test parameters
     X_MIN, X_MAX = -0.5, 0.5
@@ -365,15 +405,28 @@ if __name__ == "__main__":
     # Create problem with Neumann BC
     left_bc = BCSegment(name="left", bc_type=BCType.NEUMANN, value=0.0, boundary="x_min")
     right_bc = BCSegment(name="right", bc_type=BCType.NEUMANN, value=0.0, boundary="x_max")
-    bc = mixed_bc(segments=[left_bc, right_bc], dimension=1, domain_bounds=np.array([[X_MIN, X_MAX]]))
+    bc = BoundaryConditions(segments=[left_bc, right_bc])
 
     domain = TensorProductGrid(bounds=[(X_MIN, X_MAX)], Nx_points=[N + 1], boundary_conditions=bc)
+
+    # Create Hamiltonian and components
+    H = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.0,
+        coupling_dm=lambda m: 0.0,
+    )
+    components = MFGComponents(
+        hamiltonian=H,
+        u_final=lambda x: 0.0,
+        m_initial=lambda x: 1.0,
+    )
 
     problem = MFGProblem(
         geometry=domain,
         T=T,
         Nt=Nt,
         diffusion=SIGMA,
+        components=components,
     )
 
     # Test 1: Solver initialization
@@ -414,8 +467,23 @@ if __name__ == "__main__":
     l2_to_gibbs = np.sqrt(np.trapezoid((m_final_norm - m_gibbs) ** 2, x))
     print(f"\n   Final L2 to Gibbs: {l2_to_gibbs:.4e}")
 
-    # Test 3: Compare with Backward SL
-    print("\n3. Comparing with Backward SL...")
+    # Test 3: Mass conservation (Issue #708)
+    print("\n3. Testing mass conservation (Issue #708 fix)...")
+
+    # sum(m) is the conserved quantity for SL adjoint
+    sum_m_initial = np.sum(M[0])
+    sum_m_final = np.sum(M[-1])
+    sum_m_error = abs(sum_m_final - sum_m_initial) / sum_m_initial
+
+    print(f"   sum(m) initial: {sum_m_initial:.6f}")
+    print(f"   sum(m) final:   {sum_m_final:.6f}")
+    print(f"   sum(m) error:   {sum_m_error:.2e}")
+
+    assert sum_m_error < 1e-10, f"Mass conservation failed: error={sum_m_error:.2e}"
+    print("   Mass conservation: OK (error < 1e-10)")
+
+    # Test 4: Compare with Backward SL
+    print("\n4. Comparing with Backward SL...")
 
     from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
 
