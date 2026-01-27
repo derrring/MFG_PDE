@@ -26,9 +26,10 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfg_pde import MFGProblem
+from mfg_pde import MFGComponents, MFGProblem
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -90,67 +91,39 @@ class Simple2DCrowdNavigationProblem(MFGProblem):
         """Setup MFG components."""
         coupling_strength = self.coupling_strength
 
-        def hamiltonian_func(
-            x_idx,
-            x_position,
-            m_at_x,
-            p_values,
-            t_idx,
-            current_time,
-            problem,
-            derivs=None,
-            **kwargs,
-        ):
-            """H = (1/2)|∇u|² + κ·m"""
-            h_value = 0.0
-
-            if derivs is not None:
-                # Extract gradient
-                grad_u = []
-                ndim = problem.geometry.grid.dimension
-                for d in range(ndim):
-                    idx_tuple = tuple([0] * d + [1] + [0] * (ndim - d - 1))
-                    grad_u.append(derivs.get(idx_tuple, 0.0))
-                h_value += 0.5 * float(np.sum(np.array(grad_u) ** 2))
-
-            # MFG coupling term
-            h_value += coupling_strength * float(m_at_x)
-
-            return h_value
-
-        def hamiltonian_dm(x_idx, x_position, m_at_x, **kwargs):
-            """∂H/∂m = κ"""
-            return coupling_strength
-
-        def initial_density_func(x_idx):
+        def initial_density_func(x):
             """Gaussian initial density."""
-            ndim = self.geometry.grid.dimension
-            coords = []
-            for d in range(ndim):
-                idx_d = x_idx[d] if isinstance(x_idx, tuple) else x_idx
-                x_d = self.geometry.grid.bounds[d][0] + idx_d * self.geometry.grid.spacing[d]
-                coords.append(x_d)
-            coords_array = np.array(coords).reshape(1, -1)
-            return float(self.initial_density(coords_array)[0])
+            if np.isscalar(x):
+                x = np.array([x])
+            x = np.atleast_1d(x)
+            if x.shape[0] >= 2:
+                dist_sq = np.sum((x[:2] - self.initial_position) ** 2)
+            else:
+                dist_sq = (x[0] - self.initial_position[0]) ** 2
+            return np.exp(-100 * dist_sq)
 
-        def terminal_cost_func(x_idx):
+        def terminal_cost_func(x):
             """Quadratic terminal cost."""
-            ndim = self.geometry.grid.dimension
-            coords = []
-            for d in range(ndim):
-                idx_d = x_idx[d] if isinstance(x_idx, tuple) else x_idx
-                x_d = self.geometry.grid.bounds[d][0] + idx_d * self.geometry.grid.spacing[d]
-                coords.append(x_d)
-            coords_array = np.array(coords).reshape(1, -1)
-            return float(self.terminal_cost(coords_array)[0])
+            if np.isscalar(x):
+                x = np.array([x])
+            x = np.atleast_1d(x)
+            if x.shape[0] >= 2:
+                dist_sq = np.sum((x[:2] - self.goal_position) ** 2)
+            else:
+                dist_sq = (x[0] - self.goal_position[0]) ** 2
+            return 0.5 * dist_sq
 
-        from mfg_pde import MFGComponents
+        # Class-based Hamiltonian: H = (1/2)|p|² + κ·m
+        hamiltonian = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+            coupling=lambda m: coupling_strength * m,
+            coupling_dm=lambda m: coupling_strength,
+        )
 
         return MFGComponents(
-            hamiltonian=hamiltonian_func,
-            hamiltonian_dm=hamiltonian_dm,
-            initial_density=initial_density_func,
-            terminal_cost=terminal_cost_func,
+            hamiltonian=hamiltonian,
+            m_initial=initial_density_func,
+            u_final=terminal_cost_func,
         )
 
 

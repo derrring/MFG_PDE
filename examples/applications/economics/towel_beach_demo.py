@@ -45,6 +45,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import MFGProblem
+from mfg_pde.core.hamiltonian import HamiltonianBase
 from mfg_pde.core.mfg_problem import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import neumann_bc
@@ -58,6 +59,51 @@ logger = get_logger(__name__)
 EXAMPLE_DIR = Path(__file__).parent
 OUTPUT_DIR = EXAMPLE_DIR.parent.parent / "outputs" / "applications"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+class TowelBeachHamiltonian(HamiltonianBase):
+    """
+    Custom Hamiltonian for Towel-on-Beach problem.
+
+    H(x, p, m) = (1/2)|p|^2 - |x - x_stall| - lambda * log(m)
+
+    This implements the spatial competition model where:
+    - (1/2)|p|^2: kinetic/control cost
+    - -|x - x_stall|: proximity benefit to ice cream stall
+    - -lambda * log(m): log-barrier congestion cost
+    """
+
+    def __init__(self, stall_position: float, crowd_aversion: float):
+        super().__init__()
+        self.stall_position = stall_position
+        self.crowd_aversion = crowd_aversion
+
+    def __call__(self, x: np.ndarray, m: float, p: np.ndarray, t: float = 0.0) -> float:
+        """Evaluate Hamiltonian H(x, m, p, t)."""
+        # Extract scalar position
+        x_scalar = float(x[0]) if hasattr(x, "__len__") else float(x)
+
+        # Kinetic energy (quadratic control cost)
+        p_norm_sq = float(np.sum(p**2))
+        kinetic = 0.5 * p_norm_sq
+
+        # Proximity cost to stall (negative = benefit)
+        proximity = -abs(x_scalar - self.stall_position)
+
+        # Congestion cost (log-barrier)
+        m_reg = max(float(m), 1e-10)  # Regularization to avoid log(0)
+        congestion = -self.crowd_aversion * np.log(m_reg)
+
+        return kinetic + proximity + congestion
+
+    def dm(self, x: np.ndarray, m: float, p: np.ndarray, t: float = 0.0) -> float:
+        """Derivative of Hamiltonian with respect to density: dH/dm = -lambda / m."""
+        m_reg = max(float(m), 1e-10)
+        return -self.crowd_aversion / m_reg
+
+    def dp(self, x: np.ndarray, m: float, p: np.ndarray, t: float = 0.0) -> np.ndarray:
+        """Derivative of Hamiltonian with respect to momentum: dH/dp = p."""
+        return np.atleast_1d(p)
 
 
 def create_towel_beach_problem(
@@ -85,42 +131,6 @@ def create_towel_beach_problem(
         MFGProblem for spatial competition
     """
 
-    # Hamiltonian function with correct signature for MFGComponents
-    # H(x, p, m) = (1/2)|p|^2 - |x - x_stall| - lambda * log(m)
-    def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """
-        Hamiltonian for Towel-on-Beach problem.
-
-        H(x, p, m) = (1/2)|p|^2 - V(x) - lambda * log(m)
-
-        where V(x) = |x - x_stall| is the proximity cost.
-        """
-        # Get gradient from derivs (p = du/dx)
-        if isinstance(derivs, dict):
-            p = derivs.get((1,), 0.0)
-        else:
-            p = derivs.grad[0] if hasattr(derivs, "grad") else 0.0
-
-        # Kinetic energy (quadratic control cost)
-        kinetic = 0.5 * p**2
-
-        # Proximity cost to stall (V(x) = |x - x_stall|)
-        # Note: Hamiltonian has -V(x) term
-        proximity = -abs(x_position - stall_position)
-
-        # Congestion cost (log-barrier): -lambda * log(m)
-        m_reg = max(m_at_x, 1e-10)  # Regularization to avoid log(0)
-        congestion = -crowd_aversion * np.log(m_reg)
-
-        return kinetic + proximity + congestion
-
-    # Hamiltonian derivative w.r.t. density
-    # dH/dm = -lambda / m
-    def hamiltonian_dm_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """Derivative of Hamiltonian with respect to density."""
-        m_reg = max(m_at_x, 1e-10)
-        return -crowd_aversion / m_reg
-
     # Initial distribution: Uniform with small perturbation
     def initial_density_func(x):
         """Slightly perturbed uniform distribution."""
@@ -131,10 +141,15 @@ def create_towel_beach_problem(
         """Zero terminal cost."""
         return 0.0
 
-    # Create MFGComponents (Issue #670: m_initial/u_final must be in MFGComponents)
+    # Class-based Hamiltonian for Towel Beach problem
+    hamiltonian = TowelBeachHamiltonian(
+        stall_position=stall_position,
+        crowd_aversion=crowd_aversion,
+    )
+
+    # Create MFGComponents (Issue #673: class-based Hamiltonian required)
     components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
+        hamiltonian=hamiltonian,
         m_initial=initial_density_func,
         u_final=terminal_value_func,
     )
