@@ -17,8 +17,6 @@ This is critical for Issue #597 Milestone 2: FP Solver Diffusion Integration.
 
 from __future__ import annotations
 
-import pytest
-
 import numpy as np
 import scipy.sparse as sparse
 
@@ -29,7 +27,6 @@ from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
 from mfg_pde.operators.differential.laplacian import LaplacianOperator
 
 
-@pytest.mark.xfail(reason="Issue #680: Ghost-cell vs coefficient-folding BC implementation differs ~10%")
 def test_laplacian_1d_neumann_equivalence():
     """
     Test 1D Laplacian: Ghost cells vs coefficient folding for Neumann BC.
@@ -56,8 +53,9 @@ def test_laplacian_1d_neumann_equivalence():
     A_ghost = identity / dt - D * L_ghost
 
     # Coefficient folding approach via manual assembly
-    # Neumann: du/dn = 0 => u_ghost = u_boundary => LinearConstraint(weights={0: 1.0}, bias=0.0)
-    bc_constraint = LinearConstraint(weights={0: 1.0}, bias=0.0)
+    # Second-order Neumann: du/dn = 0 => u_ghost = u_interior_neighbor (mirroring)
+    # This matches the ghost-cell approach which uses symmetric stencils at boundaries
+    bc_constraint = LinearConstraint(weights={1: 1.0}, bias=0.0)
     A_folded, b_bc = _build_diffusion_matrix_with_bc(
         shape=(Nx,),
         spacing=(dx,),
@@ -145,7 +143,6 @@ def test_laplacian_1d_dirichlet_equivalence():
     assert rel_error < 1e-6, f"Matrices differ beyond tolerance: rel_error={rel_error:.2e}"
 
 
-@pytest.mark.xfail(reason="Issue #680: Ghost-cell vs coefficient-folding BC implementation differs ~10%")
 def test_laplacian_2d_neumann_equivalence():
     """
     Test 2D Laplacian: Ghost cells vs coefficient folding for Neumann BC.
@@ -169,8 +166,8 @@ def test_laplacian_2d_neumann_equivalence():
     A_ghost = identity / dt - D * L_ghost
 
     # Coefficient folding approach via manual assembly
-    # Neumann: du/dn = 0
-    bc_constraint = LinearConstraint(weights={0: 1.0}, bias=0.0)
+    # Second-order Neumann: du/dn = 0 => u_ghost = u_interior_neighbor (mirroring)
+    bc_constraint = LinearConstraint(weights={1: 1.0}, bias=0.0)
     A_folded, b_bc = _build_diffusion_matrix_with_bc(
         shape=(Nx, Ny),
         spacing=(dx, dy),
@@ -201,7 +198,6 @@ def test_laplacian_2d_neumann_equivalence():
     assert np.linalg.norm(b_bc) < 1e-12, "Neumann BC should have zero bias term"
 
 
-@pytest.mark.xfail(reason="Issue #680: Ghost-cell vs coefficient-folding BC implementation differs ~10%")
 def test_laplacian_2d_no_flux_equivalence():
     """
     Test 2D Laplacian: Ghost cells vs coefficient folding for no-flux BC.
@@ -226,8 +222,8 @@ def test_laplacian_2d_no_flux_equivalence():
     A_ghost = identity / dt - D * L_ghost
 
     # Coefficient folding approach via manual assembly
-    # No-flux for diffusion part is same as Neumann
-    bc_constraint = LinearConstraint(weights={0: 1.0}, bias=0.0)
+    # No-flux for diffusion part is same as second-order Neumann (mirroring)
+    bc_constraint = LinearConstraint(weights={1: 1.0}, bias=0.0)
     A_folded, _b_bc = _build_diffusion_matrix_with_bc(
         shape=(Nx, Ny),
         spacing=(dx, dy),
