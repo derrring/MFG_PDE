@@ -442,7 +442,6 @@ class TestInterpolationMethods:
 
         assert solver.interpolation_method == "cubic"
 
-    @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_cubic_produces_valid_solution_1d(self):
         """Test that cubic interpolation produces valid solution in 1D."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
@@ -463,7 +462,6 @@ class TestInterpolationMethods:
         assert np.all(np.isfinite(U_solution))
         assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
-    @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_cubic_consistency_with_linear(self):
         """Test that cubic interpolation is consistent with linear on smooth problems."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
@@ -618,7 +616,6 @@ class TestRBFInterpolationFallback:
 class TestEnhancementsIntegration:
     """Test combinations of enhancements working together."""
 
-    @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_rk4_with_cubic_interpolation(self):
         """Test RK4 characteristic tracing with cubic interpolation."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
@@ -659,7 +656,6 @@ class TestEnhancementsIntegration:
         assert np.all(np.isfinite(U_solution))
         assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
-    @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_all_enhancements_together(self):
         """Test all enhancements working together: RK4 + cubic + RBF."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
@@ -685,7 +681,6 @@ class TestEnhancementsIntegration:
         assert np.all(np.isfinite(U_solution))
         assert U_solution.shape == (problem.Nt + 1, Nx_points)
 
-    @pytest.mark.xfail(reason="Cubic interpolation produces NaN values - see issue #583")
     def test_enhanced_vs_baseline_consistency(self):
         """Test that enhanced configuration produces consistent results with baseline."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[41], boundary_conditions=no_flux_bc(dimension=1))
