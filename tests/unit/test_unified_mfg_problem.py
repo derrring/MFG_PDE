@@ -521,23 +521,28 @@ class TestCustomComponentExceptionPropagation:
     """Test that custom component exceptions propagate to user (not silently return NaN).
 
     Verifies fix for issue #420: Silent failures in custom component evaluation.
+    Updated for Issue #673: Class-based Hamiltonian API.
     """
 
     def test_custom_hamiltonian_exception_propagates(self):
         """Test that exceptions in custom Hamiltonian propagate to caller."""
+        from mfg_pde.core.hamiltonian import HamiltonianBase
         from mfg_pde.core.mfg_problem import MFGComponents
 
-        # Custom Hamiltonian that raises an exception
-        def broken_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-            raise ValueError("Intentional error in custom Hamiltonian")
+        # Custom Hamiltonian class that raises an exception
+        class BrokenHamiltonian(HamiltonianBase):
+            def __call__(self, x, m, p, t=0.0):
+                raise ValueError("Intentional error in custom Hamiltonian")
 
-        def working_dh_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-            return 0.0
+            def dp(self, x, m, p, t=0.0):
+                return 0.0
+
+            def dm(self, x, m, p, t=0.0):
+                return 0.0
 
         domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
         components = MFGComponents(
-            hamiltonian_func=broken_hamiltonian,
-            hamiltonian_dm_func=working_dh_dm,
+            hamiltonian=BrokenHamiltonian(),
             m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
             u_final=lambda x: 0.0,
             problem_type="custom",
@@ -556,19 +561,23 @@ class TestCustomComponentExceptionPropagation:
 
     def test_custom_hamiltonian_dm_exception_propagates(self):
         """Test that exceptions in custom dH/dm propagate to caller."""
+        from mfg_pde.core.hamiltonian import HamiltonianBase
         from mfg_pde.core.mfg_problem import MFGComponents
 
-        def working_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-            return 0.0
+        # Custom Hamiltonian class with broken dm() method
+        class BrokenDmHamiltonian(HamiltonianBase):
+            def __call__(self, x, m, p, t=0.0):
+                return 0.0
 
-        # Custom dH/dm that raises an exception
-        def broken_dh_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-            raise RuntimeError("Intentional error in dH/dm")
+            def dp(self, x, m, p, t=0.0):
+                return 0.0
+
+            def dm(self, x, m, p, t=0.0):
+                raise RuntimeError("Intentional error in dH/dm")
 
         domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
         components = MFGComponents(
-            hamiltonian_func=working_hamiltonian,
-            hamiltonian_dm_func=broken_dh_dm,
+            hamiltonian=BrokenDmHamiltonian(),
             m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
             u_final=lambda x: 0.0,
             problem_type="custom",
