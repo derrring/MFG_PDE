@@ -40,6 +40,7 @@ from mfg_pde.geometry.boundary.bc_utils import (
 from mfg_pde.utils.mfg_logging import get_logger
 
 from .base_fp import BaseFPSolver
+from .fp_sl_splatting import splat_1d
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -57,7 +58,7 @@ class FPSLAdjointSolver(BaseFPSolver):
     used in HJB solvers, ensuring discrete duality for MFG.
 
     Algorithm (operator splitting):
-        1. Advection: Forward trace x_dest = x + α*dt, scatter mass via linear splatting
+        1. Advection: Forward trace x_dest = x + α*dt, scatter mass via splatting
         2. Diffusion: Crank-Nicolson implicit solve
 
     Key Properties:
@@ -65,6 +66,14 @@ class FPSLAdjointSolver(BaseFPSolver):
         - Density peaks form naturally from converging flow
         - Discrete duality with HJB Backward SL is preserved
         - No Jacobian correction needed (conservation is intrinsic)
+
+    Splatting Methods (Issue #708):
+        - 'linear': 2-point stencil, O(dx) accuracy, preserves positivity
+        - 'cubic': 4-point stencil, O(dx³) accuracy, may produce negative values
+        - 'quintic': 6-point stencil, O(dx⁵) accuracy, may produce negative values
+
+    Important: The interpolation_method must match the HJB solver's method
+    to maintain exact discrete adjoint consistency.
 
     Dimension support:
         - 1D: Full support (production-ready)
@@ -80,6 +89,7 @@ class FPSLAdjointSolver(BaseFPSolver):
         self,
         problem: MFGProblem,
         boundary_conditions: BoundaryConditions | None = None,
+        interpolation_method: str = "linear",
     ):
         """
         Initialize Adjoint Semi-Lagrangian FP solver.
@@ -89,6 +99,11 @@ class FPSLAdjointSolver(BaseFPSolver):
             boundary_conditions: Optional boundary conditions override.
                 If None, uses boundary conditions from problem.geometry.
                 The advection step uses reflecting BC for mass conservation.
+            interpolation_method: Splatting method (adjoint of interpolation)
+                - 'linear': Linear splatting (fastest, preserves positivity)
+                - 'cubic': Cubic splatting (O(dx³), may produce negatives)
+                - 'quintic': Quintic splatting (O(dx⁵), may produce negatives)
+                Must match the HJB solver's interpolation_method for adjoint consistency.
         """
         super().__init__(problem)
         self.fp_method_name = "Adjoint Semi-Lagrangian"
@@ -100,6 +115,12 @@ class FPSLAdjointSolver(BaseFPSolver):
             raise NotImplementedError(
                 "FPSLAdjointSolver currently only supports 1D problems. nD support is planned for future versions."
             )
+
+        # Validate interpolation method
+        valid_methods = ("linear", "cubic", "quintic")
+        if interpolation_method not in valid_methods:
+            raise ValueError(f"Unknown interpolation_method: {interpolation_method}. Use one of {valid_methods}.")
+        self.interpolation_method = interpolation_method
 
         # Precompute grid parameters (1D)
         bounds = problem.geometry.get_bounds()
@@ -246,7 +267,7 @@ class FPSLAdjointSolver(BaseFPSolver):
         One Adjoint Semi-Lagrangian step for Fokker-Planck equation.
 
         Operator splitting:
-            1. Forward advection with linear splatting (mass-conservative)
+            1. Forward advection with splatting (mass-conservative)
             2. Diffusion via Crank-Nicolson
 
         This is the ADJOINT of the HJB backward interpolation, ensuring discrete
@@ -261,6 +282,12 @@ class FPSLAdjointSolver(BaseFPSolver):
 
             Combined with Crank-Nicolson diffusion (which also preserves sum(m)
             with Neumann BC), total mass sum(m) is conserved by construction.
+
+        Splatting Methods:
+            The splatting method is the transpose of interpolation:
+            - linear: 2-point stencil, O(dx) accuracy
+            - cubic: 4-point stencil, O(dx³) accuracy
+            - quintic: 6-point stencil, O(dx⁵) accuracy
 
         Args:
             m: Current density, shape (Nx,)
@@ -283,41 +310,24 @@ class FPSLAdjointSolver(BaseFPSolver):
         apply_bc = np.vectorize(lambda x: apply_boundary_conditions_1d(x, self.xmin, self.xmax, bc_op))
         x_dest_bounded = apply_bc(x_dest)
 
-        # Convert to grid indices (continuous)
-        pos_cont = (x_dest_bounded - self.xmin) / self.dx
+        # Issue #708: Splatting is the transpose of interpolation
+        # Use the same method as HJB solver for exact adjoint consistency
+        # - linear: 2-point, weights (1-w, w)
+        # - cubic: 4-point, Catmull-Rom weights
+        # - quintic: 6-point, Lagrange weights
+        m_star = splat_1d(
+            m=m,
+            x_dest=x_dest_bounded,
+            x_grid=self.x_grid,
+            dx=self.dx,
+            xmin=self.xmin,
+            xmax=self.xmax,
+            method=self.interpolation_method,
+        )
 
-        # Lower neighbor index
-        j = np.floor(pos_cont).astype(int)
-
-        # Clamp j to valid range [0, Nx-2] for interior splatting
-        # (j and j+1 must both be valid indices)
-        j = np.clip(j, 0, self.Nx - 2)
-
-        # Weight for upper neighbor (linear interpolation weights)
-        w = pos_cont - j
-        w = np.clip(w, 0, 1)  # Safety clamp
-
-        # Scatter density to destination cells (transpose of linear interpolation)
-        # Issue #708: Use sum(m) as mass measure (consistent with SL theory)
-        #
-        # The SL adjoint naturally conserves sum(m), not trapezoidal integral.
-        # From adjoint_discretization_mfg.md Section 6.4:
-        # - Interpolation matrix P has row sums = 1
-        # - Splatting matrix P^T has column sums = 1
-        # - Therefore sum(P^T @ m) = sum(m) is conserved exactly
-        #
-        # This is the key difference from Backward SL:
-        # - Backward (HJB): m_new[i] = (1-w)*m_old[j] + w*m_old[j+1]  (gather/interpolate)
-        # - Forward (FP):   m_new[j] += (1-w)*m_old[i]; m_new[j+1] += w*m_old[i]  (scatter)
-
-        m_star = np.zeros_like(m)
-
-        # Use np.add.at for atomic accumulation (handles overlapping destinations)
-        np.add.at(m_star, j, m * (1 - w))  # Scatter to lower neighbor
-        np.add.at(m_star, j + 1, m * w)  # Scatter to upper neighbor
-
-        # Ensure non-negativity
-        m_star = np.maximum(m_star, 0)
+        # Ensure non-negativity (only matters for cubic/quintic which may oscillate)
+        if self.interpolation_method != "linear":
+            m_star = np.maximum(m_star, 0)
 
         # Step 2: Diffusion via Crank-Nicolson (Finite Volume formulation)
         # ================================================================
