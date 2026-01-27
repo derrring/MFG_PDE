@@ -113,7 +113,8 @@ def test_create_crowd_problem(simple_2d_domain):
     assert problem.components is not None
     # Issue #673: Potential is now embedded in SeparableHamiltonian, not separate potential_func
     assert problem.components.hamiltonian is not None
-    assert hasattr(problem.components.hamiltonian, "potential")
+    # Potential is stored as private _potential attribute in SeparableHamiltonian
+    assert problem.components.hamiltonian._potential is not None
 
 
 def test_create_stochastic_problem(simple_domain):
