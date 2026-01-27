@@ -20,9 +20,19 @@ from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterat
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+
+
+def _default_hamiltonian():
+    """Default Hamiltonian for testing."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
 
 
 def _default_components():
@@ -30,6 +40,7 @@ def _default_components():
     return MFGComponents(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
         u_final=lambda x: 0.0,  # Zero terminal cost
+        hamiltonian=_default_hamiltonian(),
     )
 
 
@@ -304,7 +315,7 @@ class TestMassConservation1D:
                     density = np.exp(-((x - center) ** 2) / (2 * std**2))
                     return density
 
-                return MFGComponents(m_initial=m_initial, u_final=lambda x: 0.0)
+                return MFGComponents(m_initial=m_initial, u_final=lambda x: 0.0, hamiltonian=_default_hamiltonian())
 
             geometry = TensorProductGrid(bounds=[(0.0, L)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
             problem = MFGProblem(

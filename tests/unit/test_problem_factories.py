@@ -7,13 +7,14 @@ and legacy specialized problem classes.
 NOTE: Uses TensorProductGrid (unified geometry API) for grid geometries.
 For unstructured meshes, use Mesh2D/Mesh3D.
 
-Updated: December 2025 - Use new Hamiltonian signature with x_idx, m_at_x, derivs.
+Updated: January 2026 - Issue #673: Class-based Hamiltonian API.
 """
 
 import pytest
 
 import numpy as np
 
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
 from mfg_pde.factory import (
     create_crowd_problem,
@@ -24,6 +25,15 @@ from mfg_pde.factory import (
 )
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_hamiltonian():
+    """Default class-based Hamiltonian for tests (Issue #673)."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
 
 
 @pytest.fixture
@@ -41,16 +51,7 @@ def simple_2d_domain():
 
 
 def test_create_standard_problem(simple_domain):
-    """Test standard MFG problem creation."""
-
-    # New API: x_idx (int), m_at_x (float), derivs (tuple of arrays)
-    def hamiltonian(x_idx, m_at_x, derivs):
-        # derivs = (u_x,) for 1D
-        p = derivs[0] if len(derivs) > 0 else 0.0
-        return 0.5 * p**2 + m_at_x
-
-    def hamiltonian_dm(x_idx, m_at_x, derivs):
-        return 1.0
+    """Test standard MFG problem creation with class-based Hamiltonian (Issue #673)."""
 
     def terminal_cost(x):
         return x**2
@@ -58,10 +59,9 @@ def test_create_standard_problem(simple_domain):
     def initial_density(x):
         return np.exp(-10 * (x - 0.5) ** 2)
 
-    # Test unified API
+    # Test unified API with class-based Hamiltonian
     problem = create_standard_problem(
-        hamiltonian=hamiltonian,
-        hamiltonian_dm=hamiltonian_dm,
+        hamiltonian=_default_hamiltonian(),
         terminal_cost=terminal_cost,
         initial_density=initial_density,
         geometry=simple_domain,
@@ -70,13 +70,12 @@ def test_create_standard_problem(simple_domain):
 
     assert isinstance(problem, MFGProblem)
     assert problem.components is not None
-    assert problem.components.hamiltonian_func is not None
-    assert problem.components.hamiltonian_dm_func is not None
+    assert problem.components.hamiltonian is not None
     assert problem.components.problem_type == "standard"
 
 
 def test_create_lq_problem(simple_domain):
-    """Test Linear-Quadratic MFG problem creation."""
+    """Test Linear-Quadratic MFG problem creation (Issue #673)."""
 
     def terminal_cost(x):
         return x**2
@@ -94,11 +93,11 @@ def test_create_lq_problem(simple_domain):
 
     assert isinstance(problem, MFGProblem)
     assert problem.components is not None
-    assert problem.components.hamiltonian_func is not None
+    assert problem.components.hamiltonian is not None
 
 
 def test_create_crowd_problem(simple_2d_domain):
-    """Test crowd dynamics MFG problem creation."""
+    """Test crowd dynamics MFG problem creation (Issue #673 class-based Hamiltonian)."""
     target = np.array([0.8, 0.8])
 
     def initial_density(x):
@@ -112,18 +111,14 @@ def test_create_crowd_problem(simple_2d_domain):
 
     assert isinstance(problem, MFGProblem)
     assert problem.components is not None
-    assert problem.components.potential_func is not None
+    # Issue #673: Potential is now embedded in SeparableHamiltonian, not separate potential_func
+    assert problem.components.hamiltonian is not None
+    # Potential is stored as private _potential attribute in SeparableHamiltonian
+    assert problem.components.hamiltonian._potential is not None
 
 
 def test_create_stochastic_problem(simple_domain):
-    """Test stochastic MFG problem creation."""
-
-    def hamiltonian(x_idx, m_at_x, derivs):
-        p = derivs[0] if len(derivs) > 0 else 0.0
-        return 0.5 * p**2 + m_at_x
-
-    def hamiltonian_dm(x_idx, m_at_x, derivs):
-        return 1.0
+    """Test stochastic MFG problem creation with class-based Hamiltonian (Issue #673)."""
 
     def terminal_cost(x):
         return x**2
@@ -135,8 +130,7 @@ def test_create_stochastic_problem(simple_domain):
         return np.sin(2 * np.pi * t)
 
     problem = create_stochastic_problem(
-        hamiltonian=hamiltonian,
-        hamiltonian_dm=hamiltonian_dm,
+        hamiltonian=_default_hamiltonian(),
         terminal_cost=terminal_cost,
         initial_density=initial_density,
         geometry=simple_domain,
@@ -153,18 +147,9 @@ def test_create_stochastic_problem(simple_domain):
 
 
 def test_create_mfg_problem_with_components(simple_domain):
-    """Test main factory function with explicit components."""
-
-    def hamiltonian(x_idx, m_at_x, derivs):
-        p = derivs[0] if len(derivs) > 0 else 0.0
-        return 0.5 * p**2
-
-    def hamiltonian_dm(x_idx, m_at_x, derivs):
-        return 0.0
-
+    """Test main factory function with explicit components (Issue #673)."""
     components = MFGComponents(
-        hamiltonian_func=hamiltonian,
-        hamiltonian_dm_func=hamiltonian_dm,
+        hamiltonian=_default_hamiltonian(),
         u_final=lambda x: x**2,
         m_initial=lambda x: np.exp(-(x**2)),
         problem_type="standard",
@@ -199,7 +184,7 @@ def test_backward_compatibility_warning(simple_domain):
 
 
 def test_problem_type_detection():
-    """Test automatic problem type detection."""
+    """Test automatic problem type detection (Issue #673)."""
 
     domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
 
@@ -210,10 +195,9 @@ def test_problem_type_detection():
     def u_final(x):
         return 0.0
 
-    # Standard MFG
+    # Standard MFG with class-based Hamiltonian
     components_standard = MFGComponents(
-        hamiltonian_func=lambda x_idx, m_at_x, derivs: 0.5 * (derivs[0] if len(derivs) > 0 else 0.0) ** 2,
-        hamiltonian_dm_func=lambda x_idx, m_at_x, derivs: 0.0,
+        hamiltonian=_default_hamiltonian(),
         m_initial=m_initial,
         u_final=u_final,
         problem_type="standard",
@@ -223,8 +207,7 @@ def test_problem_type_detection():
 
     # Stochastic MFG (type set explicitly via problem_type)
     components_stochastic = MFGComponents(
-        hamiltonian_func=lambda x_idx, m_at_x, derivs: 0.5 * (derivs[0] if len(derivs) > 0 else 0.0) ** 2,
-        hamiltonian_dm_func=lambda x_idx, m_at_x, derivs: 0.0,
+        hamiltonian=_default_hamiltonian(),
         m_initial=m_initial,
         u_final=u_final,
         parameters={"noise_intensity": 0.5},

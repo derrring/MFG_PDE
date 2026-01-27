@@ -12,8 +12,18 @@ import numpy as np
 from mfg_pde import MFGComponents, MFGProblem
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary.conditions import no_flux_bc
+
+
+def _default_hamiltonian():
+    """Default Hamiltonian for testing."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
 
 
 class SimpleCoupledMFGProblem(MFGProblem):
@@ -135,6 +145,7 @@ class SimpleCoupledMFGProblem(MFGProblem):
             hamiltonian_dm_func=hamiltonian_dm,
             m_initial=m_initial,
             u_final=terminal_cost_func,
+            hamiltonian=_default_hamiltonian(),
         )
 
 

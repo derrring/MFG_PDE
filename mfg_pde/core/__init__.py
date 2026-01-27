@@ -14,14 +14,28 @@ from .derivatives import (
     to_multi_index_dict,
 )
 from .hamiltonian import (
+    # Control cost base classes (original)
     BoundedControlCost,
     BoundedHamiltonian,
     ControlCostBase,
+    # Dual classes (Legendre transform)
+    DualHamiltonian,
+    DualLagrangian,
+    # Full MFG Hamiltonian classes (Issue #673)
+    HamiltonianBase,
+    HamiltonianState,
     L1ControlCost,
     L1Hamiltonian,
+    # Lagrangian classes (Issue #651)
+    LagrangianBase,
+    # Common base (Issue #651)
+    MFGOperatorBase,
     OptimizationSense,
     QuadraticControlCost,
     QuadraticHamiltonian,
+    QuadraticMFGHamiltonian,
+    SeparableHamiltonian,
+    create_hamiltonian,
 )
 from .mfg_components import (
     ConditionsMixin,
@@ -46,8 +60,11 @@ __all__ = [
     # Mixins
     "HamiltonianMixin",
     "ConditionsMixin",
-    # Hamiltonian/Lagrangian (Issue #623)
+    # Hamiltonian/Lagrangian (Issues #623, #651, #667, #673)
     "OptimizationSense",
+    # Common base for H and L (Issue #651)
+    "MFGOperatorBase",
+    # Control cost classes (original, H(p) only)
     "ControlCostBase",
     "QuadraticControlCost",
     "QuadraticHamiltonian",
@@ -55,6 +72,17 @@ __all__ = [
     "L1Hamiltonian",
     "BoundedControlCost",
     "BoundedHamiltonian",
+    # Full MFG Hamiltonian classes (Issue #673)
+    "HamiltonianBase",
+    "HamiltonianState",
+    "SeparableHamiltonian",
+    "QuadraticMFGHamiltonian",
+    "create_hamiltonian",
+    # Lagrangian classes (Issue #651)
+    "LagrangianBase",
+    # Dual classes (Legendre transform)
+    "DualHamiltonian",
+    "DualLagrangian",
     # Capacity-constrained MFG
     "CapacityConstrainedMFGProblem",
     "CongestionModel",

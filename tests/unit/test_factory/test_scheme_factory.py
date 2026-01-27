@@ -2,21 +2,34 @@
 Unit tests for scheme-based solver factory (Issue #580).
 
 Tests create_paired_solvers() function with all scheme variants.
+
+Issue #673: Updated to class-based Hamiltonian API.
 """
 
 import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.alg import SchemeFamily
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.factory import create_paired_solvers, get_recommended_scheme
 from mfg_pde.types import NumericalScheme
 from mfg_pde.utils import DualityStatus, check_solver_duality
 
 
+def _default_hamiltonian():
+    """Create default class-based Hamiltonian for tests."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
+
+
 def _default_components():
     """Provide default components for test problems."""
     return MFGComponents(
+        hamiltonian=_default_hamiltonian(),
         m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
         u_final=lambda x: 0.0,
     )

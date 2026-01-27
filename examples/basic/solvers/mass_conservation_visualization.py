@@ -19,6 +19,7 @@ import numpy as np
 from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid, no_flux_bc
@@ -26,7 +27,14 @@ from mfg_pde.geometry import TensorProductGrid, no_flux_bc
 
 def _default_components():
     """Default MFGComponents for testing (Issue #670: explicit specification required)."""
+    # Class-based Hamiltonian: H = (1/2)|p|² + coupling * m
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
     return MFGComponents(
+        hamiltonian=hamiltonian,
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
         u_final=lambda x: 0.0,  # Zero terminal cost
     )

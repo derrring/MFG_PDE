@@ -21,6 +21,7 @@ Problem Setup:
 import numpy as np
 
 from mfg_pde import MFGComponents, MFGProblem
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.factory import create_basic_solver
 
 
@@ -100,53 +101,39 @@ class CrowdMotion2D(MFGProblem):
         """Setup MFG components for numerical solvers."""
         kappa = self.congestion_weight
 
-        def hamiltonian_func(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, derivs=None, **kwargs):
-            """H = (1/2)|∇u|² + κ·m"""
-            h_value = 0.0
-
-            if derivs is not None:
-                # Extract gradient ∇u
-                grad_u = []
-                for d in range(2):  # 2D
-                    idx_tuple = tuple([0] * d + [1] + [0] * (2 - d - 1))
-                    grad_u.append(derivs.get(idx_tuple, 0.0))
-                h_value += 0.5 * float(np.sum(np.array(grad_u) ** 2))
-
-            # Congestion cost
-            h_value += kappa * float(m_at_x)
-
-            return h_value
-
-        def hamiltonian_dm(x_idx, x_position, m_at_x, **kwargs):
-            """∂H/∂m = κ"""
-            return kappa
-
-        def initial_density_func(x_idx):
+        def initial_density_func(x):
             """Gaussian initial density."""
-            # Convert grid index to physical position
-            coords = []
-            for d in range(2):
-                idx_d = x_idx[d] if isinstance(x_idx, tuple) else x_idx
-                x_d = self.geometry.grid.bounds[d][0] + idx_d * self.geometry.grid.spacing[d]
-                coords.append(x_d)
-            coords_array = np.array(coords).reshape(1, -1)
-            return float(self.initial_density(coords_array)[0])
+            if np.isscalar(x):
+                x = np.array([x])
+            x = np.atleast_1d(x)
+            if x.shape[0] >= 2:
+                dist_sq = np.sum((x[:2] - self.start) ** 2)
+            else:
+                dist_sq = (x[0] - self.start[0]) ** 2
+            return np.exp(-100 * dist_sq)
 
-        def terminal_cost_func(x_idx):
+        def terminal_cost_func(x):
             """Quadratic terminal cost."""
-            coords = []
-            for d in range(2):
-                idx_d = x_idx[d] if isinstance(x_idx, tuple) else x_idx
-                x_d = self.geometry.grid.bounds[d][0] + idx_d * self.geometry.grid.spacing[d]
-                coords.append(x_d)
-            coords_array = np.array(coords).reshape(1, -1)
-            return float(self.terminal_cost(coords_array)[0])
+            if np.isscalar(x):
+                x = np.array([x])
+            x = np.atleast_1d(x)
+            if x.shape[0] >= 2:
+                dist_sq = np.sum((x[:2] - self.goal) ** 2)
+            else:
+                dist_sq = (x[0] - self.goal[0]) ** 2
+            return 5.0 * dist_sq
+
+        # Class-based Hamiltonian: H = (1/2)|p|² + κ·m
+        hamiltonian = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+            coupling=lambda m: kappa * m,
+            coupling_dm=lambda m: kappa,
+        )
 
         return MFGComponents(
-            hamiltonian_func=hamiltonian_func,
-            hamiltonian_dm_func=hamiltonian_dm,
-            initial_density_func=initial_density_func,
-            final_value_func=terminal_cost_func,
+            hamiltonian=hamiltonian,
+            m_initial=initial_density_func,
+            u_final=terminal_cost_func,
         )
 
 

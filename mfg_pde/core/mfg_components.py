@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
-from mfg_pde.types import HamiltonianJacobians
-from mfg_pde.utils.aux_func import npart, ppart
+
+# Issue #670: npart, ppart imports removed - no default Hamiltonian
 from mfg_pde.utils.mfg_logging import get_logger
 
 logger = get_logger(__name__)
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.geometry.boundary.conditions import BoundaryConditions
+    from mfg_pde.types import HamiltonianJacobians
 
 # Define a limit for values before squaring to prevent overflow within H
 VALUE_BEFORE_SQUARE_LIMIT = 1e150
@@ -46,37 +47,114 @@ class MFGComponents:
     """
     Container for all components that define a custom MFG problem.
 
-    This class holds all the mathematical components needed to fully specify
-    an MFG problem, allowing users to provide custom implementations.
+    Issue #673: Class-based Hamiltonian API only (legacy function-based removed).
+
+    Hamiltonian Specification
+    -------------------------
+    Use class-based Hamiltonian (HamiltonianBase subclass):
+
+    ```python
+    from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+
+    H = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: -m**2,
+        coupling_dm=lambda m: -2*m,
+    )
+    components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)
+    ```
+
+    Or use Lagrangian (auto-converted via Legendre transform):
+
+    ```python
+    from mfg_pde.core.hamiltonian import LagrangianBase
+
+    class MyLagrangian(LagrangianBase):
+        def __call__(self, x, alpha, m, t=0.0):
+            return 0.5 * np.sum(alpha**2)
+
+    components = MFGComponents(lagrangian=MyLagrangian(), m_initial=..., u_final=...)
+    ```
+
+    Attributes
+    ----------
+    hamiltonian : HamiltonianBase
+        Class-based Hamiltonian H(x, m, p, t). Required.
+    lagrangian : LagrangianBase, optional
+        Alternative to hamiltonian - auto-converted via Legendre transform.
+    m_initial : Callable | NDArray
+        Initial density distribution m_0(x).
+    u_final : Callable | NDArray
+        Terminal value function u_T(x).
+    potential_func : Callable, optional
+        Additional potential V(x, t) (if not in Hamiltonian).
+    boundary_conditions : BoundaryConditions, optional
+        Boundary conditions for the domain.
     """
 
-    # Core Hamiltonian components
-    hamiltonian_func: Callable | None = None  # H(x, m, p, t) -> float
-    hamiltonian_dm_func: Callable | None = None  # dH/dm(x, m, p, t) -> float
-    hamiltonian_dp_func: Callable | None = None  # dH/dp(x, m, p, t) -> array (optional)
+    # Class-based Hamiltonian or Lagrangian (Issue #673)
+    hamiltonian: Any = None  # HamiltonianBase instance
+    lagrangian: Any = None  # LagrangianBase instance (auto-converted)
 
-    # Optional Jacobian for advanced solvers
-    hamiltonian_jacobian_func: Callable | None = None  # Jacobian contribution
-
-    # Potential function V(x, t) - part of Hamiltonian
-    potential_func: Callable | None = None  # V(x, t) -> float
-
-    # Coupling terms (for advanced MFG formulations)
-    coupling_func: Callable | None = None  # Additional coupling terms
-
-    # Initial and terminal conditions (Issue #670: unified naming)
+    # Initial and terminal conditions
     m_initial: Callable | NDArray | None = None  # m_0(x): initial density
     u_final: Callable | NDArray | None = None  # u_T(x): terminal value
+
+    # Optional potential (if not included in Hamiltonian)
+    potential_func: Callable | None = None  # V(x, t) -> float
 
     # Boundary conditions
     boundary_conditions: BoundaryConditions | None = None
 
-    # Problem parameters
+    # Problem parameters and metadata
     parameters: dict[str, Any] = field(default_factory=dict)
-
-    # Metadata
     description: str = "MFG Problem"
     problem_type: str = "mfg"
+
+    # Internal: stores the validated Hamiltonian class
+    _hamiltonian_class: Any = field(default=None, init=False, repr=False)
+
+    def __post_init__(self):
+        """Validate and setup Hamiltonian from class-based specification."""
+        from mfg_pde.core.hamiltonian import HamiltonianBase, LagrangianBase
+
+        # Convert Lagrangian to Hamiltonian via Legendre transform (Issue #651)
+        if self.lagrangian is not None:
+            if isinstance(self.lagrangian, LagrangianBase):
+                if self.hamiltonian is not None:
+                    import warnings
+
+                    warnings.warn(
+                        "Both 'hamiltonian' and 'lagrangian' provided. Using 'hamiltonian' (lagrangian ignored).",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                else:
+                    # Convert Lagrangian to Hamiltonian via Legendre transform
+                    self.hamiltonian = self.lagrangian.legendre_transform()
+
+        # Issue #673: Validate class-based Hamiltonian is provided
+        if self.hamiltonian is None:
+            raise ValueError(
+                "MFGComponents requires a class-based Hamiltonian.\n\n"
+                "Example:\n"
+                "  from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n\n"
+                "  H = SeparableHamiltonian(\n"
+                "      control_cost=QuadraticControlCost(control_cost=1.0),\n"
+                "      coupling=lambda m: -m**2,\n"
+                "      coupling_dm=lambda m: -2*m,\n"
+                "  )\n"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)"
+            )
+
+        if not isinstance(self.hamiltonian, HamiltonianBase):
+            raise TypeError(
+                f"hamiltonian must be a HamiltonianBase instance, got {type(self.hamiltonian).__name__}.\n\n"
+                "Use SeparableHamiltonian, QuadraticMFGHamiltonian, or a custom HamiltonianBase subclass."
+            )
+
+        # Store the validated Hamiltonian class
+        self._hamiltonian_class = self.hamiltonian
 
 
 # ============================================================================
@@ -119,126 +197,49 @@ class HamiltonianMixin:
     dimension: int
 
     # Cached signature parameters (set during validation)
-    _hamiltonian_has_derivs: bool | None = None
-    _hamiltonian_dm_has_derivs: bool | None = None
-    _hamiltonian_dp_has_derivs: bool | None = None
+    # Issue #673: Legacy function signature caching removed - class-based API only
     _potential_has_time: bool | None = None
 
     def _validate_hamiltonian_components(self) -> None:
-        """Validate Hamiltonian-related components and cache signature info."""
+        """Validate Hamiltonian-related components.
+
+        Issue #670, #673: Class-based Hamiltonian required - no function-based API.
+        """
+        # Issue #670: components must be provided
         if self.components is None:
-            return
-
-        has_hamiltonian = self.components.hamiltonian_func is not None
-        has_hamiltonian_dm = self.components.hamiltonian_dm_func is not None
-
-        # If hamiltonian_func provided without hamiltonian_dm_func, use zero placeholder
-        if has_hamiltonian and not has_hamiltonian_dm:
-            import warnings
-
-            warnings.warn(
-                "hamiltonian_dm_func not provided - using zero placeholder. "
-                "This assumes your Hamiltonian has NO density dependence. "
-                "If H depends on m (e.g., congestion terms like log(m)), "
-                "you MUST provide hamiltonian_dm_func for correct results.",
-                UserWarning,
-                stacklevel=4,
+            raise ValueError(
+                "MFGComponents must be provided. No default problem is supported.\n\n"
+                "Example:\n"
+                "  from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n\n"
+                "  H = SeparableHamiltonian(\n"
+                "      control_cost=QuadraticControlCost(control_cost=1.0),\n"
+                "      coupling=lambda m: -m**2,\n"
+                "      coupling_dm=lambda m: -2*m,\n"
+                "  )\n"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)\n"
+                "  problem = MFGProblem(geometry=grid, components=components, ...)"
             )
-            # Create zero placeholder with correct signature (dataclass is mutable)
-            self.components.hamiltonian_dm_func = self._create_zero_hamiltonian_dm()
-            has_hamiltonian_dm = True
 
-        if has_hamiltonian_dm and not has_hamiltonian:
-            raise ValueError("hamiltonian_func is required when hamiltonian_dm_func is provided")
+        # Issue #673: Class-based Hamiltonian required
+        has_hamiltonian_class = getattr(self.components, "_hamiltonian_class", None) is not None
 
-        # Validate function signatures and CACHE signature info (perf optimization)
-        if has_hamiltonian:
-            self._validate_function_signature(
-                self.components.hamiltonian_func,
-                "hamiltonian_func",
-                ["x_idx", "m_at_x"],
-                gradient_param_required=True,
+        if not has_hamiltonian_class:
+            raise ValueError(
+                "Class-based Hamiltonian must be provided in MFGComponents.\n\n"
+                "Example:\n"
+                "  from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n\n"
+                "  H = SeparableHamiltonian(\n"
+                "      control_cost=QuadraticControlCost(control_cost=1.0),\n"
+                "      coupling=lambda m: -m**2,\n"
+                "      coupling_dm=lambda m: -2*m,\n"
+                "  )\n"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)"
             )
-            # Cache whether hamiltonian_func accepts 'derivs' parameter
-            sig = inspect.signature(self.components.hamiltonian_func)
-            self._hamiltonian_has_derivs = "derivs" in sig.parameters
 
-        if has_hamiltonian_dm:
-            self._validate_function_signature(
-                self.components.hamiltonian_dm_func,
-                "hamiltonian_dm_func",
-                ["x_idx", "m_at_x"],
-                gradient_param_required=True,
-            )
-            # Cache whether hamiltonian_dm_func accepts 'derivs' parameter
-            sig = inspect.signature(self.components.hamiltonian_dm_func)
-            self._hamiltonian_dm_has_derivs = "derivs" in sig.parameters
-
-        # Cache hamiltonian_dp_func signature (optional, for analytic Jacobian)
-        if self.components.hamiltonian_dp_func is not None:
-            sig = inspect.signature(self.components.hamiltonian_dp_func)
-            self._hamiltonian_dp_has_derivs = "derivs" in sig.parameters
-
-        # Cache potential signature info
+        # Cache potential signature info (optional component)
         if self.components.potential_func is not None:
             sig = inspect.signature(self.components.potential_func)
             self._potential_has_time = "t" in sig.parameters or "time" in sig.parameters
-
-    @staticmethod
-    def _create_zero_hamiltonian_dm() -> Callable:
-        """
-        Create a zero-returning placeholder for hamiltonian_dm_func.
-
-        Used when hamiltonian_func is provided without hamiltonian_dm_func,
-        assuming the Hamiltonian has no density dependence.
-
-        Returns:
-            Callable with correct signature returning 0.0
-        """
-
-        def zero_hamiltonian_dm(
-            x_idx: int,
-            x_position: float,
-            m_at_x: float,
-            derivs: dict,
-            t_idx: int,
-            current_time: float,
-            problem: object,
-        ) -> float:
-            """Zero placeholder for dH/dm (assumes no density dependence)."""
-            return 0.0
-
-        return zero_hamiltonian_dm
-
-    def _validate_function_signature(
-        self, func: Callable, name: str, expected_params: list, gradient_param_required: bool = False
-    ) -> None:
-        """
-        Validate function signature has expected parameters.
-
-        Args:
-            func: Function to validate
-            name: Name of the function (for error messages)
-            expected_params: List of required parameter names
-            gradient_param_required: If True, requires EITHER 'derivs' OR 'p_values'
-        """
-        sig = inspect.signature(func)
-        params = list(sig.parameters.keys())
-
-        if gradient_param_required:
-            has_derivs = "derivs" in params
-            has_p_values = "p_values" in params
-
-            if not (has_derivs or has_p_values):
-                raise ValueError(
-                    f"{name} must accept either 'derivs' (tuple notation, preferred) "
-                    f"or 'p_values' (legacy string-key format) parameter. "
-                    f"Current parameters: {params}"
-                )
-
-        missing = [p for p in expected_params if p not in params]
-        if missing:
-            raise ValueError(f"{name} must accept parameters: {expected_params}. Missing: {missing}")
 
     def _setup_custom_potential(self) -> None:
         """Setup custom potential function (part of Hamiltonian)."""
@@ -333,225 +334,118 @@ class HamiltonianMixin:
         self,
         x_idx: int,
         m_at_x: float,
-        derivs: dict[tuple, float] | None = None,
+        derivs: dict[tuple, float] | DerivativeTensors | None = None,
         p_values: dict[str, float] | None = None,
         t_idx: int | None = None,
-        x_position: float | None = None,
+        x_position: float | np.ndarray | None = None,
         current_time: float | None = None,
     ) -> float:
         """
         Hamiltonian function H(x, m, p, t).
 
-        Supports both tuple notation (derivs) and legacy string-key (p_values) formats.
+        Issue #673: Class-based Hamiltonian API only - no legacy function support.
 
         Args:
             x_idx: Grid index (0 to Nx)
             m_at_x: Density at grid point x_idx
-            derivs: Derivatives in tuple notation (NEW, preferred):
-                    - 1D: {(0,): u, (1,): du/dx}
-                    - 2D: {(0,0): u, (1,0): du/dx, (0,1): du/dy}
-            p_values: Momentum dictionary (LEGACY, deprecated):
-                      {"forward": p_forward, "backward": p_backward}
+            derivs: Derivatives - DerivativeTensors or tuple-key dict {(1,): du/dx}
+            p_values: DEPRECATED - raises error. Use derivs instead.
             t_idx: Time index (optional)
             x_position: Actual position coordinate (computed from x_idx if not provided)
             current_time: Actual time value (computed from t_idx if not provided)
 
         Returns:
             Hamiltonian value H(x, m, p, t)
-
-        Note:
-            Provide EITHER derivs OR p_values. If both provided, derivs takes precedence.
-            p_values is deprecated and will be removed in a future version.
         """
-        import warnings
+        # Issue #673: Error on legacy p_values parameter
+        if p_values is not None:
+            raise ValueError(
+                "p_values parameter is no longer supported.\n\n"
+                "Use derivs with tuple notation instead:\n"
+                "  # Old: p_values={'forward': 0.1, 'backward': 0.1}\n"
+                "  # New: derivs={(1,): 0.1}  # 1D gradient\n\n"
+                "Or use DerivativeTensors:\n"
+                "  derivs = DerivativeTensors.from_gradient(np.array([0.1]))"
+            )
 
-        if derivs is None and p_values is None:
-            raise ValueError("Must provide either 'derivs' or 'p_values' to H()")
+        if derivs is None:
+            raise ValueError("Must provide 'derivs' to H()")
 
-        # Preserve original DerivativeTensors for custom Hamiltonians
-        derivs_tensor: DerivativeTensors | None = None
-        if isinstance(derivs, DerivativeTensors):
-            derivs_tensor = derivs
+        # Get class-based Hamiltonian
+        H_class = getattr(self.components, "_hamiltonian_class", None) if self.components else None
+        if H_class is None:
+            raise ValueError(
+                "Class-based Hamiltonian must be provided in MFGComponents.\n\n"
+                "Example:\n"
+                "  from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n\n"
+                "  H = SeparableHamiltonian(\n"
+                "      control_cost=QuadraticControlCost(control_cost=1.0),\n"
+                "      coupling=lambda m: -m**2,\n"
+                "      coupling_dm=lambda m: -2*m,\n"
+                "  )\n"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)"
+            )
 
-        # Handle DerivativeTensors input - convert to legacy dict format for default Hamiltonian
-        derivs_dict: dict[tuple[int, ...], float]
+        # Convert derivs to numpy p array for class-based H(x, m, p, t)
         if isinstance(derivs, DerivativeTensors):
             derivs_dict = to_multi_index_dict(derivs)
-        elif derivs is not None:
-            # Legacy dict format - emit deprecation warning
-            warnings.warn(
-                "Passing dict to H() is deprecated since v0.17.0. "
-                "Use DerivativeTensors instead: "
-                "derivs = DerivativeTensors.from_gradient(np.array([p_x, p_y])). "
-                "See docs/development/DERIVATIVE_TENSORS_MIGRATION.md",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            derivs_dict = derivs
-        elif p_values is not None:
-            warnings.warn(
-                "p_values parameter is deprecated. Use derivs instead. "
-                "See docs/gradient_notation_standard.md for migration guide.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            from mfg_pde.compat.gradient_notation import ensure_tuple_notation
-
-            derivs_dict = ensure_tuple_notation(p_values, dimension=1, u_value=0.0)
         else:
-            derivs_dict = {}
+            derivs_dict = derivs
 
-        # Use dict for default Hamiltonian (legacy compatibility)
-        derivs = derivs_dict
+        # Extract momentum p from derivs dict
+        if derivs_dict:
+            dim = max(len(k) for k in derivs_dict) if derivs_dict else 1
+            p = np.zeros(dim)
+            for i in range(dim):
+                key = tuple(1 if j == i else 0 for j in range(dim))
+                p[i] = derivs_dict.get(key, 0.0)
+        else:
+            p = np.zeros(1)
 
-        # Compute x_position and current_time if not provided
+        # Compute x_position if not provided
         if x_position is None:
             if isinstance(x_idx, tuple):
-                if self.geometry is not None:
-                    if self.spatial_shape is not None and len(self.spatial_shape) > 1:
-                        flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
-                        spatial_grid = self.geometry.get_spatial_grid()
-                        x_position = spatial_grid[flat_idx]
-                    else:
-                        x_position = None
-                else:
-                    x_position = None
+                if self.geometry is not None and self.spatial_shape is not None and len(self.spatial_shape) > 1:
+                    flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
+                    spatial_grid = self.geometry.get_spatial_grid()
+                    x_position = spatial_grid[flat_idx]
             else:
                 spatial_grid = self._get_spatial_grid_internal()
                 if spatial_grid is not None:
                     x_position = spatial_grid[x_idx]
-                else:
-                    x_position = None
 
+        # Compute current_time if not provided
         if current_time is None and t_idx is not None:
             current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
+        if current_time is None:
+            current_time = 0.0
 
-        # Use custom Hamiltonian if provided
-        if self.is_custom and self.components is not None and self.components.hamiltonian_func is not None:
-            # Use cached signature info (set during validation) for performance
-            has_derivs = self._hamiltonian_has_derivs
-            if has_derivs is None:
-                # Fallback: compute if not cached (shouldn't happen after __init__)
-                sig = inspect.signature(self.components.hamiltonian_func)
-                has_derivs = "derivs" in sig.parameters
+        # Convert x_position to numpy array
+        x = np.atleast_1d(x_position if x_position is not None else 0.0)
 
-            if has_derivs:
-                # Pass DerivativeTensors if available (new format), otherwise dict (legacy)
-                derivs_to_pass = derivs_tensor if derivs_tensor is not None else derivs
-                return self.components.hamiltonian_func(
-                    x_idx=x_idx,
-                    x_position=x_position,
-                    m_at_x=m_at_x,
-                    derivs=derivs_to_pass,
-                    t_idx=t_idx,
-                    current_time=current_time,
-                    problem=self,
-                )
-            else:
-                # Legacy hamiltonian expects p_values dict with string keys
-                # Inline conversion: derivs {(1,): p} -> {"forward": p, "backward": p}
-                p = derivs.get((1,), 0.0)
-                p_values_legacy = {"forward": p, "backward": p}
-
-                return self.components.hamiltonian_func(
-                    x_idx=x_idx,
-                    x_position=x_position,
-                    m_at_x=m_at_x,
-                    p_values=p_values_legacy,
-                    t_idx=t_idx,
-                    current_time=current_time,
-                    problem=self,
-                )
-
-        # Default Hamiltonian: H = 0.5*c*|p|^2 - V(x) - m^2
-        # Use DerivativeTensors.grad_norm_squared if available (preferred)
-        # Fall back to legacy dict format for backward compatibility
-        if derivs_tensor is not None:
-            # Modern path: use DerivativeTensors directly
-            p_norm_sq = derivs_tensor.grad_norm_squared
-        else:
-            # Legacy path: compute from dict (for backward compatibility)
-            dimension = getattr(self, "dimension", 1)
-            if self.geometry is not None:
-                # Intentional: Not all geometry types have dimension attribute
-                # Use default dimension from self if geometry.dimension not available
-                with contextlib.suppress(AttributeError):
-                    dimension = self.geometry.dimension
-
-            p_norm_sq = 0.0
-            if dimension == 1:
-                # 1D: gradient key is (1,)
-                p = derivs.get((1,), 0.0)
-                if np.isnan(p) or np.isinf(p):
-                    return np.nan
-                npart_val = float(npart(p))
-                ppart_val = float(ppart(p))
-                if abs(npart_val) > VALUE_BEFORE_SQUARE_LIMIT or abs(ppart_val) > VALUE_BEFORE_SQUARE_LIMIT:
-                    return np.nan
-                try:
-                    p_norm_sq = npart_val**2 + ppart_val**2
-                except OverflowError:
-                    return np.nan
-            else:
-                # nD: gradient keys are multi-index tuples with one 1 and rest 0s
-                for d in range(dimension):
-                    key = tuple(1 if i == d else 0 for i in range(dimension))
-                    p_d = derivs.get(key, 0.0)
-                    if np.isnan(p_d) or np.isinf(p_d):
-                        return np.nan
-                    if abs(p_d) > VALUE_BEFORE_SQUARE_LIMIT:
-                        return np.nan
-                    try:
-                        p_norm_sq += p_d**2
-                    except OverflowError:
-                        return np.nan
-
-        if np.isnan(m_at_x) or np.isinf(m_at_x):
-            return np.nan
-
-        if np.isinf(p_norm_sq) or np.isnan(p_norm_sq):
-            return np.nan
-
-        hamiltonian_control_part = 0.5 * self.coupling_coefficient * p_norm_sq
-
-        if np.isinf(hamiltonian_control_part) or np.isnan(hamiltonian_control_part):
-            return np.nan
-
-        # Get potential value using safe lookup
-        potential_V = self._get_potential_at_index(x_idx)
-
-        coupling_m_sq = m_at_x**2
-
-        if np.isinf(potential_V) or np.isnan(potential_V) or np.isinf(coupling_m_sq) or np.isnan(coupling_m_sq):
-            return np.nan
-
-        result = hamiltonian_control_part - potential_V - coupling_m_sq
-
-        if np.isinf(result) or np.isnan(result):
-            return np.nan
-
-        return result
+        # Call class-based Hamiltonian directly: H(x, m, p, t)
+        return float(H_class(x, m_at_x, p, current_time))
 
     def dH_dm(
         self,
         x_idx: int,
         m_at_x: float,
-        derivs: dict[tuple, float] | None = None,
+        derivs: dict[tuple, float] | DerivativeTensors | None = None,
         p_values: dict[str, float] | None = None,
         t_idx: int | None = None,
-        x_position: float | None = None,
+        x_position: float | np.ndarray | None = None,
         current_time: float | None = None,
     ) -> float:
         """
         Hamiltonian derivative with respect to density dH/dm.
 
-        Supports both tuple notation (derivs) and legacy string-key (p_values) formats.
+        Issue #673: Class-based Hamiltonian API only - no legacy function support.
 
         Args:
             x_idx: Grid index (0 to Nx)
             m_at_x: Density at grid point x_idx
-            derivs: Derivatives in tuple notation (NEW, preferred)
-            p_values: Momentum dictionary (LEGACY, deprecated)
+            derivs: Derivatives - DerivativeTensors or tuple-key dict {(1,): du/dx}
+            p_values: DEPRECATED - raises error. Use derivs instead.
             t_idx: Time index (optional)
             x_position: Actual position coordinate (computed from x_idx if not provided)
             current_time: Actual time value (computed from t_idx if not provided)
@@ -559,155 +453,136 @@ class HamiltonianMixin:
         Returns:
             Derivative dH/dm at (x, m, p, t)
         """
-        import warnings
-
-        if derivs is None and p_values is None:
-            raise ValueError("Must provide either 'derivs' or 'p_values' to dH_dm()")
+        # Issue #673: Error on legacy p_values parameter
+        if p_values is not None:
+            raise ValueError(
+                "p_values parameter is no longer supported.\n\n"
+                "Use derivs with tuple notation instead:\n"
+                "  # Old: p_values={'forward': 0.1, 'backward': 0.1}\n"
+                "  # New: derivs={(1,): 0.1}  # 1D gradient"
+            )
 
         if derivs is None:
-            warnings.warn(
-                "p_values parameter is deprecated. Use derivs instead. "
-                "See docs/gradient_notation_standard.md for migration guide.",
-                DeprecationWarning,
-                stacklevel=2,
+            raise ValueError("Must provide 'derivs' to dH_dm()")
+
+        # Get class-based Hamiltonian
+        H_class = getattr(self.components, "_hamiltonian_class", None) if self.components else None
+        if H_class is None:
+            raise ValueError(
+                "Class-based Hamiltonian must be provided in MFGComponents.\n\n"
+                "Example:\n"
+                "  from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n\n"
+                "  H = SeparableHamiltonian(\n"
+                "      control_cost=QuadraticControlCost(control_cost=1.0),\n"
+                "      coupling=lambda m: -m**2,\n"
+                "      coupling_dm=lambda m: -2*m,\n"
+                "  )\n"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)"
             )
-            from mfg_pde.compat.gradient_notation import ensure_tuple_notation
 
-            derivs = ensure_tuple_notation(p_values, dimension=1, u_value=0.0)
+        # Convert derivs to numpy p array
+        if isinstance(derivs, DerivativeTensors):
+            derivs_dict = to_multi_index_dict(derivs)
+        else:
+            derivs_dict = derivs
 
-        # Compute x_position and current_time if not provided
+        # Extract momentum p from derivs dict
+        if derivs_dict:
+            dim = max(len(k) for k in derivs_dict) if derivs_dict else 1
+            p = np.zeros(dim)
+            for i in range(dim):
+                key = tuple(1 if j == i else 0 for j in range(dim))
+                p[i] = derivs_dict.get(key, 0.0)
+        else:
+            p = np.zeros(1)
+
+        # Compute x_position if not provided
         if x_position is None:
             if isinstance(x_idx, tuple):
-                if self.geometry is not None:
-                    if self.spatial_shape is not None and len(self.spatial_shape) > 1:
-                        flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
-                        spatial_grid = self.geometry.get_spatial_grid()
-                        x_position = spatial_grid[flat_idx]
-                    else:
-                        x_position = None
-                else:
-                    x_position = None
+                if self.geometry is not None and self.spatial_shape is not None and len(self.spatial_shape) > 1:
+                    flat_idx = np.ravel_multi_index(x_idx, self.spatial_shape)
+                    spatial_grid = self.geometry.get_spatial_grid()
+                    x_position = spatial_grid[flat_idx]
             else:
                 spatial_grid = self._get_spatial_grid_internal()
                 if spatial_grid is not None:
                     x_position = spatial_grid[x_idx]
-                else:
-                    x_position = None
 
+        # Compute current_time if not provided
         if current_time is None and t_idx is not None:
             current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
+        if current_time is None:
+            current_time = 0.0
 
-        # Use custom derivative if provided
-        if self.is_custom and self.components is not None and self.components.hamiltonian_dm_func is not None:
-            # Use cached signature info (set during validation) for performance
-            has_derivs = self._hamiltonian_dm_has_derivs
-            if has_derivs is None:
-                # Fallback: compute if not cached (shouldn't happen after __init__)
-                sig = inspect.signature(self.components.hamiltonian_dm_func)
-                has_derivs = "derivs" in sig.parameters
+        # Convert x_position to numpy array
+        x = np.atleast_1d(x_position if x_position is not None else 0.0)
 
-            if has_derivs:
-                return self.components.hamiltonian_dm_func(
-                    x_idx=x_idx,
-                    x_position=x_position,
-                    m_at_x=m_at_x,
-                    derivs=derivs,
-                    t_idx=t_idx,
-                    current_time=current_time,
-                    problem=self,
-                )
-            else:
-                # Legacy hamiltonian_dm expects p_values dict with string keys
-                # Inline conversion: derivs {(1,): p} -> {"forward": p, "backward": p}
-                p = derivs.get((1,), 0.0)
-                p_values_legacy = {"forward": p, "backward": p}
-
-                return self.components.hamiltonian_dm_func(
-                    x_idx=x_idx,
-                    x_position=x_position,
-                    m_at_x=m_at_x,
-                    p_values=p_values_legacy,
-                    t_idx=t_idx,
-                    current_time=current_time,
-                    problem=self,
-                )
-
-        # Default: dH/dm = -2m
-        if np.isnan(m_at_x) or np.isinf(m_at_x):
-            return np.nan
-        return -2.0 * m_at_x
+        # Call class-based Hamiltonian.dm() directly: dm(x, m, p, t)
+        return float(H_class.dm(x, m_at_x, p, current_time))
 
     def dH_dp(
         self,
         x_idx: int,
         m_at_x: float,
-        derivs: dict[tuple, float],
+        derivs: dict[tuple, float] | DerivativeTensors,
         t_idx: int | None = None,
         x_position: np.ndarray | None = None,
         current_time: float | None = None,
-    ) -> np.ndarray | None:
+    ) -> np.ndarray:
         """
         Hamiltonian derivative with respect to momentum dH/dp.
 
-        Returns the gradient of H w.r.t. p (the momentum/gradient of u).
-        Used for analytic Jacobian computation in GFDM solvers.
+        Issue #673: Class-based Hamiltonian API - calls H.dp() directly.
 
         Args:
             x_idx: Grid/point index
             m_at_x: Density at the point
-            derivs: Derivatives in tuple notation {(1,0): du/dx, (0,1): du/dy, ...}
+            derivs: Derivatives - DerivativeTensors or tuple-key dict
             t_idx: Time index (optional)
             x_position: Actual position coordinate (optional)
             current_time: Actual time value (optional)
 
         Returns:
-            Array of shape (dimension,) containing dH/dp_i for each dimension,
-            or None if hamiltonian_dp_func is not provided (use FD fallback).
+            Array of shape (dimension,) containing dH/dp_i for each dimension.
         """
-        # Check if custom dH/dp is provided
-        if not (self.is_custom and self.components is not None and self.components.hamiltonian_dp_func is not None):
-            return None  # Signal to use FD fallback
+        # Get class-based Hamiltonian
+        H_class = getattr(self.components, "_hamiltonian_class", None) if self.components else None
+        if H_class is None:
+            raise ValueError("Class-based Hamiltonian must be provided in MFGComponents.")
 
-        # Compute x_position and current_time if not provided
+        # Convert derivs to numpy p array
+        if isinstance(derivs, DerivativeTensors):
+            derivs_dict = to_multi_index_dict(derivs)
+        else:
+            derivs_dict = derivs
+
+        # Extract momentum p from derivs dict
+        if derivs_dict:
+            dim = max(len(k) for k in derivs_dict) if derivs_dict else 1
+            p = np.zeros(dim)
+            for i in range(dim):
+                key = tuple(1 if j == i else 0 for j in range(dim))
+                p[i] = derivs_dict.get(key, 0.0)
+        else:
+            p = np.zeros(1)
+
+        # Compute x_position if not provided
         if x_position is None:
             spatial_grid = self._get_spatial_grid_internal()
             if spatial_grid is not None:
                 x_position = spatial_grid[x_idx]
 
+        # Compute current_time if not provided
         if current_time is None and t_idx is not None:
             current_time = self.tSpace[t_idx] if t_idx < len(self.tSpace) else 0.0
+        if current_time is None:
+            current_time = 0.0
 
-        # Use cached signature info
-        has_derivs = self._hamiltonian_dp_has_derivs
-        if has_derivs is None:
-            sig = inspect.signature(self.components.hamiltonian_dp_func)
-            has_derivs = "derivs" in sig.parameters
+        # Convert x_position to numpy array
+        x = np.atleast_1d(x_position if x_position is not None else 0.0)
 
-        if has_derivs:
-            return self.components.hamiltonian_dp_func(
-                x_idx=x_idx,
-                x_position=x_position,
-                m_at_x=m_at_x,
-                derivs=derivs,
-                t_idx=t_idx,
-                current_time=current_time,
-                problem=self,
-            )
-        else:
-            # Legacy hamiltonian_dp expects p_values dict with string keys
-            # Inline conversion: derivs {(1,): p} -> {"forward": p, "backward": p}
-            p = derivs.get((1,), 0.0)
-            p_values_legacy = {"forward": p, "backward": p}
-
-            return self.components.hamiltonian_dp_func(
-                x_idx=x_idx,
-                x_position=x_position,
-                m_at_x=m_at_x,
-                p_values=p_values_legacy,
-                t_idx=t_idx,
-                current_time=current_time,
-                problem=self,
-            )
+        # Call class-based Hamiltonian.dp() directly: dp(x, m, p, t)
+        return H_class.dp(x, m_at_x, p, current_time)
 
     def get_hjb_hamiltonian_jacobian_contrib(
         self,
@@ -720,6 +595,8 @@ class HamiltonianMixin:
         Returns structured Jacobian coefficients (diagonal, lower, upper) that form
         a tridiagonal matrix for Newton/policy iteration schemes.
 
+        Issue #673: Class-based Hamiltonian API - uses H.jacobian_fd() method.
+
         Args:
             U_for_jacobian_terms: Current value function estimate, shape (Nx,)
             t_idx_n: Time index for evaluation
@@ -728,44 +605,14 @@ class HamiltonianMixin:
             HamiltonianJacobians dataclass with diagonal, lower, upper components,
             or None if not applicable.
         """
-        if self.is_custom and self.components is not None and self.components.hamiltonian_jacobian_func is not None:
-            try:
-                return self.components.hamiltonian_jacobian_func(
-                    U_for_jacobian_terms=U_for_jacobian_terms,
-                    t_idx_n=t_idx_n,
-                    problem=self,
-                )
-            except Exception as e:
-                logger.warning(f"Jacobian computation failed: {e}")
+        # Issue #673: Get Jacobian from class-based Hamiltonian
+        H_class = getattr(self.components, "_hamiltonian_class", None) if self.components else None
+        if H_class is not None and hasattr(H_class, "jacobian_fd"):
+            # Solver will use H.jacobian_fd() directly when needed
+            # Return None here - let solver handle it with full context
+            pass
 
-        if not self.is_custom:
-            num_intervals = self._get_num_intervals() or 0
-            Nx = num_intervals + 1
-            dx = self._get_spacing() or 1.0
-            coupling_coefficient = self.coupling_coefficient
-
-            J_D_H = np.zeros(Nx)
-            J_L_H = np.zeros(Nx)
-            J_U_H = np.zeros(Nx)
-
-            if abs(dx) < 1e-14 or Nx <= 1:
-                return HamiltonianJacobians(diagonal=J_D_H, lower=J_L_H, upper=J_U_H)
-
-            U_curr = U_for_jacobian_terms
-
-            for i in range(Nx):
-                ip1 = (i + 1) % Nx
-                im1 = (i - 1 + Nx) % Nx
-
-                p1_i = (U_curr[ip1] - U_curr[i]) / dx
-                p2_i = (U_curr[i] - U_curr[im1]) / dx
-
-                J_D_H[i] = coupling_coefficient * (npart(p1_i) + ppart(p2_i)) / (dx**2)
-                J_L_H[i] = -coupling_coefficient * ppart(p2_i) / (dx**2)
-                J_U_H[i] = -coupling_coefficient * npart(p1_i) / (dx**2)
-
-            return HamiltonianJacobians(diagonal=J_D_H, lower=J_L_H, upper=J_U_H)
-
+        # No custom jacobian - return None (solver will use FD approximation)
         return None
 
     def get_hjb_residual_m_coupling_term(
@@ -774,36 +621,13 @@ class HamiltonianMixin:
         U_n_current_guess_derivatives: dict[str, np.ndarray],
         x_idx: int,
         t_idx_n: int,
-    ) -> float:
-        """Optional coupling term for residual computation."""
-        if self.is_custom and self.components is not None and self.components.coupling_func is not None:
-            try:
-                return self.components.coupling_func(
-                    M_density_at_n_plus_1=M_density_at_n_plus_1,
-                    U_n_current_guess_derivatives=U_n_current_guess_derivatives,
-                    x_idx=x_idx,
-                    t_idx_n=t_idx_n,
-                    problem=self,
-                )
-            except Exception as e:
-                logger.warning(f"Coupling term computation failed: {e}")
-                return np.nan
+    ) -> float | None:
+        """Optional coupling term for residual computation.
 
-        if not self.is_custom:
-            m_val = M_density_at_n_plus_1[x_idx]
-            # Convert numpy scalar or array to Python float
-            m_val = float(np.asarray(m_val))
-            if np.isnan(m_val) or np.isinf(m_val):
-                return np.nan
-            try:
-                term = -2 * (m_val**2)
-            except OverflowError:
-                return np.nan
-            if np.isinf(term) or np.isnan(term):
-                return np.nan
-            return term
-
-        # Custom problem without coupling_func: no coupling term
+        Issue #673: Coupling is now part of the HamiltonianBase class.
+        This method returns None - coupling handled via H.dm().
+        """
+        # Issue #673: Coupling is inside Hamiltonian - no separate coupling_func
         return None
 
 

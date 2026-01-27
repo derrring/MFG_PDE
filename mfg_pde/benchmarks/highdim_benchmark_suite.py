@@ -290,21 +290,19 @@ class HighDimMFGBenchmark:
                 self.grid_resolution = grid_resolution
 
             def setup_components(self):
-                def simple_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
+                # Modern derivs format: gradient keys are tuples like (1,) for 1D, (1,0) for x in 2D
+                def simple_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem, **kwargs):
                     try:
-                        p_forward = p_values.get("forward", 0.0)
-                        p_backward = p_values.get("backward", 0.0)
-                        p_magnitude = abs(p_forward - p_backward)
-                        return 0.5 * p_magnitude**2 + 0.1 * m_at_x * p_magnitude**2
+                        # For 1D: gradient is derivs.get((1,), 0.0)
+                        p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else 0.0
+                        return 0.5 * p**2 + 0.1 * m_at_x * p**2
                     except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                         return 0.0
 
-                def hamiltonian_dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
+                def hamiltonian_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem, **kwargs):
                     try:
-                        p_forward = p_values.get("forward", 0.0)
-                        p_backward = p_values.get("backward", 0.0)
-                        p_magnitude = abs(p_forward - p_backward)
-                        return 0.1 * p_magnitude**2
+                        p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else 0.0
+                        return 0.1 * p**2
                     except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                         return 0.0
 
@@ -342,12 +340,10 @@ class HighDimMFGBenchmark:
                     u_final=terminal_cost_grid,
                 )
 
-            def hamiltonian(self, x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
+            def hamiltonian(self, x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem, **kwargs):
                 try:
-                    p_forward = p_values.get("forward", 0.0)
-                    p_backward = p_values.get("backward", 0.0)
-                    p_magnitude = abs(p_forward - p_backward)
-                    return 0.5 * p_magnitude**2 + 0.1 * m_at_x * p_magnitude**2
+                    p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else 0.0
+                    return 0.5 * p**2 + 0.1 * m_at_x * p**2
                 except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                     return 0.0
 
@@ -396,21 +392,19 @@ class HighDimMFGBenchmark:
                 self.grid_resolution = grid_resolution
 
             def setup_components(self):
-                def simple_hamiltonian(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
+                # Modern derivs format: gradient keys are tuples like (1,) for 1D, (1,0) for x in 2D
+                def simple_hamiltonian(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem, **kwargs):
                     try:
-                        p_forward = p_values.get("forward", 0.0)
-                        p_backward = p_values.get("backward", 0.0)
-                        p_magnitude = abs(p_forward - p_backward)
-                        return 0.5 * p_magnitude**2 + 0.1 * m_at_x * p_magnitude**2
+                        # For 1D: gradient is derivs.get((1,), 0.0)
+                        p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else 0.0
+                        return 0.5 * p**2 + 0.1 * m_at_x * p**2
                     except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                         return 0.0
 
-                def hamiltonian_dm(x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
+                def hamiltonian_dm(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem, **kwargs):
                     try:
-                        p_forward = p_values.get("forward", 0.0)
-                        p_backward = p_values.get("backward", 0.0)
-                        p_magnitude = abs(p_forward - p_backward)
-                        return 0.1 * p_magnitude**2
+                        p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else 0.0
+                        return 0.1 * p**2
                     except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                         return 0.0
 
@@ -448,12 +442,10 @@ class HighDimMFGBenchmark:
                     u_final=terminal_cost_grid,
                 )
 
-            def hamiltonian(self, x_idx, x_position, m_at_x, p_values, t_idx, current_time, problem, **kwargs):
+            def hamiltonian(self, x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem, **kwargs):
                 try:
-                    p_forward = p_values.get("forward", 0.0)
-                    p_backward = p_values.get("backward", 0.0)
-                    p_magnitude = abs(p_forward - p_backward)
-                    return 0.5 * p_magnitude**2 + 0.1 * m_at_x * p_magnitude**2
+                    p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else 0.0
+                    return 0.5 * p**2 + 0.1 * m_at_x * p**2
                 except (KeyError, TypeError, ValueError, IndexError, FloatingPointError):
                     return 0.0
 

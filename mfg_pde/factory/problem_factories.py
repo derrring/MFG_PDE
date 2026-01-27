@@ -326,8 +326,7 @@ def create_mfg_problem(
 
 
 def create_standard_problem(
-    hamiltonian: Callable,
-    hamiltonian_dm: Callable,
+    hamiltonian: Any,  # HamiltonianBase
     terminal_cost: Callable,
     initial_density: Callable,
     geometry: Domain,
@@ -342,20 +341,20 @@ def create_standard_problem(
     """
     Create standard HJB-FP MFG problem.
 
+    Issue #673: Class-based Hamiltonian API.
+
     Parameters
     ----------
-    hamiltonian : Callable
-        Hamiltonian function H(x, p, m, t)
-    hamiltonian_dm : Callable
-        Derivative dH/dm(x, p, m, t)
+    hamiltonian : HamiltonianBase
+        Class-based Hamiltonian (SeparableHamiltonian, QuadraticMFGHamiltonian, etc.)
     terminal_cost : Callable
         Terminal cost g(x)
     initial_density : Callable
-        Initial density ρ₀(x)
+        Initial density m_0(x)
     geometry : Domain
         Spatial domain
     potential : Callable, optional
-        Potential function V(x)
+        Additional potential V(x) if not in Hamiltonian
     boundary_conditions : BoundaryConditions, optional
         Boundary conditions
     time_horizon : float, default=1.0
@@ -367,30 +366,28 @@ def create_standard_problem(
 
     Returns
     -------
-    MFGProblem or specialized class
+    MFGProblem
         Problem instance
 
     Examples
     --------
     >>> from mfg_pde.factory import create_standard_problem
+    >>> from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
     >>>
-    >>> def H(x, p, m, t):
-    ...     return 0.5 * p**2 + m
-    >>>
-    >>> def dH_dm(x, p, m, t):
-    ...     return 1.0
-    >>>
+    >>> H = SeparableHamiltonian(
+    ...     control_cost=QuadraticControlCost(control_cost=1.0),
+    ...     coupling=lambda m: m,
+    ...     coupling_dm=lambda m: 1.0,
+    ... )
     >>> problem = create_standard_problem(
     ...     hamiltonian=H,
-    ...     hamiltonian_dm=dH_dm,
     ...     terminal_cost=lambda x: x**2,
     ...     initial_density=lambda x: np.exp(-x**2),
     ...     geometry=domain
     ... )
     """
     components = MFGComponents(
-        hamiltonian_func=hamiltonian,
-        hamiltonian_dm_func=hamiltonian_dm,
+        hamiltonian=hamiltonian,
         u_final=terminal_cost,
         m_initial=initial_density,
         potential_func=potential,
@@ -426,6 +423,19 @@ def create_network_problem(
     """
     Create network/graph MFG problem.
 
+    Issue #673: Network problems require specialized NetworkMFGProblem class.
+
+    For network MFG problems, use the specialized class directly:
+
+    >>> from mfg_pde.extensions.topology import NetworkMFGProblem
+    >>> problem = NetworkMFGProblem(
+    ...     network_geometry=graph,
+    ...     node_interaction=lambda node, m: m[node]**2,
+    ...     edge_cost=lambda edge: 1.0,
+    ...     initial_density=initial_m,
+    ...     geometry=network_domain
+    ... )
+
     Parameters
     ----------
     network_geometry : NetworkGeometry or graph object
@@ -438,74 +448,33 @@ def create_network_problem(
         Initial density on nodes
     geometry : Domain
         Domain (typically NetworkDomain)
-    edge_interaction : Callable, optional
-        Edge interaction function
-    terminal_cost : Callable, optional
-        Terminal cost on nodes
-    time_horizon : float, default=1.0
-        Final time T
-    num_timesteps : int, default=100
-        Number of time steps
-    use_unified : bool, default=True
-        Use unified MFGProblem (True) or NetworkMFGProblem (False)
 
-    Returns
-    -------
-    MFGProblem or NetworkMFGProblem
-        Problem instance
-
-    Examples
-    --------
-    >>> from mfg_pde.factory import create_network_problem
-    >>>
-    >>> # Create network MFG on graph
-    >>> problem = create_network_problem(
-    ...     network_geometry=graph,
-    ...     node_interaction=lambda node, m: m[node]**2,
-    ...     edge_cost=lambda edge: 1.0,
-    ...     initial_density=initial_m,
-    ...     geometry=network_domain
-    ... )
+    Raises
+    ------
+    NotImplementedError
+        Network problems require specialized extension module.
     """
-    # Convert initial density to function if array
-    if callable(initial_density):
-        m_initial = initial_density
-    else:
-        m_initial = lambda x: initial_density  # noqa: E731
-
-    components = MFGComponents(
-        network_geometry=network_geometry,
-        node_interaction_func=node_interaction,
-        edge_cost_func=edge_cost,
-        edge_interaction_func=edge_interaction,
-        m_initial=m_initial,
-        u_final=terminal_cost,
-        problem_type="network",
-    )
-
-    return create_mfg_problem(
-        "network",
-        components,
-        geometry=geometry,
-        time_horizon=time_horizon,
-        num_timesteps=num_timesteps,
-        use_unified=use_unified,
-        **kwargs,
+    raise NotImplementedError(
+        "Network MFG problems require the specialized NetworkMFGProblem class.\n\n"
+        "Use the extension module directly:\n"
+        "  from mfg_pde.extensions.topology import NetworkMFGProblem\n\n"
+        "  problem = NetworkMFGProblem(\n"
+        "      network_geometry=graph,\n"
+        "      node_interaction=lambda node, m: m[node]**2,\n"
+        "      edge_cost=lambda edge: 1.0,\n"
+        "      initial_density=initial_m,\n"
+        "      geometry=network_domain\n"
+        "  )"
     )
 
 
 def create_variational_problem(
-    lagrangian: Callable,
-    lagrangian_dx: Callable,
-    lagrangian_dv: Callable,
-    lagrangian_dm: Callable,
+    lagrangian: Any,  # LagrangianBase
     terminal_cost: Callable,
     initial_density: Callable,
     geometry: Domain,
     *,
-    trajectory_cost: Callable | None = None,
-    state_constraints: list[Callable] | None = None,
-    velocity_constraints: list[Callable] | None = None,
+    boundary_conditions: BoundaryConditions | None = None,
     time_horizon: float = 1.0,
     num_timesteps: int = 100,
     use_unified: bool = True,
@@ -514,67 +483,78 @@ def create_variational_problem(
     """
     Create variational/Lagrangian MFG problem.
 
+    Issue #673: Uses class-based LagrangianBase API.
+
+    The Lagrangian is auto-converted to Hamiltonian via Legendre transform.
+
     Parameters
     ----------
-    lagrangian : Callable
-        Lagrangian function L(x, v, m, t)
-    lagrangian_dx : Callable
-        Derivative ∂L/∂x
-    lagrangian_dv : Callable
-        Derivative ∂L/∂v
-    lagrangian_dm : Callable
-        Derivative ∂L/∂m
+    lagrangian : LagrangianBase
+        Class-based Lagrangian L(x, alpha, m, t).
+        Must be a LagrangianBase subclass with legendre_transform() method.
     terminal_cost : Callable
         Terminal cost Ψ(x)
     initial_density : Callable
         Initial density ρ₀(x)
     geometry : Domain
         Spatial domain
-    trajectory_cost : Callable, optional
-        Running cost along trajectory
-    state_constraints : list of Callable, optional
-        State constraints c(x) ≤ 0
-    velocity_constraints : list of Callable, optional
-        Velocity constraints h(v) ≤ 0
+    boundary_conditions : BoundaryConditions, optional
+        Boundary conditions
     time_horizon : float, default=1.0
         Final time T
     num_timesteps : int, default=100
         Number of time steps
     use_unified : bool, default=True
-        Use unified MFGProblem (True) or VariationalMFGProblem (False)
+        Use unified MFGProblem (recommended)
 
     Returns
     -------
-    MFGProblem or VariationalMFGProblem
+    MFGProblem
         Problem instance
 
     Examples
     --------
     >>> from mfg_pde.factory import create_variational_problem
+    >>> from mfg_pde.core.hamiltonian import LagrangianBase
     >>>
-    >>> def L(x, v, m, t):
-    ...     return 0.5 * v**2 + m
+    >>> class QuadraticLagrangian(LagrangianBase):
+    ...     def __call__(self, x, alpha, m, t=0.0):
+    ...         return 0.5 * np.sum(alpha**2) + m
+    ...
+    ...     def dalpha(self, x, alpha, m, t=0.0):
+    ...         return alpha
+    ...
+    ...     def dm(self, x, alpha, m, t=0.0):
+    ...         return 1.0
     >>>
     >>> problem = create_variational_problem(
-    ...     lagrangian=L,
-    ...     lagrangian_dx=lambda x, v, m, t: 0,
-    ...     lagrangian_dv=lambda x, v, m, t: v,
-    ...     lagrangian_dm=lambda x, v, m, t: 1,
+    ...     lagrangian=QuadraticLagrangian(),
     ...     terminal_cost=lambda x: x**2,
     ...     initial_density=lambda x: np.exp(-x**2),
     ...     geometry=domain
     ... )
     """
+    from mfg_pde.core.hamiltonian import LagrangianBase
+
+    if not isinstance(lagrangian, LagrangianBase):
+        raise TypeError(
+            f"lagrangian must be a LagrangianBase instance, got {type(lagrangian).__name__}.\n\n"
+            "Create a LagrangianBase subclass:\n"
+            "  class MyLagrangian(LagrangianBase):\n"
+            "      def __call__(self, x, alpha, m, t=0.0):\n"
+            "          return 0.5 * np.sum(alpha**2) + m\n\n"
+            "      def dalpha(self, x, alpha, m, t=0.0):\n"
+            "          return alpha\n\n"
+            "      def dm(self, x, alpha, m, t=0.0):\n"
+            "          return 1.0"
+        )
+
+    # MFGComponents auto-converts Lagrangian to Hamiltonian
     components = MFGComponents(
-        lagrangian_func=lagrangian,
-        lagrangian_dx_func=lagrangian_dx,
-        lagrangian_dv_func=lagrangian_dv,
-        lagrangian_dm_func=lagrangian_dm,
-        terminal_cost_func=terminal_cost,
+        lagrangian=lagrangian,
+        u_final=terminal_cost,
         m_initial=initial_density,
-        trajectory_cost_func=trajectory_cost,
-        state_constraints=state_constraints,
-        velocity_constraints=velocity_constraints,
+        boundary_conditions=boundary_conditions,
         problem_type="variational",
     )
 
@@ -590,8 +570,7 @@ def create_variational_problem(
 
 
 def create_stochastic_problem(
-    hamiltonian: Callable,
-    hamiltonian_dm: Callable,
+    hamiltonian: Any,  # HamiltonianBase
     terminal_cost: Callable,
     initial_density: Callable,
     geometry: Domain,
@@ -609,16 +588,16 @@ def create_stochastic_problem(
     """
     Create stochastic MFG problem with common noise.
 
+    Issue #673: Class-based Hamiltonian API.
+
     Parameters
     ----------
-    hamiltonian : Callable
-        Hamiltonian function H(x, p, m, ξ, t)
-    hamiltonian_dm : Callable
-        Derivative dH/dm
+    hamiltonian : HamiltonianBase
+        Class-based Hamiltonian
     terminal_cost : Callable
         Terminal cost g(x, ξ)
     initial_density : Callable
-        Initial density ρ₀(x)
+        Initial density m_0(x)
     geometry : Domain
         Spatial domain
     noise_intensity : float, default=0.0
@@ -630,7 +609,7 @@ def create_stochastic_problem(
     correlation_matrix : ndarray, optional
         Noise correlation matrix
     potential : Callable, optional
-        Potential function V(x)
+        Additional potential V(x)
     time_horizon : float, default=1.0
         Final time T
     num_timesteps : int, default=100
@@ -642,20 +621,6 @@ def create_stochastic_problem(
     -------
     MFGProblem or StochasticMFGProblem
         Problem instance
-
-    Examples
-    --------
-    >>> from mfg_pde.factory import create_stochastic_problem
-    >>>
-    >>> problem = create_stochastic_problem(
-    ...     hamiltonian=H,
-    ...     hamiltonian_dm=dH_dm,
-    ...     terminal_cost=g,
-    ...     initial_density=rho_0,
-    ...     geometry=domain,
-    ...     noise_intensity=0.5,
-    ...     common_noise=lambda t: np.sin(t)
-    ... )
     """
     # Store stochastic parameters in the parameters dict
     stochastic_params = {
@@ -666,8 +631,7 @@ def create_stochastic_problem(
     }
 
     components = MFGComponents(
-        hamiltonian_func=hamiltonian,
-        hamiltonian_dm_func=hamiltonian_dm,
+        hamiltonian=hamiltonian,
         u_final=terminal_cost,
         m_initial=initial_density,
         potential_func=potential,
@@ -687,8 +651,7 @@ def create_stochastic_problem(
 
 
 def create_highdim_problem(
-    hamiltonian: Callable,
-    hamiltonian_dm: Callable,
+    hamiltonian: Any,  # HamiltonianBase
     terminal_cost: Callable,
     initial_density: Callable,
     geometry: Domain,
@@ -704,22 +667,22 @@ def create_highdim_problem(
     """
     Create high-dimensional MFG problem (d > 3).
 
+    Issue #673: Class-based Hamiltonian API.
+
     Parameters
     ----------
-    hamiltonian : Callable
-        Hamiltonian function H(x, p, m, t) where x ∈ ℝᵈ
-    hamiltonian_dm : Callable
-        Derivative dH/dm
+    hamiltonian : HamiltonianBase
+        Class-based Hamiltonian
     terminal_cost : Callable
         Terminal cost g(x)
     initial_density : Callable
-        Initial density ρ₀(x)
+        Initial density m_0(x)
     geometry : Domain
         High-dimensional domain
     dimension : int
         Spatial dimension d
     potential : Callable, optional
-        Potential function V(x)
+        Additional potential V(x)
     boundary_conditions : BoundaryConditions, optional
         Boundary conditions
     time_horizon : float, default=1.0
@@ -733,24 +696,9 @@ def create_highdim_problem(
     -------
     MFGProblem
         Problem instance
-
-    Examples
-    --------
-    >>> from mfg_pde.factory import create_highdim_problem
-    >>>
-    >>> # 5D MFG problem
-    >>> problem = create_highdim_problem(
-    ...     hamiltonian=H,
-    ...     hamiltonian_dm=dH_dm,
-    ...     terminal_cost=g,
-    ...     initial_density=rho_0,
-    ...     geometry=domain_5d,
-    ...     dimension=5
-    ... )
     """
     components = MFGComponents(
-        hamiltonian_func=hamiltonian,
-        hamiltonian_dm_func=hamiltonian_dm,
+        hamiltonian=hamiltonian,
         u_final=terminal_cost,
         m_initial=initial_density,
         potential_func=potential,
@@ -829,29 +777,18 @@ def create_lq_problem(
     ...     running_cost_congestion=1.0
     ... )
     """
-    alpha = running_cost_control
-    beta = running_cost_congestion
+    # Issue #673: Use class-based Hamiltonian
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 
-    def hamiltonian(x_idx: int, m_at_x: float, derivs: tuple) -> float:
-        """LQ Hamiltonian: H = (α/2)|p|² + βm
-
-        Args:
-            x_idx: Grid point index
-            m_at_x: Density value at point
-            derivs: Tuple of gradient arrays (u_x,) for 1D or (u_x, u_y) for 2D
-        """
-        import numpy as np
-
-        p_squared = sum(np.sum(d**2) for d in derivs) if derivs else 0.0
-        return 0.5 * alpha * p_squared + beta * m_at_x
-
-    def hamiltonian_dm(x_idx: int, m_at_x: float, derivs: tuple) -> float:
-        """dH/dm = β"""
-        return beta
+    # LQ Hamiltonian: H = (α/2)|p|² + βm
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0 / running_cost_control),
+        coupling=lambda m: running_cost_congestion * m,
+        coupling_dm=lambda m: running_cost_congestion,
+    )
 
     return create_standard_problem(
         hamiltonian=hamiltonian,
-        hamiltonian_dm=hamiltonian_dm,
         terminal_cost=terminal_cost,
         initial_density=initial_density,
         geometry=geometry,
@@ -917,41 +854,32 @@ def create_crowd_problem(
     """
     import numpy as np
 
-    alpha = running_cost_control
-    beta = congestion_sensitivity
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 
     # Create potential function
     if callable(target_location):
         target_func = target_location
     else:
         target = np.asarray(target_location)
-        target_func = lambda x: 0.5 * np.sum((x - target) ** 2)  # noqa: E731
-
-    def hamiltonian(x_idx: int, m_at_x: float, derivs: tuple) -> float:
-        """Crowd Hamiltonian: H = (α/2)|p|² + βm
-
-        Args:
-            x_idx: Grid point index
-            m_at_x: Density value at point
-            derivs: Tuple of gradient arrays (u_x, u_y) for 2D
-        """
-        p_squared = sum(np.sum(d**2) for d in derivs) if derivs else 0.0
-        return 0.5 * alpha * p_squared + beta * m_at_x
-
-    def hamiltonian_dm(x_idx: int, m_at_x: float, derivs: tuple) -> float:
-        """dH/dm = β"""
-        return beta
+        target_func = lambda x, t=0.0: 0.5 * np.sum((np.atleast_1d(x) - target) ** 2)  # noqa: E731
 
     def terminal_cost(x: Any) -> float:
         """Terminal cost: distance to target"""
         return target_func(x)
 
+    # Issue #673: Use class-based Hamiltonian
+    # Crowd Hamiltonian: H = (α/2)|p|² + V(x) + βm
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0 / running_cost_control),
+        potential=target_func,
+        coupling=lambda m: congestion_sensitivity * m,
+        coupling_dm=lambda m: congestion_sensitivity,
+    )
+
     return create_standard_problem(
         hamiltonian=hamiltonian,
-        hamiltonian_dm=hamiltonian_dm,
         terminal_cost=terminal_cost,
         initial_density=initial_density,
-        potential=target_func,
         geometry=geometry,
         time_horizon=time_horizon,
         num_timesteps=num_timesteps,

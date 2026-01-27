@@ -43,9 +43,31 @@ def default_geometry(bounds=None, Nx_points=None, dimension=1):
     )
 
 
+def default_hamiltonian():
+    """Create a default class-based Hamiltonian for testing.
+
+    Issue #673: Hamiltonian required (no default in MFGComponents)
+
+    Returns:
+        SeparableHamiltonian: H = ½|p|²/λ - m²
+    """
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: -(m**2),
+        coupling_dm=lambda m: -2 * m,
+    )
+
+
 def default_components():
-    """Create default MFGComponents with m_initial and u_final (Issue #670)."""
+    """Create default MFGComponents with Hamiltonian, m_initial, and u_final.
+
+    Issue #670: m_initial/u_final required
+    Issue #673: Hamiltonian required (no default)
+    """
     return MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian at center
         u_final=lambda x: x**2,  # Quadratic terminal cost
     )
@@ -70,17 +92,20 @@ def create_test_problem(**kwargs):
 
 @pytest.mark.unit
 def test_mfg_components_defaults():
-    """Test MFGComponents has correct default values."""
-    components = MFGComponents()
+    """Test MFGComponents with required Hamiltonian and default optional values."""
+    # Issue #673: Hamiltonian is now required
+    H = default_hamiltonian()
+    components = MFGComponents(hamiltonian=H)
 
-    assert components.hamiltonian_func is None
-    assert components.hamiltonian_dm_func is None
-    assert components.hamiltonian_jacobian_func is None
+    # Required: Hamiltonian must be set
+    assert components._hamiltonian_class is H
+    assert components.hamiltonian is H
+
+    # Optional fields have None/empty defaults
     assert components.potential_func is None
     assert components.m_initial is None
     assert components.u_final is None
     assert components.boundary_conditions is None
-    assert components.coupling_func is None
     assert components.parameters == {}
     assert components.description == "MFG Problem"
     assert components.problem_type == "mfg"
@@ -88,24 +113,21 @@ def test_mfg_components_defaults():
 
 @pytest.mark.unit
 def test_mfg_components_custom_values():
-    """Test MFGComponents with custom values."""
-
-    def custom_h(x, m, p, t):
-        return 0.5 * p**2
-
-    def custom_dh(x, m, p, t):
-        return 0.0
+    """Test MFGComponents with custom values (class-based Hamiltonian)."""
+    # Issue #673: Class-based Hamiltonian API only
+    H = default_hamiltonian()
 
     components = MFGComponents(
-        hamiltonian_func=custom_h,
-        hamiltonian_dm_func=custom_dh,
+        hamiltonian=H,
+        m_initial=lambda x: 1.0,
+        u_final=lambda x: 0.0,
         parameters={"param1": 1.0},
         description="Custom Problem",
         problem_type="custom",
     )
 
-    assert components.hamiltonian_func == custom_h
-    assert components.hamiltonian_dm_func == custom_dh
+    # Issue #673: Class-based Hamiltonian stored directly (no legacy func wrappers)
+    assert components._hamiltonian_class is H
     assert components.parameters == {"param1": 1.0}
     assert components.description == "Custom Problem"
     assert components.problem_type == "custom"
@@ -262,7 +284,9 @@ def test_mfg_problem_with_custom_potential():
 
     geometry = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[11])
     # Issue #670: must provide m_initial and u_final
+    # Issue #673: Hamiltonian required
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         potential_func=custom_potential,
         m_initial=lambda x: 1.0,  # Uniform
         u_final=lambda x: 0.0,  # Zero terminal cost
@@ -286,7 +310,9 @@ def test_mfg_problem_with_custom_initial_density():
 
     geometry = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[11])
     # Issue #670: must provide both m_initial and u_final
+    # Issue #673: Hamiltonian required
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=custom_initial,
         u_final=lambda x: 0.0,  # Zero terminal cost
     )
@@ -311,7 +337,9 @@ def test_mfg_problem_with_custom_final_value():
 
     geometry = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[11])
     # Issue #670: must provide both m_initial and u_final
+    # Issue #673: Hamiltonian required
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         u_final=custom_final,
         m_initial=lambda x: 1.0,  # Uniform
     )
@@ -330,6 +358,7 @@ def test_mfg_problem_validates_negative_m_initial():
     geometry = default_geometry()
     # Invalid: negative density
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: x - 0.5,  # Negative for x < 0.5
         u_final=lambda x: 0.0,
     )
@@ -344,6 +373,7 @@ def test_mfg_problem_validates_zero_mass_m_initial():
     geometry = default_geometry()
     # Invalid: zero everywhere
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 0.0,  # Zero mass
         u_final=lambda x: 0.0,
     )
@@ -364,10 +394,11 @@ def test_hamiltonian_h_default():
 
     x_idx = 5
     m_at_x = 1.0
-    p_values = {"forward": 0.1, "backward": 0.1}
+    # Issue #673: Use derivs with tuple notation (p_values deprecated)
+    derivs = {(1,): 0.1}  # 1D gradient = 0.1
     t_idx = 5
 
-    H_val = problem.H(x_idx=x_idx, m_at_x=m_at_x, p_values=p_values, t_idx=t_idx)
+    H_val = problem.H(x_idx=x_idx, m_at_x=m_at_x, derivs=derivs, t_idx=t_idx)
 
     # Should return a finite value
     assert np.isfinite(H_val)
@@ -381,10 +412,11 @@ def test_hamiltonian_dh_dm_default():
 
     x_idx = 5
     m_at_x = 1.0
-    p_values = {"forward": 0.1, "backward": 0.1}
+    # Issue #673: Use derivs with tuple notation (p_values deprecated)
+    derivs = {(1,): 0.1}  # 1D gradient = 0.1
     t_idx = 5
 
-    dH_val = problem.dH_dm(x_idx=x_idx, m_at_x=m_at_x, p_values=p_values, t_idx=t_idx)
+    dH_val = problem.dH_dm(x_idx=x_idx, m_at_x=m_at_x, derivs=derivs, t_idx=t_idx)
 
     # Should return a finite value
     assert np.isfinite(dH_val)
@@ -393,22 +425,32 @@ def test_hamiltonian_dh_dm_default():
 
 @pytest.mark.unit
 def test_mfg_problem_custom_hamiltonian():
-    """Test MFGProblem with custom Hamiltonian."""
+    """Test MFGProblem with custom Hamiltonian (class-based API)."""
+    from mfg_pde.core.hamiltonian import HamiltonianBase
 
-    def custom_H(x_idx, m_at_x, p_values, t_idx, **kwargs):
-        """Custom Hamiltonian function with correct signature."""
-        p_forward = p_values.get("forward", 0.0)
-        p_backward = p_values.get("backward", 0.0)
-        return p_forward**2 + p_backward**2 + m_at_x**2
+    # Issue #673: Use class-based Hamiltonian (function-based no longer supported)
+    class CustomHamiltonian(HamiltonianBase):
+        """Custom Hamiltonian: H = |p|² + m²"""
 
-    def custom_dH_dm(x_idx, m_at_x, p_values, t_idx, **kwargs):
-        """Custom Hamiltonian derivative with correct signature."""
-        return 2.0 * m_at_x
+        def __call__(self, x, m, p, t=0.0):
+            p_scalar = float(p[0]) if hasattr(p, "__len__") else float(p)
+            return p_scalar**2 + m**2
+
+        def dp(self, x, m, p, t=0.0):
+            # dH/dp = 2p
+            import numpy as np
+
+            return 2.0 * np.atleast_1d(p)
+
+        def dm(self, x, m, p, t=0.0):
+            # dH/dm = 2m
+            return 2.0 * m
+
+    custom_H = CustomHamiltonian()
 
     # Issue #670: must provide m_initial and u_final
     components = MFGComponents(
-        hamiltonian_func=custom_H,
-        hamiltonian_dm_func=custom_dH_dm,
+        hamiltonian=custom_H,
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
     )
@@ -416,10 +458,12 @@ def test_mfg_problem_custom_hamiltonian():
 
     # Should use custom Hamiltonian
     assert problem.is_custom is True
-    # Use symmetric p_values (conversion to tuple notation preserves symmetry)
-    H_value = problem.H(x_idx=10, m_at_x=0.5, p_values={"forward": 0.15, "backward": 0.15}, t_idx=0)
+    # Issue #673: Use derivs with tuple notation (p_values no longer supported)
+    # derivs={(1,): 0.15} means p = 0.15
+    # H = p² + m² = 0.15² + 0.5² = 0.0225 + 0.25 = 0.2725
+    H_value = problem.H(x_idx=10, m_at_x=0.5, derivs={(1,): 0.15}, t_idx=0)
     assert isinstance(H_value, float)
-    assert H_value == pytest.approx(0.15**2 + 0.15**2 + 0.5**2)  # = 0.295
+    assert H_value == pytest.approx(0.15**2 + 0.5**2)  # = 0.2725
 
 
 # ===================================================================
@@ -449,7 +493,9 @@ def test_get_boundary_conditions_custom():
     # Uses legacy 1D BC in components (lower priority)
     custom_bc = LegacyBoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
     # Issue #670: must provide m_initial and u_final
+    # Issue #673: Hamiltonian required
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         boundary_conditions=custom_bc,
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
@@ -606,6 +652,7 @@ def test_dual_geometry_specification():
 
     # Create 2D components
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
     )
@@ -638,6 +685,7 @@ def test_dual_geometry_backward_compatibility():
     )
 
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
     )
@@ -661,7 +709,7 @@ def test_dual_geometry_error_on_partial_specification():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
     # Test with only hjb_geometry
     with pytest.raises(ValueError, match="both 'hjb_geometry' AND 'fp_geometry' must be specified"):
         MFGProblem(hjb_geometry=grid, time_domain=(1.0, 50), components=components)
@@ -690,7 +738,7 @@ def test_dual_geometry_error_on_conflict():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
     # Test conflict: can't specify both geometry and dual geometries
     with pytest.raises(ValueError, match=r"Specify EITHER 'geometry'.*OR.*'hjb_geometry', 'fp_geometry'"):
         MFGProblem(geometry=grid1, hjb_geometry=grid2, fp_geometry=grid3, time_domain=(1.0, 50), components=components)
@@ -710,7 +758,7 @@ def test_dual_geometry_projector_attributes():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), components=components)
 
     projector = problem.geometry_projector
@@ -731,7 +779,7 @@ def test_dual_geometry_with_1d_grids():
     hjb_grid = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[101])  # Fine grid
     fp_grid = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[51])  # Coarse grid
 
-    components = MFGComponents(m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
     problem = MFGProblem(
         hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1, components=components
     )
@@ -962,6 +1010,7 @@ def test_diffusion_field_with_geometry():
 
     # Issue #670: must provide m_initial and u_final
     components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
         u_final=lambda x: 0.0,
     )

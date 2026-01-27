@@ -29,7 +29,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import MFGProblem
-from mfg_pde.core import DerivativeTensors, MFGComponents
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
 
@@ -129,80 +130,21 @@ def potential_field(x: float) -> float:
     )
 
 
-def hamiltonian(
-    x_idx: int,
-    x_position: float | np.ndarray,
-    m_at_x: float,
-    derivs: DerivativeTensors,
-    t_idx: int,
-    current_time: float,
-    problem: MFGProblem,
-) -> float:
+def hamiltonian_potential(x: np.ndarray, t: float) -> float:
     """
-    Hamiltonian H(x, m, p) for the HJB equation.
+    Potential function V(x, t) for the class-based Hamiltonian.
 
-    Standard MFG Hamiltonian:
-        H = (1/2) * |p|^2  +  V(x)  +  coupling * g(m)
-
-    where:
-        - (1/2)|p|^2: kinetic/control cost
-        - V(x): external potential
-        - coupling * g(m): congestion/interaction cost (g(m) = m here)
+    This wraps the potential_field function to match the expected signature.
 
     Args:
-        x_idx: Grid index
-        x_position: Spatial coordinate
-        m_at_x: Local density m(t, x)
-        derivs: DerivativeTensors containing gradient Du
-        t_idx: Time index
-        current_time: Current time t
-        problem: Reference to MFGProblem
+        x: Position array (1D for this example)
+        t: Time (unused for time-independent potential)
 
     Returns:
-        Hamiltonian value H(x, m, Du)
+        Potential value at position x
     """
-    # Extract position (handle both scalar and array input)
-    if isinstance(x_position, np.ndarray):
-        x = float(x_position[0]) if x_position.ndim > 0 else float(x_position)
-    else:
-        x = float(x_position)
-
-    # Kinetic cost: (1/2) |Du|^2
-    kinetic_cost = 0.5 * derivs.grad_norm_squared
-
-    # External potential V(x)
-    V_x = potential_field(x)
-
-    # Congestion cost: coupling * m (linear congestion)
-    congestion_cost = coupling_coefficient * m_at_x
-
-    return kinetic_cost + V_x + congestion_cost
-
-
-def hamiltonian_dm(
-    x_idx: int,
-    x_position: float | np.ndarray,
-    m_at_x: float,
-    derivs: DerivativeTensors,
-    t_idx: int,
-    current_time: float,
-    problem: MFGProblem,
-) -> float:
-    """
-    Derivative of Hamiltonian with respect to density: dH/dm.
-
-    For H = (1/2)|p|^2 + V(x) + coupling * m:
-        dH/dm = coupling
-
-    This is used in the FP equation for the coupling term.
-
-    Args:
-        Same as hamiltonian()
-
-    Returns:
-        dH/dm value (constant for linear congestion)
-    """
-    return coupling_coefficient
+    x_scalar = float(x[0]) if hasattr(x, "__len__") else float(x)
+    return potential_field(x_scalar)
 
 
 # =============================================================================
@@ -241,12 +183,19 @@ geometry = TensorProductGrid(
 #   m_raw = np.array([initial_density(x) for x in x_grid])
 #   m_normalized = m_raw / (np.sum(m_raw) * dx)  # Now ∫m dx = 1
 #
+# Class-based Hamiltonian: H = (1/2)|p|² + V(x) + coupling * m
+# This is now required by MFGComponents (Issue #673).
+hamiltonian = SeparableHamiltonian(
+    control_cost=QuadraticControlCost(control_cost=1.0),
+    potential=hamiltonian_potential,  # V(x, t) = potential_field(x)
+    coupling=lambda m: coupling_coefficient * m,  # Linear congestion
+    coupling_dm=lambda m: coupling_coefficient,  # dH/dm = coupling_coefficient
+)
+
 components = MFGComponents(
-    hamiltonian_func=hamiltonian,
-    hamiltonian_dm_func=hamiltonian_dm,  # dH/dm for FP coupling
-    initial_density_func=initial_density,
-    final_value_func=terminal_condition,
-    # potential_func could also be passed here if the solver supports it
+    hamiltonian=hamiltonian,
+    m_initial=initial_density,
+    u_final=terminal_condition,
 )
 
 # Create problem

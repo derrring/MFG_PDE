@@ -498,14 +498,23 @@ class VariationalMFGProblem:
         # Convert to Hamiltonian formulation
         hamiltonian_funcs = self.convert_to_hamiltonian()
 
-        # Create MFG components
+        # Create MFG components with modern signature (Issue #670)
+        # hamiltonian_func signature: (x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem)
+        def _hamiltonian_adapter(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+            """Adapter converting modern derivs format to converted Hamiltonian."""
+            p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else 0.0
+            t = current_time if current_time is not None else self.t[t_idx] if t_idx < len(self.t) else 0.0
+            return hamiltonian_funcs["hamiltonian"](x_position, p, m_at_x, t)
+
+        def _hamiltonian_dm_adapter(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
+            """Adapter converting modern derivs format to converted Hamiltonian dm."""
+            p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else 0.0
+            t = current_time if current_time is not None else self.t[t_idx] if t_idx < len(self.t) else 0.0
+            return hamiltonian_funcs["hamiltonian_dm"](x_position, p, m_at_x, t)
+
         mfg_components = MFGComponents(
-            hamiltonian_func=lambda x_idx, m_at_x, p_values, t_idx: hamiltonian_funcs["hamiltonian"](
-                self.x[x_idx], p_values.get("forward", 0.0), m_at_x, self.t[t_idx]
-            ),
-            hamiltonian_dm_func=lambda x_idx, m_at_x, p_values, t_idx: hamiltonian_funcs["hamiltonian_dm"](
-                self.x[x_idx], p_values.get("forward", 0.0), m_at_x, self.t[t_idx]
-            ),
+            hamiltonian_func=_hamiltonian_adapter,
+            hamiltonian_dm_func=_hamiltonian_dm_adapter,
             m_initial=self.components.m_initial,
             u_final=lambda x: -self.evaluate_terminal_cost(x),  # Value = -cost
             description=f"Hamiltonian formulation of {self.components.description}",
