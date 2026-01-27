@@ -7,10 +7,20 @@ for ghost cell generation, enabling true 5th-order boundary accuracy.
 
 import numpy as np
 
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_hamiltonian():
+    """Default Hamiltonian for testing (Issue #670: explicit specification required)."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
 
 
 def _default_components():
@@ -18,6 +28,7 @@ def _default_components():
     return MFGComponents(
         m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
         u_final=lambda x: 0.0,
+        hamiltonian=_default_hamiltonian(),
     )
 
 

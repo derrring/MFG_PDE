@@ -11,6 +11,7 @@ import pytest
 import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver, KDENormalization
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
@@ -20,11 +21,21 @@ from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 
+def _default_hamiltonian():
+    """Default Hamiltonian for testing (Issue #670: explicit specification required)."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
+
+
 def _default_components():
     """Default MFGComponents for 1D testing (Issue #670: explicit specification required)."""
     return MFGComponents(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
         u_final=lambda x: 0.0,  # Zero terminal cost
+        hamiltonian=_default_hamiltonian(),
     )
 
 
@@ -39,6 +50,7 @@ def _default_components_2d():
     return MFGComponents(
         m_initial=m_initial_2d,
         u_final=lambda x: 0.0,
+        hamiltonian=_default_hamiltonian(),
     )
 
 

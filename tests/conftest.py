@@ -16,14 +16,24 @@ import numpy as np
 # Import main package components
 from mfg_pde import MFGProblem
 from mfg_pde.config import MFGSolverConfig
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.factory import lq_mfg_initial_density, lq_mfg_terminal_cost
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
 
 # =============================================================================
-# Default Components for Testing (Issue #670: explicit specification required)
+# Default Components for Testing (Issue #670, #673: explicit specification required)
 # =============================================================================
+
+
+def _default_hamiltonian():
+    """Default class-based Hamiltonian for tests (Issue #673)."""
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
 
 
 def _default_test_components(Lx: float = 1.0) -> MFGComponents:
@@ -39,6 +49,7 @@ def _default_test_components(Lx: float = 1.0) -> MFGComponents:
         MFGComponents with Gaussian initial density and quadratic terminal cost
     """
     return MFGComponents(
+        hamiltonian=_default_hamiltonian(),
         m_initial=lq_mfg_initial_density(),
         u_final=lq_mfg_terminal_cost(Lx=Lx),
     )

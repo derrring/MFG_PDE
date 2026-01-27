@@ -11,9 +11,22 @@ import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.core.derivatives import DerivativeTensors
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def _default_hamiltonian():
+    """Default Hamiltonian for testing dH/dm = -2m (Issue #670: explicit specification required).
+
+    H = 0.5*c*|p|^2 - V(x) - m^2 => coupling(m) = -m^2, coupling_dm(m) = -2m
+    """
+    return SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: -(m**2),
+        coupling_dm=lambda m: -2 * m,
+    )
 
 
 def _default_components():
@@ -21,6 +34,7 @@ def _default_components():
     return MFGComponents(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
         u_final=lambda x: 0.0,
+        hamiltonian=_default_hamiltonian(),
     )
 
 
