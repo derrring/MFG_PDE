@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy.linalg import solve_banded
 
+from mfg_pde.alg.numerical.hjb_solvers.hjb_sl_adi import adi_diffusion_step
 from mfg_pde.alg.numerical.hjb_solvers.hjb_sl_characteristics import (
     apply_boundary_conditions_1d,
 )
@@ -40,7 +41,7 @@ from mfg_pde.geometry.boundary.bc_utils import (
 from mfg_pde.utils.mfg_logging import get_logger
 
 from .base_fp import BaseFPSolver
-from .fp_sl_splatting import splat_1d
+from .fp_sl_splatting import splat_1d, splat_nd
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -68,16 +69,16 @@ class FPSLAdjointSolver(BaseFPSolver):
         - No Jacobian correction needed (conservation is intrinsic)
 
     Splatting Methods (Issue #708):
-        - 'linear': 2-point stencil, O(dx) accuracy, preserves positivity
-        - 'cubic': 4-point stencil, O(dx³) accuracy, may produce negative values
-        - 'quintic': 6-point stencil, O(dx⁵) accuracy, may produce negative values
+        - 'linear': 2-point stencil (1D) / 2^d corners (nD), preserves positivity
+        - 'cubic': 4-point Catmull-Rom stencil, O(dx³) accuracy (1D only)
+        - 'quintic': 6-point Lagrange stencil, O(dx⁵) accuracy (1D only)
 
     Important: The interpolation_method must match the HJB solver's method
     to maintain exact discrete adjoint consistency.
 
     Dimension support:
-        - 1D: Full support (production-ready)
-        - nD: Planned for future
+        - 1D: Full support with linear/cubic/quintic splatting
+        - nD: Full support with linear splatting + ADI diffusion
     """
 
     # Scheme family trait for duality validation (Issue #580)
@@ -111,25 +112,69 @@ class FPSLAdjointSolver(BaseFPSolver):
         # Detect problem dimension
         self.dimension = self._detect_dimension()  # Issue #633: Use inherited method
 
-        if self.dimension > 1:
-            raise NotImplementedError(
-                "FPSLAdjointSolver currently only supports 1D problems. nD support is planned for future versions."
-            )
-
         # Validate interpolation method
-        valid_methods = ("linear", "cubic", "quintic")
-        if interpolation_method not in valid_methods:
-            raise ValueError(f"Unknown interpolation_method: {interpolation_method}. Use one of {valid_methods}.")
+        valid_methods_1d = ("linear", "cubic", "quintic")
+        valid_methods_nd = ("linear",)  # Only linear for nD currently
+
+        if self.dimension == 1:
+            if interpolation_method not in valid_methods_1d:
+                raise ValueError(
+                    f"Unknown interpolation_method: {interpolation_method}. For 1D, use one of {valid_methods_1d}."
+                )
+        else:
+            if interpolation_method not in valid_methods_nd:
+                raise ValueError(f"For nD problems, only 'linear' splatting is supported. Got: {interpolation_method}.")
         self.interpolation_method = interpolation_method
 
-        # Precompute grid parameters (1D)
-        bounds = problem.geometry.get_bounds()
-        self.xmin, self.xmax = bounds[0][0], bounds[1][0]
-        Nx = problem.geometry.get_grid_shape()[0]
-        self.x_grid = np.linspace(self.xmin, self.xmax, Nx)
-        self.dx = problem.geometry.get_grid_spacing()[0]
+        # Precompute grid parameters (dimension-agnostic)
         self.dt = problem.dt
-        self.Nx = Nx
+
+        if self.dimension == 1:
+            # 1D problem: Use geometry API
+            bounds = problem.geometry.get_bounds()
+            self.xmin, self.xmax = bounds[0][0], bounds[1][0]
+            Nx = problem.geometry.get_grid_shape()[0]
+            self.x_grid = np.linspace(self.xmin, self.xmax, Nx)
+            self.dx = problem.geometry.get_grid_spacing()[0]
+            self.Nx = Nx
+            # nD attributes set to None for 1D
+            self.grid = None
+            self.grid_shape = (Nx,)
+            self.bounds = [(self.xmin, self.xmax)]
+            self.spacing = np.array([self.dx])
+            self.grid_coordinates = (self.x_grid,)
+        else:
+            # nD problem: Use CartesianGrid interface
+            # TensorProductGrid uses 'coordinates' attribute
+            if not hasattr(problem.geometry, "coordinates"):
+                raise TypeError(
+                    f"Multi-dimensional problem must have CartesianGrid geometry (TensorProductGrid). "
+                    f"Got dimension={self.dimension}, geometry type={type(problem.geometry).__name__}"
+                )
+
+            # Grid shape and spacing
+            self.grid_shape = problem.geometry.get_grid_shape()
+            self.spacing = np.array(problem.geometry.get_grid_spacing())
+
+            # Grid coordinates for each dimension (TensorProductGrid uses 'coordinates')
+            self.grid_coordinates = tuple(problem.geometry.coordinates)
+
+            # Domain bounds
+            self.bounds = [(self.grid_coordinates[d][0], self.grid_coordinates[d][-1]) for d in range(self.dimension)]
+
+            # Store grid reference
+            self.grid = problem.geometry
+
+            # 1D attributes set to None for nD
+            self.x_grid = None
+            self.xmin = None
+            self.xmax = None
+            self.dx = None
+            self.Nx = None
+
+            logger.info(
+                f"FPSLAdjointSolver initialized for {self.dimension}D: shape={self.grid_shape}, spacing={self.spacing}"
+            )
 
         # Boundary conditions
         if boundary_conditions is not None:
@@ -220,9 +265,14 @@ class FPSLAdjointSolver(BaseFPSolver):
         # Determine number of time steps from drift_field
         Nt_points = drift_field.shape[0]
 
-        # Allocate solution array
-        M = np.zeros((Nt_points, self.Nx))
-        M[0, :] = M_initial.copy()
+        # Allocate solution array (dimension-agnostic)
+        if self.dimension == 1:
+            M_shape = (Nt_points, self.Nx)
+        else:
+            M_shape = (Nt_points, *self.grid_shape)
+
+        M = np.zeros(M_shape)
+        M[0] = M_initial.copy().reshape(self.grid_shape if self.dimension > 1 else -1)
 
         # Progress bar
         if show_progress:
@@ -236,27 +286,38 @@ class FPSLAdjointSolver(BaseFPSolver):
         else:
             timestep_range = range(Nt_points - 1)
 
-        # Forward time stepping
+        # Forward time stepping (dimension-agnostic dispatch)
         for n in timestep_range:
-            # Compute velocity field alpha = -grad(U) at current time
-            U_n = drift_field[n, :]
-            alpha = self._compute_velocity(U_n)
-
-            # Adjoint Semi-Lagrangian step (forward splatting)
-            M[n + 1, :] = self._adjoint_sl_step(
-                M[n, :],
-                alpha,
-                self.dt,
-                sigma,
-            )
+            if self.dimension == 1:
+                # 1D solve
+                U_n = drift_field[n, :]
+                alpha = self._compute_velocity_1d(U_n)
+                M[n + 1, :] = self._adjoint_sl_step_1d(M[n, :], alpha, self.dt, sigma)
+            else:
+                # nD solve
+                U_n = drift_field[n].reshape(self.grid_shape)
+                alpha = self._compute_velocity_nd(U_n)
+                M[n + 1] = self._adjoint_sl_step_nd(M[n].reshape(self.grid_shape), alpha, self.dt, sigma)
 
         return M
 
-    def _compute_velocity(self, U: np.ndarray) -> np.ndarray:
-        """Compute velocity field alpha = -grad(U)."""
+    def _compute_velocity_1d(self, U: np.ndarray) -> np.ndarray:
+        """Compute velocity field alpha = -grad(U) for 1D."""
         return -np.gradient(U, self.dx)
 
-    def _adjoint_sl_step(
+    def _compute_velocity_nd(self, U: np.ndarray) -> tuple[np.ndarray, ...]:
+        """
+        Compute velocity field alpha = -grad(U) for nD.
+
+        Returns tuple of arrays, one per dimension.
+        """
+        # Use np.gradient with spacing for each dimension
+        gradients = np.gradient(U, *[self.spacing[d] for d in range(self.dimension)])
+        if self.dimension == 1:
+            return (-gradients,)
+        return tuple(-g for g in gradients)
+
+    def _adjoint_sl_step_1d(
         self,
         m: np.ndarray,
         alpha: np.ndarray,
@@ -264,30 +325,11 @@ class FPSLAdjointSolver(BaseFPSolver):
         sigma: float,
     ) -> np.ndarray:
         """
-        One Adjoint Semi-Lagrangian step for Fokker-Planck equation.
+        One Adjoint Semi-Lagrangian step for 1D Fokker-Planck equation.
 
         Operator splitting:
             1. Forward advection with splatting (mass-conservative)
-            2. Diffusion via Crank-Nicolson
-
-        This is the ADJOINT of the HJB backward interpolation, ensuring discrete
-        duality for MFG convergence.
-
-        Mass Conservation (Issue #708):
-            The SL adjoint naturally conserves sum(m), not the trapezoidal integral.
-            This follows from the mathematical structure:
-            - HJB interpolation matrix P has row sums = 1
-            - FP splatting matrix P^T has column sums = 1
-            - Therefore sum(P^T @ m) = sum(m) is exact
-
-            Combined with Crank-Nicolson diffusion (which also preserves sum(m)
-            with Neumann BC), total mass sum(m) is conserved by construction.
-
-        Splatting Methods:
-            The splatting method is the transpose of interpolation:
-            - linear: 2-point stencil, O(dx) accuracy
-            - cubic: 4-point stencil, O(dx³) accuracy
-            - quintic: 6-point stencil, O(dx⁵) accuracy
+            2. Diffusion via Crank-Nicolson with zero-flux BC
 
         Args:
             m: Current density, shape (Nx,)
@@ -374,6 +416,98 @@ class FPSLAdjointSolver(BaseFPSolver):
 
         # Solve tridiagonal system
         m_new = solve_banded((1, 1), ab, rhs)
+
+        # Ensure non-negativity
+        m_new = np.maximum(m_new, 0)
+
+        return m_new
+
+    def _adjoint_sl_step_nd(
+        self,
+        m: np.ndarray,
+        alpha: tuple[np.ndarray, ...],
+        dt: float,
+        sigma: float,
+    ) -> np.ndarray:
+        """
+        One Adjoint Semi-Lagrangian step for nD Fokker-Planck equation.
+
+        Operator splitting:
+            1. Forward advection with linear splatting (mass-conservative)
+            2. Diffusion via ADI (Peaceman-Rachford)
+
+        Args:
+            m: Current density, shape grid_shape
+            alpha: Velocity field tuple, each element shape grid_shape
+            dt: Time step
+            sigma: Diffusion coefficient
+
+        Returns:
+            Density at next time step, shape grid_shape
+        """
+        # Step 1: Forward Advection (Splatting)
+        # =====================================
+        # Compute destination positions for all grid points
+        # x_dest[d] = x[d] + alpha[d] * dt
+
+        # Create meshgrid of current positions
+        meshes = np.meshgrid(*self.grid_coordinates, indexing="ij")
+
+        # Compute destination positions
+        x_dest = [meshes[d] + alpha[d] * dt for d in range(self.dimension)]
+
+        # Apply boundary conditions (per dimension, vectorized)
+        # For tensor product grids, each dimension is independent
+        bc_op = self._get_bc_operation_type()
+        for d in range(self.dimension):
+            xmin_d, xmax_d = self.bounds[d]
+            # Vectorized boundary conditions using numpy operations
+            if bc_op == "periodic":
+                length = xmax_d - xmin_d
+                x_dest[d] = xmin_d + np.mod(x_dest[d] - xmin_d, length)
+            elif bc_op == "reflect":
+                # Reflect about boundaries using triangle wave
+                # Maps any point to [xmin, xmax] via reflections
+                length = xmax_d - xmin_d
+                # Normalize: x_norm in [0, 1] for x in [xmin, xmax]
+                x_norm = (x_dest[d] - xmin_d) / length
+                # Triangle wave: 0→1→0→1... (period 2)
+                # mod(x, 2) gives [0, 2), then |. - 1| gives [1, 0, 1)
+                # finally 1 - |.| gives [0, 1, 0)
+                x_fold = 1 - np.abs(np.mod(x_norm, 2) - 1)
+                # Map back to domain
+                x_dest[d] = xmin_d + x_fold * length
+            else:
+                # Clamp (dirichlet / absorbing)
+                x_dest[d] = np.clip(x_dest[d], xmin_d, xmax_d)
+
+        # Stack into (N_total, dimension) array for splatting
+        x_dest_array = np.stack([xd.ravel() for xd in x_dest], axis=-1)
+
+        # Linear splatting (mass-conservative)
+        m_star = splat_nd(
+            m=m.ravel(),
+            x_dest=x_dest_array,
+            grid_coordinates=self.grid_coordinates,
+            grid_shape=self.grid_shape,
+            bounds=self.bounds,
+            method="linear",
+        )
+        m_star = m_star.reshape(self.grid_shape)
+
+        # Ensure non-negativity
+        m_star = np.maximum(m_star, 0)
+
+        # Step 2: Diffusion via ADI
+        # =========================
+        # Reuse the ADI diffusion from HJB-SL module
+        m_new = adi_diffusion_step(
+            U_star=m_star,
+            dt=dt,
+            sigma=sigma,
+            spacing=self.spacing,
+            grid_shape=self.grid_shape,
+        )
 
         # Ensure non-negativity
         m_new = np.maximum(m_new, 0)
@@ -506,6 +640,87 @@ if __name__ == "__main__":
 
     print(f"   Adjoint SL peak: {m_final.max():.4f}, L2 to Gibbs: {l2_to_gibbs:.4e}")
     print(f"   Backward SL peak: {m_backward_final.max():.4f}, L2 to Gibbs: {l2_backward:.4e}")
+
+    # Test 5: 2D solver test
+    print("\n5. Testing 2D FP SL Adjoint solver...")
+
+    from mfg_pde.geometry.boundary import no_flux_bc
+
+    # 2D setup (smaller grid for speed)
+    N2D = 30
+    Nt2D = 100
+    T2D = 1.0
+    SIGMA2D = 0.3
+
+    # 2D domain with no-flux BC
+    bc_2d = no_flux_bc(dimension=2)
+    domain_2d = TensorProductGrid(
+        bounds=[(-0.5, 0.5), (-0.5, 0.5)],
+        Nx_points=[N2D + 1, N2D + 1],
+        boundary_conditions=bc_2d,
+    )
+
+    # 2D problem
+    components_2d = MFGComponents(
+        hamiltonian=H,
+        u_final=lambda x: 0.0,
+        m_initial=lambda x: 1.0,
+    )
+    problem_2d = MFGProblem(
+        geometry=domain_2d,
+        T=T2D,
+        Nt=Nt2D,
+        diffusion=SIGMA2D,
+        components=components_2d,
+    )
+
+    solver_2d = FPSLAdjointSolver(problem_2d)
+    print(f"   Dimension: {solver_2d.dimension}")
+    print(f"   Grid shape: {solver_2d.grid_shape}")
+    print(f"   Spacing: {solver_2d.spacing}")
+    assert solver_2d.dimension == 2
+
+    # Create 2D confining potential U(x,y) = x^2 + y^2
+    x2d = domain_2d.coordinates[0]
+    y2d = domain_2d.coordinates[1]
+    XX, YY = np.meshgrid(x2d, y2d, indexing="ij")
+    U_2d_static = XX**2 + YY**2
+
+    # Stack U for each time step
+    U_2d = np.zeros((Nt2D + 1, N2D + 1, N2D + 1))
+    for t in range(Nt2D + 1):
+        U_2d[t] = U_2d_static
+
+    # Initial uniform density
+    domain_volume_2d = np.prod([ub - lb for lb, ub in domain_2d.bounds])
+    m_2d_initial = np.ones((N2D + 1, N2D + 1)) / domain_volume_2d
+
+    # Solve
+    M_2d = solver_2d.solve_fp_system(M_initial=m_2d_initial, drift_field=U_2d, show_progress=False)
+
+    print(f"   Output shape: {M_2d.shape}")
+
+    # Check mass conservation (sum(m) invariant)
+    sum_m_2d_initial = np.sum(M_2d[0])
+    sum_m_2d_final = np.sum(M_2d[-1])
+    sum_m_2d_error = abs(sum_m_2d_final - sum_m_2d_initial) / sum_m_2d_initial
+    print(f"   sum(m) initial: {sum_m_2d_initial:.6f}")
+    print(f"   sum(m) final:   {sum_m_2d_final:.6f}")
+    print(f"   sum(m) error:   {sum_m_2d_error:.2e}")
+
+    # ADI may have slightly worse mass conservation
+    assert sum_m_2d_error < 1e-6, f"2D mass conservation failed: error={sum_m_2d_error:.2e}"
+    print("   2D mass conservation: OK (error < 1e-6)")
+
+    # Check that density concentrates at center
+    m_2d_final = M_2d[-1]
+    center_idx = N2D // 2
+    center_density = m_2d_final[center_idx, center_idx]
+    corner_density = m_2d_final[0, 0]
+    print(f"   Final center density: {center_density:.4f}")
+    print(f"   Final corner density: {corner_density:.6f}")
+    assert center_density > corner_density * 10, "Density should concentrate at center"
+    print("   Concentration: OK (center > 10x corner)")
 
     print("\n" + "=" * 60)
     print("All smoke tests passed!")

@@ -298,6 +298,144 @@ def splat_1d(
 
 
 # =============================================================================
+# nD Splatting Functions
+# =============================================================================
+
+
+def splat_linear_nd(
+    m: NDArray[np.floating],
+    x_dest: NDArray[np.floating],
+    grid_coordinates: tuple[NDArray[np.floating], ...],
+    grid_shape: tuple[int, ...],
+    bounds: list[tuple[float, float]],
+) -> NDArray[np.floating]:
+    """
+    Linear (2^d point) splatting for nD problems - adjoint of multilinear interpolation.
+
+    For nD, linear interpolation uses 2^d corner points of the hypercube containing
+    the query point. The weights are tensor products of 1D weights.
+
+    Example (2D):
+        Interpolation at (x, y) in cell [i,i+1] x [j,j+1]:
+        φ(x,y) = (1-wx)(1-wy)·φ[i,j] + wx(1-wy)·φ[i+1,j]
+               + (1-wx)wy·φ[i,j+1] + wx·wy·φ[i+1,j+1]
+
+        Splatting (adjoint):
+        m[i,j] += (1-wx)(1-wy)·m_src; m[i+1,j] += wx(1-wy)·m_src; etc.
+
+    Args:
+        m: Source density array, shape grid_shape (flattened or shaped)
+        x_dest: Destination positions, shape (N_points, dimension)
+        grid_coordinates: Tuple of 1D coordinate arrays for each dimension
+        grid_shape: Shape of the grid (N1, N2, ..., Nd)
+        bounds: List of (min, max) tuples for each dimension
+
+    Returns:
+        Splat result, same shape as m
+    """
+    dimension = len(grid_shape)
+    N_points = np.prod(grid_shape)
+
+    # Ensure m is flattened for indexing
+    m_flat = m.ravel()
+    m_star = np.zeros(N_points)
+
+    # Grid spacings
+    dx = [(grid_coordinates[d][1] - grid_coordinates[d][0]) for d in range(dimension)]
+
+    # Reshape x_dest if needed: (N_points,) for 1D -> (N_points, 1)
+    if x_dest.ndim == 1 and dimension == 1:
+        x_dest = x_dest.reshape(-1, 1)
+
+    # Process each source point
+    for flat_idx in range(N_points):
+        # Destination position for this point
+        x_d = x_dest[flat_idx]
+
+        # Compute cell indices and weights for each dimension
+        j_list = []  # Lower corner indices
+        w_list = []  # Weights for upper corner
+
+        for d in range(dimension):
+            xmin_d, _ = bounds[d]  # xmax not needed; clipping handles bounds
+            pos_cont = (x_d[d] - xmin_d) / dx[d]
+
+            # Lower index
+            j_d = int(np.floor(pos_cont))
+            j_d = max(0, min(j_d, grid_shape[d] - 2))
+
+            # Weight
+            w_d = pos_cont - j_d
+            w_d = max(0.0, min(1.0, w_d))
+
+            j_list.append(j_d)
+            w_list.append(w_d)
+
+        # Scatter to 2^d corners
+        # Iterate over all corner combinations using binary representation
+        for corner in range(1 << dimension):  # 0 to 2^d - 1
+            corner_idx = []
+            weight = 1.0
+
+            for d in range(dimension):
+                if corner & (1 << d):  # Bit d is set -> upper corner
+                    corner_idx.append(j_list[d] + 1)
+                    weight *= w_list[d]
+                else:  # Lower corner
+                    corner_idx.append(j_list[d])
+                    weight *= 1.0 - w_list[d]
+
+            # Clamp indices to valid range
+            corner_idx = [min(max(0, idx), grid_shape[d] - 1) for d, idx in enumerate(corner_idx)]
+
+            # Convert to flat index
+            dest_flat_idx = np.ravel_multi_index(corner_idx, grid_shape)
+
+            # Accumulate
+            m_star[dest_flat_idx] += weight * m_flat[flat_idx]
+
+    return m_star.reshape(grid_shape)
+
+
+def splat_nd(
+    m: NDArray[np.floating],
+    x_dest: NDArray[np.floating],
+    grid_coordinates: tuple[NDArray[np.floating], ...],
+    grid_shape: tuple[int, ...],
+    bounds: list[tuple[float, float]],
+    method: str = "linear",
+) -> NDArray[np.floating]:
+    """
+    Dispatch to appropriate nD splatting method.
+
+    Args:
+        m: Source density array
+        x_dest: Destination positions, shape (N_points, dimension)
+        grid_coordinates: Tuple of 1D coordinate arrays for each dimension
+        grid_shape: Shape of the grid
+        bounds: List of (min, max) tuples for each dimension
+        method: Splatting method ('linear' only for nD currently)
+
+    Returns:
+        Splat result
+
+    Note:
+        Cubic and quintic splatting for nD would require tensor products of 1D kernels.
+        Currently only linear is supported for nD.
+    """
+    if method == "linear":
+        return splat_linear_nd(m, x_dest, grid_coordinates, grid_shape, bounds)
+    elif method in ("cubic", "quintic"):
+        raise NotImplementedError(
+            f"'{method}' splatting not yet implemented for nD. Use 'linear' or implement "
+            "tensor-product splatting. For nD, consider using 'linear' which provides "
+            "adequate accuracy for most MFG applications."
+        )
+    else:
+        raise ValueError(f"Unknown splatting method: {method}.")
+
+
+# =============================================================================
 # Smoke Tests
 # =============================================================================
 
@@ -374,6 +512,66 @@ if __name__ == "__main__":
     m_cubic = splat_1d(m_uniform, x_dest, x, dx, xmin, xmax, method="cubic")
     m_quintic = splat_1d(m_uniform, x_dest, x, dx, xmin, xmax, method="quintic")
     print("   Dispatch function: OK")
+
+    # Test 7: nD splatting (2D)
+    print("\n7. Testing 2D linear splatting...")
+    Nx_2d, Ny_2d = 11, 11
+    x_2d = np.linspace(0.0, 1.0, Nx_2d)
+    y_2d = np.linspace(0.0, 1.0, Ny_2d)
+    grid_shape_2d = (Nx_2d, Ny_2d)
+    bounds_2d = [(0.0, 1.0), (0.0, 1.0)]
+    dx_2d = x_2d[1] - x_2d[0]
+
+    # Uniform density
+    m_2d = np.ones(grid_shape_2d)
+
+    # Create meshgrid and shift positions
+    XX, YY = np.meshgrid(x_2d, y_2d, indexing="ij")
+    x_dest_2d = np.stack([(XX + 0.3 * dx_2d).ravel(), (YY + 0.2 * dx_2d).ravel()], axis=-1)
+
+    # Splat
+    m_splat_2d = splat_linear_nd(m_2d.ravel(), x_dest_2d, (x_2d, y_2d), grid_shape_2d, bounds_2d)
+
+    mass_2d_before = np.sum(m_2d)
+    mass_2d_after = np.sum(m_splat_2d)
+    print(f"   Mass before: {mass_2d_before:.6f}")
+    print(f"   Mass after:  {mass_2d_after:.6f}")
+    print(f"   Mass error:  {abs(mass_2d_after - mass_2d_before):.2e}")
+    assert abs(mass_2d_after - mass_2d_before) < 1e-10, "2D splatting failed mass conservation"
+    print("   2D splatting: OK")
+
+    # Test 8: nD splatting (3D)
+    print("\n8. Testing 3D linear splatting...")
+    N3d = 6
+    x_3d = np.linspace(0.0, 1.0, N3d)
+    grid_shape_3d = (N3d, N3d, N3d)
+    bounds_3d = [(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)]
+    dx_3d = x_3d[1] - x_3d[0]
+
+    # Uniform density
+    m_3d = np.ones(grid_shape_3d)
+
+    # Create meshgrid and shift positions
+    XX3, YY3, ZZ3 = np.meshgrid(x_3d, x_3d, x_3d, indexing="ij")
+    x_dest_3d = np.stack(
+        [
+            (XX3 + 0.25 * dx_3d).ravel(),
+            (YY3 + 0.15 * dx_3d).ravel(),
+            (ZZ3 + 0.35 * dx_3d).ravel(),
+        ],
+        axis=-1,
+    )
+
+    # Splat
+    m_splat_3d = splat_linear_nd(m_3d.ravel(), x_dest_3d, (x_3d, x_3d, x_3d), grid_shape_3d, bounds_3d)
+
+    mass_3d_before = np.sum(m_3d)
+    mass_3d_after = np.sum(m_splat_3d)
+    print(f"   Mass before: {mass_3d_before:.6f}")
+    print(f"   Mass after:  {mass_3d_after:.6f}")
+    print(f"   Mass error:  {abs(mass_3d_after - mass_3d_before):.2e}")
+    assert abs(mass_3d_after - mass_3d_before) < 1e-10, "3D splatting failed mass conservation"
+    print("   3D splatting: OK")
 
     print("\n" + "=" * 60)
     print("All splatting smoke tests passed!")
