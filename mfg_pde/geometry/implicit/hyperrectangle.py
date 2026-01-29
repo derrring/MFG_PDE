@@ -209,27 +209,6 @@ class Hyperrectangle(ImplicitDomain):
 
         return wrapped[0] if single_point else wrapped
 
-    def create_periodic_ghost_points(
-        self,
-        points: NDArray,
-    ) -> tuple[NDArray, NDArray]:
-        """
-        Create augmented point cloud with ghost copies for periodic neighbor search.
-
-        Delegates to canonical utility function (DRY principle, Issue #711).
-
-        Args:
-            points: Original collocation points, shape (n_points, dimension)
-
-        Returns:
-            augmented_points: Shape (n_augmented, dimension)
-            original_indices: Maps augmented index -> original point index
-        """
-        from mfg_pde.geometry.boundary.corner import create_periodic_ghost_points
-
-        bounds_list = [(self.bounds[d, 0], self.bounds[d, 1]) for d in range(self._dimension)]
-        return create_periodic_ghost_points(points, bounds_list, self._periodic_dims)
-
     def signed_distance(self, x: NDArray[np.float64]) -> float | NDArray[np.float64]:
         """
         Compute exact signed distance to hyperrectangle.

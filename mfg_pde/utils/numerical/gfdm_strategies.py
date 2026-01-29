@@ -421,7 +421,14 @@ class TaylorOperator(DifferentialOperator):
         """Get augmented point cloud with ghost copies for periodic tree search."""
         if not self._is_periodic:
             return self._points, np.arange(self._n_points)
-        return self._geometry.create_periodic_ghost_points(self._points)
+
+        # Issue #711: Call corner utility directly (not geometry method)
+        # Geometry provides protocol info (bounds, periodic_dims), utility does work
+        from mfg_pde.geometry.boundary.corner import create_periodic_ghost_points
+
+        bounds = self._geometry.bounds
+        periodic_dims = self._geometry.periodic_dimensions
+        return create_periodic_ghost_points(self._points, bounds, periodic_dims)
 
     def _build_neighborhoods(self):
         """Build neighborhood structure for all points."""
