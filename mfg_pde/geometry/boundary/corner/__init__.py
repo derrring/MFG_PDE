@@ -49,7 +49,12 @@ See Also:
 # =============================================================================
 # Position-based functions (stateless, canonical implementation)
 # =============================================================================
-from .position import absorb_positions, reflect_positions, wrap_positions
+from .position import (
+    absorb_positions,
+    create_periodic_ghost_points,
+    reflect_positions,
+    wrap_positions,
+)
 
 # =============================================================================
 # Strategy definitions
@@ -71,6 +76,7 @@ __all__ = [
     "reflect_positions",
     "wrap_positions",
     "absorb_positions",
+    "create_periodic_ghost_points",  # Issue #711: periodic meshfree
     # Velocity-based (Billiard dynamics)
     "reflect_velocity",
     "reflect_velocity_with_normal",

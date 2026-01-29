@@ -345,10 +345,11 @@ class TaylorOperator(DifferentialOperator):
         self.neighborhood_mode = neighborhood_mode
         self._geometry = geometry
 
-        # Check if geometry supports periodicity
-        self._is_periodic = (
-            geometry is not None and hasattr(geometry, "periodic_dimensions") and len(geometry.periodic_dimensions) > 0
-        )
+        # Check if geometry supports periodicity (Issue #711)
+        # Use isinstance() with Protocol per CLAUDE.md standards (no hasattr duck typing)
+        from mfg_pde.geometry.protocols import SupportsPeriodic
+
+        self._is_periodic = isinstance(geometry, SupportsPeriodic) and len(geometry.periodic_dimensions) > 0
 
         # Compute k_neighbors from Taylor order if not provided
         # Safety margin of +3 ensures overdetermined system even with compact
@@ -500,7 +501,10 @@ class TaylorOperator(DifferentialOperator):
             neighbor_points = neighborhood["points"]
 
             for j, neighbor_point in enumerate(neighbor_points):
-                delta_x = neighbor_point - center_point
+                # Issue #711: Use wrapped displacement for periodic domains
+                # For non-periodic: delta_x = neighbor - center (standard)
+                # For periodic: delta_x wraps to [-L/2, L/2] (shortest path)
+                delta_x = self._wrap_displacement(neighbor_point - center_point)
 
                 for k, beta in enumerate(self.multi_indices):
                     term = 1.0

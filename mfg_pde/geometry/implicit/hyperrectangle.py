@@ -116,7 +116,8 @@ class Hyperrectangle(ImplicitDomain):
         """
         Wrap coordinates to canonical fundamental domain.
 
-        For periodic dimension i: x_wrapped = xmin + (x - xmin) mod L
+        Delegates to canonical wrap_positions() utility (DRY principle).
+        Only wraps periodic dimensions, non-periodic dims unchanged.
 
         Args:
             points: Points to wrap, shape (num_points, dimension) or (dimension,)
@@ -127,6 +128,16 @@ class Hyperrectangle(ImplicitDomain):
         if not self._periodic_dims:
             return points
 
+        # Delegate to canonical utility (Issue #711: DRY)
+        from mfg_pde.geometry.boundary.corner import wrap_positions
+
+        # For partial periodicity, only wrap periodic dims
+        if len(self._periodic_dims) == self._dimension:
+            # All dimensions periodic - use wrap_positions directly
+            bounds_list = [(self.bounds[d, 0], self.bounds[d, 1]) for d in range(self._dimension)]
+            return wrap_positions(points, bounds_list)
+
+        # Partial periodicity - wrap only periodic dims
         single_point = points.ndim == 1
         if single_point:
             points = points.reshape(1, -1)
@@ -205,7 +216,7 @@ class Hyperrectangle(ImplicitDomain):
         """
         Create augmented point cloud with ghost copies for periodic neighbor search.
 
-        For d-dimensional torus, creates 3^|P| copies where P is periodic dims.
+        Delegates to canonical utility function (DRY principle, Issue #711).
 
         Args:
             points: Original collocation points, shape (n_points, dimension)
@@ -214,36 +225,10 @@ class Hyperrectangle(ImplicitDomain):
             augmented_points: Shape (n_augmented, dimension)
             original_indices: Maps augmented index -> original point index
         """
-        import itertools
+        from mfg_pde.geometry.boundary.corner import create_periodic_ghost_points
 
-        n_points = points.shape[0]
-
-        if not self._periodic_dims:
-            return points, np.arange(n_points)
-
-        # Generate shift combinations
-        shift_options = []
-        for d in range(self._dimension):
-            if d in self._periodic_dims:
-                shift_options.append([-1, 0, 1])
-            else:
-                shift_options.append([0])
-
-        shifts = list(itertools.product(*shift_options))
-
-        # Period lengths
-        period_lengths = np.array([self.bounds[d, 1] - self.bounds[d, 0] for d in range(self._dimension)])
-
-        augmented_list = []
-        index_list = []
-
-        for shift in shifts:
-            shift_vec = np.array(shift) * period_lengths
-            shifted_points = points + shift_vec
-            augmented_list.append(shifted_points)
-            index_list.append(np.arange(n_points))
-
-        return np.vstack(augmented_list), np.concatenate(index_list)
+        bounds_list = [(self.bounds[d, 0], self.bounds[d, 1]) for d in range(self._dimension)]
+        return create_periodic_ghost_points(points, bounds_list, self._periodic_dims)
 
     def signed_distance(self, x: NDArray[np.float64]) -> float | NDArray[np.float64]:
         """

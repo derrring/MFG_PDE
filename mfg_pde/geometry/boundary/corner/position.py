@@ -175,10 +175,95 @@ def absorb_positions(
     return result
 
 
+def create_periodic_ghost_points(
+    points: NDArray[np.floating],
+    bounds: list[tuple[float, float]] | NDArray[np.floating],
+    periodic_dims: tuple[int, ...] | None = None,
+) -> tuple[NDArray[np.floating], NDArray[np.int64]]:
+    """
+    Create augmented point cloud with ghost copies for periodic neighbor search.
+
+    For meshfree methods (GFDM, RBF) on periodic domains, KD-tree neighbor
+    search requires ghost points near domain boundaries to find periodic
+    neighbors correctly.
+
+    For d-dimensional domain with |P| periodic dimensions, creates 3^|P|
+    copies of the point cloud shifted by ±L in each periodic direction.
+
+    Args:
+        points: Original points, shape (n_points, dimension)
+        bounds: Domain bounds as [(xmin, xmax), ...] or (d, 2) array
+        periodic_dims: Dimensions with periodic topology. If None, all dims periodic.
+
+    Returns:
+        Tuple of (augmented_points, original_indices):
+            - augmented_points: Shape (n_augmented, dimension)
+            - original_indices: Maps augmented index -> original point index
+
+    Examples:
+        >>> # 2D torus - creates 9 copies (3^2)
+        >>> points = np.random.rand(100, 2)
+        >>> bounds = [(0, 1), (0, 1)]
+        >>> aug_pts, orig_idx = create_periodic_ghost_points(points, bounds)
+        >>> # aug_pts.shape == (900, 2), orig_idx.shape == (900,)
+
+        >>> # Cylinder - periodic in x only (3 copies)
+        >>> aug_pts, orig_idx = create_periodic_ghost_points(
+        ...     points, bounds, periodic_dims=(0,)
+        ... )
+        >>> # aug_pts.shape == (300, 2)
+
+    Note:
+        Issue #711: Canonical utility for periodic meshfree methods.
+        Used by TaylorOperator, MeshfreeApplicator, etc.
+    """
+    import itertools
+
+    points = np.atleast_2d(points)
+    n_points, ndim = points.shape
+
+    bounds = np.asarray(bounds)
+    if bounds.ndim == 1:
+        bounds = bounds.reshape(1, 2)
+
+    # Default: all dimensions periodic
+    if periodic_dims is None:
+        periodic_dims = tuple(range(ndim))
+
+    if not periodic_dims:
+        # No periodicity
+        return points, np.arange(n_points, dtype=np.int64)
+
+    # Generate shift combinations for periodic dimensions
+    shift_options = []
+    for d in range(ndim):
+        if d in periodic_dims:
+            shift_options.append([-1, 0, 1])
+        else:
+            shift_options.append([0])
+
+    shifts = list(itertools.product(*shift_options))
+
+    # Period lengths
+    period_lengths = np.array([bounds[d, 1] - bounds[d, 0] for d in range(ndim)])
+
+    augmented_list = []
+    index_list = []
+
+    for shift in shifts:
+        shift_vec = np.array(shift) * period_lengths
+        shifted_points = points + shift_vec
+        augmented_list.append(shifted_points)
+        index_list.append(np.arange(n_points, dtype=np.int64))
+
+    return np.vstack(augmented_list), np.concatenate(index_list)
+
+
 __all__ = [
     "reflect_positions",
     "wrap_positions",
     "absorb_positions",
+    "create_periodic_ghost_points",
 ]
 
 

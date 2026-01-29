@@ -210,6 +210,12 @@ from .bc_coupling import (
     create_adjoint_consistent_bc_1d,
 )
 
+# BC utilities for solver-agnostic BC type detection (Issue #702)
+from .bc_utils import (
+    bc_type_to_geometric_operation,
+    get_bc_type_string,
+)
+
 # Unified BoundaryConditions class and factory functions
 from .conditions import (
     BoundaryConditions,
@@ -234,6 +240,7 @@ from .corner import (
     CornerStrategy,
     CornerStrategyLiteral,
     absorb_positions,
+    create_periodic_ghost_points,  # Issue #711: periodic meshfree
     reflect_positions,
     reflect_velocity,
     reflect_velocity_with_normal,
@@ -348,6 +355,9 @@ __all__ = [
     "BCType",
     "BCSegment",
     "create_standard_boundary_names",
+    # BC utilities (Issue #702)
+    "bc_type_to_geometric_operation",
+    "get_bc_type_string",
     # Dynamic BC Value Providers (Issue #625)
     "BCValueProvider",
     "BaseBCValueProvider",
@@ -462,6 +472,7 @@ __all__ = [
     "reflect_positions",
     "wrap_positions",
     "absorb_positions",
+    "create_periodic_ghost_points",  # Issue #711: periodic meshfree
     "reflect_velocity",
     "reflect_velocity_with_normal",
     "CornerStrategy",
