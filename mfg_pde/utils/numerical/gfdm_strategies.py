@@ -315,6 +315,7 @@ class TaylorOperator(DifferentialOperator):
         weight_scale: float = 1.0,
         k_neighbors: int | None = None,
         neighborhood_mode: str = "hybrid",
+        geometry: object | None = None,
     ):
         """
         Initialize Taylor operator with precomputed structure.
@@ -330,6 +331,10 @@ class TaylorOperator(DifferentialOperator):
                 - "radius": Use all points within delta
                 - "knn": Use exactly k nearest neighbors
                 - "hybrid": Use delta, but ensure at least k neighbors (default)
+            geometry: Geometry object implementing SupportsPeriodic protocol for
+                periodic domains (e.g., Hyperrectangle with periodic_dims).
+                If provided and periodic, enables wrap-around neighbor search.
+                Issue #711.
         """
         self._points = np.asarray(points)
         self._n_points, self._dimension = self._points.shape
@@ -338,6 +343,12 @@ class TaylorOperator(DifferentialOperator):
         self.weight_function = weight_function
         self.weight_scale = weight_scale
         self.neighborhood_mode = neighborhood_mode
+        self._geometry = geometry
+
+        # Check if geometry supports periodicity
+        self._is_periodic = (
+            geometry is not None and hasattr(geometry, "periodic_dimensions") and len(geometry.periodic_dimensions) > 0
+        )
 
         # Compute k_neighbors from Taylor order if not provided
         # Safety margin of +3 ensures overdetermined system even with compact
@@ -394,43 +405,66 @@ class TaylorOperator(DifferentialOperator):
         multi_indices.sort(key=lambda beta: (sum(beta), beta))
         return multi_indices
 
+    # =========================================================================
+    # Periodic Domain Support (Issue #711)
+    # Delegates to geometry.SupportsPeriodic protocol methods
+    # =========================================================================
+
+    def _wrap_displacement(self, delta_x: np.ndarray) -> np.ndarray:
+        """Wrap displacement vector using geometry's wrap_displacement method."""
+        if not self._is_periodic:
+            return delta_x
+        return self._geometry.wrap_displacement(delta_x)
+
+    def _get_augmented_points_for_tree(self) -> tuple[np.ndarray, np.ndarray]:
+        """Get augmented point cloud with ghost copies for periodic tree search."""
+        if not self._is_periodic:
+            return self._points, np.arange(self._n_points)
+        return self._geometry.create_periodic_ghost_points(self._points)
+
     def _build_neighborhoods(self):
-        """Build neighborhood structure for all points (NO ghost particles)."""
-        tree = cKDTree(self._points)
+        """Build neighborhood structure for all points."""
+        # For periodic domains, use augmented points for tree search
+        augmented_points, original_indices = self._get_augmented_points_for_tree()
+        tree = cKDTree(augmented_points)
 
         self.neighborhoods: list[dict] = []
         self._hybrid_expanded_count = 0
 
         for i in range(self._n_points):
             if self.neighborhood_mode == "knn":
-                distances, neighbor_indices = tree.query(self._points[i], k=self.k_neighbors)
-                neighbor_indices = np.array(neighbor_indices)
+                distances, aug_neighbor_indices = tree.query(self._points[i], k=self.k_neighbors)
+                aug_neighbor_indices = np.array(aug_neighbor_indices)
                 distances = np.array(distances)
             elif self.neighborhood_mode == "radius":
-                neighbor_indices = tree.query_ball_point(self._points[i], self.delta)
-                neighbor_indices = np.array(neighbor_indices)
-                neighbor_points = self._points[neighbor_indices]
-                distances = np.linalg.norm(neighbor_points - self._points[i], axis=1)
+                aug_neighbor_indices = tree.query_ball_point(self._points[i], self.delta)
+                aug_neighbor_indices = np.array(aug_neighbor_indices)
+                aug_neighbor_points = augmented_points[aug_neighbor_indices]
+                distances = np.linalg.norm(aug_neighbor_points - self._points[i], axis=1)
             else:
                 # Hybrid mode (default)
-                neighbor_indices = tree.query_ball_point(self._points[i], self.delta)
-                neighbor_indices = np.array(neighbor_indices)
+                aug_neighbor_indices = tree.query_ball_point(self._points[i], self.delta)
+                aug_neighbor_indices = np.array(aug_neighbor_indices)
 
-                if len(neighbor_indices) < self.k_neighbors:
-                    distances, neighbor_indices = tree.query(self._points[i], k=self.k_neighbors)
-                    neighbor_indices = np.array(neighbor_indices)
+                if len(aug_neighbor_indices) < self.k_neighbors:
+                    distances, aug_neighbor_indices = tree.query(self._points[i], k=self.k_neighbors)
+                    aug_neighbor_indices = np.array(aug_neighbor_indices)
                     distances = np.array(distances)
                     self._hybrid_expanded_count += 1
                 else:
-                    neighbor_points = self._points[neighbor_indices]
-                    distances = np.linalg.norm(neighbor_points - self._points[i], axis=1)
+                    aug_neighbor_points = augmented_points[aug_neighbor_indices]
+                    distances = np.linalg.norm(aug_neighbor_points - self._points[i], axis=1)
 
-            neighbor_points = self._points[neighbor_indices]
+            # Map augmented indices back to original point indices
+            neighbor_indices = original_indices[aug_neighbor_indices]
+
+            # Get neighbor points from augmented cloud (preserves ghost positions for delta_x)
+            neighbor_points = augmented_points[aug_neighbor_indices]
 
             self.neighborhoods.append(
                 {
-                    "indices": neighbor_indices,
-                    "points": neighbor_points,
+                    "indices": neighbor_indices,  # Original indices (for value lookup)
+                    "points": neighbor_points,  # Augmented points (for delta_x)
                     "distances": distances,
                     "size": len(neighbor_indices),
                 }

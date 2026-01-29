@@ -55,12 +55,19 @@ class Hyperrectangle(ImplicitDomain):
         >>> assert particles.shape == (10000, 4)
     """
 
-    def __init__(self, bounds: NDArray[np.float64]) -> None:
+    def __init__(
+        self,
+        bounds: NDArray[np.float64],
+        periodic_dims: tuple[int, ...] | None = None,
+    ) -> None:
         """
         Initialize hyperrectangle domain.
 
         Args:
             bounds: Array of shape (d, 2) where bounds[i] = [min_i, max_i]
+            periodic_dims: Dimensions with periodic topology (for torus).
+                E.g., (0, 1) for 2D torus, None for bounded domain.
+                Issue #711: Periodic support for GFDM.
 
         Raises:
             ValueError: If bounds are invalid (min >= max)
@@ -68,6 +75,9 @@ class Hyperrectangle(ImplicitDomain):
         Example:
             >>> # 2D rectangle [0,2] × [0,1]
             >>> domain = Hyperrectangle(np.array([[0, 2], [0, 1]]))
+
+            >>> # 2D torus (periodic in both dimensions)
+            >>> torus = Hyperrectangle(np.array([[0, 1], [0, 1]]), periodic_dims=(0, 1))
 
             >>> # 3D box [-1,1]³
             >>> domain_3d = Hyperrectangle(np.array([[-1, 1]] * 3))
@@ -82,11 +92,158 @@ class Hyperrectangle(ImplicitDomain):
 
         self.bounds = bounds
         self._dimension = bounds.shape[0]
+        self._periodic_dims = tuple(periodic_dims) if periodic_dims else ()
 
     @property
     def dimension(self) -> int:
         """Spatial dimension of the hyperrectangle."""
         return self._dimension
+
+    # =========================================================================
+    # SupportsPeriodic Protocol Implementation (Issue #711)
+    # =========================================================================
+
+    @property
+    def periodic_dimensions(self) -> tuple[int, ...]:
+        """Get dimensions with periodic topology."""
+        return self._periodic_dims
+
+    def get_periods(self) -> dict[int, float]:
+        """Get period lengths for periodic dimensions."""
+        return {dim: self.bounds[dim, 1] - self.bounds[dim, 0] for dim in self._periodic_dims}
+
+    def wrap_coordinates(self, points: NDArray) -> NDArray:
+        """
+        Wrap coordinates to canonical fundamental domain.
+
+        For periodic dimension i: x_wrapped = xmin + (x - xmin) mod L
+
+        Args:
+            points: Points to wrap, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Wrapped coordinates in [xmin, xmax), same shape as input
+        """
+        if not self._periodic_dims:
+            return points
+
+        single_point = points.ndim == 1
+        if single_point:
+            points = points.reshape(1, -1)
+
+        wrapped = points.copy()
+        for dim_idx in self._periodic_dims:
+            xmin, xmax = self.bounds[dim_idx]
+            period = xmax - xmin
+            wrapped[:, dim_idx] = xmin + np.mod(wrapped[:, dim_idx] - xmin, period)
+
+        return wrapped[0] if single_point else wrapped
+
+    def compute_periodic_distance(
+        self,
+        points1: NDArray,
+        points2: NDArray,
+    ) -> NDArray:
+        """
+        Compute distance accounting for periodic topology.
+
+        For periodic dim i: d_i = min(|Δx_i|, L_i - |Δx_i|)
+        Total distance: d = sqrt(∑ d_i²)
+        """
+        if not self._periodic_dims:
+            diff = points1 - points2
+            return np.linalg.norm(diff, axis=-1)
+
+        single_point = points1.ndim == 1
+        if single_point:
+            points1 = points1.reshape(1, -1)
+            points2 = points2.reshape(1, -1)
+
+        diff = points1 - points2
+        diff_squared = diff**2
+
+        for dim_idx in self._periodic_dims:
+            L = self.bounds[dim_idx, 1] - self.bounds[dim_idx, 0]
+            abs_diff = np.abs(diff[:, dim_idx])
+            wrapped_diff = np.minimum(abs_diff, L - abs_diff)
+            diff_squared[:, dim_idx] = wrapped_diff**2
+
+        distances = np.sqrt(np.sum(diff_squared, axis=1))
+        return distances[0] if single_point else distances
+
+    def wrap_displacement(self, delta: NDArray) -> NDArray:
+        """
+        Wrap displacement vector to [-L/2, L/2] for periodic dimensions.
+
+        For periodic dimension i:
+            delta_wrapped[i] = delta[i] - L[i] * round(delta[i] / L[i])
+
+        Args:
+            delta: Displacement vectors, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Wrapped displacement in [-L/2, L/2], same shape as input
+        """
+        if not self._periodic_dims:
+            return delta
+
+        single_point = delta.ndim == 1
+        if single_point:
+            delta = delta.reshape(1, -1)
+
+        wrapped = delta.copy()
+        for dim_idx in self._periodic_dims:
+            L = self.bounds[dim_idx, 1] - self.bounds[dim_idx, 0]
+            wrapped[:, dim_idx] = wrapped[:, dim_idx] - L * np.round(wrapped[:, dim_idx] / L)
+
+        return wrapped[0] if single_point else wrapped
+
+    def create_periodic_ghost_points(
+        self,
+        points: NDArray,
+    ) -> tuple[NDArray, NDArray]:
+        """
+        Create augmented point cloud with ghost copies for periodic neighbor search.
+
+        For d-dimensional torus, creates 3^|P| copies where P is periodic dims.
+
+        Args:
+            points: Original collocation points, shape (n_points, dimension)
+
+        Returns:
+            augmented_points: Shape (n_augmented, dimension)
+            original_indices: Maps augmented index -> original point index
+        """
+        import itertools
+
+        n_points = points.shape[0]
+
+        if not self._periodic_dims:
+            return points, np.arange(n_points)
+
+        # Generate shift combinations
+        shift_options = []
+        for d in range(self._dimension):
+            if d in self._periodic_dims:
+                shift_options.append([-1, 0, 1])
+            else:
+                shift_options.append([0])
+
+        shifts = list(itertools.product(*shift_options))
+
+        # Period lengths
+        period_lengths = np.array([self.bounds[d, 1] - self.bounds[d, 0] for d in range(self._dimension)])
+
+        augmented_list = []
+        index_list = []
+
+        for shift in shifts:
+            shift_vec = np.array(shift) * period_lengths
+            shifted_points = points + shift_vec
+            augmented_list.append(shifted_points)
+            index_list.append(np.arange(n_points))
+
+        return np.vstack(augmented_list), np.concatenate(index_list)
 
     def signed_distance(self, x: NDArray[np.float64]) -> float | NDArray[np.float64]:
         """

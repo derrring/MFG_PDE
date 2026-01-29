@@ -202,6 +202,8 @@ class HJBGFDMSolver(BaseHJBSolver):
         use_wind_dependent_bc: bool = False,
         # Congestion mode for Hamiltonian coupling
         congestion_mode: str = "additive",
+        # Collocation geometry for periodic domains (Issue #711)
+        collocation_geometry: object | None = None,
     ):
         """
         Initialize the GFDM HJB solver.
@@ -292,6 +294,10 @@ class HJBGFDMSolver(BaseHJBSolver):
                 The multiplicative form models agents slowing down in crowded areas, where
                 γ|Ω|m ≈ γ × (local_density / average_density). This makes γ dimensionless
                 and O(1) for observable effects, unlike additive form where γ ~ 1/|Ω|.
+            collocation_geometry: Geometry object for collocation domain (Issue #711).
+                If provided and implements SupportsPeriodic (e.g., Hyperrectangle with
+                periodic_dims), enables periodic neighbor search for GFDM on torus domains.
+                Example: Hyperrectangle(bounds, periodic_dims=(0, 1)) for 2D torus.
         """
         super().__init__(problem)
 
@@ -394,6 +400,9 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Congestion mode for Hamiltonian coupling
         self.congestion_mode = congestion_mode
+
+        # Collocation geometry for periodic domains (Issue #711)
+        self._collocation_geometry = collocation_geometry
 
         # Initialize QP components (will be fully initialized after neighborhoods are built)
         # Map qp_solver parameter to QPSolver backend
@@ -503,6 +512,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     weight_function=weight_function,
                     k_neighbors=k_neighbors,
                     neighborhood_mode=neighborhood_mode,
+                    geometry=collocation_geometry,  # Issue #711: periodic support
                 )
             elif derivative_method == "rbf":
                 self._gfdm_operator = create_operator(
