@@ -422,9 +422,9 @@ class TaylorOperator(DifferentialOperator):
         if not self._is_periodic:
             return self._points, np.arange(self._n_points)
 
-        # Issue #711: Call corner utility directly (not geometry method)
+        # Issue #711: Call periodic utility (parallel to enforcement.py)
         # Geometry provides protocol info (bounds, periodic_dims), utility does work
-        from mfg_pde.geometry.boundary.corner import create_periodic_ghost_points
+        from mfg_pde.geometry.boundary.periodic import create_periodic_ghost_points
 
         bounds = self._geometry.bounds
         periodic_dims = self._geometry.periodic_dimensions

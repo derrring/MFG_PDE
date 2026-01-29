@@ -48,12 +48,12 @@ See Also:
 
 # =============================================================================
 # Position-based functions (stateless, canonical implementation)
+# For PERIODIC utilities, use mfg_pde.geometry.boundary.periodic instead
 # =============================================================================
 from .position import (
     absorb_positions,
-    create_periodic_ghost_points,
     reflect_positions,
-    wrap_positions,
+    wrap_positions,  # Deprecated - use boundary.periodic.wrap_positions
 )
 
 # =============================================================================
@@ -72,11 +72,11 @@ from .strategies import (
 from .velocity import reflect_velocity, reflect_velocity_with_normal
 
 __all__ = [
-    # Position-based (most common usage)
+    # Position-based (for NON-PERIODIC boundaries)
+    # For PERIODIC, use mfg_pde.geometry.boundary.periodic
     "reflect_positions",
-    "wrap_positions",
     "absorb_positions",
-    "create_periodic_ghost_points",  # Issue #711: periodic meshfree
+    "wrap_positions",  # Deprecated - use boundary.periodic.wrap_positions
     # Velocity-based (Billiard dynamics)
     "reflect_velocity",
     "reflect_velocity_with_normal",
