@@ -182,7 +182,8 @@ class MeshfreeApplicator(BaseMeshfreeApplicator):
 
         Uses canonical implementation from geometry.boundary.corner (Issue #521).
         """
-        from .corner import wrap_positions
+        # Issue #711: Use canonical periodic.py (parallel to enforcement.py)
+        from .periodic import wrap_positions
 
         bounds = self.geometry.get_bounds()
         if bounds is None:

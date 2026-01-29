@@ -129,26 +129,11 @@ class Hyperrectangle(ImplicitDomain):
             return points
 
         # Delegate to canonical utility (Issue #711: DRY)
-        from mfg_pde.geometry.boundary.corner import wrap_positions
+        # Use boundary.periodic (parallel to enforcement.py for DIRICHLET/NEUMANN)
+        from mfg_pde.geometry.boundary.periodic import wrap_positions
 
-        # For partial periodicity, only wrap periodic dims
-        if len(self._periodic_dims) == self._dimension:
-            # All dimensions periodic - use wrap_positions directly
-            bounds_list = [(self.bounds[d, 0], self.bounds[d, 1]) for d in range(self._dimension)]
-            return wrap_positions(points, bounds_list)
-
-        # Partial periodicity - wrap only periodic dims
-        single_point = points.ndim == 1
-        if single_point:
-            points = points.reshape(1, -1)
-
-        wrapped = points.copy()
-        for dim_idx in self._periodic_dims:
-            xmin, xmax = self.bounds[dim_idx]
-            period = xmax - xmin
-            wrapped[:, dim_idx] = xmin + np.mod(wrapped[:, dim_idx] - xmin, period)
-
-        return wrapped[0] if single_point else wrapped
+        bounds_list = [(self.bounds[d, 0], self.bounds[d, 1]) for d in range(self._dimension)]
+        return wrap_positions(points, bounds_list, periodic_dims=self._periodic_dims)
 
     def compute_periodic_distance(
         self,
