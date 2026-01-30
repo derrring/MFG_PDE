@@ -145,6 +145,7 @@ class FPParticleSolver(BaseFPSolver):
         # Handle deprecated 'external_particles' parameter
         if external_particles is not None:
             import warnings
+
             warnings.warn(
                 "external_particles is deprecated. External particle injection is no longer supported. "
                 "Use num_particles to control particle count.",
@@ -155,6 +156,7 @@ class FPParticleSolver(BaseFPSolver):
         # Handle deprecated normalization parameters
         if normalize_kde_output is not None or normalize_only_initial is not None:
             import warnings
+
             warnings.warn(
                 "normalize_kde_output and normalize_only_initial are deprecated. "
                 "Use kde_normalization='all', 'initial_only', or 'none' instead.",
