@@ -1567,8 +1567,6 @@ def _enforce_max_fill_distance(
         logger.warning("No collocation points provided for h_max enforcement")
         return interior
 
-    d = interior.shape[1] if len(interior) > 0 else boundary.shape[1]
-
     # Default min_separation to avoid clustering
     if min_separation is None:
         min_separation = h_max / 3.0
