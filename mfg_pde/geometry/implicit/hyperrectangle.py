@@ -20,13 +20,18 @@ References:
 - TECHNICAL_REFERENCE_HIGH_DIMENSIONAL_MFG.md Section 4.1
 """
 
+from __future__ import annotations
+
 import warnings
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
 from .implicit_domain import ImplicitDomain
+
+if TYPE_CHECKING:
+    from mfg_pde.geometry.collocation import CollocationPointSet
 
 
 class Hyperrectangle(ImplicitDomain):
@@ -430,6 +435,157 @@ class Hyperrectangle(ImplicitDomain):
             vertices.append(vertex)
 
         return np.array(vertices)
+
+    # =========================================================================
+    # GFDM/Meshfree Convenience Methods
+    # =========================================================================
+
+    def get_collocation_points(
+        self,
+        n_interior: int,
+        n_boundary: int = 0,
+        method: Literal["lloyd", "sobol", "poisson_disk", "uniform"] = "lloyd",
+        seed: int | None = None,
+        min_separation: float | None = None,
+        boundary_margin: float | None = None,
+        max_fill_distance: float | None = None,
+        target_mesh_ratio: float | Literal["optimal"] | None = None,
+    ) -> CollocationPointSet:
+        """
+        Generate collocation points for meshfree methods (GFDM, RBF, etc.).
+
+        This is a convenience wrapper around CollocationSampler that provides
+        a unified interface for generating well-distributed points in the domain.
+
+        **Mesh Quality Control - Two Approaches:**
+
+        1. **Fixed N (for EOC studies)**: Use `target_mesh_ratio` to optimize
+           point distribution while keeping N = n_interior + n_boundary exact.
+
+        2. **Hard constraints (N may vary)**: Use `min_separation` and/or
+           `max_fill_distance` to enforce absolute bounds on h and q.
+
+        Args:
+            n_interior: Number of interior collocation points
+            n_boundary: Number of boundary collocation points (0 for interior only)
+            method: Sampling method:
+                - "lloyd" (default): CVT/Lloyd relaxation for quasi-uniform points
+                - "sobol": Quasi-random low-discrepancy sequence
+                - "poisson_disk": Blue noise with minimum spacing
+                - "uniform": Pure random sampling
+            seed: Random seed for reproducibility
+            min_separation: (May change N) Minimum distance between points.
+                Points closer than this are removed.
+            boundary_margin: Minimum distance from interior to boundary.
+                Defaults to min_separation if not specified.
+            max_fill_distance: (May change N) Maximum fill distance.
+                Points are added in sparse regions to achieve this.
+            target_mesh_ratio: (Preserves N) Target mesh ratio h/q. Can be:
+                - float (e.g., 5.0): Stop when h/q <= target
+                - 'optimal': Auto-converge until plateau or h/q < 2.0
+                Optimizes distribution via Lloyd relaxation. RECOMMENDED for EOC.
+
+        Returns:
+            CollocationPointSet with points, boundary_indices, normals, is_boundary
+
+        Example:
+            >>> domain = Hyperrectangle(np.array([[0, 1], [0, 1]]))
+            >>>
+            >>> # For EOC studies: auto-optimize mesh quality (recommended)
+            >>> coll = domain.get_collocation_points(
+            ...     n_interior=64, n_boundary=32,
+            ...     target_mesh_ratio='optimal',  # Auto-converge to best h/q
+            ... )
+            >>> assert len(coll.points) == 96  # N preserved
+            >>>
+            >>> # For adaptive refinement: hard constraints, N may vary
+            >>> coll = domain.get_collocation_points(
+            ...     n_interior=64, n_boundary=32,
+            ...     min_separation=0.05,
+            ...     max_fill_distance=0.15,
+            ... )
+
+        See Also:
+            - mfg_pde.utils.numerical.compute_mesh_distances for quality verification
+        """
+        from mfg_pde.geometry.collocation import CollocationSampler
+
+        sampler = CollocationSampler(self)
+        return sampler.generate_collocation(
+            n_interior=n_interior,
+            n_boundary=n_boundary,
+            interior_method=method,
+            seed=seed,
+            min_separation=min_separation,
+            boundary_margin=boundary_margin,
+            max_fill_distance=max_fill_distance,
+            target_mesh_ratio=target_mesh_ratio,
+        )
+
+    def get_boundary_indices(
+        self,
+        points: NDArray[np.float64],
+        tolerance: float = 1e-6,
+    ) -> NDArray[np.int64]:
+        """
+        Get indices of points that lie on the domain boundary.
+
+        Convenience method for GFDM solvers that need boundary point indices
+        for applying boundary conditions.
+
+        Args:
+            points: Array of points, shape (N, d)
+            tolerance: Distance threshold for boundary detection
+
+        Returns:
+            Array of indices where |signed_distance| < tolerance
+
+        Example:
+            >>> domain = Hyperrectangle(np.array([[0, 1], [0, 1]]))
+            >>> points = np.array([[0.5, 0.5], [0.0, 0.5], [1.0, 1.0]])
+            >>> boundary_idx = domain.get_boundary_indices(points)
+            >>> # boundary_idx = [1, 2] (points on edges/corners)
+        """
+        sdf = self.signed_distance(points)
+        return np.where(np.abs(sdf) < tolerance)[0].astype(np.int64)
+
+    def get_boundary_normals(
+        self,
+        points: NDArray[np.float64],
+        eps: float = 1e-6,
+    ) -> NDArray[np.float64]:
+        """
+        Compute outward unit normals at boundary points.
+
+        For axis-aligned hyperrectangles, normals are exactly ±1 along
+        coordinate axes. This method uses the SDF gradient for generality.
+
+        Args:
+            points: Boundary points, shape (N, d)
+            eps: Finite difference step for gradient computation
+
+        Returns:
+            Outward unit normals, shape (N, d)
+
+        Note:
+            For points not exactly on the boundary, returns the gradient
+            of the signed distance function (points toward boundary).
+        """
+        # Numerical gradient of SDF
+        N, d = points.shape
+        grad = np.zeros((N, d))
+
+        for dim in range(d):
+            shift = np.zeros(d)
+            shift[dim] = eps
+            sdf_plus = self.signed_distance(points + shift)
+            sdf_minus = self.signed_distance(points - shift)
+            grad[:, dim] = (sdf_plus - sdf_minus) / (2 * eps)
+
+        # Normalize
+        norms = np.linalg.norm(grad, axis=1, keepdims=True)
+        norms = np.maximum(norms, 1e-12)
+        return grad / norms
 
     def __repr__(self) -> str:
         """String representation."""
