@@ -24,6 +24,8 @@ Usage:
 from __future__ import annotations
 
 import functools
+import os
+import sys
 import time
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
@@ -46,9 +48,121 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
-console = Console()
+
+# =============================================================================
+# Terminal Detection Utilities (Issue #709)
+# =============================================================================
+
+# Whitelisted terminals that support Rich progress bars but may be misdetected
+_TERMINAL_WHITELIST = frozenset(
+    {
+        "vscode",  # VS Code integrated terminal
+        "iTerm.app",  # iTerm2 on macOS
+        "Apple_Terminal",  # macOS Terminal.app
+        "Hyper",  # Hyper terminal
+        "Alacritty",  # Alacritty terminal
+    }
+)
+
+# Environments that capture output (Rich progress bars won't render properly)
+# These use text-based logging by default, but can be overridden with FORCE_COLOR=1
+_CAPTURED_OUTPUT_ENVS = frozenset(
+    {
+        "CLAUDECODE",  # Claude Code CLI
+        "JUPYTER_RUNTIME",  # Jupyter notebooks
+        "CI",  # CI/CD pipelines
+    }
+)
+
+
+def is_captured_output_env() -> bool:
+    """Check if running in an environment that captures output (Claude Code, CI, Jupyter)."""
+    return any(os.environ.get(env) for env in _CAPTURED_OUTPUT_ENVS)
+
+
+def is_interactive_terminal() -> bool:
+    """
+    Detect if running in an interactive terminal that supports Rich progress bars.
+
+    Uses a multi-layered detection strategy:
+    1. NO_COLOR=1: Force disable (standard convention)
+    2. FORCE_COLOR=1: Force enable (explicit override)
+    3. Captured output environments (Claude Code, CI): Disable by default
+    4. Terminal whitelist (iTerm2, VS Code, etc.): Enable if isatty()
+    5. Standard TTY detection (sys.stdout.isatty())
+
+    Returns:
+        True if Rich progress bars should be enabled, False for text-based logging.
+
+    Environment Variables:
+        NO_COLOR=1: Force disable Rich progress bars (takes precedence)
+        FORCE_COLOR=1: Force enable Rich progress bars
+        CLAUDECODE=1: Detected as captured output environment
+
+    Note:
+        Claude Code captures stdout for display, so Rich progress bars won't
+        render properly by default. Use FORCE_COLOR=1 to override if needed.
+
+    Example:
+        >>> if is_interactive_terminal():
+        ...     # Use Rich progress bars
+        ... else:
+        ...     # Use text-based logging
+    """
+    # NO_COLOR takes precedence (standard convention)
+    if os.environ.get("NO_COLOR"):
+        return False
+
+    # FORCE_COLOR explicit override
+    if os.environ.get("FORCE_COLOR") == "1":
+        return True
+
+    # Captured output environments default to text mode
+    # (Claude Code, CI/CD, Jupyter - output is captured, not rendered)
+    if is_captured_output_env():
+        return False
+
+    # Check terminal whitelist
+    term_program = os.environ.get("TERM_PROGRAM", "")
+    if term_program in _TERMINAL_WHITELIST:
+        # Even if whitelisted, respect actual pipe/redirect
+        # (e.g., iTerm2 but output redirected to file)
+        return sys.stdout.isatty()
+
+    # Standard TTY detection
+    return sys.stdout.isatty()
+
+
+def get_console(force_terminal: bool | None = None) -> Console:
+    """
+    Get a Rich Console with smart terminal detection.
+
+    Args:
+        force_terminal: Override terminal detection.
+            - None: Auto-detect using is_interactive_terminal()
+            - True: Force enable terminal features
+            - False: Force disable terminal features
+
+    Returns:
+        Configured Rich Console instance.
+
+    Example:
+        >>> console = get_console()
+        >>> console.print("[bold green]Success![/]")
+    """
+    if force_terminal is None:
+        force_terminal = is_interactive_terminal()
+    return Console(force_terminal=force_terminal)
+
+
+# Default console with smart detection
+console = get_console()
 
 __all__ = [
+    # Terminal detection (Issue #709)
+    "is_interactive_terminal",
+    "is_captured_output_env",
+    "get_console",
     # Rich components
     "console",
     "Progress",

@@ -26,7 +26,7 @@ from mfg_pde.alg.numerical.network_solvers import FPNetworkSolver
 from .base_fp import BaseFPSolver
 from .fp_fdm import FPFDMSolver
 from .fp_gfdm import FPGFDMSolver
-from .fp_particle import FPParticleSolver, KDENormalization
+from .fp_particle import FPParticleSolver, KDEMethod, KDENormalization
 from .fp_semi_lagrangian import FPSLSolver
 from .fp_semi_lagrangian_adjoint import FPSLAdjointSolver
 from .particle_density_query import ParticleDensityQuery
@@ -40,6 +40,7 @@ __all__ = [
     "FPParticleSolver",
     "FPSLSolver",
     "FPSLAdjointSolver",  # Forward SL (adjoint of HJB SL for MFG)
+    "KDEMethod",  # Issue #709 - KDE boundary correction methods
     "KDENormalization",
     "ParticleDensityQuery",  # Issue #489 - Direct particle query
     "FPParticleResult",  # Issue #489 - Result with query support

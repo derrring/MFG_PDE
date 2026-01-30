@@ -648,6 +648,7 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
         points: NDArray,
         bounds: list[tuple[float, float]],
         steps: int = 30,
+        boundary_strength: float = 0.8,
     ) -> NDArray:
         """
         Lloyd/CVT relaxation for quasi-uniform point distribution.
@@ -669,6 +670,8 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
             points: Initial point positions, shape (N, d)
             bounds: Bounding box [(min, max), ...] per dimension
             steps: Number of Lloyd iterations (30 recommended for convergence)
+            boundary_strength: Strength of boundary repulsion (higher = more
+                separation from boundary, helps mesh ratio). Default 0.8.
 
         Returns:
             Refined points with quasi-uniform spacing, shape (N, d)
@@ -692,7 +695,6 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
 
         # Adaptive parameters for stable convergence
         dt_base = 0.15  # Base time step
-        boundary_strength = 0.8  # Boundary repulsion strength
 
         for step in range(steps):
             forces = np.zeros_like(current)
@@ -945,6 +947,807 @@ class ImplicitDomainCollocation(BaseCollocationStrategy):
             return outward_normal_from_sdf(self.geometry.signed_distance, points)
 
 
+def _optimize_mesh_ratio_interior(
+    interior: NDArray,
+    boundary: NDArray,
+    geometry: GeometryProtocol,
+    target_ratio: float | Literal["optimal"] = "optimal",
+    max_iterations: int = 5,
+    n_test_points: int = 5000,
+    seed: int | None = None,
+) -> NDArray:
+    """
+    Optimize interior point distribution to achieve target mesh ratio h/q.
+
+    Unlike _optimize_mesh_ratio, this function:
+    - Only moves interior points
+    - Keeps boundary points FIXED
+    - But uses boundary points for repulsion (interior pushed away from boundary)
+
+    This preserves N_col exactly while improving mesh quality.
+
+    Args:
+        interior: Interior points (N_int, d) - will be optimized
+        boundary: Boundary points (N_bdy, d) - FIXED, used for repulsion
+        geometry: Geometry for bounds and SDF
+        target_ratio: Target mesh ratio h/q. Can be:
+            - float: Stop when h/q <= target (e.g., 5.0)
+            - 'optimal': Auto-converge until plateau or h/q < 2.0
+        max_iterations: Maximum optimization iterations
+        n_test_points: Test points for fill distance estimation
+        seed: Random seed
+
+    Returns:
+        Optimized interior points (same N_int)
+    """
+    from scipy.spatial import cKDTree
+
+    if len(interior) == 0:
+        return interior
+
+    N_int, d = interior.shape
+    current_interior = interior.copy()
+
+    # Get bounds
+    bounds_tuple = geometry.get_bounds()
+    if bounds_tuple is None:
+        return current_interior
+    min_coords, max_coords = bounds_tuple
+    bounds = [(float(min_coords[i]), float(max_coords[i])) for i in range(d)]
+
+    # Total points for spacing calculation
+    N_total = N_int + len(boundary)
+    bbox_volume = np.prod([b[1] - b[0] for b in bounds])
+    target_spacing = (bbox_volume / N_total) ** (1.0 / d)
+
+    rng = np.random.RandomState(seed)
+    prev_ratio = float("inf")
+    auto_mode = target_ratio == "optimal"
+
+    for iteration in range(max_iterations):
+        # Combine for mesh quality computation
+        if len(boundary) > 0:
+            all_points = np.vstack([current_interior, boundary])
+        else:
+            all_points = current_interior
+
+        tree = cKDTree(all_points)
+
+        # Separation distance (q)
+        nn_dist, _ = tree.query(all_points, k=2)
+        q = np.min(nn_dist[:, 1])
+
+        # Fill distance (h) via Monte Carlo
+        test_points = np.zeros((n_test_points, d))
+        for i, (lo, hi) in enumerate(bounds):
+            test_points[:, i] = rng.uniform(lo, hi, n_test_points)
+
+        try:
+            sdf = geometry.signed_distance(test_points)
+            test_points = test_points[sdf < 0]
+        except (AttributeError, TypeError):
+            pass
+
+        if len(test_points) > 0:
+            dist_to_nearest, _ = tree.query(test_points, k=1)
+            h = np.max(dist_to_nearest)
+        else:
+            h = target_spacing * 2
+
+        mesh_ratio = h / q if q > 1e-10 else float("inf")
+
+        logger.debug(f"Mesh ratio optimization iter {iteration}: h={h:.4f}, q={q:.4f}, h/q={mesh_ratio:.2f}")
+
+        # Check convergence based on mode
+        if auto_mode:
+            # 'optimal' mode: converge until plateau or near-optimal
+            if mesh_ratio < 2.0:
+                logger.info(
+                    f"Mesh ratio optimization: near-optimal h/q={mesh_ratio:.2f} < 2.0 "
+                    f"achieved after {iteration} iterations"
+                )
+                break
+            if prev_ratio < float("inf"):
+                improvement = (prev_ratio - mesh_ratio) / prev_ratio
+                if improvement < 0.01:  # <1% improvement
+                    logger.info(
+                        f"Mesh ratio optimization: converged at h/q={mesh_ratio:.2f} "
+                        f"(<1% improvement) after {iteration} iterations"
+                    )
+                    break
+            prev_ratio = mesh_ratio
+        else:
+            # Numeric target mode: stop when target achieved
+            if mesh_ratio <= target_ratio:
+                logger.info(
+                    f"Mesh ratio optimization: achieved h/q={mesh_ratio:.2f} <= {target_ratio} "
+                    f"after {iteration} iterations"
+                )
+                break
+
+        # Apply Lloyd relaxation to interior only, with boundary as fixed repulsors
+        boundary_strength = 1.5 + 0.5 * iteration
+
+        current_interior = _lloyd_relaxation_interior_only(
+            current_interior,
+            boundary,
+            bounds,
+            geometry,
+            steps=20,
+            boundary_strength=boundary_strength,
+            target_spacing=target_spacing,
+        )
+    else:
+        # Loop exhausted without early termination
+        if auto_mode:
+            logger.info(f"Mesh ratio optimization: max iterations reached, final h/q={mesh_ratio:.2f}")
+        else:
+            # Numeric target not achieved - warn user
+            import warnings
+
+            warnings.warn(
+                f"Mesh ratio target h/q={target_ratio} not achieved after {max_iterations} "
+                f"iterations. Final h/q={mesh_ratio:.2f}. Consider increasing max_iterations "
+                f"or using target_mesh_ratio='optimal' for auto-convergence.",
+                UserWarning,
+                stacklevel=4,  # Point to caller of generate_collocation
+            )
+
+    return current_interior
+
+
+def _lloyd_relaxation_interior_only(
+    interior: NDArray,
+    boundary: NDArray,
+    bounds: list[tuple[float, float]],
+    geometry: GeometryProtocol,
+    steps: int = 20,
+    boundary_strength: float = 1.5,
+    target_spacing: float | None = None,
+) -> NDArray:
+    """
+    Lloyd relaxation for interior points only, with boundary as fixed repulsors.
+
+    Args:
+        interior: Interior points to relax (N_int, d)
+        boundary: Fixed boundary points (N_bdy, d) - used for repulsion only
+        bounds: Domain bounds
+        geometry: Geometry for SDF
+        steps: Relaxation iterations
+        boundary_strength: Boundary repulsion strength
+        target_spacing: Target spacing (computed if None)
+
+    Returns:
+        Relaxed interior points (same shape)
+    """
+    from scipy.spatial import cKDTree
+
+    if len(interior) == 0:
+        return interior
+
+    N_int, d = interior.shape
+    current = interior.copy()
+
+    N_total = N_int + len(boundary)
+    if target_spacing is None:
+        bbox_volume = np.prod([b[1] - b[0] for b in bounds])
+        target_spacing = (bbox_volume / N_total) ** (1.0 / d)
+
+    interaction_radius = 2.5 * target_spacing
+    dt_base = 0.15
+
+    for step in range(steps):
+        forces = np.zeros_like(current)
+
+        # Build tree with all points (interior + boundary)
+        if len(boundary) > 0:
+            all_points = np.vstack([current, boundary])
+        else:
+            all_points = current
+
+        tree = cKDTree(all_points)
+
+        # Inter-particle repulsion (interior-interior and interior-boundary)
+        for i in range(N_int):
+            # Find neighbors of interior point i
+            neighbors = tree.query_ball_point(current[i], r=interaction_radius)
+
+            for j in neighbors:
+                if j == i:
+                    continue
+
+                # Get the other point (could be interior or boundary)
+                other_pt = all_points[j]
+                diff = current[i] - other_pt
+                dist = np.linalg.norm(diff)
+
+                if dist < 1e-10:
+                    diff = np.random.randn(d) * 0.01 * target_spacing
+                    dist = np.linalg.norm(diff)
+
+                # Stronger repulsion from boundary points
+                if j >= N_int:  # This is a boundary point
+                    force_mag = boundary_strength / (dist**2 + 0.01 * target_spacing**2)
+                else:
+                    force_mag = 1.0 / (dist**2 + 0.01 * target_spacing**2)
+
+                force_vec = (diff / dist) * force_mag
+                forces[i] += force_vec
+
+        # Domain boundary repulsion using SDF
+        try:
+            sdf = geometry.signed_distance(current)
+            eps = 1e-6
+            grad_sdf = np.zeros_like(current)
+            for dim in range(d):
+                shift = np.zeros(d)
+                shift[dim] = eps
+                sdf_plus = geometry.signed_distance(current + shift)
+                sdf_minus = geometry.signed_distance(current - shift)
+                grad_sdf[:, dim] = (sdf_plus - sdf_minus) / (2 * eps)
+
+            boundary_zone = target_spacing * 2.0
+            close_mask = np.abs(sdf) < boundary_zone
+
+            for i in np.where(close_mask)[0]:
+                boundary_dist = max(np.abs(sdf[i]), 1e-10)
+                force_mag = boundary_strength / (boundary_dist**2)
+                forces[i] -= grad_sdf[i] * force_mag * np.sign(sdf[i])
+        except (AttributeError, TypeError):
+            # Box boundary fallback
+            for dim in range(d):
+                lo, hi = bounds[dim]
+                margin = target_spacing * 2.0
+                near_lo = current[:, dim] < lo + margin
+                near_hi = current[:, dim] > hi - margin
+                for i in np.where(near_lo)[0]:
+                    dist_to_wall = max(current[i, dim] - lo, 1e-10)
+                    forces[i, dim] += boundary_strength / (dist_to_wall**2)
+                for i in np.where(near_hi)[0]:
+                    dist_to_wall = max(hi - current[i, dim], 1e-10)
+                    forces[i, dim] -= boundary_strength / (dist_to_wall**2)
+
+        # Adaptive time step
+        max_force = np.max(np.linalg.norm(forces, axis=1))
+        anneal = 1.0 - 0.5 * (step / steps)
+        dt = min(dt_base * anneal, 0.4 * target_spacing / (max_force + 1e-10))
+
+        current = current + forces * dt
+
+        # Project outside points back
+        try:
+            sdf_new = geometry.signed_distance(current)
+            outside = sdf_new >= 0
+            if np.any(outside):
+                grad = np.zeros((np.sum(outside), d))
+                for dim in range(d):
+                    shift = np.zeros(d)
+                    shift[dim] = 1e-6
+                    sdf_plus = geometry.signed_distance(current[outside] + shift)
+                    sdf_minus = geometry.signed_distance(current[outside] - shift)
+                    grad[:, dim] = (sdf_plus - sdf_minus) / (2e-6)
+                grad_norm = np.linalg.norm(grad, axis=1, keepdims=True)
+                grad_norm = np.maximum(grad_norm, 1e-10)
+                push_dist = 0.02 * target_spacing
+                current[outside] -= (sdf_new[outside, np.newaxis] + push_dist) * grad / grad_norm
+        except (AttributeError, TypeError):
+            pass
+
+        # Clamp to bounds
+        for dim in range(d):
+            margin = 1e-6
+            current[:, dim] = np.clip(current[:, dim], bounds[dim][0] + margin, bounds[dim][1] - margin)
+
+    return current
+
+
+def _optimize_mesh_ratio(
+    points: NDArray,
+    geometry: GeometryProtocol,
+    target_ratio: float = 5.0,
+    max_iterations: int = 5,
+    n_test_points: int = 5000,
+    seed: int | None = None,
+) -> NDArray:
+    """
+    Optimize point distribution to achieve target mesh ratio h/q WITHOUT changing N.
+
+    This applies additional Lloyd relaxation with increasing boundary repulsion
+    strength until the mesh ratio is acceptable.
+
+    Algorithm:
+    1. Compute current mesh ratio h/q
+    2. If h/q > target_ratio, apply Lloyd relaxation with stronger boundary repulsion
+    3. Repeat until ratio is achieved or max_iterations reached
+
+    The key insight is that poor mesh ratio often comes from interior points
+    clustering near boundary points. Increasing boundary repulsion during
+    relaxation pushes interior points away, improving both h and q.
+
+    Args:
+        points: Collocation points (N, d) - N is preserved
+        geometry: Geometry for bounds and SDF
+        target_ratio: Target mesh ratio h/q (default 5.0)
+        max_iterations: Maximum optimization iterations
+        n_test_points: Test points for fill distance estimation
+        seed: Random seed
+
+    Returns:
+        Optimized points with same shape as input (N unchanged)
+    """
+    from scipy.spatial import cKDTree
+
+    N, d = points.shape
+    current = points.copy()
+
+    # Get bounds
+    bounds_tuple = geometry.get_bounds()
+    if bounds_tuple is None:
+        return current
+    min_coords, max_coords = bounds_tuple
+    bounds = [(float(min_coords[i]), float(max_coords[i])) for i in range(d)]
+
+    bbox_volume = np.prod([b[1] - b[0] for b in bounds])
+    target_spacing = (bbox_volume / N) ** (1.0 / d)
+
+    rng = np.random.RandomState(seed)
+
+    for iteration in range(max_iterations):
+        # Compute current mesh distances
+        tree = cKDTree(current)
+
+        # Separation distance (q)
+        nn_dist, _ = tree.query(current, k=2)
+        q = np.min(nn_dist[:, 1])
+
+        # Fill distance (h) via Monte Carlo
+        test_points = np.zeros((n_test_points, d))
+        for i, (lo, hi) in enumerate(bounds):
+            test_points[:, i] = rng.uniform(lo, hi, n_test_points)
+
+        # Filter to interior if SDF available
+        try:
+            sdf = geometry.signed_distance(test_points)
+            test_points = test_points[sdf < 0]
+        except (AttributeError, TypeError):
+            pass
+
+        if len(test_points) > 0:
+            dist_to_nearest, _ = tree.query(test_points, k=1)
+            h = np.max(dist_to_nearest)
+        else:
+            h = target_spacing * 2  # Fallback
+
+        mesh_ratio = h / q if q > 1e-10 else float("inf")
+
+        logger.debug(f"Mesh ratio optimization iter {iteration}: h={h:.4f}, q={q:.4f}, h/q={mesh_ratio:.2f}")
+
+        if mesh_ratio <= target_ratio:
+            logger.debug(f"Target mesh ratio {target_ratio} achieved after {iteration} iterations")
+            break
+
+        # Apply Lloyd relaxation with increasing boundary strength
+        # Higher strength pushes interior points away from boundary
+        boundary_strength = 1.5 + 0.5 * iteration  # Increase each iteration
+
+        # One relaxation pass
+        current = _lloyd_relaxation_pass(
+            current,
+            bounds,
+            geometry,
+            steps=20,
+            boundary_strength=boundary_strength,
+            target_spacing=target_spacing,
+        )
+
+    return current
+
+
+def _lloyd_relaxation_pass(
+    points: NDArray,
+    bounds: list[tuple[float, float]],
+    geometry: GeometryProtocol,
+    steps: int = 20,
+    boundary_strength: float = 1.5,
+    target_spacing: float | None = None,
+) -> NDArray:
+    """
+    Single pass of Lloyd relaxation with configurable boundary strength.
+
+    Args:
+        points: Points to relax (N, d)
+        bounds: Domain bounds
+        geometry: Geometry for SDF
+        steps: Relaxation iterations
+        boundary_strength: Boundary repulsion strength (higher = more separation)
+        target_spacing: Target point spacing (computed if None)
+
+    Returns:
+        Relaxed points (same shape)
+    """
+    from scipy.spatial import cKDTree
+
+    N, d = points.shape
+    current = points.copy()
+
+    if target_spacing is None:
+        bbox_volume = np.prod([b[1] - b[0] for b in bounds])
+        target_spacing = (bbox_volume / N) ** (1.0 / d)
+
+    interaction_radius = 2.5 * target_spacing
+    dt_base = 0.15
+
+    for step in range(steps):
+        forces = np.zeros_like(current)
+
+        # Inter-particle repulsion
+        tree = cKDTree(current)
+        pairs = tree.query_pairs(r=interaction_radius)
+
+        for i, j in pairs:
+            diff = current[i] - current[j]
+            dist = np.linalg.norm(diff)
+            if dist < 1e-10:
+                diff = np.random.randn(d) * 0.01 * target_spacing
+                dist = np.linalg.norm(diff)
+
+            force_mag = 1.0 / (dist**2 + 0.01 * target_spacing**2)
+            force_vec = (diff / dist) * force_mag
+            forces[i] += force_vec
+            forces[j] -= force_vec
+
+        # Boundary repulsion using SDF
+        try:
+            sdf = geometry.signed_distance(current)
+            # Compute SDF gradient numerically
+            eps = 1e-6
+            grad_sdf = np.zeros_like(current)
+            for dim in range(d):
+                shift = np.zeros(d)
+                shift[dim] = eps
+                sdf_plus = geometry.signed_distance(current + shift)
+                sdf_minus = geometry.signed_distance(current - shift)
+                grad_sdf[:, dim] = (sdf_plus - sdf_minus) / (2 * eps)
+
+            # Apply boundary repulsion when close
+            boundary_zone = target_spacing * 2.0
+            close_mask = np.abs(sdf) < boundary_zone
+
+            for i in np.where(close_mask)[0]:
+                boundary_dist = max(np.abs(sdf[i]), 1e-10)
+                force_mag = boundary_strength / (boundary_dist**2)
+                forces[i] -= grad_sdf[i] * force_mag * np.sign(sdf[i])
+        except (AttributeError, TypeError):
+            # No SDF, use box boundary repulsion
+            for dim in range(d):
+                lo, hi = bounds[dim]
+                margin = target_spacing * 2.0
+                near_lo = current[:, dim] < lo + margin
+                near_hi = current[:, dim] > hi - margin
+                for i in np.where(near_lo)[0]:
+                    dist_to_wall = max(current[i, dim] - lo, 1e-10)
+                    forces[i, dim] += boundary_strength / (dist_to_wall**2)
+                for i in np.where(near_hi)[0]:
+                    dist_to_wall = max(hi - current[i, dim], 1e-10)
+                    forces[i, dim] -= boundary_strength / (dist_to_wall**2)
+
+        # Adaptive time step with annealing
+        max_force = np.max(np.linalg.norm(forces, axis=1))
+        anneal = 1.0 - 0.5 * (step / steps)
+        dt = min(dt_base * anneal, 0.4 * target_spacing / (max_force + 1e-10))
+
+        current = current + forces * dt
+
+        # Project outside points back
+        try:
+            sdf_new = geometry.signed_distance(current)
+            outside = sdf_new >= 0
+            if np.any(outside):
+                # Compute gradient for projection
+                grad = np.zeros((np.sum(outside), d))
+                for dim in range(d):
+                    shift = np.zeros(d)
+                    shift[dim] = 1e-6
+                    sdf_plus = geometry.signed_distance(current[outside] + shift)
+                    sdf_minus = geometry.signed_distance(current[outside] - shift)
+                    grad[:, dim] = (sdf_plus - sdf_minus) / (2e-6)
+                grad_norm = np.linalg.norm(grad, axis=1, keepdims=True)
+                grad_norm = np.maximum(grad_norm, 1e-10)
+                push_dist = 0.02 * target_spacing
+                current[outside] -= (sdf_new[outside, np.newaxis] + push_dist) * grad / grad_norm
+        except (AttributeError, TypeError):
+            pass
+
+        # Clamp to bounds
+        for dim in range(d):
+            margin = 1e-6
+            current[:, dim] = np.clip(current[:, dim], bounds[dim][0] + margin, bounds[dim][1] - margin)
+
+    return current
+
+
+def _find_coverage_gaps(
+    collocation_points: NDArray,
+    geometry: GeometryProtocol,
+    h_max: float,
+    n_test_points: int = 10000,
+    seed: int | None = None,
+) -> NDArray:
+    """
+    Find points in the domain that are farther than h_max from any collocation point.
+
+    These are "coverage gaps" that need additional collocation points.
+
+    Args:
+        collocation_points: Current collocation points (N, d)
+        geometry: Geometry for bounds and SDF
+        h_max: Maximum allowed fill distance
+        n_test_points: Number of test points to sample
+        seed: Random seed
+
+    Returns:
+        Array of gap locations (points farther than h_max from nearest colloc), shape (M, d)
+    """
+    from scipy.spatial import cKDTree
+
+    d = collocation_points.shape[1]
+    rng = np.random.RandomState(seed)
+
+    # Get domain bounds
+    bounds_tuple = geometry.get_bounds()
+    if bounds_tuple is None:
+        raise ValueError("Geometry must have bounded domain for fill distance computation")
+    min_coords, max_coords = bounds_tuple
+
+    # Sample test points uniformly in bounding box
+    test_points = np.zeros((n_test_points, d))
+    for i in range(d):
+        test_points[:, i] = rng.uniform(min_coords[i], max_coords[i], n_test_points)
+
+    # Filter to interior (if geometry has SDF)
+    try:
+        sdf = geometry.signed_distance(test_points)
+        interior_mask = sdf < 0
+        test_points = test_points[interior_mask]
+    except (AttributeError, TypeError):
+        pass  # No SDF, use all test points
+
+    if len(test_points) == 0:
+        return np.array([]).reshape(0, d)
+
+    # Find distances to nearest collocation point
+    tree = cKDTree(collocation_points)
+    distances, _ = tree.query(test_points, k=1)
+
+    # Return test points that are farther than h_max (these are gaps)
+    gap_mask = distances > h_max
+    return test_points[gap_mask]
+
+
+def _enforce_max_fill_distance(
+    interior: NDArray,
+    boundary: NDArray,
+    geometry: GeometryProtocol,
+    h_max: float,
+    min_separation: float | None = None,
+    max_additions: int = 100,
+    max_iterations: int = 10,
+    n_test_points: int = 10000,
+    seed: int | None = None,
+) -> NDArray:
+    """
+    Ensure fill distance does not exceed h_max by adding interior points in sparse regions.
+
+    Algorithm (greedy adaptive refinement):
+    1. Combine current interior and boundary points
+    2. Find test points farther than h_max from any collocation point (gaps)
+    3. Greedily add new interior points at gap locations:
+       - Select the point farthest from existing points
+       - Add it if it respects min_separation
+       - Repeat until no more gaps or max_additions reached
+    4. Iterate until fill distance <= h_max or max_iterations reached
+
+    Args:
+        interior: Current interior points (N_int, d)
+        boundary: Boundary points (N_bdy, d) - not modified
+        geometry: Geometry object for SDF queries
+        h_max: Maximum allowed fill distance
+        min_separation: Minimum distance between points (default: h_max / 3)
+        max_additions: Maximum number of points to add per iteration
+        max_iterations: Maximum refinement iterations
+        n_test_points: Number of test points for gap detection
+        seed: Random seed
+
+    Returns:
+        Updated interior points array with additional points added
+    """
+    from scipy.spatial import cKDTree
+
+    if len(interior) == 0 and len(boundary) == 0:
+        logger.warning("No collocation points provided for h_max enforcement")
+        return interior
+
+    # Default min_separation to avoid clustering
+    if min_separation is None:
+        min_separation = h_max / 3.0
+
+    current_interior = interior.copy()
+    total_added = 0
+
+    for iteration in range(max_iterations):
+        # Combine all points
+        if len(current_interior) > 0 and len(boundary) > 0:
+            all_points = np.vstack([current_interior, boundary])
+        elif len(current_interior) > 0:
+            all_points = current_interior
+        else:
+            all_points = boundary
+
+        # Find coverage gaps
+        gap_points = _find_coverage_gaps(
+            all_points,
+            geometry,
+            h_max,
+            n_test_points=n_test_points,
+            seed=seed + iteration if seed else None,
+        )
+
+        if len(gap_points) == 0:
+            logger.debug(f"h_max enforcement: converged after {iteration} iterations, added {total_added} points")
+            break
+
+        # Greedy selection: add points from gaps, respecting min_separation
+        tree = cKDTree(all_points)
+        added_this_iter = 0
+
+        # Sort gaps by distance to nearest existing point (largest first)
+        distances_to_nearest, _ = tree.query(gap_points, k=1)
+        sorted_indices = np.argsort(-distances_to_nearest)  # Descending
+
+        new_points = []
+        for idx in sorted_indices:
+            if added_this_iter >= max_additions:
+                break
+
+            candidate = gap_points[idx]
+
+            # Check if candidate respects min_separation from all existing points
+            dist_to_existing = tree.query(candidate.reshape(1, -1), k=1)[0][0]
+            if dist_to_existing < min_separation:
+                continue
+
+            # Check if candidate respects min_separation from already-added new points
+            if len(new_points) > 0:
+                new_tree = cKDTree(np.array(new_points))
+                dist_to_new = new_tree.query(candidate.reshape(1, -1), k=1)[0][0]
+                if dist_to_new < min_separation:
+                    continue
+
+            # Verify point is inside domain
+            try:
+                sdf = geometry.signed_distance(candidate.reshape(1, -1))[0]
+                if sdf >= -min_separation / 2:  # Too close to or outside boundary
+                    continue
+            except (AttributeError, TypeError):
+                pass
+
+            new_points.append(candidate)
+            added_this_iter += 1
+
+        if added_this_iter == 0:
+            logger.debug(
+                f"h_max enforcement: stopped at iteration {iteration}, no valid points to add (min_sep constraint)"
+            )
+            break
+
+        # Add new points to interior
+        current_interior = np.vstack([current_interior, np.array(new_points)])
+        total_added += added_this_iter
+
+        logger.debug(
+            f"h_max enforcement iteration {iteration + 1}: "
+            f"added {added_this_iter} points, total = {len(current_interior)}"
+        )
+
+    if total_added > 0:
+        logger.info(f"h_max enforcement: added {total_added} interior points to achieve h <= {h_max:.4f}")
+
+    return current_interior
+
+
+def _enforce_separation(
+    interior: NDArray,
+    boundary: NDArray,
+    normals_bdy: NDArray,
+    region_ids_bdy: NDArray,
+    min_separation: float,
+    boundary_margin: float,
+    geometry: GeometryProtocol,
+) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+    """
+    Enforce minimum separation between all collocation points.
+
+    This ensures GFDM stability by preventing point clustering that leads
+    to ill-conditioned linear systems.
+
+    Strategy:
+    1. Keep all boundary points (they define the domain)
+    2. Remove interior points that are too close to boundary points
+    3. Remove interior points that are too close to each other
+    4. Optionally push interior points away from domain boundary
+
+    Args:
+        interior: Interior points (N_int, d)
+        boundary: Boundary points (N_bdy, d)
+        normals_bdy: Normals at boundary points (N_bdy, d)
+        region_ids_bdy: Region IDs at boundary points (N_bdy,)
+        min_separation: Minimum distance between any two points
+        boundary_margin: Minimum distance from interior to domain boundary
+        geometry: Geometry object for SDF queries
+
+    Returns:
+        Filtered (interior, boundary, normals, region_ids) tuple
+    """
+    from scipy.spatial import cKDTree
+
+    if len(interior) == 0 or len(boundary) == 0:
+        return interior, boundary, normals_bdy, region_ids_bdy
+
+    # Step 1: Remove interior points too close to boundary points
+    boundary_tree = cKDTree(boundary)
+    distances_to_boundary, _ = boundary_tree.query(interior, k=1)
+    interior_keep_mask = distances_to_boundary >= min_separation
+
+    interior_filtered = interior[interior_keep_mask]
+
+    if len(interior_filtered) == 0:
+        logger.warning(
+            f"All interior points removed due to min_separation={min_separation}. "
+            f"Consider reducing min_separation or increasing domain size."
+        )
+        return interior_filtered, boundary, normals_bdy, region_ids_bdy
+
+    # Step 2: Remove interior points too close to each other
+    # Use greedy algorithm: keep points in order, remove conflicts
+    interior_tree = cKDTree(interior_filtered)
+    pairs = interior_tree.query_pairs(r=min_separation)
+
+    # Build conflict graph and greedily remove
+    to_remove = set()
+    for i, j in pairs:
+        if i not in to_remove and j not in to_remove:
+            # Remove the one with higher index (arbitrary but consistent)
+            to_remove.add(j)
+
+    keep_indices = [i for i in range(len(interior_filtered)) if i not in to_remove]
+    interior_filtered = interior_filtered[keep_indices]
+
+    # Step 3: Push interior points away from domain boundary (if geometry supports SDF)
+    if boundary_margin > 0:
+        try:
+            sdf = geometry.signed_distance(interior_filtered)
+            # Points with |sdf| < boundary_margin are too close to boundary
+            too_close_mask = np.abs(sdf) < boundary_margin
+            if np.any(too_close_mask):
+                # Remove points too close to domain boundary
+                interior_filtered = interior_filtered[~too_close_mask]
+                logger.debug(
+                    f"Removed {np.sum(too_close_mask)} interior points within {boundary_margin} of domain boundary"
+                )
+        except (AttributeError, TypeError):
+            # Geometry doesn't support SDF, skip this step
+            pass
+
+    n_removed = len(interior) - len(interior_filtered)
+    if n_removed > 0:
+        logger.info(
+            f"Separation enforcement: removed {n_removed}/{len(interior)} interior points "
+            f"(min_sep={min_separation:.4f}, margin={boundary_margin:.4f})"
+        )
+
+    return interior_filtered, boundary, normals_bdy, region_ids_bdy
+
+
 class CollocationSampler:
     """
     Unified collocation sampler for any geometry type.
@@ -1090,6 +1893,10 @@ class CollocationSampler:
         interior_method: Literal["poisson_disk", "sobol", "uniform"] = "poisson_disk",
         boundary_method: Literal["uniform", "poisson_disk"] = "uniform",
         seed: int | None = None,
+        min_separation: float | None = None,
+        boundary_margin: float | None = None,
+        max_fill_distance: float | None = None,
+        target_mesh_ratio: float | Literal["optimal"] | None = None,
     ) -> CollocationPointSet:
         """
         Generate complete collocation point set.
@@ -1100,9 +1907,38 @@ class CollocationSampler:
             interior_method: Sampling method for interior
             boundary_method: Sampling method for boundary
             seed: Random seed
+            min_separation: Minimum distance between any two points (h_min).
+                If None, no enforcement. If specified, interior points that
+                are too close to boundary points will be removed or relocated.
+                NOTE: This may change N_col.
+            boundary_margin: Minimum distance from interior points to domain
+                boundary. If None, defaults to min_separation. This prevents
+                interior points from clustering near boundary points.
+            max_fill_distance: Maximum allowed fill distance (h_max).
+                If specified, additional interior points will be added in
+                sparse regions to ensure no point in the domain is farther
+                than h_max from a collocation point.
+                NOTE: This may change N_col.
+            target_mesh_ratio: Target mesh ratio h/q. Can be:
+                - float (e.g., 5.0): Stop when h/q <= target
+                - 'optimal': Auto-converge until plateau or h/q < 2.0
+                Applies iterative Lloyd relaxation WITHOUT changing N.
+                This is the RECOMMENDED approach for EOC studies where N must
+                be controlled exactly.
 
         Returns:
             CollocationPointSet with combined points and metadata
+
+        Note:
+            When min_separation or max_fill_distance is specified, the actual
+            number of points may differ from requested (N changes).
+
+            When target_mesh_ratio is specified, N is preserved but the point
+            distribution is optimized to achieve the target h/q ratio.
+
+            If both min_separation and target_mesh_ratio are specified,
+            min_separation is applied first (may change N), then mesh ratio
+            optimization is applied (preserves the new N).
         """
         # Sample interior
         interior = self.sample_interior(n_interior, interior_method, seed)
@@ -1110,10 +1946,65 @@ class CollocationSampler:
         # Sample boundary
         boundary, normals_bdy, region_ids_bdy = self._strategy.sample_boundary(n_boundary, boundary_method, seed)
 
+        d = interior.shape[1]
+
+        # Enforce minimum separation if specified
+        if min_separation is not None and min_separation > 0:
+            margin = boundary_margin if boundary_margin is not None else min_separation
+            interior, boundary, normals_bdy, region_ids_bdy = _enforce_separation(
+                interior,
+                boundary,
+                normals_bdy,
+                region_ids_bdy,
+                min_separation=min_separation,
+                boundary_margin=margin,
+                geometry=self.geometry,
+            )
+            logger.debug(
+                f"After separation enforcement: {len(interior)} interior, "
+                f"{len(boundary)} boundary (min_sep={min_separation:.4f})"
+            )
+
+        # Enforce maximum fill distance if specified (add points in sparse regions)
+        # NOTE: This changes N_col
+        if max_fill_distance is not None and max_fill_distance > 0:
+            # Use min_separation for the new points, default to h_max/3 if not specified
+            sep_for_new = min_separation if min_separation is not None else max_fill_distance / 3.0
+            interior = _enforce_max_fill_distance(
+                interior,
+                boundary,
+                self.geometry,
+                h_max=max_fill_distance,
+                min_separation=sep_for_new,
+                seed=seed,
+            )
+            logger.debug(f"After h_max enforcement: {len(interior)} interior (h_max={max_fill_distance:.4f})")
+
+        # Optimize mesh ratio if specified (does NOT change N_col)
+        # This is the RECOMMENDED approach for EOC studies
+        should_optimize = (
+            target_mesh_ratio is not None
+            and len(interior) > 0
+            and (target_mesh_ratio == "optimal" or target_mesh_ratio > 0)
+        )
+        if should_optimize:
+            # Only optimize interior points; boundary points stay fixed
+            interior = _optimize_mesh_ratio_interior(
+                interior,
+                boundary,
+                self.geometry,
+                target_ratio=target_mesh_ratio,
+                seed=seed,
+            )
+            target_desc = target_mesh_ratio if target_mesh_ratio == "optimal" else f"{target_mesh_ratio:.1f}"
+            logger.debug(
+                f"After mesh ratio optimization: {len(interior)} interior, "
+                f"{len(boundary)} boundary (target h/q={target_desc})"
+            )
+
         # Combine
         n_int = len(interior)
         n_bdy = len(boundary)
-        d = interior.shape[1]
 
         points = np.vstack([interior, boundary])
         is_boundary = np.concatenate([np.zeros(n_int, dtype=bool), np.ones(n_bdy, dtype=bool)])
@@ -1133,19 +2024,66 @@ def generate_collocation(
     geometry: GeometryProtocol,
     n_interior: int,
     n_boundary: int,
+    min_separation: float | None = None,
+    boundary_margin: float | None = None,
+    max_fill_distance: float | None = None,
+    target_mesh_ratio: float | Literal["optimal"] | None = None,
     **kwargs,
 ) -> CollocationPointSet:
     """
     Convenience function to generate collocation points.
 
+    There are two approaches to mesh quality control:
+
+    **Approach 1: Fixed N, optimize distribution (RECOMMENDED for EOC)**
+        Use `target_mesh_ratio` to optimize point distribution while keeping
+        N = n_interior + n_boundary exactly. Best for convergence studies.
+
+    **Approach 2: Constraint enforcement, N may vary**
+        Use `min_separation` and/or `max_fill_distance` to enforce hard
+        constraints. N may increase or decrease to satisfy constraints.
+
     Args:
         geometry: Geometry object
         n_interior: Number of interior points
         n_boundary: Number of boundary points
-        **kwargs: Additional arguments passed to CollocationSampler.generate_collocation
+        min_separation: (Approach 2) Minimum distance between points (h_min).
+            May DECREASE N by removing clustered points.
+        boundary_margin: Minimum distance from interior to boundary.
+            Defaults to min_separation if not specified.
+        max_fill_distance: (Approach 2) Maximum fill distance (h_max).
+            May INCREASE N by adding points in sparse regions.
+        target_mesh_ratio: (Approach 1) Target mesh ratio h/q. Can be:
+            - float (e.g., 5.0): Stop when h/q <= target
+            - 'optimal': Auto-converge until plateau or h/q < 2.0
+            Optimizes distribution WITHOUT changing N. Recommended for EOC.
+        **kwargs: Additional arguments (interior_method, seed, etc.)
 
     Returns:
         CollocationPointSet
+
+    Example:
+        >>> from mfg_pde.geometry import Hyperrectangle
+        >>> domain = Hyperrectangle(bounds=[[0, 1], [0, 1]])
+        >>>
+        >>> # Approach 1a: Auto-optimize mesh quality (recommended)
+        >>> coll = generate_collocation(domain, 100, 40, target_mesh_ratio='optimal')
+        >>> assert len(coll.points) == 140  # N preserved
+        >>>
+        >>> # Approach 1b: Explicit target
+        >>> coll = generate_collocation(domain, 100, 40, target_mesh_ratio=5.0)
+        >>>
+        >>> # Approach 2: Hard constraints (N may vary)
+        >>> coll = generate_collocation(domain, 100, 40, min_separation=0.05)
+        >>> # N might be < 140 if points removed
     """
     sampler = CollocationSampler(geometry)
-    return sampler.generate_collocation(n_interior, n_boundary, **kwargs)
+    return sampler.generate_collocation(
+        n_interior,
+        n_boundary,
+        min_separation=min_separation,
+        boundary_margin=boundary_margin,
+        max_fill_distance=max_fill_distance,
+        target_mesh_ratio=target_mesh_ratio,
+        **kwargs,
+    )

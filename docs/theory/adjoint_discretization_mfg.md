@@ -1,20 +1,84 @@
 # Adjoint Discretization for Mean Field Games
 
-## The Structure-Preserving Principle
-
-In numerical methods for Mean Field Games (MFG), the discretization of the Fokker-Planck (FP) equation is **not an independent choice**. The Achdou-Capuzzo-Dolcetta framework establishes that the FP operator must be the **discrete adjoint** of the linearized Hamilton-Jacobi-Bellman (HJB) operator:
-
-$$
-A_{\text{FP}} = (A_{\text{HJB}})^\top
-$$
-
-This document provides the mathematical foundations for this principle.
+This document describes the **Structure-Preserving Discretization** (also called **Dual Discretization**) methodology developed by Achdou, Capuzzo-Dolcetta, Lasry, Lions, and collaborators for Mean Field Games (MFG).
 
 ---
 
-## 1. Continuous Duality
+## Document Overview
 
-### 1.1 The MFG System
+| Part | Topic | Key Content |
+|:-----|:------|:------------|
+| **I** | Core Principles | Structure-preserving principle, continuous duality |
+| **II** | Finite Difference Methods | HJB discretization, FP as adjoint, structural properties |
+| **III** | Semi-Lagrangian Methods | Interpolation-distribution duality |
+| **IV** | Implementation Guide | Scheme selection, error analysis, practical usage |
+| **V** | Advanced Topics | Newton method, multi-D, time-dependent problems |
+
+---
+
+# Part I: Core Principles
+
+## 1. The Structure-Preserving Principle
+
+**Core idea:** The Fokker-Planck (FP) equation is NOT discretized independently. Instead:
+
+1. **Discretize HJB** using a monotone (upwind) scheme
+2. **Linearize** the discrete HJB operator (compute Jacobian)
+3. **Transpose** to obtain the discrete FP operator
+
+$$
+A_{\text{FP}} = (A_{\text{HJB, linearized}})^\top
+$$
+
+This ensures:
+- **Mass conservation** at the discrete level
+- **Discrete duality** matching the continuous adjoint structure
+- **Optimal convergence** of Newton/fixed-point iterations
+
+> **Important:** Simple matrix transpose of the HJB gradient operator does NOT give the correct FP operator. The transpose must be taken of the **linearized** HJB operator (the Jacobian), which involves derivatives of the numerical Hamiltonian $\partial \mathcal{H}/\partial p^\pm$.
+
+---
+
+### 1.1 Common Misconception: Two Different "Transposes"
+
+| What you might try | What it actually means | Result |
+|:-------------------|:-----------------------|:-------|
+| **Naive transpose** | Build HJB gradient matrix $A_{\nabla}$ for $v \cdot \nabla u$, then use $A_{\nabla}^T$ for FP | ❌ **Wrong!** Mass not conserved. $A_{\nabla}^T$ represents adjoint of gradient, not divergence. |
+| **Correct transpose** | Linearize HJB to get Jacobian $A_{\text{Jac}}$ with coefficients $a_i^\pm = \mp \frac{\partial \mathcal{H}}{\partial p^\pm}$, then use $A_{\text{Jac}}^T$ | ✅ **Correct!** This IS the divergence operator. Mass conserved. |
+
+**Why are they different?**
+
+For upwind discretization of $v \cdot \nabla u$ at point $i$ (with $v_i > 0$):
+
+$$
+(v \cdot \nabla u)_i \approx v_i \cdot \frac{u_i - u_{i-1}}{h}
+$$
+
+**Naive gradient matrix** $A_{\nabla}$:
+- Row $i$: $[\ldots, -v_i/h, +v_i/h, 0, \ldots]$ at positions $(i-1, i, i+1)$
+
+**Transpose** $A_{\nabla}^T$:
+- Row $i$: $[\ldots, 0, +v_i/h, -v_{i+1}/h, \ldots]$ — uses $v_i$ and $v_{i+1}$
+
+**Correct FP divergence matrix** (from Jacobian):
+- Row $i$: $[\ldots, -v_{i-1}/h, +v_i/h, 0, \ldots]$ — uses $v_{i-1}$ and $v_i$
+
+The velocity indices are different! The Jacobian-based construction uses $\partial \mathcal{H}/\partial p^-$ and $\partial \mathcal{H}/\partial p^+$, which automatically produce the correct divergence stencil coefficients.
+
+**In code terms:**
+```python
+# ❌ WRONG: Naive transpose (what adjoint_mode="transpose" incorrectly did)
+A_fp_wrong = A_hjb_gradient.T  # Breaks mass conservation!
+
+# ✅ CORRECT: Use divergence_upwind scheme (equivalent to Jacobian transpose)
+fp_solver = FPFDMSolver(problem, advection_scheme="divergence_upwind")
+```
+
+---
+
+## 2. Continuous Duality
+
+### 2.1 The MFG System
 
 Consider a stationary MFG system on a bounded domain $\Omega \subset \mathbb{R}^d$:
 
@@ -33,7 +97,7 @@ where:
 - $F[m]$: coupling term (e.g., $F[m] = f(x, m)$)
 - $\nu > 0$: viscosity/diffusion coefficient
 
-### 1.2 Optimal Control Interpretation
+### 2.2 Optimal Control Interpretation
 
 The optimal drift (feedback control) is:
 
@@ -43,7 +107,7 @@ $$
 
 For the quadratic Hamiltonian $H(x, p) = \frac{1}{2}|p|^2$, this gives $\alpha^* = -\nabla u$.
 
-### 1.3 The Formal $L^2$-Adjoint Structure
+### 2.3 The Formal $L^2$-Adjoint Structure
 
 Define the **linearized HJB operator** at a solution $u$:
 
@@ -63,7 +127,7 @@ This is not a coincidence. It reflects the **optimality conditions** of the unde
 - HJB: first-order condition for the value function
 - FP: adjoint equation for the density (Lagrange multiplier for the probability constraint)
 
-### 1.4 Variational Formulation
+### 2.4 Variational Formulation
 
 For potential MFG (where the coupling derives from a potential), the system is the gradient of a functional:
 
@@ -85,9 +149,11 @@ The off-diagonal blocks satisfy $(D^2_{um} \mathcal{J})^* = D^2_{mu} \mathcal{J}
 
 ---
 
-## 2. Discrete HJB: Monotone Schemes
+# Part II: Finite Difference Methods
 
-### 2.1 Grid Setup
+## 3. Discrete HJB: Monotone Schemes
+
+### 3.1 Grid Setup
 
 Consider a uniform grid in 1D: $x_i = ih$ for $i = 0, 1, \ldots, N$, with grid spacing $h$.
 
@@ -96,7 +162,7 @@ Define finite difference operators:
 - **Backward difference:** $D^- u_i = \frac{u_i - u_{i-1}}{h}$
 - **Central second difference:** $D^2 u_i = \frac{u_{i+1} - 2u_i + u_{i-1}}{h^2}$
 
-### 2.2 Monotone Numerical Hamiltonians
+### 3.2 Monotone Numerical Hamiltonians
 
 The discrete HJB equation requires a **monotone numerical Hamiltonian** $\mathcal{H}(x, p^-, p^+)$ satisfying:
 
@@ -115,6 +181,26 @@ $$
 
 This selects the "upwind" direction based on the sign of the gradient.
 
+#### Example: Lax-Friedrichs Flux (General Hamiltonians)
+
+For **non-convex or general Hamiltonians** where Godunov's analytical solution is difficult, the Lax-Friedrichs (LF) scheme provides a universal alternative:
+
+$$
+\mathcal{H}^{\text{LF}}(p^-, p^+) = H\left(\frac{p^- + p^+}{2}\right) - \frac{\alpha}{2}(p^+ - p^-)
+$$
+
+where $\alpha \geq \max_p |H'(p)|$ is the artificial viscosity parameter (must satisfy CFL condition).
+
+**Linearization for LF:**
+
+$$
+\frac{\partial \mathcal{H}^{\text{LF}}}{\partial p^\pm} = \frac{1}{2} H'\left(\bar{p}\right) \mp \frac{\alpha}{2}
+$$
+
+where $\bar{p} = (p^- + p^+)/2$.
+
+**Trade-off:** LF introduces additional numerical diffusion compared to Godunov, but works for any differentiable $H(p)$ without requiring analytical extremum computation.
+
 #### Example: Engquist-Osher Flux
 
 $$
@@ -129,7 +215,7 @@ $$
 
 where $(x)_+ = \max(x, 0)$ and $(x)_- = \min(x, 0)$.
 
-### 2.3 The Discrete HJB System
+### 3.3 The Discrete HJB System
 
 The fully discrete HJB equation at interior node $i$:
 
@@ -145,7 +231,7 @@ $$
 
 This defines a nonlinear system $\mathbf{G}(\mathbf{u}) = \mathbf{f}$ where $\mathbf{u} = (u_1, \ldots, u_{N-1})^\top$.
 
-### 2.4 Linearization: The Jacobian Matrix
+### 3.4 Linearization: The Jacobian Matrix
 
 To solve via Newton's method, we compute the Jacobian $A_{\text{HJB}} = \frac{\partial \mathbf{G}}{\partial \mathbf{u}}$.
 
@@ -195,11 +281,43 @@ This guarantees:
 - Discrete maximum principle
 - Monotone convergence of iterative methods
 
+### 3.5 Handling Non-Differentiable Points (Generalized Jacobian)
+
+For Godunov-type schemes, the numerical Hamiltonian $\mathcal{H}$ may be non-differentiable when $D^+ u = D^- u$ (at points where the $\max/\min$ operations switch).
+
+**Problem:** At these points, $\frac{\partial \mathcal{H}}{\partial p^\pm}$ is undefined.
+
+**Solution (Semi-Smooth Newton):** Use **generalized gradients** (Clarke subdifferential). In practice:
+
+```
+if |D^+u - D^-u| < tol:
+    # Near non-differentiable point: use either subgradient
+    a^+ = a^- = 0.5 * |D^+u|  # or average of left/right limits
+else:
+    # Standard case: compute partial derivatives normally
+    a^+ = ∂H/∂p^+, a^- = -∂H/∂p^-
+```
+
+**Theoretical justification:** Semi-smooth Newton methods converge superlinearly even with non-smooth Jacobians, provided the generalized Jacobian is used consistently. See Achdou & Porretta (2018) for rigorous treatment.
+
+### 3.6 Extension to General Hamiltonians
+
+The "discretize HJB → linearize → transpose" framework is **universal** for any Hamiltonian $H(x, p)$:
+
+| Hamiltonian Type | Recommended Flux | Notes |
+|:-----------------|:-----------------|:------|
+| Quadratic $\|p\|^2/2$ | Godunov | Clean $v^+/v^-$ separation |
+| Convex $H(p)$ | Godunov or Engquist-Osher | Analytical extrema often available |
+| Non-convex $H(p)$ | Lax-Friedrichs | Universal, more diffusive |
+| State-dependent $H(x,p)$ | Same as above | Coefficients vary with $x$ |
+
+**Key insight:** The adjoint structure (FP = linearized HJB transpose) holds regardless of $H$. Only the specific stencil coefficients $a_i^+, a_i^-$ change based on the numerical Hamiltonian choice.
+
 ---
 
-## 3. Discrete FP: The Adjoint Operator
+## 4. Discrete FP: The Adjoint Operator
 
-### 3.1 The Transpose Construction
+### 4.1 The Transpose Construction
 
 We define the discrete FP operator as:
 
@@ -221,7 +339,7 @@ $$
 (A_{\text{FP}})_{i,i+1} = (A_{\text{HJB}})_{i+1,i} = -\frac{\nu}{h^2} - \frac{a_{i+1}^-}{h}
 $$
 
-### 3.2 Interpretation as a Conservative Scheme
+### 4.2 Interpretation as a Conservative Scheme
 
 The discrete FP equation $A_{\text{FP}} \mathbf{m} = \mathbf{0}$ can be written as:
 
@@ -247,7 +365,7 @@ This is precisely an **upwind flux scheme** where:
 - If $a_i^+ > 0$ (drift to the right), mass flows from $i$ to $i+1$
 - If $a_i^- > 0$ (drift to the left), mass flows from $i$ to $i-1$
 
-### 3.3 The "Hidden" Flux-Vector Splitting
+### 4.3 The "Hidden" Flux-Vector Splitting
 
 The adjoint construction automatically implements **flux-vector splitting**:
 
@@ -264,9 +382,9 @@ The HJB monotonicity conditions ensure this splitting is consistent with the opt
 
 ---
 
-## 4. Structural Properties
+## 5. Structural Properties
 
-### 4.1 Mass Conservation
+### 5.1 Mass Conservation
 
 **Theorem:** The discrete FP operator conserves total mass.
 
@@ -284,7 +402,7 @@ Therefore $A_{\text{HJB}} \mathbf{1} = \mathbf{0}$, which implies $\mathbf{1}^\t
 
 **Consequence:** For any $\mathbf{m}$, we have $\mathbf{1}^\top (A_{\text{FP}} \mathbf{m}) = 0$, so the total mass $\sum_i m_i$ is unchanged by the FP dynamics. $\square$
 
-### 4.2 Positivity Preservation
+### 5.2 Positivity Preservation
 
 **Theorem:** If $A_{\text{HJB}}$ is an M-matrix, then $A_{\text{FP}}$ preserves non-negativity.
 
@@ -305,7 +423,7 @@ The matrix $B = I + \Delta t \, A_{\text{FP}}$ has:
 
 Therefore $B^{-1} \geq 0$ (entry-wise), and $\mathbf{m}^{n+1} = B^{-1} \mathbf{m}^n \geq 0$ whenever $\mathbf{m}^n \geq 0$. $\square$
 
-### 4.3 Discrete Duality Pairing
+### 5.3 Discrete Duality Pairing
 
 **Definition:** The discrete $L^2$ inner product is $\langle \mathbf{u}, \mathbf{m} \rangle_h = h \sum_i u_i m_i$.
 
@@ -321,135 +439,198 @@ $$
 \langle A_{\text{HJB}} \mathbf{w}, \mathbf{m} \rangle_h = h \, \mathbf{m}^\top A_{\text{HJB}} \mathbf{w} = h \, (A_{\text{HJB}}^\top \mathbf{m})^\top \mathbf{w} = h \, (A_{\text{FP}} \mathbf{m})^\top \mathbf{w} = \langle \mathbf{w}, A_{\text{FP}} \mathbf{m} \rangle_h \quad \square
 $$
 
----
+### 5.4 Boundary Condition Transformation via Transpose
 
-## 5. Newton's Method for the Coupled System
+A powerful property of the structure-preserving discretization: **boundary conditions transform automatically and correctly when taking the transpose of the linearized HJB operator.**
 
-### 5.1 The Full MFG System
+#### The Core Mechanism
 
-The discrete MFG system is:
+For reflecting boundaries in MFG:
+- **HJB side**: Neumann BC $\frac{\partial u}{\partial n} = 0$ (no gradient at boundary)
+- **FP side**: Zero-flux BC $\mathbf{v} \cdot m = 0$ (no mass flow through boundary)
 
-$$
-\begin{cases}
-\mathbf{G}(\mathbf{u}, \mathbf{m}) := -\nu D^2 \mathbf{u} + \mathcal{H}(\mathbf{u}) - \mathbf{F}(\mathbf{m}) = \mathbf{0} \\
-\mathbf{K}(\mathbf{u}, \mathbf{m}) := A_{\text{FP}}(\mathbf{u}) \, \mathbf{m} = \mathbf{0} \\
-\sum_i m_i = 1
-\end{cases}
-$$
+When discretizing HJB with Neumann BC using ghost points (e.g., $u_{-1} = u_1$), the matrix structure encodes this symmetry. The transpose then automatically produces a matrix that:
 
-### 5.2 The Jacobian of the Coupled System
+1. **Conserves mass** - The column sums remain zero (telescoping property preserved)
+2. **Seals the boundary** - No mass can leak out because the divergence structure is preserved
+3. **Requires no manual FP BC specification** - The correct BC emerges from the transpose
 
-For Newton iteration, we need the Jacobian of $(\mathbf{G}, \mathbf{K})$ with respect to $(\mathbf{u}, \mathbf{m})$:
+#### Why This Works Mathematically
 
-$$
-J = \begin{pmatrix}
-\frac{\partial \mathbf{G}}{\partial \mathbf{u}} & \frac{\partial \mathbf{G}}{\partial \mathbf{m}} \\[6pt]
-\frac{\partial \mathbf{K}}{\partial \mathbf{u}} & \frac{\partial \mathbf{K}}{\partial \mathbf{m}}
-\end{pmatrix}
-= \begin{pmatrix}
-A_{\text{HJB}} & -\frac{\partial \mathbf{F}}{\partial \mathbf{m}} \\[6pt]
-\frac{\partial A_{\text{FP}}}{\partial \mathbf{u}} \mathbf{m} & A_{\text{FP}}
-\end{pmatrix}
-$$
-
-### 5.3 Symmetry for Potential Games
-
-For potential MFG where $\mathbf{F}(\mathbf{m}) = \nabla_m \mathcal{F}(\mathbf{m})$ for some functional $\mathcal{F}$:
+Consider the continuous adjoint relationship:
 
 $$
-\frac{\partial \mathbf{F}}{\partial \mathbf{m}} = D^2_m \mathcal{F}
+\langle L^* \phi, \psi \rangle = \langle \phi, L \psi \rangle
 $$
 
-is symmetric. Combined with $A_{\text{FP}} = A_{\text{HJB}}^\top$, this gives the Jacobian a **saddle-point structure**:
+For this to hold, the boundary terms in integration by parts must vanish. When:
+- HJB has Neumann BC: $\frac{\partial u}{\partial n}\big|_{\partial\Omega} = 0$
+- FP needs zero-flux: $(\mathbf{v} \cdot m)\big|_{\partial\Omega} = 0$
+
+The discrete analogue preserves this relationship. The ghost point encoding in the HJB matrix creates a "mirror" structure that, when transposed, naturally produces the zero-flux condition.
+
+#### Example: 1D Reflecting Boundary
+
+Consider the left boundary at $x_0$ with Neumann BC $\partial u / \partial x = 0$.
+
+**Ghost point method for HJB:** Set $u_{-1} = u_1$ (mirror symmetry).
+
+The HJB stencil at $i=0$ becomes:
 
 $$
-J \approx \begin{pmatrix}
-A & -B^\top \\
-B & A^\top
-\end{pmatrix}
+(A_{\text{HJB}})_{0,:} = \left[ \frac{2\nu}{h^2} + \frac{a_0^- + a_0^+}{h}, \quad -\frac{2\nu}{h^2} - \frac{a_0^- + a_0^+}{h}, \quad 0, \ldots \right]
 $$
 
-where the off-diagonal blocks are related by transposition (up to lower-order terms from the $\mathbf{m}$-dependence of $A_{\text{FP}}$).
+Taking the transpose, the first **column** of $A_{\text{FP}}$ has:
+- $(A_{\text{FP}})_{0,0}$ contains the boundary handling
+- The structure automatically "seals" the boundary - no flux can exit
 
-This structure is essential for:
-- Proving non-singularity of $J$
-- Designing efficient preconditioners
-- Ensuring quadratic convergence of Newton's method
+**The key insight:** The transpose operation converts the "no gradient" condition (Neumann for HJB) into a "no flux" condition (zero-flux for FP).
 
----
+#### BC Transformation Summary
 
-## 6. Extension to Multiple Dimensions
+| HJB Boundary Condition | Transpose Result for FP | Physical Meaning |
+|:-----------------------|:------------------------|:-----------------|
+| **Neumann** ($\partial u/\partial n = 0$) | Zero-flux (Robin-like) | Reflecting wall, mass conserved |
+| **Dirichlet** ($u = g$) | Absorbing | Mass exits at boundary (e.g., exits/targets) |
+| **Periodic** | Periodic | Mass wraps around domain |
 
-### 6.1 Tensor Product Grids
+#### Implementation Principle
 
-On a $d$-dimensional grid, the HJB operator becomes:
+> **Do not manually specify FP boundary conditions when using the transpose approach.** Trust that the linearized HJB matrix, with correctly implemented BCs, will produce the correct FP operator via transpose.
 
-$$
-(A_{\text{HJB}})_{\mathbf{i}, \mathbf{j}} = \begin{cases}
-\sum_{k=1}^d \left( \frac{2\nu}{h_k^2} + \frac{a_{\mathbf{i}}^{k,-} + a_{\mathbf{i}}^{k,+}}{h_k} \right) & \text{if } \mathbf{j} = \mathbf{i} \\[6pt]
--\frac{\nu}{h_k^2} - \frac{a_{\mathbf{i}}^{k,-}}{h_k} & \text{if } \mathbf{j} = \mathbf{i} - \mathbf{e}_k \\[6pt]
--\frac{\nu}{h_k^2} - \frac{a_{\mathbf{i}}^{k,+}}{h_k} & \text{if } \mathbf{j} = \mathbf{i} + \mathbf{e}_k \\[6pt]
-0 & \text{otherwise}
-\end{cases}
-$$
+This is why the `divergence_upwind` scheme in `mfg_pde` (which implements the Jacobian transpose structure) handles boundary conditions correctly without separate BC specification for FP.
 
-where $\mathbf{e}_k$ is the $k$-th unit vector and:
-
-$$
-a_{\mathbf{i}}^{k,\pm} = \pm \frac{\partial \mathcal{H}}{\partial p_k^\pm}(\mathbf{x}_{\mathbf{i}}, D^- \mathbf{u}_{\mathbf{i}}, D^+ \mathbf{u}_{\mathbf{i}})
-$$
-
-### 6.2 Dimensional Splitting for Hamiltonians
-
-For separable Hamiltonians $H(\mathbf{x}, \mathbf{p}) = \sum_{k=1}^d H_k(x_k, p_k)$:
-
-$$
-\mathcal{H}(\mathbf{x}, \mathbf{p}^-, \mathbf{p}^+) = \sum_{k=1}^d \mathcal{H}_k(x_k, p_k^-, p_k^+)
-$$
-
-The adjoint construction applies dimension-by-dimension.
+**Warning:** If you manually override FP boundary conditions when using the transpose-based approach, you may:
+1. Break mass conservation
+2. Create inconsistency between HJB and FP at boundaries
+3. Lose the discrete adjoint structure
 
 ---
 
-## 7. Time-Dependent Problems
+# Part III: Semi-Lagrangian Methods
 
-### 7.1 Parabolic MFG System
+## 6. Interpolation-Distribution Duality
+
+The structure-preserving principle extends naturally to Semi-Lagrangian (SL) methods, which are popular for high-dimensional MFG due to their unconditional stability (no CFL restriction).
+
+### 6.1 The Core Insight
+
+**Semi-Lagrangian also follows "linearize → transpose", but the operators become:**
+
+| Method | HJB Operator | FP Operator | Duality |
+|:-------|:-------------|:------------|:--------|
+| **FDM** | Gradient | Divergence | $A_{\text{FP}} = A_{\text{Jac}}^T$ |
+| **SL** | Interpolation (Pullback) | Scatter/Distribute (Pushforward) | $A_{\text{FP}} = P^T$ |
+
+### 6.2 HJB Side: Interpolation (Pullback)
+
+Semi-Lagrangian solves HJB using the dynamic programming principle. For time step $n \to n+1$:
 
 $$
-\begin{cases}
--\partial_t u - \nu \Delta u + H(x, \nabla u) = F[m] & \text{(HJB, backward)} \\
-\partial_t m - \nu \Delta m - \nabla \cdot (m \nabla_p H) = 0 & \text{(FP, forward)}
-\end{cases}
+U^n(x_i) = \sum_j P_{ij} U^{n+1}(x_j)
 $$
 
-with terminal condition $u(T, x) = G[m(T, \cdot)](x)$ and initial condition $m(0, x) = m_0(x)$.
+where $P$ is the **interpolation matrix**:
+- Each row $i$ corresponds to a grid point $x_i$
+- The characteristic line from $x_i$ lands at position $y_i$ (between grid points)
+- $P_{ij}$ are the interpolation weights (e.g., linear: $1-\alpha$ and $\alpha$)
 
-### 7.2 Implicit-Explicit Time Stepping
+**Key property:** $P$ has **row sums = 1** (partition of unity for interpolation).
 
-**HJB (backward in time):**
+**Physical meaning:** Information is "pulled back" along characteristics from future to present.
+
+### 6.3 FP Side: Distribution (Pushforward)
+
+By the adjoint principle, the discrete FP equation uses $P^T$:
+
 $$
-\frac{u^n - u^{n+1}}{\Delta t} - \nu D^2 u^n + \mathcal{H}(u^n) = F[m^n]
+m^{n+1} = P^T m^n
 $$
 
-**FP (forward in time):**
+**Physical meaning:** Mass is "pushed forward" along characteristics from present to future.
+
+If HJB "reads" values from neighbors via interpolation, FP "distributes" mass to neighbors via the transpose.
+
+**Example (1D linear interpolation):**
+
+Suppose the characteristic from $x_i$ lands at $y_i \in [x_j, x_{j+1}]$ with weight $\alpha = (y_i - x_j)/\Delta x$.
+
+- **HJB (interpolation):** $U^n_i = (1-\alpha) U^{n+1}_j + \alpha U^{n+1}_{j+1}$
+- **FP (distribution):** Mass $m^n_i$ is split: $(1-\alpha) m^n_i \to m^{n+1}_j$ and $\alpha m^n_i \to m^{n+1}_{j+1}$
+
+### 6.4 Mass Conservation
+
+**Theorem:** The SL adjoint scheme conserves mass exactly.
+
+**Proof:** Since $P$ has row sums = 1, its transpose $P^T$ has **column sums = 1**.
+
 $$
-\frac{m^{n+1} - m^n}{\Delta t} + A_{\text{FP}}(u^n) m^{n+1} = 0
+\sum_j m^{n+1}_j = \sum_j (P^T m^n)_j = \sum_j \sum_i P_{ij} m^n_i = \sum_i m^n_i \sum_j P_{ij} = \sum_i m^n_i \cdot 1 = \sum_i m^n_i \quad \square
 $$
 
-The adjoint relationship $A_{\text{FP}} = A_{\text{HJB}}^\top$ must hold **at each time step** with the same linearization point.
+### 6.5 Boundary Conditions
+
+The SL adjoint handles boundaries elegantly:
+
+| HJB BC Handling | FP Result (via $P^T$) | Physical Meaning |
+|:----------------|:----------------------|:-----------------|
+| **Clamp/Clip** (project to boundary) | Mass accumulates at boundary | Zero-flux (reflecting) |
+| **Extrapolation** | Mass can exit | Outflow |
+| **Periodic wrap** | Mass wraps around | Periodic |
+
+**Key insight:** As long as HJB doesn't "lose" interpolation weights at boundaries (i.e., weights still sum to 1), the FP transpose automatically conserves mass.
+
+### 6.6 Implementation
+
+| Operation | HJB (Interpolation) | FP (Distribution) |
+|:----------|:--------------------|:------------------|
+| **Matlab** | `interp1`, `interpn` | `accumarray` |
+| **Python** | `scipy.ndimage.map_coordinates` | `np.add.at` |
+| **Concept** | Gather | Scatter |
+
+**Critical:** FP cannot use `interp` functions! It requires **accumulation** operations.
+
+```python
+# HJB: Interpolation (gather)
+U_new[i] = (1 - alpha[i]) * U_old[j[i]] + alpha[i] * U_old[j[i] + 1]
+
+# FP: Distribution (scatter) - MUST use np.add.at
+m_new = np.zeros_like(m_old)
+np.add.at(m_new, j, (1 - alpha) * m_old)
+np.add.at(m_new, j + 1, alpha * m_old)
+```
+
+### 6.7 Comparison: FDM vs SL Adjoint
+
+| Aspect | FDM Adjoint | SL Adjoint |
+|:-------|:------------|:-----------|
+| **HJB operator** | Gradient matrix $A_\nabla$ | Interpolation matrix $P$ |
+| **Linearization** | Jacobian with $\partial \mathcal{H}/\partial p^\pm$ | Interpolation weights |
+| **FP operator** | $A_{\text{Jac}}^T$ (divergence) | $P^T$ (scatter) |
+| **Mass conservation** | Column sums = 0 (telescoping) | Column sums = 1 |
+| **BC handling** | Ghost points | Clamp/wrap at characteristics |
+| **CFL restriction** | Yes | No (unconditionally stable) |
+
+### 6.8 References for SL Methods
+
+- Carlini, E., & Silva, F. J. (2014). *A fully discrete semi-Lagrangian scheme for a first order mean field game problem*. SIAM J. Numer. Anal., 52(1), 45-67.
+- Carlini, E., & Ferretti, R. (2014). *On the semi-Lagrangian approximation of the Fokker–Planck equation*. ESAIM: M2AN.
 
 ---
 
-## 8. Implications for Implementation
+# Part IV: Implementation Guide
 
-### 8.1 The Standard Recipe
+## 7. The Standard Recipe
+
+### 7.1 Basic Algorithm
 
 1. **Build HJB operator** with monotone upwind discretization
 2. **Linearize** to get $A_{\text{HJB}}$ (the Jacobian)
 3. **Transpose** to get $A_{\text{FP}} = A_{\text{HJB}}^\top$
 4. **Solve FP** using $A_{\text{FP}}$
 
-### 8.2 The Scheme Selection Is Mathematically Determined
+### 7.2 The Scheme Selection Is Mathematically Determined
 
 The choice of FDM scheme for HJB and FP is **not a matter of preference**. It is determined by the mathematical structure of the equations.
 
@@ -498,7 +679,7 @@ You do not actually "choose" two separate schemes. You make **one** choice based
 
 These are **mathematically necessary** pairings, not "compatible options".
 
-### 8.3 Available Schemes in `mfg_pde`
+## 8. Available Schemes in `mfg_pde`
 
 **HJB Solver** (`HJBFDMSolver`):
 - `advection_scheme="gradient_upwind"` (default) - Godunov upwind, monotone
@@ -512,7 +693,7 @@ These are **mathematically necessary** pairings, not "compatible options".
 
 > **Warning:** The gradient schemes for FP exist only for standalone advection-diffusion problems (not coupled MFG). Using them in MFG coupling is a formulation error.
 
-### 8.4 The Duality in Detail
+### 8.1 The Duality in Detail
 
 #### Integration by Parts: The Bridge Between Forms
 
@@ -554,7 +735,7 @@ $$
 - Central differences for HJB transpose to central differences for FP
 - Only stable when viscosity dominates advection
 
-### 8.5 Usage Examples
+### 8.2 Usage Examples
 
 **Recommended for most MFG problems:**
 
@@ -572,11 +753,11 @@ hjb_solver = HJBFDMSolver(problem, advection_scheme="gradient_centered")
 fp_solver = FPFDMSolver(problem, advection_scheme="divergence_centered")
 ```
 
-### 8.6 Consequences of Incorrect Scheme Pairing
+## 9. Error Analysis: Consequences of Incorrect Scheme Pairing
 
 What happens if the FDM scheme pairing violates the mathematical structure? This section analyzes the failure modes.
 
-#### Case 1: Gradient Scheme for FP in MFG (Type Error)
+### 9.1 Case 1: Gradient Scheme for FP in MFG (Type Error)
 
 **Configuration:** `gradient_upwind` (HJB) + `gradient_upwind` (FP)
 
@@ -618,7 +799,7 @@ $$
 - Solution doesn't match analytical benchmarks
 - **Insidious:** Code runs without errors, producing plausible-looking but incorrect results
 
-#### Case 2: Mismatched Stencils (Upwind + Centered)
+### 9.2 Case 2: Mismatched Stencils (Upwind + Centered)
 
 **Configuration:** `gradient_upwind` (HJB) + `divergence_centered` (FP)
 
@@ -662,7 +843,7 @@ $$
 - Newton method fails to converge or requires very small damping
 - Solution quality degrades as coupling strength increases
 
-#### Case 3: Divergence Scheme for HJB (Structural Impossibility)
+### 9.3 Case 3: Divergence Scheme for HJB (Structural Impossibility)
 
 **Configuration:** Attempting `divergence_upwind` for HJB
 
@@ -698,7 +879,7 @@ But value is **not** a conserved quantity. The value function $u$ represents the
 - Optimal trajectories don't reach intended targets
 - **This error is usually caught:** most implementations don't offer divergence schemes for HJB
 
-#### Summary: Failure Mode Classification
+### 9.4 Summary: Failure Mode Classification
 
 | Mismatch Type | Adjoint $A_{\text{FP}} = A_{\text{HJB}}^\top$? | Mass Conserved? | Convergence | Solution |
 |:--------------|:----------------------------------------------|:----------------|:------------|:---------|
@@ -709,7 +890,7 @@ But value is **not** a conserved quantity. The value function $u$ represents the
 | ✓ `gradient_upwind` + `divergence_upwind` | **Preserved** | **Yes** | Fast | Correct |
 | ✓ `gradient_centered` + `divergence_centered` | **Preserved** | **Yes** | Fast | Correct |
 
-#### The Insidious Nature of Case 1
+### 9.5 The Insidious Nature of Case 1
 
 Case 1 (`gradient` + `gradient`) is the most dangerous because:
 
@@ -723,7 +904,7 @@ The only way to detect this error is:
 - Compare against analytical solutions (when available)
 - Verify against known benchmarks
 
-### 8.7 Current Implementation Status
+## 10. Current Implementation Status
 
 The current `mfg_pde` implementation uses **independent FP schemes**, which:
 - Is simpler to implement and understand
@@ -731,25 +912,149 @@ The current `mfg_pde` implementation uses **independent FP schemes**, which:
 - May require smaller time steps for strongly coupled problems
 - Does not guarantee the discrete variational structure
 
-**Future enhancement:** Implement adjoint-based FP operator derived from HJB linearization.
+**Future enhancement (Issue #707):** Implement true adjoint-based FP operator derived from HJB Jacobian, where FP uses $A_{\text{Jac}}^T$ directly rather than an independently constructed divergence scheme.
 
 ---
 
-## 9. References
+# Part V: Advanced Topics
 
-1. Achdou, Y., & Capuzzo-Dolcetta, I. (2010). *Mean field games: numerical methods*. SIAM Journal on Numerical Analysis, 48(3), 1136-1162.
+## 11. Newton's Method for the Coupled System
 
-2. Achdou, Y., & Laurière, M. (2020). *Mean field games and applications: numerical aspects*. In Mean Field Games, Springer. [arXiv:2003.04444](https://arxiv.org/abs/2003.04444)
+### 11.1 The Full MFG System
 
-3. Achdou, Y., & Porretta, A. (2018). *Mean field games with congestion*. Annales de l'IHP Analyse non linéaire, 35(2), 443-480.
+The discrete MFG system is:
 
-4. Carlini, E., & Silva, F. J. (2014). *A fully discrete semi-Lagrangian scheme for a first order mean field game problem*. SIAM Journal on Numerical Analysis, 52(1), 45-67.
+$$
+\begin{cases}
+\mathbf{G}(\mathbf{u}, \mathbf{m}) := -\nu D^2 \mathbf{u} + \mathcal{H}(\mathbf{u}) - \mathbf{F}(\mathbf{m}) = \mathbf{0} \\
+\mathbf{K}(\mathbf{u}, \mathbf{m}) := A_{\text{FP}}(\mathbf{u}) \, \mathbf{m} = \mathbf{0} \\
+\sum_i m_i = 1
+\end{cases}
+$$
 
-5. Benamou, J. D., & Carlier, G. (2015). *Augmented Lagrangian methods for transport optimization, mean field games and degenerate elliptic equations*. Journal of Optimization Theory and Applications, 167(1), 1-26.
+### 11.2 The Jacobian of the Coupled System
+
+For Newton iteration, we need the Jacobian of $(\mathbf{G}, \mathbf{K})$ with respect to $(\mathbf{u}, \mathbf{m})$:
+
+$$
+J = \begin{pmatrix}
+\frac{\partial \mathbf{G}}{\partial \mathbf{u}} & \frac{\partial \mathbf{G}}{\partial \mathbf{m}} \\[6pt]
+\frac{\partial \mathbf{K}}{\partial \mathbf{u}} & \frac{\partial \mathbf{K}}{\partial \mathbf{m}}
+\end{pmatrix}
+= \begin{pmatrix}
+A_{\text{HJB}} & -\frac{\partial \mathbf{F}}{\partial \mathbf{m}} \\[6pt]
+\frac{\partial A_{\text{FP}}}{\partial \mathbf{u}} \mathbf{m} & A_{\text{FP}}
+\end{pmatrix}
+$$
+
+### 11.3 Symmetry for Potential Games
+
+For potential MFG where $\mathbf{F}(\mathbf{m}) = \nabla_m \mathcal{F}(\mathbf{m})$ for some functional $\mathcal{F}$:
+
+$$
+\frac{\partial \mathbf{F}}{\partial \mathbf{m}} = D^2_m \mathcal{F}
+$$
+
+is symmetric. Combined with $A_{\text{FP}} = A_{\text{HJB}}^\top$, this gives the Jacobian a **saddle-point structure**:
+
+$$
+J \approx \begin{pmatrix}
+A & -B^\top \\
+B & A^\top
+\end{pmatrix}
+$$
+
+where the off-diagonal blocks are related by transposition (up to lower-order terms from the $\mathbf{m}$-dependence of $A_{\text{FP}}$).
+
+This structure is essential for:
+- Proving non-singularity of $J$
+- Designing efficient preconditioners
+- Ensuring quadratic convergence of Newton's method
+
+---
+
+## 12. Extension to Multiple Dimensions
+
+### 12.1 Tensor Product Grids
+
+On a $d$-dimensional grid, the HJB operator becomes:
+
+$$
+(A_{\text{HJB}})_{\mathbf{i}, \mathbf{j}} = \begin{cases}
+\sum_{k=1}^d \left( \frac{2\nu}{h_k^2} + \frac{a_{\mathbf{i}}^{k,-} + a_{\mathbf{i}}^{k,+}}{h_k} \right) & \text{if } \mathbf{j} = \mathbf{i} \\[6pt]
+-\frac{\nu}{h_k^2} - \frac{a_{\mathbf{i}}^{k,-}}{h_k} & \text{if } \mathbf{j} = \mathbf{i} - \mathbf{e}_k \\[6pt]
+-\frac{\nu}{h_k^2} - \frac{a_{\mathbf{i}}^{k,+}}{h_k} & \text{if } \mathbf{j} = \mathbf{i} + \mathbf{e}_k \\[6pt]
+0 & \text{otherwise}
+\end{cases}
+$$
+
+where $\mathbf{e}_k$ is the $k$-th unit vector and:
+
+$$
+a_{\mathbf{i}}^{k,\pm} = \pm \frac{\partial \mathcal{H}}{\partial p_k^\pm}(\mathbf{x}_{\mathbf{i}}, D^- \mathbf{u}_{\mathbf{i}}, D^+ \mathbf{u}_{\mathbf{i}})
+$$
+
+### 12.2 Dimensional Splitting for Hamiltonians
+
+For separable Hamiltonians $H(\mathbf{x}, \mathbf{p}) = \sum_{k=1}^d H_k(x_k, p_k)$:
+
+$$
+\mathcal{H}(\mathbf{x}, \mathbf{p}^-, \mathbf{p}^+) = \sum_{k=1}^d \mathcal{H}_k(x_k, p_k^-, p_k^+)
+$$
+
+The adjoint construction applies dimension-by-dimension.
+
+---
+
+## 13. Time-Dependent Problems
+
+### 13.1 Parabolic MFG System
+
+$$
+\begin{cases}
+-\partial_t u - \nu \Delta u + H(x, \nabla u) = F[m] & \text{(HJB, backward)} \\
+\partial_t m - \nu \Delta m - \nabla \cdot (m \nabla_p H) = 0 & \text{(FP, forward)}
+\end{cases}
+$$
+
+with terminal condition $u(T, x) = G[m(T, \cdot)](x)$ and initial condition $m(0, x) = m_0(x)$.
+
+### 13.2 Implicit-Explicit Time Stepping
+
+**HJB (backward in time):**
+$$
+\frac{u^n - u^{n+1}}{\Delta t} - \nu D^2 u^n + \mathcal{H}(u^n) = F[m^n]
+$$
+
+**FP (forward in time):**
+$$
+\frac{m^{n+1} - m^n}{\Delta t} + A_{\text{FP}}(u^n) m^{n+1} = 0
+$$
+
+The adjoint relationship $A_{\text{FP}} = A_{\text{HJB}}^\top$ must hold **at each time step** with the same linearization point.
+
+---
+
+# References
+
+1. Achdou, Y., & Capuzzo-Dolcetta, I. (2010). *Mean field games: numerical methods*. SIAM Journal on Numerical Analysis, 48(3), 1136-1162. [DOI](https://doi.org/10.1137/090758477)
+
+2. Achdou, Y., & Laurière, M. (2020). *Mean field games and applications: numerical aspects*. EMS Surveys in Mathematical Sciences, 7(1), 1-120. [arXiv:2003.04444](https://arxiv.org/abs/2003.04444)
+
+3. Achdou, Y., & Porretta, A. (2018). *Mean field games with congestion*. Journal de Mathématiques Pures et Appliquées, 114, 156-212.
+
+4. Achdou, Y. (2013). *Finite difference methods for mean field games*. In: Hamilton-Jacobi Equations: Approximations, Numerical Analysis and Applications. Lecture Notes in Mathematics, vol 2074. Springer. [DOI](https://doi.org/10.1007/978-3-642-36433-4_1)
+
+5. Achdou, Y., Camilli, F., & Capuzzo-Dolcetta, I. (2012). *Mean field games: convergence of a finite difference method*. SIAM Journal on Numerical Analysis, 51(5), 2585-2612. [arXiv:1207.2982](https://arxiv.org/abs/1207.2982)
+
+6. Carlini, E., & Silva, F. J. (2014). *A fully discrete semi-Lagrangian scheme for a first order mean field game problem*. SIAM Journal on Numerical Analysis, 52(1), 45-67.
+
+7. Benamou, J. D., & Carlier, G. (2015). *Augmented Lagrangian methods for transport optimization, mean field games and degenerate elliptic equations*. Journal of Optimization Theory and Applications, 167(1), 1-26.
 
 ---
 
 **Document Info**
-- **Last Updated:** 2025-12
+- **Last Updated:** 2026-01
 - **Related Files:** `fp_fdm.py`, `hjb_fdm.py`, `advection_discretization_methods.md`
+- **Related Issues:** Issue #706 (Deprecation), Issue #707 (True Adjoint Implementation)
 - **Author:** MFG_PDE Development Team

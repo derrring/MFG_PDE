@@ -20,13 +20,18 @@ References:
 - TECHNICAL_REFERENCE_HIGH_DIMENSIONAL_MFG.md Section 4.1
 """
 
+from __future__ import annotations
+
 import warnings
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 
 from .implicit_domain import ImplicitDomain
+
+if TYPE_CHECKING:
+    from mfg_pde.geometry.collocation import CollocationPointSet
 
 
 class Hyperrectangle(ImplicitDomain):
@@ -55,12 +60,19 @@ class Hyperrectangle(ImplicitDomain):
         >>> assert particles.shape == (10000, 4)
     """
 
-    def __init__(self, bounds: NDArray[np.float64]) -> None:
+    def __init__(
+        self,
+        bounds: NDArray[np.float64],
+        periodic_dims: tuple[int, ...] | None = None,
+    ) -> None:
         """
         Initialize hyperrectangle domain.
 
         Args:
             bounds: Array of shape (d, 2) where bounds[i] = [min_i, max_i]
+            periodic_dims: Dimensions with periodic topology (for torus).
+                E.g., (0, 1) for 2D torus, None for bounded domain.
+                Issue #711: Periodic support for GFDM.
 
         Raises:
             ValueError: If bounds are invalid (min >= max)
@@ -68,6 +80,9 @@ class Hyperrectangle(ImplicitDomain):
         Example:
             >>> # 2D rectangle [0,2] × [0,1]
             >>> domain = Hyperrectangle(np.array([[0, 2], [0, 1]]))
+
+            >>> # 2D torus (periodic in both dimensions)
+            >>> torus = Hyperrectangle(np.array([[0, 1], [0, 1]]), periodic_dims=(0, 1))
 
             >>> # 3D box [-1,1]³
             >>> domain_3d = Hyperrectangle(np.array([[-1, 1]] * 3))
@@ -82,11 +97,107 @@ class Hyperrectangle(ImplicitDomain):
 
         self.bounds = bounds
         self._dimension = bounds.shape[0]
+        self._periodic_dims = tuple(periodic_dims) if periodic_dims else ()
 
     @property
     def dimension(self) -> int:
         """Spatial dimension of the hyperrectangle."""
         return self._dimension
+
+    # =========================================================================
+    # SupportsPeriodic Protocol Implementation (Issue #711)
+    # =========================================================================
+
+    @property
+    def periodic_dimensions(self) -> tuple[int, ...]:
+        """Get dimensions with periodic topology."""
+        return self._periodic_dims
+
+    def get_periods(self) -> dict[int, float]:
+        """Get period lengths for periodic dimensions."""
+        return {dim: self.bounds[dim, 1] - self.bounds[dim, 0] for dim in self._periodic_dims}
+
+    def wrap_coordinates(self, points: NDArray) -> NDArray:
+        """
+        Wrap coordinates to canonical fundamental domain.
+
+        Delegates to canonical wrap_positions() utility (DRY principle).
+        Only wraps periodic dimensions, non-periodic dims unchanged.
+
+        Args:
+            points: Points to wrap, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Wrapped coordinates in [xmin, xmax), same shape as input
+        """
+        if not self._periodic_dims:
+            return points
+
+        # Delegate to canonical utility (Issue #711: DRY)
+        # Use boundary.periodic (parallel to enforcement.py for DIRICHLET/NEUMANN)
+        from mfg_pde.geometry.boundary.periodic import wrap_positions
+
+        bounds_list = [(self.bounds[d, 0], self.bounds[d, 1]) for d in range(self._dimension)]
+        return wrap_positions(points, bounds_list, periodic_dims=self._periodic_dims)
+
+    def compute_periodic_distance(
+        self,
+        points1: NDArray,
+        points2: NDArray,
+    ) -> NDArray:
+        """
+        Compute distance accounting for periodic topology.
+
+        For periodic dim i: d_i = min(|Δx_i|, L_i - |Δx_i|)
+        Total distance: d = sqrt(∑ d_i²)
+        """
+        if not self._periodic_dims:
+            diff = points1 - points2
+            return np.linalg.norm(diff, axis=-1)
+
+        single_point = points1.ndim == 1
+        if single_point:
+            points1 = points1.reshape(1, -1)
+            points2 = points2.reshape(1, -1)
+
+        diff = points1 - points2
+        diff_squared = diff**2
+
+        for dim_idx in self._periodic_dims:
+            L = self.bounds[dim_idx, 1] - self.bounds[dim_idx, 0]
+            abs_diff = np.abs(diff[:, dim_idx])
+            wrapped_diff = np.minimum(abs_diff, L - abs_diff)
+            diff_squared[:, dim_idx] = wrapped_diff**2
+
+        distances = np.sqrt(np.sum(diff_squared, axis=1))
+        return distances[0] if single_point else distances
+
+    def wrap_displacement(self, delta: NDArray) -> NDArray:
+        """
+        Wrap displacement vector to [-L/2, L/2] for periodic dimensions.
+
+        For periodic dimension i:
+            delta_wrapped[i] = delta[i] - L[i] * round(delta[i] / L[i])
+
+        Args:
+            delta: Displacement vectors, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Wrapped displacement in [-L/2, L/2], same shape as input
+        """
+        if not self._periodic_dims:
+            return delta
+
+        single_point = delta.ndim == 1
+        if single_point:
+            delta = delta.reshape(1, -1)
+
+        wrapped = delta.copy()
+        for dim_idx in self._periodic_dims:
+            L = self.bounds[dim_idx, 1] - self.bounds[dim_idx, 0]
+            wrapped[:, dim_idx] = wrapped[:, dim_idx] - L * np.round(wrapped[:, dim_idx] / L)
+
+        return wrapped[0] if single_point else wrapped
 
     def signed_distance(self, x: NDArray[np.float64]) -> float | NDArray[np.float64]:
         """
@@ -324,6 +435,157 @@ class Hyperrectangle(ImplicitDomain):
             vertices.append(vertex)
 
         return np.array(vertices)
+
+    # =========================================================================
+    # GFDM/Meshfree Convenience Methods
+    # =========================================================================
+
+    def get_collocation_points(
+        self,
+        n_interior: int,
+        n_boundary: int = 0,
+        method: Literal["lloyd", "sobol", "poisson_disk", "uniform"] = "lloyd",
+        seed: int | None = None,
+        min_separation: float | None = None,
+        boundary_margin: float | None = None,
+        max_fill_distance: float | None = None,
+        target_mesh_ratio: float | Literal["optimal"] | None = None,
+    ) -> CollocationPointSet:
+        """
+        Generate collocation points for meshfree methods (GFDM, RBF, etc.).
+
+        This is a convenience wrapper around CollocationSampler that provides
+        a unified interface for generating well-distributed points in the domain.
+
+        **Mesh Quality Control - Two Approaches:**
+
+        1. **Fixed N (for EOC studies)**: Use `target_mesh_ratio` to optimize
+           point distribution while keeping N = n_interior + n_boundary exact.
+
+        2. **Hard constraints (N may vary)**: Use `min_separation` and/or
+           `max_fill_distance` to enforce absolute bounds on h and q.
+
+        Args:
+            n_interior: Number of interior collocation points
+            n_boundary: Number of boundary collocation points (0 for interior only)
+            method: Sampling method:
+                - "lloyd" (default): CVT/Lloyd relaxation for quasi-uniform points
+                - "sobol": Quasi-random low-discrepancy sequence
+                - "poisson_disk": Blue noise with minimum spacing
+                - "uniform": Pure random sampling
+            seed: Random seed for reproducibility
+            min_separation: (May change N) Minimum distance between points.
+                Points closer than this are removed.
+            boundary_margin: Minimum distance from interior to boundary.
+                Defaults to min_separation if not specified.
+            max_fill_distance: (May change N) Maximum fill distance.
+                Points are added in sparse regions to achieve this.
+            target_mesh_ratio: (Preserves N) Target mesh ratio h/q. Can be:
+                - float (e.g., 5.0): Stop when h/q <= target
+                - 'optimal': Auto-converge until plateau or h/q < 2.0
+                Optimizes distribution via Lloyd relaxation. RECOMMENDED for EOC.
+
+        Returns:
+            CollocationPointSet with points, boundary_indices, normals, is_boundary
+
+        Example:
+            >>> domain = Hyperrectangle(np.array([[0, 1], [0, 1]]))
+            >>>
+            >>> # For EOC studies: auto-optimize mesh quality (recommended)
+            >>> coll = domain.get_collocation_points(
+            ...     n_interior=64, n_boundary=32,
+            ...     target_mesh_ratio='optimal',  # Auto-converge to best h/q
+            ... )
+            >>> assert len(coll.points) == 96  # N preserved
+            >>>
+            >>> # For adaptive refinement: hard constraints, N may vary
+            >>> coll = domain.get_collocation_points(
+            ...     n_interior=64, n_boundary=32,
+            ...     min_separation=0.05,
+            ...     max_fill_distance=0.15,
+            ... )
+
+        See Also:
+            - mfg_pde.utils.numerical.compute_mesh_distances for quality verification
+        """
+        from mfg_pde.geometry.collocation import CollocationSampler
+
+        sampler = CollocationSampler(self)
+        return sampler.generate_collocation(
+            n_interior=n_interior,
+            n_boundary=n_boundary,
+            interior_method=method,
+            seed=seed,
+            min_separation=min_separation,
+            boundary_margin=boundary_margin,
+            max_fill_distance=max_fill_distance,
+            target_mesh_ratio=target_mesh_ratio,
+        )
+
+    def get_boundary_indices(
+        self,
+        points: NDArray[np.float64],
+        tolerance: float = 1e-6,
+    ) -> NDArray[np.int64]:
+        """
+        Get indices of points that lie on the domain boundary.
+
+        Convenience method for GFDM solvers that need boundary point indices
+        for applying boundary conditions.
+
+        Args:
+            points: Array of points, shape (N, d)
+            tolerance: Distance threshold for boundary detection
+
+        Returns:
+            Array of indices where |signed_distance| < tolerance
+
+        Example:
+            >>> domain = Hyperrectangle(np.array([[0, 1], [0, 1]]))
+            >>> points = np.array([[0.5, 0.5], [0.0, 0.5], [1.0, 1.0]])
+            >>> boundary_idx = domain.get_boundary_indices(points)
+            >>> # boundary_idx = [1, 2] (points on edges/corners)
+        """
+        sdf = self.signed_distance(points)
+        return np.where(np.abs(sdf) < tolerance)[0].astype(np.int64)
+
+    def get_boundary_normals(
+        self,
+        points: NDArray[np.float64],
+        eps: float = 1e-6,
+    ) -> NDArray[np.float64]:
+        """
+        Compute outward unit normals at boundary points.
+
+        For axis-aligned hyperrectangles, normals are exactly ±1 along
+        coordinate axes. This method uses the SDF gradient for generality.
+
+        Args:
+            points: Boundary points, shape (N, d)
+            eps: Finite difference step for gradient computation
+
+        Returns:
+            Outward unit normals, shape (N, d)
+
+        Note:
+            For points not exactly on the boundary, returns the gradient
+            of the signed distance function (points toward boundary).
+        """
+        # Numerical gradient of SDF
+        N, d = points.shape
+        grad = np.zeros((N, d))
+
+        for dim in range(d):
+            shift = np.zeros(d)
+            shift[dim] = eps
+            sdf_plus = self.signed_distance(points + shift)
+            sdf_minus = self.signed_distance(points - shift)
+            grad[:, dim] = (sdf_plus - sdf_minus) / (2 * eps)
+
+        # Normalize
+        norms = np.linalg.norm(grad, axis=1, keepdims=True)
+        norms = np.maximum(norms, 1e-12)
+        return grad / norms
 
     def __repr__(self) -> str:
         """String representation."""

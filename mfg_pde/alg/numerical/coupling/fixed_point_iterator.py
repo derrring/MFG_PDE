@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.solver_result import SolverResult
 
 from .base_mfg import BaseMFGSolver
@@ -25,6 +26,8 @@ from .fixed_point_utils import (
     preserve_initial_condition,
     preserve_terminal_condition,
 )
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
@@ -76,11 +79,6 @@ class FixedPointIterator(BaseMFGSolver):
             - None: Use MFG drift (default, drift from U)
             - ndarray: Precomputed drift field
             - Callable: State-dependent drift α(t, x, m) -> ndarray
-        strict_adjoint: Enable strict Achdou adjoint mode (Issue #622).
-            When True, the FP solver uses A_hjb^T (transpose of HJB advection matrix)
-            instead of building its own advection discretization. This guarantees
-            exact adjoint consistency: L_FP = L_HJB^T, ensuring mass conservation.
-            Requires solvers with build_advection_matrix() and solve_fp_step_adjoint_mode().
     """
 
     def __init__(
@@ -96,7 +94,6 @@ class FixedPointIterator(BaseMFGSolver):
         backend: str | None = None,
         diffusion_field: float | np.ndarray | Any | None = None,  # Phase 2.3
         drift_field: np.ndarray | Any | None = None,  # Phase 2.3
-        strict_adjoint: bool = False,  # Issue #622: Strict Achdou adjoint mode
     ):
         super().__init__(problem)
         self.backend = backend
@@ -107,12 +104,6 @@ class FixedPointIterator(BaseMFGSolver):
         # PDE coefficient overrides (Phase 2.3)
         self.diffusion_field = diffusion_field
         self.drift_field = drift_field
-
-        # Issue #622: Strict Achdou adjoint mode
-        # When True, FP uses A_hjb^T instead of building its own advection matrix
-        self.strict_adjoint = strict_adjoint
-        if strict_adjoint:
-            self._validate_strict_adjoint_capability()
 
         # Anderson acceleration support
         self.use_anderson = use_anderson
@@ -168,98 +159,6 @@ class FixedPointIterator(BaseMFGSolver):
         except AttributeError:
             # Solver doesn't have solve_fp_system method
             self._fp_sig_params = None
-
-    def _validate_strict_adjoint_capability(self) -> None:
-        """
-        Validate that solvers support strict adjoint mode (Issue #622).
-
-        Checks:
-        1. HJB solver has build_advection_matrix() method
-        2. FP solver has solve_fp_step_adjoint_mode() method
-
-        Raises:
-            TypeError: If solvers don't support strict adjoint mode
-        """
-        # Check HJB solver has build_advection_matrix
-        if not callable(getattr(self.hjb_solver, "build_advection_matrix", None)):
-            raise TypeError(
-                f"strict_adjoint=True requires HJB solver with build_advection_matrix() method. "
-                f"{type(self.hjb_solver).__name__} does not support this. "
-                f"Use HJBFDMSolver for strict adjoint mode."
-            )
-
-        # Check FP solver has solve_fp_step_adjoint_mode
-        if not callable(getattr(self.fp_solver, "solve_fp_step_adjoint_mode", None)):
-            raise TypeError(
-                f"strict_adjoint=True requires FP solver with solve_fp_step_adjoint_mode() method. "
-                f"{type(self.fp_solver).__name__} does not support this. "
-                f"Use FPFDMSolver for strict adjoint mode."
-            )
-
-    def _solve_fp_strict_adjoint(
-        self,
-        M_initial: np.ndarray,
-        U_new: np.ndarray,
-        num_time_steps: int,
-        progress_callback: Callable[[int], None] | None = None,
-    ) -> np.ndarray:
-        """
-        Solve FP forward using strict adjoint mode (Issue #622).
-
-        Instead of FP building its own advection matrix, this method:
-        1. Uses HJB's build_advection_matrix() at each timestep
-        2. Passes the TRANSPOSED matrix to FP's solve_fp_step_adjoint_mode()
-        3. Guarantees exact adjoint consistency: L_FP = L_HJB^T
-
-        This ensures mass conservation is exactly dual to HJB's gradient computation,
-        following the Achdou et al. (2010) adjoint structure.
-
-        Args:
-            M_initial: Initial density at t=0
-            U_new: Full value function trajectory from HJB solver, shape (Nt+1, *spatial_shape)
-            num_time_steps: Number of time points (including t=0)
-            progress_callback: Optional callback for progress updates
-
-        Returns:
-            M_solution: Full density trajectory, shape (Nt+1, *spatial_shape)
-        """
-        # Get spatial shape from U
-        spatial_shape = U_new.shape[1:]
-
-        # Initialize solution array
-        M_solution = np.zeros((num_time_steps, *spatial_shape))
-        M_solution[0] = M_initial
-
-        # Get diffusion coefficient
-        sigma = self.diffusion_field if self.diffusion_field is not None else self.problem.sigma
-
-        # Forward time loop: solve each timestep using matrix from HJB
-        for k in range(num_time_steps - 1):
-            # Get U at current timestep for advection matrix
-            U_k = U_new[k]
-
-            # Build advection matrix from HJB (using U_k)
-            A_hjb = self.hjb_solver.build_advection_matrix(U_k)
-
-            # Get transpose for FP (strict adjoint: L_FP = L_HJB^T)
-            A_hjb_T = A_hjb.T.tocsr()
-
-            # Solve single FP timestep with provided matrix
-            M_current = M_solution[k]
-            M_next = self.fp_solver.solve_fp_step_adjoint_mode(
-                M_current,
-                A_hjb_T,
-                sigma=sigma,
-                time=k * self.problem.dt,
-            )
-
-            M_solution[k + 1] = M_next
-
-            # Report progress
-            if progress_callback is not None:
-                progress_callback(1)
-
-        return M_solution
 
     def _get_initial_and_terminal_conditions(self, shape: tuple) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -519,13 +418,8 @@ class FixedPointIterator(BaseMFGSolver):
 
                 # 2. Solve FP forward with new U (transient subtask)
                 # Issue #614: Use hierarchical subtask for inner solver visibility
-                # Issue #622: Strict adjoint mode uses matrix-based FP solve
                 with progress.subtask("FP", total=num_time_steps) as fp_subtask:
-                    if self.strict_adjoint:
-                        # Issue #622: Strict Achdou adjoint mode
-                        # FP uses A_hjb^T for exact adjoint consistency
-                        M_new = self._solve_fp_strict_adjoint(M_initial, U_new, num_time_steps, fp_subtask.advance)
-                    elif self._fp_sig_params is not None:
+                    if self._fp_sig_params is not None:
                         # Standard mode: FP builds its own matrix
                         # Issue #543 Phase 2: Use cached signature instead of hasattr
                         # Method exists and signature is cached
@@ -638,6 +532,14 @@ class FixedPointIterator(BaseMFGSolver):
                 if converged:
                     break
 
+        # Build metadata
+        metadata = {
+            "convergence_reason": convergence_reason,
+            "l2distu_rel": self.l2distu_rel[: self.iterations_run],
+            "l2distm_rel": self.l2distm_rel[: self.iterations_run],
+            "anderson_used": self.use_anderson,
+        }
+
         # Construct result
         result = SolverResult(
             U=self.U,
@@ -647,12 +549,7 @@ class FixedPointIterator(BaseMFGSolver):
             error_history_M=self.l2distm_abs[: self.iterations_run],
             solver_name=self.name,
             converged=converged,
-            metadata={
-                "convergence_reason": convergence_reason,
-                "l2distu_rel": self.l2distu_rel[: self.iterations_run],
-                "l2distm_rel": self.l2distm_rel[: self.iterations_run],
-                "anderson_used": self.use_anderson,
-            },
+            metadata=metadata,
         )
 
         # Return tuple for backward compatibility if requested

@@ -17,6 +17,7 @@ Organization:
 - mcmc: MCMC samplers (Metropolis-Hastings, HMC, NUTS, Langevin)
 - interpolation: Particle-grid conversion utilities
 - boundary: Particle boundary condition application
+- kde_boundary: Boundary-corrected KDE for density estimation (Issue #709)
 
 Typical Usage:
     from mfg_pde.utils.numerical.particle import (
@@ -58,6 +59,20 @@ from mfg_pde.utils.numerical.particle.boundary import (
     apply_boundary_conditions_numpy,
 )
 
+# Boundary-corrected KDE (Issue #709)
+from mfg_pde.utils.numerical.particle.kde_boundary import (
+    # Unified API
+    create_ghost_particles,
+    reflection_kde,
+    renormalization_kde,
+    beta_kde,
+    # Legacy aliases
+    create_ghost_particles_1d,
+    create_ghost_particles_nd,
+    reflection_kde_1d,
+    reflection_kde_nd,
+)
+
 # Interpolation
 from mfg_pde.utils.numerical.particle.interpolation import (
     estimate_kde_bandwidth,
@@ -96,6 +111,7 @@ from mfg_pde.utils.numerical.particle.sampling import (
     integrate_gaussian_quadrature_mc,
     monte_carlo_integrate,
     sample_from_density,
+    sample_from_scattered_density,
 )
 
 __all__ = [
@@ -115,6 +131,16 @@ __all__ = [
     # Boundary conditions
     "apply_boundary_conditions_gpu",
     "apply_boundary_conditions_numpy",
+    # Boundary-corrected KDE (Issue #709)
+    "create_ghost_particles",
+    "reflection_kde",
+    "renormalization_kde",
+    "beta_kde",
+    # Legacy aliases
+    "create_ghost_particles_1d",
+    "create_ghost_particles_nd",
+    "reflection_kde_1d",
+    "reflection_kde_nd",
     # Monte Carlo
     "MCConfig",
     "MCResult",
@@ -130,6 +156,7 @@ __all__ = [
     "integrate_gaussian_quadrature_mc",
     "estimate_expectation",
     "sample_from_density",
+    "sample_from_scattered_density",
     # MCMC
     "MCMCConfig",
     "MCMCResult",

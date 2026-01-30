@@ -47,7 +47,7 @@ def _get_axis_prefix(dim_idx: int) -> str:
 
 
 def get_topology_per_dimension(
-    boundary_conditions: BoundaryConditions | None,
+    boundary_conditions: BoundaryConditions | str | None,
     dimension: int,
 ) -> list[str]:
     """
@@ -64,8 +64,9 @@ def get_topology_per_dimension(
 
     Parameters
     ----------
-    boundary_conditions : BoundaryConditions or None
-        Boundary condition specification
+    boundary_conditions : BoundaryConditions or str or None
+        Boundary condition specification. Can also be "periodic" string sentinel
+        for fully periodic implicit geometry (e.g., Hyperrectangle torus).
     dimension : int
         Number of spatial dimensions
 
@@ -79,12 +80,17 @@ def get_topology_per_dimension(
     >>> from mfg_pde.geometry.boundary import periodic_bc, neumann_bc
     >>> get_topology_per_dimension(periodic_bc(1), 1)  # ["periodic"]
     >>> get_topology_per_dimension(neumann_bc(2), 2)   # ["bounded", "bounded"]
+    >>> get_topology_per_dimension("periodic", 2)       # ["periodic", "periodic"]
     """
     # Default to bounded (reflecting walls) for all dimensions
     topologies = ["bounded"] * dimension
 
     if boundary_conditions is None:
         return topologies
+
+    # Handle "periodic" string sentinel (for implicit geometry with periodic_dims)
+    if boundary_conditions == "periodic":
+        return ["periodic"] * dimension
 
     bc = boundary_conditions
 
@@ -121,7 +127,7 @@ def get_topology_per_dimension(
     return topologies
 
 
-def needs_segment_aware_bc(boundary_conditions: BoundaryConditions | None) -> bool:
+def needs_segment_aware_bc(boundary_conditions: BoundaryConditions | str | None) -> bool:
     """
     Check if boundary conditions require segment-aware handling.
 
@@ -133,8 +139,9 @@ def needs_segment_aware_bc(boundary_conditions: BoundaryConditions | None) -> bo
 
     Parameters
     ----------
-    boundary_conditions : BoundaryConditions or None
-        Boundary condition specification
+    boundary_conditions : BoundaryConditions or str or None
+        Boundary condition specification. Can also be "periodic" string sentinel
+        for fully periodic implicit geometry.
 
     Returns
     -------
@@ -145,8 +152,13 @@ def needs_segment_aware_bc(boundary_conditions: BoundaryConditions | None) -> bo
     --------
     >>> needs_segment_aware_bc(periodic_bc(1))  # False (uniform)
     >>> needs_segment_aware_bc(mixed_bc_with_exit)  # True (has DIRICHLET)
+    >>> needs_segment_aware_bc("periodic")  # False (uniform periodic)
     """
     if boundary_conditions is None:
+        return False
+
+    # "periodic" string sentinel = uniform periodic, no segment-aware needed
+    if boundary_conditions == "periodic":
         return False
 
     bc = boundary_conditions

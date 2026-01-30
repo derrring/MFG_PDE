@@ -1,0 +1,207 @@
+"""
+Compute mesh quality metrics for GFDM EOC analysis.
+
+For meshfree methods, the key distances are:
+1. Fill distance h: max distance from any point to nearest collocation point
+2. Separation distance q: min distance between collocation points
+3. Mesh ratio h/q: should be O(1) for quasi-uniform distributions
+
+Reference:
+- Wendland, H. "Scattered Data Approximation" (2005), Chapter 14
+- Fasshauer, G. "Meshfree Approximation Methods with MATLAB" (2007)
+"""
+
+import numpy as np
+from scipy.spatial import cKDTree
+from typing import NamedTuple
+
+
+class MeshDistances(NamedTuple):
+    """Container for mesh distance metrics."""
+
+    fill_distance: float  # h = max min distance
+    separation_distance: float  # q = min distance between points
+    mesh_ratio: float  # h/q (ideally O(1))
+    mean_nearest_neighbor: float  # average NN distance
+    std_nearest_neighbor: float  # std of NN distances
+
+    def summary(self) -> str:
+        return (
+            f"Mesh Distances:\n"
+            f"  Fill distance h = {self.fill_distance:.6f}\n"
+            f"  Separation q    = {self.separation_distance:.6f}\n"
+            f"  Mesh ratio h/q  = {self.mesh_ratio:.2f}\n"
+            f"  Mean NN dist    = {self.mean_nearest_neighbor:.6f}\n"
+            f"  Std NN dist     = {self.std_nearest_neighbor:.6f}"
+        )
+
+
+def compute_mesh_distances(
+    collocation_points: np.ndarray,
+    domain_bounds: list[tuple[float, float]],
+    n_test_points: int = 10000,
+    seed: int = 42,
+) -> MeshDistances:
+    """
+    Compute mesh quality distances for EOC analysis.
+
+    Args:
+        collocation_points: (N, d) array of collocation point coordinates
+        domain_bounds: List of (min, max) for each dimension
+        n_test_points: Number of random test points for fill distance estimation
+        seed: Random seed for test point generation
+
+    Returns:
+        MeshDistances namedtuple with all metrics
+
+    Example:
+        >>> points = np.random.rand(100, 2)  # 100 points in [0,1]²
+        >>> bounds = [(0, 1), (0, 1)]
+        >>> distances = compute_mesh_distances(points, bounds)
+        >>> print(distances.summary())
+    """
+    N, d = collocation_points.shape
+
+    # Build KD-tree for efficient nearest neighbor queries
+    tree = cKDTree(collocation_points)
+
+    # 1. Separation distance: min distance between any two points
+    # For each point, find distance to 2nd nearest neighbor (1st is itself)
+    distances_to_nn, _ = tree.query(collocation_points, k=2)
+    nn_distances = distances_to_nn[:, 1]  # Skip self (distance 0)
+
+    separation_distance = np.min(nn_distances)
+    mean_nn = np.mean(nn_distances)
+    std_nn = np.std(nn_distances)
+
+    # 2. Fill distance: max distance from any point in domain to nearest collocation point
+    # Estimated via Monte Carlo sampling
+    rng = np.random.RandomState(seed)
+    test_points = np.zeros((n_test_points, d))
+    for i, (lo, hi) in enumerate(domain_bounds):
+        test_points[:, i] = rng.uniform(lo, hi, n_test_points)
+
+    distances_to_nearest, _ = tree.query(test_points, k=1)
+    fill_distance = np.max(distances_to_nearest)
+
+    # 3. Mesh ratio
+    mesh_ratio = fill_distance / separation_distance
+
+    return MeshDistances(
+        fill_distance=fill_distance,
+        separation_distance=separation_distance,
+        mesh_ratio=mesh_ratio,
+        mean_nearest_neighbor=mean_nn,
+        std_nearest_neighbor=std_nn,
+    )
+
+
+def compute_distances_for_eoc_study(
+    resolutions: list[int],
+    domain_L: float = 1.0,
+    sampling_method: str = "grid",
+    seed: int = 42,
+) -> dict[int, MeshDistances]:
+    """
+    Compute mesh distances for EOC convergence study.
+
+    Args:
+        resolutions: List of N_x values (grid points per dimension)
+        domain_L: Domain size [0, L]^2
+        sampling_method: "grid" for structured, "lloyd" for meshfree
+        seed: Random seed
+
+    Returns:
+        Dict mapping resolution to MeshDistances
+
+    Example:
+        >>> results = compute_distances_for_eoc_study([10, 20, 40])
+        >>> for n, dist in results.items():
+        ...     print(f"N={n}x{n}: h={dist.fill_distance:.4f}, q={dist.separation_distance:.4f}")
+    """
+    results = {}
+    domain_bounds = [(0, domain_L), (0, domain_L)]
+
+    for Nx in resolutions:
+        if sampling_method == "grid":
+            # Structured grid
+            x = np.linspace(0, domain_L, Nx)
+            y = np.linspace(0, domain_L, Nx)
+            X, Y = np.meshgrid(x, y, indexing="ij")
+            points = np.column_stack([X.ravel(), Y.ravel()])
+        else:
+            # Meshfree (Lloyd)
+            from mfg_pde.geometry.implicit import Hyperrectangle
+
+            domain = Hyperrectangle(bounds=np.array([[0, domain_L], [0, domain_L]]))
+            n_total = Nx * Nx
+            n_boundary = 4 * (Nx - 1)  # Approximate
+            n_interior = n_total - n_boundary
+            coll = domain.get_collocation_points(
+                n_interior=n_interior,
+                n_boundary=n_boundary,
+                method="lloyd",
+                seed=seed,
+            )
+            points = coll.points
+
+        distances = compute_mesh_distances(points, domain_bounds)
+        results[Nx] = distances
+
+    return results
+
+
+# =============================================================================
+# SMOKE TEST / EXAMPLE
+# =============================================================================
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("Mesh Distance Computation for EOC Analysis")
+    print("=" * 60)
+
+    # Example 1: Structured grid
+    print("\n1. Structured Grid (10x10)")
+    x = np.linspace(0, 1, 10)
+    X, Y = np.meshgrid(x, x, indexing="ij")
+    grid_points = np.column_stack([X.ravel(), Y.ravel()])
+
+    dist_grid = compute_mesh_distances(grid_points, [(0, 1), (0, 1)])
+    print(dist_grid.summary())
+
+    # Example 2: Random points
+    print("\n2. Random Points (100 points)")
+    random_points = np.random.rand(100, 2)
+    dist_random = compute_mesh_distances(random_points, [(0, 1), (0, 1)])
+    print(dist_random.summary())
+
+    # Example 3: EOC study
+    print("\n3. EOC Study (Grid Refinement)")
+    print("-" * 60)
+    print(f"{'Nx':>6} {'N_total':>8} {'h':>10} {'q':>10} {'h/q':>8} {'h_ratio':>10}")
+    print("-" * 60)
+
+    resolutions = [5, 10, 20, 40]
+    results = compute_distances_for_eoc_study(resolutions)
+
+    prev_h = None
+    for Nx in resolutions:
+        dist = results[Nx]
+        N_total = Nx * Nx
+        h_ratio = prev_h / dist.fill_distance if prev_h else float("nan")
+        print(
+            f"{Nx:>6} {N_total:>8} {dist.fill_distance:>10.6f} {dist.separation_distance:>10.6f} "
+            f"{dist.mesh_ratio:>8.2f} {h_ratio:>10.2f}"
+        )
+        prev_h = dist.fill_distance
+
+    print("-" * 60)
+    print("Note: For uniform refinement, h_ratio should be ~2.0")
+    print("      Mesh ratio h/q should be ~O(1) for stable GFDM")
+
+    # Theoretical h for structured grid
+    print("\n4. Theoretical vs Computed Fill Distance")
+    for Nx in resolutions:
+        h_theory = np.sqrt(2) / (Nx - 1)  # Diagonal of grid cell
+        h_computed = results[Nx].fill_distance
+        print(f"  Nx={Nx}: h_theory={h_theory:.6f}, h_computed={h_computed:.6f}, ratio={h_computed / h_theory:.2f}")

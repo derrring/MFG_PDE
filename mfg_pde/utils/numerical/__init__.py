@@ -27,6 +27,13 @@ from mfg_pde.utils.numerical.flux_diagnostics import (
     FluxSummary,
     compute_mass_conservation_error,
 )
+
+# Mesh distance metrics for EOC analysis (GFDM)
+from mfg_pde.utils.numerical.mesh_distances import (
+    MeshDistances,
+    compute_mesh_distances,
+    compute_distances_for_eoc_study,
+)
 from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
 
 # GFDM Strategy Pattern (modular operators and BC handlers)
@@ -176,4 +183,8 @@ __all__ = [
     "BoundaryFluxResult",
     "FluxSummary",
     "compute_mass_conservation_error",
+    # Mesh distances (EOC analysis)
+    "MeshDistances",
+    "compute_mesh_distances",
+    "compute_distances_for_eoc_study",
 ]

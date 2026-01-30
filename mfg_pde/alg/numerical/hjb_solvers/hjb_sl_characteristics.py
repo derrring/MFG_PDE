@@ -172,11 +172,16 @@ def apply_boundary_conditions_1d(
     """
     Apply boundary conditions to ensure x is in valid domain (1D).
 
+    Issue #702: Support all BC types for adjoint consistency between HJB-SL and FP-SL.
+
     Args:
         x: Position to constrain
         xmin: Domain minimum
         xmax: Domain maximum
-        bc_type: Boundary condition type ('periodic' or None for clamping)
+        bc_type: Boundary condition type:
+            - 'periodic': Wrap around domain
+            - 'reflect' / 'no_flux' / 'neumann': Mirror about boundary (default for MFG)
+            - 'clamp' / 'dirichlet' / None: Clamp to boundary
 
     Returns:
         Position within domain bounds
@@ -189,7 +194,20 @@ def apply_boundary_conditions_1d(
             x -= length
         return x
 
-    # Default: clamp to domain
+    if bc_type in ("reflect", "no_flux", "neumann"):
+        # Mirror reflection about boundaries
+        # Handles multiple reflections for large displacements
+        for _ in range(10):  # Max 10 reflections
+            if x < xmin:
+                x = 2 * xmin - x
+            elif x > xmax:
+                x = 2 * xmax - x
+            else:
+                break
+        # Safety clamp after reflections
+        return float(np.clip(x, xmin, xmax))
+
+    # Default: clamp to domain (dirichlet / absorbing)
     return float(np.clip(x, xmin, xmax))
 
 
@@ -201,10 +219,15 @@ def apply_boundary_conditions_nd(
     """
     Apply boundary conditions to ensure x is in valid domain (nD).
 
+    Issue #702: Support all BC types for adjoint consistency between HJB-SL and FP-SL.
+
     Args:
         x: Position vector to constrain, shape (dimension,)
         bounds: List of (min, max) tuples for each dimension
-        bc_type: Boundary condition type ('periodic' or None for clamping)
+        bc_type: Boundary condition type:
+            - 'periodic': Wrap around domain
+            - 'reflect' / 'no_flux' / 'neumann': Mirror about boundary (default for MFG)
+            - 'clamp' / 'dirichlet' / None: Clamp to boundary
 
     Returns:
         Position within domain bounds, shape (dimension,)
@@ -220,7 +243,18 @@ def apply_boundary_conditions_nd(
                 x_bounded[d] += length
             while x_bounded[d] > xmax:
                 x_bounded[d] -= length
+        elif bc_type in ("reflect", "no_flux", "neumann"):
+            # Mirror reflection about boundaries
+            for _ in range(10):  # Max 10 reflections
+                if x_bounded[d] < xmin:
+                    x_bounded[d] = 2 * xmin - x_bounded[d]
+                elif x_bounded[d] > xmax:
+                    x_bounded[d] = 2 * xmax - x_bounded[d]
+                else:
+                    break
+            x_bounded[d] = np.clip(x_bounded[d], xmin, xmax)
         else:
+            # Default: clamp (dirichlet / absorbing)
             x_bounded[d] = np.clip(x_bounded[d], xmin, xmax)
 
     return x_bounded

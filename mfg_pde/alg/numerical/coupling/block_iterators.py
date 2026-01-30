@@ -89,6 +89,11 @@ class BlockIterator(BaseMFGSolver):
         damping_factor: Damping parameter in (0, 1] (default: 1.0 = no damping)
         diffusion_field: Optional diffusion override
         drift_field: Optional drift override for non-MFG problems
+        adjoint_mode: Adjoint enforcement mode (Issue #622, #704).
+            - "off": Independent matrix construction (default)
+            - "transpose": FP uses A_hjb^T directly (only valid for symmetric BCs)
+            - "auto": Detects BC types, uses transpose for symmetric, correction for Dirichlet
+        adjoint_verify: Enable runtime adjoint verification for debugging.
 
     Example:
         >>> # Block Gauss-Seidel (faster convergence)
@@ -110,6 +115,8 @@ class BlockIterator(BaseMFGSolver):
         damping_factor: float = 1.0,
         diffusion_field: float | NDArray | Any | None = None,
         drift_field: NDArray | Any | None = None,
+        adjoint_mode: str = "off",
+        adjoint_verify: bool = False,
     ):
         """Initialize block iterator."""
         super().__init__(problem)
@@ -129,6 +136,16 @@ class BlockIterator(BaseMFGSolver):
         self.diffusion_field = diffusion_field
         self.drift_field = drift_field
 
+        # Issue #622, #704: Adjoint mode
+        if adjoint_mode not in ("off", "transpose", "auto"):
+            raise ValueError(f"adjoint_mode must be 'off', 'transpose', or 'auto', got '{adjoint_mode}'")
+        self.adjoint_mode = adjoint_mode
+        self.adjoint_verify = adjoint_verify
+        self._adjoint_mismatch_count = 0
+
+        if adjoint_mode != "off":
+            self._validate_strict_adjoint_capability()
+
         # Solution state
         self.U: NDArray | None = None
         self.M: NDArray | None = None
@@ -146,6 +163,16 @@ class BlockIterator(BaseMFGSolver):
         # Cache initial/terminal conditions
         self._M_initial: NDArray | None = None
         self._U_terminal: NDArray | None = None
+
+    def _validate_strict_adjoint_capability(self) -> None:
+        """
+        Validate that solvers support strict adjoint mode (Issue #622, #704).
+
+        Uses protocol-based validation to ensure solvers implement required methods.
+        """
+        from mfg_pde.alg.numerical.adjoint import validate_adjoint_capability
+
+        validate_adjoint_capability(self.hjb_solver, self.fp_solver, strict=True)
 
     def _cache_solver_signatures(self) -> None:
         """Cache solver method signatures for parameter passing."""
@@ -212,6 +239,10 @@ class BlockIterator(BaseMFGSolver):
 
     def _solve_fp(self, M_initial: NDArray, U: NDArray) -> NDArray:
         """Solve FP equation with given value function."""
+        # Issue #622: Use adjoint mode if enabled
+        if self.adjoint_mode != "off":
+            return self._solve_fp_strict_adjoint(M_initial, U)
+
         kwargs: dict[str, Any] = {}
 
         if self._fp_sig_params is not None:
@@ -229,6 +260,118 @@ class BlockIterator(BaseMFGSolver):
                 return self.fp_solver.solve_fp_system(M_initial, effective_drift, **kwargs)
         else:
             return self.fp_solver.solve_fp_system(M_initial, U)
+
+    def _solve_fp_strict_adjoint(self, M_initial: NDArray, U: NDArray) -> NDArray:
+        """
+        Solve FP forward using adjoint mode (Issue #622, #704).
+
+        Args:
+            M_initial: Initial density at t=0
+            U: Full value function trajectory, shape (Nt+1, *spatial_shape)
+
+        Returns:
+            M_solution: Full density trajectory, shape (Nt+1, *spatial_shape)
+        """
+        num_time_steps = U.shape[0]
+        spatial_shape = U.shape[1:]
+
+        M_solution = np.zeros((num_time_steps, *spatial_shape))
+        M_solution[0] = M_initial
+
+        sigma = self.diffusion_field if self.diffusion_field is not None else self.problem.sigma
+
+        # Import utilities
+        if self.adjoint_verify:
+            from mfg_pde.alg.numerical.adjoint import check_operator_adjoint
+        if self.adjoint_mode == "auto":
+            from mfg_pde.alg.numerical.adjoint import build_bc_aware_adjoint_matrix
+
+        for k in range(num_time_steps - 1):
+            U_k = U[k]
+            A_hjb = self.hjb_solver.build_advection_matrix(U_k)
+
+            # Optional verification
+            if self.adjoint_verify:
+                fp_build_matrix = getattr(self.fp_solver, "_build_advection_matrix", None)
+                if callable(fp_build_matrix):
+                    A_fp_ind = fp_build_matrix(U_k)
+                    is_adj, error = check_operator_adjoint(A_hjb, A_fp_ind.T, rtol=1e-10)
+                    if not is_adj:
+                        self._adjoint_mismatch_count += 1
+                        if self._adjoint_mismatch_count <= 5:
+                            logger.warning(f"Adjoint mismatch at step {k}: error={error:.2e}")
+
+            # Build FP matrix based on mode
+            if self.adjoint_mode == "transpose":
+                A_fp = A_hjb.T.tocsr()
+            else:  # "auto"
+                bc_types = self._get_boundary_bc_types()
+                grid_shape = self.problem.geometry.get_grid_shape()
+                dx = self.problem.geometry.get_grid_spacing()
+                dt = self.problem.dt
+                A_fp = build_bc_aware_adjoint_matrix(A_hjb, bc_types, grid_shape, dx, dt)
+
+            M_current = M_solution[k]
+            M_next = self.fp_solver.solve_fp_step_adjoint_mode(M_current, A_fp, sigma=sigma, time=k * self.problem.dt)
+            M_solution[k + 1] = M_next
+
+        return M_solution
+
+    def _get_boundary_bc_types(self) -> dict[str, str]:
+        """Extract BC types from problem geometry."""
+        bc_types = {}
+        geometry = self.problem.geometry
+
+        try:
+            bc = geometry.boundary_conditions
+            if bc is not None:
+                for segment in getattr(bc, "segments", []):
+                    name = getattr(segment, "name", None)
+                    bc_type = getattr(segment, "bc_type", None)
+                    if name and bc_type:
+                        bc_types[name] = bc_type.value if hasattr(bc_type, "value") else str(bc_type)
+        except AttributeError:
+            pass
+
+        if not bc_types:
+            dim = geometry.dimension
+            for d in range(dim):
+                axis = ["x", "y", "z"][d] if dim <= 3 else f"x_{d + 1}"
+                bc_types[f"{axis}_min"] = "reflecting"
+                bc_types[f"{axis}_max"] = "reflecting"
+
+        return bc_types
+
+    def _generate_adjoint_report(self):
+        """
+        Generate comprehensive adjoint diagnostic report (Issue #704).
+
+        Returns:
+            AdjointDiagnosticReport if both solvers support matrix building,
+            None otherwise.
+        """
+        from mfg_pde.alg.numerical.adjoint import diagnose_adjoint_error
+
+        fp_build_matrix = getattr(self.fp_solver, "_build_advection_matrix", None)
+        if not callable(fp_build_matrix):
+            return None
+
+        if self.U is None or len(self.U) < 2:
+            return None
+
+        U_for_diagnosis = self.U[-2]
+
+        try:
+            A_hjb = self.hjb_solver.build_advection_matrix(U_for_diagnosis)
+            A_fp_ind = fp_build_matrix(U_for_diagnosis)
+
+            geometry = getattr(self.problem, "geometry", None)
+
+            return diagnose_adjoint_error(A_hjb, A_fp_ind.T, geometry=geometry)
+
+        except Exception as e:
+            logger.warning(f"Failed to generate adjoint report: {e}")
+            return None
 
     def _jacobi_step(
         self,
@@ -326,6 +469,10 @@ class BlockIterator(BaseMFGSolver):
         self.error_history_M = []
         self.iterations_run = 0
 
+        # Issue #704: Reset adjoint verification counter
+        if self.adjoint_verify:
+            self._adjoint_mismatch_count = 0
+
         # Select iteration step function
         if self.method == BlockMethod.JACOBI:
             step_fn = self._jacobi_step
@@ -405,6 +552,29 @@ class BlockIterator(BaseMFGSolver):
 
         self._solution_computed = True
 
+        # Build metadata
+        metadata = {
+            "method": self.method.value,
+            "damping_factor": self.damping_factor,
+            "convergence_reason": convergence_reason,
+            "elapsed_time": elapsed,
+            "adjoint_mode": self.adjoint_mode,
+        }
+
+        # Issue #704: Include adjoint verification results
+        if self.adjoint_verify:
+            metadata["adjoint_verify"] = True
+            metadata["adjoint_mismatch_count"] = self._adjoint_mismatch_count
+
+            adjoint_report = self._generate_adjoint_report()
+            if adjoint_report is not None:
+                metadata["adjoint_report"] = adjoint_report
+
+            if self._adjoint_mismatch_count == 0:
+                logger.info("Adjoint verification passed")
+            else:
+                logger.warning(f"Adjoint verification: {self._adjoint_mismatch_count} mismatches")
+
         return SolverResult(
             U=self.U,
             M=self.M,
@@ -413,12 +583,7 @@ class BlockIterator(BaseMFGSolver):
             error_history_M=np.array(self.error_history_M),
             solver_name=self.name,
             converged=converged,
-            metadata={
-                "method": self.method.value,
-                "damping_factor": self.damping_factor,
-                "convergence_reason": convergence_reason,
-                "elapsed_time": elapsed,
-            },
+            metadata=metadata,
         )
 
     @property

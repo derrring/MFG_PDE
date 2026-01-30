@@ -22,6 +22,11 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.geometry.boundary.ghost import (
+    compute_normal_from_bounds,
+    create_reflection_ghost_points,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -164,6 +169,8 @@ class BoundaryHandler:
         the point lies on. For corner points (on multiple boundaries), returns
         the average of all boundary normals.
 
+        Delegates to geometry/boundary/ghost.compute_normal_from_bounds().
+
         Parameters
         ----------
         point_idx : int
@@ -175,25 +182,7 @@ class BoundaryHandler:
             Unit outward normal vector, shape (dimension,)
         """
         point = self.collocation_points[point_idx]
-        normal = np.zeros(self.dimension)
-        tol = 1e-10
-
-        for d in range(self.dimension):
-            low, high = self.domain_bounds[d]
-            if abs(point[d] - low) < tol:
-                normal[d] -= 1.0  # At lower boundary, normal points inward (negative)
-            if abs(point[d] - high) < tol:
-                normal[d] += 1.0  # At upper boundary, normal points outward (positive)
-
-        # Normalize (handles corners where multiple boundaries meet)
-        norm = np.linalg.norm(normal)
-        if norm > 1e-12:
-            normal /= norm
-        else:
-            # Fallback: no clear boundary detected, use zero vector
-            normal = np.zeros(self.dimension)
-
-        return normal
+        return compute_normal_from_bounds(point, self.domain_bounds)
 
     def compute_boundary_normals(self) -> np.ndarray | None:
         """
@@ -535,6 +524,8 @@ class BoundaryHandler:
         For Neumann boundary conditions (du/dn = 0), ghost nodes provide a structural
         enforcement by creating mirror-image neighbors outside the domain.
 
+        Delegates position computation to geometry/boundary/ghost.create_reflection_ghost_points().
+
         Parameters
         ----------
         point_idx : int
@@ -554,23 +545,20 @@ class BoundaryHandler:
         center = self.collocation_points[point_idx]
         normal = self.compute_outward_normal(point_idx)
 
-        # Select interior neighbors
+        # Select interior neighbors (on interior side of tangent plane)
         offsets = neighbor_points - center
         normal_components = offsets @ normal
-
         interior_mask = normal_components < -1e-10
-        interior_offsets = offsets[interior_mask]
+        interior_points = neighbor_points[interior_mask]
         interior_indices = neighbor_indices[interior_mask]
 
-        if len(interior_offsets) == 0:
+        if len(interior_points) == 0:
             return np.zeros((0, self.dimension)), np.array([]), np.array([])
 
-        # Create ghost points by reflection
-        projections = interior_offsets @ normal
-        ghost_offsets = interior_offsets - 2 * projections[:, np.newaxis] * normal[np.newaxis, :]
-        ghost_points = center + ghost_offsets
+        # Create ghost points by reflection (delegated to geometry utility)
+        ghost_points = create_reflection_ghost_points(center, interior_points, normal)
 
-        # Assign negative indices to ghost points
+        # Assign negative indices to ghost points (GFDM-specific)
         n_ghosts = len(ghost_points)
         ghost_indices = -(point_idx * 10000 + np.arange(n_ghosts))
 
