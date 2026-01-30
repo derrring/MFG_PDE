@@ -293,6 +293,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
         max_iterations: int | None = None,
         tolerance: float | None = None,
         return_tuple: bool = False,
+        iteration_callback: Callable[[int, np.ndarray, np.ndarray, float, float], bool | None] | None = None,
         **kwargs: Any,
     ) -> SolverResult | tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray]:
         """
@@ -303,6 +304,9 @@ class FictitiousPlayIterator(BaseMFGSolver):
             max_iterations: Maximum iterations (legacy parameter)
             tolerance: Convergence tolerance (legacy parameter)
             return_tuple: Return legacy tuple format instead of SolverResult
+            iteration_callback: Optional callback for custom logging per iteration.
+                Signature: (iteration, U, M, error_U, error_M) -> bool | None
+                Return True to stop early, None/False to continue.
             **kwargs: Additional parameters for backward compatibility
 
         Returns:
@@ -405,7 +409,9 @@ class FictitiousPlayIterator(BaseMFGSolver):
 
             # 1. Solve HJB backward - FULL best response (no damping on U)
             # Issue #543 Phase 2: Use cached signature instead of hasattr
-            show_hjb_progress = not verbose
+            # Note: Inner solver progress is disabled when outer verbose=True (to avoid nested bars)
+            # When verbose=False (non-TTY), we also disable inner progress (use iteration_callback instead)
+            show_hjb_progress = False  # Always suppress inner progress bars
             if self._hjb_sig_params is not None:
                 # Method exists and signature is cached
                 params = self._hjb_sig_params
@@ -423,7 +429,8 @@ class FictitiousPlayIterator(BaseMFGSolver):
 
             # 2. Solve FP forward with new U
             # Issue #543 Phase 2: Use cached signature instead of hasattr
-            show_fp_progress = not verbose
+            # Note: Inner solver progress is disabled - use iteration_callback for custom logging
+            show_fp_progress = False  # Always suppress inner progress bars
             if self._fp_sig_params is not None:
                 # Method exists and signature is cached
                 params = self._fp_sig_params
@@ -473,6 +480,16 @@ class FictitiousPlayIterator(BaseMFGSolver):
 
             iter_time = time.time() - iter_start
             self.iterations_run = k + 1
+
+            # Invoke iteration callback if provided (for text logging in non-TTY mode)
+            if iteration_callback is not None:
+                should_stop = iteration_callback(
+                    k, self.U, self.M, self.l2distu_rel[k], self.l2distm_rel[k]
+                )
+                if should_stop:
+                    convergence_reason = "Stopped by iteration callback"
+                    converged = False
+                    break
 
             # Update progress metrics (Issue #587 Protocol - no hasattr needed)
             iter_range.update_metrics(

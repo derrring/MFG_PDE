@@ -760,6 +760,127 @@ def estimate_expectation(samples: NDArray, weights: NDArray | None = None) -> tu
     return expectation, standard_error
 
 
+def sample_from_scattered_density(
+    points: NDArray,
+    density: NDArray,
+    num_samples: int,
+    seed: int | None = None,
+) -> NDArray:
+    """
+    Sample particles from density defined at scattered (meshfree) points.
+
+    Uses Delaunay triangulation to partition the convex hull of the points,
+    then samples simplices proportional to their integrated density mass,
+    and finally samples uniformly within each selected simplex.
+
+    This is the meshfree analog of `sample_from_density` for use with
+    GFDM collocation points or other irregular point distributions.
+
+    Parameters
+    ----------
+    points : ndarray
+        Scattered point coordinates, shape (N_points, dimension).
+        Points should cover the sampling region.
+    density : ndarray
+        Density values at each point, shape (N_points,).
+        Must be non-negative. Will be normalized internally.
+    num_samples : int
+        Number of particle samples to generate.
+    seed : int or None, default=None
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    particles : ndarray
+        Sampled particle positions, shape (num_samples, dimension).
+
+    Examples
+    --------
+    Sample from Gaussian density at scattered collocation points:
+
+    >>> import numpy as np
+    >>> # Create scattered points via Poisson disk sampling
+    >>> rng = np.random.default_rng(42)
+    >>> points = rng.random((200, 2))  # 200 scattered points in [0,1]²
+    >>> # Gaussian density centered at (0.5, 0.5)
+    >>> density = np.exp(-10 * ((points[:, 0] - 0.5)**2 + (points[:, 1] - 0.5)**2))
+    >>> particles = sample_from_scattered_density(points, density, num_samples=1000)
+    >>> # particles will cluster around (0.5, 0.5)
+
+    Notes
+    -----
+    - Only samples within the convex hull of the input points
+    - For periodic domains, consider wrapping or extending points beyond boundaries
+    - If all densities are zero, falls back to uniform sampling over simplices
+    - Computational complexity: O(N_points log N_points) for triangulation,
+      O(num_samples) for sampling
+    """
+    import math
+
+    from scipy.spatial import Delaunay
+
+    rng = np.random.RandomState(seed)
+    N_points, dimension = points.shape
+
+    if len(density) != N_points:
+        raise ValueError(f"Density length {len(density)} != number of points {N_points}")
+
+    # Ensure non-negative
+    density = np.maximum(density, 0.0)
+
+    # Build Delaunay triangulation
+    tri = Delaunay(points)
+    simplices = tri.simplices  # Shape: (N_simplices, dimension+1)
+    N_simplices = len(simplices)
+
+    # Compute mass (integrated density) for each simplex
+    # Use average density × simplex volume as approximation
+    simplex_masses = np.zeros(N_simplices)
+
+    for i, simplex in enumerate(simplices):
+        # Vertices of this simplex
+        vertices = points[simplex]  # Shape: (d+1, d)
+
+        # Average density at vertices
+        avg_density = np.mean(density[simplex])
+
+        # Simplex volume using the determinant formula
+        # For d-simplex: V = |det([v1-v0, v2-v0, ..., vd-v0])| / d!
+        edge_matrix = vertices[1:] - vertices[0]  # Shape: (d, d)
+        volume = np.abs(np.linalg.det(edge_matrix)) / math.factorial(dimension)
+
+        simplex_masses[i] = avg_density * volume
+
+    total_mass = np.sum(simplex_masses)
+
+    if total_mass < 1e-14:
+        # Uniform fallback: equal probability for each simplex
+        simplex_probs = np.ones(N_simplices) / N_simplices
+        logger.debug("sample_from_scattered_density: zero total mass, using uniform fallback")
+    else:
+        simplex_probs = simplex_masses / total_mass
+
+    # Sample simplex indices according to mass distribution
+    simplex_indices = rng.choice(N_simplices, size=num_samples, p=simplex_probs, replace=True)
+
+    # Sample uniformly within each selected simplex
+    # Use barycentric coordinates with Dirichlet distribution
+    particles = np.zeros((num_samples, dimension))
+
+    for i, simplex_idx in enumerate(simplex_indices):
+        vertices = points[simplices[simplex_idx]]  # Shape: (d+1, d)
+
+        # Uniform sampling in simplex via sorted uniform variates
+        # Generate d uniform variates, sort, take differences -> barycentric coords
+        u = np.sort(rng.random(dimension))
+        barycentric = np.concatenate([[u[0]], np.diff(u), [1.0 - u[-1]]])
+
+        # Convert to Cartesian
+        particles[i] = barycentric @ vertices
+
+    return particles
+
+
 def sample_from_density(
     density: NDArray,
     coordinates: list[NDArray],
@@ -938,5 +1059,34 @@ if __name__ == "__main__":
     min_dist = np.min(dist_matrix)
     assert min_dist >= 0.04, f"Minimum distance should be ~0.05, got {min_dist:.3f}"
     print(f"  Minimum point separation: {min_dist:.3f}")
+
+    # Test 6: sample_from_scattered_density (meshfree)
+    print("\n6. Testing sample_from_scattered_density (meshfree)...")
+    # Create scattered points
+    scattered_points = np.random.rand(200, 2)  # 200 random points in [0,1]²
+    # Gaussian density centered at (0.5, 0.5)
+    scattered_density = np.exp(-10 * ((scattered_points[:, 0] - 0.5)**2 +
+                                       (scattered_points[:, 1] - 0.5)**2))
+
+    particles_scattered = sample_from_scattered_density(
+        scattered_points, scattered_density, num_samples=500, seed=42
+    )
+    assert particles_scattered.shape == (500, 2), f"Expected (500, 2), got {particles_scattered.shape}"
+    mean_x_scat = np.mean(particles_scattered[:, 0])
+    mean_y_scat = np.mean(particles_scattered[:, 1])
+    assert 0.35 < mean_x_scat < 0.65, f"Mean x should be near 0.5, got {mean_x_scat:.3f}"
+    assert 0.35 < mean_y_scat < 0.65, f"Mean y should be near 0.5, got {mean_y_scat:.3f}"
+    print(f"  Scattered 2D: mean = ({mean_x_scat:.3f}, {mean_y_scat:.3f}) (expected ~(0.5, 0.5))")
+
+    # Test 7: sample_from_scattered_density with uniform density
+    print("\n7. Testing scattered sampling with uniform density...")
+    uniform_density = np.ones(len(scattered_points))
+    particles_uniform = sample_from_scattered_density(
+        scattered_points, uniform_density, num_samples=500, seed=42
+    )
+    mean_uniform = np.mean(particles_uniform, axis=0)
+    # Should be roughly centered (depends on point distribution)
+    assert 0.3 < mean_uniform[0] < 0.7, f"Mean x should be near 0.5, got {mean_uniform[0]:.3f}"
+    print(f"  Uniform density: mean = ({mean_uniform[0]:.3f}, {mean_uniform[1]:.3f})")
 
     print("\nAll smoke tests passed!")

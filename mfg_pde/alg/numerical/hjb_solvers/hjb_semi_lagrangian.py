@@ -27,6 +27,10 @@ from scipy.optimize import minimize, minimize_scalar
 
 from mfg_pde.geometry.boundary.applicator_fdm import FDMApplicator
 from mfg_pde.geometry.boundary.applicator_interpolation import InterpolationApplicator
+from mfg_pde.geometry.boundary.bc_utils import (
+    get_bc_type_string,
+    bc_type_to_geometric_operation,
+)
 from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
 
@@ -1367,12 +1371,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             )
 
             # Apply boundary conditions
-            # Issue #582: Use simplified BC type (periodic or clamp)
+            # Issue #702: Use centralized bc_utils for consistent BC handling
             bc = self._get_boundary_conditions()
-            bc_type_min, _ = self._get_per_boundary_bc_types(bc)
-            # For characteristic tracing, only periodic needs special handling
-            # Neumann/Dirichlet use clamping (bc_type=None)
-            bc_type = "periodic" if bc_type_min == "periodic" else None
+            bc_type = get_bc_type_string(bc)
+            bc_op = bc_type_to_geometric_operation(bc_type)
 
             bounds = self.problem.geometry.get_bounds()
             xmin, xmax = bounds[0][0], bounds[1][0]
@@ -1380,7 +1382,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 x_departure,
                 xmin=xmin,
                 xmax=xmax,
-                bc_type=bc_type,
+                bc_type=bc_op,
             )
 
         else:
@@ -1393,11 +1395,15 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 method=self.characteristic_solver,
             )
 
-            # Apply boundary conditions
+            # Issue #702: Use centralized bc_utils for consistent BC handling
+            bc = self._get_boundary_conditions()
+            bc_type = get_bc_type_string(bc)
+            bc_op = bc_type_to_geometric_operation(bc_type)
+
             return apply_boundary_conditions_nd(
                 x_departure,
                 bounds=self.grid.bounds,
-                bc_type=None,  # nD clamping only for now
+                bc_type=bc_op,
             )
 
     def _interpolate_value(self, U_values: np.ndarray, x_query: np.ndarray | float) -> float:

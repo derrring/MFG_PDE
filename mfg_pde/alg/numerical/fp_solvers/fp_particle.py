@@ -52,6 +52,26 @@ class KDENormalization(str, Enum):
     ALL = "all"  # Normalize at every time step (default)
 
 
+class KDEMethod(str, Enum):
+    """KDE method for density estimation from particles (Issue #709).
+
+    Different methods handle boundary bias differently:
+    - STANDARD: No boundary correction (~50% underestimation at boundaries)
+    - REFLECTION: Ghost particles via reflection (has boundary/adjacent redistribution)
+    - RENORMALIZATION: Truncated kernel normalization (has boundary spikes)
+    - BETA: Beta kernel (Chen 1999) - smooth, optimal MSE, recommended
+
+    Reference:
+        Chen, S. X. (1999). "Beta kernel estimators for density functions."
+        Computational Statistics & Data Analysis, 31(2), 131-145.
+    """
+
+    STANDARD = "standard"  # Standard KDE, no boundary correction
+    REFLECTION = "reflection"  # Reflection/ghost particle method (Schuster 1985)
+    RENORMALIZATION = "renormalization"  # Kernel renormalization method
+    BETA = "beta"  # Beta kernel (Chen 1999) - recommended for bounded domains
+
+
 class FPParticleSolver(BaseFPSolver):
     """
     Particle-based Fokker-Planck solver using Monte Carlo sampling and KDE.
@@ -96,69 +116,30 @@ class FPParticleSolver(BaseFPSolver):
         problem: MFGProblem,
         num_particles: int = 5000,
         kde_bandwidth: Any = "scott",
-        kde_normalization: KDENormalization | str = KDENormalization.ALL,
+        kde_normalization: KDENormalization | str = KDENormalization.INITIAL_ONLY,
+        kde_method: KDEMethod | str = KDEMethod.REFLECTION,
+        kde_boundary_smoothing: bool = True,
         density_mode: Literal["grid_only", "hybrid", "query_only"] = "grid_only",
         boundary_conditions: BoundaryConditions | None = None,
         implicit_domain: ImplicitDomain | None = None,
         backend: str | None = None,
-        # Deprecated parameters for backward compatibility
-        normalize_kde_output: bool | None = None,
-        normalize_only_initial: bool | None = None,
-        # Legacy parameters (raise helpful errors)
-        mode: str | None = None,
-        external_particles: np.ndarray | None = None,
     ) -> None:
         super().__init__(problem)
-
-        # Handle deprecated mode parameter
-        if mode is not None:
-            if mode == "collocation":
-                raise ValueError(
-                    "Collocation mode has been removed from FPParticleSolver.\n"
-                    "Use FPGFDMSolver instead for meshfree density evolution:\n\n"
-                    "    from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver\n"
-                    "    solver = FPGFDMSolver(problem, collocation_points=points)\n"
-                )
-            elif mode != "hybrid":
-                raise ValueError(f"Unknown mode: {mode}. FPParticleSolver only supports hybrid mode.")
-            # mode="hybrid" is accepted silently for backward compatibility
-
-        # Handle deprecated external_particles parameter
-        if external_particles is not None:
-            warnings.warn(
-                "external_particles parameter is deprecated and ignored. "
-                "For meshfree density evolution, use FPGFDMSolver instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         self.num_particles = num_particles
         self.fp_method_name = "Particle"
 
         self.kde_bandwidth = kde_bandwidth
+        self.kde_boundary_smoothing = kde_boundary_smoothing
 
-        # Handle deprecated parameters
-        if normalize_kde_output is not None or normalize_only_initial is not None:
-            warnings.warn(
-                "Parameters 'normalize_kde_output' and 'normalize_only_initial' are deprecated. "
-                "Use 'kde_normalization' instead with KDENormalization.NONE, "
-                "KDENormalization.INITIAL_ONLY, or KDENormalization.ALL",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
-            # Map old parameters to new enum
-            if normalize_kde_output is False:
-                kde_normalization = KDENormalization.NONE
-            elif normalize_only_initial is True:
-                kde_normalization = KDENormalization.INITIAL_ONLY
-            else:
-                kde_normalization = KDENormalization.ALL
+        # Convert string to enum if needed
+        if isinstance(kde_method, str):
+            kde_method = KDEMethod(kde_method)
+        self.kde_method = kde_method
 
         # Convert string to enum if needed
         if isinstance(kde_normalization, str):
             kde_normalization = KDENormalization(kde_normalization)
-
         self.kde_normalization = kde_normalization
         self.M_particles_trajectory: np.ndarray | None = None
         self._time_step_counter = 0  # Track current time step for normalization logic
@@ -196,7 +177,8 @@ class FPParticleSolver(BaseFPSolver):
         # Boundary condition resolution hierarchy (Issue #545):
         # 1. Explicit boundary_conditions parameter (highest priority)
         # 2. Grid geometry boundary conditions (from geometry)
-        # 3. FAIL FAST - no silent fallback (CLAUDE.md principle)
+        # 3. Implicit geometry with periodic dimensions (e.g., Hyperrectangle torus)
+        # 4. FAIL FAST - no silent fallback (CLAUDE.md principle)
         if boundary_conditions is not None:
             self.boundary_conditions = boundary_conditions
         else:
@@ -215,10 +197,24 @@ class FPParticleSolver(BaseFPSolver):
 
             # Validate we got BCs (geometry method might return None)
             if self.boundary_conditions is None:
-                raise ValueError(
-                    "FPParticleSolver requires boundary conditions. "
-                    "problem.geometry.get_boundary_conditions() returned None."
-                )
+                # Check for fully periodic implicit geometry (e.g., Hyperrectangle torus)
+                # Fully periodic = all dimensions are periodic, no BC enforcement needed
+                geom = problem.geometry
+                periodic_dims = getattr(geom, "periodic_dimensions", ())
+                dimension = getattr(geom, "dimension", None)
+
+                if periodic_dims and dimension and len(periodic_dims) == dimension:
+                    # Fully periodic domain (torus) - particles wrap, no BC needed
+                    # Use "periodic" as a sentinel for BC application logic
+                    self.boundary_conditions = "periodic"
+                else:
+                    raise ValueError(
+                        "FPParticleSolver requires boundary conditions. "
+                        "problem.geometry.get_boundary_conditions() returned None. "
+                        "For implicit geometry, either:\n"
+                        "  1. Pass explicit boundary_conditions parameter, OR\n"
+                        "  2. Use fully periodic geometry (all dims in periodic_dimensions)"
+                    )
 
     def _get_grid_params(self) -> dict:
         """
@@ -235,6 +231,10 @@ class FPParticleSolver(BaseFPSolver):
 
         For 1D backward compatibility, also includes:
             - Nx, Dx, xmin, xmax, Lx, xSpace (aliased from nD params)
+
+        Note: For implicit geometries (e.g., Hyperrectangle) used with initial_particles
+        and density_mode="query_only", grid_shape may be estimated and coordinates
+        generated from bounds. This is acceptable for meshfree workflows.
         """
         # Try geometry-first API (Issue #543: use try/except instead of hasattr)
         try:
@@ -242,18 +242,36 @@ class FPParticleSolver(BaseFPSolver):
             if geom is None:
                 raise AttributeError("geometry is None")
 
-            grid_shape = tuple(geom.get_grid_shape())
-            dimension = len(grid_shape)
-
-            # Get spacing per dimension
-            spacing = geom.get_grid_spacing()
-            spacings = list(spacing) if spacing else [0.0] * dimension
+            # Get dimension first - needed for all paths
+            dimension = getattr(geom, 'dimension', None)
+            if dimension is None:
+                # Try to infer from grid_shape
+                grid_shape = tuple(geom.get_grid_shape())
+                dimension = len(grid_shape)
+            else:
+                grid_shape = tuple(geom.get_grid_shape())
+                # For implicit geometry, get_grid_shape returns (N,) even for nD
+                # Check if this is an implicit domain by comparing dimensions
+                if len(grid_shape) == 1 and dimension > 1:
+                    # Implicit geometry: create synthetic grid shape from dimension
+                    # Use sqrt(N) per dimension for 2D, cbrt(N) for 3D, etc.
+                    n_per_dim = int(round(grid_shape[0] ** (1.0 / dimension)))
+                    grid_shape = tuple([n_per_dim] * dimension)
 
             # Get bounds per dimension (with fallback chain for legacy interfaces)
+            # NOTE: bounds needed before spacing for implicit geometry fallback
             try:
-                bounds = list(geom.bounds) if geom.bounds is not None else None
-                if bounds is None:
+                geom_bounds = geom.bounds
+                if geom_bounds is None:
                     raise AttributeError("bounds is None")
+                # Handle Hyperrectangle: bounds is np.ndarray of shape (d, 2)
+                # Convert to list of tuples: [(xmin, xmax), (ymin, ymax), ...]
+                if isinstance(geom_bounds, np.ndarray) and geom_bounds.ndim == 2:
+                    # Numpy array format: bounds[d, 0] = min, bounds[d, 1] = max
+                    bounds = [(float(geom_bounds[d, 0]), float(geom_bounds[d, 1])) for d in range(geom_bounds.shape[0])]
+                else:
+                    # List/tuple format - convert to list of tuples
+                    bounds = [(float(b[0]), float(b[1])) for b in geom_bounds]
             except AttributeError:
                 try:
                     # Legacy 1D geometry
@@ -267,6 +285,19 @@ class FPParticleSolver(BaseFPSolver):
                             bounds = [(0.0, 1.0)] * dimension
                     except AttributeError:
                         bounds = [(0.0, 1.0)] * dimension
+
+            # Get spacing per dimension
+            # For implicit geometry (e.g., Hyperrectangle), get_grid_spacing() returns None
+            # so compute from bounds and grid_shape
+            spacing = geom.get_grid_spacing()
+            if spacing is not None:
+                spacings = list(spacing)
+            else:
+                # Compute spacing from bounds and grid_shape: dx = (xmax - xmin) / (N - 1)
+                spacings = [
+                    (bounds[d][1] - bounds[d][0]) / max(grid_shape[d] - 1, 1)
+                    for d in range(dimension)
+                ]
 
             # Get coordinate arrays per dimension
             try:
@@ -367,6 +398,126 @@ class FPParticleSolver(BaseFPSolver):
     def _increment_time_step(self) -> None:
         """Increment time step counter for KDE normalization strategy tracking."""
         self._time_step_counter += 1
+
+    def _apply_kde_method_1d(
+        self,
+        particles: np.ndarray,
+        eval_points: np.ndarray,
+        xmin: float,
+        xmax: float,
+    ) -> np.ndarray:
+        """
+        Apply selected KDE method for 1D density estimation (Issue #709).
+
+        Args:
+            particles: Particle positions, shape (N,)
+            eval_points: Grid points for density evaluation, shape (M,)
+            xmin: Left domain boundary
+            xmax: Right domain boundary
+
+        Returns:
+            Density estimates at eval_points, shape (M,)
+        """
+        from mfg_pde.utils.numerical.particle.kde_boundary import (
+            beta_kde,
+            reflection_kde,
+            renormalization_kde,
+        )
+
+        bounds_1d = [(xmin, xmax)]
+        bounds_tuple = (xmin, xmax)
+
+        if self.kde_method == KDEMethod.BETA:
+            return beta_kde(
+                particles, eval_points,
+                bandwidth=self.kde_bandwidth,
+                bounds=bounds_tuple,
+            )
+        elif self.kde_method == KDEMethod.REFLECTION:
+            density = reflection_kde(
+                particles, eval_points,
+                bandwidth=self.kde_bandwidth,
+                bounds=bounds_1d,
+            )
+            # Boundary smoothing: average boundary and adjacent points
+            # to fix the reflection KDE redistribution issue (Issue #709)
+            if self.kde_boundary_smoothing and len(density) >= 2:
+                # Left boundary: average density[0] and density[1]
+                avg_left = 0.5 * (density[0] + density[1])
+                density[0] = avg_left
+                density[1] = avg_left
+                # Right boundary: average density[-1] and density[-2]
+                avg_right = 0.5 * (density[-1] + density[-2])
+                density[-1] = avg_right
+                density[-2] = avg_right
+            return density
+        elif self.kde_method == KDEMethod.RENORMALIZATION:
+            return renormalization_kde(
+                particles, eval_points,
+                bandwidth=self.kde_bandwidth,
+                bounds=bounds_1d,
+            )
+        else:  # KDEMethod.STANDARD
+            kde = gaussian_kde(particles, bw_method=self.kde_bandwidth)
+            density = kde(eval_points)
+            density[eval_points < xmin] = 0
+            density[eval_points > xmax] = 0
+            return density
+
+    def _apply_kde_method_nd(
+        self,
+        particles: np.ndarray,
+        grid_points: np.ndarray,
+        bounds: list[tuple[float, float]],
+    ) -> np.ndarray:
+        """
+        Apply selected KDE method for nD density estimation (Issue #709).
+
+        Args:
+            particles: Particle positions, shape (N, d)
+            grid_points: Grid points for density evaluation, shape (M, d)
+            bounds: Domain bounds [(xmin, xmax), (ymin, ymax), ...]
+
+        Returns:
+            Density estimates at grid_points, shape (M,)
+        """
+        from mfg_pde.utils.numerical.particle.kde_boundary import (
+            beta_kde,
+            reflection_kde,
+            renormalization_kde,
+        )
+
+        if self.kde_method == KDEMethod.BETA:
+            return beta_kde(
+                particles, grid_points,
+                bandwidth=self.kde_bandwidth,
+                bounds=bounds,
+            )
+        elif self.kde_method == KDEMethod.REFLECTION:
+            density = reflection_kde(
+                particles, grid_points,
+                bandwidth=self.kde_bandwidth,
+                bounds=bounds,
+            )
+            # Note: nD boundary smoothing is complex (edges, corners)
+            # For now, smoothing is only applied in 1D via _apply_kde_method_1d
+            # Future work: implement face/edge/corner smoothing for nD
+            return density
+        elif self.kde_method == KDEMethod.RENORMALIZATION:
+            return renormalization_kde(
+                particles, grid_points,
+                bandwidth=self.kde_bandwidth,
+                bounds=bounds,
+            )
+        else:  # KDEMethod.STANDARD
+            kde = gaussian_kde(particles.T, bw_method=self.kde_bandwidth)
+            density = kde(grid_points.T)
+            # Clip outside domain to zero
+            for d in range(len(bounds)):
+                xmin, xmax = bounds[d]
+                outside_mask = (grid_points[:, d] < xmin) | (grid_points[:, d] > xmax)
+                density[outside_mask] = 0
+            return density
 
     def _compute_total_mass(
         self,
@@ -862,21 +1013,16 @@ class FPParticleSolver(BaseFPSolver):
             return density
 
         try:
-            # Delegate to utils for KDE computation
-            # Note: particle_values is ignored for KDE method, use ones
-            particle_values = np.ones(len(particles))
-            grid_bounds = tuple(bounds)
+            # Issue #709: Select KDE method for boundary correction
+            # Create grid points for evaluation
+            meshes = np.meshgrid(*coordinates, indexing="ij")
+            grid_points = np.column_stack([m.ravel() for m in meshes])
 
-            density = interpolate_particles_to_grid(
-                particle_values=particle_values,
-                particle_positions=particles,
-                grid_shape=grid_shape,
-                grid_bounds=grid_bounds,
-                method="kde",
-                bandwidth=self.kde_bandwidth,
+            density_flat = self._apply_kde_method_nd(
+                particles, grid_points, list(bounds)
             )
 
-            return density
+            return density_flat.reshape(grid_shape)
 
         except Exception as e:
             warnings.warn(f"KDE failed in nD: {e}. Returning histogram estimate.")
@@ -915,30 +1061,12 @@ class FPParticleSolver(BaseFPSolver):
             # Normalization logic will apply below if self.normalize_kde_output is True
         else:
             try:
-                # GPU-accelerated KDE if backend available (Track B Phase 1)
-                if self.backend is not None:
-                    from mfg_pde.alg.numerical.density_estimation import gaussian_kde_gpu
-
-                    # Convert bandwidth parameter to float if needed
-                    if isinstance(self.kde_bandwidth, str):
-                        from mfg_pde.alg.numerical.density_estimation import adaptive_bandwidth_selection
-
-                        bandwidth_value = adaptive_bandwidth_selection(particles_at_time_t, method=self.kde_bandwidth)
-                    else:
-                        bandwidth_value = float(self.kde_bandwidth)
-
-                    m_density_estimated = gaussian_kde_gpu(particles_at_time_t, xSpace, bandwidth_value, self.backend)
-
-                    m_density_estimated[xSpace < xmin] = 0
-                    m_density_estimated[xSpace > xmax] = 0
-
-                # CPU fallback: scipy.stats.gaussian_kde
-                elif SCIPY_AVAILABLE and gaussian_kde is not None:
-                    kde = gaussian_kde(particles_at_time_t, bw_method=self.kde_bandwidth)
-                    m_density_estimated = kde(xSpace)
-
-                    m_density_estimated[xSpace < xmin] = 0
-                    m_density_estimated[xSpace > xmax] = 0
+                # Issue #709: Use CPU path with boundary-corrected KDE
+                # GPU KDE doesn't support boundary correction, so always use CPU for 1D
+                if SCIPY_AVAILABLE and gaussian_kde is not None:
+                    m_density_estimated = self._apply_kde_method_1d(
+                        particles_at_time_t, xSpace, xmin, xmax
+                    )
                 else:
                     raise RuntimeError("SciPy not available for KDE")
 
@@ -977,6 +1105,8 @@ class FPParticleSolver(BaseFPSolver):
         diffusion_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         drift_is_precomputed: bool = False,
+        initial_particles: np.ndarray | None = None,
+        drift_needs_density: bool = True,
         # Deprecated parameter name for backward compatibility
         m_initial_condition: np.ndarray | None = None,
     ) -> np.ndarray:
@@ -989,7 +1119,7 @@ class FPParticleSolver(BaseFPSolver):
         For meshfree density evolution on scattered points, use FPGFDMSolver instead.
 
         Args:
-            M_initial: Initial density m0(x) on grid
+            M_initial: Initial density m0(x) on grid. Required unless initial_particles provided.
             m_initial_condition: DEPRECATED, use M_initial
             drift_field: Drift field specification (optional):
                 - None: Zero drift (pure diffusion)
@@ -1004,6 +1134,12 @@ class FPParticleSolver(BaseFPSolver):
                 - None: Use problem.sigma (backward compatible)
                 - float: Constant isotropic diffusion
                 - np.ndarray/Callable: Phase 2
+            initial_particles: Pre-sampled initial particles, shape (num_particles, dimension).
+                              If provided, M_initial is not required (meshfree initialization).
+                              Useful with density_mode="query_only" for fully meshfree workflow.
+            drift_needs_density: If False, skip density estimation at particle positions during
+                                 time evolution. Use when drift_callable doesn't depend on m.
+                                 Default True for backward compatibility.
             show_progress: Display progress bar
 
         Returns:
@@ -1023,9 +1159,9 @@ class FPParticleSolver(BaseFPSolver):
             )
             M_initial = m_initial_condition
 
-        # Validate required parameter
-        if M_initial is None:
-            raise ValueError("M_initial is required")
+        # Validate required parameter - either M_initial or initial_particles
+        if M_initial is None and initial_particles is None:
+            raise ValueError("Either M_initial or initial_particles is required")
 
         # Handle drift_field parameter
         if drift_field is None:
@@ -1045,6 +1181,8 @@ class FPParticleSolver(BaseFPSolver):
                 drift_callable=drift_field,
                 diffusion_field=diffusion_field,
                 show_progress=show_progress,
+                initial_particles=initial_particles,
+                drift_needs_density=drift_needs_density,
             )
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
@@ -1616,10 +1754,12 @@ class FPParticleSolver(BaseFPSolver):
 
     def _solve_fp_system_callable_drift(
         self,
-        M_initial: np.ndarray,
+        M_initial: np.ndarray | None,
         drift_callable: Callable,
         diffusion_field: float | None = None,
         show_progress: bool = True,
+        initial_particles: np.ndarray | None = None,
+        drift_needs_density: bool = True,
     ) -> np.ndarray:
         """
         Solve FP equation with callable (state-dependent) drift using particles.
@@ -1629,8 +1769,8 @@ class FPParticleSolver(BaseFPSolver):
 
         Parameters
         ----------
-        M_initial : np.ndarray
-            Initial density on grid
+        M_initial : np.ndarray or None
+            Initial density on grid. Not required if initial_particles provided.
         drift_callable : callable
             Function α(t, x, m) -> drift velocity
             - t: time (scalar)
@@ -1641,6 +1781,9 @@ class FPParticleSolver(BaseFPSolver):
             Constant diffusion coefficient (uses problem.sigma if None)
         show_progress : bool
             Show progress bar
+        initial_particles : np.ndarray or None
+            Pre-sampled initial particles, shape (num_particles, dimension).
+            If provided, M_initial is not used for sampling (meshfree initialization).
 
         Returns
         -------
@@ -1666,6 +1809,11 @@ class FPParticleSolver(BaseFPSolver):
         spacings = params["spacings"]
         coordinates = params["coordinates"]
 
+        # Initialize particle history for direct query modes (Issue #489 / callable drift path)
+        # This must be done here since callable drift returns early from solve_fp_system()
+        if self.density_mode in ("hybrid", "query_only"):
+            self._particle_history = []
+
         # Get diffusion - supports constant, array, or callable
         # For SDE: dX = drift*dt + sqrt(2*sigma)*dW
         diffusion_is_callable = callable(diffusion_field)
@@ -1688,17 +1836,32 @@ class FPParticleSolver(BaseFPSolver):
         else:
             sigma_sde_constant = None
 
-        # Initialize particles from initial density
+        # Initialize particles - either from pre-sampled or from density grid
         current_particles = np.zeros((Nt + 1, self.num_particles, dimension))
-        current_particles[0] = self._sample_particles_from_density_nd(M_initial, coordinates, self.num_particles)
+        if initial_particles is not None:
+            # Meshfree initialization: use pre-sampled particles directly
+            if initial_particles.shape[0] != self.num_particles:
+                raise ValueError(
+                    f"initial_particles has {initial_particles.shape[0]} particles, "
+                    f"expected {self.num_particles}"
+                )
+            if initial_particles.shape[1] != dimension:
+                raise ValueError(
+                    f"initial_particles has dimension {initial_particles.shape[1]}, "
+                    f"expected {dimension}"
+                )
+            current_particles[0] = initial_particles
+        else:
+            # Standard: sample from grid density
+            current_particles[0] = self._sample_particles_from_density_nd(M_initial, coordinates, self.num_particles)
 
-        # Allocate density array
+        # Allocate density array (only used if density_mode != "query_only")
         M_density_on_grid = np.zeros((Nt + 1, *grid_shape))
-        M_density_on_grid[0] = M_initial.copy()
-
-        # Normalize initial if requested
-        if self._should_normalize_density():
-            M_density_on_grid[0] = self._normalize_density_nd(M_density_on_grid[0], spacings)
+        if M_initial is not None:
+            M_density_on_grid[0] = M_initial.copy()
+            # Normalize initial if requested
+            if self._should_normalize_density():
+                M_density_on_grid[0] = self._normalize_density_nd(M_density_on_grid[0], spacings)
 
         # Progress bar
         from mfg_pde.utils.progress import RichProgressBar
@@ -1718,9 +1881,21 @@ class FPParticleSolver(BaseFPSolver):
             particles_t = current_particles[t_idx]  # Shape: (num_particles, dimension)
 
             # Estimate density at particle positions for state-dependent drift
-            m_at_particles = self._estimate_density_at_particles(
-                particles_t, M_density_on_grid[t_idx], coordinates, bounds
-            )
+            # Skip if drift_needs_density=False (optimization for drifts that don't use m)
+            if not drift_needs_density:
+                # Drift doesn't depend on density - pass dummy zeros
+                m_at_particles = np.zeros(self.num_particles)
+            elif M_initial is not None:
+                # Standard: interpolate from grid density
+                m_at_particles = self._estimate_density_at_particles(
+                    particles_t, M_density_on_grid[t_idx], coordinates, bounds
+                )
+            else:
+                # Meshfree: use KDE on current particles (for initial_particles mode)
+                # This provides self-consistent density estimate without grid
+                from mfg_pde.alg.numerical.fp_solvers.particle_density_query import ParticleDensityQuery
+                query = ParticleDensityQuery(particles_t, bandwidth_rule="scott")
+                m_at_particles = query.query_density(particles_t, method="hybrid", k=min(50, len(particles_t) - 1))
 
             # Evaluate drift callable
             # For 1D: x is (N,) and returns (N,)
@@ -1783,12 +1958,15 @@ class FPParticleSolver(BaseFPSolver):
 
             current_particles[t_idx + 1] = new_particles
 
-            # Estimate density from particles
-            M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(new_particles, coordinates, bounds)
+            # Estimate density from particles (skip if query_only mode - Issue #711 optimization)
+            # When density_mode="query_only", grid density is not used - density is queried
+            # at arbitrary points via particle history. Skipping KDE saves ~60s per iteration.
+            if self.density_mode != "query_only":
+                M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(new_particles, coordinates, bounds)
 
-            # Normalize if requested (respects kde_normalization strategy)
-            if self._should_normalize_density():
-                M_density_on_grid[t_idx + 1] = self._normalize_density_nd(M_density_on_grid[t_idx + 1], spacings)
+                # Normalize if requested (respects kde_normalization strategy)
+                if self._should_normalize_density():
+                    M_density_on_grid[t_idx + 1] = self._normalize_density_nd(M_density_on_grid[t_idx + 1], spacings)
 
             self._increment_time_step()
 

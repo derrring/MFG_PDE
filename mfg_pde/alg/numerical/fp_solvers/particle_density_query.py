@@ -131,7 +131,7 @@ class ParticleDensityQuery:
             if bandwidth_rule == "fixed":
                 raise ValueError("bandwidth must be provided when bandwidth_rule='fixed'")
             self.bandwidth = self._compute_bandwidth(bandwidth_rule)
-            logger.info(f"Auto-selected bandwidth: h={self.bandwidth:.4f} ({bandwidth_rule} rule)")
+            logger.debug(f"Auto-selected bandwidth: h={self.bandwidth:.4f} ({bandwidth_rule} rule)")
         else:
             self.bandwidth = bandwidth
             logger.debug(f"Using fixed bandwidth: h={bandwidth:.4f}")

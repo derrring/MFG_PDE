@@ -448,8 +448,9 @@ class HJBFDMSolver(BaseHJBSolver):
                 pass
 
             # Issue #574: Create adjoint-consistent BC if needed
+            # Issue #704: Import from canonical adjoint module location
             if self.bc_mode == "adjoint_consistent":
-                from mfg_pde.geometry.boundary import create_adjoint_consistent_bc_1d
+                from mfg_pde.alg.numerical.adjoint import create_adjoint_consistent_bc_1d
 
                 # Get grid spacing
                 try:
