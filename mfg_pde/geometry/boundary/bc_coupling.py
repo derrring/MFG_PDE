@@ -145,9 +145,7 @@ def compute_adjoint_consistent_bc_values(
             regularization=regularization,
         )
     else:
-        raise NotImplementedError(
-            f"Adjoint-consistent BC not yet implemented for {dimension}D."
-        )
+        raise NotImplementedError(f"Adjoint-consistent BC not yet implemented for {dimension}D.")
 
 
 # Backward compatibility alias

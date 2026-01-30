@@ -205,9 +205,7 @@ def _build_1d_laplacian(N: int, bc_type: str) -> sparse.csr_matrix:
     return L.tocsr()
 
 
-def _kron_with_identity(
-    L_1d: sparse.spmatrix, dim: int, grid_shape: tuple[int, ...]
-) -> sparse.csr_matrix:
+def _kron_with_identity(L_1d: sparse.spmatrix, dim: int, grid_shape: tuple[int, ...]) -> sparse.csr_matrix:
     """
     Compute Kronecker product: I_0 ⊗ I_1 ⊗ ... ⊗ L_dim ⊗ ... ⊗ I_{n-1}.
 
@@ -362,7 +360,7 @@ def build_diffusion_matrix_2d(
             diag = 1.0 + 2.0 * theta * (alpha_x + alpha_y)
 
             # Interior point
-            is_boundary = (i == 0 or i == Nx - 1 or j == 0 or j == Ny - 1)
+            is_boundary = i == 0 or i == Nx - 1 or j == 0 or j == Ny - 1
 
             if bc_type == "neumann" and is_boundary:
                 # Adjust for Neumann BC
@@ -795,9 +793,7 @@ def build_bc_aware_adjoint_matrix(
     return A_fp.tocsr()
 
 
-def _get_boundary_indices_dict(
-    grid_shape: tuple[int, ...], dim: int
-) -> dict[str, list[int]]:
+def _get_boundary_indices_dict(grid_shape: tuple[int, ...], dim: int) -> dict[str, list[int]]:
     """Get boundary indices organized by boundary name."""
     axis_names = ["x", "y", "z"]
 
@@ -888,12 +884,12 @@ def _apply_outflow_row(
             # Clear the row and apply outflow stencil
             # Row sum < 1 means mass exits
             A[flat_idx, :] = 0
-            A[flat_idx, flat_idx] = 1.0 - cfl    # Mass that stays
-            A[flat_idx, neighbor_flat] = cfl      # Mass from interior (advection in)
+            A[flat_idx, flat_idx] = 1.0 - cfl  # Mass that stays
+            A[flat_idx, neighbor_flat] = cfl  # Mass from interior (advection in)
             # Net: (1 - CFL) + CFL from interior, but boundary mass exits proportional to CFL
             # Actually for pure outflow: just let boundary mass exit
-            A[flat_idx, flat_idx] = 1.0 - cfl    # Keep less
-            A[flat_idx, neighbor_flat] = 0        # Don't get from interior for pure outflow
+            A[flat_idx, flat_idx] = 1.0 - cfl  # Keep less
+            A[flat_idx, neighbor_flat] = 0  # Don't get from interior for pure outflow
 
 
 def _boundary_name_to_dim(boundary_name: str, dim: int) -> int | None:

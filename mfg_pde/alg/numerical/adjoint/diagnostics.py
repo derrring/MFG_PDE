@@ -272,9 +272,7 @@ def diagnose_adjoint_error(
         severity = ErrorSeverity.HIGH
 
     # Generate recommendations
-    recommendations = _generate_recommendations(
-        error_source, severity, boundary_details, total_error
-    )
+    recommendations = _generate_recommendations(error_source, severity, boundary_details, total_error)
 
     return AdjointDiagnosticReport(
         error_source=error_source,
@@ -379,12 +377,8 @@ def _generate_recommendations(
         return recs
 
     if error_source == ErrorSource.BOUNDARY:
-        recs.append(
-            "Error is concentrated at boundaries. Consider using state-dependent BC coupling."
-        )
-        recs.append(
-            "Import: from mfg_pde.alg.numerical.adjoint import create_adjoint_consistent_bc_1d"
-        )
+        recs.append("Error is concentrated at boundaries. Consider using state-dependent BC coupling.")
+        recs.append("Import: from mfg_pde.alg.numerical.adjoint import create_adjoint_consistent_bc_1d")
 
         # Find worst boundary
         if boundary_details:
@@ -392,9 +386,7 @@ def _generate_recommendations(
             recs.append(f"Worst boundary: {worst.name} (error={worst.error:.2e})")
 
     elif error_source == ErrorSource.INTERIOR:
-        recs.append(
-            "Error is in interior points. Check that HJB and FP use the same upwind stencils."
-        )
+        recs.append("Error is in interior points. Check that HJB and FP use the same upwind stencils.")
         recs.append("Verify advection discretization matches between solvers.")
 
     else:  # MIXED
@@ -403,9 +395,7 @@ def _generate_recommendations(
         recs.append("2. Then verify interior stencil matching")
 
     if severity == ErrorSeverity.HIGH:
-        recs.append(
-            f"WARNING: Error is high ({total_error:.2e}). MFG convergence may be compromised."
-        )
+        recs.append(f"WARNING: Error is high ({total_error:.2e}). MFG convergence may be compromised.")
 
     return recs
 

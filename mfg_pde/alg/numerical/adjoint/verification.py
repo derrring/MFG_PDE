@@ -320,7 +320,7 @@ if __name__ == "__main__":
     profile = compute_adjoint_error_profile(A1, A2)
     print(f"  Profile shape: {profile.shape}")
     print(f"  Max error at row: {np.argmax(profile)}")
-    print(f"  Boundary rows (0, {n-1}) errors: {profile[0]:.4f}, {profile[-1]:.4f}")
+    print(f"  Boundary rows (0, {n - 1}) errors: {profile[0]:.4f}, {profile[-1]:.4f}")
     print("  PASSED")
     print()
 

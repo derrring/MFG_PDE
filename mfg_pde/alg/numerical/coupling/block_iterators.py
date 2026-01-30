@@ -312,9 +312,7 @@ class BlockIterator(BaseMFGSolver):
                 A_fp = build_bc_aware_adjoint_matrix(A_hjb, bc_types, grid_shape, dx, dt)
 
             M_current = M_solution[k]
-            M_next = self.fp_solver.solve_fp_step_adjoint_mode(
-                M_current, A_fp, sigma=sigma, time=k * self.problem.dt
-            )
+            M_next = self.fp_solver.solve_fp_step_adjoint_mode(M_current, A_fp, sigma=sigma, time=k * self.problem.dt)
             M_solution[k + 1] = M_next
 
         return M_solution
@@ -338,7 +336,7 @@ class BlockIterator(BaseMFGSolver):
         if not bc_types:
             dim = geometry.dimension
             for d in range(dim):
-                axis = ["x", "y", "z"][d] if dim <= 3 else f"x_{d+1}"
+                axis = ["x", "y", "z"][d] if dim <= 3 else f"x_{d + 1}"
                 bc_types[f"{axis}_min"] = "reflecting"
                 bc_types[f"{axis}_max"] = "reflecting"
 

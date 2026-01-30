@@ -483,9 +483,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
 
             # Invoke iteration callback if provided (for text logging in non-TTY mode)
             if iteration_callback is not None:
-                should_stop = iteration_callback(
-                    k, self.U, self.M, self.l2distu_rel[k], self.l2distm_rel[k]
-                )
+                should_stop = iteration_callback(k, self.U, self.M, self.l2distu_rel[k], self.l2distm_rel[k])
                 if should_stop:
                     convergence_reason = "Stopped by iteration callback"
                     converged = False

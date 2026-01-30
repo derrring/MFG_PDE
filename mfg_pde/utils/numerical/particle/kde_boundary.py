@@ -224,9 +224,7 @@ def reflection_kde(
         bandwidth_value = bandwidth
 
     # Create ghost particles
-    ghost_particles = create_ghost_particles(
-        particles, bounds, bandwidth_value, n_bandwidths
-    )
+    ghost_particles = create_ghost_particles(particles, bounds, bandwidth_value, n_bandwidths)
 
     # Augmented particle set
     if len(ghost_particles) > 0:
@@ -477,7 +475,7 @@ def renormalization_kde(
         # Integral = Phi((xmax - x)/h) - Phi((xmin - x)/h)
         z_right = norm.cdf((xmax - eval_points[:, d]) / h)
         z_left = norm.cdf((xmin - eval_points[:, d]) / h)
-        normalization *= (z_right - z_left)
+        normalization *= z_right - z_left
 
     # Avoid division by zero at boundaries
     normalization = np.maximum(normalization, 1e-10)
@@ -497,6 +495,7 @@ def renormalization_kde(
 # =============================================================================
 # Legacy aliases for backward compatibility
 # =============================================================================
+
 
 def create_ghost_particles_1d(
     particles: NDArray[np.floating],
@@ -575,34 +574,34 @@ if __name__ == "__main__":
     density_standard = kde_standard(x_eval)
 
     # Reflection KDE
-    density_reflection = reflection_kde(
-        particles_1d, x_eval, bandwidth=bw, bounds=[(xmin, xmax)]
-    )
+    density_reflection = reflection_kde(particles_1d, x_eval, bandwidth=bw, bounds=[(xmin, xmax)])
 
     # Renormalization KDE
-    density_renorm = renormalization_kde(
-        particles_1d, x_eval, bandwidth=bw, bounds=[(xmin, xmax)]
-    )
+    density_renorm = renormalization_kde(particles_1d, x_eval, bandwidth=bw, bounds=[(xmin, xmax)])
 
     # Beta KDE (Chen 1999)
-    density_beta = beta_kde(
-        particles_1d, x_eval, bandwidth=bw, bounds=(xmin, xmax)
-    )
+    density_beta = beta_kde(particles_1d, x_eval, bandwidth=bw, bounds=(xmin, xmax))
 
     print(f"\n   {'Method':<20} {'Boundary':<12} {'Adjacent':<12} {'Center':<12}")
-    print(f"   {'-'*20} {'-'*12} {'-'*12} {'-'*12}")
+    print(f"   {'-' * 20} {'-' * 12} {'-' * 12} {'-' * 12}")
     print(f"   {'Expected':<20} {expected_density:<12.4f} {expected_density:<12.4f} {expected_density:<12.4f}")
-    print(f"   {'Standard KDE':<20} {density_standard[0]:<12.4f} {density_standard[1]:<12.4f} {density_standard[25]:<12.4f}")
-    print(f"   {'Reflection KDE':<20} {density_reflection[0]:<12.4f} {density_reflection[1]:<12.4f} {density_reflection[25]:<12.4f}")
-    print(f"   {'Renormalization':<20} {density_renorm[0]:<12.4f} {density_renorm[1]:<12.4f} {density_renorm[25]:<12.4f}")
+    print(
+        f"   {'Standard KDE':<20} {density_standard[0]:<12.4f} {density_standard[1]:<12.4f} {density_standard[25]:<12.4f}"
+    )
+    print(
+        f"   {'Reflection KDE':<20} {density_reflection[0]:<12.4f} {density_reflection[1]:<12.4f} {density_reflection[25]:<12.4f}"
+    )
+    print(
+        f"   {'Renormalization':<20} {density_renorm[0]:<12.4f} {density_renorm[1]:<12.4f} {density_renorm[25]:<12.4f}"
+    )
     print(f"   {'Beta KDE (Chen99)':<20} {density_beta[0]:<12.4f} {density_beta[1]:<12.4f} {density_beta[25]:<12.4f}")
 
     # Accuracy comparison
     print(f"\n   Boundary accuracy (% of expected):")
-    print(f"   {'Standard KDE':<20} {100*density_standard[0]/expected_density:.1f}%")
-    print(f"   {'Reflection KDE':<20} {100*density_reflection[0]/expected_density:.1f}%")
-    print(f"   {'Renormalization':<20} {100*density_renorm[0]/expected_density:.1f}%")
-    print(f"   {'Beta KDE (Chen99)':<20} {100*density_beta[0]/expected_density:.1f}%")
+    print(f"   {'Standard KDE':<20} {100 * density_standard[0] / expected_density:.1f}%")
+    print(f"   {'Reflection KDE':<20} {100 * density_reflection[0] / expected_density:.1f}%")
+    print(f"   {'Renormalization':<20} {100 * density_renorm[0] / expected_density:.1f}%")
+    print(f"   {'Beta KDE (Chen99)':<20} {100 * density_beta[0] / expected_density:.1f}%")
 
     # =======================================================================
     # Test 2: Boltzmann-Gibbs distribution (non-uniform, towel-on-beach)
@@ -616,6 +615,7 @@ if __name__ == "__main__":
     def boltzmann_gibbs(x):
         """Boltzmann-Gibbs density for V(x) = -2x^2."""
         from scipy.integrate import quad
+
         unnorm = np.exp(2 * x**2 / sigma**2)
         Z, _ = quad(lambda y: np.exp(2 * y**2 / sigma**2), xmin, xmax)
         return unnorm / Z
@@ -642,11 +642,19 @@ if __name__ == "__main__":
     density_beta_bg = beta_kde(particles_bg, x_eval, bandwidth=bw, bounds=(xmin, xmax))
 
     print(f"\n   {'Method':<20} {'Boundary':<12} {'Analytical':<12} {'Accuracy':<12}")
-    print(f"   {'-'*20} {'-'*12} {'-'*12} {'-'*12}")
-    print(f"   {'Standard KDE':<20} {density_std_bg[0]:<12.4f} {m_analytical[0]:<12.4f} {100*density_std_bg[0]/m_analytical[0]:.1f}%")
-    print(f"   {'Reflection KDE':<20} {density_ref_bg[0]:<12.4f} {m_analytical[0]:<12.4f} {100*density_ref_bg[0]/m_analytical[0]:.1f}%")
-    print(f"   {'Renormalization':<20} {density_renorm_bg[0]:<12.4f} {m_analytical[0]:<12.4f} {100*density_renorm_bg[0]/m_analytical[0]:.1f}%")
-    print(f"   {'Beta KDE (Chen99)':<20} {density_beta_bg[0]:<12.4f} {m_analytical[0]:<12.4f} {100*density_beta_bg[0]/m_analytical[0]:.1f}%")
+    print(f"   {'-' * 20} {'-' * 12} {'-' * 12} {'-' * 12}")
+    print(
+        f"   {'Standard KDE':<20} {density_std_bg[0]:<12.4f} {m_analytical[0]:<12.4f} {100 * density_std_bg[0] / m_analytical[0]:.1f}%"
+    )
+    print(
+        f"   {'Reflection KDE':<20} {density_ref_bg[0]:<12.4f} {m_analytical[0]:<12.4f} {100 * density_ref_bg[0] / m_analytical[0]:.1f}%"
+    )
+    print(
+        f"   {'Renormalization':<20} {density_renorm_bg[0]:<12.4f} {m_analytical[0]:<12.4f} {100 * density_renorm_bg[0] / m_analytical[0]:.1f}%"
+    )
+    print(
+        f"   {'Beta KDE (Chen99)':<20} {density_beta_bg[0]:<12.4f} {m_analytical[0]:<12.4f} {100 * density_beta_bg[0] / m_analytical[0]:.1f}%"
+    )
 
     # =======================================================================
     # Test 3: Ghost particle creation
@@ -693,12 +701,20 @@ if __name__ == "__main__":
     center_idx = len(density_std_2d) // 2
 
     print(f"\n   {'Method':<20} {'Corner(0,0)':<12} {'Center':<12} {'Ratio':<12}")
-    print(f"   {'-'*20} {'-'*12} {'-'*12} {'-'*12}")
+    print(f"   {'-' * 20} {'-' * 12} {'-' * 12} {'-' * 12}")
     print(f"   {'Expected':<20} {'1.0000':<12} {'1.0000':<12} {'1.00':<12}")
-    print(f"   {'Standard KDE':<20} {density_std_2d[corner_idx]:<12.4f} {density_std_2d[center_idx]:<12.4f} {density_std_2d[corner_idx]/density_std_2d[center_idx]:<12.2f}")
-    print(f"   {'Reflection KDE':<20} {density_ref_2d[corner_idx]:<12.4f} {density_ref_2d[center_idx]:<12.4f} {density_ref_2d[corner_idx]/density_ref_2d[center_idx]:<12.2f}")
-    print(f"   {'Renormalization':<20} {density_renorm_2d[corner_idx]:<12.4f} {density_renorm_2d[center_idx]:<12.4f} {density_renorm_2d[corner_idx]/density_renorm_2d[center_idx]:<12.2f}")
-    print(f"   {'Beta KDE (Chen99)':<20} {density_beta_2d[corner_idx]:<12.4f} {density_beta_2d[center_idx]:<12.4f} {density_beta_2d[corner_idx]/density_beta_2d[center_idx]:<12.2f}")
+    print(
+        f"   {'Standard KDE':<20} {density_std_2d[corner_idx]:<12.4f} {density_std_2d[center_idx]:<12.4f} {density_std_2d[corner_idx] / density_std_2d[center_idx]:<12.2f}"
+    )
+    print(
+        f"   {'Reflection KDE':<20} {density_ref_2d[corner_idx]:<12.4f} {density_ref_2d[center_idx]:<12.4f} {density_ref_2d[corner_idx] / density_ref_2d[center_idx]:<12.2f}"
+    )
+    print(
+        f"   {'Renormalization':<20} {density_renorm_2d[corner_idx]:<12.4f} {density_renorm_2d[center_idx]:<12.4f} {density_renorm_2d[corner_idx] / density_renorm_2d[center_idx]:<12.2f}"
+    )
+    print(
+        f"   {'Beta KDE (Chen99)':<20} {density_beta_2d[corner_idx]:<12.4f} {density_beta_2d[center_idx]:<12.4f} {density_beta_2d[corner_idx] / density_beta_2d[center_idx]:<12.2f}"
+    )
 
     # Check Beta KDE corner accuracy
     assert density_beta_2d[corner_idx] > 0.7, f"Beta KDE corner should be > 0.7, got {density_beta_2d[corner_idx]:.4f}"
@@ -714,34 +730,34 @@ if __name__ == "__main__":
 
     # Plot 1: Uniform distribution
     ax1 = axes[0]
-    ax1.axhline(y=expected_density, color='k', linestyle='--', linewidth=2, label='Expected')
-    ax1.plot(x_eval, density_standard, 'b-', alpha=0.7, label='Standard KDE')
-    ax1.plot(x_eval, density_reflection, 'g-', alpha=0.7, label='Reflection KDE')
-    ax1.plot(x_eval, density_renorm, 'r-', alpha=0.7, label='Renormalization')
-    ax1.plot(x_eval, density_beta, 'm-', linewidth=2, label='Beta KDE (Chen99)')
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('Density')
-    ax1.set_title('Uniform Distribution - KDE Comparison')
+    ax1.axhline(y=expected_density, color="k", linestyle="--", linewidth=2, label="Expected")
+    ax1.plot(x_eval, density_standard, "b-", alpha=0.7, label="Standard KDE")
+    ax1.plot(x_eval, density_reflection, "g-", alpha=0.7, label="Reflection KDE")
+    ax1.plot(x_eval, density_renorm, "r-", alpha=0.7, label="Renormalization")
+    ax1.plot(x_eval, density_beta, "m-", linewidth=2, label="Beta KDE (Chen99)")
+    ax1.set_xlabel("x")
+    ax1.set_ylabel("Density")
+    ax1.set_title("Uniform Distribution - KDE Comparison")
     ax1.legend()
     ax1.set_xlim(xmin, xmax)
     ax1.grid(True, alpha=0.3)
 
     # Plot 2: Boltzmann-Gibbs distribution
     ax2 = axes[1]
-    ax2.plot(x_eval, m_analytical, 'k--', linewidth=2, label='Analytical')
-    ax2.plot(x_eval, density_std_bg, 'b-', alpha=0.7, label='Standard KDE')
-    ax2.plot(x_eval, density_ref_bg, 'g-', alpha=0.7, label='Reflection KDE')
-    ax2.plot(x_eval, density_renorm_bg, 'r-', alpha=0.7, label='Renormalization')
-    ax2.plot(x_eval, density_beta_bg, 'm-', linewidth=2, label='Beta KDE (Chen99)')
-    ax2.set_xlabel('x')
-    ax2.set_ylabel('Density')
-    ax2.set_title('Boltzmann-Gibbs Distribution - KDE Comparison')
+    ax2.plot(x_eval, m_analytical, "k--", linewidth=2, label="Analytical")
+    ax2.plot(x_eval, density_std_bg, "b-", alpha=0.7, label="Standard KDE")
+    ax2.plot(x_eval, density_ref_bg, "g-", alpha=0.7, label="Reflection KDE")
+    ax2.plot(x_eval, density_renorm_bg, "r-", alpha=0.7, label="Renormalization")
+    ax2.plot(x_eval, density_beta_bg, "m-", linewidth=2, label="Beta KDE (Chen99)")
+    ax2.set_xlabel("x")
+    ax2.set_ylabel("Density")
+    ax2.set_title("Boltzmann-Gibbs Distribution - KDE Comparison")
     ax2.legend()
     ax2.set_xlim(xmin, xmax)
     ax2.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig('/tmp/kde_boundary_comparison.png', dpi=150)
+    plt.savefig("/tmp/kde_boundary_comparison.png", dpi=150)
     print(f"   Plot saved to: /tmp/kde_boundary_comparison.png")
     plt.show()
 

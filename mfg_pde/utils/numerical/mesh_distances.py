@@ -18,6 +18,7 @@ from typing import NamedTuple
 
 class MeshDistances(NamedTuple):
     """Container for mesh distance metrics."""
+
     fill_distance: float  # h = max min distance
     separation_distance: float  # q = min distance between points
     mesh_ratio: float  # h/q (ideally O(1))
@@ -126,11 +127,12 @@ def compute_distances_for_eoc_study(
             # Structured grid
             x = np.linspace(0, domain_L, Nx)
             y = np.linspace(0, domain_L, Nx)
-            X, Y = np.meshgrid(x, y, indexing='ij')
+            X, Y = np.meshgrid(x, y, indexing="ij")
             points = np.column_stack([X.ravel(), Y.ravel()])
         else:
             # Meshfree (Lloyd)
             from mfg_pde.geometry.implicit import Hyperrectangle
+
             domain = Hyperrectangle(bounds=np.array([[0, domain_L], [0, domain_L]]))
             n_total = Nx * Nx
             n_boundary = 4 * (Nx - 1)  # Approximate
@@ -161,7 +163,7 @@ if __name__ == "__main__":
     # Example 1: Structured grid
     print("\n1. Structured Grid (10x10)")
     x = np.linspace(0, 1, 10)
-    X, Y = np.meshgrid(x, x, indexing='ij')
+    X, Y = np.meshgrid(x, x, indexing="ij")
     grid_points = np.column_stack([X.ravel(), Y.ravel()])
 
     dist_grid = compute_mesh_distances(grid_points, [(0, 1), (0, 1)])
@@ -186,9 +188,11 @@ if __name__ == "__main__":
     for Nx in resolutions:
         dist = results[Nx]
         N_total = Nx * Nx
-        h_ratio = prev_h / dist.fill_distance if prev_h else float('nan')
-        print(f"{Nx:>6} {N_total:>8} {dist.fill_distance:>10.6f} {dist.separation_distance:>10.6f} "
-              f"{dist.mesh_ratio:>8.2f} {h_ratio:>10.2f}")
+        h_ratio = prev_h / dist.fill_distance if prev_h else float("nan")
+        print(
+            f"{Nx:>6} {N_total:>8} {dist.fill_distance:>10.6f} {dist.separation_distance:>10.6f} "
+            f"{dist.mesh_ratio:>8.2f} {h_ratio:>10.2f}"
+        )
         prev_h = dist.fill_distance
 
     print("-" * 60)
@@ -200,5 +204,4 @@ if __name__ == "__main__":
     for Nx in resolutions:
         h_theory = np.sqrt(2) / (Nx - 1)  # Diagonal of grid cell
         h_computed = results[Nx].fill_distance
-        print(f"  Nx={Nx}: h_theory={h_theory:.6f}, h_computed={h_computed:.6f}, "
-              f"ratio={h_computed/h_theory:.2f}")
+        print(f"  Nx={Nx}: h_theory={h_theory:.6f}, h_computed={h_computed:.6f}, ratio={h_computed / h_theory:.2f}")

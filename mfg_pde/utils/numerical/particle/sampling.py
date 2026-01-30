@@ -1065,12 +1065,9 @@ if __name__ == "__main__":
     # Create scattered points
     scattered_points = np.random.rand(200, 2)  # 200 random points in [0,1]²
     # Gaussian density centered at (0.5, 0.5)
-    scattered_density = np.exp(-10 * ((scattered_points[:, 0] - 0.5)**2 +
-                                       (scattered_points[:, 1] - 0.5)**2))
+    scattered_density = np.exp(-10 * ((scattered_points[:, 0] - 0.5) ** 2 + (scattered_points[:, 1] - 0.5) ** 2))
 
-    particles_scattered = sample_from_scattered_density(
-        scattered_points, scattered_density, num_samples=500, seed=42
-    )
+    particles_scattered = sample_from_scattered_density(scattered_points, scattered_density, num_samples=500, seed=42)
     assert particles_scattered.shape == (500, 2), f"Expected (500, 2), got {particles_scattered.shape}"
     mean_x_scat = np.mean(particles_scattered[:, 0])
     mean_y_scat = np.mean(particles_scattered[:, 1])
@@ -1081,9 +1078,7 @@ if __name__ == "__main__":
     # Test 7: sample_from_scattered_density with uniform density
     print("\n7. Testing scattered sampling with uniform density...")
     uniform_density = np.ones(len(scattered_points))
-    particles_uniform = sample_from_scattered_density(
-        scattered_points, uniform_density, num_samples=500, seed=42
-    )
+    particles_uniform = sample_from_scattered_density(scattered_points, uniform_density, num_samples=500, seed=42)
     mean_uniform = np.mean(particles_uniform, axis=0)
     # Should be roughly centered (depends on point distribution)
     assert 0.3 < mean_uniform[0] < 0.7, f"Mean x should be near 0.5, got {mean_uniform[0]:.3f}"

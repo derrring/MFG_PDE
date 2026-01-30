@@ -243,7 +243,7 @@ class FPParticleSolver(BaseFPSolver):
                 raise AttributeError("geometry is None")
 
             # Get dimension first - needed for all paths
-            dimension = getattr(geom, 'dimension', None)
+            dimension = getattr(geom, "dimension", None)
             if dimension is None:
                 # Try to infer from grid_shape
                 grid_shape = tuple(geom.get_grid_shape())
@@ -294,10 +294,7 @@ class FPParticleSolver(BaseFPSolver):
                 spacings = list(spacing)
             else:
                 # Compute spacing from bounds and grid_shape: dx = (xmax - xmin) / (N - 1)
-                spacings = [
-                    (bounds[d][1] - bounds[d][0]) / max(grid_shape[d] - 1, 1)
-                    for d in range(dimension)
-                ]
+                spacings = [(bounds[d][1] - bounds[d][0]) / max(grid_shape[d] - 1, 1) for d in range(dimension)]
 
             # Get coordinate arrays per dimension
             try:
@@ -429,13 +426,15 @@ class FPParticleSolver(BaseFPSolver):
 
         if self.kde_method == KDEMethod.BETA:
             return beta_kde(
-                particles, eval_points,
+                particles,
+                eval_points,
                 bandwidth=self.kde_bandwidth,
                 bounds=bounds_tuple,
             )
         elif self.kde_method == KDEMethod.REFLECTION:
             density = reflection_kde(
-                particles, eval_points,
+                particles,
+                eval_points,
                 bandwidth=self.kde_bandwidth,
                 bounds=bounds_1d,
             )
@@ -453,7 +452,8 @@ class FPParticleSolver(BaseFPSolver):
             return density
         elif self.kde_method == KDEMethod.RENORMALIZATION:
             return renormalization_kde(
-                particles, eval_points,
+                particles,
+                eval_points,
                 bandwidth=self.kde_bandwidth,
                 bounds=bounds_1d,
             )
@@ -489,13 +489,15 @@ class FPParticleSolver(BaseFPSolver):
 
         if self.kde_method == KDEMethod.BETA:
             return beta_kde(
-                particles, grid_points,
+                particles,
+                grid_points,
                 bandwidth=self.kde_bandwidth,
                 bounds=bounds,
             )
         elif self.kde_method == KDEMethod.REFLECTION:
             density = reflection_kde(
-                particles, grid_points,
+                particles,
+                grid_points,
                 bandwidth=self.kde_bandwidth,
                 bounds=bounds,
             )
@@ -505,7 +507,8 @@ class FPParticleSolver(BaseFPSolver):
             return density
         elif self.kde_method == KDEMethod.RENORMALIZATION:
             return renormalization_kde(
-                particles, grid_points,
+                particles,
+                grid_points,
                 bandwidth=self.kde_bandwidth,
                 bounds=bounds,
             )
@@ -1018,9 +1021,7 @@ class FPParticleSolver(BaseFPSolver):
             meshes = np.meshgrid(*coordinates, indexing="ij")
             grid_points = np.column_stack([m.ravel() for m in meshes])
 
-            density_flat = self._apply_kde_method_nd(
-                particles, grid_points, list(bounds)
-            )
+            density_flat = self._apply_kde_method_nd(particles, grid_points, list(bounds))
 
             return density_flat.reshape(grid_shape)
 
@@ -1064,9 +1065,7 @@ class FPParticleSolver(BaseFPSolver):
                 # Issue #709: Use CPU path with boundary-corrected KDE
                 # GPU KDE doesn't support boundary correction, so always use CPU for 1D
                 if SCIPY_AVAILABLE and gaussian_kde is not None:
-                    m_density_estimated = self._apply_kde_method_1d(
-                        particles_at_time_t, xSpace, xmin, xmax
-                    )
+                    m_density_estimated = self._apply_kde_method_1d(particles_at_time_t, xSpace, xmin, xmax)
                 else:
                     raise RuntimeError("SciPy not available for KDE")
 
@@ -1842,14 +1841,10 @@ class FPParticleSolver(BaseFPSolver):
             # Meshfree initialization: use pre-sampled particles directly
             if initial_particles.shape[0] != self.num_particles:
                 raise ValueError(
-                    f"initial_particles has {initial_particles.shape[0]} particles, "
-                    f"expected {self.num_particles}"
+                    f"initial_particles has {initial_particles.shape[0]} particles, expected {self.num_particles}"
                 )
             if initial_particles.shape[1] != dimension:
-                raise ValueError(
-                    f"initial_particles has dimension {initial_particles.shape[1]}, "
-                    f"expected {dimension}"
-                )
+                raise ValueError(f"initial_particles has dimension {initial_particles.shape[1]}, expected {dimension}")
             current_particles[0] = initial_particles
         else:
             # Standard: sample from grid density
@@ -1894,6 +1889,7 @@ class FPParticleSolver(BaseFPSolver):
                 # Meshfree: use KDE on current particles (for initial_particles mode)
                 # This provides self-consistent density estimate without grid
                 from mfg_pde.alg.numerical.fp_solvers.particle_density_query import ParticleDensityQuery
+
                 query = ParticleDensityQuery(particles_t, bandwidth_rule="scott")
                 m_at_particles = query.query_density(particles_t, method="hybrid", k=min(50, len(particles_t) - 1))
 
@@ -1962,7 +1958,9 @@ class FPParticleSolver(BaseFPSolver):
             # When density_mode="query_only", grid density is not used - density is queried
             # at arbitrary points via particle history. Skipping KDE saves ~60s per iteration.
             if self.density_mode != "query_only":
-                M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(new_particles, coordinates, bounds)
+                M_density_on_grid[t_idx + 1] = self._estimate_density_from_particles_nd(
+                    new_particles, coordinates, bounds
+                )
 
                 # Normalize if requested (respects kde_normalization strategy)
                 if self._should_normalize_density():

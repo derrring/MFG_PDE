@@ -54,21 +54,25 @@ T = TypeVar("T")
 # =============================================================================
 
 # Whitelisted terminals that support Rich progress bars but may be misdetected
-_TERMINAL_WHITELIST = frozenset({
-    "vscode",      # VS Code integrated terminal
-    "iTerm.app",   # iTerm2 on macOS
-    "Apple_Terminal",  # macOS Terminal.app
-    "Hyper",       # Hyper terminal
-    "Alacritty",   # Alacritty terminal
-})
+_TERMINAL_WHITELIST = frozenset(
+    {
+        "vscode",  # VS Code integrated terminal
+        "iTerm.app",  # iTerm2 on macOS
+        "Apple_Terminal",  # macOS Terminal.app
+        "Hyper",  # Hyper terminal
+        "Alacritty",  # Alacritty terminal
+    }
+)
 
 # Environments that capture output (Rich progress bars won't render properly)
 # These use text-based logging by default, but can be overridden with FORCE_COLOR=1
-_CAPTURED_OUTPUT_ENVS = frozenset({
-    "CLAUDECODE",      # Claude Code CLI
-    "JUPYTER_RUNTIME", # Jupyter notebooks
-    "CI",              # CI/CD pipelines
-})
+_CAPTURED_OUTPUT_ENVS = frozenset(
+    {
+        "CLAUDECODE",  # Claude Code CLI
+        "JUPYTER_RUNTIME",  # Jupyter notebooks
+        "CI",  # CI/CD pipelines
+    }
+)
 
 
 def is_captured_output_env() -> bool:

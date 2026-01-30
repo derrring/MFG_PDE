@@ -215,9 +215,10 @@ def create_ghost_stencil(
     neighbor_points: NDArray[np.floating],
     normal: NDArray[np.floating],
     return_interior_mask: bool = False,
-) -> tuple[NDArray[np.floating], NDArray[np.floating]] | tuple[
-    NDArray[np.floating], NDArray[np.floating], NDArray[np.bool_]
-]:
+) -> (
+    tuple[NDArray[np.floating], NDArray[np.floating]]
+    | tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.bool_]]
+):
     """
     Create augmented stencil with ghost points for a boundary point.
 
@@ -398,15 +399,15 @@ if __name__ == "__main__":
 
     # Test 4: create_ghost_stencil
     print("\n4. create_ghost_stencil:")
-    neighbors = np.array([
-        [0.1, 0.4],   # Interior
-        [0.1, 0.6],   # Interior
-        [0.0, 0.4],   # On boundary (not interior)
-        [0.0, 0.6],   # On boundary (not interior)
-    ])
-    ghosts, augmented, interior_mask = create_ghost_stencil(
-        boundary_pt, neighbors, normal, return_interior_mask=True
+    neighbors = np.array(
+        [
+            [0.1, 0.4],  # Interior
+            [0.1, 0.6],  # Interior
+            [0.0, 0.4],  # On boundary (not interior)
+            [0.0, 0.6],  # On boundary (not interior)
+        ]
     )
+    ghosts, augmented, interior_mask = create_ghost_stencil(boundary_pt, neighbors, normal, return_interior_mask=True)
     print(f"   Original neighbors: {len(neighbors)}")
     print(f"   Interior neighbors: {np.sum(interior_mask)}")
     print(f"   Ghost points added: {len(ghosts)}")

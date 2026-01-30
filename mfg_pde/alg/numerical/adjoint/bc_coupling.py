@@ -161,9 +161,7 @@ def create_adjoint_consistent_bc_1d(
         via geometry.get_gradient_operator().
     """
     # Compute density gradients at boundaries
-    grad_ln_m_left = compute_boundary_log_density_gradient_1d(
-        m_current, dx, side="left", regularization=regularization
-    )
+    grad_ln_m_left = compute_boundary_log_density_gradient_1d(m_current, dx, side="left", regularization=regularization)
     grad_ln_m_right = compute_boundary_log_density_gradient_1d(
         m_current, dx, side="right", regularization=regularization
     )
