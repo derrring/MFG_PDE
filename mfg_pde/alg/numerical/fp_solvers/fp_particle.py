@@ -115,15 +115,59 @@ class FPParticleSolver(BaseFPSolver):
         problem: MFGProblem,
         num_particles: int = 5000,
         kde_bandwidth: Any = "scott",
-        kde_normalization: KDENormalization | str = KDENormalization.INITIAL_ONLY,
+        kde_normalization: KDENormalization | str = KDENormalization.ALL,
         kde_method: KDEMethod | str = KDEMethod.REFLECTION,
         kde_boundary_smoothing: bool = True,
         density_mode: Literal["grid_only", "hybrid", "query_only"] = "grid_only",
         boundary_conditions: BoundaryConditions | None = None,
         implicit_domain: ImplicitDomain | None = None,
         backend: str | None = None,
+        # Deprecated parameters (backward compatibility)
+        mode: str | None = None,
+        external_particles: Any = None,
+        normalize_kde_output: bool | None = None,
+        normalize_only_initial: bool | None = None,
     ) -> None:
         super().__init__(problem)
+
+        # Handle deprecated 'mode' parameter
+        if mode is not None:
+            if mode == "collocation":
+                raise ValueError(
+                    "Collocation mode has been removed from FPParticleSolver. "
+                    "Use FPGFDMSolver for GFDM-based FP solving."
+                )
+            elif mode not in ("hybrid", "grid_only", "query_only"):
+                raise ValueError(f"Unknown mode '{mode}'. Valid modes: 'hybrid', 'grid_only', 'query_only'")
+            # Map old 'mode' to new 'density_mode' (hybrid was the old name)
+            density_mode = mode
+
+        # Handle deprecated 'external_particles' parameter
+        if external_particles is not None:
+            import warnings
+            warnings.warn(
+                "external_particles is deprecated. External particle injection is no longer supported. "
+                "Use num_particles to control particle count.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        # Handle deprecated normalization parameters
+        if normalize_kde_output is not None or normalize_only_initial is not None:
+            import warnings
+            warnings.warn(
+                "normalize_kde_output and normalize_only_initial are deprecated. "
+                "Use kde_normalization='all', 'initial_only', or 'none' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # Map old parameters to new enum
+            if normalize_kde_output is False:
+                kde_normalization = KDENormalization.NONE
+            elif normalize_only_initial is True:
+                kde_normalization = KDENormalization.INITIAL_ONLY
+            else:
+                kde_normalization = KDENormalization.ALL
 
         self.num_particles = num_particles
         self.fp_method_name = "Particle"
