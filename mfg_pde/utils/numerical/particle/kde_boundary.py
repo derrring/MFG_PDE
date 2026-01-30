@@ -101,7 +101,6 @@ def create_ghost_particles(
         particles = particles.reshape(-1, 1)
 
     ndim = len(bounds)
-    n_particles = len(particles)
 
     # Handle scalar bandwidth
     if np.isscalar(bandwidth):
@@ -455,7 +454,6 @@ def renormalization_kde(
         particles = particles.reshape(-1, 1)
         eval_points = eval_points.reshape(-1, 1)
 
-    n = len(particles)
     m = len(eval_points)
 
     # Standard KDE (scipy expects shape (d, N))
@@ -597,7 +595,7 @@ if __name__ == "__main__":
     print(f"   {'Beta KDE (Chen99)':<20} {density_beta[0]:<12.4f} {density_beta[1]:<12.4f} {density_beta[25]:<12.4f}")
 
     # Accuracy comparison
-    print(f"\n   Boundary accuracy (% of expected):")
+    print("\n   Boundary accuracy (% of expected):")
     print(f"   {'Standard KDE':<20} {100 * density_standard[0] / expected_density:.1f}%")
     print(f"   {'Reflection KDE':<20} {100 * density_reflection[0] / expected_density:.1f}%")
     print(f"   {'Renormalization':<20} {100 * density_renorm[0] / expected_density:.1f}%")
@@ -758,7 +756,7 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.savefig("/tmp/kde_boundary_comparison.png", dpi=150)
-    print(f"   Plot saved to: /tmp/kde_boundary_comparison.png")
+    print("   Plot saved to: /tmp/kde_boundary_comparison.png")
     plt.show()
 
     print("\n" + "=" * 70)

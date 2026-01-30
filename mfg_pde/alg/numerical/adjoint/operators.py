@@ -848,7 +848,6 @@ def _apply_outflow_row(
     if d is None:
         return
 
-    dx_d = dx_list[d]
 
     if "_min" in boundary_name:
         # Min boundary: mass exits if velocity points left (negative)

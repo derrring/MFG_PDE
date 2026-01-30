@@ -30,7 +30,6 @@ from mfg_pde.geometry.boundary.types import BCType
 from mfg_pde.operators.stencils.finite_difference import gradient_nd
 from mfg_pde.utils.numerical.particle import (
     interpolate_grid_to_particles,
-    interpolate_particles_to_grid,
     sample_from_density,
 )
 
