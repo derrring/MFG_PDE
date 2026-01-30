@@ -848,7 +848,6 @@ def _apply_outflow_row(
     if d is None:
         return
 
-
     if "_min" in boundary_name:
         # Min boundary: mass exits if velocity points left (negative)
         # For upwind with v < 0, mass at min boundary flows out
