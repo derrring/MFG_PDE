@@ -240,12 +240,11 @@ from .corner import (
     CornerStrategy,
     CornerStrategyLiteral,
     absorb_positions,
-    create_periodic_ghost_points,  # Issue #711: periodic meshfree
     reflect_positions,
     reflect_velocity,
     reflect_velocity_with_normal,
     validate_corner_strategy,
-    wrap_positions,
+    wrap_positions,  # Deprecated - use periodic.wrap_positions
 )
 
 # =============================================================================
@@ -277,6 +276,30 @@ from .handler_protocol import (
     AdvancedBoundaryHandler,
     BoundaryHandler,
     validate_boundary_handler,
+)
+
+# =============================================================================
+# Periodic BC utilities (parallel to enforcement.py for DIRICHLET/NEUMANN)
+# Issue #711: Refactored to be parallel to other BC types
+# =============================================================================
+from .periodic import (
+    create_periodic_ghost_points,
+)
+from .periodic import (
+    wrap_positions as periodic_wrap_positions,  # Canonical location
+)
+
+# =============================================================================
+# Ghost Point Utilities (reflection-based, for NEUMANN/NO-FLUX BC)
+# Parallel to periodic.py which handles PERIODIC BC
+# =============================================================================
+from .ghost import (
+    compute_normal_from_bounds,
+    compute_normal_from_sdf,
+    create_ghost_points_for_kde,
+    create_ghost_stencil,
+    create_reflection_ghost_points,
+    reflect_point_across_plane,
 )
 
 # =============================================================================
@@ -468,15 +491,24 @@ __all__ = [
     "apply_bc",
     "get_applicator_for_geometry",
     "validate_bc_compatibility",
-    # Corner Handling (Issue #521)
+    # Corner Handling (Issue #521) - for NON-PERIODIC boundaries
     "reflect_positions",
-    "wrap_positions",
     "absorb_positions",
-    "create_periodic_ghost_points",  # Issue #711: periodic meshfree
+    "wrap_positions",  # Deprecated - use periodic.wrap_positions
+    # Periodic BC utilities (Issue #711) - parallel to enforcement.py
+    "create_periodic_ghost_points",
+    "periodic_wrap_positions",
     "reflect_velocity",
     "reflect_velocity_with_normal",
     "CornerStrategy",
     "CornerStrategyLiteral",
     "DEFAULT_CORNER_STRATEGY",
     "validate_corner_strategy",
+    # Ghost point utilities (reflection-based, for NEUMANN/NO-FLUX)
+    "compute_normal_from_bounds",
+    "compute_normal_from_sdf",
+    "reflect_point_across_plane",
+    "create_reflection_ghost_points",
+    "create_ghost_stencil",
+    "create_ghost_points_for_kde",
 ]
