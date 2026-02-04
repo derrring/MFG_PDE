@@ -952,8 +952,8 @@ class TestFPFDMSolverTensorDiffusion:
         Sigma = np.eye(2)
         scalar_sigma = 0.2
 
-        # Should raise ValueError
-        with pytest.raises(ValueError, match="Cannot specify both diffusion_field and tensor_diffusion_field"):
+        # Should raise ValueError (Issue #717: volatility API - deprecated params get converted)
+        with pytest.raises(ValueError, match="Cannot specify both volatility_field and volatility_matrix"):
             solver.solve_fp_system(m_initial, diffusion_field=scalar_sigma, tensor_diffusion_field=Sigma)
 
     def test_tensor_diffusion_1d_raises_error(self, standard_problem):
@@ -968,8 +968,8 @@ class TestFPFDMSolverTensorDiffusion:
         # 1D tensor (should fail)
         Sigma = np.array([[0.2]])
 
-        # Should raise NotImplementedError
-        with pytest.raises(NotImplementedError, match="Tensor diffusion not yet implemented for 1D"):
+        # Should raise NotImplementedError (Issue #717: volatility API)
+        with pytest.raises(NotImplementedError, match="Anisotropic volatility not yet implemented for 1D"):
             solver.solve_fp_system(m_initial, tensor_diffusion_field=Sigma)
 
     def test_tensor_psd_validation(self):
