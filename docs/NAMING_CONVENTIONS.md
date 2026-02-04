@@ -457,7 +457,7 @@ def solve_hjb_system(
 | `M_density` | `(Nt+1, *spatial)` | FP solver output | Density distribution m(t,x) |
 | `U_terminal` | `(*spatial,)` | Problem definition | Terminal cost g(x) |
 | `U_coupling_prev` | `(Nt+1, *spatial)` | Previous iteration | Prior estimate for damping/warm-start |
-| `diffusion_field` | scalar or `(*spatial,)` | Problem/coupling | σ² diffusion coefficient |
+| `volatility_field` | scalar or `(*spatial,)` or `(d,d)` | Problem/coupling | σ (SDE noise) or Σ (noise matrix) |
 
 ### FP Solver API
 
@@ -466,7 +466,7 @@ def solve_fp_system(
     self,
     M_initial: NDArray,              # Initial density m(0,x)
     drift_field: NDArray | None,     # Velocity/drift field v(t,x) from HJB
-    diffusion_field: float | NDArray | None = None,
+    volatility_field: float | NDArray | Callable | None = None,
     show_progress: bool = True,
 ) -> NDArray:
     """Solve Fokker-Planck equation forward in time.
@@ -480,7 +480,7 @@ def solve_fp_system(
 |-----------|-------|--------|-------------|
 | `M_initial` | `(*spatial,)` | Problem definition | Initial density m₀(x) |
 | `drift_field` | `(Nt+1, *spatial)` or `None` | HJB coupling module | Velocity/advection v = -∇_p H(x, ∇u, m) or None for pure diffusion |
-| `diffusion_field` | scalar, `(*spatial,)`, or callable | Problem/coupling | σ² diffusion coefficient |
+| `volatility_field` | scalar, `(*spatial,)`, `(d,d)`, or callable | Problem/coupling | σ (SDE noise coefficient) or Σ (noise matrix) |
 | `show_progress` | `bool` | User preference | Whether to display progress bar |
 
 ### Design Principles
@@ -625,6 +625,43 @@ provider = AdjointConsistentProvider(side="left", sigma=0.2)  # Warns
 ```
 
 **Common confusion**: `diffusion = σ`, NOT `σ²`. When you see `-σ²/2` in formulas, write `-(diffusion**2)/2` in code.
+
+### Volatility Field Convention (v0.17.2+)
+
+For FP particle solvers and spatially-varying diffusion, use `volatility_field`:
+
+| Parameter | Type | Mathematical Meaning | Usage |
+|-----------|------|---------------------|-------|
+| `volatility_field` | `float` | σ (scalar SDE noise) | Isotropic diffusion |
+| `volatility_field` | `(d,d)` array | Σ (noise matrix) | Anisotropic diffusion |
+| `volatility_field` | `Callable` | σ(t,x,m) or Σ(t,x,m) | State-dependent |
+
+**SDE vs PDE convention**:
+```python
+# SDE: dX = v dt + Σ dW
+#   volatility_field = Σ (or σ for scalar)
+
+# PDE: ∂m/∂t + div(m·v) = div(D ∇m)
+#   diffusion tensor D = ΣΣᵀ/2 (or D = σ²/2 for scalar)
+```
+
+**Example**:
+```python
+# Isotropic (scalar volatility)
+fp_solver.solve_fp_system(volatility_field=0.3)  # σ = 0.3
+
+# Anisotropic (matrix volatility)
+Sigma = np.array([[0.3, 0.1], [0.0, 0.2]])  # Lower triangular
+fp_solver.solve_fp_system(volatility_field=Sigma)
+
+# State-dependent
+fp_solver.solve_fp_system(volatility_field=lambda t, x, m: 0.3 * (1 + 0.1*m))
+```
+
+**Relationship to `diffusion` parameter**:
+- `diffusion` (scalar, MFGProblem): Same as σ, used for backward compatibility
+- `volatility_field` (field, FP solver): σ or Σ, supports spatial/state dependence
+- Both represent the SDE noise coefficient, NOT the PDE diffusion coefficient D = σ²/2
 
 ---
 

@@ -15,6 +15,7 @@ from mfg_pde.alg.numerical.gfdm_components import (
     GridCollocationMapper,
     MonotonicityEnforcer,
     NeighborhoodBuilder,
+    PrecomputedMonotoneStencils,
 )
 from mfg_pde.geometry.boundary import BCType, DiscretizationType
 from mfg_pde.utils.mfg_logging import get_logger
@@ -56,9 +57,10 @@ class HJBGFDMSolver(BaseHJBSolver):
     5. Optional QP constraints for monotonicity preservation
 
     QP Optimization Levels:
-    - "none": GFDM without QP constraints
-    - "auto": Adaptive QP with M-matrix checking for monotonicity preservation
-    - "always": Force QP at every point (for debugging and analysis)
+    - "none": GFDM without QP constraints (fastest, no monotonicity guarantee)
+    - "auto": Adaptive QP with M-matrix checking (runtime QP when needed)
+    - "always": Force QP at every point (slowest, for debugging)
+    - "precompute": Precomputed monotone stencils (fast + monotone, recommended)
 
     Note: Monotonicity and QP constraint functionality is provided by MonotonicityEnforcer component.
 
@@ -322,6 +324,8 @@ class HJBGFDMSolver(BaseHJBSolver):
             self.hjb_method_name = "GFDM-QP"
         elif qp_optimization_level == "always":
             self.hjb_method_name = "GFDM-QP-Always"
+        elif qp_optimization_level == "precompute":
+            self.hjb_method_name = "GFDM-Precompute"
         else:
             self.hjb_method_name = f"GFDM-{qp_optimization_level}"
 
@@ -696,6 +700,25 @@ class HJBGFDMSolver(BaseHJBSolver):
                 "osqp_solves": 0,
                 "osqp_failures": 0,
             }
+
+        # Initialize precomputed monotone stencils for "precompute" level
+        # This precomputes M-matrix compliant Laplacian weights at initialization,
+        # eliminating the need for runtime QP optimization.
+        self._precomputed_stencils: PrecomputedMonotoneStencils | None = None
+        if self.qp_optimization_level == "precompute":
+            # Create boundary mask
+            is_boundary = np.zeros(self.n_points, dtype=bool)
+            is_boundary[self.boundary_indices] = True
+
+            self._precomputed_stencils = PrecomputedMonotoneStencils(
+                operator=self._gfdm_operator,
+                is_boundary=is_boundary,
+                tolerance=1e-6,
+            )
+            logger.info(
+                f"Precomputed monotone stencils: {self._precomputed_stencils.stats['n_monotonized']}/{self._precomputed_stencils.stats['n_boundary']} "
+                f"boundary points in {self._precomputed_stencils.stats['time_ms']:.1f}ms"
+            )
 
         # Lazy-initialized cache attributes
         # These are expensive to compute and only created when needed
@@ -1095,6 +1118,18 @@ class HJBGFDMSolver(BaseHJBSolver):
             neighbor_indices = weights["neighbor_indices"]
             grad_weights = weights["grad_weights"]  # shape: (d, n_neighbors)
             lap_weights = weights["lap_weights"]  # shape: (n_neighbors,)
+
+            # Override Laplacian weights with precomputed monotone weights if available
+            # This ensures M-matrix property for numerical stability at boundary points
+            if (
+                self.qp_optimization_level == "precompute"
+                and self._precomputed_stencils is not None
+                and self._precomputed_stencils.has_stencil(i)
+            ):
+                precomputed = self._precomputed_stencils.get_laplacian_weights(i)
+                if precomputed is not None:
+                    lap_weights = precomputed[0]  # (weights, neighbor_indices)
+                    # Note: neighbor_indices should match, we only replace weights
 
             # Fill gradient matrices
             for dim in range(d):
@@ -1623,6 +1658,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 m_at_x=m_n_plus_1[i],
                 derivs=to_multi_index_dict(p_derivs),
                 t_idx=time_idx,
+                x_position=self.collocation_points[i],  # Pass actual position for GFDM
             )
             if dH_dp is None:
                 dH_dp = self._compute_dH_dp_fd(i, m_n_plus_1[i], p_derivs, time_idx)
@@ -2187,6 +2223,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 m_at_x=m_n_plus_1[i],
                 derivs=to_multi_index_dict(p_derivs),
                 t_idx=time_idx,
+                x_position=self.collocation_points[i],  # Pass actual position for GFDM
             )
 
             if dH_dp is None:

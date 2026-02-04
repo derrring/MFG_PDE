@@ -48,9 +48,9 @@ if TYPE_CHECKING:
 
 # Try to import scipy
 try:
-    from scipy.stats import gaussian_kde
     from scipy.special import beta as beta_func
     from scipy.stats import beta as beta_dist
+    from scipy.stats import gaussian_kde
 
     SCIPY_AVAILABLE = True
 except ImportError:
@@ -226,12 +226,15 @@ def reflection_kde(
     ghost_particles = create_ghost_particles(particles, bounds, bandwidth_value, n_bandwidths)
 
     # Augmented particle set
+    n_real = len(particles)
     if len(ghost_particles) > 0:
         if is_1d:
             ghost_particles = ghost_particles.reshape(-1, 1)
         particles_augmented = np.vstack([particles, ghost_particles])
     else:
         particles_augmented = particles
+
+    n_augmented = len(particles_augmented)
 
     # Standard KDE on augmented set (scipy expects shape (d, N))
     if bw_method is not None:
@@ -240,6 +243,12 @@ def reflection_kde(
         kde = gaussian_kde(particles_augmented.T)
 
     density = kde(eval_points.T)
+
+    # CRITICAL FIX (Issue #711): scipy KDE normalizes by 1/(N+M) where M is ghost count.
+    # Ghost particles complete boundary mass but shouldn't dilute density.
+    # Correct by multiplying by (N+M)/N to restore proper normalization.
+    if n_augmented > n_real:
+        density = density * (n_augmented / n_real)
 
     # Clip points outside domain to zero
     for d in range(ndim):

@@ -2,26 +2,30 @@
 Compute mesh quality metrics for GFDM EOC analysis.
 
 For meshfree methods, the key distances are:
-1. Fill distance h: max distance from any point to nearest collocation point
-2. Separation distance q: min distance between collocation points
-3. Mesh ratio h/q: should be O(1) for quasi-uniform distributions
+1. Fill distance h: max radius of empty circle (largest gap in coverage)
+2. Separation distance q: HALF of min distance between points (safe radius)
+3. Mesh ratio h/q: always >= 1, optimal ~1.155 (hexagonal) or ~1.414 (square grid)
+
+Definitions follow Wendland's convention where q = (1/2) * min_{j≠k} ||x_j - x_k||,
+which guarantees h/q >= 1 for any point distribution.
 
 Reference:
 - Wendland, H. "Scattered Data Approximation" (2005), Chapter 14
 - Fasshauer, G. "Meshfree Approximation Methods with MATLAB" (2007)
 """
 
+from typing import NamedTuple
+
 import numpy as np
 from scipy.spatial import cKDTree
-from typing import NamedTuple
 
 
 class MeshDistances(NamedTuple):
     """Container for mesh distance metrics."""
 
-    fill_distance: float  # h = max min distance
-    separation_distance: float  # q = min distance between points
-    mesh_ratio: float  # h/q (ideally O(1))
+    fill_distance: float  # h = max empty circle radius
+    separation_distance: float  # q = (1/2) * min distance between points
+    mesh_ratio: float  # h/q >= 1, optimal ~1.155 (hexagonal)
     mean_nearest_neighbor: float  # average NN distance
     std_nearest_neighbor: float  # std of NN distances
 
@@ -60,17 +64,19 @@ def compute_mesh_distances(
         >>> distances = compute_mesh_distances(points, bounds)
         >>> print(distances.summary())
     """
-    N, d = collocation_points.shape
+    _N, d = collocation_points.shape
 
     # Build KD-tree for efficient nearest neighbor queries
     tree = cKDTree(collocation_points)
 
-    # 1. Separation distance: min distance between any two points
-    # For each point, find distance to 2nd nearest neighbor (1st is itself)
+    # 1. Separation distance: HALF of min distance between any two points
+    # This follows Wendland's definition: q = (1/2) * min_{j≠k} ||x_j - x_k||
+    # Guarantees h/q >= 1 for any point distribution
     distances_to_nn, _ = tree.query(collocation_points, k=2)
     nn_distances = distances_to_nn[:, 1]  # Skip self (distance 0)
 
-    separation_distance = np.min(nn_distances)
+    min_distance = np.min(nn_distances)
+    separation_distance = min_distance / 2.0  # q = min_dist / 2
     mean_nn = np.mean(nn_distances)
     std_nn = np.std(nn_distances)
 
@@ -197,7 +203,7 @@ if __name__ == "__main__":
 
     print("-" * 60)
     print("Note: For uniform refinement, h_ratio should be ~2.0")
-    print("      Mesh ratio h/q should be ~O(1) for stable GFDM")
+    print("      Mesh ratio h/q >= 1 always; optimal ~1.414 for square grid, ~1.155 for hexagonal")
 
     # Theoretical h for structured grid
     print("\n4. Theoretical vs Computed Fill Distance")

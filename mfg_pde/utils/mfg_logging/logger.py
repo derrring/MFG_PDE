@@ -251,7 +251,12 @@ def configure_logging(**kwargs):
 
 
 # Configuration presets for common use cases
-def configure_research_logging(experiment_name: str | None = None, level: str = "INFO", include_debug: bool = False):
+def configure_research_logging(
+    experiment_name: str | None = None,
+    level: str = "INFO",
+    include_debug: bool = False,
+    log_dir: str | Path | None = None,
+):
     """
     Configure logging optimized for research sessions.
 
@@ -259,6 +264,8 @@ def configure_research_logging(experiment_name: str | None = None, level: str = 
         experiment_name: Name for the experiment (used in filename)
         level: Base logging level
         include_debug: Whether to include debug information
+        log_dir: Directory for log files. If None, uses 'research_logs' in CWD.
+                 For experiments, pass Path(__file__).parent / "research_logs".
 
     Returns:
         Path to the log file created
@@ -267,8 +274,8 @@ def configure_research_logging(experiment_name: str | None = None, level: str = 
         level = "DEBUG"
 
     # Create research logs directory
-    research_dir = Path("research_logs")
-    research_dir.mkdir(exist_ok=True)
+    research_dir = Path(log_dir) if log_dir else Path("research_logs")
+    research_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate filename
     if experiment_name:
