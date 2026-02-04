@@ -59,18 +59,13 @@ from mfg_pde.utils.numerical.particle.boundary import (
     apply_boundary_conditions_numpy,
 )
 
-# Boundary-corrected KDE (Issue #709)
-from mfg_pde.utils.numerical.particle.kde_boundary import (
-    # Unified API
-    create_ghost_particles,
-    reflection_kde,
-    renormalization_kde,
-    beta_kde,
-    # Legacy aliases
-    create_ghost_particles_1d,
-    create_ghost_particles_nd,
-    reflection_kde_1d,
-    reflection_kde_nd,
+# CIC density estimation (Issue #721)
+# 方案A: Grid CIC + Interpolation (industrial standard)
+from mfg_pde.utils.numerical.particle.cic import (
+    GridCIC,
+    cic_deposit_2d,
+    cic_deposit_nd,
+    interpolate_grid_to_points,
 )
 
 # Interpolation
@@ -78,6 +73,20 @@ from mfg_pde.utils.numerical.particle.interpolation import (
     estimate_kde_bandwidth,
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
+)
+
+# Boundary-corrected KDE (Issue #709)
+from mfg_pde.utils.numerical.particle.kde_boundary import (
+    beta_kde,
+    # Unified API
+    create_ghost_particles,
+    # Legacy aliases
+    create_ghost_particles_1d,
+    create_ghost_particles_nd,
+    reflection_kde,
+    reflection_kde_1d,
+    reflection_kde_nd,
+    renormalization_kde,
 )
 
 # MCMC sampling (mcmc.py -> mcmc.py)
@@ -141,6 +150,11 @@ __all__ = [
     "create_ghost_particles_nd",
     "reflection_kde_1d",
     "reflection_kde_nd",
+    # CIC density estimation (Issue #721) - 方案A
+    "GridCIC",
+    "cic_deposit_2d",
+    "cic_deposit_nd",
+    "interpolate_grid_to_points",
     # Monte Carlo
     "MCConfig",
     "MCResult",
