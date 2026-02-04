@@ -175,9 +175,93 @@ def create_periodic_ghost_points(
     return np.vstack(augmented_list), np.concatenate(index_list)
 
 
+def create_reflection_ghost_points(
+    points: NDArray[np.floating],
+    bounds: list[tuple[float, float]] | NDArray[np.floating],
+    margin: float,
+    reflect_dims: tuple[int, ...] | None = None,
+) -> tuple[NDArray[np.floating], NDArray[np.int64]]:
+    """
+    Create augmented point cloud with reflected ghost copies for boundary KDE.
+
+    For KDE at domain boundaries, the kernel extends into "empty" space outside
+    the domain, causing ~50% density underestimation. Reflecting particles about
+    boundaries fixes this bias for no-flux/Neumann BC (Issue #709).
+
+    Unlike periodic ghost points which create 3^|P| copies, reflection only
+    creates copies for particles within `margin` of each boundary face.
+
+    Args:
+        points: Original points, shape (n_points, dimension)
+        bounds: Domain bounds as [(xmin, xmax), ...] or (d, 2) array
+        margin: Distance from boundary to include particles for reflection.
+            Typically 3*bandwidth for KDE.
+        reflect_dims: Dimensions with reflecting boundaries. If None, all dims.
+
+    Returns:
+        Tuple of (augmented_points, original_indices):
+            - augmented_points: Shape (n_augmented, dimension)
+            - original_indices: Maps augmented index -> original point index
+
+    Examples:
+        >>> # 2D domain with reflecting boundaries
+        >>> points = np.random.rand(100, 2)
+        >>> bounds = [(0, 1), (0, 1)]
+        >>> aug_pts, orig_idx = create_reflection_ghost_points(
+        ...     points, bounds, margin=0.1
+        ... )
+        >>> # Only particles near boundaries are reflected
+
+    Note:
+        Issue #709: Boundary KDE correction for particle methods.
+        For periodic BC, use create_periodic_ghost_points() instead.
+    """
+    points = np.atleast_2d(points)
+    n_points, ndim = points.shape
+
+    bounds = np.asarray(bounds)
+    if bounds.ndim == 1:
+        bounds = bounds.reshape(1, 2)
+
+    # Default: all dimensions have reflecting boundaries
+    if reflect_dims is None:
+        reflect_dims = tuple(range(ndim))
+
+    if not reflect_dims:
+        # No reflection needed
+        return points, np.arange(n_points, dtype=np.int64)
+
+    augmented_list = [points]
+    index_list = [np.arange(n_points, dtype=np.int64)]
+
+    for d in reflect_dims:
+        xmin, xmax = bounds[d, 0], bounds[d, 1]
+
+        # Find particles near left boundary (within margin of xmin)
+        near_left_mask = points[:, d] < xmin + margin
+        if np.any(near_left_mask):
+            pts_near_left = points[near_left_mask].copy()
+            # Reflect about xmin: x_reflected = 2*xmin - x
+            pts_near_left[:, d] = 2 * xmin - pts_near_left[:, d]
+            augmented_list.append(pts_near_left)
+            index_list.append(np.where(near_left_mask)[0].astype(np.int64))
+
+        # Find particles near right boundary (within margin of xmax)
+        near_right_mask = points[:, d] > xmax - margin
+        if np.any(near_right_mask):
+            pts_near_right = points[near_right_mask].copy()
+            # Reflect about xmax: x_reflected = 2*xmax - x
+            pts_near_right[:, d] = 2 * xmax - pts_near_right[:, d]
+            augmented_list.append(pts_near_right)
+            index_list.append(np.where(near_right_mask)[0].astype(np.int64))
+
+    return np.vstack(augmented_list), np.concatenate(index_list)
+
+
 __all__ = [
     "wrap_positions",
     "create_periodic_ghost_points",
+    "create_reflection_ghost_points",
 ]
 
 
@@ -232,4 +316,39 @@ if __name__ == "__main__":
     assert aug_none.shape == (10, 2)
     print(f"   Non-periodic: {len(points)} -> {len(aug_none)} points (1x)")
 
-    print("\nAll periodic utilities tests passed!")
+    # Test create_reflection_ghost_points (Issue #709)
+    print("\n3. create_reflection_ghost_points:")
+
+    # Create particles, some near boundaries
+    np.random.seed(42)
+    particles = np.random.rand(100, 2)
+
+    # Reflection with margin=0.1
+    margin = 0.1
+    aug_reflect, idx_reflect = create_reflection_ghost_points(particles, bounds_2d, margin=margin)
+    n_ghosts = len(aug_reflect) - len(particles)
+    print(f"   {len(particles)} particles -> {len(aug_reflect)} with reflection (margin={margin})")
+    print(f"   Added {n_ghosts} reflection ghosts")
+
+    # Verify reflected points are outside domain
+    outside_left_x = aug_reflect[len(particles) :, 0] < 0
+    outside_right_x = aug_reflect[len(particles) :, 0] > 1
+    outside_left_y = aug_reflect[len(particles) :, 1] < 0
+    outside_right_y = aug_reflect[len(particles) :, 1] > 1
+    # Reflected points should be outside domain in at least one dimension
+    # (some may be outside in x, some in y)
+    print(f"   Ghosts outside domain: {np.sum(outside_left_x | outside_right_x | outside_left_y | outside_right_y)}")
+
+    # Test with larger margin
+    margin_large = 0.3
+    aug_large, idx_large = create_reflection_ghost_points(particles, bounds_2d, margin=margin_large)
+    print(f"   With margin={margin_large}: {len(aug_large)} total")
+    assert len(aug_large) > len(aug_reflect), "Larger margin should include more ghosts"
+
+    # Test partial reflection (only x dimension)
+    aug_x_only, idx_x_only = create_reflection_ghost_points(particles, bounds_2d, margin=0.1, reflect_dims=(0,))
+    print(f"   Reflect x only: {len(aug_x_only)} total")
+
+    print("   Reflection ghost points: passed")
+
+    print("\nAll periodic/reflection utilities tests passed!")

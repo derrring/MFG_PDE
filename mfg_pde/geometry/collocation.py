@@ -76,6 +76,9 @@ class CollocationPointSet:
         is_boundary: Boolean mask, True for boundary points, shape (N,)
         normals: Outward unit normals, zeros for interior, shape (N, d)
         region_ids: Boundary region identifier, -1 for interior, shape (N,)
+        fill_distance: Fill distance h (max empty circle radius), computed during optimization
+        separation_distance: Separation distance q = min_dist/2 (Wendland convention)
+        mesh_ratio: Mesh ratio h/q, optimal ~1.155 (hexagonal) or ~1.414 (square)
 
     Properties:
         boundary_indices: Array of indices where is_boundary is True
@@ -88,6 +91,9 @@ class CollocationPointSet:
     is_boundary: NDArray  # (N,) bool
     normals: NDArray  # (N, d)
     region_ids: NDArray = field(default_factory=lambda: np.array([]))  # (N,) int
+    fill_distance: float | None = None  # h, computed during optimization
+    separation_distance: float | None = None  # q = min_dist/2
+    mesh_ratio: float | None = None  # h/q
 
     def __post_init__(self):
         """Validate and set defaults."""
@@ -425,15 +431,23 @@ class CartesianGridCollocation(BaseCollocationStrategy):
         bounds: list[tuple[float, float]],
         rng: np.random.RandomState,
     ) -> NDArray:
-        """Sample points uniformly on a face."""
+        """Sample points evenly spaced on a face (excluding corners).
+
+        Uses linspace for even spacing, which produces much better mesh quality
+        for GFDM than random uniform sampling.
+        """
         d = len(bounds)
         points = np.zeros((n_points, d))
 
         for i in range(d):
             if i == dim:
+                # Fixed coordinate on this face
                 points[:, i] = bounds[dim][side]
             else:
-                points[:, i] = rng.uniform(bounds[i][0], bounds[i][1], n_points)
+                # Evenly spaced (excluding corners which are added separately)
+                # Use linspace with n_points+2 to exclude endpoints
+                lo, hi = bounds[i]
+                points[:, i] = np.linspace(lo, hi, n_points + 2)[1:-1]
 
         return points
 
@@ -952,19 +966,21 @@ def _optimize_mesh_ratio_interior(
     boundary: NDArray,
     geometry: GeometryProtocol,
     target_ratio: float | Literal["optimal"] = "optimal",
-    max_iterations: int = 5,
+    max_iterations: int = 30,
     n_test_points: int = 5000,
     seed: int | None = None,
 ) -> NDArray:
     """
     Optimize interior point distribution to achieve target mesh ratio h/q.
 
-    Unlike _optimize_mesh_ratio, this function:
-    - Only moves interior points
-    - Keeps boundary points FIXED
-    - But uses boundary points for repulsion (interior pushed away from boundary)
+    Uses Adaptive Repulsion algorithm with:
+    - 1/r^2 soft-cutoff repulsion between all points (equal for interior and boundary)
+    - Adaptive learning rate (increases when improving, decreases when not)
+    - Best-tracking (returns best seen configuration, not last)
+    - Optional wall force as safety net (minimal, only near domain boundary)
 
     This preserves N_col exactly while improving mesh quality.
+    Typical results: h/q ~ 1.8-2.0 (close to theoretical optimal 1.414 for square grid).
 
     Args:
         interior: Interior points (N_int, d) - will be optimized
@@ -973,17 +989,26 @@ def _optimize_mesh_ratio_interior(
         target_ratio: Target mesh ratio h/q. Can be:
             - float: Stop when h/q <= target (e.g., 5.0)
             - 'optimal': Auto-converge until plateau or h/q < 2.0
-        max_iterations: Maximum optimization iterations
+        max_iterations: Maximum optimization iterations (default 30 for 'optimal')
         n_test_points: Test points for fill distance estimation
         seed: Random seed
 
     Returns:
-        Optimized interior points (same N_int)
+        Tuple of (optimized_interior, fill_distance, separation_distance, mesh_ratio)
+        - optimized_interior: Optimized interior points (same N_int)
+        - fill_distance: Fill distance h for the best configuration
+        - separation_distance: Separation distance q for the best configuration
+        - mesh_ratio: Mesh ratio h/q for the best configuration
+
+    Note:
+        Mesh ratio uses Wendland convention: q = min_distance / 2.
+        This guarantees h/q >= 1 for any point distribution.
+        Theoretical optimal: h/q ~ 1.155 (hexagonal), ~ 1.414 (square grid).
     """
     from scipy.spatial import cKDTree
 
     if len(interior) == 0:
-        return interior
+        return interior, None, None, None
 
     N_int, d = interior.shape
     current_interior = interior.copy()
@@ -1001,8 +1026,23 @@ def _optimize_mesh_ratio_interior(
     target_spacing = (bbox_volume / N_total) ** (1.0 / d)
 
     rng = np.random.RandomState(seed)
-    prev_ratio = float("inf")
     auto_mode = target_ratio == "optimal"
+
+    # Track best result (interior points + mesh distances)
+    best_ratio = float("inf")
+    best_interior = current_interior.copy()
+    best_h: float | None = None
+    best_q: float | None = None
+    no_improvement_count = 0
+
+    # Adaptive learning rate
+    lr = 0.2
+
+    # Repulsion cutoff
+    cutoff = 3.0 * target_spacing
+
+    # Wall margin (safety net, only activates very close to boundary)
+    wall_margin = 0.15 * target_spacing
 
     for iteration in range(max_iterations):
         # Combine for mesh quality computation
@@ -1013,9 +1053,9 @@ def _optimize_mesh_ratio_interior(
 
         tree = cKDTree(all_points)
 
-        # Separation distance (q)
+        # Separation distance (q) = half of min distance (Wendland convention)
         nn_dist, _ = tree.query(all_points, k=2)
-        q = np.min(nn_dist[:, 1])
+        q = np.min(nn_dist[:, 1]) / 2.0
 
         # Fill distance (h) via Monte Carlo
         test_points = np.zeros((n_test_points, d))
@@ -1036,28 +1076,38 @@ def _optimize_mesh_ratio_interior(
 
         mesh_ratio = h / q if q > 1e-10 else float("inf")
 
-        logger.debug(f"Mesh ratio optimization iter {iteration}: h={h:.4f}, q={q:.4f}, h/q={mesh_ratio:.2f}")
+        # Track best result and adapt learning rate
+        if mesh_ratio < best_ratio:
+            best_ratio = mesh_ratio
+            best_interior = current_interior.copy()
+            best_h = h
+            best_q = q
+            no_improvement_count = 0
+            lr = min(lr * 1.1, 0.35)  # Increase lr when improving
+        else:
+            no_improvement_count += 1
+            lr = max(lr * 0.85, 0.05)  # Decrease lr when not improving
 
-        # Check convergence based on mode
+        # Log progress
+        log_fn = logger.info if auto_mode else logger.debug
+        best_marker = " *" if mesh_ratio == best_ratio else ""
+        log_fn(f"Mesh ratio optimization iter {iteration}: h={h:.4f}, q={q:.4f}, h/q={mesh_ratio:.2f}{best_marker}")
+
+        # Check convergence
         if auto_mode:
-            # 'optimal' mode: converge until plateau or near-optimal
-            if mesh_ratio < 2.0:
+            if best_ratio < 2.0:
                 logger.info(
-                    f"Mesh ratio optimization: near-optimal h/q={mesh_ratio:.2f} < 2.0 "
+                    f"Mesh ratio optimization: near-optimal h/q={best_ratio:.2f} < 2.0 "
                     f"achieved after {iteration} iterations"
                 )
                 break
-            if prev_ratio < float("inf"):
-                improvement = (prev_ratio - mesh_ratio) / prev_ratio
-                if improvement < 0.01:  # <1% improvement
-                    logger.info(
-                        f"Mesh ratio optimization: converged at h/q={mesh_ratio:.2f} "
-                        f"(<1% improvement) after {iteration} iterations"
-                    )
-                    break
-            prev_ratio = mesh_ratio
+            if no_improvement_count >= 5:
+                logger.info(
+                    f"Mesh ratio optimization: converged at h/q={best_ratio:.2f} "
+                    f"(no improvement for 5 iterations) after {iteration} iterations"
+                )
+                break
         else:
-            # Numeric target mode: stop when target achieved
             if mesh_ratio <= target_ratio:
                 logger.info(
                     f"Mesh ratio optimization: achieved h/q={mesh_ratio:.2f} <= {target_ratio} "
@@ -1065,24 +1115,55 @@ def _optimize_mesh_ratio_interior(
                 )
                 break
 
-        # Apply Lloyd relaxation to interior only, with boundary as fixed repulsors
-        boundary_strength = 1.5 + 0.5 * iteration
+        # Compute repulsion forces using Adaptive Repulsion algorithm
+        forces = np.zeros_like(current_interior)
 
-        current_interior = _lloyd_relaxation_interior_only(
-            current_interior,
-            boundary,
-            bounds,
-            geometry,
-            steps=20,
-            boundary_strength=boundary_strength,
-            target_spacing=target_spacing,
-        )
+        for i in range(N_int):
+            # Point-point repulsion (equal strength for interior and boundary)
+            neighbors = tree.query_ball_point(current_interior[i], r=cutoff)
+            for j in neighbors:
+                if j == i:
+                    continue
+                diff = current_interior[i] - all_points[j]
+                dist = np.linalg.norm(diff)
+                if dist < 1e-10:
+                    diff = rng.randn(d) * 0.01 * target_spacing
+                    dist = np.linalg.norm(diff)
+
+                if dist < cutoff:
+                    # 1/r^2 repulsion with soft cutoff
+                    strength = (target_spacing / dist) ** 2 * (1 - dist / cutoff)
+                    forces[i] += strength * diff / dist
+
+            # Minimal wall force (safety net)
+            for dim in range(d):
+                d_lo = current_interior[i, dim] - bounds[dim][0]
+                if 0 < d_lo < wall_margin:
+                    wall_strength = ((wall_margin - d_lo) / wall_margin) ** 3
+                    forces[i, dim] += wall_strength * target_spacing
+
+                d_hi = bounds[dim][1] - current_interior[i, dim]
+                if 0 < d_hi < wall_margin:
+                    wall_strength = ((wall_margin - d_hi) / wall_margin) ** 3
+                    forces[i, dim] -= wall_strength * target_spacing
+
+        # Normalize and apply forces
+        max_force = np.max(np.linalg.norm(forces, axis=1))
+        if max_force > 1e-10:
+            forces = forces / max_force * target_spacing
+
+        current_interior = current_interior + lr * forces
+
+        # Hard clip to stay inside domain (safety)
+        for dim in range(d):
+            eps = 1e-6
+            current_interior[:, dim] = np.clip(current_interior[:, dim], bounds[dim][0] + eps, bounds[dim][1] - eps)
+
     else:
-        # Loop exhausted without early termination
+        # Loop exhausted
         if auto_mode:
-            logger.info(f"Mesh ratio optimization: max iterations reached, final h/q={mesh_ratio:.2f}")
+            logger.info(f"Mesh ratio optimization: max iterations reached, best h/q={best_ratio:.2f}")
         else:
-            # Numeric target not achieved - warn user
             import warnings
 
             warnings.warn(
@@ -1090,10 +1171,10 @@ def _optimize_mesh_ratio_interior(
                 f"iterations. Final h/q={mesh_ratio:.2f}. Consider increasing max_iterations "
                 f"or using target_mesh_ratio='optimal' for auto-convergence.",
                 UserWarning,
-                stacklevel=4,  # Point to caller of generate_collocation
+                stacklevel=4,
             )
 
-    return current_interior
+    return best_interior, best_h, best_q, best_ratio
 
 
 def _lloyd_relaxation_interior_only(
@@ -1296,9 +1377,9 @@ def _optimize_mesh_ratio(
         # Compute current mesh distances
         tree = cKDTree(current)
 
-        # Separation distance (q)
+        # Separation distance (q) = half of min distance (Wendland convention)
         nn_dist, _ = tree.query(current, k=2)
-        q = np.min(nn_dist[:, 1])
+        q = np.min(nn_dist[:, 1]) / 2.0
 
         # Fill distance (h) via Monte Carlo
         test_points = np.zeros((n_test_points, d))
@@ -1784,6 +1865,12 @@ class CollocationSampler:
         if type(geom).__name__ == "TensorProductGrid":
             return CartesianGridCollocation(geom)
 
+        # Check for Hyperrectangle - use CartesianGridCollocation for axis-aligned box
+        # This produces evenly-spaced boundary points via linspace, which is critical
+        # for GFDM mesh ratio optimization (Issue #711)
+        if type(geom).__name__ == "Hyperrectangle":
+            return CartesianGridCollocation(geom)
+
         # Check for grid-like geometry (has get_grid_points method)
         try:
             _ = geom.get_grid_points
@@ -1903,7 +1990,8 @@ class CollocationSampler:
 
         Args:
             n_interior: Number of interior points
-            n_boundary: Number of boundary points
+            n_boundary: Number of boundary points. For fully periodic domains
+                (torus), this is automatically set to 0 with a warning.
             interior_method: Sampling method for interior
             boundary_method: Sampling method for boundary
             seed: Random seed
@@ -1939,14 +2027,41 @@ class CollocationSampler:
             If both min_separation and target_mesh_ratio are specified,
             min_separation is applied first (may change N), then mesh ratio
             optimization is applied (preserves the new N).
+
+            For fully periodic domains (torus topology), n_boundary is forced
+            to 0 since there are no true boundaries (Issue #720).
         """
+        # Issue #720: Detect fully periodic domains and force n_boundary=0
+        # Import protocol here to avoid circular imports
+        from mfg_pde.geometry.protocols import SupportsPeriodic
+
+        if isinstance(self.geometry, SupportsPeriodic):
+            periodic_dims = self.geometry.periodic_dimensions
+            dimension = self.geometry.dimension
+            if len(periodic_dims) == dimension and n_boundary > 0:
+                import warnings
+
+                warnings.warn(
+                    f"Fully periodic domain (torus) detected with {len(periodic_dims)} periodic dimensions. "
+                    f"Forcing n_boundary=0 (was {n_boundary}). Torus has no boundaries.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                n_boundary = 0
+
         # Sample interior
         interior = self.sample_interior(n_interior, interior_method, seed)
 
-        # Sample boundary
-        boundary, normals_bdy, region_ids_bdy = self._strategy.sample_boundary(n_boundary, boundary_method, seed)
-
         d = interior.shape[1]
+
+        # Sample boundary (skip if n_boundary=0, e.g., for fully periodic domains)
+        if n_boundary > 0:
+            boundary, normals_bdy, region_ids_bdy = self._strategy.sample_boundary(n_boundary, boundary_method, seed)
+        else:
+            # No boundary points for periodic domains
+            boundary = np.zeros((0, d))
+            normals_bdy = np.zeros((0, d))
+            region_ids_bdy = np.array([], dtype=int)
 
         # Enforce minimum separation if specified
         if min_separation is not None and min_separation > 0:
@@ -1987,9 +2102,13 @@ class CollocationSampler:
             and len(interior) > 0
             and (target_mesh_ratio == "optimal" or target_mesh_ratio > 0)
         )
+        fill_distance: float | None = None
+        separation_distance: float | None = None
+        mesh_ratio_val: float | None = None
+
         if should_optimize:
             # Only optimize interior points; boundary points stay fixed
-            interior = _optimize_mesh_ratio_interior(
+            interior, fill_distance, separation_distance, mesh_ratio_val = _optimize_mesh_ratio_interior(
                 interior,
                 boundary,
                 self.geometry,
@@ -2016,6 +2135,9 @@ class CollocationSampler:
             is_boundary=is_boundary,
             normals=normals,
             region_ids=region_ids,
+            fill_distance=fill_distance,
+            separation_distance=separation_distance,
+            mesh_ratio=mesh_ratio_val,
         )
 
 
@@ -2076,6 +2198,11 @@ def generate_collocation(
         >>> # Approach 2: Hard constraints (N may vary)
         >>> coll = generate_collocation(domain, 100, 40, min_separation=0.05)
         >>> # N might be < 140 if points removed
+        >>>
+        >>> # Periodic domain (torus): n_boundary forced to 0 (Issue #720)
+        >>> torus = Hyperrectangle(bounds=[[0, 1], [0, 1]], periodic_dims=(0, 1))
+        >>> coll = generate_collocation(torus, 100, 40)  # Warning: n_boundary -> 0
+        >>> assert coll.n_boundary == 0  # Torus has no boundaries
     """
     sampler = CollocationSampler(geometry)
     return sampler.generate_collocation(

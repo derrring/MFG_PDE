@@ -316,49 +316,78 @@ class TaylorOperator(DifferentialOperator):
         k_neighbors: int | None = None,
         neighborhood_mode: str = "hybrid",
         geometry: object | None = None,
+        adaptive_params: tuple[np.ndarray, np.ndarray] | None = None,
     ):
         """
         Initialize Taylor operator with precomputed structure.
 
         Args:
             points: Collocation points, shape (n_points, dimension)
-            delta: Neighborhood radius for finding neighbors
+            delta: Neighborhood radius for finding neighbors (scalar, or ignored
+                if adaptive_params provided)
             taylor_order: Order of Taylor expansion (1 or 2)
             weight_function: Weight function type ("wendland", "gaussian", "uniform")
             weight_scale: Scale parameter for weight function
-            k_neighbors: Number of neighbors for k-NN mode (auto-computed if None)
+            k_neighbors: Number of neighbors for k-NN mode (auto-computed if None,
+                or ignored if adaptive_params provided)
             neighborhood_mode: Neighborhood selection strategy:
                 - "radius": Use all points within delta
                 - "knn": Use exactly k nearest neighbors
                 - "hybrid": Use delta, but ensure at least k neighbors (default)
+                - "adaptive": Use per-point (k, delta) from adaptive_params
             geometry: Geometry object implementing SupportsPeriodic protocol for
                 periodic domains (e.g., Hyperrectangle with periodic_dims).
                 If provided and periodic, enables wrap-around neighbor search.
                 Issue #711.
+            adaptive_params: Optional tuple (k_arr, delta_arr) of per-point arrays
+                from compute_adaptive_gfdm_params(). When provided, enables
+                per-point adaptive neighborhoods where each point has its own
+                (k, delta) values. This provides better boundary/corner handling.
+                Sets neighborhood_mode="adaptive" automatically.
         """
         self._points = np.asarray(points)
         self._n_points, self._dimension = self._points.shape
-        self.delta = delta
         self.taylor_order = taylor_order
         self.weight_function = weight_function
         self.weight_scale = weight_scale
-        self.neighborhood_mode = neighborhood_mode
         self._geometry = geometry
+
+        # Handle adaptive parameters mode
+        if adaptive_params is not None:
+            k_arr, delta_arr = adaptive_params
+            if len(k_arr) != self._n_points or len(delta_arr) != self._n_points:
+                raise ValueError(
+                    f"adaptive_params arrays must have length {self._n_points}, "
+                    f"got k_arr={len(k_arr)}, delta_arr={len(delta_arr)}"
+                )
+            self._k_arr = np.asarray(k_arr, dtype=int)
+            self._delta_arr = np.asarray(delta_arr)
+            self.neighborhood_mode = "adaptive"
+            # Store representative scalars for compatibility (mean values)
+            self.delta = float(np.mean(self._delta_arr))
+            self.k_neighbors = int(np.mean(self._k_arr))
+        else:
+            self._k_arr = None
+            self._delta_arr = None
+            self.neighborhood_mode = neighborhood_mode
+            self.delta = delta
+            # Compute k_neighbors from Taylor order if not provided
+            # Formula: k = ρ × n_derivatives where n_derivatives = C(d+p, p) - 1
+            # Uses unified design with overdetermination ratio ρ = 3.0
+            n_monomials = self._count_monomials(self._dimension, taylor_order)
+            n_derivatives = n_monomials - 1  # Exclude constant term
+            if k_neighbors is None:
+                overdetermination = 3.0  # Unified design parameter
+                self.k_neighbors = int(overdetermination * n_derivatives)
+            else:
+                # User-provided k must be at least n_derivatives + 1 for overdetermination
+                self.k_neighbors = max(k_neighbors, n_derivatives + 1)
 
         # Check if geometry supports periodicity (Issue #711)
         # Use isinstance() with Protocol per CLAUDE.md standards (no hasattr duck typing)
         from mfg_pde.geometry.protocols import SupportsPeriodic
 
         self._is_periodic = isinstance(geometry, SupportsPeriodic) and len(geometry.periodic_dimensions) > 0
-
-        # Compute k_neighbors from Taylor order if not provided
-        # Safety margin of +3 ensures overdetermined system even with compact
-        # support kernels (Wendland) that may zero out distant neighbors.
-        n_derivatives = self._count_derivatives(self._dimension, taylor_order)
-        if k_neighbors is None:
-            self.k_neighbors = n_derivatives + 3  # +3 for robust overdetermination
-        else:
-            self.k_neighbors = max(k_neighbors, n_derivatives + 1)
 
         # Build multi-index set for Taylor expansion
         self.multi_indices = self._build_multi_indices()
@@ -383,11 +412,24 @@ class TaylorOperator(DifferentialOperator):
     def points(self) -> np.ndarray:
         return self._points
 
-    def _count_derivatives(self, dimension: int, order: int) -> int:
-        """Count number of derivatives for given dimension and order."""
+    def _count_monomials(self, dimension: int, order: int) -> int:
+        """
+        Count number of monomials for Taylor expansion of given order.
+
+        Formula: C(d+p, p) = (d+p)! / (d! * p!)
+
+        Examples:
+            d=2, p=2: C(4,2) = 6 monomials (1, x, y, x², xy, y²)
+            d=2, p=3: C(5,3) = 10 monomials
+            d=3, p=2: C(5,2) = 10 monomials
+        """
         from math import comb
 
-        return comb(dimension + order, order) - 1
+        return comb(dimension + order, order)
+
+    def _count_derivatives(self, dimension: int, order: int) -> int:
+        """Count number of derivatives for given dimension and order (excludes constant)."""
+        return self._count_monomials(dimension, order) - 1
 
     def _build_multi_indices(self) -> list[tuple[int, ...]]:
         """Generate multi-index set B(d,p) = {beta in N^d : 0 < |beta| <= p}."""
@@ -440,24 +482,51 @@ class TaylorOperator(DifferentialOperator):
         self._hybrid_expanded_count = 0
 
         for i in range(self._n_points):
+            # Get per-point k and delta for adaptive mode
+            if self.neighborhood_mode == "adaptive":
+                k_i = self._k_arr[i]
+                delta_i = self._delta_arr[i]
+            else:
+                k_i = self.k_neighbors
+                delta_i = self.delta
+
             if self.neighborhood_mode == "knn":
-                distances, aug_neighbor_indices = tree.query(self._points[i], k=self.k_neighbors)
+                distances, aug_neighbor_indices = tree.query(self._points[i], k=k_i)
                 aug_neighbor_indices = np.array(aug_neighbor_indices)
                 distances = np.array(distances)
             elif self.neighborhood_mode == "radius":
-                aug_neighbor_indices = tree.query_ball_point(self._points[i], self.delta)
+                aug_neighbor_indices = tree.query_ball_point(self._points[i], delta_i)
                 aug_neighbor_indices = np.array(aug_neighbor_indices)
                 aug_neighbor_points = augmented_points[aug_neighbor_indices]
                 distances = np.linalg.norm(aug_neighbor_points - self._points[i], axis=1)
-            else:
-                # Hybrid mode (default)
-                aug_neighbor_indices = tree.query_ball_point(self._points[i], self.delta)
+            elif self.neighborhood_mode == "adaptive":
+                # Adaptive mode: use per-point (k, delta) with hybrid strategy
+                aug_neighbor_indices = tree.query_ball_point(self._points[i], delta_i)
                 aug_neighbor_indices = np.array(aug_neighbor_indices)
 
-                if len(aug_neighbor_indices) < self.k_neighbors:
-                    distances, aug_neighbor_indices = tree.query(self._points[i], k=self.k_neighbors)
+                if len(aug_neighbor_indices) < k_i:
+                    # Fallback to k-NN if not enough neighbors in delta
+                    distances, aug_neighbor_indices = tree.query(self._points[i], k=k_i)
                     aug_neighbor_indices = np.array(aug_neighbor_indices)
                     distances = np.array(distances)
+                    # Expand delta to include all k neighbors (for weight computation)
+                    delta_i = distances.max() * 1.01
+                    self._hybrid_expanded_count += 1
+                else:
+                    aug_neighbor_points = augmented_points[aug_neighbor_indices]
+                    distances = np.linalg.norm(aug_neighbor_points - self._points[i], axis=1)
+            else:
+                # Hybrid mode (default)
+                aug_neighbor_indices = tree.query_ball_point(self._points[i], delta_i)
+                aug_neighbor_indices = np.array(aug_neighbor_indices)
+
+                if len(aug_neighbor_indices) < k_i:
+                    # k-NN fallback: find k neighbors beyond original delta
+                    distances, aug_neighbor_indices = tree.query(self._points[i], k=k_i)
+                    aug_neighbor_indices = np.array(aug_neighbor_indices)
+                    distances = np.array(distances)
+                    # Expand delta to include all k neighbors (for weight computation)
+                    delta_i = distances.max() * 1.01
                     self._hybrid_expanded_count += 1
                 else:
                     aug_neighbor_points = augmented_points[aug_neighbor_indices]
@@ -475,16 +544,28 @@ class TaylorOperator(DifferentialOperator):
                     "points": neighbor_points,  # Augmented points (for delta_x)
                     "distances": distances,
                     "size": len(neighbor_indices),
+                    "delta": delta_i,  # Store per-point delta for weight computation
                 }
             )
 
-        if self.neighborhood_mode == "hybrid" and self._hybrid_expanded_count > 0:
+        if self.neighborhood_mode in ("hybrid", "adaptive") and self._hybrid_expanded_count > 0:
             import warnings
 
             pct = 100.0 * self._hybrid_expanded_count / self._n_points
+            mode_str = "Adaptive" if self.neighborhood_mode == "adaptive" else "Hybrid"
+            k_str = (
+                f"k_arr[min={self._k_arr.min()},max={self._k_arr.max()}]"
+                if self._k_arr is not None
+                else f"k={self.k_neighbors}"
+            )
+            delta_str = (
+                f"delta_arr[min={self._delta_arr.min():.4f},max={self._delta_arr.max():.4f}]"
+                if self._delta_arr is not None
+                else f"delta={self.delta:.4f}"
+            )
             warnings.warn(
-                f"Hybrid neighborhood: {self._hybrid_expanded_count}/{self._n_points} points ({pct:.1f}%) "
-                f"had fewer than k={self.k_neighbors} neighbors within delta={self.delta:.4f}. "
+                f"{mode_str} neighborhood: {self._hybrid_expanded_count}/{self._n_points} points ({pct:.1f}%) "
+                f"had fewer than {k_str} neighbors within {delta_str}. "
                 f"Used k-NN fallback.",
                 UserWarning,
                 stacklevel=2,
@@ -522,8 +603,9 @@ class TaylorOperator(DifferentialOperator):
                             factorial *= math.factorial(beta[dim])
                     A[j, k] = term / factorial
 
-            # Compute weights
-            weights = self._compute_weights(neighborhood["distances"])
+            # Compute weights (use per-point delta for adaptive mode)
+            delta_i = neighborhood.get("delta", self.delta)
+            weights = self._compute_weights(neighborhood["distances"], delta=delta_i)
             W = np.diag(weights)
             sqrt_W = np.sqrt(W)
 
@@ -672,7 +754,7 @@ class TaylorOperator(DifferentialOperator):
 
         return valid
 
-    def _compute_weights(self, distances: np.ndarray) -> np.ndarray:
+    def _compute_weights(self, distances: np.ndarray, delta: float | None = None) -> np.ndarray:
         """
         Compute weights based on distance using kernel infrastructure.
 
@@ -686,7 +768,15 @@ class TaylorOperator(DifferentialOperator):
         - "phs" (Polyharmonic Spline: r^m, no shape parameter)
 
         For backward compatibility, "wendland" maps to "wendland_c4".
+
+        Args:
+            distances: Distance array to neighbors
+            delta: Support radius for kernel. If None, uses self.delta.
+                For adaptive mode, pass the per-point delta.
         """
+        if delta is None:
+            delta = self.delta
+
         # Uniform weights (special case, not a kernel)
         if self.weight_function == "uniform":
             return np.ones_like(distances)
@@ -712,7 +802,7 @@ class TaylorOperator(DifferentialOperator):
         # Create kernel and evaluate
         try:
             kernel = create_kernel(kernel_name, dimension=self._dimension)
-            return kernel(distances, h=self.delta)
+            return kernel(distances, h=delta)
         except ValueError as e:
             raise ValueError(
                 f"Unknown weight function: '{self.weight_function}'. "
@@ -2048,6 +2138,266 @@ class BCConfig:
             "values": self.bc_values,
             "normals": self.normals,
         }
+
+
+# =============================================================================
+# Parameter Recommendation Functions
+# =============================================================================
+
+
+def compute_adaptive_gfdm_params(
+    points: np.ndarray,
+    taylor_order: int = 2,
+    overdetermination: float = 3.0,
+    safety_factor: float = 1.2,
+    fill_distance: float | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Compute per-point adaptive (k, delta) for GFDM with unified design.
+
+    Uses the same overdetermination ratio ρ as compute_gfdm_parameters().
+    For each point, ensures at least k = ρ × n_monomials neighbors by
+    expanding δ at boundary/corner points where the base δ is insufficient.
+
+    Args:
+        points: Collocation points, shape (n_points, dimension)
+        taylor_order: Order of Taylor expansion (default 2)
+        overdetermination: Target ratio ρ = n_neighbors / n_monomials.
+            Default 3.0.
+        safety_factor: Multiplier for δ_base. Default 1.2.
+        fill_distance: Pre-computed h. If None, estimated from points.
+
+    Returns:
+        k_arr: Per-point k_neighbors, shape (n_points,)
+        delta_arr: Per-point support radius, shape (n_points,)
+
+    Mathematical Basis (Unified Design):
+        - k_target = ρ × n_monomials (same for all points)
+        - δ_base = h × (k / V_d)^(1/d) × safety_factor
+        - Interior: δ = δ_base, k = actual neighbors in δ
+        - Boundary/corner: δ expands until k_target neighbors
+
+    Example:
+        >>> k_arr, delta_arr = compute_adaptive_gfdm_params(points)
+        >>> operator = TaylorOperator(points, adaptive_params=(k_arr, delta_arr))
+    """
+    from math import comb, pi
+
+    from scipy.spatial import cKDTree
+
+    points = np.asarray(points)
+    n_points, dimension = points.shape
+
+    # Estimate fill distance
+    if fill_distance is None:
+        ranges = np.ptp(points, axis=0)
+        domain_volume = np.prod(ranges)
+        fill_distance = (domain_volume / n_points) ** (1.0 / dimension)
+
+    # Compute parameters from unified design
+    # n_derivatives = unknowns to solve (excludes constant term)
+    n_monomials = comb(dimension + taylor_order, taylor_order)
+    n_derivatives = n_monomials - 1
+    k_target = int(overdetermination * n_derivatives)
+
+    # Compute δ_base from k_target (same formula as compute_gfdm_parameters)
+    # V_d = π^(d/2) / Γ(d/2 + 1) is unit ball volume in d dimensions
+    from math import gamma
+
+    v_d = (pi ** (dimension / 2)) / gamma(dimension / 2 + 1)
+    delta_base = fill_distance * (k_target / v_d) ** (1.0 / dimension) * safety_factor
+
+    # Build KD-tree
+    tree = cKDTree(points)
+
+    # Per-point adaptive parameters
+    k_arr = np.zeros(n_points, dtype=int)
+    delta_arr = np.zeros(n_points)
+
+    for i in range(n_points):
+        # Count neighbors in delta_base
+        neighbors_in_delta = len(tree.query_ball_point(points[i], delta_base)) - 1
+
+        if neighbors_in_delta >= k_target:
+            # Sufficient neighbors: use delta_base and all neighbors within
+            k_arr[i] = neighbors_in_delta
+            delta_arr[i] = delta_base
+        else:
+            # Insufficient neighbors (boundary/corner): expand delta
+            distances, _ = tree.query(points[i], k=k_target + 1)
+            delta_arr[i] = distances[-1] * 1.1  # 10% margin
+            k_arr[i] = k_target
+
+    return k_arr, delta_arr
+
+
+def wendland_c2_effective_ratio(dimension: int) -> float:
+    """
+    Compute the effective weight ratio for Wendland C2 kernel in d dimensions.
+
+    In a d-dimensional ball, distances follow PDF p(r) ~ r^(d-1) (shell effect).
+    Most points concentrate near the boundary where Wendland weights are small.
+
+    This function computes eta(d) = E[w(r)] analytically using Beta functions:
+        eta(d) = d × [B(d,5) + 4×B(d+1,5)]
+
+    For integer d, this simplifies to:
+        eta(d) = d × 24 × [1/prod(d..d+4) + 4/prod(d+1..d+5)]
+
+    Args:
+        dimension: Spatial dimension d (1, 2, 3, ...)
+
+    Returns:
+        Effective weight ratio eta(d):
+        - 1D: 0.333 (1/3)
+        - 2D: 0.143 (1/7)
+        - 3D: 0.071 (1/14)
+
+    Usage:
+        To achieve rho_effective overdetermination, set:
+        k_nominal = ceil(rho_effective × n_derivatives / eta(d))
+    """
+    # For integer dimensions, use factorial form (exact, avoids gamma function)
+    # B(d,5) = 4! / [d(d+1)(d+2)(d+3)(d+4)]
+    # B(d+1,5) = 4! / [(d+1)(d+2)(d+3)(d+4)(d+5)]
+    d = dimension
+    prod1 = d * (d + 1) * (d + 2) * (d + 3) * (d + 4)
+    prod2 = (d + 1) * (d + 2) * (d + 3) * (d + 4) * (d + 5)
+
+    B_d_5 = 24.0 / prod1
+    B_d1_5 = 24.0 / prod2
+
+    return d * (B_d_5 + 4 * B_d1_5)
+
+
+def compute_gfdm_parameters(
+    points: np.ndarray,
+    taylor_order: int = 2,
+    overdetermination: float | None = None,
+    effective_overdetermination: float = 1.5,
+    safety_factor: float = 1.2,
+    fill_distance: float | None = None,
+) -> dict:
+    """
+    Compute recommended GFDM parameters based on point cloud geometry.
+
+    Uses a DIMENSION-AWARE design that accounts for the Wendland weight decay
+    in high dimensions (hypersphere shell effect). The key insight is that
+    in d dimensions, most neighbors lie near the delta boundary where weights
+    are small, so we need more nominal neighbors to achieve the same effective
+    overdetermination.
+
+    Args:
+        points: Collocation points, shape (n_points, dimension)
+        taylor_order: Order of Taylor expansion (default 2)
+        overdetermination: DEPRECATED. Use effective_overdetermination instead.
+            If provided, this is treated as nominal rho (old behavior).
+        effective_overdetermination: Target EFFECTIVE overdetermination ratio.
+            This is the ratio of effective weighted neighbors to unknowns.
+            Default 1.5 (validated stable for MFG problems).
+            The function automatically computes the nominal k needed to achieve
+            this effective ratio based on dimension.
+        safety_factor: Multiplier for delta_base to ensure enough neighbors.
+            Default 1.2 (20% margin).
+        fill_distance: Pre-computed fill distance h. If None, estimated from
+            point cloud as h ~ (domain_volume / n_points)^(1/d).
+
+    Returns:
+        Dictionary with recommended parameters:
+        - 'delta': Support radius (derived from k and geometry)
+        - 'k_neighbors': Target number of neighbors (dimension-adjusted)
+        - 'fill_distance': Estimated or provided h
+        - 'n_monomials': Number of monomials C(d+p, p)
+        - 'n_derivatives': Number of unknowns (n_monomials - 1)
+        - 'effective_overdetermination': The target effective ratio
+        - 'nominal_overdetermination': The nominal ratio (k / n_derivatives)
+        - 'wendland_effective_ratio': eta(d), the weight efficiency factor
+
+    Example:
+        >>> points = np.random.rand(300, 2)  # 300 points in [0,1]^2
+        >>> params = compute_gfdm_parameters(points, taylor_order=2)
+        >>> # For 2D: eta=0.143, so k ~ 1.5 * 5 / 0.143 ~ 52
+        >>> operator = TaylorOperator(points, **params)
+
+    Mathematical Basis (Dimension-Aware Design):
+        - n_derivatives = C(d+p, p) - 1 (unknowns, excluding constant)
+        - eta(d) = Wendland C2 effective weight ratio (accounts for shell effect)
+        - k_nominal = ceil(effective_overdetermination × n_derivatives / eta(d))
+        - delta = base_length × (k / V_d)^(1/d) × safety_factor
+
+    Typical values (effective_overdetermination=1.5, taylor_order=2):
+        - 1D: eta=0.333, k~7,  delta ~ 3.8 × base
+        - 2D: eta=0.143, k~52, delta ~ 5.0 × base (validated in run 160942)
+        - 3D: eta=0.071, k~189, delta ~ 5.8 × base
+
+    Note: k-NN fallback provides additional safety for boundary/corner points
+    where the delta-ball extends outside the domain.
+    """
+    import warnings
+    from math import ceil, comb, gamma, pi
+
+    points = np.asarray(points)
+    n_points, dimension = points.shape
+
+    # Compute cell_size (average spacing) - determines neighbor density in uniform regions
+    ranges = np.ptp(points, axis=0)  # max - min per dimension
+    domain_volume = np.prod(ranges)
+    cell_size = (domain_volume / n_points) ** (1.0 / dimension)
+
+    # fill_distance (if provided) captures maximum gap in sparse regions
+    if fill_distance is None:
+        fill_distance = cell_size  # Default: assume quasi-uniform mesh
+
+    # Use max(h, cell_size) to ensure coverage in sparse regions
+    base_length = max(fill_distance, cell_size)
+
+    # Compute number of monomials and derivatives
+    n_monomials = comb(dimension + taylor_order, taylor_order)
+    n_derivatives = n_monomials - 1
+
+    # Dimension-aware k computation using Wendland effective weight ratio
+    eta = wendland_c2_effective_ratio(dimension)
+
+    if overdetermination is not None:
+        # Legacy mode: user specified nominal overdetermination directly
+        warnings.warn(
+            "overdetermination parameter is deprecated. "
+            "Use effective_overdetermination instead for dimension-aware design.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        nominal_overdetermination = overdetermination
+        k_neighbors = int(nominal_overdetermination * n_derivatives)
+        # Back-compute effective overdetermination for reporting
+        effective_overdetermination = nominal_overdetermination * eta
+    else:
+        # New dimension-aware mode: compute nominal k from effective target
+        # k_nominal = effective_overdetermination × n_derivatives / eta(d)
+        k_neighbors = ceil(effective_overdetermination * n_derivatives / eta)
+        nominal_overdetermination = k_neighbors / n_derivatives
+
+    # Compute delta so that a ball of radius delta contains ~k neighbors
+    # Volume of unit ball in d dimensions: V_d = pi^(d/2) / Gamma(d/2 + 1)
+    v_d = (pi ** (dimension / 2)) / gamma(dimension / 2 + 1)
+    delta = base_length * (k_neighbors / v_d) ** (1.0 / dimension) * safety_factor
+
+    return {
+        "delta": delta,
+        "k_neighbors": k_neighbors,
+        "fill_distance": fill_distance,
+        "cell_size": cell_size,
+        "base_length": base_length,
+        "n_monomials": n_monomials,
+        "n_derivatives": n_derivatives,
+        "taylor_order": taylor_order,
+        "dimension": dimension,
+        "effective_overdetermination": effective_overdetermination,
+        "nominal_overdetermination": nominal_overdetermination,
+        "wendland_effective_ratio": eta,
+        "safety_factor": safety_factor,
+        # Legacy alias
+        "overdetermination": nominal_overdetermination,
+    }
 
 
 # =============================================================================

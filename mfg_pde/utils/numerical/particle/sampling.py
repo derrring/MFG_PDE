@@ -765,6 +765,8 @@ def sample_from_scattered_density(
     density: NDArray,
     num_samples: int,
     seed: int | None = None,
+    periodic_bounds: list[tuple[float, float]] | None = None,
+    periodic_dims: tuple[int, ...] | None = None,
 ) -> NDArray:
     """
     Sample particles from density defined at scattered (meshfree) points.
@@ -788,11 +790,19 @@ def sample_from_scattered_density(
         Number of particle samples to generate.
     seed : int or None, default=None
         Random seed for reproducibility.
+    periodic_bounds : list of (float, float), optional
+        Domain bounds for periodic topology, e.g. [(0, 1), (0, 1)].
+        If provided, uses ghost point augmentation to create valid
+        Delaunay triangles across periodic boundaries (Issue #714).
+    periodic_dims : tuple of int, optional
+        Dimensions with periodic topology. If None and periodic_bounds
+        is provided, all dimensions are treated as periodic.
 
     Returns
     -------
     particles : ndarray
         Sampled particle positions, shape (num_samples, dimension).
+        For periodic domains, positions are wrapped to the fundamental domain.
 
     Examples
     --------
@@ -807,10 +817,20 @@ def sample_from_scattered_density(
     >>> particles = sample_from_scattered_density(points, density, num_samples=1000)
     >>> # particles will cluster around (0.5, 0.5)
 
+    Periodic sampling on torus:
+
+    >>> # Density peak near boundary (wraps around on torus)
+    >>> density_periodic = np.exp(-10 * (points[:, 0] - 0.05)**2)
+    >>> particles = sample_from_scattered_density(
+    ...     points, density_periodic, num_samples=500,
+    ...     periodic_bounds=[(0, 1), (0, 1)], periodic_dims=(0, 1)
+    ... )
+
     Notes
     -----
-    - Only samples within the convex hull of the input points
-    - For periodic domains, consider wrapping or extending points beyond boundaries
+    - Without periodic: only samples within convex hull of input points
+    - With periodic: samples across boundary using ghost point augmentation,
+      then wraps results to fundamental domain (Issue #714)
     - If all densities are zero, falls back to uniform sampling over simplices
     - Computational complexity: O(N_points log N_points) for triangulation,
       O(num_samples) for sampling
@@ -828,28 +848,73 @@ def sample_from_scattered_density(
     # Ensure non-negative
     density = np.maximum(density, 0.0)
 
-    # Build Delaunay triangulation
-    tri = Delaunay(points)
-    simplices = tri.simplices  # Shape: (N_simplices, dimension+1)
-    N_simplices = len(simplices)
+    # Issue #714: Handle periodic topology via ghost point augmentation
+    if periodic_bounds is not None:
+        from mfg_pde.geometry.boundary.periodic import create_periodic_ghost_points, wrap_positions
 
-    # Compute mass (integrated density) for each simplex
-    # Use average density × simplex volume as approximation
-    simplex_masses = np.zeros(N_simplices)
+        # Default: all dimensions periodic if bounds provided but dims not specified
+        if periodic_dims is None:
+            periodic_dims = tuple(range(dimension))
 
-    for i, simplex in enumerate(simplices):
-        # Vertices of this simplex
-        vertices = points[simplex]  # Shape: (d+1, d)
+        # Create augmented point cloud with ghost copies
+        aug_points, orig_indices = create_periodic_ghost_points(points, periodic_bounds, periodic_dims)
 
-        # Average density at vertices
-        avg_density = np.mean(density[simplex])
+        # Extend density to ghost points (they have same density as originals)
+        density_aug = density[orig_indices]
 
-        # Simplex volume using the determinant formula
-        # For d-simplex: V = |det([v1-v0, v2-v0, ..., vd-v0])| / d!
-        edge_matrix = vertices[1:] - vertices[0]  # Shape: (d, d)
-        volume = np.abs(np.linalg.det(edge_matrix)) / math.factorial(dimension)
+        # Build Delaunay on augmented points
+        tri = Delaunay(aug_points)
+        simplices = tri.simplices
 
-        simplex_masses[i] = avg_density * volume
+        # Filter simplices: only keep those with centroid in original domain
+        # This avoids sampling from "redundant" triangles in ghost regions
+        bounds_arr = np.array(periodic_bounds)
+        valid_simplices = []
+        valid_simplex_masses = []
+
+        for simplex in simplices:
+            vertices = aug_points[simplex]
+            centroid = np.mean(vertices, axis=0)
+
+            # Check if centroid is in original domain
+            in_domain = True
+            for d in range(dimension):
+                if centroid[d] < bounds_arr[d, 0] or centroid[d] > bounds_arr[d, 1]:
+                    in_domain = False
+                    break
+
+            if in_domain:
+                # Compute mass for this simplex
+                avg_density = np.mean(density_aug[simplex])
+                edge_matrix = vertices[1:] - vertices[0]
+                volume = np.abs(np.linalg.det(edge_matrix)) / math.factorial(dimension)
+                valid_simplices.append(simplex)
+                valid_simplex_masses.append(avg_density * volume)
+
+        simplices = np.array(valid_simplices)
+        simplex_masses = np.array(valid_simplex_masses)
+        N_simplices = len(simplices)
+        points_for_sampling = aug_points
+        logger.debug(
+            f"sample_from_scattered_density: periodic mode, "
+            f"{N_points} -> {len(aug_points)} augmented points, "
+            f"{N_simplices} valid simplices"
+        )
+    else:
+        # Standard non-periodic case
+        tri = Delaunay(points)
+        simplices = tri.simplices
+        N_simplices = len(simplices)
+        points_for_sampling = points
+
+        # Compute mass for each simplex
+        simplex_masses = np.zeros(N_simplices)
+        for i, simplex in enumerate(simplices):
+            vertices = points[simplex]
+            avg_density = np.mean(density[simplex])
+            edge_matrix = vertices[1:] - vertices[0]
+            volume = np.abs(np.linalg.det(edge_matrix)) / math.factorial(dimension)
+            simplex_masses[i] = avg_density * volume
 
     total_mass = np.sum(simplex_masses)
 
@@ -868,7 +933,7 @@ def sample_from_scattered_density(
     particles = np.zeros((num_samples, dimension))
 
     for i, simplex_idx in enumerate(simplex_indices):
-        vertices = points[simplices[simplex_idx]]  # Shape: (d+1, d)
+        vertices = points_for_sampling[simplices[simplex_idx]]  # Shape: (d+1, d)
 
         # Uniform sampling in simplex via sorted uniform variates
         # Generate d uniform variates, sort, take differences -> barycentric coords
@@ -877,6 +942,10 @@ def sample_from_scattered_density(
 
         # Convert to Cartesian
         particles[i] = barycentric @ vertices
+
+    # Issue #714: Wrap particles to fundamental domain if periodic
+    if periodic_bounds is not None:
+        particles = wrap_positions(particles, periodic_bounds, periodic_dims)
 
     return particles
 
@@ -1083,5 +1152,55 @@ if __name__ == "__main__":
     # Should be roughly centered (depends on point distribution)
     assert 0.3 < mean_uniform[0] < 0.7, f"Mean x should be near 0.5, got {mean_uniform[0]:.3f}"
     print(f"  Uniform density: mean = ({mean_uniform[0]:.3f}, {mean_uniform[1]:.3f})")
+
+    # Test 8: Periodic sampling (Issue #714)
+    print("\n8. Testing periodic sampling (Issue #714)...")
+    # Create points covering [0,1]²
+    np.random.seed(789)
+    periodic_points = np.random.rand(150, 2)
+    # Density peak near left boundary (x ~ 0.05)
+    # On a torus, this should also attract samples from x ~ 0.95 wrapping around
+    periodic_density = np.exp(-50 * (periodic_points[:, 0] - 0.05) ** 2)
+
+    # Sample without periodic handling
+    particles_non_periodic = sample_from_scattered_density(periodic_points, periodic_density, num_samples=500, seed=42)
+
+    # Sample with periodic handling
+    periodic_bounds = [(0.0, 1.0), (0.0, 1.0)]
+    particles_periodic = sample_from_scattered_density(
+        periodic_points,
+        periodic_density,
+        num_samples=500,
+        seed=42,
+        periodic_bounds=periodic_bounds,
+        periodic_dims=(0, 1),
+    )
+
+    # Both should cluster near x=0.05
+    mean_non_periodic = np.mean(particles_non_periodic[:, 0])
+    mean_periodic = np.mean(particles_periodic[:, 0])
+    print(f"  Non-periodic mean x: {mean_non_periodic:.3f}")
+    print(f"  Periodic mean x: {mean_periodic:.3f}")
+
+    # Verify all periodic samples are within bounds
+    assert np.all(particles_periodic[:, 0] >= 0.0), "Periodic samples should be >= 0"
+    assert np.all(particles_periodic[:, 0] <= 1.0), "Periodic samples should be <= 1"
+    assert np.all(particles_periodic[:, 1] >= 0.0), "Periodic samples should be >= 0"
+    assert np.all(particles_periodic[:, 1] <= 1.0), "Periodic samples should be <= 1"
+    print("  All periodic samples within bounds: passed")
+
+    # Test cylinder topology (periodic only in x)
+    particles_cylinder = sample_from_scattered_density(
+        periodic_points,
+        periodic_density,
+        num_samples=500,
+        seed=42,
+        periodic_bounds=periodic_bounds,
+        periodic_dims=(0,),
+    )
+    assert np.all(particles_cylinder[:, 0] >= 0.0), "Cylinder samples should be >= 0"
+    assert np.all(particles_cylinder[:, 0] <= 1.0), "Cylinder samples should be <= 1"
+    print("  Cylinder topology: passed")
+    print("  Periodic sampling (Issue #714): OK")
 
     print("\nAll smoke tests passed!")
