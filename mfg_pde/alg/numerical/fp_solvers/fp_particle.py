@@ -300,7 +300,7 @@ class FPParticleSolver(BaseFPSolver):
                 if len(grid_shape) == 1 and dimension > 1:
                     # Implicit geometry: create synthetic grid shape from dimension
                     # Use sqrt(N) per dimension for 2D, cbrt(N) for 3D, etc.
-                    n_per_dim = int(round(grid_shape[0] ** (1.0 / dimension)))
+                    n_per_dim = round(grid_shape[0] ** (1.0 / dimension))
                     grid_shape = tuple([n_per_dim] * dimension)
 
             # Get bounds per dimension (with fallback chain for legacy interfaces)
@@ -1146,13 +1146,14 @@ class FPParticleSolver(BaseFPSolver):
         self,
         M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
-        diffusion_field: float | np.ndarray | Callable | None = None,
+        volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         drift_is_precomputed: bool = False,
         initial_particles: np.ndarray | None = None,
         drift_needs_density: bool = True,
-        # Deprecated parameter name for backward compatibility
+        # Deprecated parameter names for backward compatibility
         m_initial_condition: np.ndarray | None = None,
+        diffusion_field: float | np.ndarray | Callable | None = None,  # DEPRECATED
     ) -> np.ndarray:
         """
         Solve FP system using particle method with unified API.
@@ -1174,10 +1175,13 @@ class FPParticleSolver(BaseFPSolver):
                                   If False (default), drift_field is treated as value function U(t,x) and
                                   drift is computed as α = -coupling_coefficient * ∇U.
                                   Use True to preserve high-precision gradients from GFDM or other meshfree methods.
-            diffusion_field: Diffusion specification (optional):
+            volatility_field: Volatility specification for SDE noise (optional):
                 - None: Use problem.sigma (backward compatible)
-                - float: Constant isotropic diffusion
-                - np.ndarray/Callable: Phase 2
+                - float: Constant isotropic volatility σ (SDE: dX = v dt + σ dW)
+                - np.ndarray (d,d): Anisotropic noise matrix Σ (SDE: dX = v dt + Σ dW)
+                - Callable: State-dependent σ(t,x,m) or Σ(t,x,m)
+                Note: This is the SDE noise coefficient, NOT the PDE diffusion D = σ²/2.
+            diffusion_field: DEPRECATED, use volatility_field instead.
             initial_particles: Pre-sampled initial particles, shape (num_particles, dimension).
                               If provided, M_initial is not required (meshfree initialization).
                               Useful with density_mode="query_only" for fully meshfree workflow.
@@ -1203,6 +1207,21 @@ class FPParticleSolver(BaseFPSolver):
             )
             M_initial = m_initial_condition
 
+        # Handle deprecated diffusion_field parameter
+        if diffusion_field is not None:
+            if volatility_field is not None:
+                raise ValueError(
+                    "Cannot specify both volatility_field and diffusion_field. "
+                    "Use volatility_field (diffusion_field is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
+                "Note: volatility_field expects σ (SDE noise), same as diffusion_field did.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            volatility_field = diffusion_field
+
         # Validate required parameter - either M_initial or initial_particles
         if M_initial is None and initial_particles is None:
             raise ValueError("Either M_initial or initial_particles is required")
@@ -1223,7 +1242,7 @@ class FPParticleSolver(BaseFPSolver):
             return self._solve_fp_system_callable_drift(
                 M_initial=M_initial,
                 drift_callable=drift_field,
-                diffusion_field=diffusion_field,
+                volatility_field=volatility_field,
                 show_progress=show_progress,
                 initial_particles=initial_particles,
                 drift_needs_density=drift_needs_density,
@@ -1231,15 +1250,15 @@ class FPParticleSolver(BaseFPSolver):
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
-        # Handle diffusion_field parameter
-        if diffusion_field is None:
+        # Handle volatility_field parameter (SDE noise coefficient σ or Σ)
+        if volatility_field is None:
             # Use problem.sigma (backward compatible)
             effective_sigma = self.problem.sigma
-        elif isinstance(diffusion_field, (int, float)):
-            # Constant isotropic diffusion
-            effective_sigma = float(diffusion_field)
-        elif isinstance(diffusion_field, np.ndarray) or callable(diffusion_field):
-            # Spatially varying or state-dependent diffusion
+        elif isinstance(volatility_field, (int, float)):
+            # Constant isotropic volatility σ
+            effective_sigma = float(volatility_field)
+        elif isinstance(volatility_field, np.ndarray) or callable(volatility_field):
+            # Spatially varying or state-dependent volatility
             # Route to callable drift solver which supports this
             # Note: If drift_field is None, we need to handle pure diffusion case
             if drift_field is None:
@@ -1253,21 +1272,21 @@ class FPParticleSolver(BaseFPSolver):
                 return self._solve_fp_system_callable_drift(
                     M_initial=M_initial,
                     drift_callable=zero_drift,
-                    diffusion_field=diffusion_field,
+                    volatility_field=volatility_field,
                     show_progress=show_progress,
                 )
             else:
                 # Already routed to callable drift above if drift is callable
-                # This handles array drift + varying diffusion
+                # This handles array drift + varying volatility
                 effective_sigma = self.problem.sigma  # Fallback, actual handled in solver
         else:
             raise TypeError(
-                f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
+                f"volatility_field must be None, float, np.ndarray, or Callable, got {type(volatility_field)}"
             )
 
-        # Temporarily override problem.sigma if custom diffusion provided
+        # Temporarily override problem.sigma if custom volatility provided
         original_sigma = self.problem.sigma
-        if diffusion_field is not None:
+        if volatility_field is not None:
             self.problem.sigma = effective_sigma
 
         # Reset time step counter for normalization logic
@@ -1800,7 +1819,7 @@ class FPParticleSolver(BaseFPSolver):
         self,
         M_initial: np.ndarray | None,
         drift_callable: Callable,
-        diffusion_field: float | None = None,
+        volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         initial_particles: np.ndarray | None = None,
         drift_needs_density: bool = True,
@@ -1821,8 +1840,11 @@ class FPParticleSolver(BaseFPSolver):
             - x: particle positions, shape (N_particles, d)
             - m: density at particle positions, shape (N_particles,)
             Returns: drift velocity, shape (N_particles, d) for nD or (N_particles,) for 1D
-        diffusion_field : float or None
-            Constant diffusion coefficient (uses problem.sigma if None)
+        volatility_field : float, np.ndarray, Callable, or None
+            Volatility (SDE noise coefficient σ or Σ). Uses problem.sigma if None.
+            - float: Constant isotropic volatility σ
+            - (d,d) array: Anisotropic noise matrix Σ
+            - Callable: State-dependent σ(t,x,m) or Σ(t,x,m)
         show_progress : bool
             Show progress bar
         initial_particles : np.ndarray or None
@@ -1858,25 +1880,29 @@ class FPParticleSolver(BaseFPSolver):
         if self.density_mode in ("hybrid", "query_only"):
             self._particle_history = []
 
-        # Get diffusion - supports constant, array, or callable
-        # For SDE: dX = drift*dt + sqrt(2*sigma)*dW
-        diffusion_is_callable = callable(diffusion_field)
-        diffusion_is_array = isinstance(diffusion_field, np.ndarray)
+        # Get volatility - supports constant, array, or callable
+        # For SDE: dX = drift*dt + σ*dW (volatility_field = σ)
+        volatility_is_callable = callable(volatility_field)
+        volatility_is_array = isinstance(volatility_field, np.ndarray)
 
-        if diffusion_field is None:
+        if volatility_field is None:
             base_sigma = self.problem.sigma
-        elif isinstance(diffusion_field, (int, float)):
-            base_sigma = float(diffusion_field)
-        elif diffusion_is_array or diffusion_is_callable:
-            # Spatially varying or state-dependent diffusion
+        elif isinstance(volatility_field, (int, float)):
+            base_sigma = float(volatility_field)
+        elif volatility_is_array or volatility_is_callable:
+            # Spatially varying or state-dependent volatility
             # Will be evaluated per timestep at particle positions
             base_sigma = None  # Evaluated dynamically
         else:
-            raise TypeError(f"diffusion_field must be None, float, ndarray, or Callable, got {type(diffusion_field)}")
+            raise TypeError(
+                f"volatility_field must be None, float, np.ndarray, or Callable, got {type(volatility_field)}"
+            )
 
-        # Pre-compute constant sigma_sde if diffusion is constant
+        # Pre-compute constant sigma_sde if volatility is constant
+        # Issue #717 fix: volatility_field IS the SDE volatility σ, use directly
+        # The PDE diffusion D = σ²/2 is computed internally when needed
         if base_sigma is not None:
-            sigma_sde_constant = np.sqrt(2 * base_sigma)
+            sigma_sde_constant = base_sigma  # Direct use: σ_sde = σ
         else:
             sigma_sde_constant = None
 
@@ -1960,18 +1986,18 @@ class FPParticleSolver(BaseFPSolver):
                 # Constant diffusion - use pre-computed value
                 dW = self._generate_brownian_increment_nd(self.num_particles, dimension, Dt, sigma_sde_constant)
             else:
-                # Spatially varying or callable diffusion - evaluate at particle positions
-                if diffusion_is_callable:
+                # Spatially varying or callable volatility - evaluate at particle positions
+                if volatility_is_callable:
                     # Callable: sigma(t, x, m) -> per-particle sigma
                     if dimension == 1:
                         x_for_callable = particles_t[:, 0]
                     else:
                         x_for_callable = particles_t
-                    sigma_at_particles = diffusion_field(t_current, x_for_callable, m_at_particles)
+                    sigma_at_particles = volatility_field(t_current, x_for_callable, m_at_particles)
                 else:
                     # Array: interpolate from grid
                     sigma_at_particles = self._interpolate_field_at_particles(
-                        particles_t, diffusion_field, coordinates, bounds
+                        particles_t, volatility_field, coordinates, bounds
                     )
 
                 # Ensure sigma_at_particles is 1D array of shape (num_particles,)
@@ -1981,8 +2007,9 @@ class FPParticleSolver(BaseFPSolver):
                     sigma_at_particles = np.full(self.num_particles, sigma_at_particles[0])
 
                 # Generate per-particle Brownian increments
-                # dW_i = sqrt(2 * sigma_i) * N(0, sqrt(dt))
-                sigma_sde_particles = np.sqrt(2 * sigma_at_particles)
+                # Issue #717 fix: sigma_at_particles IS the SDE volatility σ
+                # SDE: dX = v dt + σ dW, so dW_i = σ_i * N(0, sqrt(dt))
+                sigma_sde_particles = sigma_at_particles  # Direct use
                 dW = sigma_sde_particles[:, np.newaxis] * np.random.normal(
                     0, np.sqrt(Dt), (self.num_particles, dimension)
                 )

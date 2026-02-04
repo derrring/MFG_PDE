@@ -34,6 +34,12 @@ from mfg_pde.alg.numerical.hjb_solvers.hjb_sl_characteristics import (
     apply_boundary_conditions_1d,
 )
 
+# Issue #702: Centralized BC utilities for consistent handling across SL solvers
+from mfg_pde.geometry.boundary.bc_utils import (
+    bc_type_to_geometric_operation,
+    get_bc_type_string,
+)
+
 # Issue #625: Migrated from tensor_calculus to operators/stencils
 from mfg_pde.operators.stencils.finite_difference import laplacian_with_bc
 from mfg_pde.utils.mfg_logging import get_logger
@@ -162,22 +168,18 @@ class FPSLSolver(BaseFPSolver):
 
         return None
 
-    def _get_bc_type(self) -> str:
-        """Get boundary condition type string."""
-        if self.boundary_conditions is None:
-            return "no_flux"  # Default for FP
+    def _get_bc_operation_type(self) -> str:
+        """
+        Get boundary operation type from boundary conditions.
 
-        try:
-            bc_type_enum = self.boundary_conditions.default_bc
-            if bc_type_enum is not None:
-                try:
-                    return bc_type_enum.value
-                except AttributeError:
-                    return str(bc_type_enum)
-        except AttributeError:
-            pass
+        Issue #702: Uses centralized bc_utils for consistent BC handling
+        across all SL solvers (HJB-SL, FP-SL, FP-SL Adjoint).
 
-        return "no_flux"
+        Returns:
+            Geometric operation: 'reflect', 'clamp', or 'periodic'
+        """
+        bc_type = get_bc_type_string(self.boundary_conditions)
+        return bc_type_to_geometric_operation(bc_type)
 
     def solve_fp_system(
         self,
@@ -326,53 +328,37 @@ class FPSLSolver(BaseFPSolver):
 
         return -lap_U
 
-    def _apply_reflecting_bc(self, x_dep: np.ndarray) -> np.ndarray:
+    def _apply_boundary_conditions(self, x_dep: np.ndarray) -> np.ndarray:
         """
-        Apply reflecting boundary conditions to departure points.
+        Apply boundary conditions to departure points.
 
-        Uses unified BC infrastructure from hjb_sl_characteristics module.
-        For no-flux boundaries, particles that would leave the domain
-        are reflected back. This preserves mass and is consistent with
-        Neumann BC (dm/dn = 0).
+        Issue #702: Uses unified BC infrastructure from hjb_sl_characteristics
+        module with centralized bc_utils for consistent handling across all
+        SL solvers (HJB-SL, FP-SL, FP-SL Adjoint).
+
+        Mapping:
+            - NEUMANN/NO_FLUX -> 'reflect' (mirror at boundary)
+            - DIRICHLET -> 'clamp' (stay at boundary)
+            - PERIODIC -> 'periodic' (wrap around)
 
         Args:
             x_dep: Departure point coordinates
 
         Returns:
-            Departure points with reflecting BC applied
+            Departure points with BC applied
         """
-        # Get BC types for each boundary
-        bc_type_min, bc_type_max = self._get_bc_types_per_boundary()
+        bc_op = self._get_bc_operation_type()
 
-        # Use unified infrastructure for consistent BC handling across all SL solvers
+        # Vectorized application using unified BC infrastructure
         result = np.zeros_like(x_dep)
         for i, x in enumerate(x_dep):
             result[i] = apply_boundary_conditions_1d(
                 x,
                 xmin=self.xmin,
                 xmax=self.xmax,
-                bc_type_min=bc_type_min,
-                bc_type_max=bc_type_max,
+                bc_type=bc_op,
             )
         return result
-
-    def _get_bc_types_per_boundary(self) -> tuple[str | None, str | None]:
-        """Get BC type for each boundary."""
-        if self.boundary_conditions is None:
-            return ("neumann", "neumann")  # Default for FP
-
-        try:
-            bc_type_min_enum = self.boundary_conditions.get_bc_type_at_boundary("x_min")
-            bc_type_max_enum = self.boundary_conditions.get_bc_type_at_boundary("x_max")
-
-            bc_type_min = bc_type_min_enum.value if bc_type_min_enum is not None else "neumann"
-            bc_type_max = bc_type_max_enum.value if bc_type_max_enum is not None else "neumann"
-
-            return (bc_type_min, bc_type_max)
-        except AttributeError:
-            # Fallback to default BC type
-            bc_type = self._get_bc_type()
-            return (bc_type, bc_type)
 
     def _sl_step(
         self,
@@ -406,25 +392,23 @@ class FPSLSolver(BaseFPSolver):
         # Trace characteristics backward: x_departure = x - alpha * dt
         x_departure = self.x_grid - alpha * dt
 
-        # For confining potentials (inward drift at boundaries), departure points
-        # may lie outside the domain. We use fill_value=0.0 (vacuum outside)
-        # instead of reflection or edge values. This correctly models that no
-        # mass exists outside the domain, causing edge erosion and creating
-        # gradients for diffusion to act upon.
-        #
-        # Note: For periodic BC, use np.interp with period or wrap x_departure.
-        # For Neumann BC with outward drift, reflection might be appropriate.
-        # But for confining potentials, vacuum BC breaks the "false fixed point"
-        # where uniform distributions stay uniform forever.
+        # Issue #702: Apply boundary conditions based on problem BC type
+        # This ensures adjoint consistency with HJB-SL solver.
+        # - NEUMANN/NO_FLUX: reflect departure points (mass stays in domain)
+        # - DIRICHLET: clamp to boundary (absorbing)
+        # - PERIODIC: wrap around domain
+        x_departure = self._apply_boundary_conditions(x_departure)
 
-        # Interpolate density at departure points with vacuum BC (no mass outside)
+        # Interpolate density at departure points
+        # After BC application, points should be within domain, but use edge
+        # extrapolation as safety for numerical precision at boundaries.
         if self.interpolation_method == "linear":
             interpolator = interp1d(
                 self.x_grid,
                 m,
                 kind="linear",
                 bounds_error=False,
-                fill_value=0.0,  # Vacuum outside domain
+                fill_value=(m[0], m[-1]),  # Edge values for safety
             )
         else:  # cubic
             interpolator = interp1d(
@@ -432,7 +416,7 @@ class FPSLSolver(BaseFPSolver):
                 m,
                 kind="cubic",
                 bounds_error=False,
-                fill_value=0.0,  # Vacuum outside domain
+                fill_value=(m[0], m[-1]),  # Edge values for safety
             )
 
         m_advected = interpolator(x_departure)
@@ -510,8 +494,10 @@ if __name__ == "__main__":
     print("=" * 60)
 
     from mfg_pde import MFGProblem
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+    from mfg_pde.core.mfg_problem import MFGComponents
     from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary import BCSegment, BCType, mixed_bc
+    from mfg_pde.geometry.boundary import BCSegment, BCType, BoundaryConditions
 
     # Test parameters
     X_MIN, X_MAX = -0.5, 0.5
@@ -531,16 +517,29 @@ if __name__ == "__main__":
     # Create problem with Neumann BC
     left_bc = BCSegment(name="left", bc_type=BCType.NEUMANN, value=0.0, boundary="x_min")
     right_bc = BCSegment(name="right", bc_type=BCType.NEUMANN, value=0.0, boundary="x_max")
-    bc = mixed_bc(segments=[left_bc, right_bc], dimension=1, domain_bounds=np.array([[X_MIN, X_MAX]]))
+    bc = BoundaryConditions(segments=[left_bc, right_bc])
 
     domain = TensorProductGrid(bounds=[(X_MIN, X_MAX)], Nx_points=[N + 1], boundary_conditions=bc)
 
-    # Minimal problem definition
+    # Create Hamiltonian and components
+    H = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.0,
+        coupling_dm=lambda m: 0.0,
+    )
+    components = MFGComponents(
+        hamiltonian=H,
+        u_final=lambda x: 0.0,
+        m_initial=lambda x: 1.0,
+    )
+
+    # Problem definition
     problem = MFGProblem(
         geometry=domain,
         T=T,
         Nt=Nt,
         diffusion=SIGMA,
+        components=components,
     )
 
     # Test 1: Solver initialization
@@ -626,6 +625,25 @@ if __name__ == "__main__":
     print(f"   FDM peak value: {fdm_peak_value:.4f}")
     print(f"   SL peak value: {sl_peak_value:.4f}")
     print("   Comparison: OK")
+
+    # Test 5: Issue #702 - BC consistency test
+    print("\n5. Testing BC operation mapping (Issue #702)...")
+
+    from mfg_pde.geometry.boundary.bc_utils import bc_type_to_geometric_operation, get_bc_type_string
+
+    # Verify the solver uses bc_utils correctly
+    bc_str = get_bc_type_string(solver.boundary_conditions)
+    bc_op = solver._get_bc_operation_type()
+    print(f"   BC type: {bc_str} -> operation: {bc_op}")
+    assert bc_op == "reflect", f"NEUMANN BC should map to 'reflect', got '{bc_op}'"
+
+    # Test that _apply_boundary_conditions exists and works
+    test_x = np.array([1.2, -0.1, 0.5])  # One outside right, one outside left, one inside
+    bounded_x = solver._apply_boundary_conditions(test_x)
+    print(f"   x=[1.2, -0.1, 0.5] -> {bounded_x}")
+    assert all(bounded_x >= X_MIN), "All points should be >= X_MIN"
+    assert all(bounded_x <= X_MAX), "All points should be <= X_MAX"
+    print("   BC consistency: OK")
 
     print("\n" + "=" * 60)
     print("All smoke tests passed!")

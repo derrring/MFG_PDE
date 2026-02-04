@@ -232,12 +232,14 @@ class FPFDMSolver(BaseFPSolver):
         self,
         M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
-        diffusion_field: float | np.ndarray | Callable | None = None,
-        tensor_diffusion_field: np.ndarray | Callable | None = None,
+        volatility_field: float | np.ndarray | Callable | None = None,
+        volatility_matrix: np.ndarray | Callable | None = None,
         show_progress: bool = True,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
-        # Deprecated parameter name for backward compatibility
+        # Deprecated parameter names for backward compatibility
         m_initial_condition: np.ndarray | None = None,
+        diffusion_field: float | np.ndarray | Callable | None = None,  # Issue #717: deprecated
+        tensor_diffusion_field: np.ndarray | Callable | None = None,  # Issue #717: deprecated
     ) -> np.ndarray:
         """
         Solve FP system forward in time with general drift and diffusion support.
@@ -421,7 +423,7 @@ class FPFDMSolver(BaseFPSolver):
                 boundary_conditions=self.boundary_conditions,
                 show_progress=show_progress,
                 backend=self.backend,
-                diffusion_field=diffusion_field,
+                diffusion_field=volatility_field,  # Internal API still uses old name
                 drift_field=drift_field,
                 advection_scheme=self.advection_scheme,
                 progress_callback=progress_callback,
@@ -429,32 +431,58 @@ class FPFDMSolver(BaseFPSolver):
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
-        # Validate mutual exclusivity of diffusion_field and tensor_diffusion_field
-        if diffusion_field is not None and tensor_diffusion_field is not None:
+        # Issue #717: Handle deprecated parameter names
+        if diffusion_field is not None:
+            if volatility_field is not None:
+                raise ValueError(
+                    "Cannot specify both volatility_field and diffusion_field. "
+                    "Use volatility_field (diffusion_field is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
+                "Note: Both accept volatility σ, not diffusion D. The solver computes D = σ²/2 internally.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            volatility_field = diffusion_field
+
+        if tensor_diffusion_field is not None:
+            if volatility_matrix is not None:
+                raise ValueError(
+                    "Cannot specify both volatility_matrix and tensor_diffusion_field. "
+                    "Use volatility_matrix (tensor_diffusion_field is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'tensor_diffusion_field' is deprecated. Use 'volatility_matrix' instead. "
+                "Note: Both accept volatility matrix Σ. The solver computes D = ΣΣᵀ/2 internally.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            volatility_matrix = tensor_diffusion_field
+
+        # Validate mutual exclusivity of volatility_field and volatility_matrix
+        if volatility_field is not None and volatility_matrix is not None:
             raise ValueError(
-                "Cannot specify both diffusion_field and tensor_diffusion_field. "
-                "Use diffusion_field for scalar diffusion or tensor_diffusion_field for anisotropic diffusion."
+                "Cannot specify both volatility_field and volatility_matrix. "
+                "Use volatility_field for isotropic or volatility_matrix for anisotropic diffusion."
             )
 
-        # Handle tensor_diffusion_field (Phase 3.0)
-        if tensor_diffusion_field is not None:
-            # Tensor diffusion path - only supported for nD
+        # Handle volatility_matrix (anisotropic diffusion, Phase 3.0)
+        if volatility_matrix is not None:
+            # Tensor volatility path - only supported for nD
             if self.dimension == 1:
                 raise NotImplementedError(
-                    "Tensor diffusion not yet implemented for 1D problems. "
-                    "Use diffusion_field for scalar diffusion in 1D."
+                    "Anisotropic volatility not yet implemented for 1D problems. "
+                    "Use volatility_field for scalar volatility in 1D."
                 )
 
             # Validate and pass to nD solver
             # Note: PSD validation will be done by CoefficientField in nD solver
-            if not isinstance(tensor_diffusion_field, (np.ndarray, type(lambda: None))) and not callable(
-                tensor_diffusion_field
-            ):
-                raise TypeError(
-                    f"tensor_diffusion_field must be np.ndarray or Callable, got {type(tensor_diffusion_field)}"
-                )
+            if not isinstance(volatility_matrix, (np.ndarray, type(lambda: None))) and not callable(volatility_matrix):
+                raise TypeError(f"volatility_matrix must be np.ndarray or Callable, got {type(volatility_matrix)}")
 
-            # Route to nD solver with tensor diffusion
+            # Route to nD solver with tensor volatility
+            # Internal API still uses tensor_diffusion_field name
             return _solve_fp_nd_full_system(
                 m_initial_condition=M_initial,
                 U_solution_for_drift=effective_U,
@@ -463,35 +491,35 @@ class FPFDMSolver(BaseFPSolver):
                 show_progress=show_progress,
                 backend=self.backend,
                 diffusion_field=None,
-                tensor_diffusion_field=tensor_diffusion_field,
+                tensor_diffusion_field=volatility_matrix,  # Internal API uses old name
                 advection_scheme=self.advection_scheme,
                 progress_callback=progress_callback,
             )
 
-        # Handle diffusion_field parameter (scalar diffusion)
-        if diffusion_field is None:
+        # Handle volatility_field parameter (isotropic diffusion)
+        # Issue #717: volatility_field is the SDE volatility σ, not diffusion D
+        # The solver computes D = σ²/2 internally
+        if volatility_field is None:
             # Use problem.sigma (backward compatible)
             effective_sigma = self.problem.sigma
-        elif isinstance(diffusion_field, (int, float)):
-            # Constant isotropic diffusion
-            effective_sigma = float(diffusion_field)
-        elif isinstance(diffusion_field, np.ndarray):
-            # Spatially/temporally varying diffusion - Phase 2.1
+        elif isinstance(volatility_field, (int, float)):
+            # Constant isotropic volatility
+            effective_sigma = float(volatility_field)
+        elif isinstance(volatility_field, np.ndarray):
+            # Spatially/temporally varying volatility - Phase 2.1
             # Shape: (Nt, Nx) for spatiotemporal or broadcastable
-            effective_sigma = diffusion_field
-        elif callable(diffusion_field):
-            # State-dependent diffusion - Phase 2.2/2.4
+            effective_sigma = volatility_field
+        elif callable(volatility_field):
+            # State-dependent volatility - Phase 2.2/2.4
             # Issue #641: Always route to unified nD solver (handles 1D too)
-            # Legacy _solve_fp_1d_with_callable is deprecated
-            effective_sigma = diffusion_field
+            effective_sigma = volatility_field
         else:
             raise TypeError(
-                f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
+                f"volatility_field must be None, float, np.ndarray, or Callable, got {type(volatility_field)}"
             )
 
         # Issue #641: Always route to unified nD solver (works for all dimensions)
-        # The legacy _solve_fp_1d methods are deprecated in favor of this unified path.
-        # This eliminates the code path complexity and ensures consistent behavior.
+        # Internal API still uses diffusion_field name for backward compatibility
         return _solve_fp_nd_full_system(
             m_initial_condition=M_initial,
             U_solution_for_drift=effective_U,
@@ -499,7 +527,7 @@ class FPFDMSolver(BaseFPSolver):
             boundary_conditions=self.boundary_conditions,
             show_progress=show_progress,
             backend=self.backend,
-            diffusion_field=effective_sigma if diffusion_field is not None else None,
+            diffusion_field=effective_sigma if volatility_field is not None else None,
             advection_scheme=self.advection_scheme,
             progress_callback=progress_callback,
         )

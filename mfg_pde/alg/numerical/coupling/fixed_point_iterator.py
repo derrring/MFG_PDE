@@ -88,6 +88,7 @@ class FixedPointIterator(BaseMFGSolver):
         fp_solver: BaseFPSolver,
         config: MFGSolverConfig | None = None,
         damping_factor: float = 0.5,  # Renamed from thetaUM
+        damping_factor_M: float | None = None,  # Issue #719: Per-variable damping
         use_anderson: bool = False,
         anderson_depth: int = 5,
         anderson_beta: float = 1.0,
@@ -95,6 +96,14 @@ class FixedPointIterator(BaseMFGSolver):
         diffusion_field: float | np.ndarray | Any | None = None,  # Phase 2.3
         drift_field: np.ndarray | Any | None = None,  # Phase 2.3
     ):
+        """
+        Args:
+            damping_factor: Damping for U (theta_U). Default 0.5.
+            damping_factor_M: Damping for M (theta_M). If None, uses damping_factor.
+                Issue #719: Per-variable damping support.
+                Recommended for MFG: damping_factor=1.0, damping_factor_M=0.2
+                (U adapts fully, M filters particle noise)
+        """
         super().__init__(problem)
         self.backend = backend
         self.hjb_solver = hjb_solver
@@ -113,8 +122,10 @@ class FixedPointIterator(BaseMFGSolver):
 
             self.anderson_accelerator = AndersonAccelerator(depth=anderson_depth, beta=anderson_beta)
 
-        # Damping parameter (overridden by config if provided)
+        # Damping parameters (overridden by config if provided)
+        # Issue #719: Per-variable damping support
         self.damping_factor = damping_factor
+        self.damping_factor_M = damping_factor_M  # None = use damping_factor for both
 
         # State arrays (initialized in solve)
         self.U: np.ndarray | None = None
@@ -283,6 +294,8 @@ class FixedPointIterator(BaseMFGSolver):
             final_max_iterations = solve_config.picard.max_iterations
             final_tolerance = solve_config.picard.tolerance
             final_damping_factor = solve_config.picard.damping_factor
+            # Issue #719: Per-variable damping - config doesn't have this yet, use instance
+            final_damping_factor_M = self.damping_factor_M
             verbose = solve_config.picard.verbose
         else:
             # Legacy parameter precedence
@@ -291,6 +304,7 @@ class FixedPointIterator(BaseMFGSolver):
             )
             final_tolerance = tolerance or kwargs.get("picard_tolerance") or kwargs.get("l2errBoundPicard") or 1e-6
             final_damping_factor = self.damping_factor
+            final_damping_factor_M = self.damping_factor_M  # Issue #719
             verbose = True
 
         # Get problem dimensions - handle both old 1D and new nD interfaces
@@ -467,6 +481,9 @@ class FixedPointIterator(BaseMFGSolver):
                         fp_subtask.advance(num_time_steps)
 
                 # 3. Apply damping or Anderson acceleration
+                # Issue #719: Per-variable damping support
+                theta_M = final_damping_factor_M if final_damping_factor_M is not None else final_damping_factor
+
                 if self.use_anderson and self.anderson_accelerator is not None:
                     # Anderson acceleration on U only (M uses standard damping for positivity)
                     x_current_U = U_old.flatten()
@@ -475,11 +492,11 @@ class FixedPointIterator(BaseMFGSolver):
                     self.U = x_next_U.reshape(U_old.shape)
 
                     # Standard damping for M (guarantees non-negativity and mass conservation)
-                    self.M = final_damping_factor * M_new + (1 - final_damping_factor) * M_old
+                    self.M = theta_M * M_new + (1 - theta_M) * M_old
                 else:
-                    # Standard damping for both
+                    # Standard damping for both - Issue #719: separate factors
                     self.U = final_damping_factor * U_new + (1 - final_damping_factor) * U_old
-                    self.M = final_damping_factor * M_new + (1 - final_damping_factor) * M_old
+                    self.M = theta_M * M_new + (1 - theta_M) * M_old
 
                 # Preserve boundary conditions
                 self.M = preserve_initial_condition(self.M, M_initial)
