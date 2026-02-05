@@ -1903,6 +1903,43 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 if not pot_result.is_valid:
                     raise ValidationError(pot_result)
 
+        # Issue #687: Validate array-type diffusion/drift fields
+        if self.geometry is not None and self.spatial_shape is not None:
+            from mfg_pde.utils.validation import (
+                ValidationResult,
+                validate_array_dtype,
+                validate_field_shape,
+                validate_finite,
+            )
+
+            # Validate diffusion_field if ndarray
+            if isinstance(self.diffusion_field, np.ndarray):
+                arr_result = ValidationResult()
+                for check in [
+                    validate_array_dtype(self.diffusion_field, "diffusion_field"),
+                    validate_field_shape(self.diffusion_field, self.spatial_shape, "diffusion_field"),
+                    validate_finite(self.diffusion_field, "diffusion_field"),
+                ]:
+                    arr_result.issues.extend(check.issues)
+                    if not check.is_valid:
+                        arr_result.is_valid = False
+                if not arr_result.is_valid:
+                    raise ValidationError(arr_result)
+
+            # Validate drift_field if ndarray
+            if isinstance(self.drift_field, np.ndarray):
+                arr_result = ValidationResult()
+                for check in [
+                    validate_array_dtype(self.drift_field, "drift_field"),
+                    validate_field_shape(self.drift_field, self.spatial_shape, "drift_field"),
+                    validate_finite(self.drift_field, "drift_field"),
+                ]:
+                    arr_result.issues.extend(check.issues)
+                    if not check.is_valid:
+                        arr_result.is_valid = False
+                if not arr_result.is_valid:
+                    raise ValidationError(arr_result)
+
         # === u_final: MUST be in MFGComponents (Issue #670: no silent default) ===
         if has_u_final:
             self._setup_custom_final_value()
@@ -1932,6 +1969,23 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         else:
             # Issue #671: Zero potential is the explicit default (physically meaningful)
             self.f_potential[:] = 0.0
+
+        # Issue #687: Validate computed arrays for NaN/Inf (after setup methods)
+        if self.geometry is not None:
+            from mfg_pde.utils.validation import ValidationError, validate_finite
+
+            u_result = validate_finite(self.u_final, "u_final")
+            if not u_result.is_valid:
+                raise ValidationError(u_result)
+
+            m_result = validate_finite(self.m_initial, "m_initial")
+            if not m_result.is_valid:
+                raise ValidationError(m_result)
+
+            if has_potential:
+                pot_result = validate_finite(self.f_potential, "f_potential")
+                if not pot_result.is_valid:
+                    raise ValidationError(pot_result)
 
         # === Issue #672: Validate m_initial before normalization (Fail Fast) ===
         # Check 1: Non-negativity (density must be >= 0)
