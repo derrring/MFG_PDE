@@ -636,22 +636,22 @@ gh pr list --state merged --limit 20 --json headRefName --jq '.[].headRefName' |
 ### **GitHub Issue and PR Management** ⚠️ **MANDATORY**
 
 **Required Labels (all 4)**:
-1. `priority: high/medium/low`
-2. `area: algorithms/geometry/performance/config/visualization`
-3. `size: small/medium/large`
-4. `type: bug/enhancement/documentation/type-checking`
+1. `priority:` high/medium/low
+2. `area:` algorithms/config/core/documentation/geometry/performance/testing/visualization
+3. `size:` small/medium/large
+4. `type:` bug/enhancement/chore/refactor/infrastructure/research/type-checking/question
 
 **Workflow**:
 ```bash
 # Check issue labels
 gh issue view [issue_number]
 # Apply labels before work
-gh issue edit [issue_number] --add-label "priority: medium,area: algorithms,size: small,enhancement"
+gh issue edit [issue_number] --add-label "priority: medium,area: algorithms,size: small,type: enhancement"
 # Create properly named branch
 git checkout -b feature/descriptive-name
 # Create PR with inherited labels
 gh pr create --title "Title" --body "Fixes #[issue_number]" \
-  --label "priority: medium,area: algorithms,size: small,enhancement,status: in-review"
+  --label "priority: medium,area: algorithms,size: small,type: enhancement,status: in-review"
 ```
 
 ### **Feature Development Process**
@@ -728,17 +728,34 @@ Use targeted patterns preserving valuable code:
 
 ### **GitHub Label System** ⚠️ **IMPORTANT**
 
-**Hierarchical Taxonomy**:
-- **`area:`** - Functional domains (algorithms, config, documentation, geometry, performance)
-- **`type:`** - Work nature (infrastructure, enhancement, bug, research)
-- **`priority:`** - Urgency (high, medium, low)
-- **`size:`** - Effort (small, medium, large)
-- **`status:`** - Workflow state (blocked, in-review, needs-testing)
-- **`resolution:`** - Completion type (merged, superseded, wontfix)
+**Hierarchical Taxonomy** (formalized 2026-02-05):
 
-**Color Coding**: Red (priority), Blue (technical), Green (completed), Purple (special), Yellow (attention)
+| Prefix | Purpose | Labels |
+|:-------|:--------|:-------|
+| **`area:`** | Functional domain | `algorithms`, `config`, `core`, `documentation`, `geometry`, `performance`, `testing`, `visualization` |
+| **`type:`** | Work nature | `bug`, `enhancement`, `chore`, `refactor`, `infrastructure`, `research`, `type-checking`, `question` |
+| **`priority:`** | Urgency | `high`, `medium`, `low` |
+| **`size:`** | Effort estimate | `small` (hours-1d), `medium` (1-3d), `large` (1+wk) |
+| **`status:`** | Workflow state | `blocked`, `in-review`, `needs-testing` |
+| **`resolution:`** | Completion type | `merged`, `superseded`, `wontfix`, `duplicate`, `invalid` |
 
-**Scaling**: Subdivide areas before creating new label types (e.g., `area: algorithms-hjb`)
+**Required on every issue** (4 dimensions): `area:`, `type:`, `priority:`, `size:`
+
+**Non-taxonomic labels** (kept for GitHub conventions): `good first issue`, `help wanted`, `automated`
+
+**Color Coding**:
+- Red/Orange: `priority:` labels
+- Blue: `area:` labels (technical domains)
+- Purple: `type:` labels
+- Green: `resolution:` labels, `status: in-review`
+- Yellow: `status: needs-testing`, `priority: medium`
+- Gray: `type: chore`, `automated`
+
+**Rules**:
+- No bare labels — all issue-classification labels must use a prefix
+- One label per `priority:` and `size:` dimension (no duplicates)
+- Multiple `area:` labels allowed for cross-cutting issues
+- **Scaling**: Subdivide areas before creating new label types (e.g., `area: algorithms-hjb`)
 
 ### **Task Management**
 - Use TodoWrite tool for multi-step tasks
@@ -859,6 +876,6 @@ Before marking an issue as complete or creating a PR:
 
 ---
 
-**Last Updated**: 2026-01-05
-**Repository Version**: v0.16.14 (Pre-1.0.0)
+**Last Updated**: 2026-02-06
+**Repository Version**: v0.17.4 (Pre-1.0.0)
 **Claude Code**: Always reference this file for MFG_PDE conventions

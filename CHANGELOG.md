@@ -5,9 +5,7 @@ All notable changes to MFG_PDE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.18.0] - 2026-02-05
-
-**Breaking Release: Remove Deprecated `bc_mode` Parameter**
+## [Unreleased]
 
 ### Removed
 
@@ -15,31 +13,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed deprecated `bc_mode` parameter from `__init__` signature
   - Removed adjoint-consistent BC logic block from `solve_hjb_system`
   - **Migration**: Use `AdjointConsistentProvider` in `BCSegment.value` instead
-  - The provider pattern (v0.17.1+) is the replacement: store BC intent in `BCSegment.value`,
-    `FixedPointIterator` resolves providers via `problem.using_resolved_bc(state)` each iteration
-  - Callers passing `bc_mode=` will now get `TypeError` (Python's standard behavior for removed parameters)
-  - See `examples/tutorials/06_boundary_condition_coupling.py` for updated usage
-
-### Changed
-
-- **Tutorial 06 rewritten** to use provider pattern instead of `bc_mode`
-  - Two separate problem creation functions (standard vs adjoint-consistent)
-  - Both use `FixedPointIterator` — BC resolution is automatic
-- **CLAUDE.md** BC coupling section updated with provider pattern documentation
-
-## [Unreleased]
+  - Callers passing `bc_mode=` will now get `TypeError`
 
 ### Fixed
 
-- **Mass Conservation in FP FDM Solver** (Issue #615) 🎯
+- **Mass Conservation in FP FDM Solver** (Issue #615)
   - Fixed catastrophic mass conservation failure (99.4% error → 2.3%)
   - Changed default advection scheme from `gradient_upwind` to `divergence_upwind`
   - Removed confusing `conservative: bool` parameter
-  - Root cause: Issue #490 inadvertently broke Issue #382's fix when refactoring API
-  - Aligns with Achdou's FDM benchmark (HJB upwind + FP flux form)
-  - Validated in mfg-research exp14/exp15 (1D corridor evacuation)
-  - **Files modified**: `fp_fdm.py`, `fp_fdm_time_stepping.py`, `scheme_factory.py`
-  - **Commit**: c18c798d
+
+## [0.17.4] - 2026-02-06
+
+**Validation Initiative Release: Comprehensive Input Validation (Issue #685)**
+
+### Added
+
+- **Callable signature detection and adaptation** (Issue #684, PR #738)
+  - New `adapt_ic_callable()` in `mfg_pde/utils/callable_adapter.py`
+  - Auto-detects and wraps IC/BC callables: `f(x)` scalar, `f(x)` array, `f(x,t)`, `f(t,x)`, `f(x,y)`, `f(x,y,z)`
+  - Zero-overhead passthrough for the common `f(x_scalar)` case
+  - Detailed error messages listing all attempted calling conventions on failure
+  - Expanded-coordinate signatures `f(x,y)` emit `DeprecationWarning`
+- **Custom function validation** (Issue #686, PR #733)
+  - `validate_hamiltonian()`, `validate_drift()`, `validate_running_cost()` in validation module
+  - Probing-based signature detection for Hamiltonian, drift, running cost functions
+  - Wired into `MFGProblem._initialize_functions()`
+- **Array/field validation** (Issue #687, PR #735)
+  - `validate_array_dtype()`, `validate_array_shape()`, `validate_field_dimension()`
+  - Shape and dtype validation for solver arrays wired into MFGProblem
+- **Runtime safety validation** (Issue #688, PR #736)
+  - `check_finite()`, `check_bounds()`, `validate_solver_output()`
+  - NaN/Inf detection wired into `FixedPointIterator`
+- **IC/BC validation wiring** (Issue #681, PR #728)
+  - `validate_components()` checks m_initial/u_final at problem construction
+  - NDArray and callable IC/BC validated against geometry shape
+- **Newton-to-Value-Iteration adaptive fallback** (Issue #669, PR #727)
+  - HJB solver automatically falls back from Newton to value iteration on divergence
+
+### Fixed
+
+- **Backend device selection tests on Apple Silicon** (PR #737)
+  - Fixed MPS backend detection tests that failed on Apple Silicon
+
+### Changed
+
+- **Validation module fully wired** into `MFGProblem._initialize_functions()` pipeline
 
 ## [0.17.2] - 2026-01-18
 
