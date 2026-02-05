@@ -70,6 +70,7 @@ This directory contains architecture documentation for MFG_PDE. Historical audit
 | `FACTORY_PATTERN_DESIGN.md` | Three-concern factory architecture |
 | `proposals/DIMENSION_AGNOSTIC_FDM_ANALYSIS.md` | FDM extension analysis |
 | `proposals/MFG_PDE_ARCHITECTURE_REFACTOR_PROPOSAL.md` | Long-term refactoring plan |
+| `proposals/EXTERNAL_PDE_INTEROPERABILITY_PROPOSAL.md` | **[DEFERRED]** External PDE framework interop & problem extension (post-v1.0) |
 
 ## Archived Documents
 
