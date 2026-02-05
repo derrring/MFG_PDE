@@ -315,7 +315,67 @@ def detect_callable_signature(
     return result
 
 
-# --- Internal helpers ---
+# --- Internal helpers (geometry-agnostic, Issue #682) ---
+
+
+def _get_validation_points(
+    geometry: GeometryProtocol,
+    n_samples: int = 3,
+) -> np.ndarray:
+    """Get sample points for callable validation from any geometry type.
+
+    Uses ``get_collocation_points()`` (part of GeometryProtocol) which
+    returns ``(N, d)`` for all geometries.  Interior points are preferred
+    to avoid boundary edge cases.
+
+    Args:
+        geometry: Any geometry implementing GeometryProtocol.
+        n_samples: Number of sample points to return.
+
+    Returns:
+        Array of shape ``(n_samples, d)`` with sample points.
+
+    Raises:
+        ValueError: If the geometry has no collocation points.
+
+    Issue #682: Geometry-agnostic IC/BC validation.
+    """
+    points = geometry.get_collocation_points()  # (N, d) per protocol
+
+    # Handle 1D case where points may be (N,) instead of (N, 1)
+    if points.ndim == 1:
+        points = points.reshape(-1, 1)
+
+    n_total = len(points)
+    if n_total == 0:
+        raise ValueError(f"Geometry {type(geometry).__name__} returned 0 collocation points")
+
+    if n_total <= n_samples:
+        return points
+
+    # Sample interior points (skip first/last to avoid boundary)
+    indices = np.linspace(0, n_total - 1, n_samples + 2, dtype=int)[1:-1]
+    return points[indices]
+
+
+def _get_expected_ic_shape(
+    geometry: GeometryProtocol,
+) -> tuple[int, ...]:
+    """Get expected IC/BC array shape for any geometry type.
+
+    Uses ``get_grid_shape()`` (part of GeometryProtocol) with a fallback
+    to ``(num_spatial_points,)`` if the geometry returns None.
+
+    Returns:
+        Expected shape tuple for IC/BC arrays.
+
+    Issue #682: Geometry-agnostic IC/BC validation.
+    """
+    shape = geometry.get_grid_shape()
+    if shape is not None:
+        return shape
+    # Fallback for geometries whose base class returns None
+    return (geometry.num_spatial_points,)
 
 
 def _validate_callable_ic(
@@ -325,25 +385,22 @@ def _validate_callable_ic(
 ) -> ValidationResult:
     """Validate a callable initial/terminal condition.
 
-    Uses adapt_ic_callable() to probe the callable's signature.  If the
-    callable matches any supported convention the validation passes.  If no
-    convention works, a detailed error lists every attempted signature and
-    what went wrong -- much more helpful than the previous generic exception.
+    Uses ``_get_validation_points()`` to obtain a geometry-agnostic sample
+    point, then ``adapt_ic_callable()`` to probe the callable's signature.
+    If the callable matches any supported convention the validation passes.
+    If no convention works, a detailed error lists every attempted signature
+    and what went wrong.
 
-    Issue #684: Callable signature detection.
+    Issues #682, #684: Geometry-agnostic callable validation.
     """
     from mfg_pde.utils.callable_adapter import adapt_ic_callable
 
     result = ValidationResult()
 
-    # Get a sample point from geometry
+    # Get a sample point from any geometry type (Issue #682)
     try:
-        grid = geometry.get_spatial_grid()
-        if isinstance(grid, tuple):
-            # Multi-dimensional: take center point
-            sample_point = tuple(g[len(g) // 2] for g in grid)
-        else:
-            sample_point = grid[len(grid) // 2]
+        points = _get_validation_points(geometry, n_samples=1)
+        sample_point = points[0]  # (d,) ndarray
     except Exception as e:
         result.add_error(
             f"Could not get sample point from geometry: {e}",
@@ -351,22 +408,13 @@ def _validate_callable_ic(
         )
         return result
 
-    # Determine dimension from grid
-    if isinstance(grid, np.ndarray):
-        dimension = grid.shape[1] if grid.ndim == 2 else 1
-    else:
-        dimension = len(grid) if isinstance(grid, (list, tuple)) else 1
+    dimension = geometry.dimension
 
-    # For 1D, extract a scalar sample for the adapter
+    # For 1D, the callable adapter expects a scalar float
     if dimension == 1:
-        if isinstance(sample_point, np.ndarray):
-            adapter_sample: float | np.ndarray = (
-                float(sample_point[0]) if sample_point.ndim > 0 else float(sample_point)
-            )
-        else:
-            adapter_sample = float(sample_point)
+        adapter_sample: float | np.ndarray = float(sample_point[0])
     else:
-        adapter_sample = np.asarray(sample_point)
+        adapter_sample = sample_point
 
     # Probe signature via adapter
     try:
@@ -383,15 +431,16 @@ def _validate_callable_ic(
         )
         return result
 
-    # Store detected signature in context (informational)
+    # Store detected signature and geometry type in context (informational)
     result.context["adapted_signature"] = sig_type.name
+    result.context["geometry_type"] = type(geometry).__name__
 
     # Evaluate the adapted callable at the sample point to check output quality
     try:
         if dimension == 1:
             value = adapted(adapter_sample)
         else:
-            value = adapted(np.asarray(sample_point))
+            value = adapted(sample_point)
     except Exception as e:
         result.add_error(
             f"{name} callable raised exception at sample point {sample_point}: {e}",
@@ -430,15 +479,20 @@ def _validate_array_ic(
     geometry: GeometryProtocol,
     name: str,
 ) -> ValidationResult:
-    """Validate an array initial/terminal condition."""
+    """Validate an array initial/terminal condition.
+
+    Uses ``_get_expected_ic_shape()`` for geometry-agnostic shape inference.
+
+    Issue #682: Geometry-agnostic array validation.
+    """
     result = ValidationResult()
 
-    # Get expected shape from geometry
+    # Get expected shape from any geometry type (Issue #682)
     try:
-        expected_shape = geometry.get_grid_shape()
+        expected_shape = _get_expected_ic_shape(geometry)
     except Exception as e:
         result.add_error(
-            f"Could not get grid shape from geometry: {e}",
+            f"Could not get expected IC shape from geometry: {e}",
             location=name,
         )
         return result
@@ -448,7 +502,7 @@ def _validate_array_ic(
         result.add_error(
             f"{name} has shape {arr.shape}, expected {expected_shape}",
             location=name,
-            suggestion=f"Reshape {name} to match geometry grid shape",
+            suggestion=(f"Reshape {name} to match geometry grid shape. Geometry type: {type(geometry).__name__}"),
         )
         return result
 
