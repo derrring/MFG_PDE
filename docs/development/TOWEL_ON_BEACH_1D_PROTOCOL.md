@@ -175,7 +175,7 @@ result = iterator.solve(max_iterations=30, tolerance=1e-6)
   - `compute_boundary_log_density_gradient_1d()`: Computes ∂ln(m)/∂n
 - Solver integration: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
   - Automatically creates BC when `bc_mode="adjoint_consistent"`
-- Design document: `docs/development/issue_574_robin_bc_design.md`
+- Design document: `docs/archive/bc_completed_2026-02/issue_574_robin_bc_design.md` (archived, implemented v0.17.1)
 - GitHub Issue: #574
 
 **Alternative Approaches** (for reference):

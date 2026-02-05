@@ -562,3 +562,91 @@ The BC handling architecture has a **solid foundation** (data model, provider pa
 5. **Refactor bloated classes** - Split `conditions.py` god class
 
 The Issue #625 provider pattern is a positive step that demonstrates the right architectural direction: **explicit intent, clean separation, testable components**.
+
+---
+
+## A. Absorbed Content: Four-Tier Constraint Taxonomy
+
+> *Consolidated from `bc_architecture_analysis.md` (2024-12)*
+
+Beyond the mathematical Dirichlet/Neumann/Robin classification, a **physical** taxonomy
+is more useful for architecture:
+
+| Tier | Semantic | Physical Examples | Ghost Pattern |
+|------|----------|-------------------|---------------|
+| **Tier 1: State** | Lock value | Dirichlet, exit, fixed temperature | `weights={}`, `bias=g` |
+| **Tier 2: Gradient** | Lock shape | Neumann, symmetry, HJB reflective | `weights={0: 1.0}`, `bias=dx*g` |
+| **Tier 3: Flux** | Lock flow | Robin, FP no-flux, adiabatic | `weights={0: alpha}`, `bias=0` |
+| **Tier 4: Artificial** | Fake infinity | Linear extrapolation, absorbing | `weights={0: 2, 1: -1}`, `bias=0` |
+
+**Physical Intent → Mathematical Implementation**:
+
+| Physical Intent | HJB (Value Function) | FP (Density) | Particles | Tier |
+|-----------------|---------------------|--------------|-----------|------|
+| **wall** | Neumann dV/dn=0 | Robin (zero total flux) | Reflect | 2/3 |
+| **exit** | Dirichlet V=0 | Dirichlet rho=0 | Absorb | 1 |
+| **symmetry** | Neumann dV/dn=0 | Neumann drho/dn=0 | Reflect | 2 |
+| **outflow** | Linear extrapolation | Dirichlet rho->0 | Pass through | 4 |
+| **periodic** | Wrap (topology) | Wrap (topology) | Wrap | -- |
+
+**Architecture recommendation**: 2-layer runtime execution (Topology + Calculator) with
+4-tier semantics for code organization. See Issue #517 (Semantic Dispatch Factory).
+
+---
+
+## B. Absorbed Content: Matrix Assembly Protocol
+
+> *Consolidated from `matrix_assembly_bc_protocol.md` (2025-12)*
+
+For implicit solvers (Au^{n+1} = b), ghost cells become coefficient folding:
+
+```python
+@dataclass
+class LinearConstraint:
+    """u_ghost = sum(weights[k] * u[inner+k]) + bias"""
+    weights: dict[int, float]
+    bias: float = 0.0
+```
+
+**Assembly algorithm** (2-phase):
+1. **Topology check**: If periodic, wrap index via modulo. Done.
+2. **Physics folding**: Resolve tier to `LinearConstraint`, fold weights into matrix A,
+   fold bias into RHS b.
+
+**Axiom**: Explicit (ghost cell) and implicit (coefficient folding) MUST produce
+identical results. The `calculator_to_constraint()` function in `applicator_base.py`
+bridges the two.
+
+**Grid alignment matters**: Cell-centered Dirichlet uses `u_ghost = 2g - u_inner`
+(weights={0: -1.0}, bias=2g), while vertex-centered uses direct assignment.
+
+---
+
+## C. Absorbed Content: Terminal-BC Compatibility (GFDM)
+
+> *Consolidated from `terminal_bc_compatibility.md` (2025-12-20)*
+
+**Problem**: GFDM solvers produce oscillatory boundary values when terminal cost
+gradient is incompatible with Neumann BC (dg/dn != 0 at boundary).
+
+**Why FDM tolerates it**: Numerical viscosity from upwind stencils smears the discontinuity.
+**Why GFDM fails**: Explicit row replacement in Jacobian creates algebraically impossible system.
+
+**Failed approach**: Hard clamping (`np.clip`) creates C0 discontinuity that amplifies oscillations.
+
+**Recommended approach**: Ghost nodes (method of images).
+- Mirror interior nodes across boundary
+- Set ghost value = interior value (structural Neumann)
+- Keeps original terminal cost intact (no curvature shocks)
+- Modifies stencil structure, not data
+
+This is related to the **corner consistency** problem in the space-time cylinder
+architecture (see `docs/architecture/spacetime-bc/SPEC_SPACETIME_SOLVERS.md` Section 6.1).
+
+---
+
+## Related Architecture Documents
+
+- `docs/architecture/spacetime-bc/` — Space-time solvers & compositional BC architecture project
+- `docs/architecture/spacetime-bc/SPEC_COMPOSITIONAL_BC.md` — 4-axis BC framework spec
+- `docs/architecture/spacetime-bc/CURRENT_STATE_ANALYSIS.md` — Gap analysis vs current code
