@@ -306,6 +306,49 @@ def adapt_damping(
     return theta_U, theta_M, warning_msg
 
 
+def compute_scheduled_damping(
+    iteration: int,
+    base_damping: float,
+    schedule: str = "constant",
+    min_damping: float = 0.01,
+) -> float:
+    """Compute damping factor for a given iteration using a named schedule.
+
+    The base_damping acts as the initial/maximum value. Decay schedules
+    modulate it: theta(k) = base_damping * schedule(k), clamped to min_damping.
+
+    Args:
+        iteration: Current iteration (0-indexed).
+        base_damping: Base damping factor (theta at k=0 for decay schedules).
+        schedule: "constant", "harmonic", "sqrt", or "exponential".
+        min_damping: Floor for damping value.
+
+    Returns:
+        Damping factor for this iteration.
+
+    Raises:
+        ValueError: If schedule name is not recognized.
+    """
+    if schedule == "constant":
+        return base_damping
+
+    from mfg_pde.alg.iterative.schedules import harmonic_schedule, sqrt_schedule
+
+    if schedule == "harmonic":
+        value = base_damping * harmonic_schedule(iteration)
+    elif schedule == "sqrt":
+        value = base_damping * sqrt_schedule(iteration)
+    elif schedule == "exponential":
+        # Geometric decay: theta(k) = base_damping^(k+1)
+        value = base_damping ** (iteration + 1)
+    else:
+        raise ValueError(
+            f"Unknown damping schedule: {schedule!r}. Available: 'constant', 'harmonic', 'sqrt', 'exponential'."
+        )
+
+    return max(value, min_damping)
+
+
 def preserve_terminal_condition(
     U: np.ndarray,
     U_terminal: np.ndarray,
