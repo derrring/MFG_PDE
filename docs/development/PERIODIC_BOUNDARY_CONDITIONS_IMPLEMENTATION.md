@@ -1,8 +1,9 @@
 # [WIP] Periodic Boundary Conditions (PBC) Implementation in MFG_PDE
 
 **Status**: [WIP] - Under Development and Review
-**Version**: 0.3 (English Translation)
-**Date**: 2026-01-30
+**Version**: 0.4 (Added compatibility requirements)
+**Date**: 2026-02-04
+**Last Updated**: 2026-02-04 (Section 4.1 added based on exp06b validation)
 
 ## 1. Introduction
 
@@ -149,7 +150,57 @@ This tier provides a clean and convenient interface for users to select and conf
 
 ## 4. Key Numerical Considerations and Pitfalls
 
-### 4.1 The Zero-Frequency Mode and Solution Uniqueness
+### 4.1 Physical Model Compatibility with Periodic Topology (CRITICAL)
+
+**Issue Discovered**: 2026-02-04 (exp06b_periodic EOC validation)
+
+When using periodic boundary conditions, the physical model (potential, cost functions) must be **topologically compatible** with the periodic domain. A common mistake is using a quadratic potential on a periodic domain.
+
+#### The Problem: Quadratic Potential on Periodic Domain
+
+Consider the standard crowd evacuation potential:
+$$V_{quad}(x) = C_1 \left[(x - L/2)^2 + (y - L/2)^2\right]$$
+
+**Gradient discontinuity at boundary**:
+- At $x = 0$: $\partial V/\partial x = -C_1 L$
+- At $x = L$ (same point topologically): $\partial V/\partial x = +C_1 L$
+
+This creates a **gradient jump of $2C_1 L$** at the periodic boundary, causing:
+1. GFDM stencils to produce extreme gradient values near boundaries
+2. Numerical instability in HJB time-stepping
+3. Large U_diff values even with gradient clamping
+
+**Validation evidence** (exp06b_periodic):
+- GFDM gradient of linear function $U = x + y$: max error **7.77** (should be 0)
+- GFDM gradient of periodic function $\cos(2\pi x/L)$: max error **0.14** (converges correctly)
+
+#### The Solution: Periodic-Compatible Potential
+
+For truly periodic MFG problems, use a potential with **continuous derivatives at boundaries**:
+
+$$V_{periodic}(x) = \frac{C_1}{2}\left[1 + \cos\left(\frac{2\pi x}{L}\right)\right] + \frac{C_1}{2}\left[1 + \cos\left(\frac{2\pi y}{L}\right)\right]$$
+
+**Properties**:
+- $V_{min} = 0$ at center $(L/2, L/2)$
+- $V_{max} = 2C_1$ at corners $(0,0), (L,0), (0,L), (L,L)$
+- Gradient $\partial V/\partial x = -\frac{C_1 \pi}{L} \sin(2\pi x/L)$ is **continuous everywhere**
+- At boundaries: $\partial V/\partial x|_{x=0} = \partial V/\partial x|_{x=L} = 0$
+
+**Equilibrium density** (Boltzmann-Gibbs):
+$$m^*(x) = \frac{1}{Z} \exp\left(-\frac{V_{periodic}(x)}{T_{eff}}\right)$$
+where $Z = \iint \exp(-V/T_{eff}) \, dx\,dy$ and $T_{eff} = C_2 + \sigma^2/2$.
+
+#### Decision Guide
+
+| Physical Setup | Recommended BC | Potential Form |
+|----------------|----------------|----------------|
+| Bounded domain with walls | No-flux (Neumann) | Quadratic $V \propto r^2$ |
+| Infinite periodic lattice | Periodic | Cosine $V \propto \cos(kx)$ |
+| Torus topology | Periodic | Cosine $V \propto \cos(kx)$ |
+
+**Rule of thumb**: If using periodic BC, all physical quantities (potential, running cost, terminal cost) must be periodic functions with continuous derivatives.
+
+### 4.2 The Zero-Frequency Mode and Solution Uniqueness
 
 **Mathematical Origin**: For pure Neumann or periodic boundaries, the null space of the Laplacian operator is non-trivial (it contains the constant functions). This means its discrete matrix `A` is singular (has a zero eigenvalue), and the linear system `Au=f` may not have a unique solution.
 

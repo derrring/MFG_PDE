@@ -124,20 +124,25 @@ def apply_damping(
     M_new: np.ndarray,
     M_old: np.ndarray,
     theta: float,
+    theta_M: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Apply damping to fixed-point iteration updates.
 
     Damping formula:
         U_damped = theta * U_new + (1 - theta) * U_old
-        M_damped = theta * M_new + (1 - theta) * M_old
+        M_damped = theta_M * M_new + (1 - theta_M) * M_old
 
     Args:
         U_new: New value function from HJB solve
         U_old: Previous value function
         M_new: New density from FP solve
         M_old: Previous density
-        theta: Damping parameter in [0, 1] (0=no update, 1=full update)
+        theta: Damping parameter for U in [0, 1] (0=no update, 1=full update)
+            Also used for M if theta_M is None (backward compatible).
+        theta_M: Optional separate damping parameter for M in [0, 1].
+            If None, uses theta for both U and M (backward compatible).
+            Issue #719: Per-variable damping support.
 
     Returns:
         Tuple of (U_damped, M_damped)
@@ -146,9 +151,22 @@ def apply_damping(
         theta=1 corresponds to no damping (full update)
         theta=0.5 is a common choice for stability
         Smaller theta increases stability but slows convergence
+
+    Example:
+        # Same damping for both (backward compatible)
+        U, M = apply_damping(U_new, U_old, M_new, M_old, theta=0.5)
+
+        # Different damping: full update for U, conservative for M
+        # Recommended for MFG: U adapts quickly, M filters particle noise
+        U, M = apply_damping(U_new, U_old, M_new, M_old, theta=1.0, theta_M=0.2)
     """
-    U_damped = theta * U_new + (1 - theta) * U_old
-    M_damped = theta * M_new + (1 - theta) * M_old
+    # Issue #719: Support per-variable damping
+    theta_U = theta
+    if theta_M is None:
+        theta_M = theta  # Backward compatible: same damping for both
+
+    U_damped = theta_U * U_new + (1 - theta_U) * U_old
+    M_damped = theta_M * M_new + (1 - theta_M) * M_old
 
     return U_damped, M_damped
 

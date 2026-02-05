@@ -25,10 +25,12 @@ from .boundary_handler import BoundaryHandler
 from .grid_collocation_mapper import GridCollocationMapper
 from .monotonicity_enforcer import MonotonicityEnforcer
 from .neighborhood_builder import NeighborhoodBuilder
+from .precomputed_stencils import PrecomputedMonotoneStencils
 
 __all__ = [
     "BoundaryHandler",
     "GridCollocationMapper",
     "MonotonicityEnforcer",
     "NeighborhoodBuilder",
+    "PrecomputedMonotoneStencils",
 ]

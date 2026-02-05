@@ -113,12 +113,21 @@ class BlockIterator(BaseMFGSolver):
         *,
         method: str | BlockMethod = BlockMethod.GAUSS_SEIDEL,
         damping_factor: float = 1.0,
+        damping_factor_M: float | None = None,
         diffusion_field: float | NDArray | Any | None = None,
         drift_field: NDArray | Any | None = None,
         adjoint_mode: str = "off",
         adjoint_verify: bool = False,
     ):
-        """Initialize block iterator."""
+        """Initialize block iterator.
+
+        Args:
+            damping_factor: Damping for U (theta_U). Default 1.0 = no damping.
+            damping_factor_M: Damping for M (theta_M). If None, uses damping_factor.
+                Issue #719: Per-variable damping support.
+                Recommended for MFG: damping_factor=1.0, damping_factor_M=0.2
+                (U adapts fully, M filters particle noise)
+        """
         super().__init__(problem)
 
         self.hjb_solver = hjb_solver
@@ -129,8 +138,9 @@ class BlockIterator(BaseMFGSolver):
             method = BlockMethod(method.lower())
         self.method = method
 
-        # Iteration parameters
+        # Iteration parameters - Issue #719: Per-variable damping
         self.damping_factor = damping_factor
+        self.damping_factor_M = damping_factor_M  # None = use damping_factor for both
 
         # PDE coefficient overrides
         self.diffusion_field = diffusion_field
@@ -505,8 +515,16 @@ class BlockIterator(BaseMFGSolver):
             # Perform block iteration step
             U_new, M_new = step_fn(U_old, M_old, self._M_initial, self._U_terminal)
 
-            # Apply damping
-            self.U, self.M = apply_damping(U_old, U_new, M_old, M_new, self.damping_factor)
+            # Apply damping - Issue #719: Per-variable damping
+            # Note: apply_damping expects (new, old) order, not (old, new)
+            self.U, self.M = apply_damping(
+                U_new,
+                U_old,
+                M_new,
+                M_old,
+                theta=self.damping_factor,
+                theta_M=self.damping_factor_M,
+            )
 
             # Preserve boundary conditions
             self.M = preserve_initial_condition(self.M, self._M_initial)
