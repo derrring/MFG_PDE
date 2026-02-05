@@ -912,5 +912,157 @@ class TestHJBFDMSolverGhostValueBC:
         )
 
 
+class TestHJBFDMSolverNewtonFallback:
+    """Test Newton-to-Value-Iteration adaptive fallback (Issue #669)."""
+
+    def test_on_newton_failure_default_is_raise(self):
+        """Test that default on_newton_failure is 'raise'."""
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, components=_default_components())
+        solver = HJBFDMSolver(problem)
+
+        assert solver.on_newton_failure == "raise"
+
+    def test_on_newton_failure_raise_on_divergence(self):
+        """Test that ConvergenceError is raised when Newton diverges with on_newton_failure='raise'."""
+        from unittest.mock import patch
+
+        from mfg_pde.alg.numerical.hjb_solvers import ConvergenceError
+        from mfg_pde.utils.numerical import SolverInfo
+
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8], boundary_conditions=no_flux_bc(dimension=2)
+        )
+        problem = MFGProblem(geometry=geometry, T=0.1, Nt=2, diffusion=0.1, components=_default_components_2d())
+        solver = HJBFDMSolver(problem, solver_type="newton", on_newton_failure="raise")
+
+        Nx, Ny = 8, 8
+        Nt_points = problem.Nt_points
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
+
+        # Mock the nonlinear solver to return non-converged result
+        failed_info = SolverInfo(converged=False, iterations=30, residual=1.5, residual_history=[])
+        with (
+            patch.object(solver.nonlinear_solver, "solve", return_value=(np.zeros((8, 8)), failed_info)),
+            pytest.raises(ConvergenceError, match="newton solver failed to converge"),
+        ):
+            solver.solve_hjb_system(M_density, U_final, U_prev)
+
+    def test_on_newton_failure_raise_on_exception(self):
+        """Test that ConvergenceError wraps LinAlgError when on_newton_failure='raise'."""
+        from unittest.mock import patch
+
+        from mfg_pde.alg.numerical.hjb_solvers import ConvergenceError
+
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8], boundary_conditions=no_flux_bc(dimension=2)
+        )
+        problem = MFGProblem(geometry=geometry, T=0.1, Nt=2, diffusion=0.1, components=_default_components_2d())
+        solver = HJBFDMSolver(problem, solver_type="newton", on_newton_failure="raise")
+
+        Nx, Ny = 8, 8
+        Nt_points = problem.Nt_points
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
+
+        # Mock the nonlinear solver to raise LinAlgError (singular Jacobian)
+        with (
+            patch.object(solver.nonlinear_solver, "solve", side_effect=np.linalg.LinAlgError("Singular matrix")),
+            pytest.raises(ConvergenceError, match=r"Newton solver failed.*Singular matrix"),
+        ):
+            solver.solve_hjb_system(M_density, U_final, U_prev)
+
+    def test_on_newton_failure_fallback_on_divergence(self):
+        """Test fallback to Value Iteration when Newton diverges with warn_and_fallback."""
+        import warnings
+        from unittest.mock import patch
+
+        from mfg_pde.utils.numerical import SolverInfo
+
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8], boundary_conditions=no_flux_bc(dimension=2)
+        )
+        problem = MFGProblem(geometry=geometry, T=0.1, Nt=2, diffusion=0.1, components=_default_components_2d())
+        solver = HJBFDMSolver(problem, solver_type="newton", on_newton_failure="warn_and_fallback")
+
+        # Mock Newton solver to return non-converged result
+        failed_info = SolverInfo(converged=False, iterations=30, residual=1.5, residual_history=[])
+
+        # Create a successful fallback result
+        success_info = SolverInfo(converged=True, iterations=50, residual=1e-7, residual_history=[])
+        fallback_result = (np.zeros((8, 8)), success_info)
+
+        Nx, Ny = 8, 8
+        Nt_points = problem.Nt_points
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
+
+        with (
+            patch.object(solver.nonlinear_solver, "solve", return_value=(np.zeros((8, 8)), failed_info)),
+            patch("mfg_pde.alg.numerical.hjb_solvers.hjb_fdm.FixedPointSolver") as MockFPSolver,
+            warnings.catch_warnings(record=True) as w,
+        ):
+            warnings.simplefilter("always")
+            mock_fp_instance = MockFPSolver.return_value
+            mock_fp_instance.solve.return_value = fallback_result
+
+            solver.solve_hjb_system(M_density, U_final, U_prev)
+
+        # Check that fallback warning was emitted
+        fallback_warnings = [x for x in w if "Falling back to Value Iteration" in str(x.message)]
+        assert len(fallback_warnings) >= 1, f"Expected fallback warning, got: {[str(x.message) for x in w]}"
+
+        # Verify FixedPointSolver was constructed with 10x iterations
+        MockFPSolver.assert_called()
+        call_kwargs = MockFPSolver.call_args[1]
+        assert call_kwargs["max_iterations"] == solver.max_newton_iterations * 10
+
+    def test_on_newton_failure_ignored_for_fixed_point(self):
+        """Test that on_newton_failure is irrelevant when solver_type='fixed_point'."""
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8], boundary_conditions=no_flux_bc(dimension=2)
+        )
+        problem = MFGProblem(geometry=geometry, T=0.1, Nt=2, diffusion=0.1, components=_default_components_2d())
+
+        # Should accept the parameter without error even for fixed_point
+        solver = HJBFDMSolver(problem, solver_type="fixed_point", on_newton_failure="warn_and_fallback")
+        assert solver.on_newton_failure == "warn_and_fallback"
+
+        # Solving should work normally (no fallback logic triggered)
+        Nx, Ny = 8, 8
+        Nt_points = problem.Nt_points
+        M_density = np.ones((Nt_points, Nx, Ny)) * 0.5
+        U_final = np.zeros((Nx, Ny))
+        U_prev = np.zeros((Nt_points, Nx, Ny))
+
+        U_solution = solver.solve_hjb_system(M_density, U_final, U_prev)
+        assert U_solution.shape == (Nt_points, Nx, Ny)
+        assert np.all(np.isfinite(U_solution))
+
+    def test_convergence_error_attributes(self):
+        """Test ConvergenceError exception has correct attributes."""
+        from mfg_pde.alg.numerical.hjb_solvers import ConvergenceError
+
+        err = ConvergenceError("newton", iterations=42, residual=3.14)
+        assert err.solver_type == "newton"
+        assert err.iterations == 42
+        assert err.residual == 3.14
+        assert "newton" in str(err)
+        assert "42" in str(err)
+        assert "3.14" in str(err)
+
+    def test_convergence_error_custom_message(self):
+        """Test ConvergenceError with custom message."""
+        from mfg_pde.alg.numerical.hjb_solvers import ConvergenceError
+
+        err = ConvergenceError("newton", 10, 1e-2, message="Custom failure message")
+        assert str(err) == "Custom failure message"
+        assert err.solver_type == "newton"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
