@@ -27,6 +27,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import NDArray
 
 
@@ -241,6 +243,74 @@ def compute_weno5_godunov_upwind_1d(
     return du_upwind
 
 
+def compute_weno5_derivative_nd(
+    u: NDArray[np.float64],
+    spacings: Sequence[float],
+    axis: int,
+    bias: str = "left",
+    epsilon: float = 1e-6,
+) -> NDArray[np.float64]:
+    """
+    Compute WENO5 derivative along a single axis of an nD array.
+
+    For 1D input, delegates directly to compute_weno5_derivative_1d.
+    For nD input, swaps the target axis to position 0, applies 1D WENO5
+    to each transverse slice, then swaps back.
+
+    Parameters
+    ----------
+    u : NDArray
+        Field to differentiate (1D, 2D, or 3D array).
+    spacings : Sequence[float]
+        Grid spacing per dimension, e.g. (dx, dy) for 2D.
+    axis : int
+        Axis along which to differentiate (0=x, 1=y, ...).
+    bias : str, default="left"
+        Upwind bias direction ("left" or "right").
+    epsilon : float, default=1e-6
+        Smoothness indicator regularization.
+
+    Returns
+    -------
+    du : NDArray
+        Derivative along the specified axis, same shape as input.
+
+    Examples
+    --------
+    >>> # 2D derivative along x-axis
+    >>> u = np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)
+    >>> du_dx = compute_weno5_derivative_nd(u, spacings=(dx, dy), axis=0, bias="left")
+    """
+    ndim = u.ndim
+
+    if len(spacings) != ndim:
+        raise ValueError(f"len(spacings)={len(spacings)} must match array ndim={ndim}")
+
+    if axis < 0 or axis >= ndim:
+        raise ValueError(f"axis={axis} out of range for {ndim}D array")
+
+    # 1D: delegate directly
+    if ndim == 1:
+        return compute_weno5_derivative_1d(u, spacings[0], bias=bias, epsilon=epsilon)
+
+    dx = spacings[axis]
+
+    # Move target axis to position 0 for uniform iteration
+    u_swapped = np.moveaxis(u, axis, 0)
+    result_swapped = np.zeros_like(u_swapped)
+
+    # Iterate over all transverse slices (product of remaining axes)
+    # u_swapped has shape (N_axis, *remaining_shape)
+    remaining_shape = u_swapped.shape[1:]
+    for idx in np.ndindex(*remaining_shape):
+        # Extract 1D slice along the target axis
+        slc = (slice(None), *idx)
+        result_swapped[slc] = compute_weno5_derivative_1d(u_swapped[slc], dx, bias=bias, epsilon=epsilon)
+
+    # Move axis back to original position
+    return np.moveaxis(result_swapped, 0, axis)
+
+
 if __name__ == "__main__":
     """Smoke test for WENO5 scheme."""
     print("Testing WENO5 scheme (operator framework)...")
@@ -299,9 +369,31 @@ if __name__ == "__main__":
     assert interior_error < 0.01, f"WENO5 accuracy check failed: {interior_error}"
     print("  ✓ WENO5 high-order accuracy verified!")
 
+    # Test 4: nD derivative (2D)
+    print("\n[Test 4: 2D WENO5 Derivative via compute_weno5_derivative_nd]")
+    Nx, Ny = 60, 60
+    x2 = np.linspace(0, 1, Nx)
+    y2 = np.linspace(0, 1, Ny)
+    dx2, dy2 = x2[1] - x2[0], y2[1] - y2[0]
+    X2, Y2 = np.meshgrid(x2, y2, indexing="ij")
+
+    u2d = np.sin(2 * np.pi * X2) * np.cos(2 * np.pi * Y2)
+    du_dx_exact = 2 * np.pi * np.cos(2 * np.pi * X2) * np.cos(2 * np.pi * Y2)
+
+    du_dx_weno = compute_weno5_derivative_nd(u2d, spacings=(dx2, dy2), axis=0, bias="left")
+
+    # Interior error (skip 2 boundary rows/cols)
+    interior_2d = du_dx_weno[2:-2, 2:-2]
+    exact_2d = du_dx_exact[2:-2, 2:-2]
+    error_2d = np.max(np.abs(interior_2d - exact_2d))
+    print(f"  Grid: {Nx}x{Ny}, dx={dx2:.4f}")
+    print(f"  du/dx interior error: {error_2d:.6e}")
+    assert error_2d < 0.05, f"2D WENO5 accuracy check failed: {error_2d}"
+    print("  ✓ 2D WENO5 derivative verified!")
+
     print("\n✅ All WENO5 scheme tests passed!")
-    print("\n📊 Implementation Status:")
+    print("\n  Implementation Status:")
     print("  ✓ 1D: Full WENO5 reconstruction (5th-order spatial accuracy)")
+    print("  ✓ nD: Axis-wise WENO5 via compute_weno5_derivative_nd")
     print("  ✓ Godunov upwind selection for level set evolution")
     print("  ✓ Integrated with operator framework")
-    print("  ⏳ 2D/3D: Planned for future (Issue #606 extension)")

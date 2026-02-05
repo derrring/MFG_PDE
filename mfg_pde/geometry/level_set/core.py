@@ -352,7 +352,9 @@ class LevelSetEvolver:
 
         Args:
             geometry: Grid structure (must support gradient operators)
-            scheme: Difference scheme (currently only "upwind" supported)
+            scheme: Difference scheme ("upwind" or "weno5")
+                - "upwind": 1st-order Godunov upwind (default)
+                - "weno5": 5th-order HJ-WENO Godunov (Jiang & Peng 2000)
             cfl_max: Maximum CFL number for stability (default: 0.9)
                 CFL = max(|V|)·dt/h. If exceeded, automatic substepping is used.
 
@@ -360,10 +362,9 @@ class LevelSetEvolver:
             ValueError: If scheme not supported
             AttributeError: If geometry doesn't support required operators
         """
-        if scheme != "upwind":
+        if scheme not in ("upwind", "weno5"):
             raise ValueError(
-                f"Only 'upwind' scheme supported for now, got '{scheme}'. "
-                "Central and WENO schemes planned for future releases."
+                f"Scheme must be 'upwind' or 'weno5', got '{scheme}'. See Issue #605 Phase 2 for WENO5 support."
             )
 
         self.geometry = geometry
@@ -413,6 +414,54 @@ class LevelSetEvolver:
         grad_mag = np.linalg.norm(grad_components, axis=0)
 
         return grad_mag
+
+    def _compute_weno5_gradient_magnitude(
+        self,
+        phi: NDArray[np.float64],
+        velocity: NDArray[np.float64],
+    ) -> NDArray[np.float64]:
+        """
+        Compute gradient magnitude |nabla phi| using HJ-WENO5 Godunov scheme.
+
+        Implements the Jiang & Peng (2000) HJ-WENO flux selection:
+            For each dimension d, compute D- (left) and D+ (right) via WENO5.
+            Godunov assembly based on velocity sign:
+                V > 0: |nabla phi|^2 += max(D-,0)^2 + min(D+,0)^2
+                V < 0: |nabla phi|^2 += max(D+,0)^2 + min(D-,0)^2
+
+        Args:
+            phi: Level set function, shape (Nx, ...).
+            velocity: Velocity field, same shape as phi.
+
+        Returns:
+            Gradient magnitude |nabla phi|, same shape as phi.
+
+        References:
+            Jiang & Peng (2000): Weighted ENO schemes for Hamilton-Jacobi equations.
+        """
+        from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_nd
+
+        ndim = phi.ndim
+        spacings = [float(s) for s in self.spacing]
+
+        grad_mag_sq = np.zeros_like(phi)
+
+        for d in range(ndim):
+            d_minus = compute_weno5_derivative_nd(phi, spacings, axis=d, bias="left")
+            d_plus = compute_weno5_derivative_nd(phi, spacings, axis=d, bias="right")
+
+            # Godunov flux selection per point
+            # V > 0: information from left → max(D-,0)^2 + min(D+,0)^2
+            # V < 0: information from right → max(D+,0)^2 + min(D-,0)^2
+            pos_mask = velocity > 0
+
+            contrib = np.zeros_like(phi)
+            contrib[pos_mask] = np.maximum(d_minus[pos_mask], 0.0) ** 2 + np.minimum(d_plus[pos_mask], 0.0) ** 2
+            contrib[~pos_mask] = np.maximum(d_plus[~pos_mask], 0.0) ** 2 + np.minimum(d_minus[~pos_mask], 0.0) ** 2
+
+            grad_mag_sq += contrib
+
+        return np.sqrt(grad_mag_sq)
 
     def evolve_step(
         self,
@@ -480,8 +529,11 @@ class LevelSetEvolver:
         # Evolve via substeps
         phi_current = phi.copy()
         for _step in range(n_substeps):
-            # Compute |∇φ| via Godunov upwind
-            grad_mag = self._compute_godunov_gradient_magnitude(phi_current)
+            # Compute |∇φ| via selected scheme
+            if self.scheme == "weno5":
+                grad_mag = self._compute_weno5_gradient_magnitude(phi_current, V_array)
+            else:
+                grad_mag = self._compute_godunov_gradient_magnitude(phi_current)
 
             # Update: φⁿ⁺¹ = φⁿ - dt·V·|∇φ|
             phi_current = phi_current - dt_sub * V_array * grad_mag

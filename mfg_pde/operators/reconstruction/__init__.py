@@ -24,10 +24,12 @@ Usage:
 
 from mfg_pde.operators.reconstruction.weno import (
     compute_weno5_derivative_1d,
+    compute_weno5_derivative_nd,
     compute_weno5_godunov_upwind_1d,
 )
 
 __all__ = [
     "compute_weno5_derivative_1d",
+    "compute_weno5_derivative_nd",
     "compute_weno5_godunov_upwind_1d",
 ]

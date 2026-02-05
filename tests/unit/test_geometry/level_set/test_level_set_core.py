@@ -319,6 +319,145 @@ class TestCurvature:
         assert error < 0.3 * kappa_analytical
 
 
+class TestLevelSetEvolverWENO5:
+    """Test LevelSetEvolver with WENO5 scheme."""
+
+    @pytest.mark.unit
+    def test_weno5_1d_translation(self):
+        """Test 1D WENO5 evolution with constant velocity."""
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
+        x = grid.coordinates[0]
+        dx = grid.spacing[0]
+
+        phi0 = x - 0.5
+
+        evolver = LevelSetEvolver(grid, scheme="weno5")
+
+        V = 1.0
+        dt = 0.1
+        phi1 = evolver.evolve_step(phi0, velocity=V, dt=dt)
+
+        # Interface should move to x ~ 0.6
+        idx_zero = np.argmin(np.abs(phi1))
+        x_interface = x[idx_zero]
+        x_expected = 0.5 + V * dt
+
+        assert np.abs(x_interface - x_expected) < 2 * dx
+
+    @pytest.mark.unit
+    def test_weno5_2d_circle_expansion(self):
+        """Test 2D circle expansion with WENO5."""
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[40, 40], boundary_conditions=no_flux_bc(dimension=2))
+        X, Y = grid.meshgrid()
+
+        radius = 0.2
+        center = np.array([0.5, 0.5])
+        phi0 = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2) - radius
+
+        evolver = LevelSetEvolver(grid, scheme="weno5")
+
+        V = 0.5
+        dt = 0.05
+        phi1 = evolver.evolve_step(phi0, velocity=V, dt=dt)
+
+        # Circle should expand (more negative phi values)
+        area0 = np.sum(phi0 < 0)
+        area1 = np.sum(phi1 < 0)
+
+        assert area1 > area0, "Circle should expand with positive velocity"
+
+    @pytest.mark.unit
+    def test_weno5_no_accuracy_regression_vs_upwind(self):
+        """Test that WENO5 does not degrade accuracy vs upwind on smooth problem.
+
+        Note: With explicit Euler time integration, temporal error O(dt)
+        dominates spatial error, so both schemes give similar results.
+        A TVD-RK3 time integrator would be needed to observe the O(dx^5)
+        vs O(dx) spatial accuracy difference.
+        """
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
+        x = grid.coordinates[0]
+
+        # Smooth initial data: Gaussian
+        phi0 = np.exp(-50 * (x - 0.3) ** 2) - 0.5
+
+        V = 1.0
+        dt = 0.01  # Small dt for accuracy comparison
+
+        evolver_upwind = LevelSetEvolver(grid, scheme="upwind")
+        evolver_weno5 = LevelSetEvolver(grid, scheme="weno5")
+
+        phi_upwind = evolver_upwind.evolve_step(phi0, velocity=V, dt=dt)
+        phi_weno5 = evolver_weno5.evolve_step(phi0, velocity=V, dt=dt)
+
+        # Both should produce finite results
+        assert np.isfinite(phi_upwind).all()
+        assert np.isfinite(phi_weno5).all()
+
+        # Reference: translate initial data by V*dt analytically
+        phi_exact = np.exp(-50 * (x - 0.3 - V * dt) ** 2) - 0.5
+
+        # Compare errors in interior (avoid boundary effects)
+        interior = slice(10, -10)
+        error_upwind = np.max(np.abs(phi_upwind[interior] - phi_exact[interior]))
+        error_weno5 = np.max(np.abs(phi_weno5[interior] - phi_exact[interior]))
+
+        # WENO5 should not be significantly worse than upwind
+        assert error_weno5 <= error_upwind * 1.1, (
+            f"WENO5 error ({error_weno5:.6e}) unexpectedly larger than upwind ({error_upwind:.6e})"
+        )
+
+    @pytest.mark.unit
+    def test_weno5_invalid_scheme_raises(self):
+        """Test that invalid scheme name raises ValueError."""
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
+
+        with pytest.raises(ValueError, match="Scheme must be"):
+            LevelSetEvolver(grid, scheme="central")
+
+
+class TestWENO5DerivativeND:
+    """Test nD WENO5 derivative computation."""
+
+    @pytest.mark.unit
+    def test_weno5_2d_smooth_function(self):
+        """Verify d/dx of sin(2pi*x)*cos(2pi*y) matches analytical."""
+        from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_nd
+
+        Nx, Ny = 60, 60
+        x = np.linspace(0, 1, Nx)
+        y = np.linspace(0, 1, Ny)
+        dx_val, dy_val = x[1] - x[0], y[1] - y[0]
+        X, Y = np.meshgrid(x, y, indexing="ij")
+
+        u = np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)
+        du_dx_exact = 2 * np.pi * np.cos(2 * np.pi * X) * np.cos(2 * np.pi * Y)
+
+        du_dx = compute_weno5_derivative_nd(u, spacings=(dx_val, dy_val), axis=0)
+
+        # Interior error (skip boundary rows)
+        error = np.max(np.abs(du_dx[2:-2, 2:-2] - du_dx_exact[2:-2, 2:-2]))
+        assert error < 0.05, f"2D WENO5 d/dx error too large: {error}"
+
+    @pytest.mark.unit
+    def test_weno5_nd_axis_validation(self):
+        """Test that invalid axis raises ValueError."""
+        from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_nd
+
+        u = np.zeros((10, 10))
+        with pytest.raises(ValueError, match="axis=2 out of range"):
+            compute_weno5_derivative_nd(u, spacings=(0.1, 0.1), axis=2)
+
+    @pytest.mark.unit
+    def test_weno5_nd_spacings_length_validation(self):
+        """Test that mismatched spacings length raises ValueError."""
+        from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_nd
+
+        u = np.zeros((10, 10))
+        with pytest.raises(ValueError, match="len\\(spacings\\)=1 must match array ndim=2"):
+            compute_weno5_derivative_nd(u, spacings=(0.1,), axis=0)
+
+
 class TestReinitialization:
     """Test reinitialization to maintain SDF property."""
 
