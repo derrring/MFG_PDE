@@ -1,10 +1,10 @@
-"""Tests for adaptive Picard damping (Issue #583)."""
+"""Tests for adaptive Picard damping (Issue #583) and damping schedules (Issue #719)."""
 
 from __future__ import annotations
 
 import pytest
 
-from mfg_pde.alg.numerical.coupling.fixed_point_utils import adapt_damping
+from mfg_pde.alg.numerical.coupling.fixed_point_utils import adapt_damping, compute_scheduled_damping
 
 
 @pytest.mark.unit
@@ -130,3 +130,48 @@ class TestAdaptDamping:
         assert theta_U == 0.5
         assert theta_M == 0.5
         assert msg is None
+
+
+@pytest.mark.unit
+class TestComputeScheduledDamping:
+    """Tests for compute_scheduled_damping() (Issue #719 Phase 2)."""
+
+    def test_constant_returns_base(self):
+        """Constant schedule always returns the base damping value."""
+        for k in [0, 1, 5, 99]:
+            assert compute_scheduled_damping(k, 0.5, "constant") == 0.5
+
+    def test_harmonic_decay(self):
+        """Harmonic: theta(k) = base / (k+1)."""
+        base = 1.0
+        assert compute_scheduled_damping(0, base, "harmonic") == pytest.approx(1.0)
+        assert compute_scheduled_damping(1, base, "harmonic") == pytest.approx(0.5)
+        assert compute_scheduled_damping(9, base, "harmonic") == pytest.approx(0.1)
+
+    def test_sqrt_decay(self):
+        """Sqrt: theta(k) = base / sqrt(k+1)."""
+        base = 1.0
+        assert compute_scheduled_damping(0, base, "sqrt") == pytest.approx(1.0)
+        assert compute_scheduled_damping(3, base, "sqrt") == pytest.approx(0.5)
+
+    def test_exponential_decay(self):
+        """Exponential: theta(k) = base^(k+1)."""
+        assert compute_scheduled_damping(0, 0.5, "exponential") == pytest.approx(0.5)
+        assert compute_scheduled_damping(1, 0.5, "exponential") == pytest.approx(0.25)
+        assert compute_scheduled_damping(2, 0.5, "exponential") == pytest.approx(0.125)
+
+    def test_min_damping_floor(self):
+        """Decayed values are clamped to min_damping."""
+        # Harmonic at k=999: base/(1000) = 0.001, should clamp to 0.01
+        result = compute_scheduled_damping(999, 1.0, "harmonic", min_damping=0.01)
+        assert result == pytest.approx(0.01)
+
+    def test_unknown_schedule_raises(self):
+        """Unknown schedule name raises ValueError."""
+        with pytest.raises(ValueError, match="Unknown damping schedule"):
+            compute_scheduled_damping(0, 0.5, "cosine")
+
+    def test_base_damping_scales_harmonic(self):
+        """Non-unity base_damping correctly scales the schedule."""
+        assert compute_scheduled_damping(0, 0.6, "harmonic") == pytest.approx(0.6)
+        assert compute_scheduled_damping(1, 0.6, "harmonic") == pytest.approx(0.3)

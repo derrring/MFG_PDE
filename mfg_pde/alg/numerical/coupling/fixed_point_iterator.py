@@ -98,6 +98,8 @@ class FixedPointIterator(BaseMFGSolver):
         adaptive_damping: bool = False,  # Issue #583: Adaptive Picard damping
         adaptive_damping_decay: float = 0.5,  # Damping reduction on oscillation
         adaptive_damping_min: float = 0.05,  # Minimum damping bound
+        damping_schedule: str = "constant",  # Issue #719: "constant", "harmonic", "sqrt", "exponential"
+        damping_schedule_M: str | None = None,  # Separate M schedule (None = follow U)
     ):
         """
         Args:
@@ -134,6 +136,10 @@ class FixedPointIterator(BaseMFGSolver):
         self.adaptive_damping = adaptive_damping
         self.adaptive_damping_decay = adaptive_damping_decay
         self.adaptive_damping_min = adaptive_damping_min
+
+        # Issue #719 Phase 2: Damping schedules
+        self.damping_schedule = damping_schedule
+        self.damping_schedule_M = damping_schedule_M
 
         # State arrays (initialized in solve)
         self.U: np.ndarray | None = None
@@ -302,8 +308,10 @@ class FixedPointIterator(BaseMFGSolver):
             final_max_iterations = solve_config.picard.max_iterations
             final_tolerance = solve_config.picard.tolerance
             final_damping_factor = solve_config.picard.damping_factor
-            # Issue #719: Per-variable damping - config doesn't have this yet, use instance
-            final_damping_factor_M = self.damping_factor_M
+            # Issue #719: Per-variable damping and schedules from config
+            final_damping_factor_M = solve_config.picard.damping_factor_M or self.damping_factor_M
+            final_schedule = solve_config.picard.damping_schedule or self.damping_schedule
+            final_schedule_M = solve_config.picard.damping_schedule_M or self.damping_schedule_M
             verbose = solve_config.picard.verbose
         else:
             # Legacy parameter precedence
@@ -313,6 +321,8 @@ class FixedPointIterator(BaseMFGSolver):
             final_tolerance = tolerance or kwargs.get("picard_tolerance") or kwargs.get("l2errBoundPicard") or 1e-6
             final_damping_factor = self.damping_factor
             final_damping_factor_M = self.damping_factor_M  # Issue #719
+            final_schedule = self.damping_schedule  # Issue #719 Phase 2
+            final_schedule_M = self.damping_schedule_M
             verbose = True
 
         # Get problem dimensions - handle both old 1D and new nD interfaces
@@ -496,8 +506,22 @@ class FixedPointIterator(BaseMFGSolver):
                         fp_subtask.advance(num_time_steps)
 
                 # 3. Apply damping or Anderson acceleration
-                # Issue #719: Per-variable damping support
-                theta_M = final_damping_factor_M if final_damping_factor_M is not None else final_damping_factor
+                # Issue #719: Per-variable damping + Phase 2 schedule support
+                from .fixed_point_utils import compute_scheduled_damping
+
+                base_theta_M = final_damping_factor_M if final_damping_factor_M is not None else final_damping_factor
+                effective_theta_U = compute_scheduled_damping(
+                    iiter,
+                    final_damping_factor,
+                    final_schedule,
+                    self.adaptive_damping_min,
+                )
+                effective_theta_M = compute_scheduled_damping(
+                    iiter,
+                    base_theta_M,
+                    final_schedule_M if final_schedule_M is not None else final_schedule,
+                    self.adaptive_damping_min,
+                )
 
                 if self.use_anderson and self.anderson_accelerator is not None:
                     # Anderson acceleration on U only (M uses standard damping for positivity)
@@ -507,11 +531,11 @@ class FixedPointIterator(BaseMFGSolver):
                     self.U = x_next_U.reshape(U_old.shape)
 
                     # Standard damping for M (guarantees non-negativity and mass conservation)
-                    self.M = theta_M * M_new + (1 - theta_M) * M_old
+                    self.M = effective_theta_M * M_new + (1 - effective_theta_M) * M_old
                 else:
-                    # Standard damping for both - Issue #719: separate factors
-                    self.U = final_damping_factor * U_new + (1 - final_damping_factor) * U_old
-                    self.M = theta_M * M_new + (1 - theta_M) * M_old
+                    # Standard damping for both - Issue #719: separate factors + schedules
+                    self.U = effective_theta_U * U_new + (1 - effective_theta_U) * U_old
+                    self.M = effective_theta_M * M_new + (1 - effective_theta_M) * M_old
 
                 # Preserve boundary conditions
                 self.M = preserve_initial_condition(self.M, M_initial)
@@ -557,7 +581,7 @@ class FixedPointIterator(BaseMFGSolver):
 
                     final_damping_factor, theta_M_adapted, warning_msg = adapt_damping(
                         theta_U=final_damping_factor,
-                        theta_M=theta_M,
+                        theta_M=base_theta_M,
                         error_history_U=_error_history_U,
                         error_history_M=_error_history_M,
                         theta_U_initial=_theta_U_initial,
@@ -565,10 +589,10 @@ class FixedPointIterator(BaseMFGSolver):
                         decay=self.adaptive_damping_decay,
                         min_damping=self.adaptive_damping_min,
                     )
-                    # Update theta_M for next iteration
+                    # Update base M damping for next iteration
                     if final_damping_factor_M is not None:
                         final_damping_factor_M = theta_M_adapted
-                    # else: theta_M follows final_damping_factor via damping line
+                    # else: base_theta_M follows final_damping_factor via fallback
 
                     if warning_msg:
                         logger.warning(warning_msg)
@@ -615,12 +639,20 @@ class FixedPointIterator(BaseMFGSolver):
             "anderson_used": self.use_anderson,
         }
 
+        # Issue #719 Phase 2: Record schedule info
+        if final_schedule != "constant" or (final_schedule_M is not None and final_schedule_M != "constant"):
+            metadata["damping_schedule"] = {
+                "schedule_U": final_schedule,
+                "schedule_M": final_schedule_M if final_schedule_M is not None else final_schedule,
+            }
+
         if self.adaptive_damping:
+            _final_base_theta_M = final_damping_factor_M if final_damping_factor_M is not None else final_damping_factor
             metadata["adaptive_damping"] = {
                 "enabled": True,
                 "damping_history": _damping_history,
                 "final_theta_U": final_damping_factor,
-                "final_theta_M": theta_M,
+                "final_theta_M": _final_base_theta_M,
             }
 
         # Issue #688: Validate final solver output

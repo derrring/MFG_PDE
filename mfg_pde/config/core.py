@@ -96,6 +96,16 @@ class PicardConfig(BaseModel):
         - 1.0: No damping (faster but may diverge)
         - 0.5: Moderate damping (balanced, default)
         - <0.3: Heavy damping (slower but more stable)
+    damping_factor_M : float | None
+        Separate damping factor for M (None = use damping_factor for both).
+        Issue #719: Per-variable damping support.
+    damping_schedule : str
+        Iteration-based damping schedule for U: "constant", "harmonic",
+        "sqrt", or "exponential". Issue #719 Phase 2.
+    damping_schedule_M : str | None
+        Separate schedule for M (None = follow U schedule).
+    adaptive_damping : bool
+        Enable error-reactive adaptive damping (Issue #583).
     anderson_memory : int
         Anderson acceleration memory depth (0 = disabled, default: 0)
     verbose : bool
@@ -105,6 +115,10 @@ class PicardConfig(BaseModel):
     max_iterations: int = Field(default=100, ge=1)
     tolerance: float = Field(default=1e-6, gt=0)
     damping_factor: float = Field(default=0.5, gt=0, le=1.0)
+    damping_factor_M: float | None = Field(default=None, gt=0, le=1.0)
+    damping_schedule: Literal["constant", "harmonic", "sqrt", "exponential"] = "constant"
+    damping_schedule_M: Literal["constant", "harmonic", "sqrt", "exponential"] | None = None
+    adaptive_damping: bool = False
     anderson_memory: int = Field(default=0, ge=0)
     verbose: bool = True
 
