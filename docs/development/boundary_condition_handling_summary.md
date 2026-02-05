@@ -219,24 +219,14 @@ def _apply_bc_to_solution(self, U, ...):
 
 ---
 
-### 4.6 WRONG DESIGN: bc_mode on Solver (Fixed in v0.18.0)
+### 4.6 WRONG DESIGN: bc_mode on Solver (Removed in v0.18.0) ✅ COMPLETED
 
-**Problem (now fixed):** MFG coupling logic was embedded in HJB solver.
+**Problem (removed):** MFG coupling logic was embedded in HJB solver via `bc_mode` parameter.
 
-```python
-# OLD - Solver knows about FP density (wrong!)
-class HJBFDMSolver:
-    def __init__(self, ..., bc_mode="adjoint_consistent"):
-        ...
-    def solve(self, m_current, ...):
-        if self.bc_mode == "adjoint_consistent":
-            bc = create_adjoint_consistent_bc(m_current, ...)  # Coupling logic here!
-```
-
-**Fix (Issue #625):** Provider pattern moves coupling to iterator.
+**Fix (Issue #625, #703):** Provider pattern moves coupling to iterator. The `bc_mode` parameter was removed in v0.18.0.
 
 ```python
-# NEW - Solver is generic, iterator handles coupling
+# Current (v0.18.0+) - Solver is generic, iterator handles coupling
 class HJBFDMSolver:
     def solve(self, ...):
         bc = self.problem.boundary_conditions  # Just uses what it's given
@@ -247,7 +237,7 @@ class FixedPointIterator:
             U = self.hjb_solver.solve(...)  # Provider resolved here
 ```
 
-**Status:** ✅ Fixed, but `bc_mode` parameter still exists (deprecated).
+**Status:** ✅ Removed. Callers passing `bc_mode=` get `TypeError`.
 
 ---
 
@@ -371,7 +361,7 @@ except AttributeError:
 | `apply_boundary_conditions_1d()` | v0.19.0 | `GhostBuffer` | 2 calls | dispatch.py |
 | `apply_boundary_conditions_3d()` | v0.19.0 | `GhostBuffer` | 1 call | dispatch.py |
 | `mixed_bc()` | v0.18.0 | `BoundaryConditions(segments=)` | ~5 calls | Various |
-| `bc_mode` parameter | v0.18.0 | `BCValueProvider` | 1 location | hjb_fdm.py:114 |
+| `bc_mode` parameter | v0.18.0 | `BCValueProvider` | **Removed in v0.18.0** | — |
 
 **Deprecation warning locations in applicator_fdm.py:** Lines 155, 1100, 1592, 1634, 1707
 
