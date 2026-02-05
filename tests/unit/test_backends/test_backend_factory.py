@@ -4,8 +4,6 @@ Unit tests for Backend Factory.
 Tests backend registration, discovery, creation, and auto-selection logic.
 """
 
-import logging
-
 import pytest
 
 from mfg_pde.backends import (
@@ -228,37 +226,38 @@ class TestAutoBackendSelection:
         else:
             assert backend.name == "numpy"
 
-    def test_auto_torch_cuda_device_selection(self, caplog):
+    def test_auto_torch_cuda_device_selection(self, capfd):
         """Test that auto-selection sets CUDA device when available."""
         available = get_available_backends()
 
         if available["torch"] and available["torch_cuda"]:
-            with caplog.at_level(logging.INFO):
-                backend = create_backend("auto")
-                assert backend.name == "torch_cuda"
-                # Check that CUDA was auto-selected in logs
-                assert any("CUDA" in record.message for record in caplog.records)
+            backend = create_backend("auto")
+            assert backend.name == "torch_cuda"
+            # Verify CUDA device reported in initialization output
+            captured = capfd.readouterr()
+            assert "cuda" in captured.out.lower()
 
-    def test_auto_torch_mps_device_selection(self, caplog, monkeypatch):
+    def test_auto_torch_mps_device_selection(self, capfd):
         """Test that auto-selection sets MPS device when CUDA unavailable."""
         available = get_available_backends()
 
         if available["torch"] and available["torch_mps"] and not available["torch_cuda"]:
-            with caplog.at_level(logging.INFO):
-                backend = create_backend("auto")
-                assert backend.name == "torch_mps"
-                # Check that MPS was auto-selected in logs
-                assert any("MPS" in record.message for record in caplog.records)
+            backend = create_backend("auto")
+            assert backend.name == "torch_mps"
+            # Verify MPS device reported in initialization output
+            captured = capfd.readouterr()
+            assert "mps" in captured.out.lower()
 
-    def test_auto_jax_gpu_device_selection(self, caplog):
+    def test_auto_jax_gpu_device_selection(self, capfd):
         """Test JAX GPU auto-selection when torch unavailable."""
         available = get_available_backends()
 
         if not available["torch"] and available["jax"] and available["jax_gpu"]:
-            with caplog.at_level(logging.INFO):
-                backend = create_backend("auto")
-                assert backend.name == "jax"
-                assert any("GPU" in record.message for record in caplog.records)
+            backend = create_backend("auto")
+            assert backend.name == "jax"
+            # Verify GPU device reported in initialization output
+            captured = capfd.readouterr()
+            assert "gpu" in captured.out.lower()
 
 
 class TestGetBackendInfo:
@@ -411,14 +410,14 @@ class TestBackendCreationEdgeCases:
         assert backend.config["arg2"] == 42
         assert backend.config["arg3"] is True
 
-    def test_auto_selection_logging(self, caplog):
+    def test_auto_selection_logging(self, capfd):
         """Test that auto-selection produces log messages."""
-        with caplog.at_level(logging.INFO):
-            backend = create_backend("auto")
-            # Should have at least one log message about backend selection
-            assert len(caplog.records) > 0
-            # Log message should mention the backend type (torch, jax, or numpy)
-            log_text = " ".join(record.message for record in caplog.records).lower()
-            # Extract backend type from name (e.g., "torch_mps" -> "torch")
-            backend_type = backend.name.split("_")[0]
-            assert backend_type in log_text
+        backend = create_backend("auto")
+        captured = capfd.readouterr()
+        # Should have at least one log message about backend selection
+        assert len(captured.out) > 0
+        # Log message should mention the backend type (torch, jax, or numpy)
+        log_text = captured.out.lower()
+        # Extract backend type from name (e.g., "torch_mps" -> "torch")
+        backend_type = backend.name.split("_")[0]
+        assert backend_type in log_text
