@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.17.4"  # v0.17.4: Validation initiative - callable adapter, function/array/runtime validation
+version = "0.17.5"  # v0.17.5: Adaptive Picard damping, BC applicator consolidation
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

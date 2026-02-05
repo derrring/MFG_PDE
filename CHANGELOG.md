@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.5] - 2026-02-06
+
+### Added
+
+- **Adaptive Picard damping** (Issue #583, PR #745)
+  - `adapt_damping()` function detects error oscillation and dynamically reduces damping
+  - Opt-in via `FixedPointIterator(adaptive_damping=True)` (default off, backward compatible)
+  - Independent U/M adaptation with cautious recovery toward initial damping
+  - Damping history recorded in `SolverResult.metadata["adaptive_damping"]`
+  - Gradient clipping warning now directs users to adaptive damping as primary fix
+
 ### Removed
 
 - **`bc_mode` parameter from `HJBFDMSolver`** (Issue #703, #625)
