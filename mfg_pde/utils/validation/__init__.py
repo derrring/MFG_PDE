@@ -43,6 +43,7 @@ from mfg_pde.utils.validation.arrays import (
 # Components validation (Issue #679, #681-#684)
 from mfg_pde.utils.validation.components import (
     detect_callable_signature,
+    validate_boundary_conditions,
     validate_components,
     validate_m_initial,
     validate_mass_normalization,
@@ -86,6 +87,7 @@ __all__ = [
     "validate_m_initial",
     "validate_u_final",
     "validate_mass_normalization",
+    "validate_boundary_conditions",
     "detect_callable_signature",
     # Functions
     "validate_custom_functions",

@@ -2,10 +2,10 @@
 Validation for MFG problem components (IC/BC).
 
 This module validates initial conditions (m_initial) and terminal conditions (u_final)
-provided via MFGComponents.
+provided via MFGComponents, and boundary condition compatibility with geometry.
 
 Issues:
-- #679: IC/BC Validation
+- #679: IC/BC Validation, BC-geometry compatibility
 - #681: Core IC/BC array and callable validation
 - #682: Geometry-agnostic IC/BC validation
 - #683: Mass normalization validation
@@ -86,6 +86,13 @@ def validate_components(
         result.issues.extend(mass_result.issues)
         # Mass normalization is a warning, not an error
         # (doesn't invalidate the result)
+
+    # Validate BC-geometry compatibility (Issue #679)
+    bc = getattr(components, "boundary_conditions", None)
+    bc_result = validate_boundary_conditions(bc, geometry)
+    result.issues.extend(bc_result.issues)
+    if not bc_result.is_valid:
+        result.is_valid = False
 
     return result
 
@@ -248,6 +255,67 @@ def validate_mass_normalization(
         result.add_warning(
             f"Could not verify mass normalization: {e}",
             location="m_initial",
+        )
+
+    return result
+
+
+def validate_boundary_conditions(
+    boundary_conditions: object | None,
+    geometry: GeometryProtocol,
+) -> ValidationResult:
+    """
+    Validate boundary conditions compatibility with geometry.
+
+    Checks:
+    - BC dimension matches geometry dimension (error if mismatch)
+    - Periodic BC is only used on Cartesian grids (warning otherwise)
+
+    Args:
+        boundary_conditions: BoundaryConditions object (or None to skip).
+        geometry: Geometry to validate against.
+
+    Returns:
+        ValidationResult with any issues found.
+
+    Issue #679: BC-geometry compatibility validation.
+    """
+    from mfg_pde.geometry.boundary.types import BCType
+    from mfg_pde.geometry.protocol import GeometryType
+
+    result = ValidationResult()
+
+    if boundary_conditions is None:
+        return result
+
+    # Get BC dimension (may be None for lazy-bound BCs)
+    bc_dim = getattr(boundary_conditions, "dimension", None)
+    geo_dim = geometry.dimension
+
+    # --- Check 1: BC dimension vs geometry dimension ---
+    if bc_dim is not None and bc_dim != geo_dim:
+        result.add_error(
+            f"Boundary condition dimension ({bc_dim}) does not match geometry dimension ({geo_dim})",
+            location="boundary_conditions",
+            suggestion=f"Create boundary conditions with dimension={geo_dim}",
+        )
+
+    # --- Check 2: Periodic BC on non-Cartesian geometry ---
+    segments = getattr(boundary_conditions, "segments", [])
+    default_bc = getattr(boundary_conditions, "default_bc", None)
+    geo_type = geometry.geometry_type
+
+    has_periodic = default_bc == BCType.PERIODIC
+    if not has_periodic:
+        has_periodic = any(getattr(seg, "bc_type", None) == BCType.PERIODIC for seg in segments)
+
+    if has_periodic and geo_type != GeometryType.CARTESIAN_GRID:
+        geo_name = type(geometry).__name__
+        result.add_warning(
+            f"Periodic boundary conditions are intended for Cartesian grids, "
+            f"but geometry is {geo_name} (type: {geo_type.value})",
+            location="boundary_conditions",
+            suggestion="Use Dirichlet, Neumann, or Robin BC for non-Cartesian geometries",
         )
 
     return result
