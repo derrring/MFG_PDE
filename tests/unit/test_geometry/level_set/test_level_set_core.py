@@ -458,6 +458,168 @@ class TestWENO5DerivativeND:
             compute_weno5_derivative_nd(u, spacings=(0.1,), axis=0)
 
 
+class TestTVDRK3TimeIntegrator:
+    """Test TVD-RK3 (SSP-RK3) time integration in LevelSetEvolver."""
+
+    @pytest.mark.unit
+    def test_rk3_1d_translation(self):
+        """Test 1D translation with TVD-RK3 produces correct interface motion."""
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
+        x = grid.coordinates[0]
+        dx = grid.spacing[0]
+
+        phi0 = x - 0.5
+
+        evolver = LevelSetEvolver(grid, scheme="upwind", time_integrator="tvd_rk3")
+
+        V = 1.0
+        dt = 0.1
+        phi1 = evolver.evolve_step(phi0, velocity=V, dt=dt)
+
+        # Interface should move to x ~ 0.6
+        idx_zero = np.argmin(np.abs(phi1))
+        x_interface = x[idx_zero]
+        x_expected = 0.5 + V * dt
+
+        assert np.abs(x_interface - x_expected) < 2 * dx
+
+    @pytest.mark.unit
+    def test_rk3_2d_circle_expansion(self):
+        """Test 2D circle expansion with TVD-RK3."""
+        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[40, 40], boundary_conditions=no_flux_bc(dimension=2))
+        X, Y = grid.meshgrid()
+
+        radius = 0.2
+        center = np.array([0.5, 0.5])
+        phi0 = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2) - radius
+
+        evolver = LevelSetEvolver(grid, scheme="upwind", time_integrator="tvd_rk3")
+
+        V = 0.5
+        dt = 0.05
+        phi1 = evolver.evolve_step(phi0, velocity=V, dt=dt)
+
+        area0 = np.sum(phi0 < 0)
+        area1 = np.sum(phi1 < 0)
+
+        assert area1 > area0, "Circle should expand with positive velocity"
+
+    @pytest.mark.unit
+    def test_weno5_rk3_higher_accuracy_than_euler(self):
+        """Test that WENO5+RK3 achieves lower error than WENO5+Euler.
+
+        With explicit Euler, temporal O(dt) error dominates the spatial O(dx^5)
+        from WENO5. TVD-RK3's O(dt^3) temporal accuracy reveals the spatial
+        improvement. We use many small steps to accumulate the temporal error
+        difference.
+        """
+        Nx = 200
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+        x = grid.coordinates[0]
+
+        # Smooth initial data: Gaussian centered at x=0.3
+        phi0 = np.exp(-100 * (x - 0.3) ** 2) - 0.5
+
+        V = 1.0
+        dt = 0.002
+        n_steps = 20  # Total time = 0.04
+
+        evolver_euler = LevelSetEvolver(grid, scheme="weno5", time_integrator="euler")
+        evolver_rk3 = LevelSetEvolver(grid, scheme="weno5", time_integrator="tvd_rk3")
+
+        phi_euler = phi0.copy()
+        phi_rk3 = phi0.copy()
+        for _ in range(n_steps):
+            phi_euler = evolver_euler.evolve_step(phi_euler, velocity=V, dt=dt)
+            phi_rk3 = evolver_rk3.evolve_step(phi_rk3, velocity=V, dt=dt)
+
+        # Analytical: translate Gaussian by V*T
+        T = n_steps * dt
+        phi_exact = np.exp(-100 * (x - 0.3 - V * T) ** 2) - 0.5
+
+        # Compare errors in interior
+        interior = slice(10, -10)
+        error_euler = np.max(np.abs(phi_euler[interior] - phi_exact[interior]))
+        error_rk3 = np.max(np.abs(phi_rk3[interior] - phi_exact[interior]))
+
+        # RK3 should be noticeably more accurate
+        assert error_rk3 < error_euler, (
+            f"RK3 error ({error_rk3:.6e}) should be less than Euler error ({error_euler:.6e})"
+        )
+
+    @pytest.mark.unit
+    def test_rk3_convergence_order(self):
+        """Verify TVD-RK3 temporal error decreases faster than Euler.
+
+        For a nonlinear initial condition (Gaussian), the spatial operator
+        L(phi) = -V*|grad phi| varies with phi, producing actual temporal
+        truncation error. We compare RK3 vs Euler at two different dt
+        values to verify RK3 converges faster.
+        """
+        Nx = 200
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+        x = grid.coordinates[0]
+
+        # Nonlinear initial data: Gaussian (varying gradient → temporal error)
+        phi0 = np.exp(-100 * (x - 0.3) ** 2) - 0.5
+        V = 1.0
+
+        dt_coarse = 0.004
+        dt_fine = dt_coarse / 2
+        n_coarse = 10
+        n_fine = n_coarse * 2
+        T = n_coarse * dt_coarse
+
+        # Exact solution: translate Gaussian by V*T
+        phi_exact = np.exp(-100 * (x - 0.3 - V * T) ** 2) - 0.5
+        interior = slice(15, -15)
+
+        # Euler convergence
+        evolver_euler = LevelSetEvolver(grid, scheme="weno5", time_integrator="euler")
+
+        phi_euler_c = phi0.copy()
+        for _ in range(n_coarse):
+            phi_euler_c = evolver_euler.evolve_step(phi_euler_c, velocity=V, dt=dt_coarse)
+        err_euler_c = np.max(np.abs(phi_euler_c[interior] - phi_exact[interior]))
+
+        phi_euler_f = phi0.copy()
+        for _ in range(n_fine):
+            phi_euler_f = evolver_euler.evolve_step(phi_euler_f, velocity=V, dt=dt_fine)
+        err_euler_f = np.max(np.abs(phi_euler_f[interior] - phi_exact[interior]))
+
+        # RK3 convergence
+        evolver_rk3 = LevelSetEvolver(grid, scheme="weno5", time_integrator="tvd_rk3")
+
+        phi_rk3_c = phi0.copy()
+        for _ in range(n_coarse):
+            phi_rk3_c = evolver_rk3.evolve_step(phi_rk3_c, velocity=V, dt=dt_coarse)
+        err_rk3_c = np.max(np.abs(phi_rk3_c[interior] - phi_exact[interior]))
+
+        phi_rk3_f = phi0.copy()
+        for _ in range(n_fine):
+            phi_rk3_f = evolver_rk3.evolve_step(phi_rk3_f, velocity=V, dt=dt_fine)
+        err_rk3_f = np.max(np.abs(phi_rk3_f[interior] - phi_exact[interior]))
+
+        # RK3 fine should be substantially more accurate than Euler fine
+        assert err_rk3_f < err_euler_f, f"RK3 fine ({err_rk3_f:.2e}) should beat Euler fine ({err_euler_f:.2e})"
+
+        # RK3 should converge faster: its error ratio should exceed Euler's
+        if err_rk3_f > 1e-14 and err_euler_f > 1e-14:
+            ratio_euler = err_euler_c / err_euler_f
+            ratio_rk3 = err_rk3_c / err_rk3_f
+            assert ratio_rk3 > ratio_euler, (
+                f"RK3 convergence ratio ({ratio_rk3:.1f}) should exceed Euler ratio ({ratio_euler:.1f})"
+            )
+
+    @pytest.mark.unit
+    def test_invalid_time_integrator_raises(self):
+        """Test that invalid time_integrator raises ValueError."""
+        grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
+
+        with pytest.raises(ValueError, match="time_integrator must be"):
+            LevelSetEvolver(grid, time_integrator="rk4")
+
+
 class TestReinitialization:
     """Test reinitialization to maintain SDF property."""
 

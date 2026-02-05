@@ -23,6 +23,7 @@ References:
 - Osher & Sethian (1988): Fronts propagating with curvature-dependent speed
 - Osher & Fedkiw (2003): Level Set Methods and Dynamic Implicit Surfaces, Chapter 6
 - Sethian (1999): Level Set Methods and Fast Marching Methods
+- Shu & Osher (1988): Efficient implementation of essentially non-oscillatory shock-capturing schemes
 
 Created: 2026-01-18 (Issue #592 Milestone 3.1.1)
 """
@@ -317,28 +318,32 @@ class LevelSetEvolver:
     """
     Evolve level set function via ∂φ/∂t + V|∇φ| = 0.
 
-    Implements Godunov upwind scheme for |∇φ|, which is monotone and stable
-    even for discontinuous velocity fields. Uses CFL-adaptive substepping
-    to ensure stability.
+    Implements Godunov upwind or WENO5 scheme for |∇φ|, paired with
+    explicit Euler or TVD-RK3 time integration. Uses CFL-adaptive
+    substepping to ensure stability.
 
     Numerical Scheme:
-        1. Godunov upwind: |∇φ| = √(max(D⁻ₓφ,0)² + min(D⁺ₓφ,0)² + ...)
-        2. Explicit Euler: φⁿ⁺¹ = φⁿ - dt·V·|∇φ|
-        3. CFL check: max(|V|)·dt/h < 1 (adaptive substeps if violated)
+        Spatial: Godunov upwind O(dx) or HJ-WENO5 O(dx^5)
+        Temporal: Forward Euler O(dt) or TVD-RK3/SSP-RK3 O(dt^3)
+        CFL: max(|V|)*dt/h < 1 (adaptive substeps if violated)
+
+    For best accuracy, pair WENO5 with TVD-RK3 to avoid temporal error
+    dominating the spatial discretization.
 
     Attributes:
         geometry: Grid structure (TensorProductGrid)
-        scheme: Difference scheme ("upwind" only for now)
+        scheme: Spatial scheme ("upwind" or "weno5")
+        time_integrator: Temporal scheme ("euler" or "tvd_rk3")
         cfl_max: Maximum allowed CFL number (default: 0.9)
 
     Example:
-        >>> # Evolve circle with constant velocity V = 0.5
+        >>> # 1st-order upwind + Euler (default)
         >>> evolver = LevelSetEvolver(grid, scheme="upwind")
         >>> phi_new = evolver.evolve_step(phi0, velocity=0.5, dt=0.1)
         >>>
-        >>> # Evolve with spatially-varying velocity
-        >>> V = lambda x: np.sin(x[0])  # V(x)
-        >>> phi_new = evolver.evolve_step(phi0, velocity=V, dt=0.1)
+        >>> # 5th-order WENO5 + 3rd-order TVD-RK3 (high accuracy)
+        >>> evolver = LevelSetEvolver(grid, scheme="weno5", time_integrator="tvd_rk3")
+        >>> phi_new = evolver.evolve_step(phi0, velocity=0.5, dt=0.1)
     """
 
     def __init__(
@@ -346,29 +351,36 @@ class LevelSetEvolver:
         geometry: TensorProductGrid,
         scheme: str = "upwind",
         cfl_max: float = 0.9,
+        time_integrator: str = "euler",
     ):
         """
         Initialize level set evolver.
 
         Args:
             geometry: Grid structure (must support gradient operators)
-            scheme: Difference scheme ("upwind" or "weno5")
+            scheme: Spatial scheme ("upwind" or "weno5")
                 - "upwind": 1st-order Godunov upwind (default)
                 - "weno5": 5th-order HJ-WENO Godunov (Jiang & Peng 2000)
             cfl_max: Maximum CFL number for stability (default: 0.9)
-                CFL = max(|V|)·dt/h. If exceeded, automatic substepping is used.
+                CFL = max(|V|)*dt/h. If exceeded, automatic substepping is used.
+            time_integrator: Temporal scheme ("euler" or "tvd_rk3")
+                - "euler": 1st-order forward Euler (default)
+                - "tvd_rk3": 3rd-order TVD/SSP Runge-Kutta (Shu & Osher 1988)
 
         Raises:
-            ValueError: If scheme not supported
+            ValueError: If scheme or time_integrator not supported
             AttributeError: If geometry doesn't support required operators
         """
         if scheme not in ("upwind", "weno5"):
             raise ValueError(
                 f"Scheme must be 'upwind' or 'weno5', got '{scheme}'. See Issue #605 Phase 2 for WENO5 support."
             )
+        if time_integrator not in ("euler", "tvd_rk3"):
+            raise ValueError(f"time_integrator must be 'euler' or 'tvd_rk3', got '{time_integrator}'.")
 
         self.geometry = geometry
         self.scheme = scheme
+        self.time_integrator = time_integrator
         self.cfl_max = cfl_max
 
         # Extract grid spacing (for CFL computation)
@@ -386,7 +398,10 @@ class LevelSetEvolver:
         # Get gradient operators (upwind scheme)
         self.grad_ops = geometry.get_gradient_operator(scheme="upwind")
 
-        logger.debug(f"LevelSetEvolver initialized: {geometry.dimension}D, spacing={self.spacing}, CFL_max={cfl_max}")
+        logger.debug(
+            f"LevelSetEvolver initialized: {geometry.dimension}D, scheme={scheme}, "
+            f"time_integrator={time_integrator}, spacing={self.spacing}, CFL_max={cfl_max}"
+        )
 
     def _compute_godunov_gradient_magnitude(self, phi: NDArray[np.float64]) -> NDArray[np.float64]:
         """
@@ -463,6 +478,68 @@ class LevelSetEvolver:
 
         return np.sqrt(grad_mag_sq)
 
+    def _compute_rhs(
+        self,
+        phi: NDArray[np.float64],
+        V_array: NDArray[np.float64],
+    ) -> NDArray[np.float64]:
+        """
+        Compute spatial operator L(phi) = -V * |nabla phi|.
+
+        This is the right-hand side of dphi/dt = L(phi).
+
+        Args:
+            phi: Level set function, shape (Nx, ...).
+            V_array: Velocity field, same shape as phi.
+
+        Returns:
+            L(phi) = -V * |nabla phi|, same shape as phi.
+        """
+        if self.scheme == "weno5":
+            grad_mag = self._compute_weno5_gradient_magnitude(phi, V_array)
+        else:
+            grad_mag = self._compute_godunov_gradient_magnitude(phi)
+        return -V_array * grad_mag
+
+    def _step_tvd_rk3(
+        self,
+        phi: NDArray[np.float64],
+        V_array: NDArray[np.float64],
+        dt: float,
+    ) -> NDArray[np.float64]:
+        """
+        One TVD-RK3 (SSP-RK3) substep: 3rd-order time integration.
+
+        Shu-Osher (1988) three-stage SSP Runge-Kutta:
+            phi1 = phi_n + dt * L(phi_n)
+            phi2 = 3/4 * phi_n + 1/4 * phi1 + 1/4 * dt * L(phi1)
+            phi_{n+1} = 1/3 * phi_n + 2/3 * phi2 + 2/3 * dt * L(phi2)
+
+        This method preserves total variation (TVD) under the same CFL
+        constraint as forward Euler, while achieving 3rd-order accuracy.
+
+        Args:
+            phi: Level set function at time n, shape (Nx, ...).
+            V_array: Velocity field, same shape as phi.
+            dt: Substep size (already CFL-safe).
+
+        Returns:
+            Level set function at time n+1.
+        """
+        # Stage 1: forward Euler
+        L_n = self._compute_rhs(phi, V_array)
+        phi1 = phi + dt * L_n
+
+        # Stage 2: convex combination
+        L_1 = self._compute_rhs(phi1, V_array)
+        phi2 = 0.75 * phi + 0.25 * phi1 + 0.25 * dt * L_1
+
+        # Stage 3: convex combination
+        L_2 = self._compute_rhs(phi2, V_array)
+        phi_new = (1.0 / 3.0) * phi + (2.0 / 3.0) * phi2 + (2.0 / 3.0) * dt * L_2
+
+        return phi_new
+
     def evolve_step(
         self,
         phi: NDArray[np.float64],
@@ -529,14 +606,11 @@ class LevelSetEvolver:
         # Evolve via substeps
         phi_current = phi.copy()
         for _step in range(n_substeps):
-            # Compute |∇φ| via selected scheme
-            if self.scheme == "weno5":
-                grad_mag = self._compute_weno5_gradient_magnitude(phi_current, V_array)
+            if self.time_integrator == "tvd_rk3":
+                phi_current = self._step_tvd_rk3(phi_current, V_array, dt_sub)
             else:
-                grad_mag = self._compute_godunov_gradient_magnitude(phi_current)
-
-            # Update: φⁿ⁺¹ = φⁿ - dt·V·|∇φ|
-            phi_current = phi_current - dt_sub * V_array * grad_mag
+                # Forward Euler: φⁿ⁺¹ = φⁿ + dt·L(φⁿ)
+                phi_current = phi_current + dt_sub * self._compute_rhs(phi_current, V_array)
 
         return phi_current
 
@@ -546,6 +620,7 @@ class LevelSetEvolver:
             f"LevelSetEvolver(\n"
             f"  dimension={self.geometry.dimension},\n"
             f"  scheme='{self.scheme}',\n"
+            f"  time_integrator='{self.time_integrator}',\n"
             f"  spacing={self.spacing},\n"
             f"  CFL_max={self.cfl_max}\n"
             f")"
