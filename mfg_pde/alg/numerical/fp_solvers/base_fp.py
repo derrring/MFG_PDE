@@ -284,10 +284,29 @@ if __name__ == "__main__":
 
     # Test that BaseFPSolver is abstract (cannot be instantiated)
     from mfg_pde import MFGProblem
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+    from mfg_pde.core.mfg_problem import MFGComponents
     from mfg_pde.geometry import TensorProductGrid
+    from mfg_pde.geometry.boundary import neumann_bc
 
-    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21])
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
+    # Minimal components for testing
+    H = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.0,
+        coupling_dm=lambda m: 0.0,
+    )
+    components = MFGComponents(
+        hamiltonian=H,
+        u_final=lambda x: 0.0,
+        m_initial=lambda x: 1.0,
+    )
+
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[21],
+        boundary_conditions=neumann_bc(dimension=1),
+    )
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1, components=components)
 
     try:
         # This should fail because BaseFPSolver is abstract
