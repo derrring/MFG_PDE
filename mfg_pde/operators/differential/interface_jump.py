@@ -180,16 +180,9 @@ class InterfaceJumpOperator:
 
         Uses simple offset sampling on each side of interface.
         """
-        jump = np.zeros_like(field)
-
         if self.grid.dimension == 1:
-            # 1D implementation
-            jump = self._compute_value_jump_1d(field)
-        else:
-            # nD implementation (future)
-            raise NotImplementedError(f"Value jump not yet implemented for {self.grid.dimension}D")
-
-        return jump
+            return self._compute_value_jump_1d(field)
+        return self._compute_value_jump_nd(field)
 
     def _compute_gradient_jump(self, field: NDArray[np.float64]) -> NDArray[np.float64]:
         """
@@ -197,16 +190,9 @@ class InterfaceJumpOperator:
 
         Uses one-sided finite differences on each side of interface.
         """
-        jump = np.zeros_like(field)
-
         if self.grid.dimension == 1:
-            # 1D implementation
-            jump = self._compute_gradient_jump_1d(field)
-        else:
-            # nD implementation (future)
-            raise NotImplementedError(f"Gradient jump not yet implemented for {self.grid.dimension}D")
-
-        return jump
+            return self._compute_gradient_jump_1d(field)
+        return self._compute_gradient_jump_nd(field)
 
     def _compute_value_jump_1d(self, field: NDArray[np.float64]) -> NDArray[np.float64]:
         """Compute value jump in 1D."""
@@ -256,6 +242,130 @@ class InterfaceJumpOperator:
 
             # Jump: grad_right - grad_left
             jump[idx_interface] = grad_right - grad_left
+
+        return jump
+
+    def _get_interface_normal(self) -> NDArray[np.float64]:
+        """Compute unit normal field n = nabla(phi) / |nabla(phi)| on the grid."""
+        from mfg_pde.geometry.level_set.core import LevelSetFunction
+
+        ls = LevelSetFunction(self.interface_phi, self.grid)
+        return ls.get_normal()
+
+    def _physical_to_index(self, coords: NDArray[np.float64]) -> NDArray[np.float64]:
+        """
+        Convert physical coordinates to fractional grid indices.
+
+        Args:
+            coords: Physical coordinates, shape (ndim, n_points).
+
+        Returns:
+            Fractional grid indices, shape (ndim, n_points).
+        """
+        Nx_points = self.grid.Nx_points
+        indices = np.empty_like(coords)
+        for d in range(self.grid.dimension):
+            x_min, x_max = self.grid.bounds[d]
+            indices[d] = (coords[d] - x_min) / (x_max - x_min) * (Nx_points[d] - 1)
+        return indices
+
+    def _compute_value_jump_nd(self, field: NDArray[np.float64]) -> NDArray[np.float64]:
+        """
+        Compute value jump [f] = f_right - f_left in nD.
+
+        Uses scipy.ndimage.map_coordinates to interpolate field values
+        at offset positions on each side of the interface.
+        """
+        from scipy.ndimage import map_coordinates
+
+        jump = np.zeros_like(field)
+        normal = self._get_interface_normal()  # shape (ndim, *grid_shape)
+
+        # Get coordinates of interface points
+        interface_indices = np.argwhere(self.interface_mask)  # (n_pts, ndim)
+        if len(interface_indices) == 0:
+            return jump
+
+        # Build physical coordinates of interface points
+        Nx_points = self.grid.Nx_points
+        coords = np.empty((self.grid.dimension, len(interface_indices)))
+        for d in range(self.grid.dimension):
+            x_min, x_max = self.grid.bounds[d]
+            coords[d] = x_min + interface_indices[:, d] * (x_max - x_min) / (Nx_points[d] - 1)
+
+        # Normal at interface points
+        n_at_pts = np.empty_like(coords)
+        idx_tuple = tuple(interface_indices[:, k] for k in range(self.grid.dimension))
+        for d in range(self.grid.dimension):
+            n_at_pts[d] = normal[d][idx_tuple]
+
+        # Offset positions
+        offset = self.offset_distance
+        coords_right = coords + offset * n_at_pts
+        coords_left = coords - offset * n_at_pts
+
+        # Convert to fractional grid indices
+        idx_right = self._physical_to_index(coords_right)
+        idx_left = self._physical_to_index(coords_left)
+
+        # Interpolate
+        f_right = map_coordinates(field, idx_right, order=1, mode="nearest")
+        f_left = map_coordinates(field, idx_left, order=1, mode="nearest")
+
+        # Store jump at interface points
+        jump[idx_tuple] = f_right - f_left
+
+        return jump
+
+    def _compute_gradient_jump_nd(self, field: NDArray[np.float64]) -> NDArray[np.float64]:
+        """
+        Compute gradient jump [partial f / partial n] in nD.
+
+        Computes the normal derivative partial f / partial n = nabla f . n
+        on each side of the interface and returns the jump.
+        """
+        from scipy.ndimage import map_coordinates
+
+        jump = np.zeros_like(field)
+        normal = self._get_interface_normal()
+
+        interface_indices = np.argwhere(self.interface_mask)
+        if len(interface_indices) == 0:
+            return jump
+
+        # Compute field gradient via grid operators
+        grad_ops = self.grid.get_gradient_operator()
+        grad_field = np.array([grad_op(field) for grad_op in grad_ops])  # (ndim, *shape)
+
+        # Build physical coordinates of interface points
+        Nx_points = self.grid.Nx_points
+        coords = np.empty((self.grid.dimension, len(interface_indices)))
+        for d in range(self.grid.dimension):
+            x_min, x_max = self.grid.bounds[d]
+            coords[d] = x_min + interface_indices[:, d] * (x_max - x_min) / (Nx_points[d] - 1)
+
+        # Normal at interface points
+        n_at_pts = np.empty_like(coords)
+        idx_tuple = tuple(interface_indices[:, k] for k in range(self.grid.dimension))
+        for d in range(self.grid.dimension):
+            n_at_pts[d] = normal[d][idx_tuple]
+
+        # Offset positions
+        offset = self.offset_distance
+        idx_right = self._physical_to_index(coords + offset * n_at_pts)
+        idx_left = self._physical_to_index(coords - offset * n_at_pts)
+
+        # Compute normal derivative on each side: partial f / partial n = nabla f . n
+        dn_right = np.zeros(len(interface_indices))
+        dn_left = np.zeros(len(interface_indices))
+
+        for d in range(self.grid.dimension):
+            grad_d_right = map_coordinates(grad_field[d], idx_right, order=1, mode="nearest")
+            grad_d_left = map_coordinates(grad_field[d], idx_left, order=1, mode="nearest")
+            dn_right += grad_d_right * n_at_pts[d]
+            dn_left += grad_d_left * n_at_pts[d]
+
+        jump[idx_tuple] = dn_right - dn_left
 
         return jump
 
