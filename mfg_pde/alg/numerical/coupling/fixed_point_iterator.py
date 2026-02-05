@@ -313,6 +313,7 @@ class FixedPointIterator(BaseMFGSolver):
             final_damping_factor_M = solve_config.picard.damping_factor_M or self.damping_factor_M
             final_schedule = solve_config.picard.damping_schedule
             final_schedule_M = solve_config.picard.damping_schedule_M or self.damping_schedule_M
+            final_adaptive_damping = solve_config.picard.adaptive_damping or self.adaptive_damping
             verbose = solve_config.picard.verbose
         else:
             # Legacy parameter precedence
@@ -324,6 +325,7 @@ class FixedPointIterator(BaseMFGSolver):
             final_damping_factor_M = self.damping_factor_M  # Issue #719
             final_schedule = self.damping_schedule  # Issue #719 Phase 2
             final_schedule_M = self.damping_schedule_M
+            final_adaptive_damping = self.adaptive_damping
             verbose = True
 
         # Get problem dimensions - handle both old 1D and new nD interfaces
@@ -577,7 +579,7 @@ class FixedPointIterator(BaseMFGSolver):
                 _error_history_U.append(self.l2distu_rel[iiter])
                 _error_history_M.append(self.l2distm_rel[iiter])
 
-                if self.adaptive_damping and iiter >= 1:
+                if final_adaptive_damping and iiter >= 1:
                     from .fixed_point_utils import adapt_damping
 
                     final_damping_factor, theta_M_adapted, warning_msg = adapt_damping(
@@ -647,7 +649,7 @@ class FixedPointIterator(BaseMFGSolver):
                 "schedule_M": final_schedule_M if final_schedule_M is not None else final_schedule,
             }
 
-        if self.adaptive_damping:
+        if final_adaptive_damping:
             _final_base_theta_M = final_damping_factor_M if final_damping_factor_M is not None else final_damping_factor
             metadata["adaptive_damping"] = {
                 "enabled": True,
