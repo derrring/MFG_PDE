@@ -281,12 +281,14 @@ def test_create_from_config_dict_simple(factory):
 @pytest.mark.fast
 def test_create_from_config_dict_validates_required_fields(factory):
     """Test that missing required fields are caught."""
+    from mfg_pde.utils.validation import ValidationError
+
     incomplete_config = {
         "domain": {"xmin": 0.0, "xmax": 1.0, "Nx": 20}
         # Missing hamiltonian and time
     }
 
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, ValidationError)):
         factory.create_from_config_dict(incomplete_config)
 
 
