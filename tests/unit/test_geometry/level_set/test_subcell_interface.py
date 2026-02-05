@@ -187,71 +187,172 @@ class TestSubcellInterface1D:
         assert -2.5 < slope < -1.5, f"Convergence rate should be ~2 (slope ~-2), got slope={slope:.2f}"
 
 
-class TestSubcellInterfaceHigherDimensions:
-    """Test error handling for 2D/3D (not yet implemented)."""
+def _circle_grid(n: int) -> tuple[TensorProductGrid, np.ndarray, np.ndarray]:
+    """Helper: create 2D grid and meshgrid arrays."""
+    grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[n, n], boundary_conditions=no_flux_bc(dimension=2))
+    X, Y = grid.meshgrid()
+    return grid, X, Y
 
-    def test_2d_not_implemented(self):
-        """2D subcell extraction should raise NotImplementedError."""
-        grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx=[50, 50], boundary_conditions=no_flux_bc(dimension=2))
-        X, Y = grid.meshgrid()
 
-        # Circle level set
-        phi = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2) - 0.2
+class TestSubcellInterface2D:
+    """Test 2D subcell interface extraction via edge interpolation."""
 
+    def test_circle_interface_accuracy(self):
+        """Extracted points should lie within O(dx^2) of the true circle."""
+        N = 80
+        grid, X, Y = _circle_grid(N)
+        dx = 1.0 / N
+
+        center, radius = (0.5, 0.5), 0.3
+        phi = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2) - radius
         ls = LevelSetFunction(phi, grid, is_signed_distance=True)
 
-        # Should raise NotImplementedError
-        with pytest.raises(NotImplementedError, match="not yet implemented for 2D"):
+        points = ls.get_interface_location_subcell()
+
+        # Each point's distance to center should be close to radius
+        dist = np.sqrt((points[:, 0] - center[0]) ** 2 + (points[:, 1] - center[1]) ** 2)
+        max_error = np.max(np.abs(dist - radius))
+
+        # O(dx^2) accuracy: error should scale with dx^2
+        assert max_error < 5 * dx**2, f"Max distance error {max_error:.2e} exceeds 5*dx^2={5 * dx**2:.2e}"
+
+    def test_circle_point_count(self):
+        """Number of interface points should scale with circumference / dx."""
+        N = 60
+        grid, X, Y = _circle_grid(N)
+        dx = 1.0 / N
+
+        radius = 0.25
+        phi = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2) - radius
+        ls = LevelSetFunction(phi, grid, is_signed_distance=True)
+
+        points = ls.get_interface_location_subcell()
+
+        # Expected: ~2*pi*R / dx crossings per axis, times 2 axes
+        # but with deduplication from both axes, the count is roughly
+        # 2 * 2*pi*R / dx (each axis finds its own crossings)
+        expected_per_axis = 2 * np.pi * radius / dx
+        n_points = len(points)
+
+        # Should be in the right ballpark (0.5x to 4x expected per axis)
+        assert n_points > 0.5 * expected_per_axis, f"Too few points: {n_points} < {0.5 * expected_per_axis:.0f}"
+        assert n_points < 4 * expected_per_axis, f"Too many points: {n_points} > {4 * expected_per_axis:.0f}"
+
+    def test_flat_interface_2d(self):
+        """Planar interface phi = x - 0.5 should give all x-coords exactly 0.5."""
+        N = 40
+        grid, X, _Y = _circle_grid(N)
+
+        phi = X - 0.5
+        ls = LevelSetFunction(phi, grid, is_signed_distance=True)
+
+        points = ls.get_interface_location_subcell()
+
+        # All x-coordinates should be exactly 0.5 (linear interpolation is exact)
+        assert np.allclose(points[:, 0], 0.5, atol=1e-12), (
+            f"x-coords should all be 0.5, got range [{points[:, 0].min()}, {points[:, 0].max()}]"
+        )
+
+    def test_no_crossing_raises_2d(self):
+        """ValueError for all-positive phi in 2D."""
+        N = 20
+        grid, X, Y = _circle_grid(N)
+
+        phi = X + Y + 1.0  # All positive
+        ls = LevelSetFunction(phi, grid, is_signed_distance=False)
+
+        with pytest.raises(ValueError, match="No zero crossing found"):
             ls.get_interface_location_subcell()
+
+    def test_convergence_2d_circle(self):
+        """Verify O(dx^2) convergence rate for 2D circle interface."""
+        center, radius = (0.5, 0.5), 0.3
+        resolutions = [40, 80, 160]
+        max_errors = []
+
+        for N in resolutions:
+            grid, X, Y = _circle_grid(N)
+            phi = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2) - radius
+            ls = LevelSetFunction(phi, grid, is_signed_distance=True)
+
+            points = ls.get_interface_location_subcell()
+            dist = np.sqrt((points[:, 0] - center[0]) ** 2 + (points[:, 1] - center[1]) ** 2)
+            max_errors.append(np.max(np.abs(dist - radius)))
+
+        # Measure convergence rate via log-log slope
+        log_dx = np.log([1.0 / N for N in resolutions])
+        log_err = np.log(max_errors)
+        slope = np.polyfit(log_dx, log_err, 1)[0]
+
+        # Slope should be ~2 (O(dx^2)); allow range [1.5, 3.0]
+        assert 1.5 < slope < 3.0, f"Convergence rate should be ~2 (slope ~2 in log(err) vs log(dx)), got {slope:.2f}"
+
+
+class TestSubcellInterface3D:
+    """Test 3D subcell interface extraction."""
+
+    def test_sphere_interface_points(self):
+        """Extracted points should lie near the analytical sphere surface."""
+        N = 20
+        grid = TensorProductGrid(
+            bounds=[(0, 1), (0, 1), (0, 1)],
+            Nx=[N, N, N],
+            boundary_conditions=no_flux_bc(dimension=3),
+        )
+        X, Y, Z = grid.meshgrid()
+        dx = 1.0 / N
+
+        center, radius = (0.5, 0.5, 0.5), 0.3
+        phi = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2 + (Z - center[2]) ** 2) - radius
+        ls = LevelSetFunction(phi, grid, is_signed_distance=True)
+
+        points = ls.get_interface_location_subcell()
+
+        assert points.shape[1] == 3, f"Expected 3 columns, got {points.shape[1]}"
+        assert len(points) > 0, "Expected at least some interface points"
+
+        dist = np.sqrt(
+            (points[:, 0] - center[0]) ** 2 + (points[:, 1] - center[1]) ** 2 + (points[:, 2] - center[2]) ** 2
+        )
+        max_error = np.max(np.abs(dist - radius))
+
+        # Coarse 3D grid: relax to 10*dx^2
+        assert max_error < 10 * dx**2, f"Max distance error {max_error:.2e} exceeds 10*dx^2={10 * dx**2:.2e}"
 
 
 if __name__ == "__main__":
     """Run tests directly for development."""
     print("Testing subcell interface extraction...")
 
-    # Test 1: Linear interface
-    print("\n[Test 1: Linear Interface Exact]")
-    test = TestSubcellInterface1D()
-    test.test_linear_interface_exact()
-    print("  ✓ Linear interface extraction exact")
+    # 1D tests
+    test_1d = TestSubcellInterface1D()
+    for name in [
+        "test_linear_interface_exact",
+        "test_accuracy_vs_argmin",
+        "test_quadratic_interface",
+        "test_no_zero_crossing_raises",
+        "test_multiple_crossings_uses_first",
+        "test_interface_at_grid_point",
+        "test_fine_grid_convergence",
+    ]:
+        getattr(test_1d, name)()
+        print(f"  PASS {name}")
 
-    # Test 2: Accuracy vs argmin
-    print("\n[Test 2: Accuracy vs Argmin]")
-    test.test_accuracy_vs_argmin()
-    print("  ✓ Subcell method beats argmin")
+    # 2D tests
+    test_2d = TestSubcellInterface2D()
+    for name in [
+        "test_circle_interface_accuracy",
+        "test_circle_point_count",
+        "test_flat_interface_2d",
+        "test_no_crossing_raises_2d",
+        "test_convergence_2d_circle",
+    ]:
+        getattr(test_2d, name)()
+        print(f"  PASS {name}")
 
-    # Test 3: Quadratic
-    print("\n[Test 3: Quadratic Interface]")
-    test.test_quadratic_interface()
-    print("  ✓ O(dx^2) accuracy for smooth interface")
+    # 3D test
+    test_3d = TestSubcellInterface3D()
+    test_3d.test_sphere_interface_points()
+    print("  PASS test_sphere_interface_points")
 
-    # Test 4: No crossing
-    print("\n[Test 4: No Zero Crossing]")
-    test.test_no_zero_crossing_raises()
-    print("  ✓ ValueError raised when no crossing")
-
-    # Test 5: Multiple crossings
-    print("\n[Test 5: Multiple Crossings]")
-    test.test_multiple_crossings_uses_first()
-    print("  ✓ Uses first crossing correctly")
-
-    # Test 6: Grid point interface
-    print("\n[Test 6: Interface at Grid Point]")
-    test.test_interface_at_grid_point()
-    print("  ✓ Handles interface on grid point")
-
-    # Test 7: Convergence
-    print("\n[Test 7: Convergence Rate]")
-    test.test_fine_grid_convergence()
-    print("  ✓ Verified O(dx^2) convergence")
-
-    # Test 8: 2D not implemented
-    print("\n[Test 8: 2D Not Implemented]")
-    test_2d = TestSubcellInterfaceHigherDimensions()
-    test_2d.test_2d_not_implemented()
-    print("  ✓ 2D raises NotImplementedError")
-
-    print("\n✅ All subcell interface tests passed!")
-    print("\nExpected Impact:")
-    print("  - Stefan problem error: 19.58% → < 3% (with subcell precision)")
-    print("  - Interface location: O(dx) → O(dx^2) accuracy")
+    print("\nAll subcell interface tests passed!")

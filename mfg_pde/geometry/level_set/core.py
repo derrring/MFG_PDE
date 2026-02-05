@@ -101,11 +101,28 @@ class LevelSetFunction:
 
     def _get_field_shape(self) -> tuple[int, ...]:
         """Extract field shape from geometry."""
-        # TensorProductGrid has Nx_points attribute
-        if hasattr(self.geometry, "Nx_points"):
+        from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
+
+        if isinstance(self.geometry, TensorProductGrid):
             return tuple(self.geometry.Nx_points)
         # ImplicitDomain - infer from phi
         return self.phi.shape
+
+    def _get_grid_coordinates(self) -> list[NDArray[np.float64]]:
+        """
+        Extract 1D coordinate arrays from geometry.
+
+        Returns list of 1D arrays, one per spatial dimension. For a 2D grid
+        with shape (Nx, Ny), returns [x_coords, y_coords].
+
+        Raises:
+            TypeError: If geometry is not a TensorProductGrid.
+        """
+        from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
+
+        if isinstance(self.geometry, TensorProductGrid):
+            return self.geometry.coordinates
+        raise TypeError(f"Subcell extraction requires TensorProductGrid, got {type(self.geometry).__name__}.")
 
     @property
     def dimension(self) -> int:
@@ -197,58 +214,44 @@ class LevelSetFunction:
         Extract interface location with subcell precision via linear interpolation.
 
         For a level set φ(x), the zero crossing occurs between grid points where
-        φ changes sign. Linear interpolation gives O(dx²) accuracy vs O(dx) for
+        φ changes sign. Linear interpolation gives O(dx^2) accuracy vs O(dx) for
         simple argmin(|φ|).
 
-        Mathematical Formula (1D):
-            If φ[i] < 0 and φ[i+1] > 0, then:
-            x_interface = x[i] + |φ[i]| / (|φ[i]| + |φ[i+1]|) * dx
+        Mathematical Formula:
+            If φ[i] < 0 and φ[i+1] > 0 along axis d, then:
+            x_interface[d] = x[i] + |φ[i]| / (|φ[i]| + |φ[i+1]|) * dx
 
-        This is the weighted midpoint between bracketing grid points, giving
-        second-order accuracy for smooth level sets.
+        For nD, this is applied independently along each axis. Edge crossings
+        from all axes are concatenated into a single point cloud.
 
         Returns
         -------
         interface_location : float | NDArray
-            For 1D: Scalar x-coordinate of interface
-            For 2D/3D: Array of (x, y) or (x, y, z) coordinates on zero level set
-            (2D/3D implementation TBD - Issue #605 Phase 2.3 extension)
+            For 1D: Scalar x-coordinate of first zero crossing.
+            For nD: Array of shape (M, ndim) with interface point coordinates.
 
         Raises
         ------
         ValueError
-            If no zero crossing found (all φ same sign)
+            If no zero crossing found (all φ same sign).
+        TypeError
+            If geometry is not a TensorProductGrid.
 
         Notes
         -----
-        **Accuracy**:
-        - Simple argmin: O(dx) error - finds grid point nearest to interface
-        - Subcell: O(dx²) error - interpolates between bracketing points
-
-        **Expected Impact on Stefan Problem**:
-        - Current error: 19.58% (using argmin for interface location)
-        - Target error: < 3% (with subcell precision)
-
-        **Implementation Status** (v0.17.3):
-        - 1D: Implemented ✓
-        - 2D/3D: Planned for future
+        **Accuracy**: O(dx^2) for smooth level sets (vs O(dx) for argmin).
 
         Example
         -------
-        >>> # 1D example
-        >>> ls = LevelSetFunction(phi_1d, grid, is_signed_distance=True)
-        >>> x_interface = ls.get_interface_location_subcell()
-        >>> # More accurate than: x_interface = x[np.argmin(np.abs(phi))]
+        >>> # 1D
+        >>> x_interface = ls.get_interface_location_subcell()  # float
+        >>> # 2D circle
+        >>> points = ls.get_interface_location_subcell()  # (M, 2) array
         """
         if self.dimension == 1:
             return self._get_interface_1d_subcell()
         else:
-            # 2D/3D: Future implementation
-            # Would return list of (x, y) or (x, y, z) coordinates on zero level set
-            raise NotImplementedError(
-                f"Subcell interface extraction not yet implemented for {self.dimension}D. "
-                "See Issue #605 Phase 2.3 for planned extension."
-            )
+            return self._get_interface_nd_subcell()
 
     def _get_interface_1d_subcell(self) -> float:
         """
@@ -262,12 +265,7 @@ class LevelSetFunction:
         phi = self.phi
 
         # Get grid coordinates
-        if hasattr(self.geometry, "coordinates"):
-            x = self.geometry.coordinates[0]
-        elif hasattr(self.geometry, "grid") and hasattr(self.geometry.grid, "coordinates"):
-            x = self.geometry.grid.coordinates[0]
-        else:
-            raise AttributeError("Geometry must provide coordinates for subcell extraction")
+        x = self._get_grid_coordinates()[0]
 
         # Find zero crossings (sign changes)
         sign_changes = np.diff(np.sign(phi))
@@ -297,6 +295,72 @@ class LevelSetFunction:
         x_interface = x[i] + t * (x[i + 1] - x[i])
 
         return float(x_interface)
+
+    def _get_interface_nd_subcell(self) -> NDArray[np.float64]:
+        """
+        nD subcell interface extraction via vectorized edge interpolation.
+
+        For each axis d, finds edges where phi changes sign, then linearly
+        interpolates the zero crossing along that axis. Points from all axes
+        are concatenated into a single (M, ndim) array.
+
+        Returns
+        -------
+        points : NDArray, shape (M, ndim)
+            Interface point coordinates with O(dx^2) accuracy.
+
+        Raises
+        ------
+        ValueError
+            If no zero crossing found along any axis.
+        """
+        phi = self.phi
+        coords = self._get_grid_coordinates()
+        ndim = phi.ndim
+        all_points: list[NDArray[np.float64]] = []
+
+        for d in range(ndim):
+            # Sign changes along axis d → shape with axis d reduced by 1
+            sign_diff = np.diff(np.sign(phi), axis=d)
+            crossings = np.argwhere(sign_diff != 0)  # (M, ndim) index array
+
+            if len(crossings) == 0:
+                continue
+
+            # Left/right indices along axis d
+            idx_left = list(crossings.T)  # list of ndim index arrays
+            idx_right = list(crossings.T)
+            idx_right[d] = idx_right[d] + 1  # shift right along crossing axis
+
+            phi_left = phi[tuple(idx_left)]
+            phi_right = phi[tuple(idx_right)]
+
+            # Interpolation parameter with division-by-zero guard
+            abs_left = np.abs(phi_left)
+            abs_right = np.abs(phi_right)
+            denom = abs_left + abs_right
+            t = np.where(denom > 0, abs_left / denom, 0.5)
+
+            # Build physical coordinates: (M, ndim)
+            pts = np.empty((len(crossings), ndim), dtype=np.float64)
+            for ax in range(ndim):
+                if ax == d:
+                    x_lo = coords[d][idx_left[d]]
+                    x_hi = coords[d][idx_right[d]]
+                    pts[:, ax] = x_lo + t * (x_hi - x_lo)
+                else:
+                    pts[:, ax] = coords[ax][crossings[:, ax]]
+
+            all_points.append(pts)
+
+        if len(all_points) == 0:
+            raise ValueError(
+                "No zero crossing found in level set. "
+                f"phi range: [{phi.min():.3f}, {phi.max():.3f}]. "
+                "All values have same sign."
+            )
+
+        return np.concatenate(all_points, axis=0)
 
     def __repr__(self) -> str:
         """String representation for debugging."""
