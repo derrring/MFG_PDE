@@ -64,7 +64,10 @@ This directory contains architecture documentation for MFG_PDE. Historical audit
 
 | Document | Purpose |
 |----------|---------|
+| `spacetime-bc/` | **[PROJECT]** Space-time solvers & compositional BC architecture |
 | `dimension_agnostic_solvers.md` | Overview of nD solver approaches |
+| `GEOMETRY_AND_TOPOLOGY.md` | Geometry trait system design |
+| `FACTORY_PATTERN_DESIGN.md` | Three-concern factory architecture |
 | `proposals/DIMENSION_AGNOSTIC_FDM_ANALYSIS.md` | FDM extension analysis |
 | `proposals/MFG_PDE_ARCHITECTURE_REFACTOR_PROPOSAL.md` | Long-term refactoring plan |
 
