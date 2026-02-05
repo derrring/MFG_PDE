@@ -1,32 +1,32 @@
 """
 Tutorial: Adjoint-Consistent Boundary Conditions for MFG Systems
 
-This tutorial demonstrates Issue #574 solution: using adjoint-consistent
-boundary conditions to improve equilibrium consistency when stall points
-occur at domain boundaries.
+This tutorial demonstrates how to use adjoint-consistent boundary conditions
+to improve equilibrium consistency when stall points occur at domain boundaries.
 
 Topics covered:
 - Boundary condition consistency in coupled HJB-FP systems
-- The bc_mode parameter in HJBFDMSolver
+- The BCValueProvider pattern (AdjointConsistentProvider)
 - When to use adjoint-consistent vs standard BC
 - Convergence improvement demonstration
 
 Mathematical Background:
 -----------------------
-At reflecting boundaries with Neumann BC, the standard condition ∂U/∂n = 0
+At reflecting boundaries with Neumann BC, the standard condition dU/dn = 0
 may be inconsistent with the equilibrium (Boltzmann-Gibbs) solution when the
 stall point occurs at the boundary.
 
 The adjoint-consistent BC couples HJB to the FP density gradient:
-    ∂U/∂n = -σ²/2 · ∂ln(m)/∂n
+    dU/dn = -sigma^2/2 * d(ln m)/dn
 
-This maintains the zero-flux condition J·n = 0 at equilibrium.
+This maintains the zero-flux condition J*n = 0 at equilibrium.
 
 Implementation:
 --------------
-Uses the existing Robin BC framework (BCType.ROBIN with alpha=0, beta=1) for
-dimension-agnostic support. The solver automatically creates proper
-BoundaryConditions objects when bc_mode="adjoint_consistent".
+Uses the BCValueProvider pattern (Issue #625): AdjointConsistentProvider is
+stored as intent in BCSegment.value. The FixedPointIterator resolves it each
+Picard iteration via problem.using_resolved_bc(state), computing concrete
+Robin BC values from the current density. The solver stays generic.
 
 Reference: docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md
 """
@@ -40,71 +40,149 @@ from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfg_pde.geometry.boundary import neumann_bc
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import (
+    AdjointConsistentProvider,
+    BCSegment,
+    BCType,
+    BoundaryConditions,
+    neumann_bc,
+)
+
+# Problem parameters (shared by both configurations)
+NX = 50
+NT = 50
+T = 1.0
+SIGMA = 0.2
+MAX_ITERATIONS = 30
+TOLERANCE = 1e-6
 
 
-def create_boundary_stall_problem():
+def create_standard_problem() -> MFGProblem:
     """
-    Create 1D MFG problem with stall point at boundary.
+    Create 1D MFG problem with standard Neumann BC.
 
-    This configuration maximizes the BC consistency issue:
-    - Stall point at x=0 (left boundary)
-    - Target at x=1 (right boundary)
-    - Reflecting boundaries (Neumann BC)
+    Standard Neumann BC (dU/dn = 0) is the classical choice for reflecting
+    boundaries. It works well when stall points are in the domain interior.
 
     Returns:
-        Configured MFGProblem instance
+        Configured MFGProblem with Neumann BC
     """
-    # Problem parameters
-    Nx = 50  # Spatial grid points
-    Nt = 50  # Temporal grid points
-    T = 1.0  # Time horizon
-    sigma = 0.2  # Diffusion coefficient
-
-    # Create problem with reflecting boundaries
-    problem = MFGProblem(
-        domain=[0.0, 1.0],
-        Nx=Nx,
-        Nt=Nt,
-        T=T,
-        sigma=sigma,
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[NX + 1],
         boundary_conditions=neumann_bc(dimension=1),
     )
 
-    return problem
+    return MFGProblem(
+        geometry=geometry,
+        T=T,
+        Nt=NT,
+        diffusion=SIGMA,
+    )
 
 
-def solve_with_bc_mode(problem, bc_mode: str, max_iterations: int = 30):
+def create_adjoint_consistent_problem() -> MFGProblem:
     """
-    Solve MFG problem with specified boundary condition mode.
+    Create 1D MFG problem with adjoint-consistent BC via provider pattern.
 
-    Args:
-        problem: MFG problem instance
-        bc_mode: "standard" or "adjoint_consistent"
-        max_iterations: Maximum Picard iterations
+    The AdjointConsistentProvider computes density-dependent Robin BC values:
+        dU/dn = -sigma^2/2 * d(ln m)/dn
+
+    This is stored as intent in BCSegment.value. The FixedPointIterator
+    resolves it each Picard iteration using problem.using_resolved_bc(state).
 
     Returns:
-        SolverResult with solution and convergence info
+        Configured MFGProblem with adjoint-consistent Robin BC
     """
-    print(f"\nSolving with bc_mode='{bc_mode}'...")
+    # Adjoint-consistent BC via provider pattern (Issue #625)
+    # Robin BC: alpha*U + beta*dU/dn = g
+    # For adjoint-consistent: alpha=0, beta=1, g = -sigma^2/2 * d(ln m)/dn
+    bc = BoundaryConditions(
+        segments=[
+            BCSegment(
+                name="left_ac",
+                bc_type=BCType.ROBIN,
+                alpha=0.0,
+                beta=1.0,
+                value=AdjointConsistentProvider(side="left", diffusion=SIGMA),
+                boundary="x_min",
+            ),
+            BCSegment(
+                name="right_ac",
+                bc_type=BCType.ROBIN,
+                alpha=0.0,
+                beta=1.0,
+                value=AdjointConsistentProvider(side="right", diffusion=SIGMA),
+                boundary="x_max",
+            ),
+        ],
+        dimension=1,
+    )
 
-    # Create HJB solver with specified BC mode
-    hjb_solver = HJBFDMSolver(problem, bc_mode=bc_mode)
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[NX + 1],
+        boundary_conditions=bc,
+    )
 
-    # Create FP solver (unchanged)
+    return MFGProblem(
+        geometry=geometry,
+        T=T,
+        Nt=NT,
+        diffusion=SIGMA,
+    )
+
+
+def solve_standard(problem: MFGProblem):
+    """Solve MFG with standard Neumann BC."""
+    print("\nSolving with STANDARD Neumann BC (dU/dn = 0)...")
+
+    hjb_solver = HJBFDMSolver(problem)
     fp_solver = FPFDMSolver(problem)
 
-    # Create Picard iterator for coupling
     iterator = FixedPointIterator(
         problem=problem,
         hjb_solver=hjb_solver,
         fp_solver=fp_solver,
     )
 
-    # Solve coupled system
     result = iterator.solve(
-        max_iterations=max_iterations,
-        tolerance=1e-6,
+        max_iterations=MAX_ITERATIONS,
+        tolerance=TOLERANCE,
+        verbose=True,
+    )
+
+    print(f"  Converged: {result.converged}")
+    print(f"  Iterations: {result.iterations}")
+    print(f"  Final error (U): {result.final_error_U:.6e}")
+    print(f"  Final error (M): {result.final_error_M:.6e}")
+
+    return result
+
+
+def solve_adjoint_consistent(problem: MFGProblem):
+    """
+    Solve MFG with adjoint-consistent BC via provider pattern.
+
+    The BC resolution happens automatically: FixedPointIterator detects
+    providers in BoundaryConditions and calls problem.using_resolved_bc()
+    each iteration. The HJB solver receives concrete Robin BC values.
+    """
+    print("\nSolving with ADJOINT-CONSISTENT BC (via AdjointConsistentProvider)...")
+
+    hjb_solver = HJBFDMSolver(problem)
+    fp_solver = FPFDMSolver(problem)
+
+    iterator = FixedPointIterator(
+        problem=problem,
+        hjb_solver=hjb_solver,
+        fp_solver=fp_solver,
+    )
+
+    result = iterator.solve(
+        max_iterations=MAX_ITERATIONS,
+        tolerance=TOLERANCE,
         verbose=True,
     )
 
@@ -118,11 +196,11 @@ def solve_with_bc_mode(problem, bc_mode: str, max_iterations: int = 30):
 
 def compare_bc_modes():
     """
-    Main tutorial: Compare standard vs adjoint-consistent BC modes.
+    Main tutorial: Compare standard vs adjoint-consistent BC.
 
     Demonstrates:
     1. Problem setup with boundary stall
-    2. Solving with both BC modes
+    2. Solving with both BC configurations
     3. Convergence comparison
     4. Visualization of differences
     """
@@ -130,28 +208,26 @@ def compare_bc_modes():
     print("Tutorial: Adjoint-Consistent Boundary Conditions")
     print("=" * 70)
 
-    # Step 1: Create problem
-    print("\n[Step 1] Creating boundary stall problem...")
-    problem = create_boundary_stall_problem()
+    # Step 1: Create problems
+    print("\n[Step 1] Creating problems...")
+    problem_std = create_standard_problem()
+    problem_ac = create_adjoint_consistent_problem()
 
     print("  Domain: [0, 1]")
-    print(f"  Grid points: {problem.geometry.get_grid_shape()[0]}")
-    print(f"  Time steps: {problem.Nt}")
-    print(f"  Diffusion: σ = {problem.sigma}")
-    print("  BC type: Neumann (reflecting)")
+    print(f"  Grid points: {problem_std.geometry.get_grid_shape()[0]}")
+    print(f"  Time steps: {problem_std.Nt}")
+    print(f"  Diffusion: sigma = {problem_std.sigma}")
 
     # Step 2: Solve with standard BC
-    print("\n[Step 2] Solving with STANDARD Neumann BC...")
-    print("  Using: bc_mode='standard' (classical ∂U/∂n = 0)")
-    result_std = solve_with_bc_mode(problem, "standard", max_iterations=30)
+    print("\n[Step 2] Standard Neumann BC (classical dU/dn = 0)...")
+    result_std = solve_standard(problem_std)
 
     # Step 3: Solve with adjoint-consistent BC
-    print("\n[Step 3] Solving with ADJOINT-CONSISTENT BC...")
-    print("  Using: bc_mode='adjoint_consistent' (couples to ∂ln(m)/∂n)")
-    result_ac = solve_with_bc_mode(problem, "adjoint_consistent", max_iterations=30)
+    print("\n[Step 3] Adjoint-consistent BC (couples to d(ln m)/dn)...")
+    result_ac = solve_adjoint_consistent(problem_ac)
 
     # Step 4: Compare results
-    print("\n[Step 4] Comparison of BC modes")
+    print("\n[Step 4] Comparison")
     print("=" * 70)
 
     print("\nConvergence Comparison:")
@@ -177,23 +253,23 @@ def compare_bc_modes():
 
     # Step 5: Visualize
     print("\n[Step 5] Generating comparison plots...")
-    visualize_comparison(problem, result_std, result_ac)
+    visualize_comparison(problem_std, result_std, result_ac)
 
     # Summary
     print("\n" + "=" * 70)
     print("TUTORIAL SUMMARY")
     print("=" * 70)
     print("\nKey Takeaways:")
-    print("  1. Standard Neumann BC (∂U/∂n = 0) may be inconsistent at boundaries")
-    print("  2. Adjoint-consistent BC couples to density gradient: ∂U/∂n = -σ²/2·∂ln(m)/∂n")
-    print("  3. Use bc_mode='adjoint_consistent' for boundary stall configurations")
-    print("  4. Negligible computational overhead with potential convergence improvement")
+    print("  1. Standard Neumann BC (dU/dn = 0) may be inconsistent at boundaries")
+    print("  2. Adjoint-consistent BC couples to density gradient via Robin BC")
+    print("  3. Use AdjointConsistentProvider in BCSegment.value for boundary stall")
+    print("  4. FixedPointIterator resolves providers automatically each iteration")
 
     print("\nWhen to use adjoint-consistent BC:")
-    print("  ✓ Stall point at domain boundary")
-    print("  ✓ Reflecting boundaries (Neumann/no-flux)")
-    print("  ✓ High accuracy requirements")
-    print("  ✗ Not needed for interior stall or periodic BC")
+    print("  - Stall point at domain boundary")
+    print("  - Reflecting boundaries (Neumann/no-flux)")
+    print("  - High accuracy requirements")
+    print("  Not needed for interior stall or periodic BC")
 
     plt.show()
 
@@ -203,7 +279,7 @@ def visualize_comparison(problem, result_std, result_ac):
     Create comparison plots for standard vs adjoint-consistent BC.
 
     Args:
-        problem: MFG problem instance
+        problem: MFG problem instance (for grid info)
         result_std: Result with standard BC
         result_ac: Result with adjoint-consistent BC
     """
@@ -240,13 +316,13 @@ def visualize_comparison(problem, result_std, result_ac):
     ax.plot(x, m_diff, "g-", linewidth=2)
     ax.axhline(y=0, color="k", linestyle="--", alpha=0.5)
     ax.set_xlabel("Position x")
-    ax.set_ylabel("Δm = m_std - m_ac")
+    ax.set_ylabel("m_std - m_ac")
     ax.set_title("Density Difference")
     ax.grid(True, alpha=0.3)
 
     # Plot 4: Convergence history
     ax = axes[1, 1]
-    if hasattr(result_std, "error_history_U") and len(result_std.error_history_U) > 0:
+    if len(result_std.error_history_U) > 0:
         ax.semilogy(result_std.error_history_U, "b-o", label="Standard BC", markersize=4)
         ax.semilogy(result_ac.error_history_U, "r-s", label="Adjoint-Consistent BC", markersize=4)
         ax.set_xlabel("Picard Iteration")

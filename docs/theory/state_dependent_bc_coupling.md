@@ -75,28 +75,28 @@ with:
 - $\beta = 1$ (coefficient of $\partial U / \partial n$)
 - $g = -\frac{\sigma^2}{2} \cdot \frac{\partial \ln m}{\partial n}$ (computed from density)
 
-### Code Usage
+### Code Usage (v0.18.0+ Provider Pattern)
 
 ```python
-from mfg_pde.geometry.boundary import create_adjoint_consistent_bc_1d
-
-# In Picard iteration, after solving FP
-m_current = fp_solver.solve(U_prev)
-
-# Create state-dependent BC for HJB
-hjb_bc = create_adjoint_consistent_bc_1d(
-    m_current=m_current[-1, :],  # Final time slice
-    dx=problem.dx,
-    sigma=problem.sigma,
-    domain_bounds=problem.geometry.domain_bounds,
+from mfg_pde.geometry.boundary import (
+    AdjointConsistentProvider, BCSegment, BCType, BoundaryConditions
 )
 
-# Solve HJB with coupled BC
-U_new = hjb_solver.solve(
-    M_density=m_current,
-    bc=hjb_bc,  # State-dependent Robin BC
-    ...
-)
+# Store intent in BC object at problem creation time
+bc = BoundaryConditions(segments=[
+    BCSegment(name="left_ac", bc_type=BCType.ROBIN,
+              alpha=0.0, beta=1.0,
+              value=AdjointConsistentProvider(side="left", diffusion=sigma),
+              boundary="x_min"),
+    BCSegment(name="right_ac", bc_type=BCType.ROBIN,
+              alpha=0.0, beta=1.0,
+              value=AdjointConsistentProvider(side="right", diffusion=sigma),
+              boundary="x_max"),
+], dimension=1)
+
+# FixedPointIterator resolves providers each iteration automatically
+problem = MFGProblem(geometry=grid, boundary_conditions=bc, ...)
+result = problem.solve()
 ```
 
 ### Numerical Computation
@@ -113,24 +113,31 @@ A small regularization $\epsilon \approx 10^{-10}$ is added to prevent $\ln(0)$.
 
 ## Architecture Decision
 
-### Why Not `bc_mode`?
+### Why `bc_mode` Was Removed (v0.18.0)
 
-The state-dependent coupling should be an **explicit application-layer decision**, not a solver mode:
+The `bc_mode` parameter on `HJBFDMSolver` was a design mistake — it embedded MFG coupling logic inside a PDE solver. It was deprecated in v0.17.1 and removed in v0.18.0 (Issue #703).
+
+The replacement is the **BCValueProvider pattern** (Issue #625):
 
 ```python
-# ❌ Wrong: Solver decides coupling strategy
-solver = HJBFDMSolver(problem, bc_mode="adjoint_consistent")
+# v0.18.0+: Provider pattern — BC intent stored in problem, resolved by iterator
+from mfg_pde.geometry.boundary import AdjointConsistentProvider, BCSegment, BCType, BoundaryConditions
 
-# ✓ Correct: Application layer decides
-if need_density_coupling:
-    bc = create_adjoint_consistent_bc_1d(m, dx, sigma, bounds)
-    # Use bc explicitly
+bc = BoundaryConditions(segments=[
+    BCSegment(name="left_ac", bc_type=BCType.ROBIN,
+              alpha=0.0, beta=1.0,
+              value=AdjointConsistentProvider(side="left", diffusion=sigma),
+              boundary="x_min"),
+    # ... right boundary similarly
+], dimension=1)
+problem = MFGProblem(..., boundary_conditions=bc)
+result = problem.solve()  # Iterator resolves providers automatically
 ```
 
-**Rationale**:
-1. Solvers should solve PDEs, not decide physics
-2. Coupling decision depends on problem geometry and equilibrium location
-3. Makes the coupling explicit and auditable
+**Why this is correct**:
+1. Solvers solve PDEs — they don't decide physics
+2. Coupling decision is explicit in the BC object, not hidden in a solver flag
+3. The iterator resolves providers each iteration via `problem.using_resolved_bc(state)`
 
 ### Structural vs State-Dependent Adjoint
 

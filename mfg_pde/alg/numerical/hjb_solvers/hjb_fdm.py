@@ -18,6 +18,7 @@ import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
 from mfg_pde.geometry import TensorProductGrid  # Required to check geometry type
+from mfg_pde.utils.deprecation import deprecated_parameter
 from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
 from mfg_pde.utils.pde_coefficients import CoefficientField
@@ -107,6 +108,16 @@ class HJBFDMSolver(BaseHJBSolver):
 
     _scheme_family = SchemeFamily.FDM
 
+    @deprecated_parameter(
+        param_name="NiterNewton",
+        since="v0.16.0",
+        replacement="max_newton_iterations",
+    )
+    @deprecated_parameter(
+        param_name="l2errBoundNewton",
+        since="v0.16.0",
+        replacement="newton_tolerance",
+    )
     def __init__(
         self,
         problem: MFGProblem,
@@ -115,9 +126,8 @@ class HJBFDMSolver(BaseHJBSolver):
         damping_factor: float = 1.0,
         max_newton_iterations: int | None = None,
         newton_tolerance: float | None = None,
-        bc_mode: Literal["standard", "adjoint_consistent"] = "standard",
         constraint: ConstraintProtocol | None = None,
-        # Deprecated parameters
+        # Deprecated parameters (decorator handles warnings)
         NiterNewton: int | None = None,
         l2errBoundNewton: float | None = None,
         backend: str | None = None,
@@ -135,11 +145,6 @@ class HJBFDMSolver(BaseHJBSolver):
             damping_factor: Damping ω ∈ (0,1] for fixed-point (recommend 0.5-0.8)
             max_newton_iterations: Max iterations per timestep
             newton_tolerance: Convergence tolerance
-            bc_mode: DEPRECATED (Issue #625). Use BCValueProvider in BoundaryConditions.
-                Boundary condition mode for reflecting boundaries (Issue #574):
-                - 'standard': Classical Neumann BC (∂U/∂n = 0)
-                - 'adjoint_consistent': Coupled BC (∂U/∂n = -σ²/2 · ∂ln(m)/∂n)
-                Migration: Use AdjointConsistentProvider in BCSegment.value instead.
             constraint: Variational inequality constraint (Issue #591):
                 - ObstacleConstraint: u ≥ ψ or u ≤ ψ (capacity limits, running cost floor)
                 - BilateralConstraint: ψ_lower ≤ u ≤ ψ_upper (bounded controls)
@@ -163,54 +168,17 @@ class HJBFDMSolver(BaseHJBSolver):
         self.advection_scheme = advection_scheme
         self.use_upwind = advection_scheme == "gradient_upwind"
 
-        # Handle deprecated parameters
+        # Redirect deprecated parameters (decorator handles warnings)
         if NiterNewton is not None:
-            warnings.warn(
-                "Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             max_newton_iterations = max_newton_iterations or NiterNewton
-
         if l2errBoundNewton is not None:
-            warnings.warn(
-                "Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             newton_tolerance = newton_tolerance or l2errBoundNewton
-
-        # Issue #625: Deprecate bc_mode in favor of BCValueProvider
-        if bc_mode != "standard":
-            warnings.warn(
-                "Parameter 'bc_mode' is deprecated since v0.18.0. "
-                "Use BCValueProvider in BoundaryConditions instead:\n\n"
-                "  from mfg_pde.geometry.boundary import (\n"
-                "      BCSegment, BCType, mixed_bc, AdjointConsistentProvider\n"
-                "  )\n\n"
-                "  bc = mixed_bc([\n"
-                "      BCSegment(\n"
-                "          name='left_ac',\n"
-                "          bc_type=BCType.ROBIN,\n"
-                "          alpha=0.0, beta=1.0,\n"
-                "          value=AdjointConsistentProvider(side='left', sigma=sigma),\n"
-                "          boundary='x_min',\n"
-                "      ),\n"
-                "      # ... right boundary similarly\n"
-                "  ])\n"
-                "  grid = TensorProductGrid(..., boundary_conditions=bc)\n\n"
-                "The bc_mode parameter will be removed in v1.0.0. "
-                "See Issue #625 for migration details.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         # Set defaults (use None check to avoid treating 0 as falsy)
         self.max_newton_iterations = max_newton_iterations if max_newton_iterations is not None else 30
         self.newton_tolerance = newton_tolerance if newton_tolerance is not None else 1e-6
         self.solver_type = solver_type
         self.damping_factor = damping_factor
-        self.bc_mode = bc_mode
         self.constraint = constraint  # Variational inequality constraint (Issue #591)
 
         # Validate
@@ -220,8 +188,6 @@ class HJBFDMSolver(BaseHJBSolver):
             raise ValueError(f"newton_tolerance must be > 0, got {self.newton_tolerance}")
         if not 0 < damping_factor <= 1.0:
             raise ValueError(f"damping_factor must be in (0,1], got {damping_factor}")
-        if bc_mode not in ("standard", "adjoint_consistent"):
-            raise ValueError(f"bc_mode must be 'standard' or 'adjoint_consistent', got '{bc_mode}'")
 
         # Backward compatibility: Store Newton config
         self._newton_config = {
@@ -326,13 +292,13 @@ class HJBFDMSolver(BaseHJBSolver):
             diffusion_field: Diffusion coefficient (None uses problem.sigma)
             tensor_diffusion_field: Tensor diffusion (Phase 3.0, not yet fully implemented)
             bc_values: DEPRECATED. No longer used (kept for backward compatibility).
-                Adjoint-consistent BC now handled automatically via bc_mode parameter.
+                Adjoint-consistent BC is handled via BCValueProvider in BoundaryConditions.
 
         Note:
-            When bc_mode="adjoint_consistent", the solver automatically creates
-            proper Robin BC using create_adjoint_consistent_bc_1d() from the
-            current FP density. This integrates with the existing BC framework
-            and works with all solver backends.
+            For adjoint-consistent BC, use AdjointConsistentProvider in BCSegment.value
+            when constructing BoundaryConditions. The FixedPointIterator resolves
+            providers each iteration via problem.using_resolved_bc(state).
+            See mfg_pde/geometry/boundary/providers.py for details.
         """
         import warnings
 
@@ -391,7 +357,8 @@ class HJBFDMSolver(BaseHJBSolver):
         if bc_values is not None:
             warnings.warn(
                 "Parameter 'bc_values' is deprecated and no longer used. "
-                "Adjoint-consistent BC is now handled automatically via bc_mode='adjoint_consistent'.",
+                "Adjoint-consistent BC is handled via BCValueProvider in BoundaryConditions. "
+                "See AdjointConsistentProvider in mfg_pde.geometry.boundary.providers.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -447,37 +414,6 @@ class HJBFDMSolver(BaseHJBSolver):
             except AttributeError:
                 pass
 
-            # Issue #574: Create adjoint-consistent BC if needed
-            # Issue #704: Import from canonical adjoint module location
-            if self.bc_mode == "adjoint_consistent":
-                from mfg_pde.alg.numerical.adjoint import create_adjoint_consistent_bc_1d
-
-                # Get grid spacing
-                try:
-                    dx = self.problem.geometry.get_grid_spacing()[0]
-                except (AttributeError, IndexError):
-                    dx = self.problem.dx  # Fallback for legacy API
-
-                # Get diffusion coefficient
-                sigma = self.problem.sigma if diffusion_field is None else diffusion_field
-                if not isinstance(sigma, (int, float)):
-                    raise ValueError(
-                        "bc_mode='adjoint_consistent' requires scalar diffusion. "
-                        f"Got diffusion_field type: {type(sigma)}"
-                    )
-
-                # Create adjoint-consistent Robin BC from current density
-                # Use final time slice if time-dependent
-                m_for_bc = M_density[-1, :] if M_density.ndim == 2 else M_density
-
-                # Create BoundaryConditions object with Robin BC segments
-                bc = create_adjoint_consistent_bc_1d(
-                    m_current=m_for_bc,
-                    dx=dx,
-                    sigma=sigma,
-                    domain_bounds=domain_bounds,
-                )
-
             # Debug: Log BC being passed (Issue #542 investigation)
             # Changed from logger.info to logger.debug to reduce verbosity (Issue #623)
             from contextlib import suppress
@@ -499,7 +435,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 backend=self.backend,
                 diffusion_field=diffusion_field,
                 use_upwind=self.use_upwind,
-                bc=bc,  # Now uses proper Robin BC for adjoint-consistent mode (Issue #574)
+                bc=bc,  # Uses Robin BC from geometry; providers resolved by iterator (Issue #625)
                 domain_bounds=domain_bounds,
             )
 

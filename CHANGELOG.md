@@ -5,6 +5,28 @@ All notable changes to MFG_PDE will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-02-05
+
+**Breaking Release: Remove Deprecated `bc_mode` Parameter**
+
+### Removed
+
+- **`bc_mode` parameter from `HJBFDMSolver`** (Issue #703, #625)
+  - Removed deprecated `bc_mode` parameter from `__init__` signature
+  - Removed adjoint-consistent BC logic block from `solve_hjb_system`
+  - **Migration**: Use `AdjointConsistentProvider` in `BCSegment.value` instead
+  - The provider pattern (v0.17.1+) is the replacement: store BC intent in `BCSegment.value`,
+    `FixedPointIterator` resolves providers via `problem.using_resolved_bc(state)` each iteration
+  - Callers passing `bc_mode=` will now get `TypeError` (Python's standard behavior for removed parameters)
+  - See `examples/tutorials/06_boundary_condition_coupling.py` for updated usage
+
+### Changed
+
+- **Tutorial 06 rewritten** to use provider pattern instead of `bc_mode`
+  - Two separate problem creation functions (standard vs adjoint-consistent)
+  - Both use `FixedPointIterator` — BC resolution is automatic
+- **CLAUDE.md** BC coupling section updated with provider pattern documentation
+
 ## [Unreleased]
 
 ### Fixed
