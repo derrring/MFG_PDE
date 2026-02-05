@@ -155,8 +155,8 @@ def validate_hamiltonian(
         )
         return result
     except Exception as e:
-        result.add_error(
-            f"Hamiltonian raised exception: {e}",
+        result.add_warning(
+            f"Hamiltonian raised exception at sample point: {e}",
             location="hamiltonian",
         )
         return result
@@ -221,8 +221,8 @@ def validate_hamiltonian_derivative(
         )
         return result
     except Exception as e:
-        result.add_error(
-            f"{name} raised exception: {e}",
+        result.add_warning(
+            f"{name} raised exception at sample point: {e}",
             location=name,
         )
         return result
@@ -331,7 +331,7 @@ def validate_drift(
     """
     Validate drift function for FP equation.
 
-    The drift should have signature drift(x, m) or drift(t, x, m)
+    The drift should have signature drift(x), drift(x, m), or drift(t, x, m)
     and return a vector of the same dimension as x.
 
     Args:
@@ -349,9 +349,9 @@ def validate_drift(
 
     m_sample = np.ones(dimension if dimension > 1 else 1)
 
-    # Try different signatures
+    # Try different signatures: drift(x, m), drift(t, x, m), drift(x)
     value = None
-    for args in [(x_sample, m_sample), (0.0, x_sample, m_sample)]:
+    for args in [(x_sample, m_sample), (0.0, x_sample, m_sample), (x_sample,)]:
         try:
             value = drift(*args)
             break
@@ -362,7 +362,7 @@ def validate_drift(
         result.add_error(
             "Drift has wrong signature",
             location="drift",
-            suggestion="Drift should have signature drift(x, m) or drift(t, x, m)",
+            suggestion="Drift should have signature drift(x), drift(x, m), or drift(t, x, m)",
         )
         return result
 
@@ -384,7 +384,7 @@ def validate_running_cost(
     """
     Validate running cost function.
 
-    The running cost should have signature f(x, m) or f(t, x, m)
+    The running cost should have signature f(x), f(x, m), or f(t, x, m)
     and return a scalar.
 
     Args:
@@ -402,9 +402,9 @@ def validate_running_cost(
 
     m_sample = 1.0
 
-    # Try different signatures
+    # Try different signatures: f(x, m), f(t, x, m), f(x)
     value = None
-    for args in [(x_sample, m_sample), (0.0, x_sample, m_sample)]:
+    for args in [(x_sample, m_sample), (0.0, x_sample, m_sample), (x_sample,)]:
         try:
             value = running_cost(*args)
             break
@@ -415,7 +415,7 @@ def validate_running_cost(
         result.add_error(
             "Running cost has wrong signature",
             location="running_cost",
-            suggestion="Running cost should have signature f(x, m) or f(t, x, m)",
+            suggestion="Running cost should have signature f(x), f(x, m), or f(t, x, m)",
         )
         return result
 
