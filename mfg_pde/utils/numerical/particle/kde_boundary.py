@@ -256,6 +256,20 @@ def reflection_kde(
         outside_mask = (eval_points[:, d] < xmin) | (eval_points[:, d] > xmax)
         density[outside_mask] = 0
 
+    # Domain normalization: ensure density integrates to 1 over the domain.
+    # The (N+M)/N correction above is approximate — in nD, corner particles get
+    # more ghosts than edge particles, making the uniform factor imprecise.
+    # Explicit normalization corrects residual mass error. (Issue #718)
+    if eval_points.shape[0] > 1:
+        dV = 1.0
+        for d in range(ndim):
+            unique_coords = np.unique(eval_points[:, d])
+            if len(unique_coords) > 1:
+                dV *= (unique_coords[-1] - unique_coords[0]) / (len(unique_coords) - 1)
+        total_mass = np.sum(density) * dV
+        if total_mass > 1e-10:
+            density = density / total_mass
+
     return density
 
 
@@ -495,6 +509,19 @@ def renormalization_kde(
         xmin, xmax = bounds[d]
         outside_mask = (eval_points[:, d] < xmin) | (eval_points[:, d] > xmax)
         density[outside_mask] = 0
+
+    # Domain normalization: ensure density integrates to 1 over the domain.
+    # Kernel renormalization corrects boundary bias but may not perfectly
+    # preserve total mass. Explicit normalization fixes residual error. (Issue #718)
+    if eval_points.shape[0] > 1:
+        dV = 1.0
+        for d in range(ndim):
+            unique_coords = np.unique(eval_points[:, d])
+            if len(unique_coords) > 1:
+                dV *= (unique_coords[-1] - unique_coords[0]) / (len(unique_coords) - 1)
+        total_mass = np.sum(density) * dV
+        if total_mass > 1e-10:
+            density = density / total_mass
 
     return density
 

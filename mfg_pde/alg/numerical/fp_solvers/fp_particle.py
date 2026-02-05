@@ -28,6 +28,7 @@ from mfg_pde.geometry.boundary.types import BCType
 
 # Issue #625: Migrated from tensor_calculus to operators/stencils
 from mfg_pde.operators.stencils.finite_difference import gradient_nd
+from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical.particle import (
     interpolate_grid_to_particles,
     sample_from_density,
@@ -42,6 +43,8 @@ from .fp_particle_density import generate_brownian_increment as _gen_brownian
 from .fp_particle_density import normalize_density as _normalize
 from .particle_result import FPParticleResult
 
+logger = get_logger(__name__)
+
 
 class KDENormalization(str, Enum):
     """KDE normalization strategy for particle-based FP solvers."""
@@ -52,23 +55,26 @@ class KDENormalization(str, Enum):
 
 
 class KDEMethod(str, Enum):
-    """KDE method for density estimation from particles (Issue #709).
+    """Density estimation method from particles (Issue #709).
 
     Different methods handle boundary bias differently:
     - STANDARD: No boundary correction (~50% underestimation at boundaries)
     - REFLECTION: Ghost particles via reflection (has boundary/adjacent redistribution)
     - RENORMALIZATION: Truncated kernel normalization (has boundary spikes)
     - BETA: Beta kernel (Chen 1999) - smooth, optimal MSE, recommended
+    - CIC: Cloud-in-Cell deposition - exact mass conservation, O(h^2) accuracy
 
     Reference:
         Chen, S. X. (1999). "Beta kernel estimators for density functions."
         Computational Statistics & Data Analysis, 31(2), 131-145.
+        Hockney & Eastwood (1988). "Computer Simulation Using Particles", Ch. 5.
     """
 
     STANDARD = "standard"  # Standard KDE, no boundary correction
     REFLECTION = "reflection"  # Reflection/ghost particle method (Schuster 1985)
     RENORMALIZATION = "renormalization"  # Kernel renormalization method
     BETA = "beta"  # Beta kernel (Chen 1999) - recommended for bounded domains
+    CIC = "cic"  # Cloud-in-Cell: exact mass conservation (Issue #718)
 
 
 class FPParticleSolver(BaseFPSolver):
@@ -502,6 +508,13 @@ class FPParticleSolver(BaseFPSolver):
                 bandwidth=self.kde_bandwidth,
                 bounds=bounds_1d,
             )
+        elif self.kde_method == KDEMethod.CIC:
+            from mfg_pde.utils.numerical.particle.cic import cic_deposit_nd
+
+            bounds_arr = np.array([[xmin, xmax]])
+            n_grid = len(eval_points)
+            density_grid = cic_deposit_nd(particles.reshape(-1, 1), bounds_arr, (n_grid,), periodic=False)
+            return density_grid.ravel()
         else:  # KDEMethod.STANDARD
             kde = gaussian_kde(particles, bw_method=self.kde_bandwidth)
             density = kde(eval_points)
@@ -557,6 +570,15 @@ class FPParticleSolver(BaseFPSolver):
                 bandwidth=self.kde_bandwidth,
                 bounds=bounds,
             )
+        elif self.kde_method == KDEMethod.CIC:
+            from mfg_pde.utils.numerical.particle.cic import cic_deposit_nd
+
+            bounds_arr = np.array(bounds)
+            ndim = len(bounds)
+            grid_shape = tuple(len(np.unique(grid_points[:, d])) for d in range(ndim))
+            # CIC uses reflecting (clipped) BC for bounded domains
+            density_grid = cic_deposit_nd(particles, bounds_arr, grid_shape, periodic=False)
+            return density_grid.ravel()
         else:  # KDEMethod.STANDARD
             kde = gaussian_kde(particles.T, bw_method=self.kde_bandwidth)
             density = kde(grid_points.T)
@@ -1068,7 +1090,22 @@ class FPParticleSolver(BaseFPSolver):
 
             density_flat = self._apply_kde_method_nd(particles, grid_points, list(bounds))
 
-            return density_flat.reshape(grid_shape)
+            density_reshaped = density_flat.reshape(grid_shape)
+
+            # Mass conservation diagnostic (Issue #718)
+            spacings = [(bounds[d][1] - bounds[d][0]) / max(len(coordinates[d]) - 1, 1) for d in range(dimension)]
+            dV = float(np.prod(spacings))
+            raw_mass = float(np.sum(density_reshaped) * dV)
+            if abs(raw_mass - 1.0) > 0.05:
+                logger.warning(
+                    "KDE mass deviation: %.1f%% (method=%s, raw_mass=%.4f). "
+                    "Consider kde_method='cic' for exact mass conservation.",
+                    (raw_mass - 1.0) * 100,
+                    self.kde_method.value,
+                    raw_mass,
+                )
+
+            return density_reshaped
 
         except Exception as e:
             warnings.warn(f"KDE failed in nD: {e}. Returning histogram estimate.")
