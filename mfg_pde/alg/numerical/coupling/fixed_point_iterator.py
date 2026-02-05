@@ -309,8 +309,9 @@ class FixedPointIterator(BaseMFGSolver):
             final_tolerance = solve_config.picard.tolerance
             final_damping_factor = solve_config.picard.damping_factor
             # Issue #719: Per-variable damping and schedules from config
+            # damping_factor_M / damping_schedule_M use `or` because None means "follow U"
             final_damping_factor_M = solve_config.picard.damping_factor_M or self.damping_factor_M
-            final_schedule = solve_config.picard.damping_schedule or self.damping_schedule
+            final_schedule = solve_config.picard.damping_schedule
             final_schedule_M = solve_config.picard.damping_schedule_M or self.damping_schedule_M
             verbose = solve_config.picard.verbose
         else:
