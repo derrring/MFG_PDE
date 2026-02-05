@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from .conditions import BoundaryConditions
 
 
-def _has_implicit_boundary(geometry: object) -> bool:
+def _has_implicit_boundary(geometry: GeometryProtocol) -> bool:
     """
     Check if geometry uses implicit (SDF-based) boundary definition.
 
@@ -43,19 +43,20 @@ def _has_implicit_boundary(geometry: object) -> bool:
     boundary detection but is NOT a structured grid (like TensorProductGrid).
 
     Args:
-        geometry: Geometry object to check
+        geometry: Geometry implementing GeometryProtocol
 
     Returns:
         True if geometry has SDF-based boundary detection
     """
-    # Check for SDF-based boundary detection methods
-    has_sdf = hasattr(geometry, "sdf") or hasattr(geometry, "is_on_boundary")
+    from mfg_pde.geometry.protocol import GeometryType
 
-    # Check if it's a structured grid (which uses FDMApplicator)
-    is_structured = hasattr(geometry, "grid_points") and hasattr(geometry, "spacing")
+    # Dispatch by GeometryType enum, not hasattr duck-typing (CLAUDE.md)
+    if geometry.geometry_type == GeometryType.IMPLICIT:
+        return True
 
-    # Use ImplicitApplicator for SDF-based non-structured geometries
-    return has_sdf and not is_structured
+    # For non-IMPLICIT types, check if sdf() is available as optional method
+    sdf_method = getattr(geometry, "sdf", None)
+    return callable(sdf_method)
 
 
 def get_applicator_for_geometry(

@@ -8,11 +8,12 @@ This module provides BC applicators that bridge structured grids with implicit
 - Immersed boundary: Structured grid + embedded geometry
 - Semi-Lagrangian + SDF: Cartesian departure points + implicit domain
 
-Architecture (Issue #637):
-    ImplicitApplicator inherits from BaseBCApplicator and composes:
-    - Geometry: SDF-based boundary detection (is_on_boundary, get_boundary_normal)
-    - Grid structure: Optional axis-aligned optimizations
-    - Enforcement: Shared utilities from enforcement.py
+Architecture (Issue #637, #712):
+    ImplicitApplicator inherits from MeshfreeApplicator and adds:
+    - Normal-based Neumann/Robin BC (interpolation along boundary normals)
+    - Periodic BC via wrapping to opposite boundary
+    - Grid spacing estimation for non-structured points
+    Inherits particle BC methods from MeshfreeApplicator.
 
 Example:
     >>> from mfg_pde.geometry.boundary import ImplicitApplicator, neumann_bc
@@ -36,7 +37,8 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from .applicator_base import BaseBCApplicator, DiscretizationType, GridType
+from .applicator_base import GridType
+from .applicator_meshfree import MeshfreeApplicator
 from .types import BCType
 
 if TYPE_CHECKING:
@@ -47,7 +49,7 @@ if TYPE_CHECKING:
     from .conditions import BoundaryConditions
 
 
-class ImplicitApplicator(BaseBCApplicator):
+class ImplicitApplicator(MeshfreeApplicator):
     """
     BC applicator for dual geometry scenarios (structured grid + implicit boundary).
 
@@ -75,20 +77,14 @@ class ImplicitApplicator(BaseBCApplicator):
         Initialize implicit boundary applicator.
 
         Args:
-            geometry: Geometry object with SDF-based boundary detection.
-                Must implement: dimension, is_on_boundary(), get_boundary_normal()
+            geometry: Geometry object implementing GeometryProtocol.
+                Uses is_on_boundary() and get_boundary_normal() from protocol.
             grid_type: Grid type for structured regions (default: CELL_CENTERED)
             boundary_tolerance: Distance threshold for boundary point detection
         """
-        super().__init__(dimension=geometry.dimension)
-        self.geometry = geometry
+        super().__init__(geometry)  # MeshfreeApplicator handles isinstance + dimension
         self._grid_type = grid_type
         self._boundary_tolerance = boundary_tolerance
-
-    @property
-    def discretization_type(self) -> DiscretizationType:
-        """Return discretization type (MESHFREE for implicit boundaries)."""
-        return DiscretizationType.MESHFREE
 
     @property
     def grid_type(self) -> GridType:
@@ -100,8 +96,8 @@ class ImplicitApplicator(BaseBCApplicator):
         field: NDArray[np.floating],
         boundary_conditions: BoundaryConditions,
         points: NDArray[np.floating],
-        *,
         time: float = 0.0,
+        *,
         spacing: NDArray[np.floating] | tuple[float, ...] | float | None = None,
     ) -> NDArray[np.floating]:
         """
@@ -163,7 +159,7 @@ class ImplicitApplicator(BaseBCApplicator):
 
     def _detect_boundary_points(self, points: NDArray[np.floating]) -> NDArray[np.bool_]:
         """
-        Detect which points are on the boundary using geometry SDF.
+        Detect which points are on the boundary using geometry protocol.
 
         Args:
             points: Spatial coordinates (N, dim)
@@ -171,17 +167,8 @@ class ImplicitApplicator(BaseBCApplicator):
         Returns:
             Boolean mask of boundary points
         """
-        # Use geometry's boundary detection if available
-        if hasattr(self.geometry, "is_on_boundary"):
-            return self.geometry.is_on_boundary(points, tolerance=self._boundary_tolerance)
-
-        # Fallback: use SDF with tolerance
-        if hasattr(self.geometry, "sdf"):
-            sdf_values = self.geometry.sdf(points)
-            return np.abs(sdf_values) < self._boundary_tolerance
-
-        # Last resort: assume no boundary points
-        return np.zeros(len(points), dtype=bool)
+        # is_on_boundary is GeometryProtocol-guaranteed (protocol.py:208)
+        return self.geometry.is_on_boundary(points, tolerance=self._boundary_tolerance)
 
     def _compute_boundary_normals(self, boundary_points: NDArray[np.floating]) -> NDArray[np.floating]:
         """
@@ -193,41 +180,8 @@ class ImplicitApplicator(BaseBCApplicator):
         Returns:
             Unit normal vectors (M, dim)
         """
-        # Use geometry's normal computation if available
-        if hasattr(self.geometry, "get_boundary_normal"):
-            return self.geometry.get_boundary_normal(boundary_points)
-
-        # Fallback: numerical gradient of SDF
-        if hasattr(self.geometry, "sdf"):
-            return self._numerical_sdf_gradient(boundary_points)
-
-        # Last resort: zeros (no normal information)
-        return np.zeros_like(boundary_points)
-
-    def _numerical_sdf_gradient(
-        self,
-        points: NDArray[np.floating],
-        eps: float = 1e-6,
-    ) -> NDArray[np.floating]:
-        """
-        Compute outward unit normal via SDF gradient.
-
-        Args:
-            points: Coordinates (M, dim)
-            eps: Finite difference step
-
-        Returns:
-            Normalized gradient (outward normal)
-
-        Note:
-            Issue #662: Delegated to canonical implementation in
-            operators/differential/function_gradient.py
-        """
-        from mfg_pde.operators.differential.function_gradient import (
-            outward_normal_from_sdf,
-        )
-
-        return outward_normal_from_sdf(self.geometry.sdf, points, eps=eps)
+        # get_boundary_normal is GeometryProtocol-guaranteed (protocol.py:230)
+        return self.geometry.get_boundary_normal(boundary_points)
 
     def _resolve_bc_value(
         self,
@@ -552,22 +506,72 @@ if __name__ == "__main__":
     center = np.array([0.5, 0.5])
     radius = 0.4
 
+    from mfg_pde.geometry.protocol import GeometryType
+
     class CircleDomain:
-        """Simple circular domain for testing."""
+        """Simple circular domain implementing GeometryProtocol for testing."""
 
         dimension = 2
-        bounds = np.array([[0.0, 1.0], [0.0, 1.0]])
+        geometry_type = GeometryType.IMPLICIT
+        num_spatial_points = 441  # 21x21 grid
 
-        def sdf(self, points: NDArray) -> NDArray:
+        def sdf(self, points):
             return np.linalg.norm(points - center, axis=-1) - radius
 
-        def is_on_boundary(self, points: NDArray, tolerance: float = 1e-10) -> NDArray:
+        def is_on_boundary(self, points, tolerance=1e-10):
             return np.abs(self.sdf(points)) < tolerance
 
-        def get_boundary_normal(self, points: NDArray) -> NDArray:
+        def get_boundary_normal(self, points):
             diff = points - center
             norms = np.linalg.norm(diff, axis=-1, keepdims=True)
             return diff / np.maximum(norms, 1e-10)
+
+        def get_bounds(self):
+            return np.array([0.0, 0.0]), np.array([1.0, 1.0])
+
+        def get_collocation_points(self):
+            x = np.linspace(0, 1, 21)
+            y = np.linspace(0, 1, 21)
+            xx, yy = np.meshgrid(x, y)
+            return np.column_stack([xx.ravel(), yy.ravel()])
+
+        def get_spatial_grid(self):
+            return self.get_collocation_points()
+
+        def get_grid_shape(self):
+            return (21, 21)
+
+        def get_problem_config(self):
+            return {"num_spatial_points": 441, "spatial_shape": (21, 21)}
+
+        def get_boundary_conditions(self):
+            return None
+
+        def get_boundary_regions(self):
+            return {"all": {}}
+
+        def get_boundary_indices(self, points, tolerance=1e-10):
+            return np.where(self.is_on_boundary(points, tolerance))[0]
+
+        def get_boundary_info(self, points, tolerance=1e-10):
+            indices = self.get_boundary_indices(points, tolerance)
+            if len(indices) == 0:
+                return indices, np.array([], dtype=np.float64).reshape(0, 2)
+            normals = self.get_boundary_normal(points[indices])
+            return indices, normals
+
+        def project_to_boundary(self, points):
+            diff = points - center
+            norms = np.linalg.norm(diff, axis=-1, keepdims=True)
+            return center + diff / np.maximum(norms, 1e-10) * radius
+
+        def project_to_interior(self, points):
+            sdf_vals = self.sdf(points)
+            outside = sdf_vals > 0
+            result = points.copy()
+            if np.any(outside):
+                result[outside] = self.project_to_boundary(points[outside])
+            return result
 
     # Create grid of points
     x = np.linspace(0, 1, 21)
