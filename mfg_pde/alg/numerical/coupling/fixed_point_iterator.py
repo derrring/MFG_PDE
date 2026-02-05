@@ -95,6 +95,9 @@ class FixedPointIterator(BaseMFGSolver):
         backend: str | None = None,
         diffusion_field: float | np.ndarray | Any | None = None,  # Phase 2.3
         drift_field: np.ndarray | Any | None = None,  # Phase 2.3
+        adaptive_damping: bool = False,  # Issue #583: Adaptive Picard damping
+        adaptive_damping_decay: float = 0.5,  # Damping reduction on oscillation
+        adaptive_damping_min: float = 0.05,  # Minimum damping bound
     ):
         """
         Args:
@@ -126,6 +129,11 @@ class FixedPointIterator(BaseMFGSolver):
         # Issue #719: Per-variable damping support
         self.damping_factor = damping_factor
         self.damping_factor_M = damping_factor_M  # None = use damping_factor for both
+
+        # Issue #583: Adaptive Picard damping
+        self.adaptive_damping = adaptive_damping
+        self.adaptive_damping_decay = adaptive_damping_decay
+        self.adaptive_damping_min = adaptive_damping_min
 
         # State arrays (initialized in solve)
         self.U: np.ndarray | None = None
@@ -365,6 +373,13 @@ class FixedPointIterator(BaseMFGSolver):
         self.l2distm_rel = np.ones(final_max_iterations)
         self.iterations_run = 0
 
+        # Issue #583: Adaptive damping state
+        _error_history_U: list[float] = []
+        _error_history_M: list[float] = []
+        _damping_history: list[dict] = []
+        _theta_U_initial = final_damping_factor
+        _theta_M_initial = final_damping_factor_M if final_damping_factor_M is not None else final_damping_factor
+
         # Reset Anderson accelerator if using it
         if self.anderson_accelerator is not None:
             self.anderson_accelerator.reset()
@@ -533,6 +548,39 @@ class FixedPointIterator(BaseMFGSolver):
                     time=f"{iter_time:.1f}s",
                 )
 
+                # Issue #583: Adaptive damping — adjust based on error behavior
+                _error_history_U.append(self.l2distu_rel[iiter])
+                _error_history_M.append(self.l2distm_rel[iiter])
+
+                if self.adaptive_damping and iiter >= 1:
+                    from .fixed_point_utils import adapt_damping
+
+                    final_damping_factor, theta_M_adapted, warning_msg = adapt_damping(
+                        theta_U=final_damping_factor,
+                        theta_M=theta_M,
+                        error_history_U=_error_history_U,
+                        error_history_M=_error_history_M,
+                        theta_U_initial=_theta_U_initial,
+                        theta_M_initial=_theta_M_initial,
+                        decay=self.adaptive_damping_decay,
+                        min_damping=self.adaptive_damping_min,
+                    )
+                    # Update theta_M for next iteration
+                    if final_damping_factor_M is not None:
+                        final_damping_factor_M = theta_M_adapted
+                    # else: theta_M follows final_damping_factor via damping line
+
+                    if warning_msg:
+                        logger.warning(warning_msg)
+
+                    _damping_history.append(
+                        {
+                            "iteration": iiter + 1,
+                            "theta_U": final_damping_factor,
+                            "theta_M": theta_M_adapted,
+                        }
+                    )
+
                 # Issue #614: Invoke user callback if provided
                 if iteration_callback is not None:
                     should_continue = iteration_callback(
@@ -560,12 +608,20 @@ class FixedPointIterator(BaseMFGSolver):
                     break
 
         # Build metadata
-        metadata = {
+        metadata: dict[str, Any] = {
             "convergence_reason": convergence_reason,
             "l2distu_rel": self.l2distu_rel[: self.iterations_run],
             "l2distm_rel": self.l2distm_rel[: self.iterations_run],
             "anderson_used": self.use_anderson,
         }
+
+        if self.adaptive_damping:
+            metadata["adaptive_damping"] = {
+                "enabled": True,
+                "damping_history": _damping_history,
+                "final_theta_U": final_damping_factor,
+                "final_theta_M": theta_M,
+            }
 
         # Issue #688: Validate final solver output
         from mfg_pde.utils.validation.runtime import validate_solver_output

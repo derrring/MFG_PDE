@@ -1,8 +1,8 @@
 # Issue #583: HJB Semi-Lagrangian Cubic Interpolation Investigation
 
-**Status**: Root cause identified, partial fix implemented, requires further debugging
+**Status**: Adaptive Picard damping implemented (primary fix). Cubic interpolation XFAIL tests remain.
 **Priority**: Low
-**Date**: 2026-01-18
+**Date**: 2026-02-06 (updated)
 
 ---
 
@@ -132,18 +132,38 @@ if method == "cubic":
 
 ---
 
+## Adaptive Picard Damping (2026-02-06)
+
+**Primary fix implemented**: `adapt_damping()` in `fixed_point_utils.py` detects error oscillation
+and dynamically reduces damping factors. This addresses the root cause — gradient amplification
+during Picard iteration — rather than symptom treatment (gradient clipping).
+
+**Usage**: `FixedPointIterator(..., adaptive_damping=True)`
+
+**Key design decisions**:
+- Pure function (no state class) — operates on error history lists
+- U and M adapted independently (U gradient explosion is the primary pathology)
+- Cautious recovery: after `stable_window` decreasing iterations, slowly increase damping
+- Recovery never exceeds initial damping factor
+
+**Files added/modified**:
+- `mfg_pde/alg/numerical/coupling/fixed_point_utils.py` — `adapt_damping()` function
+- `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py` — integration + parameters
+- `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py` — warning text update
+- `tests/unit/test_alg/test_adaptive_damping.py` — 8 unit tests
+
+**Gradient clipping**: Warning now explicitly states it is a "SAFETY NET, not a solution"
+and directs users to `adaptive_damping=True`.
+
 ## Recommendation
 
-**Short Term** (for v0.17.x):
-- Document PCHIP fix as partial solution
-- Keep tests as `@pytest.mark.xfail` until fully resolved
-- Note in release notes that cubic interpolation has known issues
+**Cubic interpolation XFAIL tests remain**: These test standalone HJB solve (not Picard coupling),
+so adaptive damping does not apply. The PCHIP fix is partial.
 
-**Long Term** (for v0.18.0+):
-1. **Deep dive**: Trace solver execution to find why PCHIP doesn't resolve overflow
-2. **Consider**: Default to linear interpolation for Semi-Lagrangian HJB
-3. **Alternative**: Implement adaptive interpolation (linear near discontinuities, cubic in smooth regions)
-4. **Research**: Review Semi-Lagrangian literature for standard practice
+**Remaining work**:
+1. **Consider**: Default to linear interpolation for Semi-Lagrangian HJB
+2. **Alternative**: Implement adaptive interpolation (linear near discontinuities, cubic in smooth regions)
+3. **Research**: Review Semi-Lagrangian literature for standard practice
 
 ---
 
@@ -167,6 +187,6 @@ All cubic interpolation tests remain `@pytest.mark.xfail`:
 
 ---
 
-**Last Updated**: 2026-01-18
-**Investigation Time**: ~3 hours
-**Status**: Requires additional debugging beyond priority: low scope
+**Last Updated**: 2026-02-06
+**Investigation Time**: ~3 hours (initial) + adaptive damping implementation
+**Status**: Adaptive Picard damping implemented. Cubic interpolation XFAIL tests remain (out of scope).

@@ -236,6 +236,76 @@ def preserve_initial_condition(
     return M
 
 
+def adapt_damping(
+    theta_U: float,
+    theta_M: float,
+    error_history_U: list[float],
+    error_history_M: list[float],
+    *,
+    theta_U_initial: float,
+    theta_M_initial: float,
+    decay: float = 0.5,
+    min_damping: float = 0.05,
+    increase_threshold: float = 1.2,
+    recovery_rate: float = 1.05,
+    stable_window: int = 3,
+) -> tuple[float, float, str | None]:
+    """
+    Adapt Picard damping factors based on error history (Issue #583).
+
+    Detects oscillation (error increasing) and reduces damping to stabilize.
+    After sustained convergence, cautiously recovers toward initial damping.
+
+    U and M are adapted independently since U gradient explosion is the
+    primary pathology in strongly-coupled MFG systems.
+
+    Args:
+        theta_U: Current damping factor for U.
+        theta_M: Current damping factor for M.
+        error_history_U: Relative L2 error history for U (all iterations so far).
+        error_history_M: Relative L2 error history for M (all iterations so far).
+        theta_U_initial: Initial damping factor for U (recovery ceiling).
+        theta_M_initial: Initial damping factor for M (recovery ceiling).
+        decay: Multiplicative decay on oscillation (e.g., 0.5 halves damping).
+        min_damping: Minimum damping bound (prevents stalling).
+        increase_threshold: Error ratio above which oscillation is detected.
+        recovery_rate: Multiplicative increase during stable convergence.
+        stable_window: Consecutive decreasing iterations required for recovery.
+
+    Returns:
+        (theta_U, theta_M, warning_msg): Updated damping factors and optional
+        warning message (None if no oscillation detected).
+    """
+    warning_msg = None
+
+    # Need at least 2 data points to detect oscillation
+    if len(error_history_U) < 2:
+        return theta_U, theta_M, None
+
+    # --- Adapt U ---
+    ratio_U = error_history_U[-1] / error_history_U[-2] if error_history_U[-2] > 0 else 1.0
+    if ratio_U > increase_threshold:
+        theta_U = max(theta_U * decay, min_damping)
+        warning_msg = f"Adaptive damping: U error increased by {ratio_U:.2f}x. Reduced theta_U to {theta_U:.4f}."
+    elif len(error_history_U) >= stable_window and all(
+        error_history_U[-(i + 1)] < error_history_U[-(i + 2)] for i in range(stable_window - 1)
+    ):
+        theta_U = min(theta_U * recovery_rate, theta_U_initial)
+
+    # --- Adapt M ---
+    ratio_M = error_history_M[-1] / error_history_M[-2] if error_history_M[-2] > 0 else 1.0
+    if ratio_M > increase_threshold:
+        theta_M = max(theta_M * decay, min_damping)
+        msg_M = f"Adaptive damping: M error increased by {ratio_M:.2f}x. Reduced theta_M to {theta_M:.4f}."
+        warning_msg = f"{warning_msg} {msg_M}" if warning_msg else msg_M
+    elif len(error_history_M) >= stable_window and all(
+        error_history_M[-(i + 1)] < error_history_M[-(i + 2)] for i in range(stable_window - 1)
+    ):
+        theta_M = min(theta_M * recovery_rate, theta_M_initial)
+
+    return theta_U, theta_M, warning_msg
+
+
 def preserve_terminal_condition(
     U: np.ndarray,
     U_terminal: np.ndarray,
