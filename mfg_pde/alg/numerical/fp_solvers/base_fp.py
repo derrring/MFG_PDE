@@ -155,9 +155,11 @@ class BaseFPSolver(BaseNumericalSolver):
         self,
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
-        diffusion_field: float | np.ndarray | Callable | None = None,
+        volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
+        # Deprecated parameter (Issue #717)
+        diffusion_field: float | np.ndarray | Callable | None = None,
     ) -> np.ndarray:
         """
         Solves the full Fokker-Planck (FP) system forward in time.
@@ -186,13 +188,18 @@ class BaseFPSolver(BaseNumericalSolver):
               Shape: (Nt, Nx) for 1D scalar, (Nt, Nx, d) for d-dim vector
             - Callable: Function α(t, x, m) -> drift
 
-        Diffusion Specification:
-            diffusion_field can be:
+        Volatility Specification (Issue #717 unified API):
+            volatility_field can be:
             - None: Use problem.sigma (backward compatible)
-            - float: Constant isotropic diffusion D = σ²/2
-            - np.ndarray: Spatially varying diffusion D(t,x)
+            - float: Constant isotropic volatility σ (converted to D = σ²/2)
+            - np.ndarray: Spatially varying volatility σ(t,x)
               Shape: (Nt, Nx) for scalar, (Nt, Nx, d, d) for tensor
-            - Callable: Function D(t, x, m) -> diffusion
+            - Callable: Function σ(t, x, m) -> volatility
+
+            Note: volatility_field is the SDE noise coefficient σ. Internally
+            converted to diffusion D = σ²/2 for the FP equation.
+
+            DEPRECATED: diffusion_field is deprecated. Use volatility_field instead.
 
         Args:
             m_initial_condition: Initial density M(0,x) at t=0
@@ -204,12 +211,14 @@ class BaseFPSolver(BaseNumericalSolver):
                 - Callable: Function α(t, x, m) -> drift
                 Default: None
 
-            diffusion_field: Diffusion specification (optional):
+            volatility_field: Volatility specification (optional, Issue #717):
                 - None: Use problem.sigma
-                - float: Constant isotropic diffusion
-                - np.ndarray: Spatially varying diffusion
-                - Callable: Function D(t, x, m) -> diffusion
+                - float: Constant isotropic volatility σ
+                - np.ndarray: Spatially varying volatility
+                - Callable: Function σ(t, x, m) -> volatility
                 Default: None
+
+            diffusion_field: DEPRECATED. Use volatility_field instead.
 
             show_progress: Display progress bar for timesteps
                 Default: True

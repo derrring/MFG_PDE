@@ -185,10 +185,11 @@ class FPSLSolver(BaseFPSolver):
         self,
         M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
-        diffusion_field: float | np.ndarray | Callable | None = None,
+        volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
-        # Deprecated parameter name
+        # Deprecated parameters
         m_initial_condition: np.ndarray | None = None,
+        diffusion_field: float | np.ndarray | Callable | None = None,
     ) -> np.ndarray:
         """
         Solve FP system forward in time using Semi-Lagrangian method.
@@ -204,9 +205,11 @@ class FPSLSolver(BaseFPSolver):
             drift_field: Drift field (value function U from HJB).
                 - np.ndarray: Shape (Nt+1, Nx) - U values at each time step
                   The drift velocity is computed as alpha = -grad(U)
-            diffusion_field: Optional diffusion coefficient override.
+            volatility_field: Optional volatility coefficient σ (SDE noise) override.
                 - None: Use problem.sigma
-                - float: Constant diffusion
+                - float: Constant volatility
+                Note: Internally converted to diffusion D = σ²/2 for FP equation.
+            diffusion_field: DEPRECATED. Use volatility_field instead.
             show_progress: Show progress bar during solve
 
         Returns:
@@ -241,13 +244,28 @@ class FPSLSolver(BaseFPSolver):
         if callable(drift_field):
             raise NotImplementedError("Callable drift_field not yet supported for FPSLSolver")
 
-        # Handle diffusion
-        if diffusion_field is None:
+        # Handle deprecated diffusion_field parameter (Issue #717)
+        if diffusion_field is not None:
+            if volatility_field is not None:
+                raise ValueError(
+                    "Cannot specify both volatility_field and diffusion_field. "
+                    "Use volatility_field (diffusion_field is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
+                "Note: volatility_field expects σ (SDE noise), same as diffusion_field did.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            volatility_field = diffusion_field
+
+        # Handle volatility (Issue #717: unified API)
+        if volatility_field is None:
             sigma = self.problem.sigma
-        elif isinstance(diffusion_field, (int, float)):
-            sigma = float(diffusion_field)
+        elif isinstance(volatility_field, (int, float)):
+            sigma = float(volatility_field)
         else:
-            raise NotImplementedError("Array/callable diffusion_field not yet supported for FPSLSolver")
+            raise NotImplementedError("Array/callable volatility_field not yet supported for FPSLSolver")
 
         # Determine number of time steps from drift_field
         Nt_points = drift_field.shape[0]
