@@ -175,7 +175,7 @@ def _create_sl_pair(
     Create Semi-Lagrangian HJB-FP solver pair.
 
     Discrete duality (Type A): Forward splatting (FP) is transpose of backward
-    interpolation (HJB). Uses FPSLAdjointSolver (forward SL) for proper duality.
+    interpolation (HJB). Uses FPSLSolver (forward SL) for proper duality.
 
     Args:
         problem: MFG problem
@@ -184,13 +184,13 @@ def _create_sl_pair(
         fp_config: FP solver config
 
     Returns:
-        (HJBSemiLagrangianSolver, FPSLAdjointSolver) tuple
+        (HJBSemiLagrangianSolver, FPSLSolver) tuple
 
     Note:
-        For standalone FP problems (no HJB coupling), use FPSLSolver (backward SL).
-        For MFG duality, use FPSLAdjointSolver (forward SL, adjoint of HJB).
+        FPSLSolver (forward SL, splatting) is the adjoint of HJB backward SL.
+        FPSLJacobianSolver (backward SL with Jacobian) is deprecated.
     """
-    from mfg_pde.alg.numerical.fp_solvers import FPSLAdjointSolver
+    from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
     from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 
     # Map scheme to interpolation method
@@ -207,7 +207,7 @@ def _create_sl_pair(
 
     # Create solvers
     hjb_solver = HJBSemiLagrangianSolver(problem, **hjb_config)
-    fp_solver = FPSLAdjointSolver(problem, **fp_config)
+    fp_solver = FPSLSolver(problem, **fp_config)
 
     return hjb_solver, fp_solver
 
