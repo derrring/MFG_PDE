@@ -230,7 +230,7 @@ def timed(func: Callable) -> Callable:
             result = func(*args, **kwargs)
             execution_time = time.time() - start_time
 
-            print(f"🕐 {func.__name__} completed in {execution_time:.3f}s")
+            print(f"{func.__name__} completed in {execution_time:.3f}s")
 
             # Add timing to result if it's a dictionary
             if isinstance(result, dict):
@@ -318,7 +318,7 @@ def cached(
                         },
                         f,
                     )
-                print(f"💾 Cached result for {func.__name__}")
+                print(f"Cached result for {func.__name__}")
             except Exception as e:
                 print(f"WARNING: Failed to cache result: {e}")
 

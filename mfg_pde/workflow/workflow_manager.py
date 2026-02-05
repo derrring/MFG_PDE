@@ -8,7 +8,6 @@ including workflow definition, execution, and lifecycle management.
 from __future__ import annotations
 
 import json
-import logging
 import traceback
 import uuid
 from dataclasses import dataclass, field
@@ -19,21 +18,14 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.utils.mfg_logging import get_logger
+from .common import ExecutionStatus, serialize_value, setup_workflow_logging
 
 if TYPE_CHECKING:
+    import logging
     from collections.abc import Callable
 
-
-class WorkflowStatus(Enum):
-    """Workflow execution status."""
-
-    CREATED = "created"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-    PAUSED = "paused"
+# Backward-compatible alias (Issue #621)
+WorkflowStatus = ExecutionStatus
 
 
 class StepStatus(Enum):
@@ -108,24 +100,7 @@ class WorkflowResult:
 
     def _serialize_outputs(self, outputs: dict[str, Any]) -> dict[str, Any]:
         """Serialize outputs for JSON storage."""
-        serialized = {}
-        for key, value in outputs.items():
-            if isinstance(value, np.ndarray):
-                serialized[key] = {
-                    "type": "numpy_array",
-                    "shape": value.shape,
-                    "dtype": str(value.dtype),
-                    "data_file": f"{key}.npy",  # Store arrays separately
-                }
-            elif hasattr(value, "to_dict"):
-                serialized[key] = value.to_dict()
-            else:
-                try:
-                    json.dumps(value)  # Test if JSON serializable
-                    serialized[key] = value
-                except Exception:
-                    serialized[key] = str(value)  # type: ignore[assignment]
-        return serialized
+        return {key: serialize_value(value, name=key) for key, value in outputs.items()}
 
 
 class Workflow:
@@ -493,28 +468,11 @@ class Workflow:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the workflow."""
-        logger = get_logger(f"mfg_workflow.{self.id}")
-        logger.setLevel(logging.INFO)
-
-        if not logger.handlers:
-            # File handler
-            log_file = self.workflow_dir / "workflow.log"
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(logging.DEBUG)
-
-            # Console handler
-            console_handler = logging.StreamHandler()
-            console_handler.setLevel(logging.INFO)
-
-            # Formatter
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            file_handler.setFormatter(formatter)
-            console_handler.setFormatter(formatter)
-
-            logger.addHandler(file_handler)
-            logger.addHandler(console_handler)
-
-        return logger
+        return setup_workflow_logging(
+            f"mfg_workflow.{self.id}",
+            self.workflow_dir / "workflow.log",
+            console=True,
+        )
 
 
 class WorkflowManager:
@@ -688,22 +646,10 @@ class WorkflowManager:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the workflow manager."""
-        logger = get_logger("mfg_workflow_manager")
-        logger.setLevel(logging.INFO)
-
-        if not logger.handlers:
-            # File handler
-            log_file = self.workspace_path / "workflow_manager.log"
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(logging.DEBUG)
-
-            # Formatter
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            file_handler.setFormatter(formatter)
-
-            logger.addHandler(file_handler)
-
-        return logger
+        return setup_workflow_logging(
+            "mfg_workflow_manager",
+            self.workspace_path / "workflow_manager.log",
+        )
 
 
 # Export main classes

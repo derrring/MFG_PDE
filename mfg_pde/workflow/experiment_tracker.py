@@ -9,32 +9,25 @@ and comparative analysis capabilities.
 from __future__ import annotations
 
 import json
-import logging
 import pickle
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.utils.mfg_logging import get_logger
+from .common import ExecutionStatus, serialize_value, setup_workflow_logging
 
 if TYPE_CHECKING:
+    import logging
+
     from .workflow_manager import Workflow
 
-
-class ExperimentStatus(Enum):
-    """Experiment execution status."""
-
-    CREATED = "created"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+# Backward-compatible alias (Issue #621)
+ExperimentStatus = ExecutionStatus
 
 
 @dataclass
@@ -92,19 +85,7 @@ class ExperimentResult:
 
     def _serialize_value(self, value: Any) -> Any:
         """Serialize result value for storage."""
-        if isinstance(value, np.ndarray):
-            return {
-                "type": "numpy_array",
-                "shape": value.shape,
-                "dtype": str(value.dtype),
-                "data_file": f"result_{self.name}.npy",
-            }
-        elif hasattr(value, "to_dict"):
-            return value.to_dict()
-        elif isinstance(value, (dict, list, str, int, float, bool)):
-            return value
-        else:
-            return str(value)
+        return serialize_value(value, name=self.name)
 
 
 class Experiment:
@@ -577,22 +558,10 @@ class Experiment:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the experiment."""
-        logger = get_logger(f"mfg_experiment.{self.metadata.id}")
-        logger.setLevel(logging.INFO)
-
-        if not logger.handlers:
-            # File handler
-            log_file = self.experiment_dir / "experiment.log"
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(logging.DEBUG)
-
-            # Formatter
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            file_handler.setFormatter(formatter)
-
-            logger.addHandler(file_handler)
-
-        return logger
+        return setup_workflow_logging(
+            f"mfg_experiment.{self.metadata.id}",
+            self.experiment_dir / "experiment.log",
+        )
 
 
 class ExperimentTracker:
@@ -899,22 +868,10 @@ class ExperimentTracker:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for the experiment tracker."""
-        logger = get_logger("mfg_experiment_tracker")
-        logger.setLevel(logging.INFO)
-
-        if not logger.handlers:
-            # File handler
-            log_file = self.workspace_path / "experiment_tracker.log"
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(logging.DEBUG)
-
-            # Formatter
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            file_handler.setFormatter(formatter)
-
-            logger.addHandler(file_handler)
-
-        return logger
+        return setup_workflow_logging(
+            "mfg_experiment_tracker",
+            self.workspace_path / "experiment_tracker.log",
+        )
 
 
 # Export main classes

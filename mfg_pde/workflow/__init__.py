@@ -26,6 +26,7 @@ from __future__ import annotations
 import warnings
 from typing import Any
 
+from .common import ExecutionStatus
 from .decorators import experiment, parameter_study, workflow_step
 from .experiment_tracker import Experiment, ExperimentResult, ExperimentTracker
 from .parameter_sweep import ParameterSweep, SweepConfiguration
@@ -213,6 +214,7 @@ def performance_benchmark_workflow(problem_sizes: list[tuple], solver_types: lis
 
 # Export public API
 __all__ = [
+    "ExecutionStatus",
     "Experiment",
     "ExperimentResult",
     "ExperimentTracker",

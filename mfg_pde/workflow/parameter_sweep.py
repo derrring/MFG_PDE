@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import itertools
 import json
-import logging
 import multiprocessing as mp
 import pickle
 import time
@@ -23,9 +22,10 @@ import pandas as pd
 
 import numpy as np
 
-from mfg_pde.utils.mfg_logging import get_logger
+from .common import setup_workflow_logging
 
 if TYPE_CHECKING:
+    import logging
     from collections.abc import Callable
 
 
@@ -507,31 +507,15 @@ class ParameterSweep:
 
     def _setup_logging(self) -> logging.Logger:
         """Set up logging for parameter sweep."""
-        logger = get_logger("mfg_parameter_sweep")
-        logger.setLevel(logging.INFO)
-
-        if not logger.handlers:
-            # File handler
-            if self.config.output_dir is not None:
-                log_file = self.config.output_dir / "parameter_sweep.log"
-            else:
-                log_file = Path("parameter_sweep.log")
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(logging.DEBUG)
-
-            # Console handler
-            console_handler = logging.StreamHandler()
-            console_handler.setLevel(logging.INFO)
-
-            # Formatter
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            file_handler.setFormatter(formatter)
-            console_handler.setFormatter(formatter)
-
-            logger.addHandler(file_handler)
-            logger.addHandler(console_handler)
-
-        return logger
+        if self.config.output_dir is not None:
+            log_file = self.config.output_dir / "parameter_sweep.log"
+        else:
+            log_file = Path("parameter_sweep.log")
+        return setup_workflow_logging(
+            "mfg_parameter_sweep",
+            log_file,
+            console=True,
+        )
 
 
 def create_grid_sweep(parameters: dict[str, list]) -> ParameterSweep:
