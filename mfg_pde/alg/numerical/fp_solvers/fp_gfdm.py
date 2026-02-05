@@ -380,8 +380,10 @@ class FPGFDMSolver(BaseFPSolver):
         self,
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
-        diffusion_field: float | np.ndarray | Callable | None = None,
+        volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
+        # Deprecated parameter
+        diffusion_field: float | np.ndarray | Callable | None = None,
     ) -> np.ndarray:
         """
         Solve FP system on collocation points using GFDM.
@@ -402,8 +404,10 @@ class FPGFDMSolver(BaseFPSolver):
                     * Custom H: Any function of grad(U)
                 - Callable: Custom drift function α(t, x, m) -> drift_vector
                 Default: None
-            diffusion_field: Diffusion coefficient. If None, uses problem.sigma.
-                            Currently only scalar diffusion supported.
+            volatility_field: Volatility coefficient σ (SDE noise). If None, uses problem.sigma.
+                            Currently only scalar volatility supported.
+                            Note: Internally converted to diffusion D = σ²/2 for FP equation.
+            diffusion_field: DEPRECATED. Use volatility_field instead.
             show_progress: Display progress bar (not yet implemented)
 
         Returns:
@@ -435,13 +439,30 @@ class FPGFDMSolver(BaseFPSolver):
         n_time_points = self.problem.Nt + 1
         dt = self.problem.T / self.problem.Nt
 
-        # Diffusion coefficient
-        if diffusion_field is None:
+        # Handle deprecated diffusion_field parameter (Issue #717)
+        import warnings
+
+        if diffusion_field is not None:
+            if volatility_field is not None:
+                raise ValueError(
+                    "Cannot specify both volatility_field and diffusion_field. "
+                    "Use volatility_field (diffusion_field is deprecated)."
+                )
+            warnings.warn(
+                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
+                "Note: volatility_field expects σ (SDE noise), same as diffusion_field did.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            volatility_field = diffusion_field
+
+        # Volatility coefficient (Issue #717: unified API)
+        if volatility_field is None:
             sigma = self.problem.sigma
-        elif isinstance(diffusion_field, (int, float)):
-            sigma = float(diffusion_field)
+        elif isinstance(volatility_field, (int, float)):
+            sigma = float(volatility_field)
         else:
-            raise NotImplementedError("Only scalar diffusion currently supported")
+            raise NotImplementedError("Only scalar volatility currently supported")
 
         diffusion_coeff = 0.5 * sigma**2
 
@@ -536,12 +557,31 @@ if __name__ == "__main__":
     print("Testing FPGFDMSolver...")
 
     from mfg_pde import MFGProblem
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+    from mfg_pde.core.mfg_problem import MFGComponents
     from mfg_pde.geometry import TensorProductGrid
+    from mfg_pde.geometry.boundary import neumann_bc
+
+    # Minimal components for FP-only testing
+    H = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.0,
+        coupling_dm=lambda m: 0.0,
+    )
+    components = MFGComponents(
+        hamiltonian=H,
+        u_final=lambda x: 0.0,
+        m_initial=lambda x: 1.0,
+    )
 
     # Test 1D problem
     print("\n[1D] Testing 1D GFDM FP solver...")
-    geometry_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
-    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
+    geometry_1d = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[31],
+        boundary_conditions=neumann_bc(dimension=1),
+    )
+    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1, components=components)
 
     # Create 1D collocation points
     points_1d = np.linspace(0, 1, 50).reshape(-1, 1)
@@ -570,13 +610,13 @@ if __name__ == "__main__":
 
     # Test 2D problem
     print("\n[2D] Testing 2D GFDM FP solver...")
-    from mfg_pde.geometry import TensorProductGrid
 
     geometry_2d = TensorProductGrid(
         bounds=[(0.0, 1.0), (0.0, 1.0)],
         Nx_points=[10, 10],
+        boundary_conditions=neumann_bc(dimension=2),
     )
-    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, diffusion=0.1)
+    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, diffusion=0.1, components=components)
 
     # Create 2D scattered points
     np.random.seed(42)
@@ -592,8 +632,8 @@ if __name__ == "__main__":
     m_init_2d = np.exp(-20 * r2)
     m_init_2d = m_init_2d / np.sum(m_init_2d)
 
-    # Zero drift
-    U_drift_2d = np.zeros((problem_2d.Nt + 1, 100))
+    # Zero drift (2D: shape must be (Nt+1, N_colloc, 2))
+    U_drift_2d = np.zeros((problem_2d.Nt + 1, 100, 2))
 
     M_solution_2d = solver_2d.solve_fp_system(m_init_2d, drift_field=U_drift_2d)
 

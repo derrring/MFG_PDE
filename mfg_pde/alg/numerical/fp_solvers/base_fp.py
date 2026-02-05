@@ -155,9 +155,11 @@ class BaseFPSolver(BaseNumericalSolver):
         self,
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
-        diffusion_field: float | np.ndarray | Callable | None = None,
+        volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
+        # Deprecated parameter (Issue #717)
+        diffusion_field: float | np.ndarray | Callable | None = None,
     ) -> np.ndarray:
         """
         Solves the full Fokker-Planck (FP) system forward in time.
@@ -186,13 +188,18 @@ class BaseFPSolver(BaseNumericalSolver):
               Shape: (Nt, Nx) for 1D scalar, (Nt, Nx, d) for d-dim vector
             - Callable: Function α(t, x, m) -> drift
 
-        Diffusion Specification:
-            diffusion_field can be:
+        Volatility Specification (Issue #717 unified API):
+            volatility_field can be:
             - None: Use problem.sigma (backward compatible)
-            - float: Constant isotropic diffusion D = σ²/2
-            - np.ndarray: Spatially varying diffusion D(t,x)
+            - float: Constant isotropic volatility σ (converted to D = σ²/2)
+            - np.ndarray: Spatially varying volatility σ(t,x)
               Shape: (Nt, Nx) for scalar, (Nt, Nx, d, d) for tensor
-            - Callable: Function D(t, x, m) -> diffusion
+            - Callable: Function σ(t, x, m) -> volatility
+
+            Note: volatility_field is the SDE noise coefficient σ. Internally
+            converted to diffusion D = σ²/2 for the FP equation.
+
+            DEPRECATED: diffusion_field is deprecated. Use volatility_field instead.
 
         Args:
             m_initial_condition: Initial density M(0,x) at t=0
@@ -204,12 +211,14 @@ class BaseFPSolver(BaseNumericalSolver):
                 - Callable: Function α(t, x, m) -> drift
                 Default: None
 
-            diffusion_field: Diffusion specification (optional):
+            volatility_field: Volatility specification (optional, Issue #717):
                 - None: Use problem.sigma
-                - float: Constant isotropic diffusion
-                - np.ndarray: Spatially varying diffusion
-                - Callable: Function D(t, x, m) -> diffusion
+                - float: Constant isotropic volatility σ
+                - np.ndarray: Spatially varying volatility
+                - Callable: Function σ(t, x, m) -> volatility
                 Default: None
+
+            diffusion_field: DEPRECATED. Use volatility_field instead.
 
             show_progress: Display progress bar for timesteps
                 Default: True
@@ -275,10 +284,29 @@ if __name__ == "__main__":
 
     # Test that BaseFPSolver is abstract (cannot be instantiated)
     from mfg_pde import MFGProblem
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+    from mfg_pde.core.mfg_problem import MFGComponents
     from mfg_pde.geometry import TensorProductGrid
+    from mfg_pde.geometry.boundary import neumann_bc
 
-    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21])
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1)
+    # Minimal components for testing
+    H = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.0,
+        coupling_dm=lambda m: 0.0,
+    )
+    components = MFGComponents(
+        hamiltonian=H,
+        u_final=lambda x: 0.0,
+        m_initial=lambda x: 1.0,
+    )
+
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[21],
+        boundary_conditions=neumann_bc(dimension=1),
+    )
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1, components=components)
 
     try:
         # This should fail because BaseFPSolver is abstract

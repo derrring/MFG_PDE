@@ -2115,11 +2115,30 @@ if __name__ == "__main__":
     print("Testing FPParticleSolver...")
 
     from mfg_pde import MFGProblem
+    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+    from mfg_pde.core.mfg_problem import MFGComponents
     from mfg_pde.geometry import TensorProductGrid
+    from mfg_pde.geometry.boundary import neumann_bc
+
+    # Minimal components for FP-only testing
+    H = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.0,
+        coupling_dm=lambda m: 0.0,
+    )
+    components = MFGComponents(
+        hamiltonian=H,
+        u_final=lambda x: 0.0,
+        m_initial=lambda x: 1.0,
+    )
 
     # Test 1D problem with particle solver
-    geometry_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
-    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
+    geometry_1d = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[31],
+        boundary_conditions=neumann_bc(dimension=1),
+    )
+    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1, components=components)
     solver = FPParticleSolver(problem, num_particles=1000)
 
     # Test solver initialization
@@ -2147,13 +2166,13 @@ if __name__ == "__main__":
 
     # Test 2D problem with particle solver (nD support)
     print("\nTesting 2D FPParticleSolver...")
-    from mfg_pde.geometry import TensorProductGrid
 
     geometry_2d = TensorProductGrid(
         bounds=[(0.0, 1.0), (0.0, 1.0)],
         Nx_points=[16, 16],
+        boundary_conditions=neumann_bc(dimension=2),
     )
-    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, diffusion=0.1)
+    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, diffusion=0.1, components=components)
 
     solver_2d = FPParticleSolver(problem_2d, num_particles=500, mode="hybrid")
 
@@ -2168,7 +2187,10 @@ if __name__ == "__main__":
     M_init_2d = np.exp(-((X - 0.5) ** 2 + (Y - 0.5) ** 2) / 0.1)
     M_init_2d = M_init_2d / (np.sum(M_init_2d) * (1.0 / 15) ** 2)  # Normalize
 
-    M_solution_2d = solver_2d.solve_fp_system(M_initial=M_init_2d, drift_field=U_test_2d)
+    result_2d = solver_2d.solve_fp_system(M_initial=M_init_2d, drift_field=U_test_2d)
+
+    # 2D may return FPParticleResult, extract M_grid array
+    M_solution_2d = result_2d.M_grid if hasattr(result_2d, "M_grid") else result_2d
 
     expected_shape_2d = (problem_2d.Nt + 1, *tuple(grid_shape_2d))  # Nt+1 for t=0...T
     assert M_solution_2d.shape == expected_shape_2d, f"Shape mismatch: {M_solution_2d.shape} vs {expected_shape_2d}"
