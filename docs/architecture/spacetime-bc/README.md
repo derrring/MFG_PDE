@@ -2,7 +2,7 @@
 
 **Status**: DRAFT DISCUSSION
 **Created**: 2026-02-05
-**Specs**: MFG-SPEC-ST-0.8, MFG-SPEC-BC-0.2, MFG-SPEC-ADD-01
+**Specs**: MFG-SPEC-ST-0.8, MFG-SPEC-BC-0.2, MFG-SPEC-ADD-01, MFG-SPEC-TI-0.1, MFG-SPEC-OP-0.1, MFG-SPEC-LS-0.1
 
 ---
 
@@ -43,6 +43,9 @@ See `MIGRATION_PLAN.md` for full phasing.
 | `SPEC_SPACETIME_SOLVERS.md` | MFG-SPEC-ST-0.8: Space-time cylinder, TrajectorySolver, StoragePolicy | 20 min |
 | `SPEC_COMPOSITIONAL_BC.md` | MFG-SPEC-BC-0.2: 4-axis BC framework + GKS/Lopatinskii-Shapiro | 20 min |
 | `SPEC_PERIODIC_IMPLICIT.md` | MFG-SPEC-ADD-01: Periodic BCs on implicit geometries | 10 min |
+| `SPEC_TIME_INTEGRATION.md` | MFG-SPEC-TI-0.1: StepOperator, TimeIntegrator, scheme traits | 15 min |
+| `SPEC_OPERATOR_SYSTEM.md` | MFG-SPEC-OP-0.1: PDEOperator algebra, OperatorTraits, composition | 15 min |
+| `SPEC_LINEAR_SOLVER.md` | MFG-SPEC-LS-0.1: LinearSolverTraits, auto-selection, preconditioning | 15 min |
 | `MIGRATION_PLAN.md` | Phased approach: what to build, when, and why | 10 min |
 
 ## 4. Related Issues

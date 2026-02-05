@@ -192,30 +192,45 @@ When geometry is dynamically deforming:
 
 ---
 
-## 8. Extension Specs (Documented, Deferred)
+## 8. Extension Specs
 
-### 8.1 Time Integrator Traits
+Each of the following subsystems has been expanded into a dedicated design
+document with current-state analysis, proposed trait system, and migration path.
 
-Atomic traits: SchemeType (Explicit/Implicit/IMEX), Order, Storage (Standard/LowStorage),
-Adaptivity (Fixed/PID). Generates: RK4, LSERK4, Crank-Nicolson, SSP-RK.
+### 8.1 Time Integration System → `SPEC_TIME_INTEGRATION.md`
 
-> Deferred: MFG has fixed time structure. Revisit if multi-physics coupling introduced.
+**Document ID**: MFG-SPEC-TI-0.1 | **Status**: Deferred
 
-### 8.2 Operator System Traits
+Covers: `StepOperator` protocol, `TimeIntegrator` driver, scheme traits
+(SchemeType, TemporalOrder, StorageClass, AdaptivityMode). Maps current
+HJB backward Euler + Newton and FP implicit/explicit schemes to the
+proposed trait system.
 
-Atomic traits: DifferentialType (Gradient/Divergence/Curl/Laplacian), StencilWidth,
-Conservation (Conservative/NonConservative), Upwinding (Central/Upwind/WENO).
+> Deferred: MFG has fixed time structure (HJB backward, FP forward).
+> Phase A (annotate) is low effort; Phase B (extract StepOperator) is medium.
+
+### 8.2 Operator System → `SPEC_OPERATOR_SYSTEM.md`
+
+**Document ID**: MFG-SPEC-OP-0.1 | **Status**: Phase 4 (parallel track)
+
+Covers: `PDEOperator` base class with operator algebra (`+`, `*`, `@`),
+`OperatorTraits` metadata (DifferentialType, StencilWidth, Conservation,
+UpwindScheme), `CompositeOperator` for lazy composition, and `to_sparse()`
+export. Maps all 8 current operators to the trait system.
 
 > Partially implemented via `SupportsLaplacian`, `SupportsGradient` protocols.
-> See Issue #658 for operator cleanup plan.
+> Issue #658 Phases 0-2 complete; Phases 3+ deferred.
 
-### 8.3 Linear Solver Traits
+### 8.3 Linear Solver System → `SPEC_LINEAR_SOLVER.md`
 
-Atomic traits: Structure (Symmetric/Skew/SPD), Coupling (Segregated/BlockCoupled),
-Origin (Laplacian/Advection/Elasticity). Factory auto-selects CG+AMG for SPD,
-GMRES+ILU for non-symmetric.
+**Document ID**: MFG-SPEC-LS-0.1 | **Status**: Deferred
 
-> Deferred: `scipy.sparse.spsolve` is not the bottleneck for current problem sizes.
+Covers: `LinearSolverTraits` (MatrixStructure, MatrixCoupling, MatrixOrigin),
+`select_solver()` auto-selection, operator-to-traits inference. Analyzes
+all 5 linear solve sites in the codebase and their matrix properties.
+
+> Deferred: `scipy.sparse.spsolve` is not the bottleneck for current
+> problem sizes (1D-2D, $N < 10^4$). Becomes relevant for 3D ($N > 10^5$).
 
 ---
 

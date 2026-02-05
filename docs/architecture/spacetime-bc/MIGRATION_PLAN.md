@@ -179,16 +179,9 @@ This provides the new interface without refactoring solver internals.
 
 ### 3c. Extract StepOperator (optional, if needed)
 
-Only if concrete use case demands pluggable time integration:
-
-```python
-class StepOperator(Protocol):
-    """Single time-step operator: u^{n+1} = Step(u^n)."""
-
-    def step(self, u_current: NDArray, t: float, dt: float,
-             coupling: NDArray | None = None) -> NDArray:
-        ...
-```
+Only if concrete use case demands pluggable time integration.
+See `SPEC_TIME_INTEGRATION.md` (MFG-SPEC-TI-0.1) for the full design:
+StepOperator protocol, TimeIntegrator driver, scheme traits, and migration path.
 
 This requires separating spatial operator, BC enforcement, and time loop
 in every solver. High effort, uncertain payoff for MFG.
@@ -198,9 +191,12 @@ in every solver. High effort, uncertain payoff for MFG.
 ## Phase 4: Operator Cleanup (v0.19.x)
 
 **Effort**: Medium | **Issues**: #658
+**Full Design**: `SPEC_OPERATOR_SYSTEM.md` (MFG-SPEC-OP-0.1)
 
 Unify the operator interface. This is independent of the space-time work
-and can proceed in parallel.
+and can proceed in parallel. The full design document covers PDEOperator
+base class, OperatorTraits metadata, CompositeOperator algebra, and
+migration from current 8 operators.
 
 ### Goals
 
@@ -208,6 +204,7 @@ and can proceed in parallel.
 2. Operator algebra: `L1 + L2`, `alpha * L`, `L1 @ L2`
 3. Geometry queries capabilities via existing `Supports*` protocols
 4. BC-aware operator construction (operator encapsulates BC enforcement)
+5. `OperatorTraits` metadata (DifferentialType, StencilWidth, Conservation)
 
 ### Non-Goals (for MFG)
 
@@ -226,8 +223,8 @@ and can proceed in parallel.
 | GKS / SBP-SAT formal infrastructure | First-order MFG is hyperbolic but already handled via Godunov/WENO | When formal energy-stability proofs needed beyond upwinding |
 | Parareal | Parallel-in-time is extremely ambitious | Never (different project scope) |
 | ALE (moving mesh) | No moving domain use case in MFG | If crowd models on deforming domains emerge |
-| Time Integrator Traits | MFG has fixed time structure (HJB backward, FP forward) | If multi-physics coupling introduced |
-| Linear Solver Traits | scipy.sparse.spsolve is not the bottleneck | When problems exceed 10^5 spatial DOFs |
+| Time Integrator Traits | MFG has fixed time structure (HJB backward, FP forward). See `SPEC_TIME_INTEGRATION.md` | If multi-physics coupling introduced |
+| Linear Solver Traits | scipy.sparse.spsolve is not the bottleneck. See `SPEC_LINEAR_SOLVER.md` | When problems exceed 10^5 spatial DOFs |
 | TPMS/Sphere periodicity | Materials science, not MFG | Never (wrong project) |
 
 ---
