@@ -50,9 +50,12 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-class FPSLAdjointSolver(BaseFPSolver):
+class FPSLSolver(BaseFPSolver):
     """
-    Adjoint (Forward) Semi-Lagrangian solver for Fokker-Planck equations.
+    Forward Semi-Lagrangian solver for Fokker-Planck equations.
+
+    This is the recommended FP solver for use with HJB Semi-Lagrangian solvers,
+    as it provides discrete adjoint consistency (Issue #710).
 
     The Forward SL method asks "Where does mass go?" and scatters (splats) mass
     to destination cells. This is the adjoint of the Backward SL interpolation
@@ -79,6 +82,10 @@ class FPSLAdjointSolver(BaseFPSolver):
     Dimension support:
         - 1D: Full support with linear/cubic/quintic splatting
         - nD: Full support with linear splatting + ADI diffusion
+
+    .. versionchanged:: 0.17.6
+        Renamed from ``FPSLAdjointSolver`` to ``FPSLSolver`` (Issue #710).
+        The old name is still available as a deprecated alias.
     """
 
     # Scheme family trait for duality validation (Issue #580)
@@ -173,7 +180,7 @@ class FPSLAdjointSolver(BaseFPSolver):
             self.Nx = None
 
             logger.info(
-                f"FPSLAdjointSolver initialized for {self.dimension}D: shape={self.grid_shape}, spacing={self.spacing}"
+                f"FPSLSolver initialized for {self.dimension}D: shape={self.grid_shape}, spacing={self.spacing}"
             )
 
         # Boundary conditions
@@ -594,7 +601,7 @@ if __name__ == "__main__":
 
     # Test 1: Solver initialization
     print("\n1. Testing solver initialization...")
-    solver = FPSLAdjointSolver(problem)
+    solver = FPSLSolver(problem)
     assert solver.dimension == 1
     assert solver.fp_method_name == "Adjoint Semi-Lagrangian"
     print("   Initialization: OK")
@@ -646,11 +653,14 @@ if __name__ == "__main__":
     print("   Mass conservation: OK (error < 1e-10)")
 
     # Test 4: Compare with Backward SL
-    print("\n4. Comparing with Backward SL...")
+    print("\n4. Comparing with Backward SL (deprecated FPSLJacobianSolver)...")
+    import warnings
 
-    from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
+    from mfg_pde.alg.numerical.fp_solvers import FPSLJacobianSolver
 
-    backward_solver = FPSLSolver(problem)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        backward_solver = FPSLJacobianSolver(problem)
     M_backward = backward_solver.solve_fp_system(M_initial=m_uniform.copy(), drift_field=U_well, show_progress=False)
 
     m_backward_final = M_backward[-1, :]
@@ -693,7 +703,7 @@ if __name__ == "__main__":
         components=components_2d,
     )
 
-    solver_2d = FPSLAdjointSolver(problem_2d)
+    solver_2d = FPSLSolver(problem_2d)
     print(f"   Dimension: {solver_2d.dimension}")
     print(f"   Grid shape: {solver_2d.grid_shape}")
     print(f"   Spacing: {solver_2d.spacing}")
@@ -743,3 +753,36 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 60)
     print("All smoke tests passed!")
+
+
+# =============================================================================
+# BACKWARD COMPATIBILITY ALIASES
+# =============================================================================
+
+
+def _deprecated_alias_factory(new_cls, old_name: str, new_name: str):
+    """Create a deprecated alias class that warns on instantiation."""
+    import warnings
+
+    class DeprecatedAlias(new_cls):
+        def __init__(self, *args, **kwargs):
+            warnings.warn(
+                f"{old_name} is deprecated since v0.17.6. Use {new_name} instead. {old_name} will be removed in v1.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            super().__init__(*args, **kwargs)
+
+    DeprecatedAlias.__name__ = old_name
+    DeprecatedAlias.__qualname__ = old_name
+    DeprecatedAlias.__doc__ = f"""
+    DEPRECATED: Use :class:`{new_name}` instead.
+
+    .. deprecated:: 0.17.6
+        {old_name} has been renamed to {new_name} (Issue #710).
+    """
+    return DeprecatedAlias
+
+
+# Backward compatibility: FPSLAdjointSolver -> FPSLSolver
+FPSLAdjointSolver = _deprecated_alias_factory(FPSLSolver, "FPSLAdjointSolver", "FPSLSolver")

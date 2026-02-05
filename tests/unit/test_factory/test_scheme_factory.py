@@ -112,11 +112,11 @@ class TestCreatePairedSolversSL:
         hjb, fp = create_paired_solvers(problem, NumericalScheme.SL_LINEAR)
 
         # Check solver types
-        from mfg_pde.alg.numerical.fp_solvers import FPSLAdjointSolver
+        from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
         from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 
         assert isinstance(hjb, HJBSemiLagrangianSolver)
-        assert isinstance(fp, FPSLAdjointSolver)  # Forward SL, not backward
+        assert isinstance(fp, FPSLSolver)  # Forward SL, not backward
 
         # Check duality
         result = check_solver_duality(hjb, fp)
@@ -140,25 +140,25 @@ class TestCreatePairedSolversSL:
         hjb, fp = create_paired_solvers(problem, NumericalScheme.SL_CUBIC)
 
         # Check solver types
-        from mfg_pde.alg.numerical.fp_solvers import FPSLAdjointSolver
+        from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
         from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 
         assert isinstance(hjb, HJBSemiLagrangianSolver)
-        assert isinstance(fp, FPSLAdjointSolver)
+        assert isinstance(fp, FPSLSolver)
 
         # Check interpolation
         assert hjb.interpolation_method == "cubic"
 
     def test_sl_uses_adjoint_solver_not_backward(self):
-        """Test that SL pairing uses FPSLAdjointSolver for duality."""
+        """Test that SL pairing uses FPSLSolver (forward SL) for duality."""
         problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
 
         _, fp = create_paired_solvers(problem, NumericalScheme.SL_LINEAR)
 
-        # Must be FPSLAdjointSolver (forward splatting), not FPSLSolver (backward interpolation)
-        from mfg_pde.alg.numerical.fp_solvers import FPSLAdjointSolver
+        # Must be FPSLSolver (forward splatting), not FPSLJacobianSolver (backward interpolation)
+        from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
 
-        assert isinstance(fp, FPSLAdjointSolver)
+        assert isinstance(fp, FPSLSolver)
         assert fp.fp_method_name == "Adjoint Semi-Lagrangian"
 
 

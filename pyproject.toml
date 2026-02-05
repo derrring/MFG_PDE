@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.17.5"  # v0.17.5: Unified volatility API across all FP solvers - Issue #717
+version = "0.17.6"  # v0.17.6: Simplified SL solver naming - FPSLSolver is forward SL - Issue #710
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

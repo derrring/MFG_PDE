@@ -271,20 +271,18 @@ class TestFPSolverTraits:
         assert FPFDMSolver._scheme_family == SchemeFamily.FDM
 
     def test_fp_sl_has_sl_trait(self):
-        """Test that FPSLSolver has SL scheme family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLSolver
+        """Test that FPSLSolver (forward SL) has SL scheme family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
 
         assert hasattr(FPSLSolver, "_scheme_family")
         assert FPSLSolver._scheme_family == SchemeFamily.SL
 
-    def test_fp_sl_adjoint_has_sl_trait(self):
-        """Test that FPSLAdjointSolver has SL scheme family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import (
-            FPSLAdjointSolver,
-        )
+    def test_fp_sl_jacobian_has_sl_trait(self):
+        """Test that FPSLJacobianSolver (backward SL, deprecated) has SL scheme family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
 
-        assert hasattr(FPSLAdjointSolver, "_scheme_family")
-        assert FPSLAdjointSolver._scheme_family == SchemeFamily.SL
+        assert hasattr(FPSLJacobianSolver, "_scheme_family")
+        assert FPSLJacobianSolver._scheme_family == SchemeFamily.SL
 
     def test_fp_gfdm_has_gfdm_trait(self):
         """Test that FPGFDMSolver has GFDM scheme family."""
@@ -305,15 +303,13 @@ class TestFPSolverTraits:
         from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
         from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
         from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import (
-            FPSLAdjointSolver,
-        )
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
 
         fp_solvers = [
             FPFDMSolver,
             FPSLSolver,
-            FPSLAdjointSolver,
+            FPSLJacobianSolver,
             FPGFDMSolver,
             FPParticleSolver,
         ]
@@ -325,15 +321,13 @@ class TestFPSolverTraits:
             )
 
     def test_fp_sl_variants_both_sl(self):
-        """Test that both SL and SL Adjoint solvers have SL family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import (
-            FPSLAdjointSolver,
-        )
+        """Test that both forward SL and backward SL (Jacobian) solvers have SL family."""
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
 
-        # Both should be SL family (backward and forward variants)
+        # Both should be SL family (forward splatting and backward Jacobian variants)
         assert FPSLSolver._scheme_family == SchemeFamily.SL
-        assert FPSLAdjointSolver._scheme_family == SchemeFamily.SL
+        assert FPSLJacobianSolver._scheme_family == SchemeFamily.SL
 
 
 class TestHJBFPPairing:
@@ -349,7 +343,7 @@ class TestHJBFPPairing:
 
     def test_sl_hjb_fp_match(self):
         """Test that SL HJB and FP solvers have matching families."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLSolver
+        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
         from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
             HJBSemiLagrangianSolver,
         )

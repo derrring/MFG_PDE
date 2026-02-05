@@ -215,7 +215,7 @@ def check_solver_duality(
                 f"  • Violation of MFG equilibrium conditions\n\n"
                 f"Recommendation: Use matching families:\n"
                 f"  • HJBFDMSolver ↔ FPFDMSolver (discrete duality)\n"
-                f"  • HJBSemiLagrangianSolver ↔ FPSLAdjointSolver (discrete duality)\n"
+                f"  • HJBSemiLagrangianSolver ↔ FPSLSolver (discrete duality)\n"
                 f"  • HJBGFDMSolver ↔ FPGFDMSolver (continuous duality, needs renorm)\n"
                 f"{'=' * 70}\n",
                 UserWarning,

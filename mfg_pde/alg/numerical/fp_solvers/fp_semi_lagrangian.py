@@ -55,9 +55,13 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-class FPSLSolver(BaseFPSolver):
+class FPSLJacobianSolver(BaseFPSolver):
     """
-    Semi-Lagrangian solver for Fokker-Planck equations.
+    DEPRECATED: Backward Semi-Lagrangian solver with Jacobian correction.
+
+    .. deprecated:: 0.17.6
+        Use :class:`FPSLSolver` (Forward SL) instead for adjoint consistency
+        with HJB Semi-Lagrangian solvers. This class will be removed in v1.0.
 
     The Semi-Lagrangian method for FP uses backward characteristic tracing
     with Jacobian correction to handle the divergence form properly:
@@ -67,13 +71,13 @@ class FPSLSolver(BaseFPSolver):
     This correction accounts for compression (div < 0, density increases)
     and expansion (div > 0, density decreases) of the flow.
 
+    Note:
+        This backward SL approach is NOT adjoint-consistent with HJB backward SL.
+        For MFG problems requiring discrete duality, use FPSLSolver (Forward SL).
+
     Algorithm (operator splitting):
         1. Advection: Trace characteristics backward, interpolate, apply Jacobian
         2. Diffusion: Crank-Nicolson implicit solve (unconditionally stable)
-
-    Expected convergence:
-        - O(h^2) when paired with SL-HJB and Dt = O(h^{3/2})
-        - Better equilibrium preservation than upwind FDM
 
     Dimension support:
         - 1D: Full support (production-ready)
@@ -110,8 +114,18 @@ class FPSLSolver(BaseFPSolver):
                 - 'rk4': Fourth-order Runge-Kutta
             boundary_conditions: Optional boundary conditions (defaults to no-flux)
         """
+        import warnings
+
+        warnings.warn(
+            "FPSLJacobianSolver is deprecated since v0.17.6. "
+            "Use FPSLSolver (Forward SL) for adjoint consistency with HJB Semi-Lagrangian. "
+            "FPSLJacobianSolver will be removed in v1.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         super().__init__(problem)
-        self.fp_method_name = "Semi-Lagrangian"
+        self.fp_method_name = "Semi-Lagrangian (Jacobian)"
 
         # Solver configuration
         self.interpolation_method = interpolation_method
@@ -122,7 +136,7 @@ class FPSLSolver(BaseFPSolver):
 
         if self.dimension > 1:
             raise NotImplementedError(
-                "FPSLSolver currently only supports 1D problems. nD support is planned for future versions."
+                "FPSLJacobianSolver currently only supports 1D problems. Use FPSLSolver for nD support."
             )
 
         # Precompute grid parameters (1D)
@@ -562,9 +576,9 @@ if __name__ == "__main__":
 
     # Test 1: Solver initialization
     print("\n1. Testing solver initialization...")
-    solver = FPSLSolver(problem, interpolation_method="cubic")
+    solver = FPSLJacobianSolver(problem, interpolation_method="cubic")
     assert solver.dimension == 1
-    assert solver.fp_method_name == "Semi-Lagrangian"
+    assert solver.fp_method_name == "Semi-Lagrangian (Jacobian)"
     print("   Initialization: OK")
 
     # Test 2: Solve with constant drift (pure diffusion test)
