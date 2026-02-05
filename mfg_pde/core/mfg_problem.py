@@ -1871,6 +1871,38 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             if not result.is_valid:
                 raise ValidationError(result)
 
+        # Issue #686: Validate custom functions (Hamiltonian, derivatives)
+        if has_components and self.geometry is not None:
+            from mfg_pde.utils.validation import validate_custom_functions
+
+            h_class = self.components._hamiltonian_class
+            if h_class is not None:
+                func_result = validate_custom_functions(
+                    hamiltonian=h_class,
+                    dH_dm=h_class.dm,
+                    dH_dp=h_class.dp,
+                    geometry=self.geometry,
+                    check_consistency=False,
+                )
+                if not func_result.is_valid:
+                    raise ValidationError(func_result)
+
+            # Validate drift if callable
+            if callable(self.drift_field):
+                from mfg_pde.utils.validation import validate_drift
+
+                drift_result = validate_drift(self.drift_field, self.geometry)
+                if not drift_result.is_valid:
+                    raise ValidationError(drift_result)
+
+            # Validate potential if callable
+            if self.components.potential_func is not None:
+                from mfg_pde.utils.validation import validate_running_cost
+
+                pot_result = validate_running_cost(self.components.potential_func, self.geometry)
+                if not pot_result.is_valid:
+                    raise ValidationError(pot_result)
+
         # === u_final: MUST be in MFGComponents (Issue #670: no silent default) ===
         if has_u_final:
             self._setup_custom_final_value()
