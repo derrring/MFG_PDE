@@ -502,6 +502,16 @@ class FixedPointIterator(BaseMFGSolver):
                 self.M = preserve_initial_condition(self.M, M_initial)
                 self.U = preserve_terminal_condition(self.U, U_terminal)
 
+                # Issue #688: Early termination on NaN/Inf (runtime safety)
+                if not np.all(np.isfinite(self.U)) or not np.all(np.isfinite(self.M)):
+                    convergence_reason = "diverged_nan"
+                    logger.warning(
+                        "NaN/Inf detected in iteration %d. Terminating early.",
+                        iiter + 1,
+                    )
+                    self.iterations_run = iiter + 1
+                    break
+
                 # Calculate convergence metrics
                 from mfg_pde.utils.convergence import calculate_l2_convergence_metrics
 
@@ -556,6 +566,25 @@ class FixedPointIterator(BaseMFGSolver):
             "l2distm_rel": self.l2distm_rel[: self.iterations_run],
             "anderson_used": self.use_anderson,
         }
+
+        # Issue #688: Validate final solver output
+        from mfg_pde.utils.validation.runtime import validate_solver_output
+
+        output_validation = validate_solver_output(
+            self.U,
+            self.M,
+            check_finite=True,
+            check_density_positive=True,
+        )
+        if not output_validation.is_valid:
+            metadata["output_validation"] = {
+                "is_valid": False,
+                "issues": [str(issue) for issue in output_validation.issues],
+            }
+            logger.warning(
+                "Solver output validation failed: %s",
+                "; ".join(str(i) for i in output_validation.issues),
+            )
 
         # Construct result
         result = SolverResult(
