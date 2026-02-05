@@ -22,7 +22,7 @@ if TORCH_AVAILABLE:
         MultiPopulationTD3,
     )
 
-from tests.unit.test_multi_population_env import SimpleMultiPopEnv
+from tests.unit.test_rl.test_multi_population_env import SimpleMultiPopEnv
 
 pytestmark = pytest.mark.optional_torch
 

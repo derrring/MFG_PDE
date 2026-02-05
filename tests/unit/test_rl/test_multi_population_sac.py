@@ -20,7 +20,7 @@ import numpy as np
 
 if TORCH_AVAILABLE:
     from mfg_pde.alg.reinforcement.algorithms import MultiPopulationSAC
-from tests.unit.test_multi_population_env import SimpleMultiPopEnv
+from tests.unit.test_rl.test_multi_population_env import SimpleMultiPopEnv
 
 pytestmark = pytest.mark.optional_torch
 
