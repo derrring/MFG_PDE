@@ -225,6 +225,9 @@ migration from current 8 operators.
 | ALE (moving mesh) | No moving domain use case in MFG | If crowd models on deforming domains emerge |
 | Time Integrator Traits | MFG has fixed time structure (HJB backward, FP forward). See `SPEC_TIME_INTEGRATION.md` | If multi-physics coupling introduced |
 | Linear Solver Traits | scipy.sparse.spsolve is not the bottleneck. See `SPEC_LINEAR_SOLVER.md` | When problems exceed 10^5 spatial DOFs |
+| Mesh Adaptivity (AMR/ALE) | Experimented with and removed in v0.16.x; complexity-to-benefit ratio too high for MFG | If 3D problems with localized features (shocks, interfaces) become standard |
+| Uncertainty Quantification | Parameter UQ ($\sigma$, coupling) is a research question, not infrastructure; belongs in MFG-Research | If MFG-Research matures a UQ workflow worth standardizing |
+| Data Output Traits | Current system (HDF5 + matplotlib + notebooks) works; no reported pain points | If output becomes a bottleneck for 3D or ensemble runs |
 | TPMS/Sphere periodicity | Materials science, not MFG | Never (wrong project) |
 
 ---
