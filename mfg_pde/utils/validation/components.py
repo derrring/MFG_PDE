@@ -188,58 +188,61 @@ def validate_mass_normalization(
     tolerance: float = 0.1,
 ) -> ValidationResult:
     """
-    Validate that initial density integrates to 1.
+    Validate that initial density integrates to approximately 1.
 
     For probability density interpretation, we expect:
         integral of m_initial over domain = 1
 
+    Supports geometry-specific integration:
+      - Cartesian grids: rectangle rule (sum * cell_volume)
+      - Implicit domains: Monte Carlo (mean * domain_volume)
+      - Other geometry types: emits warning that mass check is unsupported
+
     Args:
-        m_initial: Initial density (callable or array)
-        geometry: Geometry for integration
-        tolerance: Relative tolerance for mass check
+        m_initial: Initial density (callable or pre-evaluated array).
+        geometry: Geometry for integration.
+        tolerance: Absolute tolerance for |mass - 1|.
 
     Returns:
-        ValidationResult with warning if mass != 1
+        ValidationResult with warning if mass is not approximately 1.
 
-    Issue #683: Mass normalization validation
+    Issue #683: Mass normalization validation.
     """
     result = ValidationResult()
 
     try:
-        # Evaluate m_initial on grid if callable
+        # Get density values on the grid
         if callable(m_initial):
-            grid = geometry.get_spatial_grid()
-            if isinstance(grid, tuple):
-                # Multi-dimensional grid
-                from itertools import product
-
-                coords = list(product(*grid))
-                values = np.array([m_initial(c) for c in coords])
-            else:
-                values = np.array([m_initial(x) for x in grid])
+            values = _evaluate_callable_on_grid(m_initial, geometry)
+            if values is None:
+                result.add_warning(
+                    "Could not evaluate callable m_initial for mass normalization",
+                    location="m_initial",
+                )
+                return result
         else:
             values = m_initial
 
-        # Compute mass (simple sum * dx for now)
-        # TODO: Use geometry.integrate() when available (Issue #682)
-        total_mass = np.sum(values)
+        # Compute integral via geometry-specific method
+        total_mass = _compute_mass(values, geometry)
+        if total_mass is None:
+            geo_name = type(geometry).__name__
+            result.add_warning(
+                f"Mass normalization not supported for geometry type {geo_name}",
+                location="m_initial",
+                suggestion="Mass check is available for Cartesian grids and implicit domains",
+            )
+            return result
 
-        # Normalize by grid spacing if available
-        if hasattr(geometry, "dx"):
-            dx = geometry.dx
-            if isinstance(dx, (list, tuple, np.ndarray)):
-                total_mass *= np.prod(dx)
-            else:
-                total_mass *= dx
+        result.context["computed_mass"] = total_mass
 
         # Check if mass is approximately 1
         if abs(total_mass - 1.0) > tolerance:
             result.add_warning(
-                f"Initial density mass = {total_mass:.4f}, expected 1.0",
+                f"Initial density mass = {total_mass:.4f}, expected 1.0 (tolerance: {tolerance})",
                 location="m_initial",
                 suggestion="Normalize m_initial so that its integral equals 1",
             )
-            result.context["computed_mass"] = total_mass
 
     except Exception as e:
         result.add_warning(
@@ -516,3 +519,131 @@ def _validate_array_ic(
         )
 
     return result
+
+
+# --- Mass computation helpers (Issue #683) ---
+
+
+def _evaluate_callable_on_grid(
+    func: Callable,
+    geometry: GeometryProtocol,
+) -> np.ndarray | None:
+    """Evaluate a callable IC on all collocation points.
+
+    Returns None if evaluation fails (callable has incompatible signature
+    or crashes). This is a best-effort helper for mass normalization --
+    signature issues should already be caught by ``_validate_callable_ic()``.
+
+    Issue #683: Mass normalization validation.
+    """
+    from mfg_pde.utils.callable_adapter import adapt_ic_callable
+
+    try:
+        points = geometry.get_collocation_points()
+        if points.ndim == 1:
+            points = points.reshape(-1, 1)
+
+        dimension = geometry.dimension
+
+        # Use adapter to handle different callable signatures
+        if dimension == 1:
+            sample = float(points[len(points) // 2, 0])
+        else:
+            sample = points[len(points) // 2]
+
+        _, adapted = adapt_ic_callable(func, dimension=dimension, sample_point=sample)
+
+        # Evaluate on all points
+        if dimension == 1:
+            values = np.array([adapted(float(p[0])) for p in points])
+        else:
+            values = np.array([adapted(p) for p in points])
+
+        return values
+    except Exception:
+        return None
+
+
+def _compute_mass(
+    values: np.ndarray,
+    geometry: GeometryProtocol,
+) -> float | None:
+    """Compute total mass (integral) of density over geometry domain.
+
+    Dispatches to geometry-specific integration methods:
+      - CARTESIAN_GRID: rectangle rule (sum * cell_volume)
+      - IMPLICIT: Monte Carlo (mean * domain_volume)
+
+    Returns:
+        Computed mass, or None if integration is unsupported.
+
+    Issue #683: Mass normalization validation.
+    """
+    from mfg_pde.geometry.protocol import GeometryType
+
+    geo_type = geometry.geometry_type
+
+    if geo_type == GeometryType.CARTESIAN_GRID:
+        return _compute_mass_cartesian(values, geometry)
+    elif geo_type == GeometryType.IMPLICIT:
+        return _compute_mass_implicit(values, geometry)
+    else:
+        return None
+
+
+def _compute_mass_cartesian(
+    values: np.ndarray,
+    geometry: GeometryProtocol,
+) -> float:
+    """Compute mass using trapezoidal rule for Cartesian grids.
+
+    Uses ``np.trapezoid`` along each axis for accurate integration
+    (handles boundary points correctly, unlike simple rectangle rule).
+
+    Issue #683: Mass normalization validation.
+    """
+    bounds = geometry.get_bounds()
+    shape = geometry.get_grid_shape()
+
+    if bounds is None or shape is None:
+        return float(np.sum(values))
+
+    min_coords = np.asarray(bounds[0], dtype=float)
+    max_coords = np.asarray(bounds[1], dtype=float)
+    lengths = max_coords - min_coords
+    n_points = np.array(shape, dtype=float)
+
+    # Compute spacing per dimension
+    dx = np.where(n_points > 1, lengths / (n_points - 1), lengths)
+
+    # Reshape flat array to grid shape if needed
+    grid_values = values.reshape(shape) if values.shape != shape else values
+
+    # Trapezoidal integration along each axis (numpy 2.0+)
+    result = grid_values
+    for axis in range(len(shape)):
+        result = np.trapezoid(result, dx=float(dx[axis]), axis=0)
+
+    return float(result)
+
+
+def _compute_mass_implicit(
+    values: np.ndarray,
+    geometry: GeometryProtocol,
+) -> float | None:
+    """Compute mass using Monte Carlo for implicit domains.
+
+    For particle-based representation:
+        mass = mean(density) * domain_volume
+
+    Uses ``geometry.compute_volume()`` if available (ImplicitDomain, Hyperrectangle,
+    Hypersphere all provide this method).
+
+    Issue #683: Mass normalization validation.
+    """
+    compute_volume = getattr(geometry, "compute_volume", None)
+    if not callable(compute_volume):
+        return None
+
+    volume = compute_volume()
+    return float(np.mean(values)) * volume
