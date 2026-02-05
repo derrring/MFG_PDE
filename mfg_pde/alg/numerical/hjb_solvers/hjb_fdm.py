@@ -31,6 +31,28 @@ logger = get_logger(__name__)
 # Type alias for HJB advection schemes (gradient form only - HJB is not a conservation law)
 HJBAdvectionScheme = Literal["gradient_centered", "gradient_upwind"]
 
+# Type alias for Newton failure behavior (Issue #669)
+NewtonFailurePolicy = Literal["raise", "warn_and_fallback"]
+
+
+class ConvergenceError(RuntimeError):
+    """Raised when a nonlinear solver fails to converge.
+
+    Attributes:
+        solver_type: Type of solver that failed ('newton', 'fixed_point').
+        iterations: Number of iterations performed before failure.
+        residual: Final residual norm at failure.
+    """
+
+    def __init__(self, solver_type: str, iterations: int, residual: float, message: str = ""):
+        self.solver_type = solver_type
+        self.iterations = iterations
+        self.residual = residual
+        super().__init__(
+            message
+            or f"{solver_type} solver failed to converge after {iterations} iterations (residual: {residual:.2e})"
+        )
+
 
 def is_diagonal_tensor(Sigma: NDArray, rtol: float = 1e-10) -> bool:
     """
@@ -127,6 +149,7 @@ class HJBFDMSolver(BaseHJBSolver):
         max_newton_iterations: int | None = None,
         newton_tolerance: float | None = None,
         constraint: ConstraintProtocol | None = None,
+        on_newton_failure: NewtonFailurePolicy = "raise",
         # Deprecated parameters (decorator handles warnings)
         NiterNewton: int | None = None,
         l2errBoundNewton: float | None = None,
@@ -150,6 +173,10 @@ class HJBFDMSolver(BaseHJBSolver):
                 - BilateralConstraint: ψ_lower ≤ u ≤ ψ_upper (bounded controls)
                 - None: No constraints (default)
                 Applied after each timestep solve via projection P_K(u).
+            on_newton_failure: Behavior when Newton solver fails (Issue #669).
+                Only meaningful when solver_type="newton" and dimension > 1.
+                - 'raise': Raise ConvergenceError (default, fail-fast).
+                - 'warn_and_fallback': Emit warning and retry with Value Iteration.
             backend: 'numpy', 'torch', or None
         """
         import warnings
@@ -180,6 +207,7 @@ class HJBFDMSolver(BaseHJBSolver):
         self.solver_type = solver_type
         self.damping_factor = damping_factor
         self.constraint = constraint  # Variational inequality constraint (Issue #591)
+        self.on_newton_failure: NewtonFailurePolicy = on_newton_failure  # Issue #669
 
         # Validate
         if self.max_newton_iterations < 1:
@@ -608,9 +636,54 @@ class HJBFDMSolver(BaseHJBSolver):
                 H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
                 return (U - U_next) / self.dt + H_values
 
-            U_solution, info = self.nonlinear_solver.solve(F, U_guess)
+            # Issue #669: Newton-to-Value-Iteration adaptive fallback
+            newton_failed = False
+            newton_error: Exception | None = None
+            try:
+                U_solution, info = self.nonlinear_solver.solve(F, U_guess)
+                newton_failed = not info.converged
+            except (np.linalg.LinAlgError, ValueError, RuntimeError) as e:
+                newton_failed = True
+                newton_error = e
+                from mfg_pde.utils.numerical import SolverInfo
 
-        # Warn if not converged
+                info = SolverInfo(converged=False, iterations=0, residual=float("inf"), residual_history=[])
+
+            if newton_failed:
+                if self.on_newton_failure == "warn_and_fallback":
+                    # Define fixed-point map G for fallback (same computation as FP path)
+                    def G_fallback(U: NDArray) -> NDArray:
+                        gradients = self._compute_gradients_nd(U, time=time)
+                        H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
+                        return U_next - self.dt * H_values
+
+                    fallback_solver = FixedPointSolver(
+                        damping_factor=self.damping_factor,
+                        max_iterations=self.max_newton_iterations * 10,
+                        tolerance=self.newton_tolerance,
+                    )
+
+                    error_detail = f": {newton_error}" if newton_error else f" (residual: {info.residual:.2e})"
+                    import warnings
+
+                    warnings.warn(
+                        f"Newton solver failed{error_detail}. "
+                        f"Falling back to Value Iteration as explicitly requested "
+                        f"(on_newton_failure='warn_and_fallback').",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+
+                    U_solution, info = fallback_solver.solve(G_fallback, U_guess)
+                else:  # "raise"
+                    if newton_error:
+                        raise ConvergenceError(
+                            "newton", info.iterations, info.residual, f"Newton solver failed: {newton_error}"
+                        ) from newton_error
+                    else:
+                        raise ConvergenceError("newton", info.iterations, info.residual)
+
+        # Warn if not converged (applies to both FP and post-fallback)
         if not info.converged:
             import warnings
 

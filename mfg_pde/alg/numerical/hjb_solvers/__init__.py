@@ -14,13 +14,14 @@ All solvers inherit from BaseNumericalSolver and follow the new paradigm structu
 """
 
 from .base_hjb import BaseHJBSolver
-from .hjb_fdm import HJBFDMSolver
+from .hjb_fdm import ConvergenceError, HJBFDMSolver
 from .hjb_gfdm import HJBGFDMSolver
 from .hjb_semi_lagrangian import HJBSemiLagrangianSolver
 from .hjb_weno import HJBWenoSolver
 
 __all__ = [
     "BaseHJBSolver",
+    "ConvergenceError",
     "HJBFDMSolver",
     "HJBGFDMSolver",
     "HJBSemiLagrangianSolver",
