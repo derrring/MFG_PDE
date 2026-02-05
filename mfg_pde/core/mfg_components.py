@@ -667,7 +667,14 @@ class ConditionsMixin:
         if self.components is None or self.components.m_initial is None:
             return
 
-        initial_func = self.components.m_initial
+        m_initial = self.components.m_initial
+
+        # Issue #681: Handle NDArray m_initial (shape validated in _initialize_functions)
+        if isinstance(m_initial, np.ndarray):
+            self.m_initial.flat[:] = m_initial.flat[: len(self.m_initial.flat)]
+            return
+
+        # Callable path
         spatial_grid = self._get_spatial_grid_internal()
         num_intervals = self._get_num_intervals() or 0
 
@@ -675,22 +682,28 @@ class ConditionsMixin:
             # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
             x_i = float(spatial_grid[i, 0])
             # Issue #672: Remove silent clamping - validation happens in _initialize_functions()
-            self.m_initial[i] = initial_func(x_i)
+            self.m_initial[i] = m_initial(x_i)
 
     def _setup_custom_final_value(self) -> None:
         """Setup custom final value function u_T(x)."""
         if self.components is None or self.components.u_final is None:
             return
 
-        final_func = self.components.u_final
+        u_final = self.components.u_final
 
+        # Issue #681: Handle NDArray u_final (shape validated in _initialize_functions)
+        if isinstance(u_final, np.ndarray):
+            self.u_final.flat[:] = u_final.flat[: len(self.u_final.flat)]
+            return
+
+        # Callable path
         num_intervals = self._get_num_intervals()
         if self.dimension == 1 and num_intervals is not None:
             spatial_grid = self._get_spatial_grid_internal()
             for i in range(num_intervals + 1):
                 # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
                 x_i = float(spatial_grid[i, 0])
-                self.u_final[i] = final_func(x_i)
+                self.u_final[i] = u_final(x_i)
         elif self.geometry is not None:
             spatial_grid = self.geometry.get_spatial_grid()
             num_points = spatial_grid.shape[0]
@@ -699,7 +712,7 @@ class ConditionsMixin:
             for i in range(num_points):
                 # Extract point coordinates properly
                 x_i = float(spatial_grid[i, 0]) if ndim == 1 else spatial_grid[i]
-                self.u_final.flat[i] = final_func(x_i)
+                self.u_final.flat[i] = u_final(x_i)
         else:
             import warnings
 
