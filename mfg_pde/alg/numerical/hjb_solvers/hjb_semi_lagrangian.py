@@ -28,8 +28,8 @@ from scipy.optimize import minimize, minimize_scalar
 from mfg_pde.geometry.boundary.applicator_fdm import FDMApplicator
 from mfg_pde.geometry.boundary.applicator_interpolation import InterpolationApplicator
 from mfg_pde.geometry.boundary.bc_utils import (
-    get_bc_type_string,
     bc_type_to_geometric_operation,
+    get_bc_type_string,
 )
 from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.pde_coefficients import check_adi_compatibility
@@ -341,8 +341,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         logger_local.warning("=" * 60)
         logger_local.warning(
-            "RECOMMENDATION: Consider adaptive damping in Picard iteration (primary fix) "
-            "or weaker coupling to prevent gradient amplification."
+            "RECOMMENDATION: Gradient clipping is a SAFETY NET, not a solution. "
+            "Enable adaptive Picard damping (adaptive_damping=True in FixedPointIterator) "
+            "or use weaker coupling to prevent gradient amplification at the source."
         )
 
     def _clip_gradient_with_monitoring(
