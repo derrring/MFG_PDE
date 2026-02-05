@@ -1858,6 +1858,19 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         has_u_final = has_components and self.components.u_final is not None
         has_m_initial = has_components and self.components.m_initial is not None
 
+        # Issue #681: Validate IC/BC compatibility before setup
+        if has_components and self.geometry is not None:
+            from mfg_pde.utils.validation import ValidationError, validate_components
+
+            result = validate_components(
+                self.components,
+                self.geometry,
+                require_m_initial=True,
+                require_u_final=True,
+            )
+            if not result.is_valid:
+                raise ValidationError(result)
+
         # === u_final: MUST be in MFGComponents (Issue #670: no silent default) ===
         if has_u_final:
             self._setup_custom_final_value()
