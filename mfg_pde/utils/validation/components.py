@@ -323,7 +323,17 @@ def _validate_callable_ic(
     geometry: GeometryProtocol,
     name: str,
 ) -> ValidationResult:
-    """Validate a callable initial/terminal condition."""
+    """Validate a callable initial/terminal condition.
+
+    Uses adapt_ic_callable() to probe the callable's signature.  If the
+    callable matches any supported convention the validation passes.  If no
+    convention works, a detailed error lists every attempted signature and
+    what went wrong -- much more helpful than the previous generic exception.
+
+    Issue #684: Callable signature detection.
+    """
+    from mfg_pde.utils.callable_adapter import adapt_ic_callable
+
     result = ValidationResult()
 
     # Get a sample point from geometry
@@ -341,9 +351,47 @@ def _validate_callable_ic(
         )
         return result
 
-    # Try to evaluate the callable
+    # Determine dimension from grid
+    if isinstance(grid, np.ndarray):
+        dimension = grid.shape[1] if grid.ndim == 2 else 1
+    else:
+        dimension = len(grid) if isinstance(grid, (list, tuple)) else 1
+
+    # For 1D, extract a scalar sample for the adapter
+    if dimension == 1:
+        if isinstance(sample_point, np.ndarray):
+            adapter_sample: float | np.ndarray = (
+                float(sample_point[0]) if sample_point.ndim > 0 else float(sample_point)
+            )
+        else:
+            adapter_sample = float(sample_point)
+    else:
+        adapter_sample = np.asarray(sample_point)
+
+    # Probe signature via adapter
     try:
-        value = func(sample_point)
+        sig_type, adapted = adapt_ic_callable(
+            func,
+            dimension=dimension,
+            sample_point=adapter_sample,
+        )
+    except TypeError as e:
+        result.add_error(
+            str(e),
+            location=name,
+            suggestion=f"Ensure {name} accepts the coordinate format from geometry",
+        )
+        return result
+
+    # Store detected signature in context (informational)
+    result.context["adapted_signature"] = sig_type.name
+
+    # Evaluate the adapted callable at the sample point to check output quality
+    try:
+        if dimension == 1:
+            value = adapted(adapter_sample)
+        else:
+            value = adapted(np.asarray(sample_point))
     except Exception as e:
         result.add_error(
             f"{name} callable raised exception at sample point {sample_point}: {e}",

@@ -36,6 +36,7 @@ from .adjoint_validation import (
 
 # Core utility functions (non-plotting)
 from .aux_func import npart, ppart
+from .callable_adapter import CallableSignature, adapt_ic_callable
 from .convergence import (
     # Backward compatibility aliases (deprecated)
     AdaptiveConvergenceWrapper,
@@ -340,6 +341,9 @@ __all__ = [
     "Hypersphere",
     "ImplicitDomain",
     "Intersection",
+    # Callable signature adapter (Issue #684)
+    "CallableSignature",
+    "adapt_ic_callable",
     # Hamiltonian signature adapter
     "HamiltonianAdapter",
     "adapt_hamiltonian",

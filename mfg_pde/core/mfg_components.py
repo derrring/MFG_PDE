@@ -663,7 +663,11 @@ class ConditionsMixin:
     dimension: int
 
     def _setup_custom_initial_density(self) -> None:
-        """Setup custom initial density function m_0(x)."""
+        """Setup custom initial density function m_0(x).
+
+        Issue #684: Uses adapt_ic_callable() to handle different user signatures
+        (scalar, array, spatiotemporal, expanded coordinates) transparently.
+        """
         if self.components is None or self.components.m_initial is None:
             return
 
@@ -674,18 +678,41 @@ class ConditionsMixin:
             self.m_initial.flat[:] = m_initial.flat[: len(self.m_initial.flat)]
             return
 
-        # Callable path
+        # Callable path -- adapt to user's actual signature
+        from mfg_pde.utils.callable_adapter import adapt_ic_callable
+
         spatial_grid = self._get_spatial_grid_internal()
         num_intervals = self._get_num_intervals() or 0
 
+        # Build a sample point for signature probing
+        sample_point: float | np.ndarray
+        if self.dimension == 1:
+            sample_point = float(spatial_grid[0, 0])
+        else:
+            sample_point = spatial_grid[0]
+
+        _sig, adapted_func = adapt_ic_callable(
+            m_initial,
+            dimension=self.dimension,
+            sample_point=sample_point,
+            time_value=0.0,
+        )
+
         for i in range(num_intervals + 1):
-            # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
-            x_i = float(spatial_grid[i, 0])
+            if self.dimension == 1:
+                x_i: float | np.ndarray = float(spatial_grid[i, 0])
+            else:
+                x_i = spatial_grid[i]
             # Issue #672: Remove silent clamping - validation happens in _initialize_functions()
-            self.m_initial[i] = m_initial(x_i)
+            self.m_initial[i] = adapted_func(x_i)
 
     def _setup_custom_final_value(self) -> None:
-        """Setup custom final value function u_T(x)."""
+        """Setup custom final value function u_T(x).
+
+        Issue #684: Uses adapt_ic_callable() to handle different user signatures
+        (scalar, array, spatiotemporal, expanded coordinates) transparently.
+        For spatiotemporal callables, time_value defaults to T (last time step).
+        """
         if self.components is None or self.components.u_final is None:
             return
 
@@ -696,23 +723,48 @@ class ConditionsMixin:
             self.u_final.flat[:] = u_final.flat[: len(self.u_final.flat)]
             return
 
-        # Callable path
+        # Callable path -- adapt to user's actual signature
+        from mfg_pde.utils.callable_adapter import adapt_ic_callable
+
+        # Terminal time for spatiotemporal wrappers
+        terminal_time = float(self.tSpace[-1]) if len(self.tSpace) > 0 else 0.0
+
         num_intervals = self._get_num_intervals()
         if self.dimension == 1 and num_intervals is not None:
             spatial_grid = self._get_spatial_grid_internal()
+            sample_point: float | np.ndarray = float(spatial_grid[0, 0])
+            _sig, adapted_func = adapt_ic_callable(
+                u_final,
+                dimension=self.dimension,
+                sample_point=sample_point,
+                time_value=terminal_time,
+            )
             for i in range(num_intervals + 1):
-                # Extract scalar from grid point (grid has shape (Nx, 1) for 1D)
-                x_i = float(spatial_grid[i, 0])
-                self.u_final[i] = u_final(x_i)
+                x_i: float | np.ndarray = float(spatial_grid[i, 0])
+                self.u_final[i] = adapted_func(x_i)
         elif self.geometry is not None:
             spatial_grid = self.geometry.get_spatial_grid()
             num_points = spatial_grid.shape[0]
             ndim = spatial_grid.shape[1] if spatial_grid.ndim > 1 else 1
 
+            if ndim == 1:
+                sample_point = float(spatial_grid[0, 0])
+            else:
+                sample_point = spatial_grid[0]
+
+            _sig, adapted_func = adapt_ic_callable(
+                u_final,
+                dimension=ndim,
+                sample_point=sample_point,
+                time_value=terminal_time,
+            )
+
             for i in range(num_points):
-                # Extract point coordinates properly
-                x_i = float(spatial_grid[i, 0]) if ndim == 1 else spatial_grid[i]
-                self.u_final.flat[i] = u_final(x_i)
+                if ndim == 1:
+                    x_i = float(spatial_grid[i, 0])
+                else:
+                    x_i = spatial_grid[i]
+                self.u_final.flat[i] = adapted_func(x_i)
         else:
             import warnings
 
