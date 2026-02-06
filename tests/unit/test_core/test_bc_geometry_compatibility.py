@@ -328,9 +328,9 @@ def test_validate_components_catches_bc_dimension_mismatch():
     # Create mock components with mismatched BC
     components = MagicMock()
     components.m_initial = np.ones(21)
-    components.u_final = np.ones(21)
+    components.u_terminal = np.ones(21)
     components.boundary_conditions = neumann_bc(dimension=2)  # Mismatch
 
-    result = validate_components(components, geom, require_m_initial=False, require_u_final=False)
+    result = validate_components(components, geom, require_m_initial=False, require_u_terminal=False)
     assert not result.is_valid
     assert any("dimension" in str(issue).lower() for issue in result.issues)

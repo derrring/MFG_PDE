@@ -138,7 +138,7 @@ def create_towel_problem_standard_bc(
         hamiltonian_func=hamiltonian_func,
         hamiltonian_dm_func=hamiltonian_dm_func,
         m_initial=initial_density,
-        u_final=terminal_value,
+        u_terminal=terminal_value,
     )
 
     # Create geometry with Neumann BC
@@ -209,7 +209,7 @@ def create_towel_problem_adjoint_bc(
         hamiltonian_func=hamiltonian_func,
         hamiltonian_dm_func=hamiltonian_dm_func,
         m_initial=initial_density,
-        u_final=terminal_value,
+        u_terminal=terminal_value,
     )
 
     # Adjoint-consistent BC via provider pattern (Issue #625)

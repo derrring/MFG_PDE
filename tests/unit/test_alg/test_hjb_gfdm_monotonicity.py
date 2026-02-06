@@ -37,7 +37,7 @@ def _default_components_2d():
     return MFGComponents(
         hamiltonian=_default_hamiltonian(),
         m_initial=m_initial_2d,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
 
 

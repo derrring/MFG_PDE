@@ -39,7 +39,7 @@ def _default_components():
     """Default MFGComponents for testing (Issue #670: explicit specification required)."""
     return MFGComponents(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
-        u_final=lambda x: 0.0,  # Zero terminal cost
+        u_terminal=lambda x: 0.0,  # Zero terminal cost
         hamiltonian=_default_hamiltonian(),
     )
 
@@ -315,7 +315,7 @@ class TestMassConservation1D:
                     density = np.exp(-((x - center) ** 2) / (2 * std**2))
                     return density
 
-                return MFGComponents(m_initial=m_initial, u_final=lambda x: 0.0, hamiltonian=_default_hamiltonian())
+                return MFGComponents(m_initial=m_initial, u_terminal=lambda x: 0.0, hamiltonian=_default_hamiltonian())
 
             geometry = TensorProductGrid(bounds=[(0.0, L)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
             problem = MFGProblem(

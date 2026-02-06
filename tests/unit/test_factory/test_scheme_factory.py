@@ -31,7 +31,7 @@ def _default_components():
     return MFGComponents(
         hamiltonian=_default_hamiltonian(),
         m_initial=lambda x: np.exp(-10 * (np.asarray(x) - 0.5) ** 2).squeeze(),
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
 
 

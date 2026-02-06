@@ -35,7 +35,7 @@ print()
 # Create a 1D spatial grid
 grid = TensorProductGrid(
     bounds=[(0.0, 1.0)],  # Domain [0, 1]
-    Nx=[50],  # 51 grid points
+    Nx_points=[51],  # 51 grid points (50 intervals)
     boundary_conditions=no_flux_bc(dimension=1),
 )
 
@@ -76,7 +76,7 @@ hamiltonian = SeparableHamiltonian(
 components = MFGComponents(
     hamiltonian=hamiltonian,
     m_initial=initial_density,
-    u_final=terminal_cost,
+    u_terminal=terminal_cost,
 )
 
 # ==============================================================================

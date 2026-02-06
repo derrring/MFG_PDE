@@ -195,7 +195,7 @@ hamiltonian = SeparableHamiltonian(
 components = MFGComponents(
     hamiltonian=hamiltonian,
     m_initial=initial_density,
-    u_final=terminal_condition,
+    u_terminal=terminal_condition,
 )
 
 # Create problem

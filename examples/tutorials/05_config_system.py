@@ -43,7 +43,7 @@ def create_lq_components(coupling_strength: float = 0.5):
     return MFGComponents(
         hamiltonian=hamiltonian,
         m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
-        u_final=lambda x: (x - 0.5) ** 2,
+        u_terminal=lambda x: (x - 0.5) ** 2,
     )
 
 
@@ -77,7 +77,7 @@ results_diffusion = {}
 
 for diffusion in diffusion_values:
     print(f"Solving with diffusion={diffusion}...")
-    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
@@ -108,7 +108,7 @@ results_coupling = {}
 
 for coupling in coupling_values:
     print(f"Solving with coupling={coupling}...")
-    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
@@ -134,12 +134,12 @@ print("Finer grids increase accuracy but also computation time.")
 print()
 
 # Test different resolutions
-Nx_values = [25, 50, 100]
+Nx_values = [26, 51, 101]  # Number of grid points
 results_grid = {}
 
 for Nx in Nx_values:
     print(f"Solving with Nx={Nx} grid points...")
-    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,

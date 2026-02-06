@@ -609,7 +609,7 @@ class HJBFDMSolver(BaseHJBSolver):
             U_next: Value function at next timestep
             M_next: Density at next timestep
             U_guess: Initial guess for current timestep
-            sigma_at_n: Scalar diffusion coefficient at current timestep (None, float, or array)
+            sigma_at_n: Scalar volatility coefficient (sigma) at current timestep (None, float, or array)
             Sigma_at_n: Tensor diffusion coefficient at current timestep (None or tensor array)
             time: Current time for time-dependent BC values
             constraint: Variational inequality constraint (Issue #591)
@@ -769,7 +769,7 @@ class HJBFDMSolver(BaseHJBSolver):
             M: Density at current timestep
             gradients: Dictionary mapping dimension index to gradient arrays.
                        Key d = ∂u/∂xd, Key -1 = function value U.
-            sigma_at_n: Scalar diffusion coefficient (None uses problem.sigma, float is constant, array is spatially varying)
+            sigma_at_n: Scalar volatility coefficient (sigma) (None uses problem.sigma, float is constant, array is spatially varying)
             Sigma_at_n: Tensor diffusion coefficient (None or tensor array). If provided and diagonal, computes
                         H_viscosity = (1/2) Σᵢ σᵢ² pᵢ² separately and adds to running cost.
         """
@@ -912,7 +912,7 @@ class HJBFDMSolver(BaseHJBSolver):
             M: Density at current timestep
             gradients: Dictionary mapping dimension index to gradient arrays.
                        Key d = ∂u/∂xd.
-            sigma_at_n: Scalar diffusion coefficient
+            sigma_at_n: Scalar volatility coefficient (sigma)
             Sigma_at_n: Tensor diffusion coefficient
 
         Returns:

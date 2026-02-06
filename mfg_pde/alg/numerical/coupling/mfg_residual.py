@@ -127,12 +127,12 @@ class MFGResidual:
 
         # Try to get terminal value
         try:
-            self.U_terminal = self.problem.get_u_final()
+            self.U_terminal = self.problem.get_u_terminal()
             if self.U_terminal.shape != shape:
                 self.U_terminal = self.U_terminal.reshape(shape)
         except AttributeError:
             try:
-                self.U_terminal = self.problem.u_final  # Issue #670: unified naming
+                self.U_terminal = self.problem.u_terminal  # Issue #670: unified naming
                 if self.U_terminal is not None and self.U_terminal.shape != shape:
                     self.U_terminal = self.U_terminal.reshape(shape)
             except AttributeError:

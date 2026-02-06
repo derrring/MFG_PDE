@@ -245,7 +245,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
         except AttributeError:
             pass  # Try next priority
 
-        # Priority 2: m_initial / u_final attributes (Issue #670: unified naming)
+        # Priority 2: m_initial / u_terminal attributes (Issue #670: unified naming)
         try:
             M_initial = self.problem.m_initial
             if M_initial is not None:
@@ -253,7 +253,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
                     M_initial = M_initial.reshape(shape)
 
                 try:
-                    U_terminal = self.problem.u_final
+                    U_terminal = self.problem.u_terminal
                 except AttributeError:
                     U_terminal = np.zeros(shape)
 

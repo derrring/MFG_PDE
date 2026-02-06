@@ -191,15 +191,17 @@ class BaseFPSolver(BaseNumericalSolver):
         Volatility Specification (Issue #717 unified API):
             volatility_field can be:
             - None: Use problem.sigma (backward compatible)
-            - float: Constant isotropic volatility σ (converted to D = σ²/2)
-            - np.ndarray: Spatially varying volatility σ(t,x)
-              Shape: (Nt, Nx) for scalar, (Nt, Nx, d, d) for tensor
-            - Callable: Function σ(t, x, m) -> volatility
+            - float: Constant isotropic volatility σ → D = σ²/2
+            - (d,) array: Diagonal volatility [σ₀, σ₁, ...] → D = diag(σᵢ²)/2
+            - (d, d) array: Full volatility matrix Σ → D = ΣΣᵀ/2
+            - (*shape, d, d) array: Spatially varying Σ(x) → D(x) = Σ(x)Σ(x)ᵀ/2
+            - Callable: Function σ(t, x, m) or Σ(t, x, m) -> volatility
 
-            Note: volatility_field is the SDE noise coefficient σ. Internally
-            converted to diffusion D = σ²/2 for the FP equation.
+            Note: volatility_field is the SDE noise coefficient σ or Σ. Internally
+            converted to diffusion D = σ²/2 (scalar) or D = ΣΣᵀ/2 (matrix).
 
-            DEPRECATED: diffusion_field is deprecated. Use volatility_field instead.
+            DEPRECATED: diffusion_field, tensor_diffusion_field, volatility_matrix
+            are all deprecated. Use volatility_field with appropriate shape.
 
         Args:
             m_initial_condition: Initial density M(0,x) at t=0
@@ -297,7 +299,7 @@ if __name__ == "__main__":
     )
     components = MFGComponents(
         hamiltonian=H,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         m_initial=lambda x: 1.0,
     )
 

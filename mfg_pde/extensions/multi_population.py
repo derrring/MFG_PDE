@@ -44,7 +44,7 @@ Examples
 ...     spatial_discretization=[50, 50],
 ...     coupling_matrix=[[0.1, 0.05], [0.05, 0.1]],  # Asymmetric interaction
 ...     T=1.0, Nt=50,
-...     sigma=[0.01, 0.02]  # Different diffusion per population
+...     sigma=[0.01, 0.02]  # Different volatility per population
 ... )
 
 >>> # Capacity-constrained multi-population (see examples/)
@@ -296,7 +296,7 @@ class MultiPopulationMFGProblem(MFGProblem):
         num_populations: Number of populations K
         population_labels: List of population names
         coupling_matrix: K×K coupling matrix αₖⱼ
-        sigma_vec: Per-population diffusion coefficients
+        sigma_vec: Per-population volatility coefficients
 
     Mathematical Formulation:
         For k = 1, ..., K:
@@ -325,7 +325,7 @@ class MultiPopulationMFGProblem(MFGProblem):
         ...     spatial_bounds=[(0, 1)],
         ...     spatial_discretization=[100],
         ...     coupling_matrix=np.eye(3) * 0.1,  # Self-congestion only
-        ...     sigma=[0.01, 0.02, 0.03],  # Increasing diffusion
+        ...     sigma=[0.01, 0.02, 0.03],  # Increasing volatility
         ...     population_labels=["Fast", "Medium", "Slow"],
         ...     T=1.0, Nt=50
         ... )

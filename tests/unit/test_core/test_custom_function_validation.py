@@ -59,13 +59,13 @@ def _hamiltonian():
     )
 
 
-def _problem(m_initial, u_final, hamiltonian=None, Nx_points=11, **kwargs):
+def _problem(m_initial, u_terminal, hamiltonian=None, Nx_points=11, **kwargs):
     """Create a test MFGProblem."""
     geom = _geometry(Nx_points=Nx_points)
     components = MFGComponents(
         hamiltonian=hamiltonian or _hamiltonian(),
         m_initial=m_initial,
-        u_final=u_final,
+        u_terminal=u_terminal,
     )
     return MFGProblem(geometry=geom, components=components, **kwargs)
 
@@ -281,7 +281,7 @@ def test_mfg_problem_valid_hamiltonian_accepted():
     """MFGProblem with valid Hamiltonian should construct without error."""
     problem = _problem(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
-        u_final=lambda x: x**2,
+        u_terminal=lambda x: x**2,
     )
     assert problem is not None
 
@@ -301,6 +301,6 @@ def test_mfg_problem_nan_hamiltonian_rejected():
     with pytest.raises(ValidationError, match="NaN"):
         _problem(
             m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
-            u_final=lambda x: x**2,
+            u_terminal=lambda x: x**2,
             hamiltonian=NaNHamiltonian(),
         )

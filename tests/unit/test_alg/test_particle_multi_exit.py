@@ -33,7 +33,7 @@ def _default_components_1d():
     """Provide default components for 1D test problems."""
     return MFGComponents(
         m_initial=lambda x: np.exp(-((np.asarray(x) - 5.0) ** 2) / 2.0),
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         hamiltonian=_default_hamiltonian(),
     )
 
@@ -49,7 +49,7 @@ def _default_components_2d():
 
     return MFGComponents(
         m_initial=m_initial_2d,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         hamiltonian=_default_hamiltonian(),
     )
 

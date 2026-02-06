@@ -92,7 +92,7 @@ hamiltonian = SeparableHamiltonian(
 components = MFGComponents(
     hamiltonian=hamiltonian,
     m_initial=m_initial,
-    u_final=u_final,
+    u_terminal=u_final,
 )
 
 # Create problem

@@ -150,7 +150,7 @@ def test_fixed_point_nan_early_termination():
     components = MFGComponents(
         hamiltonian=H,
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
-        u_final=lambda x: x**2,
+        u_terminal=lambda x: x**2,
     )
     problem = MFGProblem(geometry=geom, components=components, Nt=10)
 

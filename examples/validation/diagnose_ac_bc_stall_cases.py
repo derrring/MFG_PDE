@@ -87,7 +87,7 @@ def create_towel_problem(
         hamiltonian_func=hamiltonian_func,
         hamiltonian_dm_func=hamiltonian_dm_func,
         m_initial=initial_density,
-        u_final=terminal_value,
+        u_terminal=terminal_value,
     )
 
     # Determine boundary conditions

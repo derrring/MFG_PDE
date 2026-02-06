@@ -34,7 +34,7 @@ def _default_components():
     """Default MFGComponents for 1D testing (Issue #670: explicit specification required)."""
     return MFGComponents(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
-        u_final=lambda x: 0.0,  # Zero terminal cost
+        u_terminal=lambda x: 0.0,  # Zero terminal cost
         hamiltonian=_default_hamiltonian(),
     )
 
@@ -49,7 +49,7 @@ def _default_components_2d():
 
     return MFGComponents(
         m_initial=m_initial_2d,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         hamiltonian=_default_hamiltonian(),
     )
 

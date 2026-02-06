@@ -15,7 +15,7 @@ Mathematical Formulation:
     where:
     - m(t,x): density at collocation points
     - alpha(t,x) = -grad U: drift from value function
-    - sigma: diffusion coefficient
+    - sigma: volatility coefficient (sigma); diffusion D = sigma^2/2
 
 Author: MFG_PDE Development Team
 Created: 2025-12-12
@@ -42,7 +42,7 @@ class FPGFDMSolver(BaseFPSolver):
     Fokker-Planck solver using GFDM on collocation points.
 
     Solves the continuity equation:
-        dm/dt + div(m * alpha) = sigma^2/2 * Laplacian(m)
+        dm/dt + div(m * alpha) = D * Laplacian(m)  where D = sigma^2/2
 
     using Generalized Finite Difference Method for spatial derivatives
     and forward Euler for time stepping.
@@ -570,7 +570,7 @@ if __name__ == "__main__":
     )
     components = MFGComponents(
         hamiltonian=H,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         m_initial=lambda x: 1.0,
     )
 

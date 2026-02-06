@@ -68,7 +68,7 @@ class ValidationResult:
         # Or collect all issues
         results = [
             validate_m_initial(...),
-            validate_u_final(...),
+            validate_u_terminal(...),
         ]
         combined = ValidationResult.combine(results)
     """

@@ -335,7 +335,7 @@ class StochasticMFGProblem(MFGProblem):
 
         conditional_components.hamiltonian_func = conditional_H
         conditional_components.hamiltonian_dm_func = conditional_H_dm
-        conditional_components.u_final = conditional_g
+        conditional_components.u_terminal = conditional_g
 
         # Preserve other problem components
         if self.components is not None:

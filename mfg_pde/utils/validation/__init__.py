@@ -6,7 +6,7 @@ custom functions, arrays, and runtime solver outputs.
 
 Modules:
     protocol: Core types (ValidationResult, ValidationError, ValidationIssue)
-    components: IC/BC validation (m_initial, u_final)
+    components: IC/BC validation (m_initial, u_terminal)
     functions: Custom function validation (Hamiltonian, drift, running_cost)
     arrays: Array validation (dtype, shape, dimension)
     runtime: Runtime checks (NaN/Inf, bounds)
@@ -47,7 +47,8 @@ from mfg_pde.utils.validation.components import (
     validate_components,
     validate_m_initial,
     validate_mass_normalization,
-    validate_u_final,
+    validate_u_final,  # Deprecated: use validate_u_terminal
+    validate_u_terminal,
 )
 
 # Custom function validation (Issue #686)
@@ -85,7 +86,8 @@ __all__ = [
     # Components
     "validate_components",
     "validate_m_initial",
-    "validate_u_final",
+    "validate_u_terminal",
+    "validate_u_final",  # Deprecated alias
     "validate_mass_normalization",
     "validate_boundary_conditions",
     "detect_callable_signature",

@@ -69,7 +69,7 @@ def default_components():
     return MFGComponents(
         hamiltonian=default_hamiltonian(),
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian at center
-        u_final=lambda x: x**2,  # Quadratic terminal cost
+        u_terminal=lambda x: x**2,  # Quadratic terminal cost
     )
 
 
@@ -120,7 +120,7 @@ def test_mfg_components_custom_values():
     components = MFGComponents(
         hamiltonian=H,
         m_initial=lambda x: 1.0,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         parameters={"param1": 1.0},
         description="Custom Problem",
         problem_type="custom",
@@ -249,11 +249,11 @@ def test_mfg_problem_default_final_value():
     """Test final value function is initialized (Issue #670: must come from MFGComponents)."""
     problem = create_test_problem()
 
-    assert hasattr(problem, "u_final")
-    assert isinstance(problem.u_final, np.ndarray)
-    assert len(problem.u_final) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
+    assert hasattr(problem, "u_terminal")
+    assert isinstance(problem.u_terminal, np.ndarray)
+    assert len(problem.u_terminal) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
     # Check final value is non-zero (set from default_components: x**2)
-    assert not np.allclose(problem.u_final, 0.0)
+    assert not np.allclose(problem.u_terminal, 0.0)
 
 
 @pytest.mark.unit
@@ -289,7 +289,7 @@ def test_mfg_problem_with_custom_potential():
         hamiltonian=default_hamiltonian(),
         potential_func=custom_potential,
         m_initial=lambda x: 1.0,  # Uniform
-        u_final=lambda x: 0.0,  # Zero terminal cost
+        u_terminal=lambda x: 0.0,  # Zero terminal cost
     )
     problem = MFGProblem(geometry=geometry, components=components)
 
@@ -314,7 +314,7 @@ def test_mfg_problem_with_custom_initial_density():
     components = MFGComponents(
         hamiltonian=default_hamiltonian(),
         m_initial=custom_initial,
-        u_final=lambda x: 0.0,  # Zero terminal cost
+        u_terminal=lambda x: 0.0,  # Zero terminal cost
     )
     problem = MFGProblem(geometry=geometry, components=components)
 
@@ -340,7 +340,7 @@ def test_mfg_problem_with_custom_final_value():
     # Issue #673: Hamiltonian required
     components = MFGComponents(
         hamiltonian=default_hamiltonian(),
-        u_final=custom_final,
+        u_terminal=custom_final,
         m_initial=lambda x: 1.0,  # Uniform
     )
     problem = MFGProblem(geometry=geometry, components=components)
@@ -349,7 +349,7 @@ def test_mfg_problem_with_custom_final_value():
     # Check final value was set using custom function
     expected = np.sin(problem.xSpace * np.pi)
     # Flatten both arrays for comparison (problem stores as 2D column vector)
-    assert np.allclose(np.ravel(problem.u_final), np.ravel(expected))
+    assert np.allclose(np.ravel(problem.u_terminal), np.ravel(expected))
 
 
 @pytest.mark.unit
@@ -360,7 +360,7 @@ def test_mfg_problem_validates_negative_m_initial():
     components = MFGComponents(
         hamiltonian=default_hamiltonian(),
         m_initial=lambda x: x - 0.5,  # Negative for x < 0.5
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
 
     with pytest.raises(ValueError, match="m_initial contains negative values"):
@@ -375,7 +375,7 @@ def test_mfg_problem_validates_zero_mass_m_initial():
     components = MFGComponents(
         hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 0.0,  # Zero mass
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
 
     with pytest.raises(ValueError, match="m_initial has zero or negligible total mass"):
@@ -452,7 +452,7 @@ def test_mfg_problem_custom_hamiltonian():
     components = MFGComponents(
         hamiltonian=custom_H,
         m_initial=lambda x: 1.0,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
     problem = create_test_problem(components=components)
 
@@ -498,7 +498,7 @@ def test_get_boundary_conditions_custom():
         hamiltonian=default_hamiltonian(),
         boundary_conditions=custom_bc,
         m_initial=lambda x: 1.0,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
     # create_test_problem uses default_geometry which has no_flux_bc
     problem = create_test_problem(components=components)
@@ -531,14 +531,14 @@ def test_get_potential_at_time():
 
 @pytest.mark.unit
 def test_get_final_u():
-    """Test get_final_u returns final value function."""
+    """Test get_final_u returns final value function (deprecated, calls get_u_terminal)."""
     problem = create_test_problem()
 
     u_final = problem.get_final_u()
 
     assert isinstance(u_final, np.ndarray)
     assert len(u_final) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
-    assert np.allclose(u_final, problem.u_final)
+    assert np.allclose(u_final, problem.u_terminal)
 
 
 @pytest.mark.unit
@@ -654,7 +654,7 @@ def test_dual_geometry_specification():
     components = MFGComponents(
         hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
     # Create problem with dual geometries
     problem = MFGProblem(
@@ -687,7 +687,7 @@ def test_dual_geometry_backward_compatibility():
     components = MFGComponents(
         hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
     # Create problem with unified geometry (old API)
     problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=0.1, components=components)
@@ -709,7 +709,7 @@ def test_dual_geometry_error_on_partial_specification():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_terminal=lambda x: 0.0)
     # Test with only hjb_geometry
     with pytest.raises(ValueError, match="both 'hjb_geometry' AND 'fp_geometry' must be specified"):
         MFGProblem(hjb_geometry=grid, time_domain=(1.0, 50), components=components)
@@ -738,7 +738,7 @@ def test_dual_geometry_error_on_conflict():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_terminal=lambda x: 0.0)
     # Test conflict: can't specify both geometry and dual geometries
     with pytest.raises(ValueError, match=r"Specify EITHER 'geometry'.*OR.*'hjb_geometry', 'fp_geometry'"):
         MFGProblem(geometry=grid1, hjb_geometry=grid2, fp_geometry=grid3, time_domain=(1.0, 50), components=components)
@@ -758,7 +758,7 @@ def test_dual_geometry_projector_attributes():
         boundary_conditions=no_flux_bc(dimension=2),
     )
 
-    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_terminal=lambda x: 0.0)
     problem = MFGProblem(hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), components=components)
 
     projector = problem.geometry_projector
@@ -779,7 +779,7 @@ def test_dual_geometry_with_1d_grids():
     hjb_grid = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[101])  # Fine grid
     fp_grid = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[51])  # Coarse grid
 
-    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_final=lambda x: 0.0)
+    components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_terminal=lambda x: 0.0)
     problem = MFGProblem(
         hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1, components=components
     )
@@ -1012,7 +1012,7 @@ def test_diffusion_field_with_geometry():
     components = MFGComponents(
         hamiltonian=default_hamiltonian(),
         m_initial=lambda x: 1.0,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
     )
     problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=sigma_func, components=components)
 

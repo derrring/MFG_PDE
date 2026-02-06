@@ -285,7 +285,7 @@ def _hamiltonian():
     )
 
 
-def _problem(m_initial, u_final, Nx_points=11, dimension=1, **kwargs):
+def _problem(m_initial, u_terminal, Nx_points=11, dimension=1, **kwargs):
     """Create a test MFGProblem."""
     from mfg_pde.core.mfg_components import MFGComponents
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -294,7 +294,7 @@ def _problem(m_initial, u_final, Nx_points=11, dimension=1, **kwargs):
     components = MFGComponents(
         hamiltonian=_hamiltonian(),
         m_initial=m_initial,
-        u_final=u_final,
+        u_terminal=u_terminal,
     )
     return MFGProblem(geometry=geom, components=components, **kwargs)
 
@@ -306,7 +306,7 @@ def test_mfg_problem_scalar_m_initial():
     def m_initial(x):
         return np.exp(-10 * (x - 0.5) ** 2)
 
-    problem = _problem(m_initial=m_initial, u_final=lambda x: x**2, Nx_points=11)
+    problem = _problem(m_initial=m_initial, u_terminal=lambda x: x**2, Nx_points=11)
     assert problem.m_initial is not None
     assert problem.m_initial.shape == (11,)
     # Should have non-trivial values (Gaussian peak near center)
@@ -320,21 +320,21 @@ def test_mfg_problem_array_m_initial_1d():
     def m_initial(x):
         return np.exp(-10 * (x[0] - 0.5) ** 2)
 
-    problem = _problem(m_initial=m_initial, u_final=lambda x: x**2, Nx_points=11)
+    problem = _problem(m_initial=m_initial, u_terminal=lambda x: x**2, Nx_points=11)
     assert problem.m_initial is not None
     assert problem.m_initial.shape == (11,)
     assert np.max(problem.m_initial) > 0.5
 
 
 @pytest.mark.unit
-def test_mfg_problem_spatiotemporal_u_final():
-    """lambda x, t: f(x)*g(t) works for u_final via adapter wrapping."""
+def test_mfg_problem_spatiotemporal_u_terminal():
+    """lambda x, t: f(x)*g(t) works for u_terminal via adapter wrapping."""
 
-    def u_final(x, t):
+    def u_terminal_func(x, t):
         return x**2 * np.exp(-t)
 
-    problem = _problem(m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2), u_final=u_final)
-    assert problem.u_final is not None
-    assert problem.u_final.shape == (11,)
+    problem = _problem(m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2), u_terminal=u_terminal_func)
+    assert problem.u_terminal is not None
+    assert problem.u_terminal.shape == (11,)
     # Values should reflect spatiotemporal evaluation at terminal time
-    assert np.all(np.isfinite(problem.u_final))
+    assert np.all(np.isfinite(problem.u_terminal))

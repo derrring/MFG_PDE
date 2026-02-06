@@ -337,7 +337,7 @@ class HighDimMFGBenchmark:
                     hamiltonian_func=simple_hamiltonian,
                     hamiltonian_dm_func=hamiltonian_dm,
                     m_initial=initial_density_grid,
-                    u_final=terminal_cost_grid,
+                    u_terminal=terminal_cost_grid,
                 )
 
             def hamiltonian(self, x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem, **kwargs):
@@ -439,7 +439,7 @@ class HighDimMFGBenchmark:
                     hamiltonian_func=simple_hamiltonian,
                     hamiltonian_dm_func=hamiltonian_dm,
                     m_initial=initial_density_grid,
-                    u_final=terminal_cost_grid,
+                    u_terminal=terminal_cost_grid,
                 )
 
             def hamiltonian(self, x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem, **kwargs):

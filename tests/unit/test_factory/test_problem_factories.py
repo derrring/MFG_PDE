@@ -150,7 +150,7 @@ def test_create_mfg_problem_with_components(simple_domain):
     """Test main factory function with explicit components (Issue #673)."""
     components = MFGComponents(
         hamiltonian=_default_hamiltonian(),
-        u_final=lambda x: x**2,
+        u_terminal=lambda x: x**2,
         m_initial=lambda x: np.exp(-(x**2)),
         problem_type="standard",
     )
@@ -199,7 +199,7 @@ def test_problem_type_detection():
     components_standard = MFGComponents(
         hamiltonian=_default_hamiltonian(),
         m_initial=m_initial,
-        u_final=u_final,
+        u_terminal=u_final,
         problem_type="standard",
     )
     problem = MFGProblem(geometry=domain, components=components_standard)
@@ -209,7 +209,7 @@ def test_problem_type_detection():
     components_stochastic = MFGComponents(
         hamiltonian=_default_hamiltonian(),
         m_initial=m_initial,
-        u_final=u_final,
+        u_terminal=u_final,
         parameters={"noise_intensity": 0.5},
         problem_type="stochastic",
     )

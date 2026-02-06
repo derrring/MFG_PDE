@@ -80,7 +80,7 @@ def terminal_cost_2d(xy):
 components = MFGComponents(
     hamiltonian=hamiltonian,
     m_initial=m0,  # Pass array directly
-    u_final=terminal_cost_2d,
+    u_terminal=terminal_cost_2d,
 )
 
 problem = MFGProblem(

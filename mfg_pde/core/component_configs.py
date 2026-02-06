@@ -43,7 +43,7 @@ class StandardMFGConfig:
         V(x, t) -> float. External potential/forces.
     m_initial : Callable, optional
         m_0(x) -> float. Initial agent distribution.
-    u_final : Callable, optional
+    u_terminal : Callable, optional
         u_T(x) -> float. Terminal cost/reward.
     boundary_conditions : BoundaryConditions, optional
         Boundary condition specification.
@@ -57,7 +57,7 @@ class StandardMFGConfig:
     hamiltonian_jacobian_func: Callable | None = None
     potential_func: Callable | None = None
     m_initial: Callable | None = None
-    u_final: Callable | None = None
+    u_terminal: Callable | None = None
     boundary_conditions: BoundaryConditions | None = None
     coupling_func: Callable | None = None
 

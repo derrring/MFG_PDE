@@ -34,7 +34,7 @@ def _default_components():
     """Default MFGComponents for 1D testing (Issue #670: explicit specification required)."""
     return MFGComponents(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
-        u_final=lambda x: 0.0,  # Zero terminal cost
+        u_terminal=lambda x: 0.0,  # Zero terminal cost
         hamiltonian=_default_hamiltonian(),
     )
 
@@ -49,7 +49,7 @@ def _default_components_2d():
 
     return MFGComponents(
         m_initial=m_initial_2d,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         hamiltonian=_default_hamiltonian(),
     )
 
@@ -879,12 +879,14 @@ class TestFPFDMSolverTensorDiffusion:
 
         Nx, Ny = domain.num_points[0], domain.num_points[1]
 
-        # State-dependent tensor: anisotropy increases with density
+        # State-dependent tensor: anisotropy increases with mean density
         def crowd_anisotropic(t, x, m):
             sigma_parallel = 0.15  # Horizontal movement
             # Vertical movement decreases in high-density regions (ensure positive)
-            sigma_perp = 0.05 + 0.05 * np.maximum(0, 1 - m / 2.0)
-            return np.diag([sigma_parallel, max(sigma_perp, 1e-6)])
+            # Use mean density for global anisotropy (returns constant matrix)
+            m_mean = np.mean(m) if hasattr(m, "__len__") else m
+            sigma_perp = max(0.05 + 0.05 * (1 - m_mean / 2.0), 1e-6)
+            return np.diag([sigma_parallel, sigma_perp])
 
         # Initial condition
         x_coords, y_coords = domain.coordinates
@@ -953,7 +955,7 @@ class TestFPFDMSolverTensorDiffusion:
         scalar_sigma = 0.2
 
         # Should raise ValueError (Issue #717: volatility API - deprecated params get converted)
-        with pytest.raises(ValueError, match="Cannot specify both volatility_field and volatility_matrix"):
+        with pytest.raises(ValueError, match="Cannot specify both volatility_field and tensor_diffusion_field"):
             solver.solve_fp_system(m_initial, diffusion_field=scalar_sigma, tensor_diffusion_field=Sigma)
 
     def test_tensor_diffusion_1d_raises_error(self, standard_problem):

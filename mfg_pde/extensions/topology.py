@@ -130,7 +130,7 @@ class NetworkMFGProblem(MFGProblem):
 
         # Issue #670, #673: Create default MFGComponents for parent class validation
         # Network problems use NetworkMFGComponents internally, but parent MFGProblem
-        # requires explicit hamiltonian, m_initial, and u_final. Provide defaults that
+        # requires explicit hamiltonian, m_initial, and u_terminal. Provide defaults that
         # will be overridden by network-specific methods (get_initial_density, get_terminal_value).
         num_nodes = network_geometry.num_nodes
         default_hamiltonian = SeparableHamiltonian(
@@ -141,7 +141,7 @@ class NetworkMFGProblem(MFGProblem):
         parent_components = MFGComponents(
             hamiltonian=default_hamiltonian,
             m_initial=lambda x: 1.0 / num_nodes,  # Uniform initial density
-            u_final=lambda x: 0.0,  # Zero terminal value
+            u_terminal=lambda x: 0.0,  # Zero terminal value
         )
 
         # Initialize parent with geometry (not deprecated xmin/xmax/Nx)

@@ -217,12 +217,12 @@ class BlockIterator(BaseMFGSolver):
                 logger.warning("No initial density found, using uniform")
 
         try:
-            U_terminal = self.problem.get_u_final()
+            U_terminal = self.problem.get_u_terminal()
             if U_terminal.shape != shape:
                 U_terminal = U_terminal.reshape(shape)
         except AttributeError:
             try:
-                U_terminal = self.problem.u_final  # Issue #670: unified naming
+                U_terminal = self.problem.u_terminal  # Issue #670: unified naming
                 if U_terminal is not None and U_terminal.shape != shape:
                     U_terminal = U_terminal.reshape(shape)
             except AttributeError:

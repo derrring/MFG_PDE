@@ -58,13 +58,13 @@ def _hamiltonian():
     )
 
 
-def _problem(m_initial, u_final, hamiltonian=None, Nx_points=Nx, **kwargs):
+def _problem(m_initial, u_terminal, hamiltonian=None, Nx_points=Nx, **kwargs):
     """Create a test MFGProblem."""
     geom = _geometry(Nx_points=Nx_points)
     components = MFGComponents(
         hamiltonian=hamiltonian or _hamiltonian(),
         m_initial=m_initial,
-        u_final=u_final,
+        u_terminal=u_terminal,
     )
     return MFGProblem(geometry=geom, components=components, **kwargs)
 
@@ -206,7 +206,7 @@ def test_mfg_problem_valid_diffusion_array_accepted():
     sigma_array = np.linspace(0.1, 1.0, Nx)
     problem = _problem(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
-        u_final=lambda x: x**2,
+        u_terminal=lambda x: x**2,
         diffusion=sigma_array,
     )
     assert problem is not None
@@ -222,7 +222,7 @@ def test_mfg_problem_nan_diffusion_array_rejected():
     with pytest.raises(ValidationError, match="NaN"):
         _problem(
             m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
-            u_final=lambda x: x**2,
+            u_terminal=lambda x: x**2,
             diffusion=sigma_array,
         )
 
@@ -235,7 +235,7 @@ def test_mfg_problem_wrong_shape_diffusion_rejected():
     with pytest.raises(ValidationError, match="shape"):
         _problem(
             m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
-            u_final=lambda x: x**2,
+            u_terminal=lambda x: x**2,
             diffusion=wrong_shape,
         )
 
@@ -255,7 +255,7 @@ def test_mfg_problem_nan_u_final_rejected():
     with pytest.raises(ValidationError, match=r"non-finite|NaN"):
         _problem(
             m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
-            u_final=nan_u_final,
+            u_terminal=nan_u_final,
         )
 
 
@@ -269,5 +269,5 @@ def test_mfg_problem_nan_m_initial_rejected():
     with pytest.raises(ValidationError, match=r"non-finite|NaN"):
         _problem(
             m_initial=nan_m_initial,
-            u_final=lambda x: x**2,
+            u_terminal=lambda x: x**2,
         )

@@ -36,7 +36,7 @@ print("=" * 70)
 print()
 
 # Create grid and components
-grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
+grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
 
 hamiltonian = SeparableHamiltonian(
     control_cost=QuadraticControlCost(control_cost=1.0),
@@ -47,7 +47,7 @@ hamiltonian = SeparableHamiltonian(
 components = MFGComponents(
     hamiltonian=hamiltonian,
     m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
-    u_final=lambda x: (x - 0.5) ** 2,
+    u_terminal=lambda x: (x - 0.5) ** 2,
 )
 
 # Create problem

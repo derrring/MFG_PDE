@@ -62,7 +62,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     fp_geometry: GeometryProtocol | None
 
     # Type annotations for PDE coefficient fields
-    # sigma: float is the scalar diffusion for backward compatibility
+    # sigma: float is the scalar volatility (sigma) for backward compatibility
     # diffusion_field: DiffusionField stores the full field (float, array, or callable)
     # drift_field: DriftField stores optional drift (float, array, or callable)
     sigma: float
@@ -523,7 +523,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         # Initialize arrays (Issue #670: unified naming)
         self.f_potential: NDArray
-        self.u_finalal: NDArray  # Terminal condition u(T, x)
+        self.u_terminal: NDArray  # Terminal condition u(T, x)
         self.m_initialial: NDArray  # Initial density m(0, x)
 
         # Initialize functions
@@ -1839,23 +1839,23 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
     # Issue #670/#671: Legacy default functions removed (Fail Fast principle)
     # - _potential(): Removed - zero potential is now the explicit default
-    # - _u_final(): Removed - must be provided via MFGComponents.u_final
+    # - _u_final(): Removed - must be provided via MFGComponents.u_terminal
     # - _m_initial(): Removed - must be provided via MFGComponents.m_initial
 
     def _initialize_functions(self, **kwargs: Any) -> None:
         """Initialize potential, initial density, and final value functions.
 
-        Issue #670: u_final/m_initial must be provided via MFGComponents.
+        Issue #670: u_terminal/m_initial must be provided via MFGComponents.
         No silent defaults - Fail Fast principle.
         """
         # Initialize arrays with correct shape for both 1D and n-D
         self.f_potential = np.zeros(self.spatial_shape)
-        self.u_final = np.zeros(self.spatial_shape)
+        self.u_terminal = np.zeros(self.spatial_shape)
         self.m_initial = np.zeros(self.spatial_shape)
 
-        # Issue #670: u_final and m_initial MUST come from MFGComponents
+        # Issue #670: u_terminal and m_initial MUST come from MFGComponents
         has_components = self.components is not None
-        has_u_final = has_components and self.components.u_final is not None
+        has_u_terminal = has_components and self.components.u_terminal is not None
         has_m_initial = has_components and self.components.m_initial is not None
 
         # Issue #681: Validate IC/BC compatibility before setup
@@ -1866,7 +1866,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 self.components,
                 self.geometry,
                 require_m_initial=True,
-                require_u_final=True,
+                require_u_terminal=True,
             )
             if not result.is_valid:
                 raise ValidationError(result)
@@ -1940,13 +1940,13 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 if not arr_result.is_valid:
                     raise ValidationError(arr_result)
 
-        # === u_final: MUST be in MFGComponents (Issue #670: no silent default) ===
-        if has_u_final:
+        # === u_terminal: MUST be in MFGComponents (Issue #670: no silent default) ===
+        if has_u_terminal:
             self._setup_custom_final_value()
         else:
             raise ValueError(
-                "u_final (terminal condition) must be provided in MFGComponents. "
-                "Example: MFGComponents(u_final=lambda x: ..., m_initial=lambda x: ...). "
+                "u_terminal (terminal condition) must be provided in MFGComponents. "
+                "Example: MFGComponents(u_terminal=lambda x: ..., m_initial=lambda x: ...). "
                 "See examples/basic/lq_mfg_classic.py for the classic LQ-MFG setup."
             )
 
@@ -1956,13 +1956,13 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         else:
             raise ValueError(
                 "m_initial (initial density) must be provided in MFGComponents. "
-                "Example: MFGComponents(u_final=lambda x: ..., m_initial=lambda x: ...). "
+                "Example: MFGComponents(u_terminal=lambda x: ..., m_initial=lambda x: ...). "
                 "See examples/basic/lq_mfg_classic.py for the classic LQ-MFG setup."
             )
 
         # === Potential: V(x,t) - defaults to zero (Issue #671: explicit default) ===
         # Zero potential is a valid physical choice (many MFG problems have V=0).
-        # Unlike m_initial/u_final, zero potential doesn't require explicit specification.
+        # Unlike m_initial/u_terminal, zero potential doesn't require explicit specification.
         has_potential = has_components and self.components.potential_func is not None
         if has_potential:
             self._setup_custom_potential()
@@ -1974,7 +1974,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         if self.geometry is not None:
             from mfg_pde.utils.validation import ValidationError, validate_finite
 
-            u_result = validate_finite(self.u_final, "u_final")
+            u_result = validate_finite(self.u_terminal, "u_terminal")
             if not u_result.is_valid:
                 raise ValidationError(u_result)
 
@@ -2044,9 +2044,28 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     # - get_boundary_conditions()
     # - _setup_custom_initial_density(), _setup_custom_final_value()
 
-    def get_u_final(self) -> np.ndarray:
+    def get_u_terminal(self) -> np.ndarray:
         """Get terminal condition u(T, x). Issue #670: unified naming."""
-        return self.u_final.copy()
+        return self.u_terminal.copy()
+
+    def get_u_final(self) -> np.ndarray:
+        """Deprecated: use get_u_terminal() instead.
+
+        .. deprecated:: v0.17.6
+            Use :meth:`get_u_terminal` instead. Will be removed in v1.0.0.
+        """
+        from mfg_pde.utils.deprecation import deprecated
+
+        # Apply decorator dynamically to avoid import cycle at module level
+        @deprecated(
+            since="v0.17.6",
+            replacement="use get_u_terminal() instead",
+            reason="Renamed for consistency with MFG literature terminology",
+        )
+        def _deprecated_get_u_final() -> np.ndarray:
+            return self.get_u_terminal()
+
+        return _deprecated_get_u_final()
 
     def get_m_initial(self) -> np.ndarray:
         """Get initial density m(0, x). Issue #670: unified naming."""
@@ -2054,16 +2073,30 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
     # Legacy aliases for backward compatibility
     def get_u_fin(self) -> np.ndarray:
-        """Legacy alias for get_u_final()."""
-        return self.get_u_final()
+        """Legacy alias for get_u_terminal().
+
+        .. deprecated:: v0.17.6
+            Use :meth:`get_u_terminal` instead. Will be removed in v1.0.0.
+        """
+        from mfg_pde.utils.deprecation import deprecated
+
+        @deprecated(
+            since="v0.17.6",
+            replacement="use get_u_terminal() instead",
+            reason="Shortened alias deprecated in favor of full name",
+        )
+        def _deprecated_get_u_fin() -> np.ndarray:
+            return self.get_u_terminal()
+
+        return _deprecated_get_u_fin()
 
     def get_m_init(self) -> np.ndarray:
         """Legacy alias for get_m_initial()."""
         return self.get_m_initial()
 
     def get_final_u(self) -> np.ndarray:
-        """Legacy alias for get_u_final()."""
-        return self.get_u_final()
+        """Legacy alias for get_u_terminal()."""
+        return self.get_u_terminal()
 
     def get_initial_m(self) -> np.ndarray:
         """Legacy alias for get_m_initial()."""
@@ -2090,7 +2123,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 "has_custom_hamiltonian": True,
                 "has_custom_potential": self.components.potential_func is not None,
                 "has_custom_initial": self.components.m_initial is not None,
-                "has_custom_final": self.components.u_final is not None,
+                "has_custom_final": self.components.u_terminal is not None,
                 # Issue #673: jacobian_fd() always available on HamiltonianBase
                 "has_jacobian": self.components._hamiltonian_class is not None,
                 "parameters": self.components.parameters,
@@ -2126,10 +2159,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         "dH_dp": "MFGComponents.hamiltonian_dp_func",
         "potential": "MFGComponents.potential_func",
         "running_cost": "MFGComponents.hamiltonian_func",
-        "terminal_cost": "MFGComponents.u_final",
+        "terminal_cost": "MFGComponents.u_terminal",
         # Issue #670: initial/terminal conditions now ONLY via MFGComponents
         "m_initial": "MFGComponents.m_initial",
-        "u_final": "MFGComponents.u_final",
+        "u_final": "MFGComponents.u_terminal",
         "initial_density": "MFGComponents.m_initial",
     }
 

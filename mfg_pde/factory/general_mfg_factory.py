@@ -53,7 +53,7 @@ class GeneralMFGFactory:
         ...     domain_config={"xmin": 0.0, "xmax": 1.0, "Nx": 51},
         ...     time_config={"T": 1.0, "Nt": 51},
         ...     m_initial=lambda x: np.exp(-10 * (x - 0.3)**2),
-        ...     u_final=lambda x: (x - 0.8)**2,
+        ...     u_terminal=lambda x: (x - 0.8)**2,
         ... )
     """
 
@@ -80,7 +80,7 @@ class GeneralMFGFactory:
         solver_config: dict[str, Any] | None = None,
         *,
         m_initial: Callable | None = None,
-        u_final: Callable | None = None,
+        u_terminal: Callable | None = None,
         potential_func: Callable | None = None,
         boundary_conditions: BoundaryConditions | None = None,
         description: str = "MFG Problem",
@@ -95,7 +95,7 @@ class GeneralMFGFactory:
             time_config: Time specification {"T": ..., "Nt": ...}
             solver_config: Solver parameters {"sigma": ..., "coupling_coefficient": ...}
             m_initial: Initial density function m_0(x)
-            u_final: Terminal value function u_T(x)
+            u_terminal: Terminal value function u_T(x)
             potential_func: Additional potential V(x, t) if not in Hamiltonian
             boundary_conditions: Boundary conditions
             description: Problem description
@@ -108,7 +108,7 @@ class GeneralMFGFactory:
         components = MFGComponents(
             hamiltonian=hamiltonian,
             m_initial=m_initial,
-            u_final=u_final,
+            u_terminal=u_terminal,
             potential_func=potential_func,
             boundary_conditions=boundary_conditions,
             description=description,
@@ -144,7 +144,7 @@ class GeneralMFGFactory:
         functions:
           potential: "lambda x: 0.5 * x**2"
           m_initial: "lambda x: np.exp(-10*(x-0.5)**2)"
-          u_final: "lambda x: (x - 0.8)**2"
+          u_terminal: "lambda x: (x - 0.8)**2"
 
         domain:
           xmin: 0.0
@@ -190,14 +190,17 @@ class GeneralMFGFactory:
         functions_config = config.get("functions", {})
 
         m_initial = self._load_function(functions_config.get("m_initial"))
-        u_final = self._load_function(functions_config.get("u_final"))
+        u_terminal = self._load_function(functions_config.get("u_terminal"))
         potential_func = self._load_function(functions_config.get("potential"))
 
         # Also support legacy aliases
         if m_initial is None:
             m_initial = self._load_function(functions_config.get("initial_density"))
-        if u_final is None:
-            u_final = self._load_function(functions_config.get("final_value"))
+        if u_terminal is None:
+            # Try legacy alias u_final
+            u_terminal = self._load_function(functions_config.get("u_final"))
+        if u_terminal is None:
+            u_terminal = self._load_function(functions_config.get("final_value"))
 
         # Extract configurations
         domain_config = config.get("domain", {"xmin": 0.0, "xmax": 1.0, "Nx": 51})
@@ -224,7 +227,7 @@ class GeneralMFGFactory:
             time_config=time_config,
             solver_config=solver_config,
             m_initial=m_initial,
-            u_final=u_final,
+            u_terminal=u_terminal,
             potential_func=potential_func,
             boundary_conditions=boundary_conditions,
             description=description,
@@ -347,7 +350,7 @@ class GeneralMFGFactory:
             "functions": {
                 "potential": "lambda x: 0.5 * x * (1 - x)",
                 "m_initial": "lambda x: np.exp(-10 * (x - 0.3)**2)",
-                "u_final": "lambda x: (x - 0.8)**2",
+                "u_terminal": "lambda x: (x - 0.8)**2",
             },
             "domain": {"xmin": 0.0, "xmax": 1.0, "Nx": 51},
             "time": {"T": 1.0, "Nt": 51},
@@ -426,7 +429,7 @@ def create_general_mfg_problem(
             - xmin, xmax, Nx: Domain parameters
             - T, Nt: Time parameters
             - sigma, coupling_coefficient: Solver parameters
-            - m_initial, u_final: Initial/terminal conditions
+            - m_initial, u_terminal: Initial/terminal conditions
             - potential_func: Additional potential
             - boundary_conditions: Boundary conditions
 
@@ -447,7 +450,7 @@ def create_general_mfg_problem(
         ...     xmin=0.0, xmax=1.0, Nx=51,
         ...     T=1.0, Nt=51,
         ...     m_initial=lambda x: np.exp(-10 * (x - 0.3)**2),
-        ...     u_final=lambda x: (x - 0.8)**2,
+        ...     u_terminal=lambda x: (x - 0.8)**2,
         ... )
     """
     factory = get_general_factory()
@@ -468,7 +471,10 @@ def create_general_mfg_problem(
 
     # Extract optional components
     m_initial = kwargs.pop("m_initial", None)
-    u_final = kwargs.pop("u_final", None)
+    # Support both u_terminal and legacy u_final
+    u_terminal = kwargs.pop("u_terminal", None)
+    if u_terminal is None:
+        u_terminal = kwargs.pop("u_final", None)
     potential_func = kwargs.pop("potential_func", None)
     boundary_conditions = kwargs.pop("boundary_conditions", None)
     description = kwargs.pop("description", "MFG Problem")
@@ -480,7 +486,7 @@ def create_general_mfg_problem(
         time_config=time_config,
         solver_config=solver_config,
         m_initial=m_initial,
-        u_final=u_final,
+        u_terminal=u_terminal,
         potential_func=potential_func,
         boundary_conditions=boundary_conditions,
         description=description,

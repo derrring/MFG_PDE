@@ -151,7 +151,7 @@ def create_towel_beach_problem(
     components = MFGComponents(
         hamiltonian=hamiltonian,
         m_initial=initial_density_func,
-        u_final=terminal_value_func,
+        u_terminal=terminal_value_func,
     )
 
     # Create geometry with Neumann (reflecting) boundary conditions

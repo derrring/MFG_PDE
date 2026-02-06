@@ -62,13 +62,13 @@ def _nan_func(x):
     return float("nan")
 
 
-def _problem(m_initial, u_final, Nx_points=11, dimension=1, **kwargs):
+def _problem(m_initial, u_terminal, Nx_points=11, dimension=1, **kwargs):
     """Create a test MFGProblem with given IC/BC."""
     geom = _geometry(Nx_points=Nx_points, dimension=dimension)
     components = MFGComponents(
         hamiltonian=_hamiltonian(),
         m_initial=m_initial,
-        u_final=u_final,
+        u_terminal=u_terminal,
     )
     return MFGProblem(geometry=geom, components=components, **kwargs)
 
@@ -84,7 +84,7 @@ def test_array_m_initial_correct_shape():
     Nx = 11
     arr = np.ones(Nx) / Nx  # Uniform density, correct shape (11,)
 
-    problem = _problem(m_initial=arr, u_final=_quadratic, Nx_points=Nx)
+    problem = _problem(m_initial=arr, u_terminal=_quadratic, Nx_points=Nx)
 
     # m_initial should be set (after normalization, values may differ from input)
     assert problem.m_initial is not None
@@ -100,7 +100,7 @@ def test_array_m_initial_wrong_shape_raises():
     wrong_arr = np.ones(Nx + 5)  # Shape (16,) vs expected (11,)
 
     with pytest.raises(ValidationError, match="shape"):
-        _problem(m_initial=wrong_arr, u_final=_quadratic, Nx_points=Nx)
+        _problem(m_initial=wrong_arr, u_terminal=_quadratic, Nx_points=Nx)
 
 
 # ===========================================================================
@@ -110,15 +110,15 @@ def test_array_m_initial_wrong_shape_raises():
 
 @pytest.mark.unit
 def test_array_u_final_correct_shape():
-    """NDArray u_final with matching shape is accepted and copied."""
+    """NDArray u_terminal with matching shape is accepted and copied."""
     Nx = 11
     arr = np.linspace(0, 1, Nx) ** 2  # Quadratic terminal cost as array
 
-    problem = _problem(m_initial=_gaussian, u_final=arr, Nx_points=Nx)
+    problem = _problem(m_initial=_gaussian, u_terminal=arr, Nx_points=Nx)
 
-    assert problem.u_final is not None
-    assert problem.u_final.shape == (Nx,)
-    np.testing.assert_array_almost_equal(problem.u_final, arr)
+    assert problem.u_terminal is not None
+    assert problem.u_terminal.shape == (Nx,)
+    np.testing.assert_array_almost_equal(problem.u_terminal, arr)
 
 
 @pytest.mark.unit
@@ -128,7 +128,7 @@ def test_array_u_final_wrong_shape_raises():
     wrong_arr = np.ones(Nx + 3)  # Shape (14,) vs expected (11,)
 
     with pytest.raises(ValidationError, match="shape"):
-        _problem(m_initial=_gaussian, u_final=wrong_arr, Nx_points=Nx)
+        _problem(m_initial=_gaussian, u_terminal=wrong_arr, Nx_points=Nx)
 
 
 # ===========================================================================
@@ -144,7 +144,7 @@ def test_array_with_nan_raises():
     arr[5] = np.nan
 
     with pytest.raises(ValidationError, match="NaN"):
-        _problem(m_initial=arr, u_final=_quadratic, Nx_points=Nx)
+        _problem(m_initial=arr, u_terminal=_quadratic, Nx_points=Nx)
 
 
 @pytest.mark.unit
@@ -155,14 +155,14 @@ def test_array_with_inf_raises():
     arr[3] = np.inf
 
     with pytest.raises(ValidationError, match="Inf"):
-        _problem(m_initial=arr, u_final=_quadratic, Nx_points=Nx)
+        _problem(m_initial=arr, u_terminal=_quadratic, Nx_points=Nx)
 
 
 @pytest.mark.unit
 def test_callable_returning_nan_raises():
     """Callable that returns NaN at sample point raises ValidationError."""
     with pytest.raises(ValidationError, match="non-finite"):
-        _problem(m_initial=_nan_func, u_final=_quadratic)
+        _problem(m_initial=_nan_func, u_terminal=_quadratic)
 
 
 # ===========================================================================
@@ -174,14 +174,14 @@ def test_callable_returning_nan_raises():
 def test_invalid_type_m_initial_raises():
     """Non-callable, non-array m_initial raises ValidationError."""
     with pytest.raises(ValidationError, match="callable or ndarray"):
-        _problem(m_initial="not_valid", u_final=_quadratic)
+        _problem(m_initial="not_valid", u_terminal=_quadratic)
 
 
 @pytest.mark.unit
 def test_invalid_type_u_final_raises():
     """Non-callable, non-array u_final raises ValidationError."""
     with pytest.raises(ValidationError, match="callable or ndarray"):
-        _problem(m_initial=_gaussian, u_final="not_valid")
+        _problem(m_initial=_gaussian, u_terminal="not_valid")
 
 
 # ===========================================================================
@@ -197,7 +197,7 @@ def test_callable_raising_exception_detected():
         raise RuntimeError("Intentional failure")
 
     with pytest.raises(ValidationError, match="exception"):
-        _problem(m_initial=bad_m_initial, u_final=_quadratic)
+        _problem(m_initial=bad_m_initial, u_terminal=_quadratic)
 
 
 # ===========================================================================
@@ -207,13 +207,13 @@ def test_callable_raising_exception_detected():
 
 @pytest.mark.unit
 def test_both_arrays_correct_shape():
-    """Both m_initial and u_final as NDArrays with correct shape work."""
+    """Both m_initial and u_terminal as NDArrays with correct shape work."""
     Nx = 11
     m_arr = np.ones(Nx)
     u_arr = np.linspace(0, 1, Nx)
 
-    problem = _problem(m_initial=m_arr, u_final=u_arr, Nx_points=Nx)
+    problem = _problem(m_initial=m_arr, u_terminal=u_arr, Nx_points=Nx)
 
     assert problem.m_initial.shape == (Nx,)
-    assert problem.u_final.shape == (Nx,)
-    np.testing.assert_array_almost_equal(problem.u_final, u_arr)
+    assert problem.u_terminal.shape == (Nx,)
+    np.testing.assert_array_almost_equal(problem.u_terminal, u_arr)
