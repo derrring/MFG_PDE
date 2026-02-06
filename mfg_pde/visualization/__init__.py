@@ -23,10 +23,36 @@ Migrated Components:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
+# Issue #758: Use proper typing for optional dependencies instead of type: ignore
+# Pattern: Declare as module | None, assign None in fallback
+
+# Type declarations for optional modules (used by type checkers)
+if TYPE_CHECKING:
+    import bokeh.transform as transform
+    import networkx as nx
+    from bokeh.io import curdoc, push_notebook, show
+    from bokeh.layouts import column, gridplot, row
+    from bokeh.models import ColorBar, ColumnDataSource, HoverTool, LinearColorMapper
+    from bokeh.models.tools import BoxZoomTool, PanTool, ResetTool, SaveTool, WheelZoomTool
+    from bokeh.palettes import Inferno256, Plasma256, Viridis256
+    from bokeh.plotting import figure, output_file, save
+
+    import plotly.express as px
+    import plotly.graph_objects as go
+    import plotly.offline as offline
+    from plotly.subplots import make_subplots
+
 # Centralized optional dependency imports
 # All submodules should import from here to avoid duplication
 
 # Plotly imports
+px: Any
+go: Any
+offline: Any
+make_subplots: Any
+
 try:
     import plotly.express as px
     import plotly.graph_objects as go
@@ -36,12 +62,35 @@ try:
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
-    px = None  # type: ignore[assignment]
-    go = None  # type: ignore[assignment]
-    offline = None  # type: ignore[assignment]
-    make_subplots = None  # type: ignore[assignment]
+    px = None
+    go = None
+    offline = None
+    make_subplots = None
 
 # Bokeh imports
+transform: Any
+curdoc: Any
+push_notebook: Any
+show: Any
+column: Any
+gridplot: Any
+row: Any
+ColorBar: Any
+ColumnDataSource: Any
+HoverTool: Any
+LinearColorMapper: Any
+BoxZoomTool: Any
+PanTool: Any
+ResetTool: Any
+SaveTool: Any
+WheelZoomTool: Any
+Inferno256: Any
+Plasma256: Any
+Viridis256: Any
+figure: Any
+output_file: Any
+save: Any
+
 try:
     import bokeh.transform as transform
     from bokeh.io import curdoc, push_notebook, show
@@ -55,41 +104,47 @@ try:
 except ImportError:
     BOKEH_AVAILABLE = False
     # Set all bokeh imports to None for graceful degradation
-    transform = None  # type: ignore[assignment]
-    curdoc = None  # type: ignore[assignment]
-    push_notebook = None  # type: ignore[assignment]
-    show = None  # type: ignore[assignment]
-    column = None  # type: ignore[assignment]
-    gridplot = None  # type: ignore[assignment]
-    row = None  # type: ignore[assignment]
-    ColorBar = None  # type: ignore[assignment]
-    ColumnDataSource = None  # type: ignore[assignment]
-    HoverTool = None  # type: ignore[assignment]
-    LinearColorMapper = None  # type: ignore[assignment]
-    BoxZoomTool = None  # type: ignore[assignment]
-    PanTool = None  # type: ignore[assignment]
-    ResetTool = None  # type: ignore[assignment]
-    SaveTool = None  # type: ignore[assignment]
-    WheelZoomTool = None  # type: ignore[assignment]
-    Inferno256 = None  # type: ignore[assignment]
-    Plasma256 = None  # type: ignore[assignment]
-    Viridis256 = None  # type: ignore[assignment]
-    figure = None  # type: ignore[assignment]
-    output_file = None  # type: ignore[assignment]
-    save = None  # type: ignore[assignment]
+    transform = None
+    curdoc = None
+    push_notebook = None
+    show = None
+    column = None
+    gridplot = None
+    row = None
+    ColorBar = None
+    ColumnDataSource = None
+    HoverTool = None
+    LinearColorMapper = None
+    BoxZoomTool = None
+    PanTool = None
+    ResetTool = None
+    SaveTool = None
+    WheelZoomTool = None
+    Inferno256 = None
+    Plasma256 = None
+    Viridis256 = None
+    figure = None
+    output_file = None
+    save = None
 
 # NetworkX imports
+nx: Any
+
 try:
     import networkx as nx
 
     NETWORKX_AVAILABLE = True
 except ImportError:
     NETWORKX_AVAILABLE = False
-    nx = None  # type: ignore[assignment]
+    nx = None
+
+# Submodule imports after optional dependency setup (E402 intentional)
+# These imports MUST come after the try/except blocks above because
+# submodules use PLOTLY_AVAILABLE, BOKEH_AVAILABLE, etc.
 
 # Enhanced network MFG visualization
 # Convergence plotting (standalone functions)
-from .convergence_plots import (
+from .convergence_plots import (  # noqa: E402
     plot_convergence_rate,
     plot_convergence_summary,
     plot_distribution_evolution,
@@ -99,10 +154,13 @@ from .convergence_plots import (
     plot_multi_error_history,
     plot_wasserstein_history,
 )
-from .enhanced_network_plots import EnhancedNetworkMFGVisualizer, create_enhanced_network_visualizer
+from .enhanced_network_plots import (  # noqa: E402
+    EnhancedNetworkMFGVisualizer,
+    create_enhanced_network_visualizer,
+)
 
 # Core interactive visualization system
-from .interactive_plots import (
+from .interactive_plots import (  # noqa: E402
     MFGBokehVisualizer,
     MFGPlotlyVisualizer,
     MFGVisualizationManager,
@@ -114,7 +172,7 @@ from .interactive_plots import (
 )
 
 # Legacy plotting for backward compatibility
-from .legacy_plotting import (  # Aliases for backward compatibility
+from .legacy_plotting import (  # noqa: E402
     legacy_myplot3d,
     legacy_plot_convergence,
     legacy_plot_results,
@@ -126,7 +184,7 @@ from .legacy_plotting import (  # Aliases for backward compatibility
 )
 
 # Mathematical plotting with LaTeX support
-from .mathematical_plots import (
+from .mathematical_plots import (  # noqa: E402
     MathematicalPlotter,
     MFGMathematicalVisualizer,
     create_mathematical_visualizer,
@@ -135,7 +193,7 @@ from .mathematical_plots import (
 )
 
 # Comprehensive analytics engine
-from .mfg_analytics import (
+from .mfg_analytics import (  # noqa: E402
     MFGAnalyticsEngine,
     analyze_mfg_solution_quick,
     analyze_parameter_sweep_quick,
@@ -143,10 +201,13 @@ from .mfg_analytics import (
 )
 
 # Multi-dimensional visualization (2D/3D)
-from .multidim_viz import MultiDimVisualizer
+from .multidim_viz import MultiDimVisualizer  # noqa: E402
 
 # Network MFG visualization
-from .network_plots import NetworkMFGVisualizer, create_network_visualizer
+from .network_plots import (  # noqa: E402
+    NetworkMFGVisualizer,
+    create_network_visualizer,
+)
 
 __all__ = [
     # Availability flags
