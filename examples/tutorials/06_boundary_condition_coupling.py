@@ -40,6 +40,8 @@ from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import (
     AdjointConsistentProvider,
@@ -56,6 +58,21 @@ T = 1.0
 SIGMA = 0.2
 MAX_ITERATIONS = 30
 TOLERANCE = 1e-6
+
+
+def create_lq_components():
+    """Create standard LQ-MFG components for boundary stall scenario."""
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.5 * m,
+        coupling_dm=lambda m: 0.5,
+    )
+    return MFGComponents(
+        hamiltonian=hamiltonian,
+        # Stall point at x=0 (boundary) - agents want to be at left edge
+        m_initial=lambda x: np.exp(-20 * (x - 0.3) ** 2),
+        u_final=lambda x: x**2,  # Minimal cost at x=0
+    )
 
 
 def create_standard_problem() -> MFGProblem:
@@ -79,6 +96,7 @@ def create_standard_problem() -> MFGProblem:
         T=T,
         Nt=NT,
         diffusion=SIGMA,
+        components=create_lq_components(),
     )
 
 
@@ -131,6 +149,7 @@ def create_adjoint_consistent_problem() -> MFGProblem:
         T=T,
         Nt=NT,
         diffusion=SIGMA,
+        components=create_lq_components(),
     )
 
 
