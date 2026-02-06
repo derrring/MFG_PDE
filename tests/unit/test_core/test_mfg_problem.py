@@ -584,22 +584,6 @@ def test_get_problem_info():
 
 
 @pytest.mark.unit
-@pytest.mark.skip(
-    reason="Test deprecated behavior. New geometry validation (TensorProductGrid) correctly "
-    "rejects Nx=0 because at least 2 points are needed to define a grid with spacing. "
-    "Legacy API behavior is no longer supported."
-)
-def test_mfg_problem_zero_nx():
-    """Test MFGProblem handles Nx=0 gracefully."""
-    geometry = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[1])
-    problem = create_test_problem(geometry=geometry)
-
-    assert problem.Nx == 0
-    assert problem.dx == 0.0
-    assert len(problem.xSpace) == 1
-
-
-@pytest.mark.unit
 def test_mfg_problem_zero_nt():
     """Test MFGProblem handles Nt=0 gracefully."""
     problem = create_test_problem(Nt=0)
