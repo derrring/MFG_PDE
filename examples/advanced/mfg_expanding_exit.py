@@ -35,6 +35,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from mfg_pde import MFGProblem
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfg_pde.core.mfg_components import MFGComponents
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.geometry.level_set import LevelSetEvolver, TimeDependentDomain
@@ -127,27 +129,35 @@ def create_mfg_problem(phi_current: np.ndarray) -> MFGProblem:
     """
     Create MFG problem with current exit configuration.
 
-    Exit defined by: φ(x) ≤ 0
+    Exit defined by: phi(x) <= 0
     Terminal cost: 0 inside exit, large outside
+
+    Uses MFGComponents + SeparableHamiltonian (modern API).
+    The running cost g(m) = 1 + w*m is split:
+    - constant 1: absorbed into base HJB structure
+    - density-dependent w*m: the coupling term in SeparableHamiltonian
     """
-    # Terminal cost: 0 inside exit (φ ≤ 0), large penalty outside
-    exit_mask = phi_current <= 0
-    terminal_cost = np.zeros(len(phi_current))
-    terminal_cost[~exit_mask] = 100.0  # Large penalty outside exit
+    # Terminal value: 0 inside exit (phi <= 0), large penalty outside
+    u_final = np.where(phi_current <= 0, 0.0, 100.0)
 
-    # Running cost: g(m) = 1 + congestion_weight * m
-    def running_cost(m):
-        return 1.0 + congestion_weight * m
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: congestion_weight * m,
+        coupling_dm=lambda m: congestion_weight,
+    )
 
-    # Create problem using geometry-first API
+    components = MFGComponents(
+        hamiltonian=hamiltonian,
+        m_initial=m0.copy(),
+        u_final=u_final,
+    )
+
     problem = MFGProblem(
         geometry=grid,
-        terminal_cost=terminal_cost,
-        running_cost=running_cost,
-        initial_density=m0.copy(),
         T=T_final,
         Nt=Nt,
         diffusion=sigma,
+        components=components,
     )
 
     return problem
@@ -297,7 +307,7 @@ output_dir = Path(__file__).parent.parent / "outputs" / "level_set_methods"
 output_dir.mkdir(parents=True, exist_ok=True)
 output_path = output_dir / "mfg_expanding_exit.png"
 plt.savefig(output_path, dpi=150, bbox_inches="tight")
-print(f"\n✅ Saved figure: {output_path}")
+print(f"\nSaved figure: {output_path}")
 
 plt.show()
 
@@ -316,10 +326,10 @@ print(f"  - Final exit density: {density_at_exit[-1]:.4f}")
 print(f"  - Maximum expansion velocity: {max(velocities):.4f}")
 
 print("\nKey Demonstration:")
-print("  ✓ Level set method tracks dynamic exit boundary")
-print("  ✓ Exit expands when density exceeds threshold (V ∝ max(m - m_threshold, 0))")
-print("  ✓ Coupling mechanism: density → velocity → level set evolution")
-print("  ✓ Self-regulating: expansion reduces congestion → velocity decreases")
+print("  - Level set method tracks dynamic exit boundary")
+print("  - Exit expands when density exceeds threshold (V ~ max(m - m_threshold, 0))")
+print("  - Coupling mechanism: density -> velocity -> level set evolution")
+print("  - Self-regulating: expansion reduces congestion -> velocity decreases")
 
 print("\nNote:")
 print("  This example uses simplified density model for demonstration.")
