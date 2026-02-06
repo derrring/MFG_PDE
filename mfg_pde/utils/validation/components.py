@@ -193,15 +193,26 @@ def validate_u_final(
     u_final: Callable | NDArray[np.floating] | None,
     geometry: GeometryProtocol,
 ) -> ValidationResult:
-    """Deprecated: use validate_u_terminal() instead."""
-    import warnings
+    """Deprecated: use validate_u_terminal() instead.
 
-    warnings.warn(
-        "validate_u_final() is deprecated, use validate_u_terminal() instead. Will be removed in v1.0.0.",
-        DeprecationWarning,
-        stacklevel=2,
+    .. deprecated:: v0.17.6
+        Use :func:`validate_u_terminal` instead. Will be removed in v1.0.0.
+    """
+    from mfg_pde.utils.deprecation import deprecated
+
+    # Apply decorator dynamically to avoid import cycle at module level
+    @deprecated(
+        since="v0.17.6",
+        replacement="use validate_u_terminal() instead",
+        reason="Renamed for consistency with MFG literature terminology",
     )
-    return validate_u_terminal(u_final, geometry)
+    def _deprecated_validate_u_final(
+        u_final: Callable | NDArray[np.floating] | None,
+        geometry: GeometryProtocol,
+    ) -> ValidationResult:
+        return validate_u_terminal(u_final, geometry)
+
+    return _deprecated_validate_u_final(u_final, geometry)
 
 
 def validate_mass_normalization(

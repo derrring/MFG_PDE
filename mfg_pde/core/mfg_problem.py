@@ -2049,15 +2049,23 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         return self.u_terminal.copy()
 
     def get_u_final(self) -> np.ndarray:
-        """Deprecated: use get_u_terminal() instead."""
-        import warnings
+        """Deprecated: use get_u_terminal() instead.
 
-        warnings.warn(
-            "get_u_final() is deprecated, use get_u_terminal() instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
+        .. deprecated:: v0.17.6
+            Use :meth:`get_u_terminal` instead. Will be removed in v1.0.0.
+        """
+        from mfg_pde.utils.deprecation import deprecated
+
+        # Apply decorator dynamically to avoid import cycle at module level
+        @deprecated(
+            since="v0.17.6",
+            replacement="use get_u_terminal() instead",
+            reason="Renamed for consistency with MFG literature terminology",
         )
-        return self.get_u_terminal()
+        def _deprecated_get_u_final() -> np.ndarray:
+            return self.get_u_terminal()
+
+        return _deprecated_get_u_final()
 
     def get_m_initial(self) -> np.ndarray:
         """Get initial density m(0, x). Issue #670: unified naming."""
@@ -2065,8 +2073,22 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
     # Legacy aliases for backward compatibility
     def get_u_fin(self) -> np.ndarray:
-        """Legacy alias for get_u_terminal()."""
-        return self.get_u_terminal()
+        """Legacy alias for get_u_terminal().
+
+        .. deprecated:: v0.17.6
+            Use :meth:`get_u_terminal` instead. Will be removed in v1.0.0.
+        """
+        from mfg_pde.utils.deprecation import deprecated
+
+        @deprecated(
+            since="v0.17.6",
+            replacement="use get_u_terminal() instead",
+            reason="Shortened alias deprecated in favor of full name",
+        )
+        def _deprecated_get_u_fin() -> np.ndarray:
+            return self.get_u_terminal()
+
+        return _deprecated_get_u_fin()
 
     def get_m_init(self) -> np.ndarray:
         """Legacy alias for get_m_initial()."""

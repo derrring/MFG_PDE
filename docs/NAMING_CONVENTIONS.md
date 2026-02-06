@@ -1,7 +1,7 @@
 # MFG_PDE Naming Conventions
 
-**Last Updated**: 2026-01-23
-**Status**: Current reference document (v0.17.1+)
+**Last Updated**: 2026-02-06
+**Status**: Current reference document (v0.17.6+)
 **Related**: See "Derivative Tensor Standard" section for the canonical derivative representation
 
 ---
@@ -939,7 +939,9 @@ assert problem.Nt_points == 101
 
 | Old Name | New Name | Reason | Removal |
 |----------|----------|--------|---------|
-| `sigma` | `diffusion` | Canonical naming: `diffusion = σ` | v1.0.0 |
+| `u_final` | `u_terminal` | MFG literature uses "terminal condition" | v1.0.0 |
+| `sigma` (MFGProblem) | `diffusion` | Constructor param renamed; internal `self.sigma` retained | v1.0.0 |
+| `sigma` (FP solvers) | `volatility_field` | SDE convention: σ = volatility (noise coefficient) | v1.0.0 |
 | `num_points` | `Nx_points` | Unclear (which N?) | v1.0.0 |
 | `thetaUM` | `damping_factor` | Unclear acronym | Legacy |
 | `Niter_max` | `max_iterations` | Inconsistent capitalization | Legacy |
