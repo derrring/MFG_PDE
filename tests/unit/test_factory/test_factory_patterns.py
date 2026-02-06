@@ -194,11 +194,6 @@ def test_type_consistency():
         assert hasattr(solver, "config")
 
 
-@pytest.mark.skip(reason="Particle-collocation tests removed - solver removed from core package.")
-def test_particle_collocation_removed():
-    """Placeholder indicating particle-collocation tests have been removed."""
-
-
 def run_comprehensive_test():
     """Run comprehensive factory pattern tests."""
     print("=" * 80)
