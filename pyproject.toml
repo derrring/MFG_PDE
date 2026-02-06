@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.17.5"  # v0.17.5: Adaptive Picard damping, BC applicator consolidation
+version = "0.17.6"  # v0.17.6: u_final→u_terminal rename, unified volatility_field API
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
