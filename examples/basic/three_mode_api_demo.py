@@ -15,7 +15,41 @@ import numpy as np
 from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 from mfg_pde.types import NumericalScheme
+
+
+def create_lq_components():
+    """Create standard LQ-MFG components for demos."""
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.5 * m,
+        coupling_dm=lambda m: 0.5,
+    )
+    return MFGComponents(
+        hamiltonian=hamiltonian,
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+        u_final=lambda x: (x - 0.5) ** 2,
+    )
+
+
+def create_problem():
+    """Create a simple 1D problem for demos."""
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[40],
+        boundary_conditions=no_flux_bc(dimension=1),
+    )
+    return MFGProblem(
+        geometry=geometry,
+        Nt=20,
+        T=1.0,
+        diffusion=0.1,
+        components=create_lq_components(),
+    )
 
 
 def demo_safe_mode():
@@ -32,12 +66,7 @@ def demo_safe_mode():
     print("=" * 70)
 
     # Create a simple 1D problem
-    problem = MFGProblem(
-        Nx=[40],
-        Nt=20,
-        T=1.0,
-        diffusion=0.1,
-    )
+    problem = create_problem()
 
     # Safe Mode: Just specify the scheme
     result = problem.solve(
@@ -67,12 +96,7 @@ def demo_expert_mode():
     print("EXPERT MODE: Manual Solver Injection")
     print("=" * 70)
 
-    problem = MFGProblem(
-        Nx=[40],
-        Nt=20,
-        T=1.0,
-        diffusion=0.1,
-    )
+    problem = create_problem()
 
     # Expert Mode: Create and configure solvers manually
     hjb = HJBFDMSolver(problem)
@@ -107,12 +131,7 @@ def demo_auto_mode():
     print("AUTO MODE: Intelligent Automatic Selection")
     print("=" * 70)
 
-    problem = MFGProblem(
-        Nx=[40],
-        Nt=20,
-        T=1.0,
-        diffusion=0.1,
-    )
+    problem = create_problem()
 
     # Auto Mode: No scheme or solvers specified
     # System automatically selects FDM_UPWIND (safe default)
@@ -140,12 +159,7 @@ def compare_schemes():
     print("SCHEME COMPARISON: Testing Different Discretizations")
     print("=" * 70)
 
-    problem = MFGProblem(
-        Nx=[40],
-        Nt=20,
-        T=1.0,
-        diffusion=0.1,
-    )
+    problem = create_problem()
 
     schemes = [
         NumericalScheme.FDM_UPWIND,

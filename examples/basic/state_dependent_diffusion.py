@@ -23,8 +23,24 @@ from mfg_pde import MFGProblem
 from mfg_pde.alg.numerical.coupling import FixedPointIterator
 from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
+
+
+def create_lq_components(coupling_strength: float = 1.0):
+    """Create standard LQ-MFG components."""
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: coupling_strength * m,
+        coupling_dm=lambda m: coupling_strength,
+    )
+    return MFGComponents(
+        hamiltonian=hamiltonian,
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+        u_final=lambda x: (x - 0.5) ** 2,
+    )
 
 
 def scenario_porous_medium():
@@ -46,15 +62,18 @@ def scenario_porous_medium():
         return 0.1 * m
 
     # Create problem with geometry-based API
-    domain = TensorProductGrid(bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1))
+    domain = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[101],
+        boundary_conditions=no_flux_bc(dimension=1),
+    )
 
     problem = MFGProblem(
         geometry=domain,
         T=1.0,
         Nt=100,
-        sigma=0.1,  # Base diffusion (used if diffusion_field=None)
-        drift_weight=1.0,
-        coupling_lambda=1.0,
+        diffusion=0.1,  # Base diffusion (used if diffusion_field=None)
+        components=create_lq_components(coupling_strength=1.0),
     )
 
     # Create solvers
@@ -106,15 +125,18 @@ def scenario_crowd_dynamics():
         return D_min + (D_max - D_min) * (1 - m / m_max)
 
     # Create problem
-    domain = TensorProductGrid(bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1))
+    domain = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[101],
+        boundary_conditions=no_flux_bc(dimension=1),
+    )
 
     problem = MFGProblem(
         geometry=domain,
         T=1.0,
         Nt=100,
-        sigma=0.1,
-        drift_weight=1.0,
-        coupling_lambda=1.0,
+        diffusion=0.1,
+        components=create_lq_components(coupling_strength=1.0),
     )
 
     hjb_solver = HJBFDMSolver(problem)
@@ -160,15 +182,18 @@ def scenario_spatially_varying():
         return 0.05 + 0.1 * x
 
     # Create problem
-    domain = TensorProductGrid(bounds=[(0.0, 1.0)], num_points=[101], boundary_conditions=no_flux_bc(dimension=1))
+    domain = TensorProductGrid(
+        bounds=[(0.0, 1.0)],
+        Nx_points=[101],
+        boundary_conditions=no_flux_bc(dimension=1),
+    )
 
     problem = MFGProblem(
         geometry=domain,
         T=1.0,
         Nt=100,
-        sigma=0.1,
-        drift_weight=1.0,
-        coupling_lambda=1.0,
+        diffusion=0.1,
+        components=create_lq_components(coupling_strength=1.0),
     )
 
     hjb_solver = HJBFDMSolver(problem)
