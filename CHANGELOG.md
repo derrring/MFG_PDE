@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.6] - 2026-02-06
+
+### Changed
+
+- **Renamed `u_final` to `u_terminal`** (Issue #670, PR #755)
+  - All APIs now use `u_terminal` for HJB terminal condition (MFG literature standard)
+  - Deprecated `u_final` parameter in `MFGComponents`, redirects to `u_terminal`
+  - Deprecated `get_u_final()`, `get_final_u()` methods, redirect to `get_u_terminal()`
+  - Deprecated `validate_u_final()`, redirects to `validate_u_terminal()`
+  - **Migration**: Replace `u_final=` with `u_terminal=` in all code
+
+- **Unified `volatility_field` API** (Issue #717, PR #755)
+  - Single `volatility_field` parameter handles all volatility specifications:
+    - Scalar `σ` → isotropic diffusion `D = σ²/2`
+    - Diagonal `[σ₀, σ₁, ...]` → anisotropic `D = diag(σᵢ²)/2`
+    - Matrix `Σ (d×d)` → tensor diffusion `D = ΣΣᵀ/2`
+    - Spatially varying `Σ(x)` → `D(x) = Σ(x)Σ(x)ᵀ/2`
+    - Callable `σ(t,x,m)` or `Σ(t,x,m)` → state-dependent
+  - Auto-detection by input shape (no separate parameters needed)
+
+### Deprecated
+
+- **`diffusion_field` parameter** → Use `volatility_field` instead
+- **`tensor_diffusion_field` parameter** → Use `volatility_field` with `(d,d)` array
+- **`volatility_matrix` parameter** → Use `volatility_field` with `(d,d)` array
+
+### Documentation
+
+- Updated `docs/NAMING_CONVENTIONS.md` with volatility vs diffusion terminology
+- Added SDE-PDE relationship: `dX = μdt + σdW` → `∂ₜm = -∇·(μm) + DΔm` where `D = σ²/2`
+
 ## [0.17.5] - 2026-02-06
 
 ### Added
