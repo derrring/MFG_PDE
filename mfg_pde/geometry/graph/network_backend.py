@@ -15,6 +15,7 @@ The backend system automatically selects the optimal library based on:
 
 from __future__ import annotations
 
+import threading
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -572,20 +573,26 @@ class NetworkBackendManager:
 
 
 # Global backend manager instance
-_backend_manager = None
+# Thread-safe lazy singleton (Issue #759)
+_backend_manager: NetworkBackendManager | None = None
+_backend_manager_lock = threading.Lock()
 
 
 def get_backend_manager(
     preferred_backend: NetworkBackendType = NetworkBackendType.IGRAPH,
 ) -> NetworkBackendManager:
-    """Get global backend manager instance."""
+    """Get global backend manager instance (thread-safe)."""
     global _backend_manager
     if _backend_manager is None:
-        _backend_manager = NetworkBackendManager(preferred_backend)
+        with _backend_manager_lock:
+            # Double-check locking pattern
+            if _backend_manager is None:
+                _backend_manager = NetworkBackendManager(preferred_backend)
     return _backend_manager
 
 
-def set_preferred_backend(backend_type: NetworkBackendType):
-    """Set preferred backend globally."""
+def set_preferred_backend(backend_type: NetworkBackendType) -> None:
+    """Set preferred backend globally (thread-safe)."""
     global _backend_manager
-    _backend_manager = NetworkBackendManager(backend_type)
+    with _backend_manager_lock:
+        _backend_manager = NetworkBackendManager(backend_type)

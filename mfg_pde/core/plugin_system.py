@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -632,15 +633,19 @@ class PluginManager:
         return True
 
 
-# Global plugin manager instance
+# Global plugin manager instance (thread-safe lazy singleton, Issue #759)
 _plugin_manager: PluginManager | None = None
+_plugin_manager_lock = threading.Lock()
 
 
 def get_plugin_manager() -> PluginManager:
-    """Get the global plugin manager instance."""
+    """Get the global plugin manager instance (thread-safe)."""
     global _plugin_manager
     if _plugin_manager is None:
-        _plugin_manager = PluginManager()
+        with _plugin_manager_lock:
+            # Double-check locking pattern
+            if _plugin_manager is None:
+                _plugin_manager = PluginManager()
     return _plugin_manager
 
 

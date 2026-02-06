@@ -10,6 +10,7 @@ through configuration files and programmatic function definitions.
 from __future__ import annotations
 
 import importlib.util
+import threading
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -402,15 +403,19 @@ class GeneralMFGFactory:
         return validation
 
 
-# Global factory instance
+# Global factory instance (thread-safe lazy singleton, Issue #759)
 _global_general_factory: GeneralMFGFactory | None = None
+_general_factory_lock = threading.Lock()
 
 
 def get_general_factory() -> GeneralMFGFactory:
-    """Get global general MFG factory instance."""
+    """Get global general MFG factory instance (thread-safe)."""
     global _global_general_factory
     if _global_general_factory is None:
-        _global_general_factory = GeneralMFGFactory()
+        with _general_factory_lock:
+            # Double-check locking pattern
+            if _global_general_factory is None:
+                _global_general_factory = GeneralMFGFactory()
     return _global_general_factory
 
 

@@ -37,21 +37,29 @@ __version__ = "1.0.0"
 __workflow_api_version__ = "1.0"
 
 # Global workflow manager instance
+# Thread-safe lazy singleton (Issue #759)
+import threading
+
 _global_workflow_manager: WorkflowManager | None = None
+_workflow_manager_lock = threading.Lock()
 
 
 def get_workflow_manager() -> WorkflowManager:
-    """Get the global workflow manager instance."""
+    """Get the global workflow manager instance (thread-safe)."""
     global _global_workflow_manager
     if _global_workflow_manager is None:
-        _global_workflow_manager = WorkflowManager()
+        with _workflow_manager_lock:
+            # Double-check locking pattern
+            if _global_workflow_manager is None:
+                _global_workflow_manager = WorkflowManager()
     return _global_workflow_manager
 
 
-def set_workflow_manager(manager: WorkflowManager):
-    """Set the global workflow manager instance."""
+def set_workflow_manager(manager: WorkflowManager) -> None:
+    """Set the global workflow manager instance (thread-safe)."""
     global _global_workflow_manager
-    _global_workflow_manager = manager
+    with _workflow_manager_lock:
+        _global_workflow_manager = manager
 
 
 def create_workflow(name: str, description: str = "", **kwargs) -> Workflow:
