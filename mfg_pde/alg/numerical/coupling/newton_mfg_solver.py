@@ -331,16 +331,12 @@ class NewtonMFGSolver(BaseMFGSolver):
 
 
 if __name__ == "__main__":
-    """Quick smoke test for development."""
-    # Fix imports for direct script execution
-    import sys
-    from pathlib import Path
+    """Quick smoke test for development.
 
-    # Add project root to path for absolute imports
-    project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-
+    Run with: python -m mfg_pde.alg.numerical.coupling.newton_mfg_solver
+    Or ensure mfg_pde is installed: pip install -e .
+    """
+    # Issue #757: Removed sys.path manipulation - use proper package installation
     print("Testing NewtonMFGSolver...")
 
     from mfg_pde.alg.numerical.coupling.base_mfg import BaseMFGSolver
