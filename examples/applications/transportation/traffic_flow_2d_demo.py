@@ -63,7 +63,10 @@ def create_traffic_problem():
     Nt = 50
 
     # Create 2D tensor product grid
-    grid = TensorProductGrid(bounds=[(0.0, L), (0.0, L)], num_points=[Nx, Ny])
+    grid = TensorProductGrid(
+        bounds=[(0.0, L), (0.0, L)],
+        Nx_points=[Nx, Ny],
+    )
 
     # Physical parameters
     sigma = 0.5  # Diffusion (traffic randomness)
@@ -225,7 +228,7 @@ def solve_traffic_mfg_simple(problem):
         print(f"Iteration {iteration + 1}: Δu = {u_change:.6f}, Δm = {m_change:.6f}")
 
         if u_change < tol and m_change < tol:
-            print(f"✓ Converged in {iteration + 1} iterations")
+            print(f"[OK] Converged in {iteration + 1} iterations")
             break
 
     return {"u": u, "m": m, "grid": grid}
@@ -283,7 +286,7 @@ def visualize_results(solution, output_dir="traffic_flow_2d"):
     )
     viz.save(fig_anim, output_path / "density_evolution.html")
 
-    print(f"\n✓ Visualizations saved to {output_dir}/")
+    print(f"\n[OK] Visualizations saved to {output_dir}/")
     print("\nGenerated files:")
     print("  - value_function.html: 3D surface plot of cost-to-go")
     print("  - density_initial.html: Initial vehicle distribution")
@@ -340,7 +343,7 @@ def main():
     print(f"  - Max cost-to-go: {u_final.max():.4f}")
 
     print("\n" + "=" * 60)
-    print("✓ Demo Complete")
+    print("[OK] Demo Complete")
     print("=" * 60)
 
 

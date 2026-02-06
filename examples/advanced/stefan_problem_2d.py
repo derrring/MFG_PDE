@@ -110,7 +110,10 @@ print(f"  Boundary temperature: T = {T_boundary}")
 # ========================================
 
 # Create 2D grid
-grid = TensorProductGrid(bounds=[(x_min, x_max), (y_min, y_max)], Nx=[Nx, Ny])
+grid = TensorProductGrid(
+    bounds=[(x_min, x_max), (y_min, y_max)],
+    Nx_points=[Nx, Ny],
+)
 X, Y = grid.meshgrid()
 dx, dy = grid.spacing
 
@@ -294,9 +297,9 @@ print(f"  Final total: {E_final['total']:.6f}")
 print(f"  Relative change: {100 * energy_change_rel:.2f}%")
 
 if energy_change_rel < 0.1:  # 10% tolerance
-    print("  ✅ Energy reasonably conserved")
+    print("  [OK] Energy reasonably conserved")
 else:
-    print(f"  ⚠️  Energy change = {100 * energy_change_rel:.1f}% > 10%")
+    print(f"  [WARN] Energy change = {100 * energy_change_rel:.1f}% > 10%")
 
 # 2. Symmetry preservation
 phi_final = ls_domain.current_phi
@@ -316,9 +319,9 @@ if len(x_interface) > 0:
     print(f"  Aspect ratio: {aspect_ratio:.4f}")
 
     if abs(aspect_ratio - 1.0) < 0.1:
-        print("  ✅ Symmetry well preserved (aspect ≈ 1)")
+        print("  [OK] Symmetry well preserved (aspect ~ 1)")
     else:
-        print(f"  ⚠️  Asymmetry: aspect ratio = {aspect_ratio:.2f}")
+        print(f"  [WARN] Asymmetry: aspect ratio = {aspect_ratio:.2f}")
 
 # 3. Interface monotonicity (should shrink)
 area_initial = np.sum(phi0 < 0) * dx * dy
@@ -330,9 +333,9 @@ print(f"  Final ice area: {area_final:.6f}")
 print(f"  Change: {area_final - area_initial:.6f} (should be negative)")
 
 if area_final < area_initial:
-    print("  ✅ Ice shrinks as expected")
+    print("  [OK] Ice shrinks as expected")
 else:
-    print("  ⚠️  Ice expanded (unexpected)")
+    print("  [WARN] Ice expanded (unexpected)")
 
 # ========================================
 # Visualization
@@ -424,7 +427,7 @@ plt.tight_layout()
 # Save figure
 fig_path = output_dir / "stefan_problem_2d.png"
 plt.savefig(fig_path, dpi=150, bbox_inches="tight")
-print(f"\n✅ Saved figure: {fig_path}")
+print(f"\n[OK] Saved figure: {fig_path}")
 
 plt.show()
 
