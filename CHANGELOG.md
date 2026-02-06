@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.7] - 2026-02-06
+
+### Fixed
+
+- **Thread-safe global singletons** (Issue #759)
+  - Added `threading.Lock()` with double-check locking to 4 global managers:
+    - `plugin_system.get_plugin_manager()`
+    - `workflow.get_workflow_manager()`
+    - `network_backend.get_backend_manager()`
+    - `general_mfg_factory.get_general_factory()`
+  - Prevents race conditions in multi-threaded environments
+
+- **Visualization type annotations** (Issue #758)
+  - Removed 41 `type: ignore[assignment]` suppressions
+  - Used proper `Any` typing for optional dependency fallbacks
+
+- **Import patterns** (Issues #756, #757)
+  - Replaced wildcard imports with explicit imports in `acceleration/`
+  - Removed `sys.path` manipulation anti-pattern in solver modules
+
+### Changed
+
+- **Test suite cleanup** (Issue #761)
+  - Reduced unconditional skips from 24 to 15 (37% reduction)
+  - Fixed ghost buffer tests (incorrect assertions)
+  - Deleted obsolete tests for deprecated patterns
+  - Created tracking issues for remaining skips (#762, #763)
+
+- **Deprecation timelines standardized** to v1.0.0 for all deprecated APIs
+
+### Removed
+
+- Deleted `tests/integration/test_coupled_hjb_fp_2d.py` (tested deprecated inheritance pattern)
+
 ## [0.17.6] - 2026-02-06
 
 ### Changed

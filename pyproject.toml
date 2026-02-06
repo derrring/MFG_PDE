@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.17.6"  # v0.17.6: u_final→u_terminal rename, unified volatility_field API
+version = "0.17.7"  # v0.17.7: Thread-safe singletons, test cleanup, lint fixes
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
