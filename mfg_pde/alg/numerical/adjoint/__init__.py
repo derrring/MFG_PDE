@@ -61,30 +61,30 @@ from .bc_coupling import (
 from .diagnostics import (
     AdjointDiagnosticReport,
     BoundaryErrorInfo,
-    diagnose_adjoint_error,
     ErrorSeverity,
     ErrorSource,
+    diagnose_adjoint_error,
 )
 
 # Operators (adjoint-consistent operator construction)
 from .operators import (
-    # Geometry-aware factories (preferred API)
-    build_advection_matrix_from_geometry,
-    build_diffusion_matrix_from_geometry,
-    get_boundary_indices_from_geometry,
+    OperatorConfig,
     OperatorGeometry,
     # Primitive implementations (for direct use)
     build_advection_matrix_1d,
+    # Geometry-aware factories (preferred API)
+    build_advection_matrix_from_geometry,
+    # BC-aware adjoint
+    build_bc_aware_adjoint_matrix,
     build_diffusion_matrix,
     build_diffusion_matrix_1d,
     build_diffusion_matrix_2d,
+    build_diffusion_matrix_from_geometry,
     # Verification utilities
     check_operator_adjoint,
+    get_boundary_indices_from_geometry,
     make_operator_adjoint,
-    OperatorConfig,
     verify_operator_splitting_adjoint,
-    # BC-aware adjoint
-    build_bc_aware_adjoint_matrix,
 )
 
 # Protocols (for solver integration)
@@ -100,8 +100,8 @@ from .protocols import (
 # Verification (adjoint checking)
 from .verification import (
     AdjointVerificationResult,
-    compute_adjoint_error_profile,
     DualityVerificationResult,
+    compute_adjoint_error_profile,
     verify_discrete_adjoint,
     verify_duality,
 )

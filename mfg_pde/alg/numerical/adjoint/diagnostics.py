@@ -206,7 +206,7 @@ def diagnose_adjoint_error(
             grid_shape = (n,)
         else:
             # Assume square grid for higher dimensions
-            side = int(round(n ** (1.0 / dimension)))
+            side = round(n ** (1.0 / dimension))
             grid_shape = tuple([side] * dimension)
 
     # Identify boundary indices
@@ -341,7 +341,7 @@ def _flat_to_multi_index(flat_idx: int, shape: tuple[int, ...]) -> tuple[int, ..
     """Convert flat index to multi-index (row-major/C order)."""
     multi_idx = []
     remaining = flat_idx
-    for i, dim_size in enumerate(shape):
+    for i, _dim_size in enumerate(shape):
         stride = int(np.prod(shape[i + 1 :])) if i + 1 < len(shape) else 1
         idx = remaining // stride
         remaining = remaining % stride

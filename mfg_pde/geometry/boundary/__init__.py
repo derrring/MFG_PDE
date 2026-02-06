@@ -272,6 +272,19 @@ from .enforcement import (
 # 1D FDM boundary conditions (simple left/right specification)
 # DEPRECATED: Use conditions.BoundaryConditions with dimension=1 instead
 from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
+
+# =============================================================================
+# Ghost Point Utilities (reflection-based, for NEUMANN/NO-FLUX BC)
+# Parallel to periodic.py which handles PERIODIC BC
+# =============================================================================
+from .ghost import (
+    compute_normal_from_bounds,
+    compute_normal_from_sdf,
+    create_ghost_points_for_kde,
+    create_ghost_stencil,
+    create_reflection_ghost_points,
+    reflect_point_across_plane,
+)
 from .handler_protocol import (
     AdvancedBoundaryHandler,
     BoundaryHandler,
@@ -287,19 +300,6 @@ from .periodic import (
 )
 from .periodic import (
     wrap_positions as periodic_wrap_positions,  # Canonical location
-)
-
-# =============================================================================
-# Ghost Point Utilities (reflection-based, for NEUMANN/NO-FLUX BC)
-# Parallel to periodic.py which handles PERIODIC BC
-# =============================================================================
-from .ghost import (
-    compute_normal_from_bounds,
-    compute_normal_from_sdf,
-    create_ghost_points_for_kde,
-    create_ghost_stencil,
-    create_reflection_ghost_points,
-    reflect_point_across_plane,
 )
 
 # =============================================================================

@@ -26,11 +26,12 @@ import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-from numpy.typing import NDArray
 
 from .implicit_domain import ImplicitDomain
 
 if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
     from mfg_pde.geometry.collocation import CollocationPointSet
 
 

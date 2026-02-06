@@ -313,7 +313,7 @@ def create_ghost_points_for_kde(
     """
     sample_points = np.atleast_2d(sample_points)
     bounds = np.asarray(bounds)
-    n_samples, d = sample_points.shape
+    _n_samples, d = sample_points.shape
 
     if boundary_width is None:
         domain_sizes = bounds[:, 1] - bounds[:, 0]
@@ -394,7 +394,7 @@ if __name__ == "__main__":
     expected_ghosts = np.array([[-0.1, 0.4], [-0.1, 0.6], [-0.2, 0.5]])
     assert np.allclose(ghosts, expected_ghosts), f"Expected {expected_ghosts}, got {ghosts}"
     print(f"   Created {len(ghosts)} ghost points")
-    for i, (orig, ghost) in enumerate(zip(interior_pts, ghosts)):
+    for _i, (orig, ghost) in enumerate(zip(interior_pts, ghosts, strict=False)):
         print(f"     {orig} -> {ghost}")
 
     # Test 4: create_ghost_stencil
