@@ -143,7 +143,7 @@ class VariationalMFGProblem:
             xmin, xmax, Nx: Spatial domain discretization
             T, Nt: Time domain discretization
             components: Lagrangian problem specification
-            sigma: Noise intensity (diffusion coefficient)
+            sigma: Noise intensity (volatility coefficient)
             **kwargs: Additional parameters
         """
         # Domain setup

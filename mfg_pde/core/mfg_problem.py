@@ -62,7 +62,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     fp_geometry: GeometryProtocol | None
 
     # Type annotations for PDE coefficient fields
-    # sigma: float is the scalar diffusion for backward compatibility
+    # sigma: float is the scalar volatility (sigma) for backward compatibility
     # diffusion_field: DiffusionField stores the full field (float, array, or callable)
     # drift_field: DriftField stores optional drift (float, array, or callable)
     sigma: float

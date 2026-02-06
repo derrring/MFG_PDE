@@ -168,7 +168,7 @@ class GridProblem(Protocol):
     tSpace: NDArray
 
     # Physical parameters
-    sigma: float  # Constant diffusion (attribute, NOT callable!)
+    sigma: float  # Constant volatility (attribute, NOT callable!)
     coupling_coefficient: float  # Control cost coefficient
 
     def H(
