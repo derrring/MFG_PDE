@@ -334,22 +334,6 @@ class TestRegionBasedBCPerformance:
 class TestRegionBasedBCEdgeCases:
     """Test edge cases and error handling."""
 
-    @pytest.mark.skip(reason="Error handling varies by BC type - not critical for integration test")
-    def test_missing_geometry_parameter(self):
-        """Test that region-based BC without geometry raises clear error."""
-        geometry = TensorProductGrid(bounds=[(0, 1)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[51])
-        geometry.mark_region("inlet", boundary="x_min")
-
-        bc_config = {"inlet": BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0)}
-        bc = mixed_bc_from_regions(geometry, bc_config)
-
-        field = np.ones(51)
-        applicator = FDMApplicator(dimension=1)
-
-        # Apply without geometry parameter should raise ValueError
-        with pytest.raises(ValueError, match="region_name"):
-            applicator.apply(field, bc, domain_bounds=np.array([[0, 1]]))
-
     def test_nonexistent_region(self):
         """Test error when BC references non-existent region."""
         geometry = TensorProductGrid(bounds=[(0, 1)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[51])
