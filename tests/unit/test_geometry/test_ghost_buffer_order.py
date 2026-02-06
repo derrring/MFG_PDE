@@ -12,10 +12,6 @@ from mfg_pde.geometry.boundary import neumann_bc
 from mfg_pde.geometry.boundary.applicator_fdm import PreallocatedGhostBuffer
 
 
-@pytest.mark.skip(
-    reason="TODO: Pre-existing bug - left ghost cell not updated correctly for Neumann BC. "
-    "padded[0] returns 0.0 instead of reflecting interior[0]. Needs separate investigation."
-)
 def test_default_order():
     """Test that default order=2 works correctly."""
     bc = neumann_bc(dimension=1)
@@ -28,21 +24,18 @@ def test_default_order():
     # Verify order was set
     assert buffer._order == 2
 
-    # Set some interior values
-    buffer.interior[:] = np.arange(10, dtype=np.float64)
+    # Set interior values that make ghost verification clear
+    # Use [1, 2, ...] not [0, 1, ...] so ghost != 0 is meaningful
+    buffer.interior[:] = np.arange(1, 11, dtype=np.float64)
 
     # Update ghosts (should use linear reflection)
     buffer.update_ghosts(time=0.0)
 
-    # Check that ghost cells were updated (no crash)
-    assert buffer.padded[0] != 0.0  # Ghost cell should be set
-    assert buffer.padded[-1] != 0.0
+    # For Neumann BC with g=0, ghost reflects interior boundary value
+    assert buffer.padded[0] == buffer.interior[0]  # Left ghost reflects interior[0]
+    assert buffer.padded[-1] == buffer.interior[-1]  # Right ghost reflects interior[-1]
 
 
-@pytest.mark.skip(
-    reason="TODO: Pre-existing bug - left ghost cell not updated correctly for Neumann BC. "
-    "padded[0] returns 0.0 instead of reflecting interior[1]. Needs separate investigation."
-)
 def test_explicit_order_2():
     """Test explicit order=2 parameter."""
     bc = neumann_bc(dimension=1)
@@ -56,12 +49,12 @@ def test_explicit_order_2():
     assert buffer._order == 2
 
     # Should work identically to default
-    buffer.interior[:] = np.arange(10, dtype=np.float64)
+    buffer.interior[:] = np.arange(1, 11, dtype=np.float64)
     buffer.update_ghosts(time=0.0)
 
-    # Verify Neumann BC: ghost should equal reflected interior
-    # For Neumann with g=1: ghost[0] should equal interior[0] (reflected)
-    assert buffer.padded[0] == buffer.interior[1]  # Reflection
+    # Verify Neumann BC: ghost should equal reflected interior boundary value
+    # For Neumann with g=0: ghost[0] should equal interior[0]
+    assert buffer.padded[0] == buffer.interior[0]  # Reflection of boundary value
 
 
 def test_order_validation():
