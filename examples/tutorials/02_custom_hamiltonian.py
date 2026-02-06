@@ -4,14 +4,14 @@ Tutorial 02: Custom Hamiltonian
 Learn how to define your own MFG problem with a custom Hamiltonian.
 
 What you'll learn:
-- How to create a custom MFGProblem subclass
-- How to define your own Hamiltonian H(x, p, m)
+- How to create a custom Hamiltonian class
+- How to define H(x, p, m) and its derivatives
 - How to specify terminal costs and initial density
-- How to use the modern Components API (optional)
+- How to use the MFGComponents API
 
 Mathematical Problem:
     A crowd evacuation problem with congestion:
-    - Hamiltonian: H(x, p, m) = (1/2)|p|^2 + λ·m·|p|^2 (congestion slows movement)
+    - Hamiltonian: H(x, p, m) = (1/2)|p|^2 + lambda*m*|p|^2 (congestion slows movement)
     - Terminal cost: Distance to exit at x=1
     - Initial density: Uniform distribution (crowd at rest)
 """
@@ -19,9 +19,13 @@ Mathematical Problem:
 import numpy as np
 
 from mfg_pde import MFGProblem
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import HamiltonianBase
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 # ==============================================================================
-# Step 1: Define Custom Problem
+# Step 1: Define Custom Hamiltonian
 # ==============================================================================
 
 print("=" * 70)
@@ -30,44 +34,32 @@ print("=" * 70)
 print()
 
 
-class CrowdEvacuationMFG(MFGProblem):
+class CongestionHamiltonian(HamiltonianBase):
     """
-    Custom MFG problem: Crowd evacuation with congestion.
+    Custom Hamiltonian for crowd evacuation with congestion.
 
-    Agents want to reach the exit (x=1) but congestion slows them down.
-    The Hamiltonian captures this trade-off:
-    - |p|^2 term: Movement cost (agents want to minimize effort)
-    - λ·m·|p|^2 term: Congestion penalty (movement is harder in crowded areas)
+    H(x, m, p) = (1/2)|p|^2 + lambda*m*|p|^2
+
+    The congestion term lambda*m*|p|^2 makes movement harder in crowded areas.
     """
 
-    def __init__(self, congestion_strength=2.0):
+    def __init__(self, congestion_strength: float = 2.0):
         """
-        Initialize crowd evacuation problem.
-
         Args:
-            congestion_strength: λ parameter controlling congestion effect
+            congestion_strength: lambda parameter controlling congestion effect
         """
-        # Call parent constructor with domain and discretization
-        super().__init__(
-            xmin=0.0,  # Left boundary
-            xmax=1.0,  # Exit location
-            Nx=60,  # Spatial resolution
-            T=1.0,  # Time horizon
-            Nt=50,  # Time discretization
-            sigma=0.1,  # Diffusion (agent randomness)
-        )
-
+        super().__init__()
         self.congestion_strength = congestion_strength
 
-    def hamiltonian(self, x, p, m, t):
+    def __call__(self, x, m, p, t=0.0):
         """
-        Hamiltonian H(x, p, m, t).
+        Evaluate H(x, m, p, t).
 
         Args:
             x: Spatial position(s)
-            p: Momentum (gradient of value function)
             m: Density
-            t: Time
+            p: Momentum (gradient of value function)
+            t: Time (unused in this example)
 
         Returns:
             Hamiltonian value
@@ -75,51 +67,84 @@ class CrowdEvacuationMFG(MFGProblem):
         # Standard LQ term: (1/2)|p|^2
         standard_cost = 0.5 * p**2
 
-        # Congestion term: λ·m·|p|^2
-        # Movement is harder in crowded areas (high m)
+        # Congestion term: lambda*m*|p|^2
         congestion_cost = self.congestion_strength * m * p**2
 
         return standard_cost + congestion_cost
 
-    def hamiltonian_dm(self, x, p, m, t):
+    def dp(self, x, m, p, t=0.0):
         """
-        Derivative of Hamiltonian w.r.t. density: ∂H/∂m.
+        Derivative of H w.r.t. momentum: dH/dp.
 
-        This appears in the Fokker-Planck equation drift term.
+        Used to compute optimal control: alpha* = -dH/dp
+        """
+        return p + 2 * self.congestion_strength * m * p
 
-        Returns:
-            λ·|p|^2 (congestion creates drift away from crowds)
+    def dm(self, x, m, p, t=0.0):
+        """
+        Derivative of H w.r.t. density: dH/dm.
+
+        Appears in the Fokker-Planck equation drift term.
         """
         return self.congestion_strength * p**2
 
-    def terminal_cost(self, x):
-        """
-        Terminal cost g(x): Distance to exit.
-
-        Agents want to be close to the exit (x=1) at final time.
-        """
-        return (x - 1.0) ** 2
-
-    def initial_density(self, x):
-        """
-        Initial density m₀(x): Uniform crowd distribution.
-        """
-        # Uniform distribution on [0.1, 0.9] (avoid boundaries)
-        density = np.where((x >= 0.1) & (x <= 0.9), 1.0, 0.0)
-        # Normalize to integrate to 1
-        return density / np.trapz(density, x)
-
 
 # ==============================================================================
-# Step 2: Create and Solve Problem
+# Step 2: Define Problem Components
 # ==============================================================================
 
-print("Creating custom problem...")
-problem = CrowdEvacuationMFG(congestion_strength=2.0)
+print("Setting up problem components...")
+print()
 
-bounds = problem.geometry.get_bounds()
-print(f"  Domain: [{bounds[0][0]}, {bounds[1][0]}]")
-print(f"  Congestion strength: λ = {problem.congestion_strength}")
+# Create grid
+grid = TensorProductGrid(
+    bounds=[(0.0, 1.0)],
+    Nx=[60],
+    boundary_conditions=no_flux_bc(dimension=1),
+)
+
+# Physical parameters
+diffusion = 0.1
+congestion_strength = 2.0
+
+
+# Terminal cost: distance to exit at x=1
+def terminal_cost(x):
+    """Agents want to be close to exit (x=1) at final time."""
+    return (x - 1.0) ** 2
+
+
+# Initial density: uniform on [0.1, 0.9]
+def initial_density(x):
+    """Uniform crowd distribution, avoiding boundaries."""
+    density = np.where((x >= 0.1) & (x <= 0.9), 1.0, 0.01)
+    return density
+
+
+# Create custom Hamiltonian
+hamiltonian = CongestionHamiltonian(congestion_strength=congestion_strength)
+
+# Bundle components
+components = MFGComponents(
+    hamiltonian=hamiltonian,
+    m_initial=initial_density,
+    u_final=terminal_cost,
+)
+
+# ==============================================================================
+# Step 3: Create and Solve Problem
+# ==============================================================================
+
+print("Creating problem with custom Hamiltonian...")
+problem = MFGProblem(
+    geometry=grid,
+    T=1.0,
+    Nt=50,
+    diffusion=diffusion,
+    components=components,
+)
+
+print(f"  Congestion strength: lambda = {congestion_strength}")
 print()
 
 print("Solving MFG system...")
@@ -130,7 +155,7 @@ print(f"Converged: {result.converged} (iterations: {result.iterations})")
 print()
 
 # ==============================================================================
-# Step 3: Analyze Congestion Effect
+# Step 4: Analyze Congestion Effect
 # ==============================================================================
 
 print("=" * 70)
@@ -140,68 +165,99 @@ print()
 
 # Compare with no-congestion case
 print("Solving baseline (no congestion)...")
-baseline = CrowdEvacuationMFG(congestion_strength=0.0)
+
+baseline_hamiltonian = CongestionHamiltonian(congestion_strength=0.0)
+baseline_components = MFGComponents(
+    hamiltonian=baseline_hamiltonian,
+    m_initial=initial_density,
+    u_final=terminal_cost,
+)
+baseline = MFGProblem(
+    geometry=grid,
+    T=1.0,
+    Nt=50,
+    diffusion=diffusion,
+    components=baseline_components,
+)
 result_baseline = baseline.solve(verbose=False)
 
 # Measure evacuation efficiency
-# How much mass reaches the exit (x > 0.9) by final time?
-dx = problem.geometry.get_grid_spacing()[0]
-dx_baseline = baseline.geometry.get_grid_spacing()[0]
-exit_mass_congested = np.sum(result.M[-1, problem.xSpace > 0.9]) * dx
-exit_mass_baseline = np.sum(result_baseline.M[-1, baseline.xSpace > 0.9]) * dx_baseline
+x = grid.coordinates[0]
+dx = grid.get_grid_spacing()[0]
+exit_mask = x > 0.9
+exit_mass_congested = np.sum(result.M[-1, exit_mask]) * dx
+exit_mass_baseline = np.sum(result_baseline.M[-1, exit_mask]) * dx
 
 print(f"Mass at exit (with congestion):    {exit_mass_congested:.3f}")
 print(f"Mass at exit (without congestion): {exit_mass_baseline:.3f}")
-print(f"Evacuation slowdown: {(1 - exit_mass_congested / exit_mass_baseline) * 100:.1f}%")
+if exit_mass_baseline > 0:
+    slowdown = (1 - exit_mass_congested / exit_mass_baseline) * 100
+    print(f"Evacuation slowdown: {slowdown:.1f}%")
 print()
 
 # ==============================================================================
-# Step 4: Visualize
+# Step 5: Visualize
 # ==============================================================================
 
+print("=" * 70)
+print("VISUALIZATION")
+print("=" * 70)
+print()
+
 try:
+    from pathlib import Path
+
     import matplotlib.pyplot as plt
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
-    # Plot 1: Density evolution (with congestion)
-    X, T = np.meshgrid(problem.xSpace, problem.tSpace)
-    contour = axes[0, 0].contourf(X, T, result.M, levels=20, cmap="viridis")
-    axes[0, 0].set_xlabel("x")
-    axes[0, 0].set_ylabel("t")
-    axes[0, 0].set_title(f"Density Evolution (λ={problem.congestion_strength})")
-    plt.colorbar(contour, ax=axes[0, 0])
+    t = np.linspace(0, problem.T, problem.Nt + 1)
+    X, T_grid = np.meshgrid(x, t)
 
-    # Plot 2: Density evolution (no congestion)
-    contour2 = axes[0, 1].contourf(X, T, result_baseline.M, levels=20, cmap="viridis")
-    axes[0, 1].set_xlabel("x")
-    axes[0, 1].set_ylabel("t")
-    axes[0, 1].set_title("Density Evolution (λ=0, baseline)")
-    plt.colorbar(contour2, ax=axes[0, 1])
+    # Density evolution with congestion
+    ax = axes[0, 0]
+    c = ax.contourf(X, T_grid, result.M, levels=20, cmap="viridis")
+    ax.set_xlabel("x")
+    ax.set_ylabel("t")
+    ax.set_title(f"Density with congestion (lambda={congestion_strength})")
+    plt.colorbar(c, ax=ax)
 
-    # Plot 3: Snapshots at different times
-    times_to_plot = [0, len(problem.tSpace) // 2, -1]
-    for t_idx in times_to_plot:
-        axes[1, 0].plot(problem.xSpace, result.M[t_idx, :], label=f"t={problem.tSpace[t_idx]:.2f}", linewidth=2)
-    axes[1, 0].axvline(x=0.9, color="red", linestyle="--", alpha=0.5, label="Exit zone")
-    axes[1, 0].set_xlabel("x")
-    axes[1, 0].set_ylabel("m(t, x)")
-    axes[1, 0].set_title("Density Snapshots (with congestion)")
-    axes[1, 0].legend()
-    axes[1, 0].grid(True, alpha=0.3)
+    # Density evolution without congestion
+    ax = axes[0, 1]
+    c = ax.contourf(X, T_grid, result_baseline.M, levels=20, cmap="viridis")
+    ax.set_xlabel("x")
+    ax.set_ylabel("t")
+    ax.set_title("Density without congestion (lambda=0)")
+    plt.colorbar(c, ax=ax)
 
-    # Plot 4: Value function at t=0
-    axes[1, 1].plot(problem.xSpace, result.U[0, :], label="With congestion", linewidth=2)
-    axes[1, 1].plot(baseline.xSpace, result_baseline.U[0, :], label="Baseline", linewidth=2, linestyle="--")
-    axes[1, 1].set_xlabel("x")
-    axes[1, 1].set_ylabel("u(0, x)")
-    axes[1, 1].set_title("Value Function at t=0")
-    axes[1, 1].legend()
-    axes[1, 1].grid(True, alpha=0.3)
+    # Final density comparison
+    ax = axes[1, 0]
+    ax.plot(x, result.M[-1, :], "b-", linewidth=2, label=f"lambda={congestion_strength}")
+    ax.plot(x, result_baseline.M[-1, :], "r--", linewidth=2, label="lambda=0")
+    ax.axvline(x=0.9, color="g", linestyle=":", label="Exit zone")
+    ax.set_xlabel("x")
+    ax.set_ylabel("m(T, x)")
+    ax.set_title("Final Density Comparison")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    # Value function comparison
+    ax = axes[1, 1]
+    ax.plot(x, result.U[-1, :], "b-", linewidth=2, label=f"lambda={congestion_strength}")
+    ax.plot(x, result_baseline.U[-1, :], "r--", linewidth=2, label="lambda=0")
+    ax.set_xlabel("x")
+    ax.set_ylabel("u(T, x)")
+    ax.set_title("Terminal Value Function Comparison")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig("examples/outputs/tutorials/02_custom_hamiltonian.png", dpi=150, bbox_inches="tight")
-    print("Saved plot to: examples/outputs/tutorials/02_custom_hamiltonian.png")
+
+    output_dir = Path(__file__).parent.parent / "outputs" / "tutorials"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "02_custom_hamiltonian.png"
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"Saved plot to: {output_path}")
     print()
 
 except ImportError:
@@ -217,10 +273,14 @@ print("TUTORIAL COMPLETE")
 print("=" * 70)
 print()
 print("What you learned:")
-print("  1. How to create a custom MFGProblem subclass")
-print("  2. How to define hamiltonian(), hamiltonian_dm(), terminal_cost(), initial_density()")
-print("  3. How to model congestion effects in the Hamiltonian")
-print("  4. How to compare different parameter settings")
+print("  1. Create a custom Hamiltonian by subclassing HamiltonianBase")
+print("  2. Implement __call__(x, m, p, t) for H(x, m, p)")
+print("  3. Implement dp() and dm() for derivatives")
+print("  4. Bundle with MFGComponents and solve")
+print()
+print("Key insight:")
+print("  Congestion (lambda*m*|p|^2) slows evacuation by making movement")
+print("  costlier in crowded areas, causing agents to spread out.")
 print()
 print("Next: Tutorial 03 - 2D Geometry")
 print("=" * 70)
