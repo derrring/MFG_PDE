@@ -425,6 +425,10 @@ def _get_validation_points(
     returns ``(N, d)`` for all geometries.  Interior points are preferred
     to avoid boundary edge cases.
 
+    For implicit/meshfree geometries where ``get_collocation_points()``
+    requires arguments (e.g., Hyperrectangle), falls back to generating
+    sample points from bounds.
+
     Args:
         geometry: Any geometry implementing GeometryProtocol.
         n_samples: Number of sample points to return.
@@ -433,11 +437,33 @@ def _get_validation_points(
         Array of shape ``(n_samples, d)`` with sample points.
 
     Raises:
-        ValueError: If the geometry has no collocation points.
+        ValueError: If the geometry has no collocation points and no bounds.
 
     Issue #682: Geometry-agnostic IC/BC validation.
     """
-    points = geometry.get_collocation_points()  # (N, d) per protocol
+    try:
+        points = geometry.get_collocation_points()  # (N, d) per protocol
+    except TypeError as err:
+        # Implicit geometries (Hyperrectangle, etc.) require arguments.
+        # Fall back to generating sample points from bounds.
+        bounds = geometry.get_bounds()
+        if bounds is None:
+            raise ValueError(
+                f"Geometry {type(geometry).__name__}.get_collocation_points() requires "
+                "arguments and get_bounds() returned None. Cannot generate sample points."
+            ) from err
+        min_coords, max_coords = bounds
+        dim = len(min_coords)
+        # Generate n_samples interior points (avoid exact boundaries)
+        margin = 0.1
+        points = np.zeros((n_samples, dim))
+        for i in range(n_samples):
+            # Spread samples across domain interior
+            t = (i + 1) / (n_samples + 1)
+            points[i] = (
+                min_coords + t * (max_coords - min_coords) * (1 - 2 * margin) + margin * (max_coords - min_coords)
+            )
+        return points
 
     # Handle 1D case where points may be (N,) instead of (N, 1)
     if points.ndim == 1:
