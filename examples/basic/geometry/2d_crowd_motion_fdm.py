@@ -133,7 +133,7 @@ class CrowdMotion2D(MFGProblem):
         return MFGComponents(
             hamiltonian=hamiltonian,
             m_initial=initial_density_func,
-            u_final=terminal_cost_func,
+            u_terminal=terminal_cost_func,
         )
 
 

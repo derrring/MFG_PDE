@@ -149,7 +149,7 @@ def create_mfg_problem(phi_current: np.ndarray) -> MFGProblem:
     components = MFGComponents(
         hamiltonian=hamiltonian,
         m_initial=m0.copy(),
-        u_final=u_final,
+        u_terminal=u_final,
     )
 
     problem = MFGProblem(

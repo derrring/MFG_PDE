@@ -83,16 +83,16 @@ def lq_mfg_terminal_cost(Lx: float = 1.0):
     Example:
         >>> problem = MFGProblem(
         ...     geometry=grid,
-        ...     u_final=lq_mfg_terminal_cost(Lx=1.0),
+        ...     u_terminal=lq_mfg_terminal_cost(Lx=1.0),
         ...     m_initial=lq_mfg_initial_density(),
         ... )
     """
     import numpy as np
 
-    def u_final(x: float) -> float:
+    def u_terminal(x: float) -> float:
         return 5 * (np.cos(x * 2 * np.pi / Lx) + 0.4 * np.sin(x * 4 * np.pi / Lx))
 
-    return u_final
+    return u_terminal
 
 
 def lq_mfg_initial_density():
@@ -107,7 +107,7 @@ def lq_mfg_initial_density():
     Example:
         >>> problem = MFGProblem(
         ...     geometry=grid,
-        ...     u_final=lq_mfg_terminal_cost(),
+        ...     u_terminal=lq_mfg_terminal_cost(),
         ...     m_initial=lq_mfg_initial_density(),
         ... )
     """
@@ -388,7 +388,7 @@ def create_standard_problem(
     """
     components = MFGComponents(
         hamiltonian=hamiltonian,
-        u_final=terminal_cost,
+        u_terminal=terminal_cost,
         m_initial=initial_density,
         potential_func=potential,
         boundary_conditions=boundary_conditions,
@@ -552,7 +552,7 @@ def create_variational_problem(
     # MFGComponents auto-converts Lagrangian to Hamiltonian
     components = MFGComponents(
         lagrangian=lagrangian,
-        u_final=terminal_cost,
+        u_terminal=terminal_cost,
         m_initial=initial_density,
         boundary_conditions=boundary_conditions,
         problem_type="variational",
@@ -632,7 +632,7 @@ def create_stochastic_problem(
 
     components = MFGComponents(
         hamiltonian=hamiltonian,
-        u_final=terminal_cost,
+        u_terminal=terminal_cost,
         m_initial=initial_density,
         potential_func=potential,
         parameters=stochastic_params,
@@ -699,7 +699,7 @@ def create_highdim_problem(
     """
     components = MFGComponents(
         hamiltonian=hamiltonian,
-        u_final=terminal_cost,
+        u_terminal=terminal_cost,
         m_initial=initial_density,
         potential_func=potential,
         boundary_conditions=boundary_conditions,

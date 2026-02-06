@@ -76,7 +76,7 @@ hamiltonian = SeparableHamiltonian(
 components = MFGComponents(
     hamiltonian=hamiltonian,
     m_initial=initial_density,
-    u_final=terminal_cost,
+    u_terminal=terminal_cost,
 )
 
 # ==============================================================================

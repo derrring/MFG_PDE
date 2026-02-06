@@ -123,7 +123,7 @@ def create_custom_problem(
     components = MFGComponents(
         hamiltonian=hamiltonian,  # Class-based API
         m_initial=initial_density_func,
-        u_final=terminal_value_func,
+        u_terminal=terminal_value_func,
     )
 
     # Create problem

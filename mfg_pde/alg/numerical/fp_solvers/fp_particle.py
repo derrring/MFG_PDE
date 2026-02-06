@@ -2165,7 +2165,7 @@ if __name__ == "__main__":
     )
     components = MFGComponents(
         hamiltonian=H,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         m_initial=lambda x: 1.0,
     )
 

@@ -51,7 +51,7 @@ def _default_test_components(Lx: float = 1.0) -> MFGComponents:
     return MFGComponents(
         hamiltonian=_default_hamiltonian(),
         m_initial=lq_mfg_initial_density(),
-        u_final=lq_mfg_terminal_cost(Lx=Lx),
+        u_terminal=lq_mfg_terminal_cost(Lx=Lx),
     )
 
 

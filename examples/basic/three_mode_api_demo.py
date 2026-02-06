@@ -32,7 +32,7 @@ def create_lq_components():
     return MFGComponents(
         hamiltonian=hamiltonian,
         m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
-        u_final=lambda x: (x - 0.5) ** 2,
+        u_terminal=lambda x: (x - 0.5) ** 2,
     )
 
 

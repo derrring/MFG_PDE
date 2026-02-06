@@ -144,7 +144,7 @@ class SimpleCoupledMFGProblem(MFGProblem):
             hamiltonian_func=hamiltonian_func,
             hamiltonian_dm_func=hamiltonian_dm,
             m_initial=m_initial,
-            u_final=terminal_cost_func,
+            u_terminal=terminal_cost_func,
             hamiltonian=_default_hamiltonian(),
         )
 

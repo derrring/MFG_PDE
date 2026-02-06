@@ -1,7 +1,7 @@
 """
 Validation for MFG problem components (IC/BC).
 
-This module validates initial conditions (m_initial) and terminal conditions (u_final)
+This module validates initial conditions (m_initial) and terminal conditions (u_terminal)
 provided via MFGComponents, and boundary condition compatibility with geometry.
 
 Issues:
@@ -34,7 +34,7 @@ def validate_components(
     geometry: GeometryProtocol,
     *,
     require_m_initial: bool = True,
-    require_u_final: bool = True,
+    require_u_terminal: bool = True,
     check_mass_normalization: bool = False,
 ) -> ValidationResult:
     """
@@ -44,7 +44,7 @@ def validate_components(
         components: MFGComponents to validate
         geometry: Geometry to validate against
         require_m_initial: Whether m_initial is required
-        require_u_final: Whether u_final is required
+        require_u_terminal: Whether u_terminal is required
         check_mass_normalization: Whether to verify integral of m_initial = 1
 
     Returns:
@@ -58,11 +58,11 @@ def validate_components(
     result = ValidationResult()
 
     if components is None:
-        if require_m_initial or require_u_final:
+        if require_m_initial or require_u_terminal:
             result.add_error(
                 "MFGComponents is required but was None",
                 location="components",
-                suggestion="Pass components=MFGComponents(m_initial=..., u_final=...)",
+                suggestion="Pass components=MFGComponents(m_initial=..., u_terminal=...)",
             )
         return result
 
@@ -73,9 +73,9 @@ def validate_components(
         if not m_result.is_valid:
             result.is_valid = False
 
-    # Validate u_final
-    if require_u_final:
-        u_result = validate_u_final(components.u_final, geometry)
+    # Validate u_terminal
+    if require_u_terminal:
+        u_result = validate_u_terminal(components.u_terminal, geometry)
         result.issues.extend(u_result.issues)
         if not u_result.is_valid:
             result.is_valid = False
@@ -143,12 +143,12 @@ def validate_m_initial(
     return result
 
 
-def validate_u_final(
-    u_final: Callable | NDArray[np.floating] | None,
+def validate_u_terminal(
+    u_terminal: Callable | NDArray[np.floating] | None,
     geometry: GeometryProtocol,
 ) -> ValidationResult:
     """
-    Validate terminal value function u_final.
+    Validate terminal value function u_terminal.
 
     Checks:
     - Not None (required)
@@ -157,7 +157,7 @@ def validate_u_final(
     - Values are finite (no NaN/Inf)
 
     Args:
-        u_final: Terminal value function (callable or array)
+        u_terminal: Terminal value function (callable or array)
         geometry: Geometry for shape validation
 
     Returns:
@@ -167,26 +167,41 @@ def validate_u_final(
     """
     result = ValidationResult()
 
-    if u_final is None:
+    if u_terminal is None:
         result.add_error(
-            "u_final (terminal condition) is required but was None",
-            location="u_final",
-            suggestion="Provide u_final=lambda x: ... or u_final=np.array(...)",
+            "u_terminal (terminal condition) is required but was None",
+            location="u_terminal",
+            suggestion="Provide u_terminal=lambda x: ... or u_terminal=np.array(...)",
         )
         return result
 
     # Validate based on type
-    if callable(u_final):
-        return _validate_callable_ic(u_final, geometry, "u_final")
-    elif isinstance(u_final, np.ndarray):
-        return _validate_array_ic(u_final, geometry, "u_final")
+    if callable(u_terminal):
+        return _validate_callable_ic(u_terminal, geometry, "u_terminal")
+    elif isinstance(u_terminal, np.ndarray):
+        return _validate_array_ic(u_terminal, geometry, "u_terminal")
     else:
         result.add_error(
-            f"u_final must be callable or ndarray, got {type(u_final).__name__}",
-            location="u_final",
+            f"u_terminal must be callable or ndarray, got {type(u_terminal).__name__}",
+            location="u_terminal",
         )
 
     return result
+
+
+def validate_u_final(
+    u_final: Callable | NDArray[np.floating] | None,
+    geometry: GeometryProtocol,
+) -> ValidationResult:
+    """Deprecated: use validate_u_terminal() instead."""
+    import warnings
+
+    warnings.warn(
+        "validate_u_final() is deprecated, use validate_u_terminal() instead. Will be removed in v1.0.0.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return validate_u_terminal(u_final, geometry)
 
 
 def validate_mass_normalization(

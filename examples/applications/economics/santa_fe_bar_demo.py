@@ -179,7 +179,7 @@ def create_santa_fe_problem(
         hamiltonian_func=hamiltonian_func,
         hamiltonian_dm_func=hamiltonian_dm_func,
         m_initial=initial_density_func,
-        u_final=terminal_value_func,
+        u_terminal=terminal_value_func,
     )
 
     # Create problem

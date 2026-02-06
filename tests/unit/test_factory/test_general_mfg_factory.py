@@ -190,7 +190,7 @@ def test_create_from_hamiltonian_minimal(factory, sample_hamiltonian, domain_con
         domain_config=domain_config,
         time_config=time_config,
         m_initial=sample_functions["initial_density"],
-        u_final=sample_functions["final_value"],
+        u_terminal=sample_functions["final_value"],
     )
 
     assert problem is not None
@@ -210,7 +210,7 @@ def test_create_from_hamiltonian_with_solver_config(
         time_config=time_config,
         solver_config=solver_config,
         m_initial=sample_functions["initial_density"],
-        u_final=sample_functions["final_value"],
+        u_terminal=sample_functions["final_value"],
     )
 
     assert problem is not None
@@ -228,7 +228,7 @@ def test_create_from_hamiltonian_with_optional_components(
         time_config=time_config,
         potential_func=sample_functions["potential"],
         m_initial=sample_functions["initial_density"],
-        u_final=sample_functions["final_value"],
+        u_terminal=sample_functions["final_value"],
     )
 
     assert problem is not None
@@ -249,7 +249,7 @@ def test_create_from_hamiltonian_with_description(
         time_config=time_config,
         description=description,
         m_initial=sample_functions["initial_density"],
-        u_final=sample_functions["final_value"],
+        u_terminal=sample_functions["final_value"],
     )
 
     assert problem is not None
@@ -411,7 +411,7 @@ def test_create_general_mfg_problem_from_hamiltonian():
         T=1.0,
         Nt=10,
         m_initial=initial_density,
-        u_final=final_value,
+        u_terminal=final_value,
     )
 
     assert problem is not None
@@ -479,7 +479,7 @@ def test_end_to_end_problem_creation(
         solver_config=solver_config,
         potential_func=sample_functions["potential"],
         m_initial=sample_functions["initial_density"],
-        u_final=sample_functions["final_value"],
+        u_terminal=sample_functions["final_value"],
     )
 
     # Verify problem has all components
@@ -501,7 +501,7 @@ def test_multiple_problems_from_same_factory(factory, sample_hamiltonian, sample
         domain_config=domain_config,
         time_config=time_config,
         m_initial=sample_functions["initial_density"],
-        u_final=sample_functions["final_value"],
+        u_terminal=sample_functions["final_value"],
     )
 
     # Create second problem with different config
@@ -510,7 +510,7 @@ def test_multiple_problems_from_same_factory(factory, sample_hamiltonian, sample
         domain_config={"xmin": 0.0, "xmax": 2.0, "Nx": 30},
         time_config={"T": 2.0, "Nt": 20},
         m_initial=sample_functions["initial_density"],
-        u_final=sample_functions["final_value"],
+        u_terminal=sample_functions["final_value"],
     )
 
     # Both should be valid but different

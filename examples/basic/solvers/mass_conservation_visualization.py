@@ -36,7 +36,7 @@ def _default_components():
     return MFGComponents(
         hamiltonian=hamiltonian,
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
-        u_final=lambda x: 0.0,  # Zero terminal cost
+        u_terminal=lambda x: 0.0,  # Zero terminal cost
     )
 
 

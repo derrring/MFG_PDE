@@ -34,7 +34,7 @@ def _default_components():
         m_initial=lambda x: np.exp(
             -10 * (np.asarray(x) - 0.5) ** 2 if np.ndim(x) == 0 else -10 * np.sum((np.asarray(x) - 0.5) ** 2)
         ),
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         hamiltonian=_default_hamiltonian(),
     )
 
@@ -48,7 +48,7 @@ def _default_components_2d():
 
     return MFGComponents(
         m_initial=m_initial_2d,
-        u_final=lambda x: 0.0,
+        u_terminal=lambda x: 0.0,
         hamiltonian=_default_hamiltonian(),
     )
 

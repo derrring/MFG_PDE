@@ -61,7 +61,7 @@ class MFGComponents:
         coupling=lambda m: -m**2,
         coupling_dm=lambda m: -2*m,
     )
-    components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)
+    components = MFGComponents(hamiltonian=H, m_initial=..., u_terminal=...)
     ```
 
     Or use Lagrangian (auto-converted via Legendre transform):
@@ -73,7 +73,7 @@ class MFGComponents:
         def __call__(self, x, alpha, m, t=0.0):
             return 0.5 * np.sum(alpha**2)
 
-    components = MFGComponents(lagrangian=MyLagrangian(), m_initial=..., u_final=...)
+    components = MFGComponents(lagrangian=MyLagrangian(), m_initial=..., u_terminal=...)
     ```
 
     Attributes
@@ -84,7 +84,7 @@ class MFGComponents:
         Alternative to hamiltonian - auto-converted via Legendre transform.
     m_initial : Callable | NDArray
         Initial density distribution m_0(x).
-    u_final : Callable | NDArray
+    u_terminal : Callable | NDArray
         Terminal value function u_T(x).
     potential_func : Callable, optional
         Additional potential V(x, t) (if not in Hamiltonian).
@@ -98,7 +98,8 @@ class MFGComponents:
 
     # Initial and terminal conditions
     m_initial: Callable | NDArray | None = None  # m_0(x): initial density
-    u_final: Callable | NDArray | None = None  # u_T(x): terminal value
+    u_terminal: Callable | NDArray | None = None  # u_T(x): terminal value function
+    u_final: Callable | NDArray | None = None  # DEPRECATED: use u_terminal instead
 
     # Optional potential (if not included in Hamiltonian)
     potential_func: Callable | None = None  # V(x, t) -> float
@@ -116,7 +117,20 @@ class MFGComponents:
 
     def __post_init__(self):
         """Validate and setup Hamiltonian from class-based specification."""
+        import warnings
+
         from mfg_pde.core.hamiltonian import HamiltonianBase, LagrangianBase
+
+        # Handle u_final -> u_terminal deprecation
+        if self.u_final is not None:
+            warnings.warn(
+                "u_final is deprecated, use u_terminal instead. u_final will be removed in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            if self.u_terminal is None:
+                self.u_terminal = self.u_final
+            self.u_final = None  # Clear deprecated field
 
         # Convert Lagrangian to Hamiltonian via Legendre transform (Issue #651)
         if self.lagrangian is not None:
@@ -144,7 +158,7 @@ class MFGComponents:
                 "      coupling=lambda m: -m**2,\n"
                 "      coupling_dm=lambda m: -2*m,\n"
                 "  )\n"
-                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_terminal=...)"
             )
 
         if not isinstance(self.hamiltonian, HamiltonianBase):
@@ -216,7 +230,7 @@ class HamiltonianMixin:
                 "      coupling=lambda m: -m**2,\n"
                 "      coupling_dm=lambda m: -2*m,\n"
                 "  )\n"
-                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)\n"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_terminal=...)\n"
                 "  problem = MFGProblem(geometry=grid, components=components, ...)"
             )
 
@@ -233,7 +247,7 @@ class HamiltonianMixin:
                 "      coupling=lambda m: -m**2,\n"
                 "      coupling_dm=lambda m: -2*m,\n"
                 "  )\n"
-                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_terminal=...)"
             )
 
         # Cache potential signature info (optional component)
@@ -383,7 +397,7 @@ class HamiltonianMixin:
                 "      coupling=lambda m: -m**2,\n"
                 "      coupling_dm=lambda m: -2*m,\n"
                 "  )\n"
-                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_terminal=...)"
             )
 
         # Convert derivs to numpy p array for class-based H(x, m, p, t)
@@ -477,7 +491,7 @@ class HamiltonianMixin:
                 "      coupling=lambda m: -m**2,\n"
                 "      coupling_dm=lambda m: -2*m,\n"
                 "  )\n"
-                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_final=...)"
+                "  components = MFGComponents(hamiltonian=H, m_initial=..., u_terminal=...)"
             )
 
         # Convert derivs to numpy p array
@@ -713,14 +727,14 @@ class ConditionsMixin:
         (scalar, array, spatiotemporal, expanded coordinates) transparently.
         For spatiotemporal callables, time_value defaults to T (last time step).
         """
-        if self.components is None or self.components.u_final is None:
+        if self.components is None or self.components.u_terminal is None:
             return
 
-        u_final = self.components.u_final
+        u_terminal = self.components.u_terminal
 
-        # Issue #681: Handle NDArray u_final (shape validated in _initialize_functions)
-        if isinstance(u_final, np.ndarray):
-            self.u_final.flat[:] = u_final.flat[: len(self.u_final.flat)]
+        # Issue #681: Handle NDArray u_terminal (shape validated in _initialize_functions)
+        if isinstance(u_terminal, np.ndarray):
+            self.u_terminal.flat[:] = u_terminal.flat[: len(self.u_terminal.flat)]
             return
 
         # Callable path -- adapt to user's actual signature
@@ -734,14 +748,14 @@ class ConditionsMixin:
             spatial_grid = self._get_spatial_grid_internal()
             sample_point: float | np.ndarray = float(spatial_grid[0, 0])
             _sig, adapted_func = adapt_ic_callable(
-                u_final,
+                u_terminal,
                 dimension=self.dimension,
                 sample_point=sample_point,
                 time_value=terminal_time,
             )
             for i in range(num_intervals + 1):
                 x_i: float | np.ndarray = float(spatial_grid[i, 0])
-                self.u_final[i] = adapted_func(x_i)
+                self.u_terminal[i] = adapted_func(x_i)
         elif self.geometry is not None:
             spatial_grid = self.geometry.get_spatial_grid()
             num_points = spatial_grid.shape[0]
@@ -753,7 +767,7 @@ class ConditionsMixin:
                 sample_point = spatial_grid[0]
 
             _sig, adapted_func = adapt_ic_callable(
-                u_final,
+                u_terminal,
                 dimension=ndim,
                 sample_point=sample_point,
                 time_value=terminal_time,
@@ -764,13 +778,13 @@ class ConditionsMixin:
                     x_i = float(spatial_grid[i, 0])
                 else:
                     x_i = spatial_grid[i]
-                self.u_final.flat[i] = adapted_func(x_i)
+                self.u_terminal.flat[i] = adapted_func(x_i)
         else:
             import warnings
 
             warnings.warn(
                 "Cannot setup custom final value: dimension not 1D and no geometry available. "
-                "Using default u_final initialization.",
+                "Using default u_terminal initialization.",
                 UserWarning,
                 stacklevel=2,
             )

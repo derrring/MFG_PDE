@@ -1,7 +1,7 @@
 """
 Callable Signature Detection and Adaptation for IC/BC functions.
 
-Provides automatic detection and wrapping of user-provided callables (m_initial, u_final)
+Provides automatic detection and wrapping of user-provided callables (m_initial, u_terminal)
 so that different signature conventions work transparently.
 
 Supported signatures:
@@ -73,7 +73,7 @@ def adapt_ic_callable(
         sample_point: A representative point to probe the callable.
             In 1D this is a float; in nD an ndarray of shape (d,).
         time_value: Time value for spatiotemporal wrappers (0.0 for m_initial,
-            T for u_final).
+            T for u_terminal).
 
     Returns:
         Tuple of (detected_signature, wrapped_callable).

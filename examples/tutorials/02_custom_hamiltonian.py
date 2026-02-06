@@ -128,7 +128,7 @@ hamiltonian = CongestionHamiltonian(congestion_strength=congestion_strength)
 components = MFGComponents(
     hamiltonian=hamiltonian,
     m_initial=initial_density,
-    u_final=terminal_cost,
+    u_terminal=terminal_cost,
 )
 
 # ==============================================================================
@@ -170,7 +170,7 @@ baseline_hamiltonian = CongestionHamiltonian(congestion_strength=0.0)
 baseline_components = MFGComponents(
     hamiltonian=baseline_hamiltonian,
     m_initial=initial_density,
-    u_final=terminal_cost,
+    u_terminal=terminal_cost,
 )
 baseline = MFGProblem(
     geometry=grid,

@@ -71,7 +71,7 @@ def create_lq_components():
         hamiltonian=hamiltonian,
         # Stall point at x=0 (boundary) - agents want to be at left edge
         m_initial=lambda x: np.exp(-20 * (x - 0.3) ** 2),
-        u_final=lambda x: x**2,  # Minimal cost at x=0
+        u_terminal=lambda x: x**2,  # Minimal cost at x=0
     )
 
 

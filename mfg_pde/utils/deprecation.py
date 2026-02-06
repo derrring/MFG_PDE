@@ -411,7 +411,7 @@ def validate_kwargs(
         deprecated_kwargs: Mapping of deprecated kwarg names to their replacements
             Example: {"hamiltonian": "MFGComponents.hamiltonian_func"}
         recognized_kwargs: Set of valid kwargs that are actually consumed
-            Example: {"m_initial", "u_final", "boundary_conditions"}
+            Example: {"m_initial", "u_terminal", "boundary_conditions"}
         context: Description for error messages (e.g., "MFGProblem", "create_solver")
         error_on_deprecated: If True, raise ValueError for deprecated kwargs.
             If False, emit DeprecationWarning.
@@ -422,7 +422,7 @@ def validate_kwargs(
 
     Example:
         >>> DEPRECATED = {"hamiltonian": "Use MFGComponents.hamiltonian_func"}
-        >>> RECOGNIZED = {"m_initial", "u_final"}
+        >>> RECOGNIZED = {"m_initial", "u_terminal"}
         >>> validate_kwargs(
         ...     kwargs={"hamiltonian": my_func, "typo_param": 123},
         ...     deprecated_kwargs=DEPRECATED,

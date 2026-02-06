@@ -182,12 +182,12 @@ class MFGComponents:
         self.standard.m_initial = value
 
     @property
-    def u_final(self) -> Callable | None:
-        return self.standard.u_final
+    def u_terminal(self) -> Callable | None:
+        return self.standard.u_terminal
 
-    @u_final.setter
-    def u_final(self, value: Callable | None):
-        self.standard.u_final = value
+    @u_terminal.setter
+    def u_terminal(self, value: Callable | None):
+        self.standard.u_terminal = value
 
     @property
     def boundary_conditions(self) -> BoundaryConditions | None:

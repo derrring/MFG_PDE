@@ -516,7 +516,7 @@ class VariationalMFGProblem:
             hamiltonian_func=_hamiltonian_adapter,
             hamiltonian_dm_func=_hamiltonian_dm_adapter,
             m_initial=self.components.m_initial,
-            u_final=lambda x: -self.evaluate_terminal_cost(x),  # Value = -cost
+            u_terminal=lambda x: -self.evaluate_terminal_cost(x),  # Value = -cost
             description=f"Hamiltonian formulation of {self.components.description}",
         )
 
