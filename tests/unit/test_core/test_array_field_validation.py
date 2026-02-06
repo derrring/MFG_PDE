@@ -58,13 +58,13 @@ def _hamiltonian():
     )
 
 
-def _problem(m_initial, u_final, hamiltonian=None, Nx_points=Nx, **kwargs):
+def _problem(m_initial, u_terminal, hamiltonian=None, Nx_points=Nx, **kwargs):
     """Create a test MFGProblem."""
     geom = _geometry(Nx_points=Nx_points)
     components = MFGComponents(
         hamiltonian=hamiltonian or _hamiltonian(),
         m_initial=m_initial,
-        u_terminal=u_final,
+        u_terminal=u_terminal,
     )
     return MFGProblem(geometry=geom, components=components, **kwargs)
 

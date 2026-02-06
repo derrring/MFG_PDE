@@ -249,11 +249,11 @@ def test_mfg_problem_default_final_value():
     """Test final value function is initialized (Issue #670: must come from MFGComponents)."""
     problem = create_test_problem()
 
-    assert hasattr(problem, "u_final")
-    assert isinstance(problem.u_final, np.ndarray)
-    assert len(problem.u_final) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
+    assert hasattr(problem, "u_terminal")
+    assert isinstance(problem.u_terminal, np.ndarray)
+    assert len(problem.u_terminal) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
     # Check final value is non-zero (set from default_components: x**2)
-    assert not np.allclose(problem.u_final, 0.0)
+    assert not np.allclose(problem.u_terminal, 0.0)
 
 
 @pytest.mark.unit
@@ -349,7 +349,7 @@ def test_mfg_problem_with_custom_final_value():
     # Check final value was set using custom function
     expected = np.sin(problem.xSpace * np.pi)
     # Flatten both arrays for comparison (problem stores as 2D column vector)
-    assert np.allclose(np.ravel(problem.u_final), np.ravel(expected))
+    assert np.allclose(np.ravel(problem.u_terminal), np.ravel(expected))
 
 
 @pytest.mark.unit
@@ -531,14 +531,14 @@ def test_get_potential_at_time():
 
 @pytest.mark.unit
 def test_get_final_u():
-    """Test get_final_u returns final value function."""
+    """Test get_final_u returns final value function (deprecated, calls get_u_terminal)."""
     problem = create_test_problem()
 
     u_final = problem.get_final_u()
 
     assert isinstance(u_final, np.ndarray)
     assert len(u_final) == problem.geometry.get_grid_shape()[0]  # Nx+1 points
-    assert np.allclose(u_final, problem.u_final)
+    assert np.allclose(u_final, problem.u_terminal)
 
 
 @pytest.mark.unit

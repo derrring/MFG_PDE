@@ -441,6 +441,8 @@ class FPFDMSolver(BaseFPSolver):
             volatility_field = diffusion_field
 
         # Handle deprecated tensor_diffusion_field → volatility_field
+        # Track if input came from tensor-specific parameter (for callable routing)
+        _from_tensor_param = False
         if tensor_diffusion_field is not None:
             if volatility_field is not None:
                 raise ValueError(
@@ -454,6 +456,7 @@ class FPFDMSolver(BaseFPSolver):
                 stacklevel=2,
             )
             volatility_field = tensor_diffusion_field
+            _from_tensor_param = True
 
         # Handle deprecated volatility_matrix → volatility_field
         if volatility_matrix is not None:
@@ -469,6 +472,7 @@ class FPFDMSolver(BaseFPSolver):
                 stacklevel=2,
             )
             volatility_field = volatility_matrix
+            _from_tensor_param = True
 
         # Unified volatility_field handling with auto-detection
         # Issue #717: volatility_field is the SDE volatility σ or Σ
@@ -503,9 +507,10 @@ class FPFDMSolver(BaseFPSolver):
         elif callable(volatility_field):
             # State-dependent volatility - callable σ(t, x, m) or Σ(t, x, m)
             # Issue #641: Always route to unified nD solver (handles 1D too)
-            # Detection of tensor vs scalar happens at runtime in the solver
             effective_sigma = volatility_field
-            is_tensor = False  # Will be detected at runtime
+            # If came from tensor-specific deprecated param, route to tensor path
+            # Otherwise, route to scalar path (runtime detection not yet implemented)
+            is_tensor = _from_tensor_param
         else:
             raise TypeError(
                 f"volatility_field must be None, float, np.ndarray, or Callable, got {type(volatility_field)}"

@@ -62,13 +62,13 @@ def _nan_func(x):
     return float("nan")
 
 
-def _problem(m_initial, u_final, Nx_points=11, dimension=1, **kwargs):
+def _problem(m_initial, u_terminal, Nx_points=11, dimension=1, **kwargs):
     """Create a test MFGProblem with given IC/BC."""
     geom = _geometry(Nx_points=Nx_points, dimension=dimension)
     components = MFGComponents(
         hamiltonian=_hamiltonian(),
         m_initial=m_initial,
-        u_terminal=u_final,
+        u_terminal=u_terminal,
     )
     return MFGProblem(geometry=geom, components=components, **kwargs)
 
@@ -110,15 +110,15 @@ def test_array_m_initial_wrong_shape_raises():
 
 @pytest.mark.unit
 def test_array_u_final_correct_shape():
-    """NDArray u_final with matching shape is accepted and copied."""
+    """NDArray u_terminal with matching shape is accepted and copied."""
     Nx = 11
     arr = np.linspace(0, 1, Nx) ** 2  # Quadratic terminal cost as array
 
     problem = _problem(m_initial=_gaussian, u_terminal=arr, Nx_points=Nx)
 
-    assert problem.u_final is not None
-    assert problem.u_final.shape == (Nx,)
-    np.testing.assert_array_almost_equal(problem.u_final, arr)
+    assert problem.u_terminal is not None
+    assert problem.u_terminal.shape == (Nx,)
+    np.testing.assert_array_almost_equal(problem.u_terminal, arr)
 
 
 @pytest.mark.unit
@@ -207,7 +207,7 @@ def test_callable_raising_exception_detected():
 
 @pytest.mark.unit
 def test_both_arrays_correct_shape():
-    """Both m_initial and u_final as NDArrays with correct shape work."""
+    """Both m_initial and u_terminal as NDArrays with correct shape work."""
     Nx = 11
     m_arr = np.ones(Nx)
     u_arr = np.linspace(0, 1, Nx)
@@ -215,5 +215,5 @@ def test_both_arrays_correct_shape():
     problem = _problem(m_initial=m_arr, u_terminal=u_arr, Nx_points=Nx)
 
     assert problem.m_initial.shape == (Nx,)
-    assert problem.u_final.shape == (Nx,)
-    np.testing.assert_array_almost_equal(problem.u_final, u_arr)
+    assert problem.u_terminal.shape == (Nx,)
+    np.testing.assert_array_almost_equal(problem.u_terminal, u_arr)
