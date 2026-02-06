@@ -48,7 +48,7 @@ from mfg_pde.utils.convergence import (
 )
 
 warnings.warn(
-    "mfg_pde.utils.numerical.convergence is deprecated. Import from mfg_pde.utils.convergence instead.",
+    "mfg_pde.utils.numerical.convergence is deprecated. Import from mfg_pde.utils.convergence instead. Will be removed in v1.0.0.",
     DeprecationWarning,
     stacklevel=2,
 )

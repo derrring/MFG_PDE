@@ -218,7 +218,7 @@ class GridProblem(Protocol):
 
         Note:
             - Provide EITHER derivs OR p_values, not both
-            - p_values is deprecated and will be removed in a future version
+            - p_values is deprecated and will be removed in v1.0.0
             - Upwind schemes: p_values["forward"] for positive direction,
               p_values["backward"] for negative direction
         """

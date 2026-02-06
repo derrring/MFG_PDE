@@ -1156,7 +1156,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         warnings.warn(
             "Accessing 'xmin' is deprecated. Use 'problem.geometry.get_bounds()[0][0]' instead. "
-            "This attribute will be removed in a future version.",
+            "Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1175,7 +1175,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Setting 'xmin' is deprecated. Use geometry-first API instead.",
+            "Setting 'xmin' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1192,7 +1192,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         warnings.warn(
             "Accessing 'xmax' is deprecated. Use 'problem.geometry.get_bounds()[1][0]' instead. "
-            "This attribute will be removed in a future version.",
+            "Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1210,7 +1210,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Setting 'xmax' is deprecated. Use geometry-first API instead.",
+            "Setting 'xmax' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1226,8 +1226,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Accessing 'Lx' is deprecated. Compute from geometry bounds instead. "
-            "This attribute will be removed in a future version.",
+            "Accessing 'Lx' is deprecated. Compute from geometry bounds instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1245,7 +1244,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Setting 'Lx' is deprecated. Use geometry-first API instead.",
+            "Setting 'Lx' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1262,7 +1261,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         warnings.warn(
             "Accessing 'Nx' is deprecated. Use 'problem.geometry.num_spatial_points - 1' for intervals. "
-            "This attribute will be removed in a future version.",
+            "Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1279,7 +1278,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Setting 'Nx' is deprecated. Use geometry-first API instead.",
+            "Setting 'Nx' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1296,7 +1295,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         warnings.warn(
             "Accessing 'dx' is deprecated. Compute from geometry bounds and num_points instead. "
-            "This attribute will be removed in a future version.",
+            "Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1322,7 +1321,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Setting 'dx' is deprecated. Use geometry-first API instead.",
+            "Setting 'dx' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1339,7 +1338,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
         warnings.warn(
             "Accessing 'xSpace' is deprecated. Use 'problem.geometry.get_spatial_grid()' instead. "
-            "This attribute will be removed in a future version.",
+            "Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1355,7 +1354,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Setting 'xSpace' is deprecated. Use geometry-first API instead.",
+            "Setting 'xSpace' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1371,8 +1370,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Accessing '_grid' is deprecated. Use 'problem.geometry' instead. "
-            "This attribute will be removed in a future version.",
+            "Accessing '_grid' is deprecated. Use 'problem.geometry' instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1386,7 +1384,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         import warnings
 
         warnings.warn(
-            "Setting '_grid' is deprecated. Use geometry-first API instead.",
+            "Setting '_grid' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2,
         )

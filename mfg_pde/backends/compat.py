@@ -329,7 +329,7 @@ def _deprecated_xp_zeros(backend, shape, dtype=None):
 
     warnings.warn(
         "Using xp = backend.array_module; xp.zeros() is deprecated. "
-        "Use backend.zeros() instead for device consistency.",
+        "Use backend.zeros() instead for device consistency. Will be removed in v1.0.0.",
         DeprecationWarning,
         stacklevel=2,
     )

@@ -2,7 +2,7 @@
 Tensor Diffusion Operators for Anisotropic PDEs.
 
 .. deprecated:: 0.18.0
-    This module is deprecated. Use ``tensor_calculus`` instead:
+    This module is deprecated and will be removed in v1.0.0. Use ``tensor_calculus`` instead:
 
     Migration Guide::
 
@@ -65,7 +65,7 @@ def divergence_tensor_diffusion_2d(
         result = diffusion(m, Sigma, [dx, dy], bc=bc)
     """
     warnings.warn(
-        "divergence_tensor_diffusion_2d is deprecated. Use mfg_pde.utils.numerical.tensor_calculus.diffusion instead.",
+        "divergence_tensor_diffusion_2d is deprecated. Use mfg_pde.utils.numerical.tensor_calculus.diffusion instead. Will be removed in v1.0.0.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -96,7 +96,7 @@ def divergence_diagonal_diffusion_2d(
     """
     warnings.warn(
         "divergence_diagonal_diffusion_2d is deprecated. "
-        "Use mfg_pde.utils.numerical.tensor_calculus.diffusion instead.",
+        "Use mfg_pde.utils.numerical.tensor_calculus.diffusion instead. Will be removed in v1.0.0.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -126,7 +126,7 @@ def divergence_tensor_diffusion_nd(
         result = diffusion(m, Sigma, list(dx), bc=bc)
     """
     warnings.warn(
-        "divergence_tensor_diffusion_nd is deprecated. Use mfg_pde.utils.numerical.tensor_calculus.diffusion instead.",
+        "divergence_tensor_diffusion_nd is deprecated. Use mfg_pde.utils.numerical.tensor_calculus.diffusion instead. Will be removed in v1.0.0.",
         DeprecationWarning,
         stacklevel=2,
     )

@@ -2,7 +2,8 @@
 Gradient Notation Utilities for Derivative Format Conversion.
 
 .. deprecated:: 0.17.0
-    This module is deprecated. Use :class:`mfg_pde.core.DerivativeTensors` instead.
+    This module is deprecated and will be removed in v1.0.0.
+    Use :class:`mfg_pde.core.DerivativeTensors` instead.
 
     The new standard for derivative representation is the `DerivativeTensors` class
     which stores derivatives as NumPy tensors:

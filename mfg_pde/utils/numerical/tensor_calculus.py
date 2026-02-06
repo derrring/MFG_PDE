@@ -605,7 +605,7 @@ def tensor_diffusion(
     import warnings
 
     warnings.warn(
-        "tensor_diffusion is deprecated, use diffusion(u, Sigma, ...) instead",
+        "tensor_diffusion is deprecated, use diffusion(u, Sigma, ...) instead. Will be removed in v1.0.0.",
         DeprecationWarning,
         stacklevel=2,
     )

@@ -169,7 +169,7 @@ class GFDMOperator:
                 - "hybrid": Use delta, but ensure at least k neighbors (default, most robust)
         """
         warnings.warn(
-            "GFDMOperator is deprecated since v0.17.0. "
+            "GFDMOperator is deprecated since v0.17.0 and will be removed in v1.0.0. "
             "Use TaylorOperator from gfdm_strategies instead:\n"
             "  from mfg_pde.utils.numerical.gfdm_strategies import TaylorOperator\n"
             "  op = TaylorOperator(points, delta=0.1, taylor_order=2)",

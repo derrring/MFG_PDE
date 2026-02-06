@@ -226,7 +226,7 @@ class MFGSystemBuilder:
         # Handle deprecated lowercase parameters
         if nx is not None:
             warnings.warn(
-                "Parameter 'nx' is deprecated, use 'Nx' (uppercase) instead",
+                "Parameter 'nx' is deprecated, use 'Nx' (uppercase) instead. Will be removed in v1.0.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -235,7 +235,7 @@ class MFGSystemBuilder:
 
         if nt is not None:
             warnings.warn(
-                "Parameter 'nt' is deprecated, use 'Nt' (uppercase) instead",
+                "Parameter 'nt' is deprecated, use 'Nt' (uppercase) instead. Will be removed in v1.0.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
