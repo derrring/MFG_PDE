@@ -585,46 +585,53 @@ For adaptive mesh refinement, use external libraries:
 
 | Parameter | Type | Meaning | Math Symbol |
 |-----------|------|---------|-------------|
-| `diffusion` | float | **Canonical** diffusion coefficient | σ |
-| `sigma` | float | **Deprecated** - use `diffusion` instead | σ |
+| `volatility_field` | float/array/callable | Volatility (SDE noise coefficient) | σ or Σ |
+| `sigma` | float | **Legacy** - use `volatility_field` instead | σ |
 | `coupling_coefficient` | float | MFG coupling strength | λ |
 | `terminal_cost` | callable | Terminal cost function | g(x,m) |
 | `running_cost` | callable | Running cost function | f(x,m) |
 | `hamiltonian` | callable | Hamiltonian function | H(x,p,m) |
 
-### ⚠️ CRITICAL: Diffusion Coefficient Naming (v0.17.1+)
+### ⚠️ CRITICAL: Volatility vs Diffusion (v0.17.6+)
 
-**Canonical parameter**: `diffusion` (NOT `sigma`)
+**Mathematical definitions**:
+- **Volatility**: σ (scalar) or Σ (matrix) — the SDE noise coefficient
+- **Diffusion**: D = ΣᵀΣ/2 (or D = σ²/2 for scalar) — the PDE diffusion coefficient
 
-**Mathematical definition**: `diffusion = σ` (the diffusion coefficient itself, NOT σ²)
+**SDE**: dX = μ dt + Σ dW (where Σ is volatility)
+**PDE**: ∂ₜm = -∇·(μm) + ∇·(D∇m) where D = ΣᵀΣ/2
+
+**Canonical parameter**: `volatility_field` for FP solvers (represents σ or Σ)
 
 **In code formulas**:
 ```python
 # Formula: g = -σ²/2 · ∂ln(m)/∂n
 # Code:
-g = -(diffusion**2) / 2 * grad_ln_m
+g = -(volatility**2) / 2 * grad_ln_m  # volatility = σ
 
-# Where:
-#   diffusion = σ (the diffusion coefficient)
-#   diffusion**2 = σ² (appears in formulas as σ²/2)
+# The term σ²/2 IS the diffusion coefficient D
+# So: g = -D · ∂ln(m)/∂n where D = σ²/2
 ```
 
-**Backward compatibility**:
-- Constructors: Accept `sigma` with `DeprecationWarning`, map to `diffusion`
-- State dicts: Look for `diffusion` first, fall back to `sigma`
-- Timeline: `sigma` will be removed in v1.0.0
+**Legacy parameter mapping**:
+- `sigma` → `volatility_field` (same quantity, clearer name)
+- MFGProblem still accepts `diffusion` parameter for backward compatibility
+  (internally stored as `self.sigma`, used as volatility σ)
 
 **Example**:
 ```python
-# ✅ Modern (recommended)
-provider = AdjointConsistentProvider(side="left", diffusion=0.2)
-solver = HJBFDMSolver(problem, diffusion=0.2)
+# ✅ FP solvers: use volatility_field
+fp_solver.solve_fp_system(volatility_field=0.2)  # σ = 0.2
 
-# ⚠️ Deprecated (still works with warning)
+# ✅ BC providers: use diffusion (legacy name, represents σ)
+provider = AdjointConsistentProvider(side="left", diffusion=0.2)
+
+# ⚠️ Deprecated
 provider = AdjointConsistentProvider(side="left", sigma=0.2)  # Warns
 ```
 
-**Common confusion**: `diffusion = σ`, NOT `σ²`. When you see `-σ²/2` in formulas, write `-(diffusion**2)/2` in code.
+**Key insight**: When you see "σ²/2" in formulas, that IS the diffusion coefficient D.
+The parameter `sigma` or `volatility_field` represents σ (volatility), not D.
 
 ### Volatility Field Convention (v0.17.2+)
 
@@ -940,8 +947,7 @@ assert problem.Nt_points == 101
 | Old Name | New Name | Reason | Removal |
 |----------|----------|--------|---------|
 | `u_final` | `u_terminal` | MFG literature uses "terminal condition" | v1.0.0 |
-| `sigma` (MFGProblem) | `diffusion` | Constructor param renamed; internal `self.sigma` retained | v1.0.0 |
-| `sigma` (FP solvers) | `volatility_field` | SDE convention: σ = volatility (noise coefficient) | v1.0.0 |
+| `sigma` | `volatility_field` | σ = Σ = volatility (SDE noise); D = ΣᵀΣ/2 = diffusion (PDE) | v1.0.0 |
 | `num_points` | `Nx_points` | Unclear (which N?) | v1.0.0 |
 | `thetaUM` | `damping_factor` | Unclear acronym | Legacy |
 | `Niter_max` | `max_iterations` | Inconsistent capitalization | Legacy |
