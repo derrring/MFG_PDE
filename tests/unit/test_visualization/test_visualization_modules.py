@@ -42,16 +42,11 @@ def test_advanced_visualization():
     output_dir = Path("test_output")
     output_dir.mkdir(exist_ok=True)
 
-    try:
-        # Test MFG solution plot
-        create_mfg_solution_plot(x_grid, t_grid, M, title="Test MFG Solution")
+    # Test MFG solution plot - should not raise
+    create_mfg_solution_plot(x_grid, t_grid, M, title="Test MFG Solution")
 
-        logger.info("Advanced visualization test successful")
-        return True
-
-    except Exception as e:
-        logger.error(f"Advanced visualization test failed: {e}")
-        return False
+    logger.info("Advanced visualization test successful")
+    # Test passes if no exception is raised
 
 
 def test_mathematical_visualization():
@@ -63,18 +58,13 @@ def test_mathematical_visualization():
     output_dir = Path("test_output")
     output_dir.mkdir(exist_ok=True)
 
-    try:
-        # Test HJB analysis
-        visualizer = create_mathematical_visualizer()
-        du_dx = np.gradient(U, x_grid, axis=0)
-        visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Test HJB Analysis")
+    # Test HJB analysis - should not raise
+    visualizer = create_mathematical_visualizer()
+    du_dx = np.gradient(U, x_grid, axis=0)
+    visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Test HJB Analysis")
 
-        logger.info("Mathematical visualization test successful")
-        return True
-
-    except Exception as e:
-        logger.error(f"Mathematical visualization test failed: {e}")
-        return False
+    logger.info("Mathematical visualization test successful")
+    # Test passes if no exception is raised
 
 
 def test_quick_functions():
@@ -85,21 +75,16 @@ def test_quick_functions():
     U, M, x_grid, t_grid = create_test_data()
     Path("test_output")
 
-    try:
-        # Test quick plot solution
-        create_mfg_solution_plot(x_grid, t_grid, M, title="Quick Solution")
+    # Test quick plot solution - should not raise
+    create_mfg_solution_plot(x_grid, t_grid, M, title="Quick Solution")
 
-        # Test quick HJB analysis
-        visualizer = create_mathematical_visualizer()
-        du_dx = np.gradient(U, x_grid, axis=0)
-        visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Quick HJB")
+    # Test quick HJB analysis - should not raise
+    visualizer = create_mathematical_visualizer()
+    du_dx = np.gradient(U, x_grid, axis=0)
+    visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Quick HJB")
 
-        logger.info("Quick functions test successful")
-        return True
-
-    except Exception as e:
-        logger.error(f"Quick functions test failed: {e}")
-        return False
+    logger.info("Quick functions test successful")
+    # Test passes if no exception is raised
 
 
 def main():

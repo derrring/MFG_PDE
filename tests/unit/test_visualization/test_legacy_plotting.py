@@ -24,9 +24,18 @@ def sample_grid_data():
 def mock_problem():
     """Create mock MFG problem for legacy functions."""
     problem = Mock()
+
+    # Legacy API attributes (deprecated but may still be accessed)
     problem.xSpace = np.linspace(0, 1, 11)
     problem.tSpace = np.linspace(0, 1, 6)
     problem.dx = 0.1
+
+    # Modern geometry-based API (used by plot_results)
+    # problem.geometry.coordinates[0] returns the spatial grid
+    problem.geometry.coordinates = [np.linspace(0, 1, 11)]
+    # problem.geometry.get_grid_spacing()[0] returns dx
+    problem.geometry.get_grid_spacing.return_value = [0.1]
+
     return problem
 
 
