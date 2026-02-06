@@ -172,9 +172,11 @@ class TestReinitializationNarrowBand:
         # Distort
         phi_distorted = phi0_circle**2 * np.sign(phi0_circle)
 
-        # Narrow band reinitialization
+        # Narrow band reinitialization (PDE method only - narrow_band_width is PDE-specific)
         narrow_band_width = 3 * dx
-        phi_narrow = reinitialize(phi_distorted, grid, max_iterations=20, narrow_band_width=narrow_band_width)
+        phi_narrow = reinitialize(
+            phi_distorted, grid, method="pde", max_iterations=20, narrow_band_width=narrow_band_width
+        )
 
         # Check that far-field values are unchanged
         far_field_mask = np.abs(phi_distorted) > narrow_band_width
@@ -237,17 +239,17 @@ class TestReinitializationEdgeCases:
     """Test edge cases and error handling."""
 
     def test_invalid_dtau_raises(self):
-        """Test that invalid dtau raises ValueError."""
+        """Test that invalid dtau raises ValueError for PDE method."""
         grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=no_flux_bc(dimension=1))
         x = grid.coordinates[0]
         phi = x - 0.5
 
-        # dtau too large (violates CFL)
+        # dtau too large (violates CFL) - only applies to PDE method
         h_min = min(grid.spacing)
         dtau_invalid = 0.6 * h_min  # CFL = 0.6 > 0.5
 
         with pytest.raises(ValueError, match="CFL condition"):
-            reinitialize(phi, grid, dtau=dtau_invalid)
+            reinitialize(phi, grid, method="pde", dtau=dtau_invalid)
 
     def test_handles_sign_zero(self):
         """Test that sign(0) = 0 is handled correctly."""

@@ -46,13 +46,24 @@ Part of: Issue #592 Phase 3.1 - Level Set Infrastructure
 
 from mfg_pde.geometry.level_set.core import LevelSetEvolver, LevelSetFunction
 from mfg_pde.geometry.level_set.curvature import compute_curvature
+from mfg_pde.geometry.level_set.eikonal import (
+    EikonalSolver,
+    FastMarchingMethod,
+    FastSweepingMethod,
+)
 from mfg_pde.geometry.level_set.reinitialization import reinitialize
 from mfg_pde.geometry.level_set.time_dependent_domain import TimeDependentDomain
 
 __all__ = [
+    # Core level set classes
     "LevelSetFunction",
     "LevelSetEvolver",
     "TimeDependentDomain",
+    # Geometry computations
     "compute_curvature",
     "reinitialize",
+    # Eikonal solvers (Issue #664)
+    "EikonalSolver",
+    "FastMarchingMethod",
+    "FastSweepingMethod",
 ]

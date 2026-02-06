@@ -7,36 +7,36 @@ distance function (SDF). The SDF property |∇φ| = 1 is desirable for:
 - Numerical stability (prevents steep/flat gradients)
 - CFL condition predictability
 
-This module implements reinitialization via pseudo-time evolution:
-    ∂φ/∂τ + sign(φ₀)(|∇φ| - 1) = 0
+This module provides multiple methods for reinitialization:
 
-where:
-- τ: Pseudo-time (not physical time)
-- φ₀: Initial level set (preserves zero level set)
-- sign(φ₀): Ensures movement away from interface
+1. **Fast Marching Method (FMM)** - Default, recommended
+   - O(N log N) complexity
+   - Exact signed distance computation
+   - Best for general use and complex geometries
 
-The steady state of this PDE is |∇φ| = 1 while preserving φ = 0 level set.
+2. **Fast Sweeping Method (FSM)**
+   - O(N) per sweep, typically 2-4 iterations
+   - Similar accuracy to FMM
+   - May be faster for simple, convex domains
 
-**Current Implementation Status**:
-    Basic implementation using standard upwind gradients. Works reasonably well for
-    maintaining SDF property during evolution, but may not fully restore severely
-    distorted level sets. Future improvements:
-    - Narrow band methods (only reinitialize near interface)
-    - Fast marching method (direct SDF computation)
-    - Higher-order WENO schemes for better accuracy
+3. **PDE-based** (Legacy)
+   - Pseudo-time evolution: ∂φ/∂τ + sign(φ₀)(|∇φ| - 1) = 0
+   - Slower than FMM/FSM, may drift interface by ~10 grid points
+   - Kept for backward compatibility
 
 **Usage Recommendation**:
-    Best practice is to start with a proper SDF (e.g., analytical distance functions)
-    and use reinitialization every 5-10 evolution steps to maintain accuracy, rather
-    than trying to fix severely distorted level sets.
+    Use method="fmm" (default) for best accuracy. The FMM computes exact signed
+    distances with O(dx) accuracy, preserving the zero level set precisely.
 
 References:
+- Sethian (1996): A fast marching level set method for monotonically advancing fronts
+- Zhao (2005): A fast sweeping method for Eikonal equations
 - Sussman, Smereka, Osher (1994): A level set approach for computing solutions
   to incompressible two-phase flow
-- Peng et al. (1999): A PDE-based fast local level set method
 - Osher & Fedkiw (2003): Level Set Methods, Chapter 7.4
 
 Created: 2026-01-18 (Issue #592 Milestone 3.1.2)
+Updated: 2026-02-06 (Issue #664 - Added FMM/FSM methods)
 """
 
 from __future__ import annotations
@@ -59,55 +59,114 @@ logger = get_logger(__name__)
 def reinitialize(
     phi_initial: NDArray[np.float64],
     geometry: TensorProductGrid,
+    method: str = "fmm",
+    max_iterations: int = 20,
+    dtau: float | None = None,
+    tolerance: float = 0.01,
+    narrow_band_width: float | None = None,
+    subcell_accuracy: bool = True,
+) -> NDArray[np.float64]:
+    """
+    Restore signed distance function property: |∇φ| = 1.
+
+    Computes a signed distance function that preserves the zero level set
+    of the input while ensuring |∇φ| = 1 everywhere.
+
+    Args:
+        phi_initial: Initial level set function, shape (Nx, Ny, ...)
+        geometry: Grid providing spatial structure and operators
+        method: Reinitialization algorithm (default: "fmm")
+            - "fmm": Fast Marching Method (O(N log N), exact, recommended)
+            - "fsm": Fast Sweeping Method (O(N) per sweep, iterative)
+            - "pde": PDE-based pseudo-time evolution (legacy, slower)
+        max_iterations: For PDE method: max pseudo-time iterations (default: 20)
+                       For FSM method: max sweep cycles (default: 10)
+        dtau: For PDE method: pseudo-time step (default: auto = 0.1·min(h))
+        tolerance: Convergence tolerance (default: 0.01)
+        narrow_band_width: For PDE method: only reinitialize |φ| < width
+        subcell_accuracy: For FMM/FSM: use subcell interface location (default: True)
+
+    Returns:
+        Reinitialized level set φ with |∇φ| = 1, same shape as input
+
+    Raises:
+        ValueError: If method is unknown or dtau violates CFL (PDE method)
+
+    Examples:
+        >>> # Fast Marching Method (recommended)
+        >>> phi_sdf = reinitialize(phi_distorted, grid)  # method="fmm" default
+
+        >>> # Fast Sweeping Method
+        >>> phi_sdf = reinitialize(phi_distorted, grid, method="fsm")
+
+        >>> # Legacy PDE method with narrow band
+        >>> phi_sdf = reinitialize(phi_distorted, grid, method="pde",
+        ...                        narrow_band_width=3*dx)
+
+    Note:
+        The FMM and FSM methods compute exact signed distance functions with
+        O(dx) accuracy. The PDE method is iterative and may not converge to
+        an exact SDF, especially for severely distorted level sets.
+
+        FMM is preferred for:
+        - General use (most reliable)
+        - Complex geometries
+        - When exact SDF is needed
+
+        FSM may be faster for:
+        - Simple, convex domains
+        - When memory is constrained (no heap)
+    """
+    method = method.lower()
+
+    if method == "fmm":
+        return _reinitialize_fmm(phi_initial, geometry, subcell_accuracy)
+    elif method == "fsm":
+        return _reinitialize_fsm(phi_initial, geometry, max_iterations, tolerance, subcell_accuracy)
+    elif method == "pde":
+        return _reinitialize_pde(phi_initial, geometry, max_iterations, dtau, tolerance, narrow_band_width)
+    else:
+        raise ValueError(f"Unknown reinitialization method: {method}. Choose from 'fmm', 'fsm', or 'pde'.")
+
+
+def _reinitialize_fmm(
+    phi_initial: NDArray[np.float64],
+    geometry: TensorProductGrid,
+    subcell_accuracy: bool = True,
+) -> NDArray[np.float64]:
+    """Reinitialize using Fast Marching Method."""
+    from mfg_pde.geometry.level_set.eikonal import FastMarchingMethod
+
+    fmm = FastMarchingMethod(geometry)
+    return fmm.compute_signed_distance(phi_initial, subcell_accuracy=subcell_accuracy)
+
+
+def _reinitialize_fsm(
+    phi_initial: NDArray[np.float64],
+    geometry: TensorProductGrid,
+    max_iterations: int = 10,
+    tolerance: float = 1e-10,
+    subcell_accuracy: bool = True,
+) -> NDArray[np.float64]:
+    """Reinitialize using Fast Sweeping Method."""
+    from mfg_pde.geometry.level_set.eikonal import FastSweepingMethod
+
+    fsm = FastSweepingMethod(geometry, max_iterations=max_iterations, tolerance=tolerance)
+    return fsm.compute_signed_distance(phi_initial, subcell_accuracy=subcell_accuracy)
+
+
+def _reinitialize_pde(
+    phi_initial: NDArray[np.float64],
+    geometry: TensorProductGrid,
     max_iterations: int = 20,
     dtau: float | None = None,
     tolerance: float = 0.01,
     narrow_band_width: float | None = None,
 ) -> NDArray[np.float64]:
     """
-    Restore signed distance function property: |∇φ| ≈ 1.
+    Reinitialize using PDE-based pseudo-time evolution (legacy method).
 
-    Evolves φ in pseudo-time τ via:
-        ∂φ/∂τ + sign(φ₀)(|∇φ| - 1) = 0
-
-    This drives φ toward a signed distance function while preserving the
-    zero level set {x : φ(x) = 0}.
-
-    Args:
-        phi_initial: Initial level set function, shape (Nx, Ny, ...)
-        geometry: Grid providing gradient operators
-        max_iterations: Maximum pseudo-time iterations (default: 20)
-            Typically 10-20 iterations sufficient for |∇φ| ≈ 1
-        dtau: Pseudo-time step (default: None → auto = 0.5·min(h))
-            Must satisfy CFL: dtau < 0.5·min(h) for stability
-        tolerance: Convergence tolerance for max(||∇φ| - 1|) (default: 0.01)
-            Stop early if SDF property achieved
-        narrow_band_width: Width of narrow band around interface (default: None)
-            If None, reinitialize entire domain (global, backward compatible)
-            If float, only reinitialize |φ| < narrow_band_width
-            Recommended: 3-5× max(spacing) for ~10× speedup in 2D/3D
-
-    Returns:
-        Reinitialized level set φ with |∇φ| ≈ 1, same shape as input
-
-    Raises:
-        ValueError: If dtau violates CFL condition
-
-    Examples:
-        >>> # Global reinitialization (backward compatible)
-        >>> phi_sdf = reinitialize(phi_distorted, grid, max_iterations=20)
-
-        >>> # Narrow band reinitialization (10× faster for 2D/3D)
-        >>> dx_max = max(grid.spacing)
-        >>> phi_sdf = reinitialize(phi_distorted, grid, narrow_band_width=3*dx_max)
-
-    Note:
-        Reinitialization is typically needed every 5-10 evolution steps to
-        maintain numerical stability and geometric accuracy.
-
-        Narrow band approach provides ~10× speedup for 2D/3D by only updating
-        points near the interface (|φ| < narrow_band_width). Points far from
-        the interface are already approximately SDF and don't need updating.
+    Evolves phi in pseudo-time via: d(phi)/d(tau) + sign(phi0)(|grad phi| - 1) = 0
     """
     # Auto-select pseudo-timestep based on CFL
     # Note: Reinitialization requires smaller CFL than regular evolution
@@ -129,19 +188,19 @@ def reinitialize(
     # Initialize
     phi = phi_initial.copy()
     sign_phi0 = np.sign(phi_initial)  # Preserve zero level set location
-    # Handle sign(0) = 0 → set to 1 to avoid division issues
+    # Handle sign(0) = 0 -> set to 1 to avoid division issues
     sign_phi0[sign_phi0 == 0] = 1.0
 
     # Narrow band setup
     if narrow_band_width is not None:
-        # Create mask for narrow band region: |φ| < narrow_band_width
+        # Create mask for narrow band region: |phi| < narrow_band_width
         narrow_band_mask = np.abs(phi_initial) < narrow_band_width
         n_band_points = np.sum(narrow_band_mask)
         n_total_points = phi.size
 
         logger.debug(
             f"Narrow band: {n_band_points}/{n_total_points} points "
-            f"({100 * n_band_points / n_total_points:.1f}%) within |φ| < {narrow_band_width:.4f}"
+            f"({100 * n_band_points / n_total_points:.1f}%) within |phi| < {narrow_band_width:.4f}"
         )
 
         # Store original far-field values (will not be modified)
@@ -156,14 +215,15 @@ def reinitialize(
 
     # Track previous deviation for divergence detection
     prev_max_deviation = float("inf")
+    iteration = 0
 
     # Pseudo-time evolution
     for iteration in range(max_iterations):
-        # Compute |∇φ|
+        # Compute |grad phi|
         grad_components = [grad_op(phi) for grad_op in grad_ops]
         grad_mag = np.linalg.norm(grad_components, axis=0)
 
-        # Check convergence: max(||∇φ| - 1|)
+        # Check convergence: max(||grad phi| - 1|)
         # Only check within narrow band if applicable
         deviation = np.abs(grad_mag - 1.0)
         if narrow_band_mask is not None:
@@ -174,14 +234,14 @@ def reinitialize(
         if iteration % 5 == 0 or iteration == max_iterations - 1:
             mean_deviation = np.mean(deviation)
             logger.debug(
-                f"Reinit iteration {iteration}: max(||∇φ| - 1|) = {max_deviation:.4f}, mean = {mean_deviation:.4f}"
+                f"Reinit iteration {iteration}: max(||grad phi| - 1|) = {max_deviation:.4f}, mean = {mean_deviation:.4f}"
             )
 
         # Check for divergence (deviation increasing significantly)
         if max_deviation > 2 * prev_max_deviation and iteration > 5:
             logger.warning(
                 f"Reinitialization diverging at iteration {iteration}: "
-                f"max(||∇φ| - 1|) = {max_deviation:.4f}. "
+                f"max(||grad phi| - 1|) = {max_deviation:.4f}. "
                 f"Stopping early and returning last stable state."
             )
             # Revert to previous state
@@ -191,16 +251,16 @@ def reinitialize(
         if max_deviation < tolerance:
             logger.debug(
                 f"Reinitialization converged at iteration {iteration}: "
-                f"max(||∇φ| - 1|) = {max_deviation:.4f} < {tolerance}"
+                f"max(||grad phi| - 1|) = {max_deviation:.4f} < {tolerance}"
             )
             break
 
         prev_max_deviation = max_deviation
 
-        # RHS: sign(φ₀)(|∇φ| - 1)
+        # RHS: sign(phi0)(|grad phi| - 1)
         rhs = sign_phi0 * (grad_mag - 1.0)
 
-        # Explicit Euler update: φ^{n+1} = φ^n - dtau·RHS
+        # Explicit Euler update: phi^{n+1} = phi^n - dtau*RHS
         if narrow_band_mask is not None:
             # Narrow band: only update points within band
             phi[narrow_band_mask] = phi[narrow_band_mask] - dtau * rhs[narrow_band_mask]
@@ -218,12 +278,12 @@ def reinitialize(
         final_deviation = np.max(np.abs(grad_mag_final[narrow_band_mask] - 1.0)) if np.any(narrow_band_mask) else 0.0
         logger.debug(
             f"Reinitialization complete: {iteration + 1} iterations, "
-            f"final max(||∇φ| - 1|) = {final_deviation:.4f} (narrow band only)"
+            f"final max(||grad phi| - 1|) = {final_deviation:.4f} (narrow band only)"
         )
     else:
         final_deviation = np.max(np.abs(grad_mag_final - 1.0))
         logger.debug(
-            f"Reinitialization complete: {iteration + 1} iterations, final max(||∇φ| - 1|) = {final_deviation:.4f}"
+            f"Reinitialization complete: {iteration + 1} iterations, final max(||grad phi| - 1|) = {final_deviation:.4f}"
         )
 
     return phi
@@ -441,4 +501,60 @@ if __name__ == "__main__":
     else:
         print(f"  ✓ Narrow band correct (speedup {speedup:.2f}×, scales better with larger grids)!")
 
-    print("\n✅ All Reinitialization tests passed (including narrow band)!")
+    # Test 5: FMM vs FSM vs PDE comparison
+    print("\n[Test 5: Method Comparison (FMM vs FSM vs PDE)]")
+    print("Problem: Compare accuracy and speed of different reinitialization methods")
+
+    # Use a true SDF (circle) to measure accuracy
+    phi_circle_test = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2) - 0.3
+
+    print("  Input: Circle SDF (should remain unchanged)")
+
+    # FMM
+    t_start = time.perf_counter()
+    phi_fmm = reinitialize(phi_circle_test, grid_2d, method="fmm")
+    time_fmm = time.perf_counter() - t_start
+    error_fmm = np.max(np.abs(phi_fmm - phi_circle_test))
+    print(f"  FMM:  time = {time_fmm:.4f}s, max error = {error_fmm:.6f}")
+
+    # FSM
+    t_start = time.perf_counter()
+    phi_fsm = reinitialize(phi_circle_test, grid_2d, method="fsm")
+    time_fsm = time.perf_counter() - t_start
+    error_fsm = np.max(np.abs(phi_fsm - phi_circle_test))
+    print(f"  FSM:  time = {time_fsm:.4f}s, max error = {error_fsm:.6f}")
+
+    # PDE
+    t_start = time.perf_counter()
+    phi_pde = reinitialize(phi_circle_test, grid_2d, method="pde", max_iterations=20)
+    time_pde = time.perf_counter() - t_start
+    error_pde = np.max(np.abs(phi_pde - phi_circle_test))
+    print(f"  PDE:  time = {time_pde:.4f}s, max error = {error_pde:.6f}")
+
+    # FMM/FSM should preserve true SDF exactly (up to discretization)
+    assert error_fmm < 2 * dx2d, f"FMM error too large: {error_fmm}"
+    assert error_fsm < 2 * dx2d, f"FSM error too large: {error_fsm}"
+    print("  [OK] FMM and FSM preserve true SDF accurately")
+
+    # Test 6: Distorted level set recovery
+    print("\n[Test 6: Distorted Level Set Recovery]")
+    # Severely distort: phi^2 * sign(phi)
+    phi_distorted = phi_circle_test**2 * np.sign(phi_circle_test)
+    print("  Input: phi^2 * sign(phi) distortion")
+
+    phi_fmm_rec = reinitialize(phi_distorted, grid_2d, method="fmm")
+    phi_pde_rec = reinitialize(phi_distorted, grid_2d, method="pde", max_iterations=50)
+
+    # Compare to true SDF
+    error_fmm_rec = np.max(np.abs(phi_fmm_rec - phi_circle_test))
+    error_pde_rec = np.max(np.abs(phi_pde_rec - phi_circle_test))
+    print(f"  FMM recovery error: {error_fmm_rec:.4f}")
+    print(f"  PDE recovery error: {error_pde_rec:.4f}")
+
+    # FMM should recover SDF much better than PDE
+    assert error_fmm_rec < error_pde_rec or error_fmm_rec < 0.05, (
+        f"FMM should be more accurate than PDE: {error_fmm_rec} vs {error_pde_rec}"
+    )
+    print("  [OK] FMM recovers SDF from distorted level set")
+
+    print("\n[OK] All Reinitialization tests passed (including FMM/FSM methods)!")
