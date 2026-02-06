@@ -150,9 +150,9 @@ def solve_mfg_with_enhancements(use_enhancements=True):
 
     if use_enhancements:
         print("\nEnhancements:")
-        print("  ✓ RK4 characteristic tracing (scipy.solve_ivp)")
-        print("  ✓ Cubic spline interpolation")
-        print("  ✓ RBF interpolation fallback")
+        print("  - RK4 characteristic tracing (scipy.solve_ivp)")
+        print("  - Cubic spline interpolation")
+        print("  - RBF interpolation fallback")
 
         hjb_solver = HJBSemiLagrangianSolver(
             problem,
@@ -231,7 +231,7 @@ def solve_mfg_with_enhancements(use_enhancements=True):
                 show_progress=False,
             )
 
-    print("\n✓ Converged")
+    print("\n[OK] Converged")
     print(f"  Final density mass: {np.sum(M[-1]):.6f}")
     print(f"  Value function range: [{U.min():.4f}, {U.max():.4f}]")
 
@@ -312,7 +312,7 @@ def visualize_density_evolution(U, M, problem):
     plt.tight_layout()
     save_path = "examples/outputs/2d_density_evolution.png"
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    print(f"\n✓ Visualization saved to: {save_path}")
+    print(f"\n[OK] Visualization saved to: {save_path}")
     plt.close()
 
     # Create density trajectory plot
@@ -363,7 +363,7 @@ def visualize_density_evolution(U, M, problem):
     plt.tight_layout()
     save_path = "examples/outputs/2d_density_trajectory.png"
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    print(f"✓ Trajectory plot saved to: {save_path}")
+    print(f"[OK] Trajectory plot saved to: {save_path}")
     plt.close()
 
 
@@ -373,10 +373,10 @@ def main():
     print(" 2D DENSITY EVOLUTION WITH SEMI-LAGRANGIAN ENHANCEMENTS")
     print("=" * 80)
     print("\nThis demonstrates:")
-    print("  • 2D Mean Field Game with crowd navigation")
-    print("  • Semi-Lagrangian HJB solver with all enhancements")
-    print("  • Density evolution from initial position to goal")
-    print("  • Interaction through mean field coupling")
+    print("  - 2D Mean Field Game with crowd navigation")
+    print("  - Semi-Lagrangian HJB solver with all enhancements")
+    print("  - Density evolution from initial position to goal")
+    print("  - Interaction through mean field coupling")
 
     try:
         # Solve with enhancements
@@ -388,18 +388,18 @@ def main():
         print("\n" + "=" * 80)
         print("Summary")
         print("=" * 80)
-        print("\n✓ Demonstrated 2D Semi-Lagrangian enhancements:")
-        print("  • RK4 characteristic tracing handles 2D velocity fields")
-        print("  • Cubic interpolation provides smooth 2D density evolution")
-        print("  • RBF fallback ensures robustness at boundaries")
-        print("\n✓ Density successfully evolved from start (0.3, 0.3) to goal (0.7, 0.7)")
-        print("✓ Mean field coupling captured congestion avoidance")
+        print("\n[OK] Demonstrated 2D Semi-Lagrangian enhancements:")
+        print("  - RK4 characteristic tracing handles 2D velocity fields")
+        print("  - Cubic interpolation provides smooth 2D density evolution")
+        print("  - RBF fallback ensures robustness at boundaries")
+        print("\n[OK] Density successfully evolved from start (0.3, 0.3) to goal (0.7, 0.7)")
+        print("[OK] Mean field coupling captured congestion avoidance")
         print()
 
         return 0
 
     except Exception as e:
-        print(f"\n✗ Visualization failed: {e}")
+        print(f"\n[ERROR] Visualization failed: {e}")
         import traceback
 
         traceback.print_exc()

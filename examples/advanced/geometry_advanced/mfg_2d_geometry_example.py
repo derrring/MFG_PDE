@@ -34,14 +34,14 @@ class MFGProblem2D(MFGProblem):
     providing a template for future 2D/3D MFG implementations.
     """
 
-    def __init__(self, geometry_config: dict, time_domain: tuple = (1.0, 51), sigma: float = 1.0, **kwargs):
+    def __init__(self, geometry_config: dict, time_domain: tuple = (1.0, 51), diffusion: float = 1.0, **kwargs):
         """
         Initialize 2D MFG problem.
 
         Args:
             geometry_config: Configuration for 2D domain geometry
             time_domain: (T_final, N_time_steps)
-            sigma: Diffusion coefficient
+            diffusion: Diffusion coefficient
             **kwargs: Additional MFG problem parameters
         """
 
@@ -62,7 +62,7 @@ class MFGProblem2D(MFGProblem):
             Nx=int(np.sqrt(self.mesh_data.num_vertices)),  # Approximate 1D grid size
             T=time_domain[0],
             Nt=time_domain[1],
-            diffusion=sigma,
+            diffusion=diffusion,
             **kwargs,
         )
 
@@ -254,7 +254,7 @@ def integration_with_existing_config():
 
     # Create configuration that includes geometry
     config_dict = {
-        "problem": {"type": "MFGProblem", "T": 1.0, "Nt": 51, "sigma": 0.5, "coupling_coefficient": 1.0},
+        "problem": {"type": "MFGProblem", "T": 1.0, "Nt": 51, "diffusion": 0.5, "coupling_coefficient": 1.0},
         "geometry": {
             "dimension": 2,
             "domain_type": "rectangle",
@@ -274,7 +274,7 @@ def integration_with_existing_config():
     problem = MFGProblem2D(
         geometry_config=dict(config.geometry),
         time_domain=(config.problem.T, config.problem.Nt),
-        sigma=config.problem.sigma,
+        diffusion=config.problem.diffusion,
         coupling_coefficient=config.problem.coupling_coefficient,
     )
 

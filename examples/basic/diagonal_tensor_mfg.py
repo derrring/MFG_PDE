@@ -25,6 +25,8 @@ import numpy as np
 
 from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.core.mfg_problem import MFGProblem
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary.conditions import no_flux_bc
@@ -44,15 +46,49 @@ print()
 # Create 2D domain: corridor [0, 1] × [0, 0.6]
 domain = TensorProductGrid(
     bounds=[(0.0, 1.0), (0.0, 0.6)],
-    num_points=[31, 21],  # Nx × Ny (resolution + 1)
+    Nx_points=[31, 21],  # Nx × Ny grid points
+    boundary_conditions=no_flux_bc(dimension=2),
+)
+
+# Create LQ Hamiltonian with coupling
+hamiltonian = SeparableHamiltonian(
+    control_cost=QuadraticControlCost(control_cost=0.5),
+    coupling=lambda m: 0.5 * m,
+    coupling_dm=lambda m: 0.5,
+)
+
+# Get grid coordinates for initial/terminal conditions
+x_coords = domain.coordinates[0]
+y_coords = domain.coordinates[1]
+X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
+dx, dy = domain.get_grid_spacing()
+
+# Initial Gaussian centered at (0.3, 0.3)
+x0, y0 = 0.3, 0.3
+m0 = np.exp(-50 * ((X - x0) ** 2 + (Y - y0) ** 2))
+m0 /= np.sum(m0) * dx * dy  # Normalize
+
+
+# Terminal cost: quadratic distance to center
+def terminal_cost_2d(xy):
+    """Terminal cost for 2D problem."""
+    if xy.ndim == 1:
+        return (xy[0] - 0.5) ** 2 + (xy[1] - 0.3) ** 2
+    return (xy[:, 0] - 0.5) ** 2 + (xy[:, 1] - 0.3) ** 2
+
+
+components = MFGComponents(
+    hamiltonian=hamiltonian,
+    m_initial=m0,  # Pass array directly
+    u_final=terminal_cost_2d,
 )
 
 problem = MFGProblem(
     geometry=domain,
     T=0.1,  # Short time horizon
     Nt=10,  # 10 timesteps
-    sigma=0.1,  # Base diffusion (not used with tensor_diffusion_field)
-    coupling_coefficient=0.5,  # Control cost
+    diffusion=0.1,  # Base diffusion (tensor_diffusion_field overrides)
+    components=components,
 )
 
 print("Domain: [0.0, 1.0] × [0.0, 0.6]")
@@ -86,26 +122,12 @@ print(f"  - Ratio: σ_x/σ_y = {sigma_x / sigma_y:.1f}x")
 print()
 
 # ============================================================================
-# Initial Density
+# Initial Density (already configured in MFGComponents above)
 # ============================================================================
 
-print("Setting up initial density...")
-print()
-
-# Initial Gaussian centered at (0.3, 0.3)
-x_coords = domain.coordinates[0]
-y_coords = domain.coordinates[1]
-X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
-
-# Gaussian initial condition
-x0, y0 = 0.3, 0.3
-m0 = np.exp(-50 * ((X - x0) ** 2 + (Y - y0) ** 2))
-
-# Normalize to probability distribution
-m0 /= np.sum(m0) * domain.dx * domain.dy
-
-print(f"Initial density: Gaussian centered at ({x0}, {y0})")
-print(f"  Mass: {np.sum(m0) * domain.dx * domain.dy:.6f}")
+print("Initial density: Gaussian centered at (0.3, 0.3)")
+dx, dy = domain.get_grid_spacing()
+print(f"  Mass: {np.sum(m0) * dx * dy:.6f}")
 print()
 
 # ============================================================================
@@ -126,7 +148,7 @@ hjb_solver = HJBFDMSolver(
 
 fp_solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
-print("✓ Solvers created")
+print("[OK] Solvers created")
 print()
 
 # ============================================================================
@@ -149,7 +171,7 @@ M[0] = m0.copy()
 
 # Normalize all timesteps
 for n in range(Nt):
-    M[n] /= np.sum(M[n]) * domain.dx * domain.dy
+    M[n] /= np.sum(M[n]) * dx * dy
 
 # Run 3 Picard iterations
 max_iterations = 3
@@ -181,7 +203,7 @@ for iteration in range(max_iterations):
     print(f"  ΔM / ||M||: {M_change:.2e}")
 
     # Check mass conservation
-    masses = np.sum(M_new, axis=(1, 2)) * domain.dx * domain.dy
+    masses = np.sum(M_new, axis=(1, 2)) * dx * dy
     mass_error = np.abs(masses - 1.0).max()
     print(f"  Mass conservation error: {mass_error:.2e}")
     print()
@@ -190,7 +212,7 @@ for iteration in range(max_iterations):
     U = U_new.copy()
     M = M_new.copy()
 
-print("✓ Picard iterations completed")
+print("[OK] Picard iterations completed")
 print()
 
 # ============================================================================
@@ -230,7 +252,7 @@ plt.tight_layout()
 # Save figure
 output_path = "examples/outputs/diagonal_tensor_mfg.png"
 plt.savefig(output_path, dpi=150, bbox_inches="tight")
-print(f"✓ Figure saved to {output_path}")
+print(f"[OK] Figure saved to {output_path}")
 print()
 
 # Show plot

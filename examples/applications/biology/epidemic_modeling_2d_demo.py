@@ -77,7 +77,10 @@ def create_epidemic_problem():
     Nt = 60
 
     # Create 2D tensor product grid
-    grid = TensorProductGrid(bounds=[(0.0, L), (0.0, L)], num_points=[Nx, Ny])
+    grid = TensorProductGrid(
+        bounds=[(0.0, L), (0.0, L)],
+        Nx_points=[Nx, Ny],
+    )
 
     # Epidemic parameters
     alpha = 0.3  # Infection rate (contact × transmission)

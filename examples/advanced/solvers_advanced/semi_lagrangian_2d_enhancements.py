@@ -354,7 +354,7 @@ def main():
         return 0
 
     except Exception as e:
-        print(f"\n✗ Demo failed: {e}")
+        print(f"\n[ERROR] Demo failed: {e}")
         import traceback
 
         traceback.print_exc()

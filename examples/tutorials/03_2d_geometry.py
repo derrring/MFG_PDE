@@ -4,22 +4,26 @@ Tutorial 03: 2D Geometry
 Learn how to work with 2D spatial domains in MFG_PDE.
 
 What you'll learn:
-- How to use MFGProblem for nD problems
-- How to define 2D Hamiltonians with gradient vectors
+- How to create 2D problems with TensorProductGrid
+- How to define 2D initial density and terminal cost
 - How to visualize 2D density evolution
 - How mass conservation works in 2D
 
 Mathematical Problem:
     2D crowd navigation with target attraction:
-    - Domain: [0,10] × [0,10] (square room)
+    - Domain: [0,10] x [0,10] (square room)
     - Target: Center at (5,5) - agents want to reach it
-    - Hamiltonian: H = (1/2)|∇u|² + λm|∇u|² (congestion)
+    - Hamiltonian: H = (1/2)|p|^2 + lambda*m (LQ with congestion)
     - Initial: Agents start at corners
 """
 
 import numpy as np
 
 from mfg_pde import MFGProblem
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 # ==============================================================================
 # Step 1: Create 2D Problem
@@ -30,113 +34,85 @@ print("TUTORIAL 03: 2D Geometry")
 print("=" * 70)
 print()
 
+# Problem parameters (reduced resolution for faster demo)
+TARGET = np.array([5.0, 5.0])  # Target location (center of room)
+CONGESTION_WEIGHT = 1.0
+GRID_RESOLUTION = 15  # Reduced from 30 for faster execution
+DIFFUSION = 0.3  # Slightly higher for stability
 
-class TargetAttraction2D(MFGProblem):
-    """
-    2D MFG: Agents navigate toward a target in a square room.
+# Create 2D geometry
+print("Creating 2D geometry...")
+geometry = TensorProductGrid(
+    bounds=[(0.0, 10.0), (0.0, 10.0)],  # [(xmin, xmax), (ymin, ymax)]
+    Nx_points=[GRID_RESOLUTION, GRID_RESOLUTION],  # 30x30 spatial grid
+    boundary_conditions=no_flux_bc(dimension=2),
+)
 
-    Key differences from 1D:
-    - spatial_bounds is a list of (min, max) tuples per dimension
-    - p is now a 2D gradient vector [px, py]
-    - Density m(t,x,y) is a 3D array
-    """
+print(f"  Domain: {geometry.get_bounds()}")
+print(f"  Grid: {GRID_RESOLUTION} x {GRID_RESOLUTION}")
+print()
 
-    def __init__(self, target_location=(5.0, 5.0), congestion_weight=1.0):
-        # Initialize 2D problem using MFGProblem
-        super().__init__(
-            spatial_bounds=[(0.0, 10.0), (0.0, 10.0)],  # [(xmin, xmax), (ymin, ymax)]
-            spatial_discretization=[30, 30],  # 30×30 spatial grid
-            T=4.0,  # Terminal time
-            Nt=40,  # Number of time steps
-            sigma=0.2,  # Diffusion coefficient
-        )
+# Get grid coordinates
+x_coords = geometry.coordinates[0]
+y_coords = geometry.coordinates[1]
+X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
+dx, dy = geometry.get_grid_spacing()
 
-        self.target = np.array(target_location)
-        self.congestion_weight = congestion_weight
-        # Store grid resolution for convenience
-        self.grid_resolution = self.spatial_discretization[0]
+# Compute initial density: 4 Gaussian blobs at corners
+print("Setting up initial density (4 Gaussian blobs at corners)...")
+corners = [
+    (2.0, 2.0),  # Bottom-left
+    (8.0, 2.0),  # Bottom-right
+    (2.0, 8.0),  # Top-left
+    (8.0, 8.0),  # Top-right
+]
 
-    def hamiltonian(self, x, m, p, t):
-        """
-        Hamiltonian for 2D problem.
+m_initial = np.zeros_like(X)
+for cx, cy in corners:
+    dist_squared = (X - cx) ** 2 + (Y - cy) ** 2
+    m_initial += np.exp(-5 * dist_squared)
 
-        Args:
-            x: Spatial positions - shape (N, 2) where N is number of points
-            m: Density values - shape (N,)
-            p: Gradient of value function - shape (N, 2) for [px, py]
-            t: Time (scalar or array)
+# Normalize to probability distribution
+m_initial /= np.sum(m_initial) * dx * dy
+print(f"  Initial mass: {np.sum(m_initial) * dx * dy:.6f}")
+print()
 
-        Returns:
-            Hamiltonian values - shape (N,)
-        """
-        # Compute |∇u|² = px² + py²
-        # p.shape is (N, 2), so we sum over last axis
-        p_squared = np.sum(p**2, axis=1) if p.ndim > 1 else np.sum(p**2)
+# Compute terminal cost: distance to target
+u_final = (X - TARGET[0]) ** 2 + (Y - TARGET[1]) ** 2
 
-        # H = (1/2)|∇u|² + λ·m·|∇u|²
-        return 0.5 * p_squared + self.congestion_weight * m * p_squared
 
-    def terminal_cost(self, x):
-        """
-        Terminal cost: Squared distance to target.
+# Create Hamiltonian: H = (1/2)|p|^2 + lambda*m
+hamiltonian = SeparableHamiltonian(
+    control_cost=QuadraticControlCost(control_cost=1.0),
+    coupling=lambda m: CONGESTION_WEIGHT * m,
+    coupling_dm=lambda m: CONGESTION_WEIGHT,
+)
 
-        Args:
-            x: Spatial positions - shape (N, 2)
+# Bundle components (using precomputed arrays)
+components = MFGComponents(
+    hamiltonian=hamiltonian,
+    m_initial=m_initial,
+    u_final=u_final,
+)
 
-        Returns:
-            Cost values - shape (N,)
-        """
-        # Distance to target: |x - target|²
-        return np.sum((x - self.target) ** 2, axis=1)
+# Create problem
+print("Creating 2D target attraction problem...")
+problem = MFGProblem(
+    geometry=geometry,
+    T=2.0,  # Reduced terminal time for faster demo
+    Nt=20,  # Reduced time steps
+    diffusion=DIFFUSION,
+    components=components,
+)
 
-    def initial_density(self, x):
-        """
-        Initial density: 4 Gaussian blobs at corners.
-
-        Args:
-            x: Spatial positions - shape (N, 2)
-
-        Returns:
-            Density values - shape (N,)
-        """
-        # Define corner locations
-        corners = [
-            np.array([2.0, 2.0]),  # Bottom-left
-            np.array([8.0, 2.0]),  # Bottom-right
-            np.array([2.0, 8.0]),  # Top-left
-            np.array([8.0, 8.0]),  # Top-right
-        ]
-
-        # Sum of Gaussians centered at corners
-        density = np.zeros(x.shape[0])
-        for corner in corners:
-            dist_squared = np.sum((x - corner) ** 2, axis=1)
-            density += np.exp(-5 * dist_squared)
-
-        # Normalize (2D integration using trapezoidal rule)
-        # For 2D, we need to integrate over the grid
-        grid_shape = (self.grid_resolution, self.grid_resolution)
-        density_2d = density.reshape(grid_shape)
-
-        dx = (self.spatial_bounds[0][1] - self.spatial_bounds[0][0]) / (self.grid_resolution - 1)
-        dy = (self.spatial_bounds[1][1] - self.spatial_bounds[1][0]) / (self.grid_resolution - 1)
-
-        total_mass = np.trapz(np.trapz(density_2d, dx=dy, axis=0), dx=dx)
-
-        return density / total_mass
-
+print(f"  Target: {TARGET}")
+print(f"  Time horizon: T = {problem.T}")
+print(f"  Diffusion: sigma = {problem.sigma}")
+print()
 
 # ==============================================================================
 # Step 2: Solve the Problem
 # ==============================================================================
-
-print("Creating 2D target attraction problem...")
-problem = TargetAttraction2D(target_location=(5.0, 5.0), congestion_weight=1.0)
-
-print(f"  Domain: {problem.spatial_bounds}")
-print(f"  Grid: {problem.grid_resolution} × {problem.grid_resolution}")
-print(f"  Target: {problem.target}")
-print()
 
 print("Solving 2D MFG system...")
 print("(This may take a moment - 2D problems are more computationally intensive)")
@@ -157,16 +133,15 @@ print("MASS CONSERVATION (2D)")
 print("=" * 70)
 print()
 
-# In 2D, mass conservation requires 2D integration
-dx = (problem.spatial_bounds[0][1] - problem.spatial_bounds[0][0]) / (problem.grid_resolution - 1)
-dy = (problem.spatial_bounds[1][1] - problem.spatial_bounds[1][0]) / (problem.grid_resolution - 1)
+# Get grid info
+grid_shape = geometry.get_grid_shape()
+dx, dy = geometry.get_grid_spacing()
 
-# Check mass at each timestep
-grid_shape = (problem.grid_resolution, problem.grid_resolution)
+# Check mass at each timestep using trapezoidal integration
 masses = []
-for t_idx in range(len(problem.tSpace)):
+for t_idx in range(result.M.shape[0]):
     m_2d = result.M[t_idx].reshape(grid_shape)
-    mass = np.trapz(np.trapz(m_2d, dx=dy, axis=0), dx=dx)
+    mass = np.trapezoid(np.trapezoid(m_2d, dx=dy, axis=1), dx=dx)
     masses.append(mass)
 
 print(f"Initial mass: {masses[0]:.6f}")
@@ -179,20 +154,20 @@ print()
 # ==============================================================================
 
 try:
+    from pathlib import Path
+
     import matplotlib.pyplot as plt
 
     fig = plt.figure(figsize=(15, 10))
 
-    # Reshape density to 2D grid for plotting
-    grid_shape = (problem.grid_resolution, problem.grid_resolution)
+    # Create spatial grids for plotting
+    x_1d = np.linspace(0, 10, GRID_RESOLUTION)
+    y_1d = np.linspace(0, 10, GRID_RESOLUTION)
+    X, Y = np.meshgrid(x_1d, y_1d, indexing="ij")
 
-    # Create spatial grids
-    x_1d = np.linspace(problem.spatial_bounds[0][0], problem.spatial_bounds[0][1], problem.grid_resolution)
-    y_1d = np.linspace(problem.spatial_bounds[1][0], problem.spatial_bounds[1][1], problem.grid_resolution)
-    X, Y = np.meshgrid(x_1d, y_1d)
-
-    # Plot snapshots at different times
-    times_to_plot = [0, len(problem.tSpace) // 3, 2 * len(problem.tSpace) // 3, -1]
+    # Time points to plot
+    t_space = np.linspace(0, problem.T, problem.Nt + 1)
+    times_to_plot = [0, len(t_space) // 3, 2 * len(t_space) // 3, -1]
 
     for idx, t_idx in enumerate(times_to_plot, 1):
         ax = fig.add_subplot(2, 2, idx)
@@ -201,17 +176,22 @@ try:
 
         # Density heatmap
         contour = ax.contourf(X, Y, m_2d, levels=20, cmap="viridis")
-        ax.plot(*problem.target, "r*", markersize=20, label="Target")
+        ax.plot(*TARGET, "r*", markersize=20, label="Target")
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-        ax.set_title(f"Density at t={problem.tSpace[t_idx]:.2f}s")
+        ax.set_title(f"Density at t={t_space[t_idx]:.2f}s")
         ax.set_aspect("equal")
         plt.colorbar(contour, ax=ax)
         ax.legend()
 
     plt.tight_layout()
-    plt.savefig("examples/outputs/tutorials/03_2d_geometry.png", dpi=150, bbox_inches="tight")
-    print("Saved plot to: examples/outputs/tutorials/03_2d_geometry.png")
+
+    # Save plot
+    output_dir = Path(__file__).parent.parent / "outputs" / "tutorials"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "03_2d_geometry.png"
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"Saved plot to: {output_path}")
     print()
 
 except ImportError:
@@ -227,16 +207,16 @@ print("TUTORIAL COMPLETE")
 print("=" * 70)
 print()
 print("What you learned:")
-print("  1. How to use MFGProblem for nD problems")
-print("  2. How to work with 2D gradients p = [px, py]")
+print("  1. How to create 2D problems with TensorProductGrid")
+print("  2. How to define 2D initial density and terminal cost functions")
 print("  3. How to compute 2D integrals for mass conservation")
 print("  4. How to visualize 2D density evolution")
 print()
-print("Key differences from 1D:")
-print("  - spatial_bounds: [(xmin, xmax), (ymin, ymax)] list of tuples")
-print("  - spatial_discretization: [Nx, Ny] grid points per dimension")
-print("  - p is a vector: shape (N, 2) instead of (N,)")
-print("  - Integration: Use nested trapz() for 2D")
+print("Key API elements for 2D:")
+print("  - TensorProductGrid(bounds=[(xmin,xmax), (ymin,ymax)], Nx_points=[Nx, Ny])")
+print("  - boundary_conditions=no_flux_bc(dimension=2)")
+print("  - Initial/terminal functions receive shape (N, 2) arrays")
+print("  - Use np.atleast_2d() for robust callable handling")
 print()
-print("Next: Tutorial 04 - Particle Methods")
+print("Next: Tutorial 04 - Advanced Solver Configuration")
 print("=" * 70)

@@ -67,7 +67,7 @@ class CrowdMotion2D(MFGProblem):
             spatial_discretization=[grid_resolution, grid_resolution],
             T=time_horizon,
             Nt=num_timesteps,
-            sigma=diffusion,
+            diffusion=diffusion,
         )
         self.grid_resolution = grid_resolution
 
@@ -214,7 +214,7 @@ def main():
     print(f"  Final (at t=T): min={np.min(U[-1]):.4f}, max={np.max(U[-1]):.4f}")
 
     print("\n" + "=" * 70)
-    print("  ✅ 2D FDM example complete!")
+    print("  [OK] 2D FDM example complete!")
     print("=" * 70 + "\n")
 
     print("Key observations:")
