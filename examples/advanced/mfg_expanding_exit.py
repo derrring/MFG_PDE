@@ -84,7 +84,7 @@ print("\n" + "=" * 70)
 print("Initialization")
 print("=" * 70)
 
-grid = TensorProductGrid(bounds=[(0, L)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+grid = TensorProductGrid(bounds=[(0, L)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1))
 x = grid.coordinates[0]
 N_points = len(x)  # Actual number of grid points (Nx+1)
 dx = x[1] - x[0]

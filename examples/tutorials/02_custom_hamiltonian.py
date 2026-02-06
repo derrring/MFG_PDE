@@ -99,7 +99,7 @@ print()
 # Create grid
 grid = TensorProductGrid(
     bounds=[(0.0, 1.0)],
-    Nx=[60],
+    Nx_points=[61],
     boundary_conditions=no_flux_bc(dimension=1),
 )
 

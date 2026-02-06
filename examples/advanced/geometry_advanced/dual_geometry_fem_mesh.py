@@ -45,16 +45,16 @@ def demonstrate_fem_mesh_projection_basic():
         mesh_data = mesh.generate_mesh()
         print(f"✓ Mesh generated: {mesh_data.num_vertices} vertices, {mesh_data.num_elements} elements")
     except ImportError:
-        print("⚠️  Gmsh not available - using demonstration with TensorProductGrid instead")
+        print("[WARN]  Gmsh not available - using demonstration with TensorProductGrid instead")
         print("   Install gmsh: pip install gmsh")
         # Fallback to grid for demonstration
         mesh = TensorProductGrid(
-            bounds=[(0, 1), (0, 1)], num_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)
+            bounds=[(0, 1), (0, 1)], Nx_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)
         )
         mesh_data = None
 
     # Create regular grid for HJB
-    grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], num_points=[51, 51], boundary_conditions=no_flux_bc(dimension=2))
+    grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[51, 51], boundary_conditions=no_flux_bc(dimension=2))
 
     grid_shape = grid.get_grid_shape()
     print(f"\nGrid points: {grid_shape[0] * grid_shape[1]:,}")
@@ -79,7 +79,7 @@ def demonstrate_fem_mesh_projection_basic():
     if projector.fp_to_hjb_method == "registry":
         print("\n✓ Using optimized Delaunay interpolation (automatic)")
     else:
-        print("\n⚠️  Using nearest neighbor fallback (scipy not available)")
+        print("\n[WARN]  Using nearest neighbor fallback (scipy not available)")
         print("   Install scipy for better accuracy: pip install scipy")
 
     # Demonstrate projection
@@ -218,13 +218,13 @@ def demonstrate_fem_mesh_projection_optimized():
         mesh_size=0.05,
     )
 
-    grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], num_points=[51, 51], boundary_conditions=no_flux_bc(dimension=2))
+    grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[51, 51], boundary_conditions=no_flux_bc(dimension=2))
 
     try:
         mesh_data = mesh.generate_mesh()
         print(f"✓ Mesh generated: {mesh_data.num_vertices} vertices")
     except ImportError:
-        print("⚠️  Gmsh not available - skipping optimized demonstration")
+        print("[WARN]  Gmsh not available - skipping optimized demonstration")
         return
 
     # Create problem (will now use registered specialized projections)
@@ -239,7 +239,7 @@ def demonstrate_fem_mesh_projection_optimized():
     if projector.fp_to_hjb_method == "registry":
         print("\n✓ Using optimized Delaunay interpolation (registered)")
     else:
-        print("\n⚠️  Still using fallback (register projections first)")
+        print("\n[WARN]  Still using fallback (register projections first)")
 
     # Test accuracy improvement
     print("\nTesting projection accuracy...")

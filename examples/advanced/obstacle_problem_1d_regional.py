@@ -72,7 +72,7 @@ x_protected_max = 0.7
 
 # Create grid
 
-grid = TensorProductGrid(bounds=[(x_min, x_max)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+grid = TensorProductGrid(bounds=[(x_min, x_max)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1))
 x = grid.coordinates[0]
 Nx_actual = len(x)
 dx = x[1] - x[0]
