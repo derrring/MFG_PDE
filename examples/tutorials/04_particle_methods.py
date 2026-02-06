@@ -14,11 +14,17 @@ for specialized applications. This tutorial covers the standard grid-based
 solver configuration available in the core package.
 """
 
+from pathlib import Path
+
 import numpy as np
 
 from mfg_pde import MFGProblem
 from mfg_pde.config import MFGSolverConfig, PicardConfig
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.factory import SolverFactory
+from mfg_pde.geometry import TensorProductGrid
+from mfg_pde.geometry.boundary import no_flux_bc
 
 # ==============================================================================
 # Step 1: Default Solution
@@ -29,15 +35,28 @@ print("TUTORIAL 04: Advanced Solver Configuration")
 print("=" * 70)
 print()
 
-# Create a simple 1D problem
+# Create grid and components
+grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
+
+hamiltonian = SeparableHamiltonian(
+    control_cost=QuadraticControlCost(control_cost=1.0),
+    coupling=lambda m: 0.3 * m,
+    coupling_dm=lambda m: 0.3,
+)
+
+components = MFGComponents(
+    hamiltonian=hamiltonian,
+    m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+    u_final=lambda x: (x - 0.5) ** 2,
+)
+
+# Create problem
 problem = MFGProblem(
-    xmin=0.0,
-    xmax=1.0,
-    Nx=50,
+    geometry=grid,
     T=1.0,
     Nt=50,
-    sigma=0.15,
-    coupling_coefficient=0.3,
+    diffusion=0.15,
+    components=components,
 )
 
 print("Solving with DEFAULT settings...")
@@ -133,9 +152,9 @@ mass_tight = np.sum(result_tight.M[-1, :]) * dx
 mass_fast = np.sum(result_fast.M[-1, :]) * dx
 
 print("Final mass (should be ~1.0):")
-print(f"  Default:        {mass_default:.6f}")
+print(f"  Default:         {mass_default:.6f}")
 print(f"  Tight tolerance: {mass_tight:.6f}")
-print(f"  Fast:           {mass_fast:.6f}")
+print(f"  Fast:            {mass_fast:.6f}")
 print()
 
 # ==============================================================================
@@ -197,12 +216,10 @@ try:
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
 
     # Plot 1: Final density comparison
-    bounds = problem.geometry.get_bounds()
-    Nx_points = problem.geometry.get_grid_shape()[1]
-    x_space = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
-    axes[0].plot(x_space, result_default.M[-1, :], "b-", linewidth=2, label="Default")
-    axes[0].plot(x_space, result_tight.M[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
-    axes[0].plot(x_space, result_fast.M[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
+    x = grid.coordinates[0]
+    axes[0].plot(x, result_default.M[-1, :], "b-", linewidth=2, label="Default")
+    axes[0].plot(x, result_tight.M[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
+    axes[0].plot(x, result_fast.M[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
     axes[0].set_xlabel("x")
     axes[0].set_ylabel("m(T, x)")
     axes[0].set_title("Final Density Comparison")
@@ -210,9 +227,9 @@ try:
     axes[0].grid(True, alpha=0.3)
 
     # Plot 2: Value function comparison
-    axes[1].plot(x_space, result_default.U[-1, :], "b-", linewidth=2, label="Default")
-    axes[1].plot(x_space, result_tight.U[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
-    axes[1].plot(x_space, result_fast.U[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
+    axes[1].plot(x, result_default.U[-1, :], "b-", linewidth=2, label="Default")
+    axes[1].plot(x, result_tight.U[-1, :], "g--", linewidth=2, label="Tight", alpha=0.8)
+    axes[1].plot(x, result_fast.U[-1, :], "r:", linewidth=2, label="Fast", alpha=0.8)
     axes[1].set_xlabel("x")
     axes[1].set_ylabel("u(T, x)")
     axes[1].set_title("Terminal Value Function")
@@ -220,11 +237,11 @@ try:
     axes[1].grid(True, alpha=0.3)
 
     # Plot 3: Convergence comparison (error vs iteration)
-    if hasattr(result_default, "error_history_M"):
+    if hasattr(result_default, "error_history_M") and result_default.error_history_M:
         axes[2].semilogy(result_default.error_history_M, "b-", label="Default", linewidth=2)
-    if hasattr(result_tight, "error_history_M"):
+    if hasattr(result_tight, "error_history_M") and result_tight.error_history_M:
         axes[2].semilogy(result_tight.error_history_M, "g--", label="Tight", linewidth=2)
-    if hasattr(result_fast, "error_history_M"):
+    if hasattr(result_fast, "error_history_M") and result_fast.error_history_M:
         axes[2].semilogy(result_fast.error_history_M, "r:", label="Fast", linewidth=2)
     axes[2].set_xlabel("Iteration")
     axes[2].set_ylabel("Error (log scale)")
@@ -233,8 +250,12 @@ try:
     axes[2].grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig("examples/outputs/tutorials/04_solver_config.png", dpi=150, bbox_inches="tight")
-    print("Saved plot to: examples/outputs/tutorials/04_solver_config.png")
+
+    output_dir = Path(__file__).parent.parent / "outputs" / "tutorials"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "04_solver_config.png"
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"Saved plot to: {output_path}")
     print()
 
 except ImportError:
@@ -259,5 +280,5 @@ print("Key takeaway:")
 print("  Configuration choices affect both speed and accuracy.")
 print("  Start simple, then tune based on your specific needs.")
 print()
-print("Next: Tutorial 05 - Problem Types and Next Steps")
+print("Next: Tutorial 05 - Parameter Studies")
 print("=" * 70)

@@ -15,8 +15,37 @@ This tutorial wraps up the series and points you toward more advanced topics.
 import numpy as np
 
 from mfg_pde import MFGProblem
+from mfg_pde.core import MFGComponents
+from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfg_pde.geometry import TensorProductGrid
 from mfg_pde.geometry.boundary import no_flux_bc
+
+# ==============================================================================
+# Helper: Create Standard LQ Components
+# ==============================================================================
+
+
+def create_lq_components(coupling_strength: float = 0.5):
+    """
+    Create standard Linear-Quadratic MFG components.
+
+    This is the default setup used throughout this tutorial:
+    - Hamiltonian: H(p,m) = (1/2)|p|^2 + coupling * m
+    - Terminal cost: (x - 0.5)^2 (agents want to be at center)
+    - Initial density: Gaussian at center
+    """
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: coupling_strength * m,
+        coupling_dm=lambda m: coupling_strength,
+    )
+
+    return MFGComponents(
+        hamiltonian=hamiltonian,
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+        u_final=lambda x: (x - 0.5) ** 2,
+    )
+
 
 # ==============================================================================
 # Step 1: Problem Setup
@@ -39,25 +68,25 @@ print("DIFFUSION PARAMETER STUDY")
 print("=" * 70)
 print()
 
-print("Varying sigma (diffusion) changes how agents spread out.")
+print("Varying diffusion changes how agents spread out.")
 print()
 
 # Test different diffusion coefficients
-sigma_values = [0.05, 0.15, 0.30]
-results_sigma = {}
+diffusion_values = [0.05, 0.15, 0.30]
+results_diffusion = {}
 
-for sigma in sigma_values:
-    print(f"Solving with sigma={sigma}...")
-    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
+for diffusion in diffusion_values:
+    print(f"Solving with diffusion={diffusion}...")
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
         Nt=50,
-        sigma=sigma,
-        coupling_coefficient=0.5,
+        diffusion=diffusion,
+        components=create_lq_components(coupling_strength=0.5),
     )
-    results_sigma[sigma] = problem.solve(verbose=False)
-    print(f"  Converged in {results_sigma[sigma].iterations} iterations")
+    results_diffusion[diffusion] = problem.solve(verbose=False)
+    print(f"  Converged in {results_diffusion[diffusion].iterations} iterations")
 
 print()
 
@@ -70,7 +99,7 @@ print("COUPLING STRENGTH STUDY")
 print("=" * 70)
 print()
 
-print("Varying coupling_coefficient changes congestion effects.")
+print("Varying coupling strength changes congestion effects.")
 print()
 
 # Test different coupling strengths
@@ -79,13 +108,13 @@ results_coupling = {}
 
 for coupling in coupling_values:
     print(f"Solving with coupling={coupling}...")
-    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[50], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
         Nt=50,
-        sigma=0.15,
-        coupling_coefficient=coupling,
+        diffusion=0.15,
+        components=create_lq_components(coupling_strength=coupling),
     )
     results_coupling[coupling] = problem.solve(verbose=False)
     print(f"  Converged in {results_coupling[coupling].iterations} iterations")
@@ -110,13 +139,13 @@ results_grid = {}
 
 for Nx in Nx_values:
     print(f"Solving with Nx={Nx} grid points...")
-    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1))
+    geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx=[Nx], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
         Nt=Nx,  # Keep dt/dx ratio constant
         diffusion=0.15,
-        coupling_coefficient=0.5,
+        components=create_lq_components(coupling_strength=0.5),
     )
     results_grid[Nx] = problem.solve(verbose=False)
     print(f"  Converged in {results_grid[Nx].iterations} iterations")
@@ -144,16 +173,16 @@ print("  result.max_error  | Final convergence error")
 print()
 
 # Example analysis: mass conservation
-print("Mass Conservation Check (sigma variations):")
-for sigma, result in results_sigma.items():
-    # Create a problem with matching grid to get dx
-    ref_geom = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
-    problem = MFGProblem(geometry=ref_geom, T=1.0, Nt=50, diffusion=sigma)
-    dx = problem.geometry.get_grid_spacing()[0]
+print("Mass Conservation Check (diffusion variations):")
+for diffusion, result in results_diffusion.items():
+    # Use the stored result's shape to compute dx
+    Nx = result.M.shape[1]
+    dx = 1.0 / (Nx - 1)
     initial_mass = np.sum(result.M[0, :]) * dx
     final_mass = np.sum(result.M[-1, :]) * dx
     print(
-        f"  sigma={sigma}: Initial={initial_mass:.4f}, Final={final_mass:.4f}, Drift={abs(final_mass - initial_mass):.2e}"
+        f"  diffusion={diffusion}: Initial={initial_mass:.4f}, "
+        f"Final={final_mass:.4f}, Drift={abs(final_mass - initial_mass):.2e}"
     )
 
 print()
@@ -171,64 +200,102 @@ print("Effect of parameters on MFG solutions:")
 print()
 print("  Parameter              | High Value Effect")
 print("  " + "-" * 55)
-print("  sigma (diffusion)      | More spreading, smoother density")
-print("  coupling_coefficient   | Stronger congestion avoidance")
+print("  diffusion              | More spreading, smoother density")
+print("  coupling_strength      | Stronger congestion avoidance")
 print("  Nx (grid resolution)   | Higher accuracy, more computation")
 print("  T (time horizon)       | More time for dynamics to evolve")
 print()
 
 # ==============================================================================
-# Step 7: Visualization (Optional)
+# Step 7: Visualization
 # ==============================================================================
 
+print("=" * 70)
+print("VISUALIZATION")
+print("=" * 70)
+print()
+
 try:
+    from pathlib import Path
+
     import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
-    # Create reference problem for grid
-    ref_geom = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
-    ref_problem = MFGProblem(geometry=ref_geom, T=1.0, Nt=50, diffusion=0.15)
+    # Get x coordinates for plotting
+    x = np.linspace(0, 1, 51)
 
-    # Plot 1: Diffusion comparison (final density)
-    for sigma, result in results_sigma.items():
-        axes[0, 0].plot(ref_problem.xSpace, result.M[-1, :], linewidth=2, label=f"sigma={sigma}")
-    axes[0, 0].set_xlabel("x")
-    axes[0, 0].set_ylabel("m(T, x)")
-    axes[0, 0].set_title("Effect of Diffusion on Final Density")
-    axes[0, 0].legend()
-    axes[0, 0].grid(True, alpha=0.3)
+    # Row 1: Diffusion study - final densities
+    ax = axes[0, 0]
+    for diffusion, result in results_diffusion.items():
+        x_grid = np.linspace(0, 1, result.M.shape[1])
+        ax.plot(x_grid, result.M[-1, :], label=f"diff={diffusion}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("m(T, x)")
+    ax.set_title("Final Density: Diffusion Study")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
-    # Plot 2: Coupling comparison (final density)
+    # Row 1: Coupling study - final densities
+    ax = axes[0, 1]
     for coupling, result in results_coupling.items():
-        axes[0, 1].plot(ref_problem.xSpace, result.M[-1, :], linewidth=2, label=f"coupling={coupling}")
-    axes[0, 1].set_xlabel("x")
-    axes[0, 1].set_ylabel("m(T, x)")
-    axes[0, 1].set_title("Effect of Coupling on Final Density")
-    axes[0, 1].legend()
-    axes[0, 1].grid(True, alpha=0.3)
+        x_grid = np.linspace(0, 1, result.M.shape[1])
+        ax.plot(x_grid, result.M[-1, :], label=f"coup={coupling}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("m(T, x)")
+    ax.set_title("Final Density: Coupling Study")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
-    # Plot 3: Value function comparison (diffusion)
-    for sigma, result in results_sigma.items():
-        axes[1, 0].plot(ref_problem.xSpace, result.U[0, :], linewidth=2, label=f"sigma={sigma}")
-    axes[1, 0].set_xlabel("x")
-    axes[1, 0].set_ylabel("u(0, x)")
-    axes[1, 0].set_title("Effect of Diffusion on Initial Value Function")
-    axes[1, 0].legend()
-    axes[1, 0].grid(True, alpha=0.3)
+    # Row 1: Grid study - final densities
+    ax = axes[0, 2]
+    for Nx, result in results_grid.items():
+        x_grid = np.linspace(0, 1, result.M.shape[1])
+        ax.plot(x_grid, result.M[-1, :], label=f"Nx={Nx}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("m(T, x)")
+    ax.set_title("Final Density: Resolution Study")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
-    # Plot 4: Value function comparison (coupling)
+    # Row 2: Value functions
+    ax = axes[1, 0]
+    for diffusion, result in results_diffusion.items():
+        x_grid = np.linspace(0, 1, result.U.shape[1])
+        ax.plot(x_grid, result.U[-1, :], label=f"diff={diffusion}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("u(T, x)")
+    ax.set_title("Terminal Value: Diffusion Study")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[1, 1]
     for coupling, result in results_coupling.items():
-        axes[1, 1].plot(ref_problem.xSpace, result.U[0, :], linewidth=2, label=f"coupling={coupling}")
-    axes[1, 1].set_xlabel("x")
-    axes[1, 1].set_ylabel("u(0, x)")
-    axes[1, 1].set_title("Effect of Coupling on Initial Value Function")
-    axes[1, 1].legend()
-    axes[1, 1].grid(True, alpha=0.3)
+        x_grid = np.linspace(0, 1, result.U.shape[1])
+        ax.plot(x_grid, result.U[-1, :], label=f"coup={coupling}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("u(T, x)")
+    ax.set_title("Terminal Value: Coupling Study")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[1, 2]
+    for Nx, result in results_grid.items():
+        x_grid = np.linspace(0, 1, result.U.shape[1])
+        ax.plot(x_grid, result.U[-1, :], label=f"Nx={Nx}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("u(T, x)")
+    ax.set_title("Terminal Value: Resolution Study")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig("examples/outputs/tutorials/05_problem_variations.png", dpi=150, bbox_inches="tight")
-    print("Saved plot to: examples/outputs/tutorials/05_problem_variations.png")
+
+    output_dir = Path(__file__).parent.parent / "outputs" / "tutorials"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "05_config_system.png"
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"Saved plot to: {output_path}")
     print()
 
 except ImportError:
@@ -236,54 +303,22 @@ except ImportError:
     print()
 
 # ==============================================================================
-# Step 8: Next Steps
-# ==============================================================================
-
-print("=" * 70)
-print("NEXT STEPS")
-print("=" * 70)
-print()
-
-print("You've completed the tutorial series! Here's what to explore next:")
-print()
-print("1. EXAMPLES")
-print("   - examples/basic/     : Single-concept demonstrations")
-print("   - examples/advanced/  : Complex applications")
-print()
-print("2. CUSTOM PROBLEMS")
-print("   - Subclass MFGProblem for custom Hamiltonians (Tutorial 02)")
-print("   - Define hamiltonian(), terminal_cost(), initial_density()")
-print()
-print("3. HIGHER DIMENSIONS")
-print("   - Use spatial_bounds and spatial_discretization for 2D/3D")
-print("   - See Tutorial 03 for 2D examples")
-print()
-print("4. ADVANCED SOLVERS")
-print("   - MFG-Research repository for cutting-edge methods")
-print("   - Particle methods, neural networks, GFDM")
-print()
-
-# ==============================================================================
 # Summary
 # ==============================================================================
 
 print("=" * 70)
-print("TUTORIAL SERIES COMPLETE!")
+print("TUTORIAL COMPLETE")
 print("=" * 70)
 print()
-print("You've completed all 5 tutorials:")
+print("What you learned:")
+print("  1. Create parameter variations using helper functions")
+print("  2. Compare diffusion, coupling, and resolution effects")
+print("  3. Analyze mass conservation and convergence")
+print("  4. Visualize parameter studies")
 print()
-print("  01: Hello MFG           - Basic problem setup and solving")
-print("  02: Custom Hamiltonian  - Problem customization")
-print("  03: 2D Geometry         - Multi-dimensional problems")
-print("  04: Solver Config       - Advanced configuration")
-print("  05: Problem Variations  - Parameter studies and next steps")
+print("Next steps:")
+print("  - Explore examples/advanced/ for complex geometries")
+print("  - See examples/applications/ for real-world problems")
+print("  - Check docs/theory/ for mathematical background")
 print()
-print("Key takeaways:")
-print("  - Use problem.solve() for the simplest workflow")
-print("  - Subclass MFGProblem for custom problems")
-print("  - Use SolverConfig for advanced control")
-print("  - Always check result.converged before using solutions")
-print()
-print("Happy MFG solving!")
 print("=" * 70)
