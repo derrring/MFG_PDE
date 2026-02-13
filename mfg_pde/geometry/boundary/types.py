@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfg_pde.geometry.protocols import SupportsRegionMarking
 from mfg_pde.utils.deprecation import deprecated
 
 if TYPE_CHECKING:
@@ -297,7 +298,7 @@ class BCSegment:
         tolerance: float = 1e-8,
         axis_names: dict[int, str] | None = None,
         domain_sdf: Callable[[np.ndarray], float] | None = None,
-        geometry=None,  # Type: SupportsRegionMarking | None (avoid circular import)
+        geometry: SupportsRegionMarking | None = None,
     ) -> bool:
         """
         Check if this BC segment applies to a given boundary point.
@@ -405,9 +406,6 @@ class BCSegment:
 
         # Method 5: Check region name match (Issue #596 Phase 2.5)
         if self.region_name is not None:
-            # Import here to avoid circular dependency
-            from mfg_pde.geometry.protocols import SupportsRegionMarking
-
             # Validate geometry is provided
             if geometry is None:
                 raise ValueError(
@@ -524,7 +522,7 @@ class BCSegment:
             ValueError: If value is a provider but state is not provided
         """
         # Check for BCValueProvider first (Issue #625)
-        # Import here to avoid circular dependency at module load time
+        # Late import: real cycle — types -> providers -> bc_coupling -> types
         from .providers import is_provider
 
         if is_provider(self.value):

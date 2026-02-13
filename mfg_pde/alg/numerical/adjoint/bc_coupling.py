@@ -53,13 +53,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-# Import BC types from geometry module
-# Use direct submodule imports to avoid circular import through mfg_pde.geometry.boundary
+# Import BC types from geometry submodules directly for clarity
 from mfg_pde.geometry.boundary.conditions import BoundaryConditions
 from mfg_pde.geometry.boundary.types import BCSegment, BCType
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+
+    from mfg_pde.geometry.protocol import GeometryProtocol
 
 
 def compute_boundary_log_density_gradient_1d(
@@ -205,7 +206,7 @@ def create_adjoint_consistent_bc_1d(
 
 def compute_adjoint_consistent_bc_values(
     m_current: NDArray[np.floating],
-    geometry: object,  # GeometryProtocol - avoid circular import
+    geometry: GeometryProtocol,
     sigma: float,
     dimension: int = 1,
     regularization: float = 1e-10,

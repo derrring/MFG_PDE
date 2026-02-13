@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import numpy as np
 
 # Import MFGComponents and mixins from the dedicated module
+from mfg_pde.core.hamiltonian import HamiltonianBase
 from mfg_pde.core.mfg_components import (
     ConditionsMixin,
     HamiltonianMixin,
@@ -494,9 +495,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Issue #673: Handle class-based Hamiltonian parameter
         # If hamiltonian= provided without components, create MFGComponents
         if hamiltonian is not None and components is None:
-            # Import here to avoid circular import
-            from mfg_pde.core.hamiltonian import HamiltonianBase
-
             if isinstance(hamiltonian, HamiltonianBase):
                 components = MFGComponents(hamiltonian=hamiltonian)
             else:

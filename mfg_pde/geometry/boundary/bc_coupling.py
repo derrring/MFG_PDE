@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-# Avoid circular import by importing BC types directly (not through __init__)
+# Import from submodules directly (deprecated module, see Issue #704)
 from .conditions import BoundaryConditions
 from .types import BCSegment, BCType
 

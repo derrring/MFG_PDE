@@ -50,10 +50,9 @@ from __future__ import annotations
 
 import warnings
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from mfg_pde.alg.base_solver import SchemeFamily
+from mfg_pde.alg.base_solver import SchemeFamily
 
 
 class DualityStatus(Enum):
@@ -159,9 +158,6 @@ def check_solver_duality(
         >>> assert result.is_valid_pairing()
         >>> assert result.requires_renormalization()  # Type B needs renorm
     """
-    # Import here to avoid circular dependency
-    from mfg_pde.alg.base_solver import SchemeFamily
-
     # Extract solver classes if instances were passed
     hjb_class = hjb_solver if isinstance(hjb_solver, type) else type(hjb_solver)
     fp_class = fp_solver if isinstance(fp_solver, type) else type(fp_solver)

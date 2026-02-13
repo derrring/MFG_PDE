@@ -41,6 +41,8 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from scipy.sparse.linalg import LinearOperator
 
+from mfg_pde.operators.differential.gradient import PartialDerivOperator
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -122,9 +124,6 @@ class DirectDerivOperator(LinearOperator):
         self._is_constant = direction.ndim == 1
 
         # Create partial derivative operators for each dimension
-        # Import here to avoid circular dependency
-        from mfg_pde.operators.differential.gradient import PartialDerivOperator
-
         self._partial_derivs = [
             PartialDerivOperator(
                 direction=i,
@@ -363,9 +362,6 @@ class NormalDerivOperator(DirectDerivOperator):
         """
         field_shape = sdf.shape
         ndim = len(field_shape)
-
-        # Import here to avoid circular dependency
-        from mfg_pde.operators.differential.gradient import PartialDerivOperator
 
         # Compute gradient of SDF
         grad_components = []
