@@ -17,6 +17,8 @@ from .hamiltonian import (
     # Control cost base classes (original)
     BoundedControlCost,
     BoundedHamiltonian,
+    # Non-separable Hamiltonian with density-dependent kinetic cost (Issue #782)
+    CongestionHamiltonian,
     ControlCostBase,
     # Dual classes (Legendre transform)
     DualHamiltonian,
@@ -72,10 +74,11 @@ __all__ = [
     "L1Hamiltonian",
     "BoundedControlCost",
     "BoundedHamiltonian",
-    # Full MFG Hamiltonian classes (Issue #673)
+    # Full MFG Hamiltonian classes (Issue #673, #782)
     "HamiltonianBase",
     "HamiltonianState",
     "SeparableHamiltonian",
+    "CongestionHamiltonian",
     "QuadraticMFGHamiltonian",
     "create_hamiltonian",
     # Lagrangian classes (Issue #651)
