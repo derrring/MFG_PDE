@@ -600,7 +600,7 @@ def _calculate_derivatives(
 
     See:
         - docs/gradient_notation_standard.md
-        - mfg_pde/compat/gradient_notation.py
+        - mfg_pde.core.DerivativeTensors for modern derivative representation
     """
     # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
     # PyTorch tensors have .item() method, NumPy arrays don't
@@ -696,8 +696,8 @@ def _calculate_p_values(
         Dictionary with string keys {" forward": p, "backward": p}
 
     See:
-        - _calculate_derivatives() for new tuple notation
-        - mfg_pde/compat/gradient_notation.py for conversion utilities
+        - _calculate_derivatives() for tuple notation
+        - mfg_pde.core.DerivativeTensors for modern derivative representation
     """
     # Call new tuple-based function
     derivs = _calculate_derivatives(U_array, i, Dx, Nx, clip=clip, clip_limit=clip_limit)
