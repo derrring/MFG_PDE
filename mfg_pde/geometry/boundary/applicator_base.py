@@ -1132,7 +1132,7 @@ class BaseStructuredApplicator(BaseBCApplicator):
 
         Note:
             This formula is shared across 1D/2D/3D/nD to eliminate duplication.
-            Issue #XXX fix: Changed from /(2*dx) to /dx.
+            Fix (commit 0ae5515a): Changed from /(2*dx) to /dx.
         """
         # Evaluate callable BC values
         if callable(g):

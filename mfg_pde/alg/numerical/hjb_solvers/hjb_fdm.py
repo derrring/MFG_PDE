@@ -740,7 +740,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
         # Check if we need time-dependent operators
         # For now, always create operators with current time to ensure proper BC handling
-        # TODO (Issue #596): Optimize by caching operators for time-independent BCs
+        # Potential optimization: cache operators for time-independent BCs
         scheme = "upwind" if self.use_upwind else "central"
         grad_ops = self.problem.geometry.get_gradient_operator(scheme=scheme, time=time)
 
