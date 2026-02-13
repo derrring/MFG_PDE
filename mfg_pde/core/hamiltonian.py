@@ -593,8 +593,14 @@ class HamiltonianBase(MFGOperatorBase):
         Returns
         -------
         NDArray
-            Gradient ∂H/∂p, shape (d,)
+            Gradient ∂H/∂p, shape (d,) for single-point, (N, d) for batch
         """
+        p_arr = np.asarray(p)
+        if p_arr.ndim == 2:
+            m_arr = np.asarray(m)
+            return np.stack(
+                [self._finite_diff_dp(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
+            )
         return self._finite_diff_dp(x, m, p, t)
 
     def dm(
@@ -613,14 +619,18 @@ class HamiltonianBase(MFGOperatorBase):
         Default implementation uses finite differences (Issue #667).
         Override for analytic derivatives.
 
+        Supports both single-point and batch inputs (Issue #775).
+        For batch: p.shape = (N, d), returns shape (N,).
+        For single-point: p.shape = (d,), returns float.
+
         Parameters
         ----------
         x : NDArray
-            Position, shape (d,)
+            Position, shape (d,) or (N, d)
         m : float | NDArray
-            Density at x
+            Density at x, scalar or shape (N,)
         p : NDArray
-            Momentum ∇u at x, shape (d,)
+            Momentum ∇u at x, shape (d,) or (N, d)
         t : float
             Time
 
@@ -629,6 +639,12 @@ class HamiltonianBase(MFGOperatorBase):
         float | NDArray
             Derivative ∂H/∂m
         """
+        p_arr = np.asarray(p)
+        if p_arr.ndim == 2:
+            m_arr = np.asarray(m)
+            return np.array(
+                [self._finite_diff_dm(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
+            )
         return self._finite_diff_dm(x, m, p, t)
 
     def optimal_control(
@@ -1387,21 +1403,42 @@ class SeparableHamiltonian(HamiltonianBase):
     ) -> float | NDArray:
         """
         Evaluate H = H_control(p) + V(x, t) + f(m).
+
+        Supports both single-point and batch inputs (Issue #775).
+        For batch: p.shape = (N, d), returns shape (N,).
+        For single-point: p.shape = (d,), returns float.
         """
-        # Control cost term
-        H_control = self.control_cost.hamiltonian(np.atleast_1d(p))
-        if isinstance(H_control, np.ndarray):
+        p_arr = np.atleast_1d(p)
+        is_batch = p_arr.ndim == 2
+
+        # Control cost term: hamiltonian() uses axis=-1, batch-safe
+        H_control = self.control_cost.hamiltonian(p_arr)
+        if not is_batch and isinstance(H_control, np.ndarray):
             H_control = float(H_control.sum())
 
         # Potential term
-        V = 0.0
         if self._potential is not None:
-            V = float(self._potential(x, t))
+            if is_batch:
+                V = np.array([float(self._potential(x[i], t)) for i in range(x.shape[0])])
+            else:
+                V = float(self._potential(x, t))
+        else:
+            V = np.zeros(p_arr.shape[0]) if is_batch else 0.0
 
         # Coupling term
-        f_m = 0.0
         if self._coupling is not None:
-            f_m = float(self._coupling(m))
+            if is_batch:
+                m_arr = np.asarray(m)
+                try:
+                    f_m = np.asarray(self._coupling(m_arr), dtype=float).ravel()
+                    if f_m.shape[0] != p_arr.shape[0]:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    f_m = np.array([float(self._coupling(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])])
+            else:
+                f_m = float(self._coupling(m))
+        else:
+            f_m = np.zeros(p_arr.shape[0]) if is_batch else 0.0
 
         return H_control + V + f_m
 
@@ -1438,7 +1475,12 @@ class SeparableHamiltonian(HamiltonianBase):
             return unconstrained
 
         else:
-            # Fallback to finite differences
+            # Fallback to finite differences (with batch dispatch)
+            if p_flat.ndim == 2:
+                m_arr = np.asarray(m)
+                return np.stack(
+                    [self._finite_diff_dp(x[i], float(m_arr.flat[i]), p_flat[i], t) for i in range(p_flat.shape[0])]
+                )
             return self._finite_diff_dp(x, m, p, t)
 
     def dm(
@@ -1450,14 +1492,37 @@ class SeparableHamiltonian(HamiltonianBase):
     ) -> float | NDArray:
         """
         Compute ∂H/∂m = df/dm (only coupling term depends on m).
+
+        Supports both single-point and batch inputs (Issue #775).
+        For batch: p.shape = (N, d), returns shape (N,).
+        For single-point: p.shape = (d,), returns float.
         """
+        p_arr = np.asarray(p)
+        is_batch = p_arr.ndim == 2
+
         if self._coupling_dm is not None:
+            if is_batch:
+                m_arr = np.asarray(m)
+                try:
+                    result = np.asarray(self._coupling_dm(m_arr), dtype=float).ravel()
+                    if result.shape[0] != p_arr.shape[0]:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    result = np.array([float(self._coupling_dm(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])])
+                return result
             return float(self._coupling_dm(m))
 
         if self._coupling is None:
+            if is_batch:
+                return np.zeros(p_arr.shape[0])
             return 0.0
 
-        # Finite difference fallback
+        # Finite difference fallback (with batch dispatch)
+        if is_batch:
+            m_arr = np.asarray(m)
+            return np.array(
+                [self._finite_diff_dm(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
+            )
         return self._finite_diff_dm(x, m, p, t)
 
     def optimal_control(
