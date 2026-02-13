@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
+from mfg_pde.geometry.protocols import SupportsRegionMarking
 from mfg_pde.utils.deprecation import deprecated
 
 from .types import BCSegment, BCType, _compute_sdf_gradient
@@ -963,7 +964,7 @@ def mixed_bc(
 
 
 def mixed_bc_from_regions(
-    geometry,  # Type: SupportsRegionMarking (avoid circular import)
+    geometry: SupportsRegionMarking,
     bc_config: dict[str, BCSegment],
     dimension: int | None = None,
 ) -> BoundaryConditions:
@@ -1009,9 +1010,6 @@ def mixed_bc_from_regions(
         >>> assert bc.segments[0].region_name == "inlet"
         >>> assert bc.default_bc == BCType.PERIODIC
     """
-    # Import here to avoid circular dependency
-    from mfg_pde.geometry.protocols import SupportsRegionMarking
-
     # Validate geometry supports region marking
     if not isinstance(geometry, SupportsRegionMarking):
         raise TypeError(

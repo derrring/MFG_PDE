@@ -532,7 +532,7 @@ class PluginManager:
         **kwargs: Any,
     ) -> Any:
         """Create core solver instance."""
-        # Import here to avoid circular imports
+        # Late import: transitive cycle through mfg_pde.__init__ -> plugin_system
         from typing import cast
 
         from mfg_pde.factory import create_solver

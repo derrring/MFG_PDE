@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+
 if TYPE_CHECKING:
     from mfg_pde.backends.base_backend import BaseBackend
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -120,9 +122,6 @@ class CPUParticleStrategy(ParticleStrategy):
         backend: "BaseBackend | None",
     ) -> np.ndarray:
         """CPU implementation using NumPy + scipy."""
-        # Import here to avoid circular dependency
-        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-
         # Use existing CPU implementation
         return FPParticleSolver._solve_fp_system_cpu_static(
             m_initial,
@@ -184,9 +183,6 @@ class GPUParticleStrategy(ParticleStrategy):
         backend: "BaseBackend | None",
     ) -> np.ndarray:
         """GPU implementation using internal GPU KDE."""
-        # Import here to avoid circular dependency
-        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-
         # Use existing GPU implementation
         return FPParticleSolver._solve_fp_system_gpu_static(
             m_initial,

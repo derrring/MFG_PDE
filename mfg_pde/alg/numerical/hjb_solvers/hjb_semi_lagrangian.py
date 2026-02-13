@@ -54,6 +54,7 @@ from .hjb_sl_interpolation import (
 
 if TYPE_CHECKING:
     from mfg_pde.core.mfg_problem import MFGProblem
+    from mfg_pde.geometry.boundary.conditions import BoundaryConditions
 
 from mfg_pde.core.derivatives import DerivativeTensors
 
@@ -1882,7 +1883,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
     def apply_boundary_conditions(
         self,
         values: np.ndarray,
-        bc,  # BoundaryConditions type hint omitted to avoid circular import
+        bc: BoundaryConditions,
         time: float = 0.0,
     ) -> np.ndarray:
         """

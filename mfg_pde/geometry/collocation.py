@@ -45,6 +45,7 @@ import numpy as np
 
 # Issue #543: Runtime import for isinstance() checks
 from mfg_pde.geometry.protocol import GeometryProtocol
+from mfg_pde.geometry.protocols import SupportsPeriodic
 from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
@@ -2032,9 +2033,6 @@ class CollocationSampler:
             to 0 since there are no true boundaries (Issue #720).
         """
         # Issue #720: Detect fully periodic domains and force n_boundary=0
-        # Import protocol here to avoid circular imports
-        from mfg_pde.geometry.protocols import SupportsPeriodic
-
         if isinstance(self.geometry, SupportsPeriodic):
             periodic_dims = self.geometry.periodic_dimensions
             dimension = self.geometry.dimension

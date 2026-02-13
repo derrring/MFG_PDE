@@ -350,7 +350,7 @@ def run_solver_from_cli(args: argparse.Namespace) -> None:
         print(json.dumps(config, indent=2, default=str))
 
     try:
-        # Import here to avoid circular imports
+        # Late import: CLI lazy-loads heavy modules only when actually invoked
         from mfg_pde import MFGProblem
         from mfg_pde.factory import create_solver
 
