@@ -61,6 +61,21 @@ class NumericalScheme(Enum):
         - Adjoint: Cubic splatting is transpose of cubic interpolation
         - **Status**: Experimental - known NaN issues in some cases
 
+    **Type A (FEM)**: Discrete duality via symmetric bilinear forms
+
+    - **FEM_P1**: Linear Lagrange finite elements on triangular/tetrahedral meshes
+        - Convergence: O(h^2) in L2 norm
+        - Stability: Unconditionally stable (coercive bilinear form)
+        - Use case: Unstructured meshes, complex geometry, variational problems
+        - Adjoint: Stiffness and mass matrices are symmetric
+        - Backend: scikit-fem assembly (Issue #773)
+
+    - **FEM_P2**: Quadratic Lagrange finite elements
+        - Convergence: O(h^3) in L2 norm
+        - Stability: Same as P1
+        - Use case: Higher accuracy on same mesh, curved boundaries
+        - Adjoint: Same symmetry as P1
+
     **Type B (Continuous Duality)**: Asymptotic adjoint (L_FP = L_HJB^T + O(h))
 
     - **GFDM**: Generalized Finite Difference Method (meshfree)
@@ -81,6 +96,8 @@ class NumericalScheme(Enum):
     | High accuracy needed | SL_CUBIC | O(h^4) if stable (check for NaN) |
     | Obstacles/complex geom | GFDM | Only scheme that handles obstacles |
     | Unstructured mesh | GFDM | Meshfree handles irregular grids |
+    | FEM triangle mesh | FEM_P1 | Variational structure on unstructured mesh |
+    | FEM high accuracy | FEM_P2 | Quadratic elements, O(h^3) convergence |
 
     Auto-Selection Logic
     --------------------
@@ -136,6 +153,10 @@ class NumericalScheme(Enum):
     FDM_CENTERED = "fdm_centered"
     SL_LINEAR = "sl_linear"
     SL_CUBIC = "sl_cubic"  # Experimental (Issue #583)
+
+    # Type A (FEM): Discrete duality via symmetric bilinear forms (Issue #773)
+    FEM_P1 = "fem_p1"
+    FEM_P2 = "fem_p2"
 
     # Type B: Continuous duality schemes (asymptotic adjoint)
     GFDM = "gfdm"

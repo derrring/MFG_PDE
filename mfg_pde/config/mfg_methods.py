@@ -7,7 +7,7 @@ via various formulations beyond the classical HJB-FP coupled system.
 
 Method Categories
 -----------------
-- Numerical: FDM, GFDM, Semi-Lagrangian, WENO
+- Numerical: FDM, FEM, GFDM, Semi-Lagrangian, WENO
 - Particle: SDE sampling, Monte Carlo
 - Iteration: Newton, Picard (in core.py)
 - Future: Neural (PINN, DGM), RL (DDPG, TD3)
@@ -62,6 +62,49 @@ class FDMConfig(BaseModel):
 
     scheme: Literal["central", "upwind", "lax_friedrichs"] = "upwind"
     time_stepping: Literal["explicit", "implicit", "crank_nicolson"] = "implicit"
+
+
+# =============================================================================
+# FINITE ELEMENT METHODS
+# =============================================================================
+
+
+class FEMConfig(BaseModel):
+    """
+    Finite Element Method configuration.
+
+    FEM solves PDEs on unstructured meshes (triangles in 2D, tetrahedra in 3D)
+    using variational formulations. Assembly is delegated to scikit-fem (Issue #773).
+
+    Attributes
+    ----------
+    element_order : Literal[1, 2]
+        Lagrange element polynomial order: 1 (linear, P1) or 2 (quadratic, P2).
+        P1 is sufficient for most MFG problems. P2 gives O(h^3) convergence.
+    quadrature_order : int | None
+        Gauss quadrature order for element integration.
+        None selects automatically based on element_order (2*p+1 rule).
+    time_stepping : Literal["implicit", "crank_nicolson"]
+        Time stepping method for parabolic equations (default: implicit).
+    lumped_mass : bool
+        Use lumped (diagonal) mass matrix instead of consistent.
+        Faster but reduces accuracy order by 1 (default: False).
+    """
+
+    element_order: Literal[1, 2] = 1
+    quadrature_order: int | None = None
+    time_stepping: Literal["implicit", "crank_nicolson"] = "implicit"
+    lumped_mass: bool = False
+
+    @model_validator(mode="after")
+    def validate_quadrature_order(self) -> FEMConfig:
+        """Auto-set quadrature order if not specified."""
+        if self.quadrature_order is None:
+            # 2p+1 rule: exact for products of basis functions
+            self.quadrature_order = 2 * self.element_order + 1
+        if self.quadrature_order < 1:
+            raise ValueError("quadrature_order must be >= 1")
+        return self
 
 
 # =============================================================================
@@ -256,7 +299,7 @@ class HJBConfig(BaseModel):
 
     Attributes
     ----------
-    method : Literal["fdm", "gfdm", "semi_lagrangian", "weno"]
+    method : Literal["fdm", "fem", "gfdm", "semi_lagrangian", "weno"]
         Solver method (default: fdm)
     accuracy_order : int
         Numerical accuracy order (1-5, default: 2)
@@ -266,6 +309,8 @@ class HJBConfig(BaseModel):
         Newton iteration configuration
     fdm : FDMConfig | None
         FDM-specific configuration
+    fem : FEMConfig | None
+        FEM-specific configuration (Issue #773)
     gfdm : GFDMConfig | None
         GFDM-specific configuration
     sl : SLConfig | None
@@ -274,13 +319,14 @@ class HJBConfig(BaseModel):
         WENO configuration
     """
 
-    method: Literal["fdm", "gfdm", "semi_lagrangian", "weno"] = "fdm"
+    method: Literal["fdm", "fem", "gfdm", "semi_lagrangian", "weno"] = "fdm"
     accuracy_order: int = Field(default=2, ge=1, le=5)
     boundary_conditions: Literal["dirichlet", "neumann", "periodic"] = "neumann"
     newton: NewtonConfig = Field(default_factory=NewtonConfig)
 
     # Method-specific configs
     fdm: FDMConfig | None = None
+    fem: FEMConfig | None = None
     gfdm: GFDMConfig | None = None
     sl: SLConfig | None = None
     weno: WENOConfig | None = None
@@ -290,6 +336,8 @@ class HJBConfig(BaseModel):
         """Auto-populate method-specific config if not provided."""
         if self.method == "fdm" and self.fdm is None:
             self.fdm = FDMConfig()
+        elif self.method == "fem" and self.fem is None:
+            self.fem = FEMConfig()
         elif self.method == "gfdm" and self.gfdm is None:
             self.gfdm = GFDMConfig()
         elif self.method == "semi_lagrangian" and self.sl is None:
@@ -307,20 +355,23 @@ class FPConfig(BaseModel):
 
     Attributes
     ----------
-    method : Literal["fdm", "particle", "network"]
+    method : Literal["fdm", "fem", "particle", "network"]
         Solver method (default: particle)
     fdm : FDMConfig | None
         FDM-specific configuration
+    fem : FEMConfig | None
+        FEM-specific configuration (Issue #773)
     particle : ParticleConfig | None
         Particle-specific configuration
     network : NetworkConfig | None
         Network-specific configuration
     """
 
-    method: Literal["fdm", "particle", "network"] = "particle"
+    method: Literal["fdm", "fem", "particle", "network"] = "particle"
 
     # Method-specific configs
     fdm: FDMConfig | None = None
+    fem: FEMConfig | None = None
     particle: ParticleConfig | None = None
     network: NetworkConfig | None = None
 
@@ -329,6 +380,8 @@ class FPConfig(BaseModel):
         """Auto-populate method-specific config if not provided."""
         if self.method == "fdm" and self.fdm is None:
             self.fdm = FDMConfig()
+        elif self.method == "fem" and self.fem is None:
+            self.fem = FEMConfig()
         elif self.method == "particle" and self.particle is None:
             self.particle = ParticleConfig()
         elif self.method == "network" and self.network is None:

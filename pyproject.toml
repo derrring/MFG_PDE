@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.17.8"  # v0.17.8: Eikonal solvers (FMM/FSM) for level set reinitialization
+version = "0.17.9"  # v0.17.9: FEM infrastructure prep (SchemeFamily, NumericalScheme, FEMConfig, scikit-fem)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
@@ -79,6 +79,12 @@ numerical = [
     "scipy>=1.13",          # Advanced numerical algorithms
     "scikit-sparse",        # Sparse matrix operations
     "scikit-umfpack",       # UMFPACK sparse solver
+]
+
+# Finite element methods (Issue #773)
+fem = [
+    "scikit-fem>=9.0",      # FEM assembly: basis functions, quadrature, sparse matrices
+    "meshio>=5.3",          # Mesh I/O (Gmsh, VTK, etc.)
 ]
 
 # Neural network approaches
