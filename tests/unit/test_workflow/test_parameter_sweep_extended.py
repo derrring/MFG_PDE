@@ -135,9 +135,6 @@ def _test_compute_process(x):
 
 
 @pytest.mark.unit
-@pytest.mark.skip(
-    reason="Process pool pickling issues with local worker_function in ParameterSweep._execute_parallel_processes"
-)
 def test_execute_parallel_processes_basic():
     """Test parallel execution using process pool."""
     params = {"x": [1, 2, 3]}
@@ -154,9 +151,6 @@ def test_execute_parallel_processes_basic():
 
 
 @pytest.mark.unit
-@pytest.mark.skip(
-    reason="Process pool pickling issues with local worker_function in ParameterSweep._execute_parallel_processes"
-)
 def test_execute_parallel_processes_correctness():
     """Test parallel processes produce same results as sequential."""
     params = {"x": [1, 2, 3, 4]}
