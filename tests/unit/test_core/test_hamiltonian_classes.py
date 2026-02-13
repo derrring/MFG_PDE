@@ -15,6 +15,7 @@ import numpy as np
 from mfg_pde.core.hamiltonian import (
     # Control cost classes
     BoundedControlCost,
+    CongestionHamiltonian,
     # Dual classes (Legendre transform)
     DualHamiltonian,
     DualLagrangian,
@@ -500,6 +501,177 @@ class TestBatchPolymorphism:
         # Verify pointwise
         H_pw = np.array([H(x[i], m[i], p[i]) for i in range(N)])
         np.testing.assert_allclose(H_batch, H_pw, rtol=1e-12)
+
+
+class TestCongestionHamiltonian:
+    """Tests for CongestionHamiltonian (Issue #782)."""
+
+    @pytest.fixture
+    def congestion_1d(self):
+        """1D congestion Hamiltonian: H = |p|^2/(2*lambda*(1+m)) + V(x)."""
+        return CongestionHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=2.0),
+            congestion_factor=lambda m: 1.0 + m,
+            congestion_factor_dm=lambda m: np.ones_like(m) if isinstance(m, np.ndarray) else 1.0,
+            potential=lambda x, t: float(np.sum(x**2)),
+        )
+
+    @pytest.fixture
+    def congestion_2d(self):
+        """2D congestion Hamiltonian with coupling."""
+        gamma, vol = 0.5, 2.0
+        return CongestionHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+            congestion_factor=lambda m: 1.0 + gamma * vol * m,
+            congestion_factor_dm=lambda m: np.full_like(m, gamma * vol) if isinstance(m, np.ndarray) else gamma * vol,
+            coupling=lambda m: -(m**2),
+            coupling_dm=lambda m: -2 * m,
+        )
+
+    @pytest.fixture
+    def batch_data_2d(self):
+        """Batch inputs: N=5 points in d=2."""
+        N, d = 5, 2
+        rng = np.random.default_rng(42)
+        x = rng.standard_normal((N, d))
+        m = rng.uniform(0.1, 2.0, size=N)
+        p = rng.standard_normal((N, d))
+        return x, m, p
+
+    def test_single_point_call(self, congestion_1d):
+        """Single-point __call__ returns float."""
+        x = np.array([0.5])
+        m = 1.0
+        p = np.array([3.0])
+        result = congestion_1d(x, m, p)
+        assert isinstance(result, float)
+        # Manual: |p|^2/(2*lambda*c(m)) + V(x)
+        # = 9/(2*2*(1+1)) + 0.25 = 9/8 + 0.25 = 1.375
+        expected = 9.0 / (2 * 2.0 * 2.0) + 0.25
+        assert result == pytest.approx(expected)
+
+    def test_single_point_dp(self, congestion_1d):
+        """Single-point dp returns correct shape and value."""
+        x = np.array([0.5])
+        m = 1.0
+        p = np.array([3.0])
+        result = congestion_1d.dp(x, m, p)
+        assert result.shape == (1,)
+        # dH/dp = p / (lambda * c(m)) = 3 / (2 * 2) = 0.75
+        expected = 3.0 / (2.0 * 2.0)
+        np.testing.assert_allclose(result, [expected])
+
+    def test_single_point_dm(self, congestion_1d):
+        """Single-point dm returns correct value."""
+        x = np.array([0.5])
+        m = 1.0
+        p = np.array([3.0])
+        result = congestion_1d.dm(x, m, p)
+        assert isinstance(result, float)
+        # dH/dm = -c'(m)*|p|^2/(2*lambda*c(m)^2)
+        # = -1*9/(2*2*4) = -9/16 = -0.5625
+        expected = -1.0 * 9.0 / (2.0 * 2.0 * 4.0)
+        assert result == pytest.approx(expected)
+
+    def test_batch_call_shape(self, congestion_2d, batch_data_2d):
+        """Batch __call__ returns shape (N,)."""
+        x, m, p = batch_data_2d
+        result = congestion_2d(x, m, p)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (5,)
+
+    def test_batch_dp_shape(self, congestion_2d, batch_data_2d):
+        """Batch dp returns shape (N, d)."""
+        x, m, p = batch_data_2d
+        result = congestion_2d.dp(x, m, p)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (5, 2)
+
+    def test_batch_dm_shape(self, congestion_2d, batch_data_2d):
+        """Batch dm returns shape (N,)."""
+        x, m, p = batch_data_2d
+        result = congestion_2d.dm(x, m, p)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (5,)
+
+    def test_batch_matches_pointwise(self, congestion_2d, batch_data_2d):
+        """Batch results match stacked single-point results."""
+        x, m, p = batch_data_2d
+        N = x.shape[0]
+
+        H_batch = congestion_2d(x, m, p)
+        dp_batch = congestion_2d.dp(x, m, p)
+        dm_batch = congestion_2d.dm(x, m, p)
+
+        H_pw = np.array([congestion_2d(x[i], m[i], p[i]) for i in range(N)])
+        dp_pw = np.stack([congestion_2d.dp(x[i], m[i], p[i]) for i in range(N)])
+        dm_pw = np.array([congestion_2d.dm(x[i], m[i], p[i]) for i in range(N)])
+
+        np.testing.assert_allclose(H_batch, H_pw, rtol=1e-12)
+        np.testing.assert_allclose(dp_batch, dp_pw, rtol=1e-12)
+        np.testing.assert_allclose(dm_batch, dm_pw, rtol=1e-12)
+
+    def test_unit_congestion_matches_separable(self):
+        """With c(m)=1, CongestionHamiltonian reduces to SeparableHamiltonian."""
+        cc = QuadraticControlCost(control_cost=2.0)
+        coupling = lambda m: -(m**2)  # noqa: E731
+        coupling_dm = lambda m: -2 * m  # noqa: E731
+
+        H_cong = CongestionHamiltonian(
+            control_cost=cc,
+            congestion_factor=lambda m: 1.0,
+            congestion_factor_dm=lambda m: 0.0,
+            coupling=coupling,
+            coupling_dm=coupling_dm,
+        )
+        H_sep = SeparableHamiltonian(
+            control_cost=cc,
+            coupling=coupling,
+            coupling_dm=coupling_dm,
+        )
+
+        rng = np.random.default_rng(123)
+        x = rng.standard_normal(2)
+        m = 1.5
+        p = rng.standard_normal(2)
+
+        np.testing.assert_allclose(H_cong(x, m, p), H_sep(x, m, p), rtol=1e-12)
+        np.testing.assert_allclose(H_cong.dp(x, m, p), H_sep.dp(x, m, p), rtol=1e-12)
+        np.testing.assert_allclose(H_cong.dm(x, m, p), H_sep.dm(x, m, p), rtol=1e-12)
+
+    def test_analytic_dm_matches_finite_diff(self):
+        """Analytic dm agrees with finite-difference fallback."""
+        cc = QuadraticControlCost(control_cost=1.5)
+        gamma = 0.8
+
+        H_analytic = CongestionHamiltonian(
+            control_cost=cc,
+            congestion_factor=lambda m: 1.0 + gamma * m,
+            congestion_factor_dm=lambda m: gamma,
+        )
+        H_fd = CongestionHamiltonian(
+            control_cost=cc,
+            congestion_factor=lambda m: 1.0 + gamma * m,
+            congestion_factor_dm=None,  # Force finite-difference fallback
+        )
+
+        x = np.array([1.0, -0.5])
+        m = 2.0
+        p = np.array([0.7, -1.2])
+
+        dm_analytic = H_analytic.dm(x, m, p)
+        dm_fd = H_fd.dm(x, m, p)
+        np.testing.assert_allclose(dm_analytic, dm_fd, rtol=1e-4)
+
+    def test_optimal_control(self, congestion_1d):
+        """Optimal control is -sign * dp."""
+        x = np.array([0.5])
+        m = 1.0
+        p = np.array([3.0])
+        alpha = congestion_1d.optimal_control(x, m, p)
+        dp_val = congestion_1d.dp(x, m, p)
+        # MINIMIZE sense: alpha = -dp
+        np.testing.assert_allclose(alpha, -dp_val)
 
 
 if __name__ == "__main__":

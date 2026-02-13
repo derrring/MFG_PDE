@@ -1541,6 +1541,262 @@ class SeparableHamiltonian(HamiltonianBase):
         return self.control_cost.optimal_control(np.atleast_1d(p))
 
 
+class CongestionHamiltonian(HamiltonianBase):
+    """
+    Non-separable Hamiltonian with density-dependent kinetic cost (Issue #782).
+
+    H(x, m, p, t) = |p|^2 / (2*lambda*c(m)) + V(x, t) + f(m)
+
+    The congestion factor c(m) modifies the kinetic term, making movement
+    costlier in high-density regions (multiplicative congestion). Unlike
+    SeparableHamiltonian where the kinetic term |p|^2/(2*lambda) is independent
+    of density, here c(m) couples density into the velocity cost.
+
+    Parameters
+    ----------
+    control_cost : ControlCostBase
+        Control cost specification (provides lambda for kinetic term)
+    congestion_factor : callable
+        c(m) -> float or ndarray. Must be positive for all valid densities.
+        Example: ``lambda m: 1 + gamma * domain_volume * m``
+    congestion_factor_dm : callable or None
+        c'(m) -> float or ndarray. Derivative of congestion factor.
+        If None, finite differences are used for dm().
+    potential : callable or None
+        V(x, t) -> float. Spatial potential term.
+    coupling : callable or None
+        f(m) -> float or ndarray. Additive density coupling term.
+    coupling_dm : callable or None
+        f'(m) -> float or ndarray. Derivative of coupling.
+    sense : OptimizationSense
+        MINIMIZE (default) or MAXIMIZE.
+
+    Examples
+    --------
+    Standard multiplicative congestion (velocity reduction by crowd density):
+
+    >>> gamma, domain_volume = 1.0, 1.0
+    >>> H = CongestionHamiltonian(
+    ...     control_cost=QuadraticControlCost(control_cost=1.0),
+    ...     congestion_factor=lambda m: 1 + gamma * domain_volume * m,
+    ...     congestion_factor_dm=lambda m: gamma * domain_volume,
+    ... )
+    """
+
+    def __init__(
+        self,
+        control_cost: ControlCostBase,
+        congestion_factor: callable,
+        congestion_factor_dm: callable | None = None,
+        potential: callable | None = None,
+        coupling: callable | None = None,
+        coupling_dm: callable | None = None,
+        sense: OptimizationSense = OptimizationSense.MINIMIZE,
+    ):
+        super().__init__(sense=sense)
+        self.control_cost = control_cost
+        self._congestion_factor = congestion_factor
+        self._congestion_factor_dm = congestion_factor_dm
+        self._potential = potential
+        self._coupling = coupling
+        self._coupling_dm = coupling_dm
+
+    def __call__(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float = 0.0,
+    ) -> float | NDArray:
+        """
+        Evaluate H = |p|^2 / (2*lambda*c(m)) + V(x, t) + f(m).
+
+        Supports both single-point and batch inputs (Issue #775).
+        For batch: p.shape = (N, d), returns shape (N,).
+        For single-point: p.shape = (d,), returns float.
+        """
+        p_arr = np.atleast_1d(p)
+        is_batch = p_arr.ndim == 2
+
+        # Kinetic term: |p|^2/(2*lambda) from control cost, divided by c(m)
+        H_kinetic = self.control_cost.hamiltonian(p_arr)
+        if not is_batch and isinstance(H_kinetic, np.ndarray):
+            H_kinetic = float(H_kinetic.sum())
+
+        # Congestion factor c(m)
+        if is_batch:
+            m_arr = np.asarray(m)
+            try:
+                c_m = np.asarray(self._congestion_factor(m_arr), dtype=float).ravel()
+                if c_m.shape[0] != p_arr.shape[0]:
+                    raise ValueError
+            except (TypeError, ValueError):
+                c_m = np.array([float(self._congestion_factor(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])])
+        else:
+            c_m = float(self._congestion_factor(m))
+
+        H_kinetic = H_kinetic / c_m
+
+        # Potential term V(x, t)
+        if self._potential is not None:
+            if is_batch:
+                V = np.array([float(self._potential(x[i], t)) for i in range(x.shape[0])])
+            else:
+                V = float(self._potential(x, t))
+        else:
+            V = np.zeros(p_arr.shape[0]) if is_batch else 0.0
+
+        # Coupling term f(m)
+        if self._coupling is not None:
+            if is_batch:
+                m_arr = np.asarray(m)
+                try:
+                    f_m = np.asarray(self._coupling(m_arr), dtype=float).ravel()
+                    if f_m.shape[0] != p_arr.shape[0]:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    f_m = np.array([float(self._coupling(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])])
+            else:
+                f_m = float(self._coupling(m))
+        else:
+            f_m = np.zeros(p_arr.shape[0]) if is_batch else 0.0
+
+        return H_kinetic + V + f_m
+
+    def dp(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float = 0.0,
+    ) -> NDArray:
+        """
+        Compute dH/dp = p / (lambda * c(m)).
+
+        For quadratic control cost H_kinetic = |p|^2/(2*lambda*c(m)),
+        the derivative is p/(lambda*c(m)).
+
+        Returns shape (d,) for single-point, (N, d) for batch.
+        """
+        p_arr = np.atleast_1d(p)
+        is_batch = p_arr.ndim == 2
+
+        # Congestion factor c(m)
+        if is_batch:
+            m_arr = np.asarray(m)
+            try:
+                c_m = np.asarray(self._congestion_factor(m_arr), dtype=float).ravel()
+                if c_m.shape[0] != p_arr.shape[0]:
+                    raise ValueError
+            except (TypeError, ValueError):
+                c_m = np.array([float(self._congestion_factor(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])])
+        else:
+            c_m = float(self._congestion_factor(m))
+
+        if isinstance(self.control_cost, QuadraticControlCost):
+            # Analytic: dH/dp = p / (lambda * c(m))
+            lam = self.control_cost.control_cost
+            if is_batch:
+                # c_m shape (N,), need to broadcast to (N, d)
+                return p_arr / (lam * c_m[:, np.newaxis])
+            return p_arr / (lam * c_m)
+
+        # Fallback to finite differences
+        if is_batch:
+            m_arr = np.asarray(m)
+            return np.stack(
+                [self._finite_diff_dp(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
+            )
+        return self._finite_diff_dp(x, m, p, t)
+
+    def dm(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float = 0.0,
+    ) -> float | NDArray:
+        """
+        Compute dH/dm = -c'(m) * |p|^2 / (2*lambda*c(m)^2) + f'(m).
+
+        Returns float for single-point, shape (N,) for batch.
+        """
+        p_arr = np.asarray(p)
+        is_batch = p_arr.ndim == 2
+
+        # Kinetic contribution to dm (requires congestion_factor_dm)
+        if self._congestion_factor_dm is not None and isinstance(self.control_cost, QuadraticControlCost):
+            lam = self.control_cost.control_cost
+
+            if is_batch:
+                m_arr = np.asarray(m)
+                # c(m) and c'(m)
+                try:
+                    c_m = np.asarray(self._congestion_factor(m_arr), dtype=float).ravel()
+                    c_dm = np.asarray(self._congestion_factor_dm(m_arr), dtype=float).ravel()
+                    if c_m.shape[0] != p_arr.shape[0] or c_dm.shape[0] != p_arr.shape[0]:
+                        raise ValueError
+                except (TypeError, ValueError):
+                    c_m = np.array(
+                        [float(self._congestion_factor(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])]
+                    )
+                    c_dm = np.array(
+                        [float(self._congestion_factor_dm(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])]
+                    )
+
+                grad_norm_sq = np.sum(p_arr**2, axis=1)
+                kinetic_dm = -c_dm * grad_norm_sq / (2.0 * lam * c_m**2)
+            else:
+                c_m = float(self._congestion_factor(m))
+                c_dm = float(self._congestion_factor_dm(m))
+                grad_norm_sq = float(np.sum(np.asarray(p) ** 2))
+                kinetic_dm = -c_dm * grad_norm_sq / (2.0 * lam * c_m**2)
+
+            # Coupling contribution f'(m)
+            if self._coupling_dm is not None:
+                if is_batch:
+                    try:
+                        coupling_dm_val = np.asarray(self._coupling_dm(m_arr), dtype=float).ravel()
+                        if coupling_dm_val.shape[0] != p_arr.shape[0]:
+                            raise ValueError
+                    except (TypeError, ValueError):
+                        coupling_dm_val = np.array(
+                            [float(self._coupling_dm(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])]
+                        )
+                else:
+                    coupling_dm_val = float(self._coupling_dm(m))
+            else:
+                coupling_dm_val = np.zeros(p_arr.shape[0]) if is_batch else 0.0
+
+            result = kinetic_dm + coupling_dm_val
+            if not is_batch:
+                return float(result)
+            return result
+
+        # Fallback to finite differences
+        if is_batch:
+            m_arr = np.asarray(m)
+            return np.array(
+                [self._finite_diff_dm(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
+            )
+        return self._finite_diff_dm(x, m, p, t)
+
+    def optimal_control(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float = 0.0,
+    ) -> NDArray:
+        """
+        Optimal control: alpha* = -sign * dH/dp.
+
+        For congestion Hamiltonian, the optimal control depends on density m
+        (unlike separable case where it only depends on p).
+        """
+        return -self._sign * self.dp(x, m, p, t)
+
+
 class QuadraticMFGHamiltonian(SeparableHamiltonian):
     """
     Standard quadratic MFG Hamiltonian: H = ½c|p|² - V(x) - m².
