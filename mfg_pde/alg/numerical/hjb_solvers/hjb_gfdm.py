@@ -727,6 +727,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         self._potential_at_collocation: np.ndarray | None = None  # Interpolated potential field
         self._cached_derivative_weights: dict | None = None  # Pre-computed GFDM weights
         self._running_cost: np.ndarray | None = None  # Running cost L(x) for Hamiltonian
+        self._f_potential_warned: bool = False  # One-time warning for unused f_potential (Issue #766)
 
     def _compute_n_spatial_grid_points(self) -> int:
         """Compute total number of spatial grid points from geometry."""
@@ -1422,7 +1423,16 @@ class HJBGFDMSolver(BaseHJBSolver):
         lap_u: np.ndarray,
     ) -> np.ndarray:
         """
-        Compute HJB residual using vectorized operations.
+        Compute HJB residual using vectorized operations (LQ fast path).
+
+        This is the vectorized LQ fast path, only active for non-custom problems
+        (is_custom=False) without QP monotonicity enforcement. It assumes:
+        - Quadratic control cost: H_control = |p|^2 / (2*lambda)
+        - Linear density coupling: f(m) = gamma * |Omega| * m
+        - Static potential: V(x) from problem.f_potential (NOT from Hamiltonian class)
+
+        For custom problems with a Hamiltonian class, the per-point path
+        _compute_hjb_residual_with_cache() is used instead. See Issue #766.
 
         Args:
             u_current: Current solution at collocation points
@@ -1437,7 +1447,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         dt = self.problem.T / self.problem.Nt
         u_t = (u_n_plus_1 - u_current) / dt
 
-        # Compute Hamiltonian for all points
+        # Compute Hamiltonian for all points (vectorized LQ formula)
         # Two modes supported:
         # - additive:       H = |p|²/(2λ) + V + γm (standard separable form)
         # - multiplicative: H = (1 + γ|Ω|m)|p|²/(2λ) + V (velocity reduction by congestion)
@@ -1499,6 +1509,10 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         Interpolate potential field to collocation points (cached).
 
+        Only used by the vectorized LQ path (non-custom problems). For custom
+        problems, the potential V(x) comes from the Hamiltonian class via
+        problem.H(). See Issue #766.
+
         Handles arbitrary dimensions by building grid axes from bounds.
         """
         # Return cached value if already computed
@@ -1547,7 +1561,14 @@ class HJBGFDMSolver(BaseHJBSolver):
         time_idx: int,
         cached_derivs: dict[int, dict[tuple[int, ...], float]],
     ) -> np.ndarray:
-        """Compute HJB residual using pre-computed derivatives."""
+        """
+        Compute HJB residual using pre-computed derivatives (per-point path).
+
+        Per-point path via problem.H(). The potential V(x) comes from the
+        Hamiltonian class (e.g., SeparableHamiltonian._potential), NOT from
+        problem.f_potential. Active for custom problems (is_custom=True) or
+        when QP monotonicity is enabled. See Issue #766.
+        """
         from mfg_pde.core.derivatives import from_multi_index_dict
 
         residual = np.zeros(self.n_points)
@@ -2026,9 +2047,36 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         u_current = u_n_plus_1.copy()
 
-        # Check if we can use vectorized path (standard LQ Hamiltonian)
+        # Path selection for HJB residual/Jacobian computation (Issue #766):
+        #
+        # Vectorized path (use_vectorized=True):
+        #   Active when: is_custom=False AND qp_optimization_level="none"
+        #   Hardcodes LQ formula: H = |p|^2/(2*lambda) + V(x) + gamma*|Omega|*m
+        #   Gets V(x) from problem.f_potential via _interpolate_potential_to_collocation()
+        #   Fast: numpy vectorized over all collocation points at once
+        #
+        # Per-point path (use_vectorized=False):
+        #   Active when: is_custom=True (modern MFGComponents API) OR QP mode enabled
+        #   Calls problem.H() -> Hamiltonian class (e.g., SeparableHamiltonian)
+        #   Gets V(x) from Hamiltonian._potential callable, NOT from f_potential
+        #   General: handles any Hamiltonian structure, but loops over points
         is_custom = getattr(self.problem, "is_custom", False)
         use_vectorized = not is_custom and self.qp_optimization_level == "none"
+
+        # Warn if f_potential is set but won't be used (Issue #766)
+        if not use_vectorized and not self._f_potential_warned:
+            f_pot = getattr(self.problem, "f_potential", None)
+            if f_pot is not None and np.any(f_pot != 0):
+                warnings.warn(
+                    "f_potential is set but will be ignored because the per-point "
+                    "Hamiltonian path is active (is_custom=True or QP mode). "
+                    "The potential V(x) comes from the Hamiltonian class instead. "
+                    "Use SeparableHamiltonian(potential=...) to set the potential. "
+                    "See Issue #766.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                self._f_potential_warned = True
 
         for _newton_iter in range(self.max_newton_iterations):
             if use_vectorized:
