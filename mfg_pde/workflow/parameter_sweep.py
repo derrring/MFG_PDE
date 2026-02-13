@@ -54,6 +54,18 @@ class SweepConfiguration:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
 
+def _process_worker(args):
+    """Module-level worker for ProcessPoolExecutor (must be pickleable).
+
+    Unpacks the args tuple and delegates to the ParameterSweep instance's
+    _execute_single method. This exists at module level because
+    ProcessPoolExecutor pickles callables across process boundaries,
+    and nested/local functions cannot be pickled.
+    """
+    sweep_instance, func, params, run_id, extra_kwargs = args
+    return sweep_instance._execute_single(func, params, run_id, **extra_kwargs)
+
+
 class ParameterSweep:
     """
     Parameter sweep executor for systematic exploration of parameter spaces.
@@ -218,18 +230,12 @@ class ParameterSweep:
 
     def _execute_parallel_processes(self, function: Callable, **kwargs) -> list[dict[str, Any]]:
         """Execute parameter sweep using process pool."""
-
-        # Create worker function that can be pickled
-        def worker_function(args):
-            func, params, run_id, extra_kwargs = args
-            return self._execute_single(func, params, run_id, **extra_kwargs)
-
         with ProcessPoolExecutor(max_workers=self.config.max_workers) as executor:
-            # Prepare arguments for each worker
-            worker_args = [(function, params, i, kwargs) for i, params in enumerate(self.parameter_combinations)]
+            # Prepare arguments for each worker — include self for pickling
+            worker_args = [(self, function, params, i, kwargs) for i, params in enumerate(self.parameter_combinations)]
 
-            # Submit all tasks
-            futures = [executor.submit(worker_function, args) for args in worker_args]
+            # Submit all tasks using module-level worker (pickleable)
+            futures = [executor.submit(_process_worker, args) for args in worker_args]
 
             # Collect results
             for i, future in enumerate(as_completed(futures)):
