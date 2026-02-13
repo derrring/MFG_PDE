@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from mfg_pde.alg.base_solver import BaseNumericalSolver
+from mfg_pde.alg.base_solver import BaseNumericalSolver, SchemeFamily
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -53,6 +53,9 @@ class BaseFPSolver(BaseNumericalSolver):
         - Support anisotropic diffusion tensors for realistic applications
         - Enable state-dependent coefficients for nonlinear PDEs
     """
+
+    # Scheme family trait for duality validation (Issue #580)
+    _scheme_family = SchemeFamily.GENERIC
 
     def __init__(self, problem: MFGProblem, config: BaseConfig | None = None) -> None:
         """
