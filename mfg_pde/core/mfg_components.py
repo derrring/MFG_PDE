@@ -695,30 +695,55 @@ class ConditionsMixin:
         # Callable path -- adapt to user's actual signature
         from mfg_pde.utils.callable_adapter import adapt_ic_callable
 
-        spatial_grid = self._get_spatial_grid_internal()
-        num_intervals = self._get_num_intervals() or 0
+        num_intervals = self._get_num_intervals()
+        if self.dimension == 1 and num_intervals is not None:
+            spatial_grid = self._get_spatial_grid_internal()
+            sample_point: float | np.ndarray = float(spatial_grid[0, 0])
 
-        # Build a sample point for signature probing
-        sample_point: float | np.ndarray
-        if self.dimension == 1:
-            sample_point = float(spatial_grid[0, 0])
-        else:
-            sample_point = spatial_grid[0]
+            _sig, adapted_func = adapt_ic_callable(
+                m_initial,
+                dimension=self.dimension,
+                sample_point=sample_point,
+                time_value=0.0,
+            )
 
-        _sig, adapted_func = adapt_ic_callable(
-            m_initial,
-            dimension=self.dimension,
-            sample_point=sample_point,
-            time_value=0.0,
-        )
-
-        for i in range(num_intervals + 1):
-            if self.dimension == 1:
+            for i in range(num_intervals + 1):
                 x_i: float | np.ndarray = float(spatial_grid[i, 0])
+                # Issue #672: Remove silent clamping - validation happens in _initialize_functions()
+                self.m_initial[i] = adapted_func(x_i)
+        elif self.geometry is not None:
+            # Issue #777: nD path using geometry (mirrors _setup_custom_final_value)
+            spatial_grid = self.geometry.get_spatial_grid()
+            num_points = spatial_grid.shape[0]
+            ndim = spatial_grid.shape[1] if spatial_grid.ndim > 1 else 1
+
+            if ndim == 1:
+                sample_point = float(spatial_grid[0, 0])
             else:
-                x_i = spatial_grid[i]
-            # Issue #672: Remove silent clamping - validation happens in _initialize_functions()
-            self.m_initial[i] = adapted_func(x_i)
+                sample_point = spatial_grid[0]
+
+            _sig, adapted_func = adapt_ic_callable(
+                m_initial,
+                dimension=ndim,
+                sample_point=sample_point,
+                time_value=0.0,
+            )
+
+            for i in range(num_points):
+                if ndim == 1:
+                    x_i = float(spatial_grid[i, 0])
+                else:
+                    x_i = spatial_grid[i]
+                self.m_initial.flat[i] = adapted_func(x_i)
+        else:
+            import warnings
+
+            warnings.warn(
+                "Cannot setup custom initial density: dimension not 1D and no geometry available. "
+                "Using default m_initial initialization.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     def _setup_custom_final_value(self) -> None:
         """Setup custom final value function u_T(x).

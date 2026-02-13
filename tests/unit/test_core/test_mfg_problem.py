@@ -353,6 +353,70 @@ def test_mfg_problem_with_custom_final_value():
 
 
 @pytest.mark.unit
+def test_mfg_problem_with_custom_initial_density_2d():
+    """Test MFGProblem with callable m_initial in 2D (Issue #777)."""
+
+    def gaussian_2d(x):
+        x_arr = np.asarray(x)
+        return np.exp(-5 * np.sum(x_arr**2))
+
+    geometry = default_geometry(
+        bounds=[(-1.0, 1.0), (-1.0, 1.0)],
+        Nx_points=[11, 11],
+        dimension=2,
+    )
+    components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
+        m_initial=gaussian_2d,
+        u_terminal=lambda x: 0.5 * np.sum(np.asarray(x) ** 2),
+    )
+    problem = MFGProblem(geometry=geometry, components=components)
+
+    m_init = problem.get_m_initial()
+    assert m_init.shape == (11, 11)
+    assert np.all(np.isfinite(m_init))
+    assert np.all(m_init >= 0)
+    # Center (origin) should have highest density
+    assert m_init[5, 5] == m_init.max()
+    # Corner should have lowest density
+    assert m_init[0, 0] == m_init.min()
+    # Symmetry: radially symmetric IC should produce symmetric density
+    assert np.allclose(m_init, np.flip(m_init, axis=0))
+    assert np.allclose(m_init, np.flip(m_init, axis=1))
+
+
+@pytest.mark.unit
+def test_mfg_problem_with_custom_final_value_2d():
+    """Test MFGProblem with callable u_terminal in 2D."""
+
+    def quadratic_2d(x):
+        x_arr = np.asarray(x)
+        return 0.5 * np.sum(x_arr**2)
+
+    geometry = default_geometry(
+        bounds=[(-1.0, 1.0), (-1.0, 1.0)],
+        Nx_points=[11, 11],
+        dimension=2,
+    )
+    components = MFGComponents(
+        hamiltonian=default_hamiltonian(),
+        m_initial=lambda x: 1.0,  # Uniform
+        u_terminal=quadratic_2d,
+    )
+    problem = MFGProblem(geometry=geometry, components=components)
+
+    u_term = problem.u_terminal
+    grid_shape = problem.geometry.get_grid_shape()
+    assert u_term.shape == grid_shape
+    assert np.all(np.isfinite(u_term))
+    # Center (origin) should have lowest terminal cost
+    assert u_term[5, 5] == u_term.min()
+    assert np.isclose(u_term[5, 5], 0.0, atol=1e-10)
+    # Corner should have highest terminal cost
+    assert np.isclose(u_term[0, 0], 0.5 * (1.0 + 1.0), atol=1e-10)
+
+
+@pytest.mark.unit
 def test_mfg_problem_validates_negative_m_initial():
     """Test that negative m_initial raises ValueError (Issue #672: Fail Fast)."""
     geometry = default_geometry()
