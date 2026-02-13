@@ -1,7 +1,7 @@
 # MFG_PDE Development Documentation
 
-**Last Updated**: December 14, 2025
-**Status**: Production-Ready Framework v0.16.8
+**Last Updated**: 2026-02-13
+**Status**: Production-Ready Framework v0.17.8
 
 This directory contains comprehensive development documentation for MFG_PDE contributors and maintainers.
 
@@ -11,40 +11,39 @@ This directory contains comprehensive development documentation for MFG_PDE cont
 
 ### **Core Subdirectories**
 
+- **[boundary_conditions/](boundary_conditions/)** - Boundary condition architecture and design
+  - BC enforcement architecture, capability matrix, solver integration
+  - Corner handling, periodic BC, adjoint consistency
+  - 14 documents covering the full BC subsystem
+
 - **[guides/](guides/)** - Developer guides and how-to documents
   - Code quality, API style, consistency guidelines
+  - Architecture patterns (1D vs nD solvers, grid vs universal)
 
 - **[planning/](planning/)** - Strategic roadmaps and development plans
-  - Contains STRATEGIC_DEVELOPMENT_ROADMAP_2026.md
-  - Phase-specific planning documents
+  - STRATEGIC_DEVELOPMENT_ROADMAP_2026, priority lists
+  - Phase-specific planning documents, BC/geometry roadmaps
 
 - **[typing/](typing/)** - Type system documentation and MyPy guides
-  - Strategic typing framework (366→0 MyPy errors)
+  - Strategic typing framework
   - CI/CD troubleshooting reference
 
-- **[maintenance/](maintenance/)** - Maintenance procedures and documentation audits
-  - Documentation structure checks
-  - Cleanup and organization procedures
+- **[maintenance/](maintenance/)** - Audit reports and maintenance procedures
+  - Solver infrastructure audits, collocation point reports
+  - Silent fallback audit, protocol compliance
 
 - **[status/](status/)** - Current status reports and tracking
-  - Code quality status
-  - Implementation progress tracking
+  - Code quality status, implementation progress
 
-- **[governance/](governance/)** - Project governance and solo maintainer protocols
+- **[paradigms/](paradigms/)** - Solver paradigm overviews (numerical, neural, RL, optimization)
 
-- **[paradigms/](paradigms/)** - Development paradigms and patterns
+### **Root-Level Documents**
 
-- **[decisions/](decisions/)** - Architectural decision records (ADRs)
-
-- **[private/](private/)** - Internal development notes
-
-### **Root-Level Planning Documents**
-
-The development/ root contains numerous active planning and design documents:
-- Geometry consolidation plans
-- API migration strategies
-- Algorithm design documents
-- Implementation summaries
+Active design and analysis documents (17 files):
+- Solver analysis (HJB, FP), operator architecture
+- Active issue investigations (#576, #583, #598)
+- Migration plans (DerivativeTensors, Semi-Lagrangian)
+- Foundational policies (deprecation lifecycle, organization)
 
 ---
 
@@ -56,10 +55,10 @@ The development/ root contains numerous active planning and design documents:
 |------|-------|
 | **Understand code standards** | [guides/CONSISTENCY_GUIDE.md](guides/CONSISTENCY_GUIDE.md) |
 | **See strategic direction** | [planning/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md](planning/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md) |
+| **Understand BC architecture** | [boundary_conditions/BOUNDARY_HANDLING.md](boundary_conditions/BOUNDARY_HANDLING.md) |
 | **Fix type errors** | [typing/CI_CD_TROUBLESHOOTING_QUICK_REFERENCE.md](typing/CI_CD_TROUBLESHOOTING_QUICK_REFERENCE.md) |
-| **Review code** | [guides/CODE_REVIEW_GUIDELINES.md](guides/CODE_REVIEW_GUIDELINES.md) |
 | **Check code quality status** | [status/CODE_QUALITY_STATUS.md](status/CODE_QUALITY_STATUS.md) |
-| **Understand governance** | [governance/SELF_GOVERNANCE_PROTOCOL.md](governance/SELF_GOVERNANCE_PROTOCOL.md) |
+| **Review audit reports** | [maintenance/](maintenance/) |
 
 ---
 
@@ -143,20 +142,19 @@ Follow the roadmaps in [planning/](planning/), and use guides in [guides/](guide
 
 ## 📂 **Directory Quick Reference**
 
-| Directory | Purpose |
-|-----------|---------|
-| **[guides/](guides/)** | Practical developer how-to guides |
-| **[planning/](planning/)** | Strategic roadmaps and development plans |
-| **[typing/](typing/)** | Type system and MyPy documentation |
-| **[maintenance/](maintenance/)** | Maintenance procedures and documentation management |
-| **[status/](status/)** | Current status reports and tracking |
-| **[governance/](governance/)** | Project management and processes |
-| **[paradigms/](paradigms/)** | Development patterns and paradigms |
-| **[decisions/](decisions/)** | Architectural decision records |
-| **Root** | Active planning and design documents |
+| Directory | Purpose | Files |
+|-----------|---------|-------|
+| **[boundary_conditions/](boundary_conditions/)** | BC architecture, design, and analysis | 14 |
+| **[guides/](guides/)** | Developer how-to guides and patterns | 13 |
+| **[planning/](planning/)** | Strategic roadmaps and development plans | 19 |
+| **[typing/](typing/)** | Type system and MyPy documentation | 8 |
+| **[maintenance/](maintenance/)** | Audit reports and maintenance procedures | 9 |
+| **[status/](status/)** | Current status reports and tracking | 9 |
+| **[paradigms/](paradigms/)** | Solver paradigm overviews | 4 |
+| **Root** | Active design docs and policies | 17 |
 
 ---
 
-**Documentation Status**: ✅ Production-ready with comprehensive strategic typing framework
+**Documentation Status**: Production-ready, reorganized 2026-02-13 (Issue #768)
 **Applicability**: Scientific computing, research codebases, complex Python projects
-**Maintenance**: Strategic typing patterns reviewed quarterly for ecosystem evolution
+**Archived docs**: Completed issue summaries moved to `docs/archive/development/issues/`
