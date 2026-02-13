@@ -7,8 +7,11 @@ notation formats used in MFG computations:
 - p-values notation: p1, p2 values for 1D problems
 - Gradient arrays: numpy arrays
 
-The gradient_notation utilities are still actively used by mfg_problem.py
-and base_hjb.py for derivative format conversion.
+.. deprecated:: 0.17.0
+    All gradient_notation conversion functions are deprecated. Use
+    ``DerivativeTensors`` from ``mfg_pde.types`` instead. The non-deprecated
+    utilities (``check_derivs_format``, ``ensure_tuple_notation``) remain for
+    legacy compatibility but have no production call sites.
 """
 
 __all__ = [
