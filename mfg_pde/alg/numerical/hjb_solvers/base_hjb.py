@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import scipy.sparse as sparse
 
-from mfg_pde.alg.base_solver import BaseNumericalSolver
+from mfg_pde.alg.base_solver import BaseNumericalSolver, SchemeFamily
 from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, has_nan_or_inf
 from mfg_pde.utils.mfg_logging import get_logger
 
@@ -398,6 +398,9 @@ def _get_bc_info_1d(
 
 class BaseHJBSolver(BaseNumericalSolver):
     """Base class for Hamilton-Jacobi-Bellman equation solvers."""
+
+    # Scheme family trait for duality validation (Issue #580)
+    _scheme_family = SchemeFamily.GENERIC
 
     def __init__(self, problem: MFGProblem, config: BaseConfig | None = None) -> None:
         # Maintain backward compatibility - if no config provided, create a minimal one
