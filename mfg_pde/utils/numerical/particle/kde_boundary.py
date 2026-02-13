@@ -158,6 +158,7 @@ def reflection_kde(
     bandwidth: float | str | NDArray[np.floating],
     bounds: list[tuple[float, float]],
     n_bandwidths: float = 3.0,
+    normalize: bool = True,
 ) -> NDArray[np.floating]:
     """
     Boundary-corrected KDE using reflection method (dimension-agnostic).
@@ -176,6 +177,10 @@ def reflection_kde(
         bandwidth: KDE bandwidth - float, 'scott', 'silverman', or per-dim array
         bounds: Domain bounds [(xmin, xmax), ...] - length determines dimension
         n_bandwidths: Number of bandwidths for reflection zone (default: 3.0)
+        normalize: If True (default), normalize density to integrate to 1 using
+            grid-based quadrature (assumes eval_points form a regular grid).
+            Set to False for scattered/meshfree points and normalize externally
+            using appropriate integration weights (e.g., Voronoi volumes).
 
     Returns:
         Density estimates at eval_points, shape (M,)
@@ -186,11 +191,16 @@ def reflection_kde(
         >>> density = reflection_kde(particles, x_eval, bandwidth=0.05,
         ...                          bounds=[(-0.5, 0.5)])
 
-    Example (2D):
+    Example (2D, regular grid):
         >>> particles = np.random.uniform([0, 0], [1, 1], (2000, 2))
         >>> grid = np.column_stack([XX.ravel(), YY.ravel()])
         >>> density = reflection_kde(particles, grid, bandwidth=0.1,
         ...                          bounds=[(0, 1), (0, 1)])
+
+    Example (2D, scattered points with Voronoi normalization):
+        >>> raw_kde = reflection_kde(particles, scattered_pts, bandwidth=0.1,
+        ...                          bounds=[(0, 1), (0, 1)], normalize=False)
+        >>> density = raw_kde / np.sum(raw_kde * voronoi_volumes)
 
     Note:
         For periodic BC, use standard KDE (no boundary bias).
@@ -260,7 +270,11 @@ def reflection_kde(
     # The (N+M)/N correction above is approximate — in nD, corner particles get
     # more ghosts than edge particles, making the uniform factor imprecise.
     # Explicit normalization corrects residual mass error. (Issue #718)
-    if eval_points.shape[0] > 1:
+    #
+    # NOTE: This grid-based normalization assumes eval_points form a regular grid.
+    # For scattered/meshfree points, set normalize=False and use external
+    # normalization with appropriate integration weights (e.g., Voronoi volumes).
+    if normalize and eval_points.shape[0] > 1:
         dV = 1.0
         for d in range(ndim):
             unique_coords = np.unique(eval_points[:, d])
