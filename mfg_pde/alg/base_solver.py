@@ -77,6 +77,13 @@ class SchemeFamily(Enum):
         - Examples: RBF-FD, GFDM, particle methods
         - Duality: Type B (continuous only, L_FP = L_HJB^T + O(h))
 
+    **FEM** (Finite Element Methods):
+        - Variational discretization on unstructured meshes
+        - Discrete adjoint: Mass and stiffness matrices are symmetric
+        - Examples: P1 (linear), P2 (quadratic) Lagrange elements
+        - Duality: Type A (exact discrete transpose for symmetric bilinear forms)
+        - Backend: scikit-fem assembly (Issue #773)
+
     **PINN** (Physics-Informed Neural Networks):
         - Neural network discretization
         - Shared architecture for dual solvers
@@ -103,6 +110,7 @@ class SchemeFamily(Enum):
     FDM = "fdm"  # Finite Difference Methods
     SL = "semi_lagrangian"  # Semi-Lagrangian
     FVM = "fvm"  # Finite Volume (future)
+    FEM = "fem"  # Finite Element Methods (Issue #773)
     GFDM = "gfdm"  # Meshfree GFDM
     PINN = "pinn"  # Physics-Informed Neural Network (future)
     GENERIC = "generic"  # Unknown/custom solvers
