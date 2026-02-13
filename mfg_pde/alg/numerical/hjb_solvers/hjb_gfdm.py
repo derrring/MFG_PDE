@@ -1505,13 +1505,104 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         return residual
 
+    def _compute_hjb_residual_hamiltonian(
+        self,
+        u_current: np.ndarray,
+        u_n_plus_1: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        grad_u: np.ndarray,
+        lap_u: np.ndarray,
+        H_class: Any,
+        current_time: float,
+    ) -> np.ndarray:
+        """
+        Compute HJB residual using batch Hamiltonian class (Issue #775).
+
+        Uses H_class(x, m, p, t) for vectorized evaluation over all collocation
+        points. Works with any HamiltonianBase subclass.
+
+        Args:
+            u_current: Current solution at collocation points, shape (n_points,)
+            u_n_plus_1: Solution at next time step, shape (n_points,)
+            m_n_plus_1: Density at collocation points, shape (n_points,)
+            grad_u: Pre-computed gradient, shape (n_points, dimension)
+            lap_u: Pre-computed Laplacian, shape (n_points,)
+            H_class: HamiltonianBase instance with batch-polymorphic __call__
+            current_time: Current time value for H(x, m, p, t)
+
+        Returns:
+            Residual vector, shape (n_points,)
+        """
+        dt = self.problem.T / self.problem.Nt
+        u_t = (u_n_plus_1 - u_current) / dt
+
+        # Batch Hamiltonian evaluation: H(x, m, p, t) -> (N,)
+        x = self.collocation_points  # (N, d)
+        H_total = np.asarray(H_class(x, m_n_plus_1, grad_u, t=current_time), dtype=float)
+
+        # Running cost L(x) if provided (additive to Hamiltonian)
+        if self._running_cost is not None:
+            H_total = H_total + self._running_cost
+
+        # Diffusion term: (sigma^2 / 2) * Laplacian
+        sigma = getattr(self.problem, "diffusion", 0.0) or getattr(self.problem, "sigma", 0.0)
+        diffusion_term = 0.5 * sigma**2 * lap_u
+
+        # HJB residual: -u_t + H - diffusion = 0
+        return -u_t + H_total - diffusion_term
+
+    def _compute_hjb_jacobian_hamiltonian(
+        self,
+        grad_u: np.ndarray,
+        m_n_plus_1: np.ndarray,
+        H_class: Any,
+        current_time: float,
+    ):
+        """
+        Compute sparse Jacobian using batch H.dp() (Issue #775).
+
+        Uses H_class.dp(x, m, p, t) for vectorized dH/dp computation.
+        Jacobian structure: J = (1/dt)I + sum_d diag(dH/dp_d) @ D_grad[d] - (sigma^2/2) D_lap
+
+        Args:
+            grad_u: Pre-computed gradient, shape (n_points, dimension)
+            m_n_plus_1: Density at collocation points, shape (n_points,)
+            H_class: HamiltonianBase instance with batch-polymorphic dp()
+            current_time: Current time value for H.dp(x, m, p, t)
+
+        Returns:
+            Sparse Jacobian matrix in CSR format
+        """
+        from scipy.sparse import diags, eye
+
+        # Lazy initialization of differentiation matrices
+        if self._D_grad is None:
+            self._build_differentiation_matrices()
+
+        n = self.n_points
+        d = self.dimension
+        dt = self.problem.T / self.problem.Nt
+        sigma = getattr(self.problem, "diffusion", 0.0) or getattr(self.problem, "sigma", 0.0)
+
+        # Batch dH/dp: shape (N, d)
+        x = self.collocation_points
+        dH_dp = np.asarray(H_class.dp(x, m_n_plus_1, grad_u, t=current_time), dtype=float)
+
+        # J = (1/dt)I + sum_d diag(dH/dp_d) @ D_grad[d] - (sigma^2/2) D_lap
+        jacobian = (1.0 / dt) * eye(n, format="csr")
+        for dim in range(d):
+            jacobian = jacobian + diags(dH_dp[:, dim], format="csr") @ self._D_grad[dim]
+        jacobian = jacobian - 0.5 * sigma**2 * self._D_lap
+
+        return jacobian
+
     def _interpolate_potential_to_collocation(self) -> np.ndarray:
         """
         Interpolate potential field to collocation points (cached).
 
-        Only used by the vectorized LQ path (non-custom problems). For custom
-        problems, the potential V(x) comes from the Hamiltonian class via
-        problem.H(). See Issue #766.
+        Only used by the legacy vectorized LQ path (no hamiltonian_class).
+        For problems with a Hamiltonian class, the potential V(x) comes from
+        the Hamiltonian via H(x, m, p, t). See Issue #766, #775.
 
         Handles arbitrary dimensions by building grid axes from bounds.
         """
@@ -2047,24 +2138,29 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         u_current = u_n_plus_1.copy()
 
-        # Path selection for HJB residual/Jacobian computation (Issue #766):
+        # Path selection for HJB residual/Jacobian computation (Issue #766, #775):
         #
-        # Vectorized path (use_vectorized=True):
-        #   Active when: is_custom=False AND qp_optimization_level="none"
-        #   Hardcodes LQ formula: H = |p|^2/(2*lambda) + V(x) + gamma*|Omega|*m
-        #   Gets V(x) from problem.f_potential via _interpolate_potential_to_collocation()
-        #   Fast: numpy vectorized over all collocation points at once
+        # 1. Hamiltonian batch path (use_hamiltonian_batch=True):
+        #    Active when: hamiltonian_class is available AND qp_optimization_level="none"
+        #    Uses batch H(x, m, p, t) and H.dp(x, m, p, t) from HamiltonianBase
+        #    Works with any Hamiltonian subclass (SeparableHamiltonian, etc.)
+        #    Fast: numpy vectorized over all collocation points at once
         #
-        # Per-point path (use_vectorized=False):
-        #   Active when: is_custom=True (modern MFGComponents API) OR QP mode enabled
-        #   Calls problem.H() -> Hamiltonian class (e.g., SeparableHamiltonian)
-        #   Gets V(x) from Hamiltonian._potential callable, NOT from f_potential
-        #   General: handles any Hamiltonian structure, but loops over points
+        # 2. Legacy LQ vectorized path (use_legacy_vectorized=True):
+        #    Fallback when: no hamiltonian_class AND is_custom=False AND no QP
+        #    Hardcodes LQ formula: H = |p|^2/(2*lambda) + V(x) + gamma*|Omega|*m
+        #    Gets V(x) from problem.f_potential via _interpolate_potential_to_collocation()
+        #
+        # 3. Per-point path (fallback):
+        #    Active when: QP mode enabled OR (is_custom=True without hamiltonian_class)
+        #    Calls problem.H() per-point -> loops over collocation points
+        H_class = getattr(self.problem, "hamiltonian_class", None)
         is_custom = getattr(self.problem, "is_custom", False)
-        use_vectorized = not is_custom and self.qp_optimization_level == "none"
+        use_hamiltonian_batch = H_class is not None and self.qp_optimization_level == "none"
+        use_legacy_vectorized = not use_hamiltonian_batch and not is_custom and self.qp_optimization_level == "none"
 
         # Warn if f_potential is set but won't be used (Issue #766)
-        if not use_vectorized and not self._f_potential_warned:
+        if not use_legacy_vectorized and not self._f_potential_warned:
             f_pot = getattr(self.problem, "f_potential", None)
             if f_pot is not None and np.any(f_pot != 0):
                 warnings.warn(
@@ -2078,22 +2174,45 @@ class HJBGFDMSolver(BaseHJBSolver):
                 )
                 self._f_potential_warned = True
 
+        # Compute actual time for batch Hamiltonian calls
+        current_time = time_idx * (self.problem.T / self.problem.Nt)
+
         for _newton_iter in range(self.max_newton_iterations):
-            if use_vectorized:
-                # Fast vectorized path for standard LQ Hamiltonian
+            if use_hamiltonian_batch:
+                # Batch Hamiltonian path: H(x, m, p, t) vectorized (Issue #775)
                 grad_u, lap_u = self._compute_derivatives_vectorized(u_current)
 
-                # Vectorized residual
-                residual = self._compute_hjb_residual_vectorized(u_current, u_n_plus_1, m_n_plus_1, grad_u, lap_u)
+                residual = self._compute_hjb_residual_hamiltonian(
+                    u_current,
+                    u_n_plus_1,
+                    m_n_plus_1,
+                    grad_u,
+                    lap_u,
+                    H_class,
+                    current_time,
+                )
 
-                # Check convergence
                 if np.linalg.norm(residual) < self.newton_tolerance:
                     break
 
-                # Vectorized Jacobian
+                jacobian_sparse = self._compute_hjb_jacobian_hamiltonian(
+                    grad_u,
+                    m_n_plus_1,
+                    H_class,
+                    current_time,
+                )
+            elif use_legacy_vectorized:
+                # Legacy LQ vectorized path (no hamiltonian_class available)
+                grad_u, lap_u = self._compute_derivatives_vectorized(u_current)
+
+                residual = self._compute_hjb_residual_vectorized(u_current, u_n_plus_1, m_n_plus_1, grad_u, lap_u)
+
+                if np.linalg.norm(residual) < self.newton_tolerance:
+                    break
+
                 jacobian_sparse = self._compute_hjb_jacobian_vectorized(grad_u)
             else:
-                # Original per-point path for custom Hamiltonians or QP mode
+                # Per-point path for QP mode or legacy custom without hamiltonian_class
                 all_derivs = self._approximate_all_derivatives_cached(u_current)
 
                 residual = self._compute_hjb_residual_with_cache(
