@@ -43,8 +43,9 @@ class TestSchemeFamilyEnum:
     def test_enum_iteration(self):
         """Test that enum can be iterated."""
         families = list(SchemeFamily)
-        assert len(families) == 6
+        assert len(families) == 7
         assert SchemeFamily.FDM in families
+        assert SchemeFamily.FEM in families
         assert SchemeFamily.GENERIC in families
 
 

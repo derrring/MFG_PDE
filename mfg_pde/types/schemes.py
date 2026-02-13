@@ -183,6 +183,8 @@ class NumericalScheme(Enum):
             self.FDM_CENTERED,
             self.SL_LINEAR,
             self.SL_CUBIC,
+            self.FEM_P1,
+            self.FEM_P2,
         }
 
     def requires_renormalization(self) -> bool:
