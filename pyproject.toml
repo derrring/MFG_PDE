@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.17.9"  # v0.17.9: FEM infrastructure prep (SchemeFamily, NumericalScheme, FEMConfig, scikit-fem)
+version = "0.17.10"  # v0.17.10: Batch-polymorphic Hamiltonian __call__/dp/dm (Issue #775)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

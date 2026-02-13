@@ -18,6 +18,7 @@ from mfg_pde.core.hamiltonian import (
     # Dual classes (Legendre transform)
     DualHamiltonian,
     DualLagrangian,
+    HamiltonianBase,
     L1ControlCost,
     LagrangianBase,
     OptimizationSense,
@@ -338,6 +339,167 @@ class TestCreateHamiltonian:
 
 # Issue #673: TestToLegacyFunc removed - to_legacy_func() method deleted
 # Class-based Hamiltonian API is now called directly (no legacy function wrappers)
+
+
+class TestBatchPolymorphism:
+    """Tests for batch-polymorphic Hamiltonian __call__/dp/dm (Issue #775)."""
+
+    @pytest.fixture
+    def separable_2d(self):
+        """2D separable Hamiltonian with coupling and potential."""
+        return SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=2.0),
+            potential=lambda x, t: float(np.sum(x**2)),
+            coupling=lambda m: -(m**2),
+            coupling_dm=lambda m: -2 * m,
+        )
+
+    @pytest.fixture
+    def batch_data_2d(self):
+        """Batch inputs: N=5 points in d=2."""
+        N, d = 5, 2
+        rng = np.random.default_rng(42)
+        x = rng.standard_normal((N, d))
+        m = rng.uniform(0.1, 2.0, size=N)
+        p = rng.standard_normal((N, d))
+        return x, m, p
+
+    def test_separable_call_batch(self, separable_2d, batch_data_2d):
+        """Batch __call__ returns shape (N,)."""
+        x, m, p = batch_data_2d
+        result = separable_2d(x, m, p, t=0.0)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (5,)
+
+    def test_separable_dp_batch(self, separable_2d, batch_data_2d):
+        """Batch dp returns shape (N, d)."""
+        x, m, p = batch_data_2d
+        result = separable_2d.dp(x, m, p, t=0.0)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (5, 2)
+
+    def test_separable_dm_batch(self, separable_2d, batch_data_2d):
+        """Batch dm returns shape (N,)."""
+        x, m, p = batch_data_2d
+        result = separable_2d.dm(x, m, p, t=0.0)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (5,)
+
+    def test_separable_batch_matches_pointwise(self, separable_2d, batch_data_2d):
+        """Batch results match stacked single-point results."""
+        x, m, p = batch_data_2d
+        N = x.shape[0]
+
+        # Batch
+        H_batch = separable_2d(x, m, p)
+        dp_batch = separable_2d.dp(x, m, p)
+        dm_batch = separable_2d.dm(x, m, p)
+
+        # Pointwise
+        H_pw = np.array([separable_2d(x[i], m[i], p[i]) for i in range(N)])
+        dp_pw = np.stack([separable_2d.dp(x[i], m[i], p[i]) for i in range(N)])
+        dm_pw = np.array([separable_2d.dm(x[i], m[i], p[i]) for i in range(N)])
+
+        np.testing.assert_allclose(H_batch, H_pw, rtol=1e-12)
+        np.testing.assert_allclose(dp_batch, dp_pw, rtol=1e-12)
+        np.testing.assert_allclose(dm_batch, dm_pw, rtol=1e-12)
+
+    def test_base_dp_batch_fallback(self):
+        """Custom Hamiltonian with no analytic dp uses FD batch path."""
+
+        class CustomH(HamiltonianBase):
+            def __call__(self, x, m, p, t=0.0):
+                # H = sum(p^2) + m (non-separable, no analytic dp)
+                p_arr = np.atleast_1d(p)
+                return float(np.sum(p_arr**2)) + float(m)
+
+        H = CustomH()
+        N, d = 4, 2
+        rng = np.random.default_rng(7)
+        x = rng.standard_normal((N, d))
+        m = rng.uniform(0.1, 2.0, size=N)
+        p = rng.standard_normal((N, d))
+
+        result = H.dp(x, m, p, t=0.0)
+        assert result.shape == (N, d)
+
+        # Verify against pointwise
+        dp_pw = np.stack([H.dp(x[i], m[i], p[i]) for i in range(N)])
+        np.testing.assert_allclose(result, dp_pw, rtol=1e-10)
+
+    def test_base_dm_batch_fallback(self):
+        """Custom Hamiltonian with no analytic dm uses FD batch path."""
+
+        class CustomH(HamiltonianBase):
+            def __call__(self, x, m, p, t=0.0):
+                p_arr = np.atleast_1d(p)
+                return float(np.sum(p_arr**2)) + float(m) ** 2
+
+        H = CustomH()
+        N, d = 4, 2
+        rng = np.random.default_rng(7)
+        x = rng.standard_normal((N, d))
+        m = rng.uniform(0.1, 2.0, size=N)
+        p = rng.standard_normal((N, d))
+
+        result = H.dm(x, m, p, t=0.0)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (N,)
+
+        # Verify against pointwise
+        dm_pw = np.array([H.dm(x[i], m[i], p[i]) for i in range(N)])
+        np.testing.assert_allclose(result, dm_pw, rtol=1e-10)
+
+    def test_single_point_unchanged(self):
+        """Single-point calls return same types as before (backward compat)."""
+        H = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=2.0),
+            coupling=lambda m: -(m**2),
+            coupling_dm=lambda m: -2 * m,
+        )
+        x = np.array([0.5, 1.0])
+        m = 0.3
+        p = np.array([1.0, -0.5])
+
+        H_val = H(x, m, p, t=0.0)
+        assert isinstance(H_val, float)
+
+        dp_val = H.dp(x, m, p, t=0.0)
+        assert isinstance(dp_val, np.ndarray)
+        assert dp_val.shape == (2,)
+
+        dm_val = H.dm(x, m, p, t=0.0)
+        assert isinstance(dm_val, float)
+
+    def test_dm_no_coupling_batch(self):
+        """Batch dm with no coupling returns zeros array."""
+        H = SeparableHamiltonian(control_cost=QuadraticControlCost(control_cost=1.0))
+        N, d = 3, 2
+        x = np.zeros((N, d))
+        m = np.ones(N)
+        p = np.ones((N, d))
+
+        result = H.dm(x, m, p)
+        assert isinstance(result, np.ndarray)
+        assert result.shape == (N,)
+        np.testing.assert_array_equal(result, np.zeros(N))
+
+    def test_quadratic_mfg_batch(self):
+        """QuadraticMFGHamiltonian works in batch mode."""
+        H = QuadraticMFGHamiltonian(coupling_coefficient=1.0)
+        N, d = 5, 2
+        rng = np.random.default_rng(99)
+        x = rng.standard_normal((N, d))
+        m = rng.uniform(0.1, 2.0, size=N)
+        p = rng.standard_normal((N, d))
+
+        H_batch = H(x, m, p)
+        assert isinstance(H_batch, np.ndarray)
+        assert H_batch.shape == (N,)
+
+        # Verify pointwise
+        H_pw = np.array([H(x[i], m[i], p[i]) for i in range(N)])
+        np.testing.assert_allclose(H_batch, H_pw, rtol=1e-12)
 
 
 if __name__ == "__main__":
