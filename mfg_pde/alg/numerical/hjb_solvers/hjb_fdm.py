@@ -834,7 +834,8 @@ class HJBFDMSolver(BaseHJBSolver):
         m_grid = M.ravel()  # (N_total,)
 
         if Sigma_at_n is not None:
-            # Tensor diffusion mode — diagonal approximation
+            # Tensor diffusion mode — batch H_class + anisotropic Laplacian (Issue #784)
+            # Extract diagonal weights from diffusion tensor
             if Sigma_at_n.ndim == 2:
                 if not is_diagonal_tensor(Sigma_at_n):
                     import warnings
@@ -845,8 +846,7 @@ class HJBFDMSolver(BaseHJBSolver):
                         UserWarning,
                         stacklevel=3,
                     )
-                sigma_squared = np.diag(Sigma_at_n)  # (d,)
-                sigma_squared_grid = np.tile(sigma_squared, (x_grid.shape[0], 1))
+                sigma_diag = np.diag(Sigma_at_n)  # (d,)
             else:
                 if not is_diagonal_tensor(Sigma_at_n):
                     import warnings
@@ -857,14 +857,25 @@ class HJBFDMSolver(BaseHJBSolver):
                         UserWarning,
                         stacklevel=3,
                     )
-                sigma_squared_grid = np.diagonal(Sigma_at_n, axis1=-2, axis2=-1).reshape(-1, self.dimension)
+                # Spatially-varying: extract diagonal, average to constant weights
+                sigma_diag = np.diagonal(Sigma_at_n, axis1=-2, axis2=-1)
+                if sigma_diag.ndim > 1:
+                    sigma_diag = sigma_diag.reshape(-1, self.dimension).mean(axis=0)
 
-            # H_viscosity = (1/2) Sigma_i sigma_i^2 p_i^2
-            H_viscosity = 0.5 * np.sum(sigma_squared_grid * p_grid**2, axis=1)
+            # Convective Hamiltonian via H_class (same pattern as scalar path)
+            H_class = self.problem.hamiltonian_class
+            H_convective = np.asarray(H_class(x_grid, m_grid, p_grid, t=time), dtype=float)
 
-            p_squared_norm = np.sum(p_grid**2, axis=1)
-            H_control = 0.5 * self.problem.coupling_coefficient * p_squared_norm
-            H_values_flat = H_viscosity + H_control
+            # Anisotropic diffusion: -(1/2) * sum_d sigma_d^2 * d^2u/dx_d^2
+            from mfg_pde.operators.stencils.finite_difference import weighted_laplacian_with_bc
+
+            bc = self.get_boundary_conditions()
+            spacings = list(self.problem.geometry.get_grid_spacing())
+            aniso_lap = weighted_laplacian_with_bc(
+                U.reshape(self.shape), spacings, axis_weights=sigma_diag, bc=bc, time=time
+            ).ravel()
+
+            H_values_flat = H_convective - 0.5 * aniso_lap
 
         else:
             # Scalar diffusion mode — batch HamiltonianBase (Issue #784)

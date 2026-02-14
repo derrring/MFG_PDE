@@ -267,6 +267,35 @@ def laplacian_stencil_nd(u: NDArray, spacings: list[float] | tuple[float, ...], 
     return result
 
 
+def weighted_laplacian_stencil_nd(
+    u: NDArray,
+    spacings: list[float] | tuple[float, ...],
+    axis_weights: NDArray,
+    xp: type = np,
+) -> NDArray:
+    """
+    Weighted Laplacian stencil in n dimensions.
+
+    Formula: Σ_d w_d * ∂²u/∂x_d²
+
+    For diagonal diffusion tensor Σ = diag(σ₀², σ₁², ...),
+    computes the anisotropic diffusion: Σ_d σ_d² ∂²u/∂x_d².
+
+    Args:
+        u: Input n-dimensional array
+        spacings: Grid spacing per dimension [h₀, h₁, ..., hd₋₁]
+        axis_weights: Per-axis weights, shape (ndim,)
+        xp: Array module
+
+    Returns:
+        Weighted Laplacian approximation
+    """
+    result = xp.zeros_like(u)
+    for axis, (h, w) in enumerate(zip(spacings, axis_weights, strict=True)):
+        result += w * (xp.roll(u, -1, axis=axis) - 2 * u + xp.roll(u, 1, axis=axis)) / (h * h)
+    return result
+
+
 # =============================================================================
 # Stencil Coefficients (for matrix assembly)
 # =============================================================================
@@ -405,6 +434,50 @@ def laplacian_with_bc(
     return lap
 
 
+def weighted_laplacian_with_bc(
+    u: NDArray,
+    spacings: list[float] | tuple[float, ...],
+    axis_weights: NDArray,
+    bc: BoundaryConditions | None = None,
+    time: float = 0.0,
+) -> NDArray:
+    """
+    Compute weighted Laplacian with boundary condition handling.
+
+    For diagonal diffusion tensor Sigma = diag(sigma_0^2, sigma_1^2, ...),
+    computes: sum_d sigma_d^2 * d^2u/dx_d^2
+
+    This is the anisotropic analogue of laplacian_with_bc().
+
+    Args:
+        u: Input n-dimensional array
+        spacings: Grid spacing per dimension [h_0, h_1, ..., h_{d-1}]
+        axis_weights: Per-axis weights (e.g., diagonal of diffusion tensor), shape (ndim,)
+        bc: Boundary conditions. If None, uses periodic BC.
+        time: Current time for time-dependent BCs
+
+    Returns:
+        Weighted Laplacian of u with same shape as input
+    """
+    from mfg_pde.geometry.boundary import pad_array_with_ghosts
+
+    # Apply ghost cells if BC provided
+    if bc is not None:
+        u_work = pad_array_with_ghosts(u, bc, ghost_depth=1, time=time)
+    else:
+        u_work = u
+
+    # Compute weighted laplacian
+    lap = weighted_laplacian_stencil_nd(u_work, spacings, axis_weights)
+
+    # Extract interior if ghost cells were added
+    if bc is not None:
+        slices = [slice(1, -1)] * u.ndim
+        lap = lap[tuple(slices)]
+
+    return lap
+
+
 __all__ = [
     # First-order derivatives
     "gradient_central",
@@ -418,6 +491,8 @@ __all__ = [
     "laplacian_stencil_1d",
     "laplacian_stencil_nd",
     "laplacian_with_bc",
+    "weighted_laplacian_stencil_nd",
+    "weighted_laplacian_with_bc",
     # Coefficients for matrix assembly
     "get_gradient_stencil_coefficients",
     "get_laplacian_stencil_coefficients",

@@ -11,13 +11,14 @@ vertical movement (e.g., due to physical constraints or social norms).
 Mathematical Setup:
 -------------------
 HJB equation:
-    -∂u/∂t + H(x, ∇u, m) = 0
-    H = (α/2)|∇u|² + (1/2) Σᵢ σᵢ² (∂u/∂xᵢ)² + F(m)
+    -du/dt + H(x, m, grad(u)) - (1/2) tr(Sigma * D^2 u) = 0
+    H = (alpha/2)|grad(u)|^2 + F(m)   (convective Hamiltonian via H_class)
 
 FP equation:
-    ∂m/∂t = Σᵢ ∂/∂xᵢ(σᵢ² ∂m/∂xᵢ) - ∇·(α m ∇u)
+    dm/dt = sum_i d/dx_i(sigma_i^2 dm/dx_i) - div(alpha m grad(u))
 
-where Σ = diag(σ₁², σ₂²) is the diagonal tensor diffusion.
+where Sigma = diag(sigma_1^2, sigma_2^2) is the diagonal tensor diffusion.
+Diffusion enters as an anisotropic Laplacian (1/2) sum_i sigma_i^2 d^2u/dx_i^2.
 """
 
 import matplotlib.pyplot as plt
@@ -43,10 +44,10 @@ print()
 print("Setting up problem parameters...")
 print()
 
-# Create 2D domain: corridor [0, 1] × [0, 0.6]
+# Create 2D domain: corridor [0, 1] x [0, 0.6]
 domain = TensorProductGrid(
     bounds=[(0.0, 1.0), (0.0, 0.6)],
-    Nx_points=[31, 21],  # Nx × Ny grid points
+    Nx_points=[31, 21],  # Nx x Ny grid points
     boundary_conditions=no_flux_bc(dimension=2),
 )
 
@@ -83,16 +84,18 @@ components = MFGComponents(
     u_terminal=terminal_cost_2d,
 )
 
+# Nt=20 for CFL stability: the anisotropic Laplacian term requires
+# dt * (sigma_x^2/dx^2 + sigma_y^2/dy^2) < O(1) for the explicit scheme.
 problem = MFGProblem(
     geometry=domain,
     T=0.1,  # Short time horizon
-    Nt=10,  # 10 timesteps
+    Nt=20,  # 20 timesteps (dt=0.005 for CFL stability)
     diffusion=0.1,  # Base diffusion (tensor_diffusion_field overrides)
     components=components,
 )
 
-print("Domain: [0.0, 1.0] × [0.0, 0.6]")
-print("Grid: 30 × 20 points")
+print("Domain: [0.0, 1.0] x [0.0, 0.6]")
+print("Grid: 30 x 20 points")
 print(f"Time: T = {problem.T}, Nt = {problem.Nt}, dt = {problem.dt:.4f}")
 print()
 
@@ -104,21 +107,21 @@ print("Configuring anisotropic diagonal tensor diffusion...")
 print()
 
 # Diagonal tensor: fast horizontal, slow vertical
-# Σ = [[σ_x², 0    ],
-#      [0,     σ_y²]]
+# Sigma = [[sigma_x^2, 0        ],
+#          [0,          sigma_y^2]]
 sigma_x = 0.15  # Fast horizontal diffusion
 sigma_y = 0.05  # Slow vertical diffusion
 
 Sigma = np.diag([sigma_x**2, sigma_y**2])
 
 print("Tensor diffusion matrix:")
-print(f"  Σ = [[{Sigma[0, 0]:.4f}, {Sigma[0, 1]:.4f}],")
-print(f"       [{Sigma[1, 0]:.4f}, {Sigma[1, 1]:.4f}]]")
+print(f"  Sigma = [[{Sigma[0, 0]:.4f}, {Sigma[0, 1]:.4f}],")
+print(f"           [{Sigma[1, 0]:.4f}, {Sigma[1, 1]:.4f}]]")
 print()
 print("Physical interpretation:")
-print(f"  - Horizontal diffusion: σ_x = {sigma_x:.3f} (agents spread quickly left-right)")
-print(f"  - Vertical diffusion:   σ_y = {sigma_y:.3f} (agents spread slowly up-down)")
-print(f"  - Ratio: σ_x/σ_y = {sigma_x / sigma_y:.1f}x")
+print(f"  - Horizontal diffusion: sigma_x = {sigma_x:.3f} (agents spread quickly left-right)")
+print(f"  - Vertical diffusion:   sigma_y = {sigma_y:.3f} (agents spread slowly up-down)")
+print(f"  - Ratio: sigma_x/sigma_y = {sigma_x / sigma_y:.1f}x")
 print()
 
 # ============================================================================
@@ -139,11 +142,13 @@ print()
 
 boundary_conditions = no_flux_bc(dimension=2)
 
+# Fixed-point solver is more robust than Newton for coupled Picard iteration
+# with Laplacian-based diffusion (Issue #784).
 hjb_solver = HJBFDMSolver(
     problem,
-    solver_type="newton",
-    max_newton_iterations=30,
-    newton_tolerance=1e-6,
+    solver_type="fixed_point",
+    damping_factor=0.8,
+    max_newton_iterations=100,
 )
 
 fp_solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -152,10 +157,10 @@ print("[OK] Solvers created")
 print()
 
 # ============================================================================
-# Simplified Picard Iteration
+# Picard Iteration with Damping
 # ============================================================================
 
-print("Running simplified Picard iteration...")
+print("Running Picard iteration with damping...")
 print()
 
 # Get grid shape
@@ -173,8 +178,9 @@ M[0] = m0.copy()
 for n in range(Nt):
     M[n] /= np.sum(M[n]) * dx * dy
 
-# Run 3 Picard iterations
+# Run Picard iterations with damping for stability
 max_iterations = 3
+picard_damping = 0.3
 
 for iteration in range(max_iterations):
     print(f"Picard Iteration {iteration + 1}/{max_iterations}")
@@ -195,12 +201,16 @@ for iteration in range(max_iterations):
         show_progress=False,
     )
 
-    # Check convergence
-    U_change = np.linalg.norm(U_new - U) / (np.linalg.norm(U_new) + 1e-10)
-    M_change = np.linalg.norm(M_new - M) / (np.linalg.norm(M_new) + 1e-10)
+    # Picard damping for stability
+    U_damped = picard_damping * U_new + (1 - picard_damping) * U
+    M_damped = picard_damping * M_new + (1 - picard_damping) * M
 
-    print(f"  ΔU / ||U||: {U_change:.2e}")
-    print(f"  ΔM / ||M||: {M_change:.2e}")
+    # Check convergence
+    U_change = np.linalg.norm(U_damped - U) / (np.linalg.norm(U_damped) + 1e-10)
+    M_change = np.linalg.norm(M_damped - M) / (np.linalg.norm(M_damped) + 1e-10)
+
+    print(f"  dU / ||U||: {U_change:.2e}")
+    print(f"  dM / ||M||: {M_change:.2e}")
 
     # Check mass conservation
     masses = np.sum(M_new, axis=(1, 2)) * dx * dy
@@ -208,9 +218,9 @@ for iteration in range(max_iterations):
     print(f"  Mass conservation error: {mass_error:.2e}")
     print()
 
-    # Update for next iteration
-    U = U_new.copy()
-    M = M_new.copy()
+    # Update with damped values
+    U = U_damped.copy()
+    M = M_damped.copy()
 
 print("[OK] Picard iterations completed")
 print()
@@ -222,7 +232,11 @@ print()
 print("Generating visualization...")
 
 fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-fig.suptitle("MFG with Diagonal Tensor Diffusion (σ_x=0.15, σ_y=0.05)", fontsize=14, fontweight="bold")
+fig.suptitle(
+    f"MFG with Diagonal Tensor Diffusion (sigma_x={sigma_x}, sigma_y={sigma_y})",
+    fontsize=14,
+    fontweight="bold",
+)
 
 # Time indices to plot
 time_indices = [0, Nt // 2, Nt - 1]
@@ -268,6 +282,6 @@ print(f"  - Mass conservation error: < {mass_error:.2e}")
 print(f"  - Picard convergence: {max_iterations} iterations")
 print()
 print("Observation:")
-print("  - Density spreads primarily in horizontal direction (σ_x > σ_y)")
+print("  - Density spreads primarily in horizontal direction (sigma_x > sigma_y)")
 print("  - Agents prefer horizontal movement due to lower diffusion cost")
 print("  - Value function reflects anisotropic cost structure")
