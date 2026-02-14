@@ -344,7 +344,7 @@ class FixedPointIterator(BaseMFGSolver):
             raise ValueError("Problem geometry cannot be None")
 
         if not isinstance(geometry, CartesianGrid):
-            raise ValueError("Problem geometry must be CartesianGrid (TensorProductGrid)")
+            raise ValueError("Problem geometry must be CartesianGrid")
 
         shape = tuple(self.problem.geometry.get_grid_shape())
         grid_spacing = self.problem.geometry.get_grid_spacing()[0]  # For compatibility

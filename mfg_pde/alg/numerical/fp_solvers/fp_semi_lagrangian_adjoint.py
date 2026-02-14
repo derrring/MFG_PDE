@@ -151,19 +151,20 @@ class FPSLSolver(BaseFPSolver):
             self.spacing = np.array([self.dx])
             self.grid_coordinates = (self.x_grid,)
         else:
-            # nD problem: Use CartesianGrid interface
-            # TensorProductGrid uses 'coordinates' attribute
-            if not hasattr(problem.geometry, "coordinates"):
+            # nD problem: Requires TensorProductGrid for per-axis coordinates
+            from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
+
+            if not isinstance(problem.geometry, TensorProductGrid):
                 raise TypeError(
-                    f"Multi-dimensional problem must have CartesianGrid geometry (TensorProductGrid). "
-                    f"Got dimension={self.dimension}, geometry type={type(problem.geometry).__name__}"
+                    f"Multi-dimensional FP semi-Lagrangian adjoint requires TensorProductGrid. "
+                    f"Got {type(problem.geometry).__name__} (dimension={self.dimension})"
                 )
 
             # Grid shape and spacing
             self.grid_shape = problem.geometry.get_grid_shape()
             self.spacing = np.array(problem.geometry.get_grid_spacing())
 
-            # Grid coordinates for each dimension (TensorProductGrid uses 'coordinates')
+            # Grid coordinates for each dimension
             self.grid_coordinates = tuple(problem.geometry.coordinates)
 
             # Domain bounds

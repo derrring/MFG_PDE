@@ -229,15 +229,15 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             self.x_grid = np.linspace(xmin, xmax, Nx)
             self.dt = problem.dt
             self.dx = problem.geometry.get_grid_spacing()[0]
-            self.grid = None  # No TensorProductGrid for 1D
+            self.grid = None  # 1D uses direct arrays, not grid object
         else:
             # nD problem: Use CartesianGrid interface
             from mfg_pde.geometry.base import CartesianGrid
 
             if not isinstance(problem.geometry, CartesianGrid):
                 raise ValueError(
-                    f"Multi-dimensional problem must have CartesianGrid geometry (TensorProductGrid). "
-                    f"Got dimension={self.dimension}"
+                    f"Multi-dimensional problem requires CartesianGrid geometry. "
+                    f"Got {type(problem.geometry).__name__} (dimension={self.dimension})"
                 )
             self.grid = problem.geometry  # Geometry IS the grid
             self.dt = problem.dt

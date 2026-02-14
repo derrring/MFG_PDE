@@ -1300,10 +1300,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         if self._dx_override is not None:
             return self._dx_override
         if self.geometry is not None and self.dimension == 1:
-            from mfg_pde.geometry import TensorProductGrid
+            from mfg_pde.geometry.base import CartesianGrid
 
-            if isinstance(self.geometry, TensorProductGrid):
-                return float(self.geometry.spacing[0])
+            if isinstance(self.geometry, CartesianGrid):
+                return float(self.geometry.get_grid_spacing()[0])
             else:
                 # Compute from bounds
                 bounds = self.geometry.get_bounds()
@@ -1404,10 +1404,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     def _get_spacing(self) -> float | None:
         """Get grid spacing for 1D problems (internal use, no warning)."""
         if self.geometry is not None and self.dimension == 1:
-            from mfg_pde.geometry import TensorProductGrid
+            from mfg_pde.geometry.base import CartesianGrid
 
-            if isinstance(self.geometry, TensorProductGrid):
-                return float(self.geometry.spacing[0])
+            if isinstance(self.geometry, CartesianGrid):
+                return float(self.geometry.get_grid_spacing()[0])
             else:
                 bounds = self.geometry.get_bounds()
                 if bounds is not None:
