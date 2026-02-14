@@ -112,6 +112,107 @@ class FEMConfig(BaseModel):
 # =============================================================================
 
 
+class QPConfig(BaseModel):
+    """
+    QP monotonicity enforcement configuration for GFDM.
+
+    Controls quadratic programming constraints that ensure monotone schemes,
+    important for viscosity solution convergence.
+
+    Attributes
+    ----------
+    optimization_level : Literal["none", "auto", "always"]
+        QP optimization level: "none" (no QP), "auto" (adaptive M-matrix check),
+        "always" (force QP everywhere, for debugging).
+    solver : Literal["osqp", "scipy"]
+        QP solver backend: "osqp" (fast convex QP) or "scipy" (SLSQP).
+    warm_start : bool
+        Enable warm-starting for OSQP (2-3x speedup on similar QPs).
+    constraint_mode : Literal["indirect", "hamiltonian"]
+        Constraint type: "indirect" (Taylor coefficient constraints) or
+        "hamiltonian" (direct dH/du_j >= 0, stricter).
+    """
+
+    optimization_level: Literal["none", "auto", "always"] = "none"
+    solver: Literal["osqp", "scipy"] = "osqp"
+    warm_start: bool = True
+    constraint_mode: Literal["indirect", "hamiltonian"] = "indirect"
+
+
+class NeighborhoodConfig(BaseModel):
+    """
+    Neighborhood construction configuration for GFDM.
+
+    Controls how local point clouds are built for each collocation point.
+
+    Attributes
+    ----------
+    mode : Literal["radius", "knn", "hybrid"]
+        Selection strategy: "radius" (all within delta), "knn" (k nearest),
+        "hybrid" (delta with minimum k guarantee, most robust).
+    k_neighbors : int | None
+        Neighbor count for KNN/hybrid. Auto-computed from Taylor order if None.
+    adaptive : bool
+        Enable adaptive delta enlargement for points with insufficient neighbors.
+    k_min : int | None
+        Minimum neighbor count. Auto-computed from Taylor order if None.
+    max_delta_multiplier : float
+        Maximum delta growth factor for adaptive enlargement.
+    """
+
+    mode: Literal["radius", "knn", "hybrid"] = "hybrid"
+    k_neighbors: int | None = None
+    adaptive: bool = False
+    k_min: int | None = None
+    max_delta_multiplier: float = Field(default=5.0, gt=1.0)
+
+
+class DerivativeConfig(BaseModel):
+    """
+    Derivative approximation method configuration for GFDM.
+
+    Attributes
+    ----------
+    method : Literal["taylor", "rbf"]
+        Method: "taylor" (standard GFDM) or "rbf" (RBF-FD, better conditioning).
+    rbf_kernel : str
+        RBF kernel: "phs3" (r^3), "phs5" (r^5), "gaussian".
+    rbf_poly_degree : int
+        Polynomial augmentation degree for RBF-FD.
+    """
+
+    method: Literal["taylor", "rbf"] = "taylor"
+    rbf_kernel: str = "phs3"
+    rbf_poly_degree: int = Field(default=2, ge=0)
+
+
+class BoundaryAccuracyConfig(BaseModel):
+    """
+    Boundary accuracy techniques for GFDM (Issue #531).
+
+    Attributes
+    ----------
+    local_coordinate_rotation : bool
+        Rotate stencils at boundary to align with normal direction.
+    ghost_nodes : bool
+        Create mirrored ghost neighbors for Neumann BC enforcement.
+    wind_dependent_bc : bool
+        Only enforce BC when characteristics flow into boundary.
+        Requires ghost_nodes=True.
+    """
+
+    local_coordinate_rotation: bool = False
+    ghost_nodes: bool = False
+    wind_dependent_bc: bool = False
+
+    @model_validator(mode="after")
+    def validate_wind_bc(self) -> BoundaryAccuracyConfig:
+        """Wind-dependent BC requires ghost nodes."""
+        if self.wind_dependent_bc and not self.ghost_nodes:
+            raise ValueError("wind_dependent_bc=True requires ghost_nodes=True")
+        return self
+
+
 class GFDMConfig(BaseModel):
     """
     Generalized Finite Difference Method (meshfree) configuration.
@@ -119,35 +220,39 @@ class GFDMConfig(BaseModel):
     GFDM is used for particle-based/meshfree discretizations, particularly
     useful for high-dimensional problems and complex geometries.
 
+    Groups 31 constructor parameters into logical sub-configs (Issue #634).
+
     Attributes
     ----------
     delta : float
         Support radius for local cloud of points (default: 0.1)
-    stencil_size : int
-        Number of neighbors in local stencil (default: 20)
-    qp_optimization_level : Literal["none", "auto", "always"]
-        Quadratic programming monotonicity enforcement (default: auto)
-    monotonicity_check : bool
-        Check monotonicity violations (default: True)
-    adaptive_qp : bool
-        Use adaptive QP threshold (default: False)
-    qp_threshold : float
-        Threshold for monotonicity violations before QP (default: 1e-6)
+    taylor_order : int
+        Taylor expansion order (1 or 2, default: 2)
+    weight_function : str
+        Weight function type (default: "wendland")
+    weight_scale : float
+        Weight scale parameter (default: 1.0)
+    qp : QPConfig
+        QP monotonicity enforcement settings
+    neighborhood : NeighborhoodConfig
+        Neighborhood construction settings
+    derivative : DerivativeConfig
+        Derivative approximation method settings
+    boundary_accuracy : BoundaryAccuracyConfig
+        Boundary accuracy technique settings
+    congestion_mode : Literal["additive", "multiplicative"]
+        Hamiltonian density-velocity coupling mode
     """
 
     delta: float = Field(default=0.1, gt=0)
-    stencil_size: int = Field(default=20, ge=5)
-    qp_optimization_level: Literal["none", "auto", "always"] = "auto"
-    monotonicity_check: bool = True
-    adaptive_qp: bool = False
-    qp_threshold: float = Field(default=1e-6, gt=0)
-
-    @model_validator(mode="after")
-    def validate_qp_settings(self) -> GFDMConfig:
-        """Validate QP-related settings are consistent."""
-        if self.qp_optimization_level == "none" and self.adaptive_qp:
-            raise ValueError("adaptive_qp cannot be True when qp_optimization_level is 'none'")
-        return self
+    taylor_order: int = Field(default=2, ge=1, le=2)
+    weight_function: str = "wendland"
+    weight_scale: float = Field(default=1.0, gt=0)
+    qp: QPConfig = Field(default_factory=QPConfig)
+    neighborhood: NeighborhoodConfig = Field(default_factory=NeighborhoodConfig)
+    derivative: DerivativeConfig = Field(default_factory=DerivativeConfig)
+    boundary_accuracy: BoundaryAccuracyConfig = Field(default_factory=BoundaryAccuracyConfig)
+    congestion_mode: Literal["additive", "multiplicative"] = "additive"
 
 
 # =============================================================================

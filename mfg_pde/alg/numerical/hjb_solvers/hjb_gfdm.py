@@ -40,6 +40,7 @@ CVXPY_AVAILABLE = importlib.util.find_spec("cvxpy") is not None
 OSQP_AVAILABLE = importlib.util.find_spec("osqp") is not None
 
 if TYPE_CHECKING:
+    from mfg_pde.config.mfg_methods import GFDMConfig
     from mfg_pde.core.derivatives import DerivativeTensors
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.geometry import BoundaryConditions
@@ -162,6 +163,53 @@ class HJBGFDMSolver(BaseHJBSolver):
             self._neighborhood_builder.adaptive_stats = value
         else:
             self._adaptive_stats = value
+
+    @classmethod
+    def from_config(
+        cls,
+        problem: MFGProblem,
+        collocation_points: np.ndarray,
+        config: GFDMConfig,
+        **extra: Any,
+    ) -> HJBGFDMSolver:
+        """Create solver from GFDMConfig object (Issue #634).
+
+        Converts structured config into constructor kwargs. Additional keyword
+        arguments in ``extra`` override config values.
+
+        Args:
+            problem: MFG problem instance
+            collocation_points: (N_points, d) array of collocation points
+            config: Structured GFDM configuration
+            **extra: Additional kwargs passed to __init__ (override config)
+
+        Returns:
+            Configured HJBGFDMSolver instance
+        """
+        kwargs: dict[str, Any] = {
+            "delta": config.delta,
+            "taylor_order": config.taylor_order,
+            "weight_function": config.weight_function,
+            "weight_scale": config.weight_scale,
+            "qp_optimization_level": config.qp.optimization_level,
+            "qp_solver": config.qp.solver,
+            "qp_warm_start": config.qp.warm_start,
+            "qp_constraint_mode": config.qp.constraint_mode,
+            "neighborhood_mode": config.neighborhood.mode,
+            "k_neighbors": config.neighborhood.k_neighbors,
+            "adaptive_neighborhoods": config.neighborhood.adaptive,
+            "k_min": config.neighborhood.k_min,
+            "max_delta_multiplier": config.neighborhood.max_delta_multiplier,
+            "derivative_method": config.derivative.method,
+            "rbf_kernel": config.derivative.rbf_kernel,
+            "rbf_poly_degree": config.derivative.rbf_poly_degree,
+            "use_local_coordinate_rotation": config.boundary_accuracy.local_coordinate_rotation,
+            "use_ghost_nodes": config.boundary_accuracy.ghost_nodes,
+            "use_wind_dependent_bc": config.boundary_accuracy.wind_dependent_bc,
+            "congestion_mode": config.congestion_mode,
+        }
+        kwargs.update(extra)
+        return cls(problem, collocation_points, **kwargs)
 
     def __init__(
         self,
