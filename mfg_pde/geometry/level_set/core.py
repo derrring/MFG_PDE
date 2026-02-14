@@ -101,10 +101,10 @@ class LevelSetFunction:
 
     def _get_field_shape(self) -> tuple[int, ...]:
         """Extract field shape from geometry."""
-        from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
+        from mfg_pde.geometry.base import CartesianGrid
 
-        if isinstance(self.geometry, TensorProductGrid):
-            return tuple(self.geometry.Nx_points)
+        if isinstance(self.geometry, CartesianGrid):
+            return self.geometry.get_grid_shape()
         # ImplicitDomain - infer from phi
         return self.phi.shape
 
@@ -116,7 +116,7 @@ class LevelSetFunction:
         with shape (Nx, Ny), returns [x_coords, y_coords].
 
         Raises:
-            TypeError: If geometry is not a TensorProductGrid.
+            TypeError: If geometry is not a TensorProductGrid (requires per-axis coordinates).
         """
         from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
 
