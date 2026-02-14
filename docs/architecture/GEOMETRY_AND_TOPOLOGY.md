@@ -1,9 +1,26 @@
-# [SPEC] MFG_PDE Geometry & Topology System Architecture
+# MFG_PDE Geometry & Topology System Architecture — Conceptual Reference
 
 **Document ID**: MFG-SPEC-GEO-1.0
-**Status**: **FINAL RELEASE**
+**Status**: **CONCEPTUAL REFERENCE**
 **Date**: 2026-01-30
 **Target**: Core Architecture Team & Lead Developers
+
+> **Role of this document**: This spec identifies fundamental concerns for PDE
+> geometry infrastructure through abstract inference from practical experience.
+> The 8-trait decomposition is a catalog of concerns — all 8 are valid and arise
+> in practice (see GEOMETRY_BC_INFRASTRUCTURE.md Section 5.3 for where each
+> concern is realized in the current architecture).
+>
+> **Relationship to implementation**: MFG_PDE distributes these concerns across
+> three layers (geometry, BC, coupling) rather than colocating them in geometry
+> traits. The flat `GeometryProtocol` with `GeometryType` enum handles the
+> geometry layer; the 4-axis BC design (WHAT x WHERE x WHEN x HOW) handles
+> boundary conditions; the coupling iterator handles composition and projections.
+> See `GEOMETRY_BC_INFRASTRUCTURE.md` for the implementation blueprint.
+>
+> **Migration path**: Section 5.5 of GEOMETRY_BC_INFRASTRUCTURE.md defines a
+> 4-stage additive path from the current flat design toward explicit trait
+> composition, if/when the concerns need to reconverge in the geometry layer.
 
 ---
 

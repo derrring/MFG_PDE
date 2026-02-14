@@ -164,6 +164,17 @@ from .protocol import (
     validate_geometry,
 )
 
+# Geometry traits (Issue #732 Tier 1b)
+from .traits import (
+    BoundaryAware,
+    BoundaryDef,
+    ConnectivityAware,
+    ConnectivityType,
+    StructureAware,
+    StructureType,
+    TraitAwareGeometry,
+)
+
 __all__ = [
     # Collocation point generation
     "CollocationPointSet",
@@ -192,6 +203,14 @@ __all__ = [
     # Unified geometry protocol
     "GeometryProtocol",
     "GeometryType",
+    # Geometry traits (Issue #732 Tier 1b)
+    "ConnectivityType",
+    "StructureType",
+    "BoundaryDef",
+    "ConnectivityAware",
+    "StructureAware",
+    "BoundaryAware",
+    "TraitAwareGeometry",
     # AMR stub (for future library integration)
     "AdaptiveGeometry",
     "AMRNotImplementedError",

@@ -6,6 +6,34 @@
 
 ## Primary Documents
 
+### 0. Geometry-BC Infrastructure (2026-02-14)
+
+**0a. Implementation Blueprint**: `GEOMETRY_BC_INFRASTRUCTURE.md`
+**Purpose**: How topology-geometry-BC concerns are realized in MFG_PDE
+
+**What's Inside**:
+- The actual 4-axis orthogonal BC design (WHAT x WHERE x WHEN x HOW)
+- GeometryProtocol and GeometryType — how geometry dispatch works
+- BC applicator usage audit (3 production, 4 awaiting solvers)
+- How the spec's 8 concerns decompose across geometry, BC, and coupling layers
+- Extensibility validation: Lipschitz BC, ODE/PDE constraints, free boundaries
+- Migration path from flat enum to trait composition (if/when needed)
+- Tiered action items (Issue #732)
+
+**Read This If**: Understanding how geometry, topology, and BCs are organized, implementing new geometry types, BC applicators, or advanced coupling patterns.
+
+**0b. Conceptual Reference**: `GEOMETRY_AND_TOPOLOGY.md`
+**Purpose**: Catalog of fundamental geometry/topology concerns from practical experience
+
+**What's Inside**:
+- 8 atomic traits (Connectivity, Structure, Embedding, Metric, Boundary, Temporality, Data Layout, Distribution)
+- Constraint validation rules, kernel factory pattern, recursive composition
+- The complete design space for PDE geometry infrastructure
+
+**Read This If**: Understanding the theoretical foundation, evaluating whether a new feature requires trait-level dispatch, or planning the migration path in Section 5.5.
+
+---
+
 ### 1. Factory Pattern Design (UPDATED - 2026-01-17)
 **File**: `FACTORY_PATTERN_DESIGN.md`
 **Purpose**: Three-concern factory architecture for MFG_PDE

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 from .meshes.mesh_data import MeshVisualizationMode
 from .protocol import GeometryType
+from .traits import BoundaryDef, ConnectivityType, StructureType
 
 
 class Geometry(ABC):
@@ -837,6 +838,23 @@ class CartesianGrid(Geometry):
         ...     shape = geometry.get_grid_shape()  # Guaranteed to work
     """
 
+    # --- Trait properties (Issue #732 Tier 1b) ---
+
+    @property
+    def connectivity_type(self) -> ConnectivityType:
+        """Implicit: neighbors via stride arithmetic on regular grid."""
+        return ConnectivityType.IMPLICIT
+
+    @property
+    def structure_type(self) -> StructureType:
+        """Structured: logical (i,j,k) indexing."""
+        return StructureType.STRUCTURED
+
+    @property
+    def boundary_def(self) -> BoundaryDef:
+        """Box: axis-aligned hyper-rectangular bounds."""
+        return BoundaryDef.BOX
+
     # Override to make non-optional for Cartesian grids
     @abstractmethod
     def get_grid_spacing(self) -> list[float]:
@@ -904,6 +922,23 @@ class UnstructuredMesh(Geometry):
     def dimension(self) -> int:
         """Spatial dimension (2 or 3 for meshes)."""
         return self._dimension
+
+    # --- Trait properties (Issue #732 Tier 1b) ---
+
+    @property
+    def connectivity_type(self) -> ConnectivityType:
+        """Explicit: neighbors stored in element connectivity."""
+        return ConnectivityType.EXPLICIT
+
+    @property
+    def structure_type(self) -> StructureType:
+        """Unstructured: arbitrary mesh topology."""
+        return StructureType.UNSTRUCTURED
+
+    @property
+    def boundary_def(self) -> BoundaryDef:
+        """Mesh: boundary defined by facet elements."""
+        return BoundaryDef.MESH
 
     @abstractmethod
     def create_gmsh_geometry(self) -> Any:
@@ -1702,6 +1737,23 @@ class GraphGeometry(Geometry, SupportsGraphLaplacian, SupportsAdjacency):
     def geometry_type(self) -> GeometryType:
         """Type of geometry (always NETWORK for all graph types)."""
         return GeometryType.NETWORK
+
+    # --- Trait properties (Issue #732 Tier 1b) ---
+
+    @property
+    def connectivity_type(self) -> ConnectivityType:
+        """Explicit: neighbors stored in adjacency matrix."""
+        return ConnectivityType.EXPLICIT
+
+    @property
+    def structure_type(self) -> StructureType:
+        """Unstructured: arbitrary graph topology."""
+        return StructureType.UNSTRUCTURED
+
+    @property
+    def boundary_def(self) -> BoundaryDef:
+        """None: graphs have no continuous boundary."""
+        return BoundaryDef.NONE
 
     # ============================================================================
     # GeometryProtocol implementation
