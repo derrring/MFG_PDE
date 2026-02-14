@@ -623,7 +623,7 @@ class HJBFDMSolver(BaseHJBSolver):
             # Fixed-point iteration: u_n = u_{n+1} - dt·H(∇u_n, m)
             def G(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U, time=time)
-                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
+                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n, time=time)
                 return U_next - self.dt * H_values
 
             U_solution, info = self.nonlinear_solver.solve(G, U_guess)
@@ -633,7 +633,7 @@ class HJBFDMSolver(BaseHJBSolver):
             # F(u) = (u - u_next)/dt + H(∇u, m) = 0
             def F(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U, time=time)
-                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
+                H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n, time=time)
                 return (U - U_next) / self.dt + H_values
 
             # Issue #669: Newton-to-Value-Iteration adaptive fallback
@@ -654,7 +654,9 @@ class HJBFDMSolver(BaseHJBSolver):
                     # Define fixed-point map G for fallback (same computation as FP path)
                     def G_fallback(U: NDArray) -> NDArray:
                         gradients = self._compute_gradients_nd(U, time=time)
-                        H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n)
+                        H_values = self._evaluate_hamiltonian_nd(
+                            U, M_next, gradients, sigma_at_n, Sigma_at_n, time=time
+                        )
                         return U_next - self.dt * H_values
 
                     fallback_solver = FixedPointSolver(
@@ -758,10 +760,12 @@ class HJBFDMSolver(BaseHJBSolver):
         gradients: dict[int, NDArray],
         sigma_at_n: float | NDArray | None = None,
         Sigma_at_n: NDArray | None = None,
+        time: float = 0.0,
     ) -> NDArray:
         """Evaluate Hamiltonian at all grid points with variable diffusion support.
 
-        Tries vectorized evaluation first (fast), falls back to point-by-point (compatible).
+        Tries vectorized evaluation first (fast, includes batch HamiltonianBase path),
+        falls back to point-by-point (compatible).
         Supports scalar and diagonal tensor diffusion.
 
         Args:
@@ -772,8 +776,9 @@ class HJBFDMSolver(BaseHJBSolver):
             sigma_at_n: Scalar volatility coefficient (sigma) (None uses problem.sigma, float is constant, array is spatially varying)
             Sigma_at_n: Tensor diffusion coefficient (None or tensor array). If provided and diagonal, computes
                         H_viscosity = (1/2) Σᵢ σᵢ² pᵢ² separately and adds to running cost.
+            time: Current time for time-dependent Hamiltonians (default 0.0)
         """
-        # Try vectorized evaluation first (10-50x faster)
+        # Try vectorized evaluation (10-50x faster than point-by-point)
         try:
             return self._evaluate_hamiltonian_vectorized(U, M, gradients, sigma_at_n, Sigma_at_n)
         except (TypeError, AttributeError, ValueError):
@@ -907,6 +912,9 @@ class HJBFDMSolver(BaseHJBSolver):
         """
         Vectorized Hamiltonian evaluation across all grid points (10-50x faster than point-by-point).
 
+        Tries batch HamiltonianBase first (Issue #784), then falls back to
+        problem.hamiltonian() legacy API.
+
         Args:
             U: Value function at current timestep
             M: Density at current timestep
@@ -981,38 +989,37 @@ class HJBFDMSolver(BaseHJBSolver):
 
         else:
             # Scalar diffusion mode
-            if sigma_at_n is None:
-                sigma_val = self.problem.sigma
+            # Try batch HamiltonianBase first (Issue #784, follows PR #781 pattern)
+            H_class = getattr(self.problem, "hamiltonian_class", None)
+            if H_class is not None:
+                H_values_flat = np.asarray(H_class(x_grid, m_grid, p_grid, t=0.0), dtype=float)
             else:
-                sigma_val = sigma_at_n
+                # Legacy path: try problem.hamiltonian() with sigma parameter
+                if sigma_at_n is None:
+                    sigma_val = self.problem.sigma
+                else:
+                    sigma_val = sigma_at_n
 
-            # Prepare sigma for Hamiltonian call
-            if isinstance(sigma_val, (int, float)):
-                # Constant sigma - no need to pass spatially-varying array
-                sigma_for_call = sigma_val
-            elif isinstance(sigma_val, np.ndarray):
-                # Spatially-varying sigma - flatten it
-                sigma_for_call = sigma_val.ravel()  # (N_total,)
-            else:
-                sigma_for_call = self.problem.sigma
+                # Prepare sigma for Hamiltonian call
+                if isinstance(sigma_val, (int, float)):
+                    sigma_for_call = sigma_val
+                elif isinstance(sigma_val, np.ndarray):
+                    sigma_for_call = sigma_val.ravel()  # (N_total,)
+                else:
+                    sigma_for_call = self.problem.sigma
 
-            # Call problem.hamiltonian with vectorized inputs
-            # Try both possible signatures
-            # Issue #545: Use try/except instead of hasattr
-            try:
-                # Try calling with vectorized inputs
-                # Signature: hamiltonian(x, m, p, t=0.0, sigma=...)
-                # This will raise TypeError if not vectorized
-                H_values_flat = self.problem.hamiltonian(x_grid, m_grid, p_grid, t=0.0, sigma=sigma_for_call)
-            except AttributeError:
-                # Old interface - doesn't support vectorization
-                # If neither hamiltonian nor H exists, raise clear error
+                # Call problem.hamiltonian with vectorized inputs
+                # Issue #545: Use try/except instead of hasattr
                 try:
-                    # Check if H exists to provide specific error
-                    _ = self.problem.H
-                    raise TypeError("Problem.H interface does not support vectorized evaluation")
+                    # Signature: hamiltonian(x, m, p, t=0.0, sigma=...)
+                    H_values_flat = self.problem.hamiltonian(x_grid, m_grid, p_grid, t=0.0, sigma=sigma_for_call)
                 except AttributeError:
-                    raise AttributeError("Problem must have 'hamiltonian' or 'H' method") from None
+                    # Old interface - doesn't support vectorization
+                    try:
+                        _ = self.problem.H
+                        raise TypeError("Problem.H interface does not support vectorized evaluation")
+                    except AttributeError:
+                        raise AttributeError("Problem must have 'hamiltonian' or 'H' method") from None
 
         # Reshape back to grid shape
         H_values = H_values_flat.reshape(self.shape)
