@@ -247,9 +247,12 @@ class TestCoupledHJBFP2DConvergence:
     @pytest.mark.slow
     def test_2d_grid_refinement(self):
         """Both coarse and fine grids should produce finite solutions."""
-        # Use sigma=0.5 for stability with T=0.3 (higher diffusion needed for larger T)
+        # Issue #787: With explicit diffusion -(sigma^2/2)*Laplacian(U), the CFL
+        # constraint requires finer time steps. For N=15, sigma=0.5:
+        #   D=0.125, sum(1/dx^2)=112.5, need dt < 0.5/(D*sum) = 0.036
+        #   Nt=20 gives dt=0.015, CFL=0.21 (stable)
         for N in (10, 15):
-            problem = _create_2d_problem(N=N, T=0.3, Nt=10, sigma=0.5)
+            problem = _create_2d_problem(N=N, T=0.3, Nt=20, sigma=0.5)
             solver = _create_2d_mfg_solver(problem)
 
             result = solver.solve(max_iterations=8, tolerance=1e-4)
