@@ -129,6 +129,27 @@ class TestBCSegment:
             domain_bounds=domain_bounds,
         )
 
+    def test_segment_with_int_boundary(self):
+        """Test segment with integer Gmsh physical group tag (#732 Tier 1)."""
+        segment = BCSegment(
+            name="gmsh_wall",
+            bc_type=BCType.DIRICHLET,
+            value=0.0,
+            boundary=42,
+        )
+
+        domain_bounds = np.array([[0.0, 1.0], [0.0, 1.0]])
+        point = np.array([0.5, 0.5])
+
+        # Matches integer boundary_id
+        assert segment.matches_point(point, boundary_id=42, domain_bounds=domain_bounds)
+        # Does not match different int
+        assert not segment.matches_point(point, boundary_id=99, domain_bounds=domain_bounds)
+        # Does not match string
+        assert not segment.matches_point(point, boundary_id="left", domain_bounds=domain_bounds)
+        # Does not match None
+        assert not segment.matches_point(point, boundary_id=None, domain_bounds=domain_bounds)
+
     def test_3d_segment_with_multiple_constraints(self):
         """Test 3D segment with constraints on multiple axes."""
         segment = BCSegment(
