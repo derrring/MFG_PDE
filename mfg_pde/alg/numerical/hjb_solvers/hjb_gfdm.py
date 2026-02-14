@@ -2250,59 +2250,6 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         return u_current
 
-    def _compute_hjb_residual(
-        self,
-        u_current: np.ndarray,
-        u_n_plus_1: np.ndarray,
-        m_n_plus_1: np.ndarray,
-        time_idx: int,
-    ) -> np.ndarray:
-        """Compute HJB residual at collocation points."""
-        from mfg_pde.core.derivatives import from_multi_index_dict
-
-        residual = np.zeros(self.n_points)
-        dimension = self.problem.dimension
-
-        # Time derivative approximation (backward Euler)
-        # For backward-in-time problems: ∂u/∂t ≈ (u_{n+1} - u_n) / dt
-        # where t_{n+1} > t_n (future time is at n+1)
-        # problem.Nt = number of time intervals, so dt = T / Nt
-        dt = self.problem.T / self.problem.Nt
-        u_t = (u_n_plus_1 - u_current) / dt
-
-        for i in range(self.n_points):
-            # Get spatial coordinates for this collocation point
-            x_pos = self.collocation_points[i]
-
-            # Approximate derivatives using GFDM
-            derivs = self.approximate_derivatives(u_current, i)
-
-            # Convert multi-index derivatives dict to DerivativeTensors (nD support)
-            p_derivs = from_multi_index_dict(derivs, dimension=dimension)
-            laplacian = p_derivs.laplacian or 0.0
-
-            # Hamiltonian (user-provided)
-            # problem.H() signature: H(x_idx, m_at_x, derivs, x_position=...)
-            # Pass x_position explicitly since collocation points may differ from geometry grid
-            H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs, x_position=x_pos)
-
-            # Diffusion coefficient
-            # NOTE: HJB uses (σ²/2) factor from control theory (Pontryagin maximum principle)
-            # This differs from FP equation which uses σ² (standard diffusion form)
-            # Both forms are correct - they arise from different derivations of MFG system
-            #
-            # BUG #15 FIX: Handle both callable sigma(x) and numeric sigma
-            # Use helper method to get sigma value (handles nu, callable sigma, numeric sigma)
-            sigma_val = self._get_sigma_value(i)
-
-            diffusion_term = 0.5 * sigma_val**2 * laplacian
-
-            # HJB residual: -u_t + H - (sigma²/2)Δu = 0
-            # Note: For backward-in-time problems, the HJB equation has -∂u/∂t
-            residual[i] = -u_t[i] + H - diffusion_term
-
-        return residual
-
     def _compute_dH_dp_fd(
         self,
         point_idx: int,
@@ -2438,50 +2385,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         Bug #15 fix: Disable QP in Jacobian computation to reduce QP calls from ~750k to ~7.5k.
         Jacobian only affects Newton convergence rate, not final monotonicity (enforced by residual).
         """
-        # Try analytic Jacobian first (faster if dH_dp available or FD on H)
         # Analytic Jacobian uses GFDM weights directly - O(n·k) vs O(n²) for FD
         # Works for any dimension since GFDM weights are dimension-agnostic
         return self._compute_hjb_jacobian_analytic(u_current, m_n_plus_1, time_idx)
-
-        # Fallback: numerical finite differences on full residual
-        n = self.n_points
-        jacobian = np.zeros((n, n))
-
-        # Finite difference step
-        eps = 1e-7
-
-        # Bug #15 fix: Temporarily disable QP for Jacobian computation
-        saved_qp_level = self.qp_optimization_level
-        self.qp_optimization_level = "none"
-
-        try:
-            # Compute base residual ONCE (was incorrectly inside loop before)
-            residual_base = self._compute_hjb_residual(u_current, u_n_plus_1, m_n_plus_1, time_idx)
-
-            # Compute Jacobian by columns (perturbing each u[j])
-            # Sparse optimization: only compute affected rows (neighbors of j)
-            for j in range(n):
-                u_plus = u_current.copy()
-                u_plus[j] += eps
-
-                # Get rows affected by perturbing u[j] (j and its neighbors)
-                if self._neighborhood_builder is not None:
-                    affected_rows = self._neighborhood_builder.get_affected_rows(j)
-                else:
-                    # Legacy fallback
-                    affected_rows = self._get_affected_rows(j)
-
-                # Compute residual only at affected points
-                residual_plus = self._compute_hjb_residual(u_plus, u_n_plus_1, m_n_plus_1, time_idx)
-
-                # Only update affected rows (sparse pattern)
-                for i in affected_rows:
-                    jacobian[i, j] = (residual_plus[i] - residual_base[i]) / eps
-        finally:
-            # Restore QP for residual evaluation
-            self.qp_optimization_level = saved_qp_level
-
-        return jacobian
 
     def _apply_boundary_conditions_to_solution(self, u: np.ndarray, time_idx: int) -> np.ndarray:
         """Apply boundary conditions directly to solution array.

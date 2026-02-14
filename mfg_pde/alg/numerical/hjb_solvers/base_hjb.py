@@ -814,16 +814,32 @@ def compute_hjb_residual(
     # but mdmH_withM itself didn't use them. We'll pass an empty dict for now.
     U_n_derivatives_for_m_coupling: dict[str, Any] = {}  # Not used by MFGProblem's term
 
+    # Issue #789: Batch Hamiltonian path — single H_class() call replaces per-point loop
+    # Conditions: precomputed_grad available (BC-aware), no backend (NumPy), H_class exists
+    H_class = problem.hamiltonian_class
+    if precomputed_grad is not None and backend is None and H_class is not None:
+        # Build batch arrays
+        x_grid = problem.geometry.get_spatial_grid()  # (Nx, 1)
+        m_grid = np.asarray(M_density_at_n_plus_1, dtype=float)  # (Nx,)
+        p_grid = precomputed_grad.reshape(-1, 1)  # (Nx, 1)
+
+        # Single batch call — eliminates per-point problem.H() overhead
+        H_values = np.asarray(H_class(x_grid, m_grid, p_grid, t=current_time), dtype=float).ravel()
+
+        # Mask: propagate NaN from existing Phi_U or from NaN gradients
+        nan_mask = np.isnan(Phi_U) | np.isnan(precomputed_grad) | ~np.isfinite(H_values)
+        Phi_U[~nan_mask] += H_values[~nan_mask]
+        Phi_U[nan_mask & ~np.isnan(Phi_U)] = np.nan  # New NaN from grad/H
+
+        return Phi_U
+
+    # Fallback: per-point loop for backend != None or missing precomputed_grad
     for i in range(Nx):
         # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
         phi_val = Phi_U[i].item() if hasattr(Phi_U[i], "item") else float(Phi_U[i])
         if np.isnan(phi_val):
             continue
 
-        # For Hamiltonian, use unclipped p_values derived from U_n_current_newton_iterate
-        # Calculate derivatives using tuple notation (Phase 3 migration)
-        # Use upwind for HJB FDM stability (Godunov upwind discretization)
-        # Pass precomputed_gradient for BC-aware computation (Issue #542 fix)
         derivs = _calculate_derivatives(
             U_n_current_newton_iterate, i, dx, Nx, clip=False, upwind=use_upwind, precomputed_gradient=precomputed_grad
         )
@@ -832,15 +848,12 @@ def compute_hjb_residual(
             Phi_U[i] = float("nan")
             continue
 
-        # Hamiltonian term H(x_i, M_{n+1,i}, (Du_n_current)_i, t_n)
-        # Notebook: FnU[i] += H_withM(...)
         # Backend compatibility - tensor to scalar conversion (Issue #543 acceptable)
         m_val = (
             M_density_at_n_plus_1[i].item()
             if hasattr(M_density_at_n_plus_1[i], "item")
             else float(M_density_at_n_plus_1[i])
         )
-        # Call H() with tuple notation directly (Phase 3: no more conversion to legacy format)
         hamiltonian_val = problem.H(x_idx=i, m_at_x=m_val, derivs=derivs, t_idx=t_idx_n)
         if np.isnan(hamiltonian_val) or np.isinf(hamiltonian_val):
             Phi_U[i] = float("nan")
@@ -848,8 +861,7 @@ def compute_hjb_residual(
         else:
             Phi_U[i] += hamiltonian_val
 
-        # Problem-specific m-coupling term (like mdmH_withM from notebook)
-        # Notebook: FnU[i] += mdmH_withM(...)
+        # m-coupling term (Issue #673: always None, kept for API compatibility)
         m_coupling_term = problem.get_hjb_residual_m_coupling_term(
             M_density_at_n_plus_1, U_n_derivatives_for_m_coupling, i, t_idx_n
         )
@@ -921,31 +933,49 @@ def compute_hjb_jacobian(
         # Note: For spatially varying σ(x), this assumes σ is smooth.
         # More accurate treatment would include ∂σ/∂x terms (Phase 3 extension)
 
-    # Hamiltonian part & m-coupling term's Jacobian contribution
-    # Try to get analytical/specific Jacobian contributions from the problem for H-part
-    # Crucially, pass U_k_n_from_prev_picard for MFGProblem's specific Jacobian
-    hamiltonian_jac_contrib = problem.get_hjb_hamiltonian_jacobian_contrib(
-        U_k_n_from_prev_picard,
-        t_idx_n,  # This is Uoldn from original notebook
-    )
+    # Hamiltonian part: analytical Jacobian via chain rule (Issue #789)
+    # dΦ/dU_j = (dH/dp)_i * (dp_i/dU_j), where dp/dU comes from the gradient stencil.
+    H_class = problem.hamiltonian_class
+    if backend is None and H_class is not None and abs(dx) > 1e-14 and Nx > 1:
+        # Compute BC-aware gradient for stencil direction
+        precomputed_grad = _compute_gradient_array_1d(U_n_np, dx, bc=bc, upwind=use_upwind, time=current_time)
 
-    if hamiltonian_jac_contrib is not None:
-        J_D += hamiltonian_jac_contrib.diagonal
-        J_L += hamiltonian_jac_contrib.lower
-        J_U += hamiltonian_jac_contrib.upper
+        # Build batch arrays for H_class.dp()
+        x_grid = problem.geometry.get_spatial_grid()  # (Nx, 1)
+        m_grid = np.asarray(M_density_at_n_plus_1, dtype=float)  # (Nx,)
+        p_grid = precomputed_grad.reshape(-1, 1)  # (Nx, 1)
+
+        # Single batch call: dH/dp at all grid points
+        dH_dp = np.asarray(
+            H_class.dp(x_grid, m_grid, p_grid, t=current_time), dtype=float
+        ).ravel()  # (Nx,) — squeeze the 1D momentum dimension
+
+        # Stencil coefficients: dp_i/dU_j depends on upwind direction
+        # Godunov upwind: p >= 0 uses backward (U_i - U_{i-1})/dx,
+        #                 p < 0  uses forward  (U_{i+1} - U_i)/dx
+        inv_dx = 1.0 / dx
+        if use_upwind:
+            backward_mask = precomputed_grad >= 0  # (Nx,)
+            # Diagonal: dp_i/dU_i
+            J_D += dH_dp * np.where(backward_mask, inv_dx, -inv_dx)
+            # Lower: dp_i/dU_{i-1} (backward stencil only)
+            J_L += dH_dp * np.where(backward_mask, -inv_dx, 0.0)
+            # Upper: dp_i/dU_{i+1} (forward stencil only)
+            J_U += dH_dp * np.where(backward_mask, 0.0, inv_dx)
+        else:
+            # Central difference: p_i = (U_{i+1} - U_{i-1}) / (2*dx)
+            half_inv_dx = inv_dx / 2.0
+            # dp_i/dU_i = 0 (central difference has no diagonal stencil)
+            J_L += dH_dp * (-half_inv_dx)
+            J_U += dH_dp * half_inv_dx
     else:
-        # Fallback to numerical Jacobian for H-part, using NumPy version
-        # Note: Numerical Jacobian uses local gradient computation for perturbed arrays.
-        # BC-aware gradient would require O(Nx^2) recomputation which is expensive.
-        # The analytical Jacobian path (above) is preferred for production use.
+        # Fallback: per-point numerical FD Jacobian for backend or no H_class
         for i in range(Nx):
             U_perturbed_p_i = U_n_np.copy()
             U_perturbed_p_i[i] += eps
             U_perturbed_m_i = U_n_np.copy()
             U_perturbed_m_i[i] -= eps
 
-            # Use tuple notation for Jacobian (Phase 3 migration)
-            # Use upwind for consistency with residual computation
             derivs_p_i = _calculate_derivatives(
                 U_perturbed_p_i,
                 i,
@@ -974,17 +1004,13 @@ def compute_hjb_jacobian(
 
             if not (np.isnan(H_p_i) or np.isnan(H_m_i) or np.isinf(H_p_i) or np.isinf(H_m_i)):
                 J_D[i] += (H_p_i - H_m_i) / (2 * eps)
-            else:
-                J_D[i] += 0
 
             if Nx > 1:
-                # ... (numerical FD for J_L_H and J_U_H as before, using U_n_current_newton_iterate for perturbations)
                 im1 = (i - 1 + Nx) % Nx
-                U_perturbed_p_im1 = U_n_current_newton_iterate.copy()
+                U_perturbed_p_im1 = U_n_np.copy()
                 U_perturbed_p_im1[im1] += eps
-                U_perturbed_m_im1 = U_n_current_newton_iterate.copy()
+                U_perturbed_m_im1 = U_n_np.copy()
                 U_perturbed_m_im1[im1] -= eps
-                # Use tuple notation for Jacobian (Phase 3 migration)
                 derivs_p_im1 = _calculate_derivatives(
                     U_perturbed_p_im1,
                     i,
@@ -1011,15 +1037,12 @@ def compute_hjb_jacobian(
                     H_m_im1 = problem.H(i, M_density_at_n_plus_1[i], derivs=derivs_m_im1, t_idx=t_idx_n)
                 if not (np.isnan(H_p_im1) or np.isnan(H_m_im1) or np.isinf(H_p_im1) or np.isinf(H_m_im1)):
                     J_L[i] += (H_p_im1 - H_m_im1) / (2 * eps)
-                else:
-                    J_L[i] += 0
 
                 ip1 = (i + 1) % Nx
-                U_perturbed_p_ip1 = U_n_current_newton_iterate.copy()
+                U_perturbed_p_ip1 = U_n_np.copy()
                 U_perturbed_p_ip1[ip1] += eps
-                U_perturbed_m_ip1 = U_n_current_newton_iterate.copy()
+                U_perturbed_m_ip1 = U_n_np.copy()
                 U_perturbed_m_ip1[ip1] -= eps
-                # Use tuple notation for Jacobian (Phase 3 migration)
                 derivs_p_ip1 = _calculate_derivatives(
                     U_perturbed_p_ip1,
                     i,
@@ -1046,8 +1069,6 @@ def compute_hjb_jacobian(
                     H_m_ip1 = problem.H(i, M_density_at_n_plus_1[i], derivs=derivs_m_ip1, t_idx=t_idx_n)
                 if not (np.isnan(H_p_ip1) or np.isnan(H_m_ip1) or np.isinf(H_p_ip1) or np.isinf(H_m_ip1)):
                     J_U[i] += (H_p_ip1 - H_m_ip1) / (2 * eps)
-                else:
-                    J_U[i] += 0
 
     # Assemble sparse Jacobian
     # The original notebook used rolled J_L and J_U for its spdiags call:
