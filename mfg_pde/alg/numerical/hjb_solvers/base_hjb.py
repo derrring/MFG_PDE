@@ -18,10 +18,10 @@ if TYPE_CHECKING:
 # Issue #638: Import Robin BC ghost cell computation
 # Issue #625: Migrated from tensor_calculus to operators/stencils (tensor_calculus deprecated v0.18.0)
 from mfg_pde.geometry.boundary import no_flux_bc, pad_array_with_ghosts
-from mfg_pde.geometry.boundary.applicator_base import ghost_cell_robin
 from mfg_pde.operators.stencils.finite_difference import (
     gradient_central,
     gradient_upwind,
+    laplacian_with_bc,
 )
 from mfg_pde.utils.pde_coefficients import CoefficientField, get_spatial_grid
 
@@ -99,11 +99,10 @@ def _compute_laplacian_1d(
     bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
 ) -> np.ndarray:
     """
-    Compute Laplacian for entire 1D array using BC-aware ghost cell method.
+    Compute Laplacian for entire 1D array using BC-aware computation.
 
-    Uses specialized ghost values for Laplacian stencil (different from gradient):
-    - Neumann (du/dx=g): ghost = U[1] - 2*Dx*g (reflection with flux offset)
-    - Dirichlet (u=g): ghost = 2*g - U[adjacent] (linear extrapolation)
+    Delegates to operators/stencils/finite_difference.laplacian_with_bc
+    for unified ghost cell handling, matching the nD path (Issue #639).
 
     Falls back to periodic BC if bc is None (backward compatibility).
 
@@ -111,81 +110,18 @@ def _compute_laplacian_1d(
         U_array: Solution array of shape (Nx,)
         Dx: Spatial grid spacing
         bc: Boundary conditions. If None, uses periodic BC.
-        domain_bounds: Domain bounds for BC computation (optional, unused here)
+        domain_bounds: Unused (kept for backward compatibility)
         time: Current time for time-dependent BCs
+        bc_values: DEPRECATED. Per-boundary BC values (Issue #574).
 
     Returns:
         Laplacian array of shape (Nx,) with d^2u/dx^2 at each point
-
-    Note:
-        Issue #542 fix. Validated in:
-        mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_validation.py
     """
     Nx = len(U_array)
     if Nx <= 1 or abs(Dx) < 1e-14:
         return np.zeros(Nx)
 
-    if bc is not None:
-        # Compute ghost values specifically for Laplacian stencil
-        # These differ from gradient ghost values!
-        ghost_left, ghost_right = _compute_laplacian_ghost_values_1d(
-            U_array,
-            bc,
-            Dx,
-            time,
-            bc_values=bc_values,  # Issue #574
-        )
-
-        # Build padded array
-        U_padded = np.concatenate([[ghost_left], U_array, [ghost_right]])
-
-        # Standard 3-point Laplacian stencil
-        laplacian = (U_padded[:-2] - 2 * U_padded[1:-1] + U_padded[2:]) / (Dx**2)
-    else:
-        # Periodic BC when no BC specified (backward compatibility)
-        U_left = np.roll(U_array, 1)
-        U_right = np.roll(U_array, -1)
-        laplacian = (U_left - 2 * U_array + U_right) / (Dx**2)
-    return laplacian
-
-
-def _compute_laplacian_ghost_values_1d(
-    U_array: np.ndarray,
-    bc: BoundaryConditions,
-    Dx: float,
-    time: float = 0.0,
-    bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
-) -> tuple[float, float]:
-    """
-    Compute ghost values for Laplacian stencil at left and right boundaries.
-
-    For second-derivative stencil (U[i-1] - 2*U[i] + U[i+1]) / dx^2:
-
-    Neumann BC (du/dx = g at boundary):
-        - For Laplacian symmetry at boundary, use reflection with flux:
-        - ghost = U[adjacent] - 2*dx*g (if g=0, ghost = U[adjacent])
-
-    Dirichlet BC (u = g at boundary):
-        - Linear extrapolation for second-order accuracy:
-        - ghost = 2*g - U[adjacent]
-
-    Args:
-        U_array: Solution array of shape (Nx,)
-        bc: Boundary conditions
-        Dx: Grid spacing
-        time: Current time for time-dependent BCs
-
-    Returns:
-        Tuple (ghost_left, ghost_right)
-    """
-    from mfg_pde.geometry.boundary.types import BCType
-
-    # Issue #638: Use _get_bc_info_1d to get full Robin BC parameters (alpha, beta)
-    left_type, left_value, left_alpha, left_beta = _get_bc_info_1d(bc, "left", time)
-    right_type, right_value, right_alpha, right_beta = _get_bc_info_1d(bc, "right", time)
-
-    # Issue #574: bc_values parameter deprecated - BC framework now handles Robin BC automatically
-    # No manual override needed - proper Robin BC segments are created in HJBFDMSolver
+    # Issue #574: bc_values parameter deprecated — Robin BC framework handles this
     if bc_values is not None:
         import warnings
 
@@ -194,148 +130,11 @@ def _compute_laplacian_ghost_values_1d(
             "Adjoint-consistent BC is now handled via proper Robin BC segments. "
             "This parameter will be removed in v0.18.0.",
             DeprecationWarning,
-            stacklevel=3,  # Stack depth to show caller of newton_hjb_step
+            stacklevel=3,
         )
 
-    # Compute ghost for left boundary (x_min)
-    # For Laplacian, use standard FDM boundary stencils
-    if left_type == BCType.NEUMANN:
-        # For Neumann du/dx = g: ghost = U[0] + 2*dx*g (forward difference)
-        # This preserves the flux: (ghost - U[0])/(2*dx) ≈ g
-        # For g=0: ghost = U[0] (symmetric reflection)
-        ghost_left = U_array[0] + 2 * Dx * left_value
-    elif left_type == BCType.DIRICHLET:
-        # For Dirichlet u(0) = g: ghost = 2*g - U[0] (linear extrapolation)
-        ghost_left = 2 * left_value - U_array[0]
-    elif left_type == BCType.ROBIN:
-        # Issue #638: Robin BC alpha*u + beta*du/dn = g
-        # Left boundary has outward normal pointing in -x direction (sign = -1)
-        ghost_left = ghost_cell_robin(
-            interior_value=U_array[0],
-            rhs_value=left_value,
-            alpha=left_alpha,
-            beta=left_beta,
-            dx=Dx,
-            outward_normal_sign=-1.0,
-        )
-    elif left_type == BCType.PERIODIC:
-        ghost_left = U_array[-1]
-    else:
-        # Issue #638: Fail fast - unknown BC type should not silently fallback
-        raise ValueError(
-            f"Unsupported BC type '{left_type}' at left boundary. Supported types: DIRICHLET, NEUMANN, ROBIN, PERIODIC."
-        )
-
-    # Compute ghost for right boundary (x_max)
-    if right_type == BCType.NEUMANN:
-        # For Neumann du/dx = g: ghost = U[-1] + 2*dx*g (backward difference)
-        # For g=0: ghost = U[-1] (symmetric reflection)
-        ghost_right = U_array[-1] + 2 * Dx * right_value
-    elif right_type == BCType.DIRICHLET:
-        # For Dirichlet u(L) = g: ghost = 2*g - U[-1] (linear extrapolation)
-        ghost_right = 2 * right_value - U_array[-1]
-    elif right_type == BCType.ROBIN:
-        # Issue #638: Robin BC alpha*u + beta*du/dn = g
-        # Right boundary has outward normal pointing in +x direction (sign = +1)
-        ghost_right = ghost_cell_robin(
-            interior_value=U_array[-1],
-            rhs_value=right_value,
-            alpha=right_alpha,
-            beta=right_beta,
-            dx=Dx,
-            outward_normal_sign=+1.0,
-        )
-    elif right_type == BCType.PERIODIC:
-        ghost_right = U_array[0]
-    else:
-        # Issue #638: Fail fast - unknown BC type should not silently fallback
-        raise ValueError(
-            f"Unsupported BC type '{right_type}' at right boundary. "
-            f"Supported types: DIRICHLET, NEUMANN, ROBIN, PERIODIC."
-        )
-
-    return ghost_left, ghost_right
-
-
-def _get_bc_type_and_value_1d(
-    bc: BoundaryConditions,
-    side: str,
-    time: float = 0.0,
-) -> tuple:
-    """
-    Extract BC type and value for a given side from BoundaryConditions.
-
-    Issue #527: Replace hasattr with try/except per CLAUDE.md guidelines.
-
-    Args:
-        bc: Boundary conditions object
-        side: "left" or "right"
-        time: Current time for time-dependent BCs
-
-    Returns:
-        Tuple (BCType, value)
-    """
-    from mfg_pde.geometry.boundary.types import BCType
-
-    # Handle unified BoundaryConditions
-    boundary_key = "x_min" if side == "left" else "x_max"
-
-    # Priority 1: Try unified interface (get_boundary_type method)
-    try:
-        bc_type = bc.get_boundary_type(boundary_key)
-        bc_value = bc.get_boundary_value(boundary_key, time=time)
-        if bc_value is None:
-            bc_value = 0.0
-        return bc_type, bc_value
-    except AttributeError:
-        pass  # No unified interface, try segment-based
-
-    # Priority 2: Try segment-based access for mixed BCs
-    try:
-        for seg in bc.segments:
-            if seg.boundary == boundary_key:
-                value = seg.value
-                if callable(value):
-                    value = value(time)
-                return seg.bc_type, value if value is not None else 0.0
-        # If no matching segment, use default
-        try:
-            default_value = bc.default_value
-        except AttributeError:
-            default_value = 0.0
-        return bc.default_type, default_value
-    except AttributeError:
-        pass  # No segments attribute, try legacy interface
-
-    # Priority 3: Legacy interface fallback (only for uniform BC)
-    # Note: For mixed BC, bc.type raises ValueError - this is intentional design
-    try:
-        bc_type_str = bc.type
-
-        if bc_type_str == "neumann" or bc_type_str == "no_flux":
-            bc_type = BCType.NEUMANN
-        elif bc_type_str == "dirichlet":
-            bc_type = BCType.DIRICHLET
-        elif bc_type_str == "periodic":
-            bc_type = BCType.PERIODIC
-        elif bc_type_str == "robin":
-            bc_type = BCType.ROBIN
-        else:
-            # Unknown type - default to Neumann for safety
-            bc_type = BCType.NEUMANN
-
-        # Get side-specific value
-        try:
-            value = bc.left_value if side == "left" else bc.right_value
-        except AttributeError:
-            value = 0.0
-        return bc_type, value if value is not None else 0.0
-    except (AttributeError, ValueError):
-        # Mixed BC or no type attribute - fall through to default
-        pass
-
-    # Default to Neumann zero
-    return BCType.NEUMANN, 0.0
+    # Delegate to unified stencil infrastructure (Issue #639)
+    return laplacian_with_bc(U_array, [Dx], bc=bc, time=time)
 
 
 def _get_bc_info_1d(
