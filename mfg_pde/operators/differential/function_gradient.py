@@ -241,13 +241,24 @@ def sdf_gradient_with_analytical_fallback(
 
     # Fallback to numerical
     if sdf_func is None:
-        # Try to get SDF function from geometry
-        if hasattr(geometry, "signed_distance"):
+        # Get SDF function from geometry via explicit interface (Issue #794)
+        # ImplicitGeometry ABC guarantees signed_distance(); getattr for legacy alias
+        from mfg_pde.geometry.base import ImplicitGeometry
+
+        if isinstance(geometry, ImplicitGeometry):
             sdf_func = geometry.signed_distance
-        elif hasattr(geometry, "sdf"):
-            sdf_func = geometry.sdf
         else:
-            raise ValueError("No SDF function provided and geometry has no signed_distance or sdf method")
+            # Legacy fallback: optional attribute access (CLAUDE.md getattr pattern)
+            sdf_candidate = getattr(geometry, "signed_distance", None)
+            if not callable(sdf_candidate):
+                sdf_candidate = getattr(geometry, "sdf", None)
+            if callable(sdf_candidate):
+                sdf_func = sdf_candidate
+            else:
+                raise ValueError(
+                    f"No SDF function provided and {type(geometry).__name__} "
+                    f"does not implement ImplicitGeometry or have signed_distance/sdf method"
+                )
 
     return function_gradient(sdf_func, points, eps=eps)
 

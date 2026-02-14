@@ -48,15 +48,16 @@ def _has_implicit_boundary(geometry: GeometryProtocol) -> bool:
     Returns:
         True if geometry has SDF-based boundary detection
     """
+    # Trait-first check (Issue #794, CLAUDE.md: no hasattr duck-typing)
+    from mfg_pde.geometry.traits import BoundaryAware, BoundaryDef
+
+    if isinstance(geometry, BoundaryAware):
+        return geometry.boundary_def == BoundaryDef.IMPLICIT
+
+    # Fallback for non-trait-aware geometries: use GeometryType enum
     from mfg_pde.geometry.protocol import GeometryType
 
-    # Dispatch by GeometryType enum, not hasattr duck-typing (CLAUDE.md)
-    if geometry.geometry_type == GeometryType.IMPLICIT:
-        return True
-
-    # For non-IMPLICIT types, check if sdf() is available as optional method
-    sdf_method = getattr(geometry, "sdf", None)
-    return callable(sdf_method)
+    return geometry.geometry_type == GeometryType.IMPLICIT
 
 
 def get_applicator_for_geometry(
