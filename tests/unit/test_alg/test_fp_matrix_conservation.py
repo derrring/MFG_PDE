@@ -684,6 +684,42 @@ class TestLinearConstraintMatrixAssembly:
         assert 0 in constraint.weights  # Should have weight for boundary cell
         assert constraint.bias == 0.0  # No bias term
 
+    def test_calculator_to_constraint_robin(self):
+        """Test Robin case: alpha*u + beta*du/dn = g gives correct ghost cell relation."""
+        from mfg_pde.geometry.boundary.applicator_base import (
+            RobinCalculator,
+            calculator_to_constraint,
+        )
+
+        dx = 0.1
+
+        # General Robin: alpha=1, beta=1, g=2
+        robin = RobinCalculator(alpha=1.0, beta=1.0, rhs_value=2.0)
+
+        # Min side: outward_sign = -1, beta_eff = -1
+        # denom = -1 + 0.2 = -0.8
+        # weight = (-1 - 0.2) / (-0.8) = 1.5
+        # bias = 2*2*0.1 / (-0.8) = -0.5
+        c_min = calculator_to_constraint(robin, dx, side="min")
+        assert abs(c_min.weights[0] - 1.5) < 1e-10
+        assert abs(c_min.bias - (-0.5)) < 1e-10
+
+        # Max side: outward_sign = +1, beta_eff = 1
+        # denom = 1 + 0.2 = 1.2
+        # weight = (1 - 0.2) / 1.2 = 2/3
+        # bias = 0.4 / 1.2 = 1/3
+        c_max = calculator_to_constraint(robin, dx, side="max")
+        assert abs(c_max.weights[0] - 2 / 3) < 1e-10
+        assert abs(c_max.bias - 1 / 3) < 1e-10
+
+        # Pure Neumann-like (alpha=0, beta=1, g=0.5) at min
+        # beta_eff = -1, denom = -1 + 0 = -1
+        # weight = (-1 - 0) / (-1) = 1.0, bias = 2*0.5*0.1/(-1) = -0.1
+        robin_neum = RobinCalculator(alpha=0.0, beta=1.0, rhs_value=0.5)
+        c_neum = calculator_to_constraint(robin_neum, dx, side="min")
+        assert abs(c_neum.weights[0] - 1.0) < 1e-10
+        assert abs(c_neum.bias - (-0.1)) < 1e-10
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
