@@ -215,8 +215,9 @@ class BCSegment:
     alpha: float = 1.0  # Weight on u (Dirichlet term)
     beta: float = 0.0  # Weight on du/dn (Neumann term)
 
-    # Rectangular domain matching
-    boundary: str | None = None
+    # Boundary matching: str for named boundaries ("x_min", "left"),
+    # int for Gmsh physical group tags (Issue #732 Tier 1)
+    boundary: str | int | None = None
     region: dict[str | int, tuple[float, float]] | None = None
 
     # SDF-based matching (general domains)

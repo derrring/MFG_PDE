@@ -875,10 +875,24 @@ def calculator_to_constraint(
             alpha = (2 * D + v_n * dx) / (2 * D - v_n * dx + 1e-14)
             return LinearConstraint(weights={0: alpha}, bias=0.0)
         else:
-            # General Robin: need to solve for alpha from α*u + β*∂u/∂n = g
-            # For matrix folding: u_ghost = f(α, β, g, dx) * u_inner + const
-            # This is more complex - use simplified form for now
-            return LinearConstraint(weights={0: 1.0}, bias=0.0)
+            # General Robin: α*u + β*(u_ghost - u_inner)/(2*dx) = g
+            # (central difference for du/dn, outward sign absorbed by side convention)
+            # Solving for u_ghost:
+            #   u_ghost = u_inner * (β - 2*α*dx) / (β + 2*α*dx) + 4*g*dx / (β + 2*α*dx)
+            # when β = 0 → Dirichlet; when α = 0 → Neumann (degenerate cases handled above)
+            alpha = calculator._alpha
+            beta = calculator._beta
+            g = calculator._rhs_value
+            outward_sign = 1.0 if side == "max" else -1.0
+            # Effective beta with outward sign
+            beta_eff = beta * outward_sign
+            denom = beta_eff + 2 * alpha * dx
+            if abs(denom) < 1e-14:
+                # Degenerate: fall back to copy (Neumann-like)
+                return LinearConstraint(weights={0: 1.0}, bias=0.0)
+            weight = (beta_eff - 2 * alpha * dx) / denom
+            bias = 2 * g * dx / denom
+            return LinearConstraint(weights={0: weight}, bias=bias)
 
     # Tier 4: Artificial constraints (Extrapolation)
     if isinstance(calculator, LinearExtrapolationCalculator):
