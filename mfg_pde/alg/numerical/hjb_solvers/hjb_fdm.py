@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
 from mfg_pde.geometry import TensorProductGrid  # Required to check geometry type
 from mfg_pde.utils.deprecation import deprecated_parameter
 from mfg_pde.utils.mfg_logging import get_logger
@@ -290,7 +289,17 @@ class HJBFDMSolver(BaseHJBSolver):
         # Initialize warning flags (Issue #545 - NO hasattr pattern)
         self._bc_warning_emitted: bool = False
 
+        # Cached Laplacian operator for nD diffusion (Issue #787)
+        self._laplacian_op: object | None = None
+
     # _detect_dimension() inherited from BaseNumericalSolver (Issue #633)
+
+    def _get_laplacian_op(self):
+        """Get (or create) cached Laplacian operator for diffusion term."""
+        if self._laplacian_op is None:
+            bc = self.get_boundary_conditions()
+            self._laplacian_op = self.problem.geometry.get_laplacian_operator(order=2, bc=bc)
+        return self._laplacian_op
 
     def solve_hjb_system(
         self,
@@ -764,180 +773,55 @@ class HJBFDMSolver(BaseHJBSolver):
     ) -> NDArray:
         """Evaluate Hamiltonian at all grid points with variable diffusion support.
 
-        Tries vectorized evaluation first (fast, includes batch HamiltonianBase path),
-        falls back to point-by-point (compatible).
-        Supports scalar and diagonal tensor diffusion.
+        Uses vectorized batch HamiltonianBase evaluation (Issue #784).
+        For scalar diffusion, includes the diffusion term -(sigma^2/2)*Laplacian(U)
+        following the 1D pattern in base_hjb.py:774-803 (Issue #787).
 
         Args:
             U: Value function at current timestep
             M: Density at current timestep
             gradients: Dictionary mapping dimension index to gradient arrays.
-                       Key d = ∂u/∂xd, Key -1 = function value U.
-            sigma_at_n: Scalar volatility coefficient (sigma) (None uses problem.sigma, float is constant, array is spatially varying)
-            Sigma_at_n: Tensor diffusion coefficient (None or tensor array). If provided and diagonal, computes
-                        H_viscosity = (1/2) Σᵢ σᵢ² pᵢ² separately and adds to running cost.
+                       Key d = dU/dxd.
+            sigma_at_n: Scalar volatility coefficient (sigma)
+            Sigma_at_n: Tensor diffusion coefficient (diagonal only)
             time: Current time for time-dependent Hamiltonians (default 0.0)
         """
-        # Try vectorized evaluation (10-50x faster than point-by-point)
-        try:
-            return self._evaluate_hamiltonian_vectorized(U, M, gradients, sigma_at_n, Sigma_at_n)
-        except (TypeError, AttributeError, ValueError):
-            # Fall back to point-by-point evaluation for compatibility
-            pass
-
-        # Point-by-point evaluation (fallback for non-vectorized Hamiltonians)
-        H_values = np.zeros(self.shape, dtype=np.float64)
-
-        # Determine which diffusion mode to use
-        use_tensor_diffusion = Sigma_at_n is not None
-
-        if not use_tensor_diffusion:
-            # Scalar diffusion mode
-            if sigma_at_n is None:
-                sigma_base = self.problem.sigma
-            else:
-                sigma_base = sigma_at_n
-
-        for multi_idx in np.ndindex(self.shape):
-            x_coords = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
-            m_at_point = M[multi_idx]
-
-            # Build gradient vector p from gradients dict
-            p = np.array([gradients[d][multi_idx] for d in range(self.dimension)])
-
-            # Build DerivativeTensors for Hamiltonian call
-            derivs = DerivativeTensors.from_gradient(p)
-
-            if use_tensor_diffusion:
-                # Tensor diffusion mode
-                # Get tensor at this point
-                if Sigma_at_n.ndim == 2:
-                    # Constant tensor
-                    Sigma_point = Sigma_at_n
-                else:
-                    # Spatially-varying tensor
-                    Sigma_point = Sigma_at_n[multi_idx]
-
-                # Check if diagonal (should be, given warning in solve_hjb_system)
-                if is_diagonal_tensor(Sigma_point):
-                    # Extract diagonal elements: σᵢ²
-                    sigma_squared = np.diag(Sigma_point)
-
-                    # Compute viscosity term: H_viscosity = (1/2) Σᵢ σᵢ² pᵢ²
-                    H_viscosity = 0.5 * np.sum(sigma_squared * p**2)
-
-                    # Compute running cost manually without viscosity term
-                    # Standard MFG: H = (coupling/2)|p|² + (sigma²/2)|p|² + V(x) + F(m)
-                    # We want:      H_running = (coupling/2)|p|² + V(x) + F(m)
-                    #               H_total = H_viscosity + H_running
-
-                    # Control cost using DerivativeTensors
-                    H_control = 0.5 * self.problem.coupling_coefficient * derivs.grad_norm_squared
-
-                    # Coupling term F(m) - typically G(m) where G'(m) = g(m)
-                    # For standard MFG: F(m) = 0 (coupling is only through g(m) in FP)
-                    # If custom components have coupling, it would be included
-                    H_coupling_m = 0.0
-
-                    # Potential V(x) if present
-                    # For now, assume V=0 unless custom components specify
-                    H_potential = 0.0
-
-                    H_running = H_control + H_coupling_m + H_potential
-                    H_values[multi_idx] = H_viscosity + H_running
-                else:
-                    # Non-diagonal tensor - not fully supported yet
-                    # Fall back to treating as diagonal (ignoring off-diagonal terms)
-                    import warnings
-
-                    warnings.warn(
-                        "Non-diagonal tensor detected during HJB evaluation. "
-                        "Full tensor support not implemented. Using diagonal approximation (ignoring off-diagonal terms).",
-                        UserWarning,
-                        stacklevel=2,
-                    )
-                    # Extract diagonal elements and ignore off-diagonal
-                    sigma_squared = np.diag(Sigma_point)
-
-                    # Compute viscosity with diagonal only: H_viscosity = (1/2) Σᵢ σᵢ² pᵢ²
-                    H_viscosity = 0.5 * np.sum(sigma_squared * p**2)
-
-                    # Compute running cost using DerivativeTensors
-                    H_control = 0.5 * self.problem.coupling_coefficient * derivs.grad_norm_squared
-                    H_coupling_m = 0.0
-                    H_potential = 0.0
-
-                    H_running = H_control + H_coupling_m + H_potential
-                    H_values[multi_idx] = H_viscosity + H_running
-
-            else:
-                # Scalar diffusion mode (original code)
-                # Get diffusion at this point
-                if isinstance(sigma_base, (int, float)):
-                    sigma_at_point = sigma_base
-                elif isinstance(sigma_base, np.ndarray):
-                    sigma_at_point = sigma_base[multi_idx]
-                else:
-                    sigma_at_point = self.problem.sigma
-
-                # Temporarily override problem.sigma for Hamiltonian evaluation
-                original_sigma = self.problem.sigma
-                self.problem.sigma = sigma_at_point
-
-                try:
-                    # Call problem Hamiltonian (try both interfaces)
-                    # Issue #545: Use try/except instead of hasattr
-                    try:
-                        H_values[multi_idx] = self.problem.hamiltonian(x_coords, m_at_point, p, t=0.0)
-                    except AttributeError:
-                        # Use new DerivativeTensors format
-                        # Legacy support via explicit exception handling
-                        try:
-                            H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=derivs)
-                        except TypeError:
-                            # Legacy: convert to multi-index dict format
-                            legacy_derivs = to_multi_index_dict(derivs)
-                            H_values[multi_idx] = self.problem.H(multi_idx, m_at_point, derivs=legacy_derivs)
-                        except AttributeError:
-                            raise AttributeError("Problem must have 'hamiltonian' or 'H' method") from None
-                finally:
-                    # Restore original sigma
-                    self.problem.sigma = original_sigma
-
-        return H_values
+        return self._evaluate_hamiltonian_vectorized(U, M, gradients, sigma_at_n, Sigma_at_n, time=time)
 
     def _evaluate_hamiltonian_vectorized(
-        self, U: NDArray, M: NDArray, gradients: dict[int, NDArray], sigma_at_n=None, Sigma_at_n=None
+        self,
+        U: NDArray,
+        M: NDArray,
+        gradients: dict[int, NDArray],
+        sigma_at_n=None,
+        Sigma_at_n=None,
+        time: float = 0.0,
     ) -> NDArray:
         """
-        Vectorized Hamiltonian evaluation across all grid points (10-50x faster than point-by-point).
+        Vectorized Hamiltonian evaluation across all grid points.
 
-        Tries batch HamiltonianBase first (Issue #784), then falls back to
-        problem.hamiltonian() legacy API.
+        Uses batch HamiltonianBase.__call__ for the convective part (Issue #784),
+        then adds -(sigma^2/2)*Laplacian(U) for the diffusion term (Issue #787).
+
+        For tensor diffusion, uses the existing diagonal approximation path.
 
         Args:
             U: Value function at current timestep
             M: Density at current timestep
             gradients: Dictionary mapping dimension index to gradient arrays.
-                       Key d = ∂u/∂xd.
+                       Key d = dU/dxd.
             sigma_at_n: Scalar volatility coefficient (sigma)
-            Sigma_at_n: Tensor diffusion coefficient
+            Sigma_at_n: Tensor diffusion coefficient (diagonal only)
+            time: Current time for time-dependent Hamiltonians
 
         Returns:
-            H_values: Hamiltonian evaluated at all grid points
-
-        Raises:
-            TypeError: If problem.hamiltonian doesn't support vectorized evaluation
-            AttributeError: If required attributes are missing
-            ValueError: If array shapes are incompatible
+            H_values: Hamiltonian evaluated at all grid points, shape self.shape
         """
         # Build x_grid: (N_total_points, dimension)
-        # Use meshgrid to get coordinates at all points, then flatten
         coord_grids = np.meshgrid(*self.grid.coordinates, indexing="ij")
         x_grid = np.stack([g.ravel() for g in coord_grids], axis=-1)  # (N_total, d)
 
         # Build p_grid: (N_total_points, dimension)
-        # Extract first-order derivatives for each spatial dimension using new format
         p_components = []
         for d in range(self.dimension):
             if d in gradients:
@@ -949,81 +833,52 @@ class HJBFDMSolver(BaseHJBSolver):
         # Flatten density
         m_grid = M.ravel()  # (N_total,)
 
-        # Handle diffusion coefficient
-        use_tensor_diffusion = Sigma_at_n is not None
-
-        if use_tensor_diffusion:
-            # Tensor diffusion mode
+        if Sigma_at_n is not None:
+            # Tensor diffusion mode — diagonal approximation
             if Sigma_at_n.ndim == 2:
-                # Constant tensor - check if diagonal
                 if not is_diagonal_tensor(Sigma_at_n):
-                    raise ValueError(
-                        "Vectorized Hamiltonian evaluation only supports diagonal tensor diffusion. "
-                        "Non-diagonal tensors require point-by-point evaluation."
+                    import warnings
+
+                    warnings.warn(
+                        "Non-diagonal tensor diffusion detected. "
+                        "Using diagonal approximation (ignoring off-diagonal terms).",
+                        UserWarning,
+                        stacklevel=3,
                     )
-                # Extract diagonal: σᵢ²
                 sigma_squared = np.diag(Sigma_at_n)  # (d,)
-                # Broadcast to all points: (N_total, d)
                 sigma_squared_grid = np.tile(sigma_squared, (x_grid.shape[0], 1))
             else:
-                # Spatially-varying tensor - check if diagonal
                 if not is_diagonal_tensor(Sigma_at_n):
-                    raise ValueError(
-                        "Vectorized Hamiltonian evaluation only supports diagonal tensor diffusion. "
-                        "Non-diagonal tensors require point-by-point evaluation."
+                    import warnings
+
+                    warnings.warn(
+                        "Non-diagonal tensor diffusion detected. "
+                        "Using diagonal approximation (ignoring off-diagonal terms).",
+                        UserWarning,
+                        stacklevel=3,
                     )
-                # Extract diagonal elements at each point: (*shape, d)
                 sigma_squared_grid = np.diagonal(Sigma_at_n, axis1=-2, axis2=-1).reshape(-1, self.dimension)
 
-            # Compute viscosity term: H_viscosity = (1/2) Σᵢ σᵢ² pᵢ²
-            H_viscosity = 0.5 * np.sum(sigma_squared_grid * p_grid**2, axis=1)  # (N_total,)
+            # H_viscosity = (1/2) Sigma_i sigma_i^2 p_i^2
+            H_viscosity = 0.5 * np.sum(sigma_squared_grid * p_grid**2, axis=1)
 
-            # Compute running cost without viscosity: |∇u|² = Σᵢ pᵢ²
-            p_squared_norm = np.sum(p_grid**2, axis=1)  # (N_total,)
+            p_squared_norm = np.sum(p_grid**2, axis=1)
             H_control = 0.5 * self.problem.coupling_coefficient * p_squared_norm
-            H_coupling_m = 0.0  # Standard MFG has no direct m-coupling in H
-            H_potential = 0.0  # Assume V=0 unless custom components
-
-            H_running = H_control + H_coupling_m + H_potential
-            H_values_flat = H_viscosity + H_running
+            H_values_flat = H_viscosity + H_control
 
         else:
-            # Scalar diffusion mode
-            # Try batch HamiltonianBase first (Issue #784, follows PR #781 pattern)
-            H_class = getattr(self.problem, "hamiltonian_class", None)
-            if H_class is not None:
-                H_values_flat = np.asarray(H_class(x_grid, m_grid, p_grid, t=0.0), dtype=float)
-            else:
-                # Legacy path: try problem.hamiltonian() with sigma parameter
-                if sigma_at_n is None:
-                    sigma_val = self.problem.sigma
-                else:
-                    sigma_val = sigma_at_n
+            # Scalar diffusion mode — batch HamiltonianBase (Issue #784)
+            # hamiltonian_class is guaranteed by MFGComponents (Issue #670)
+            H_class = self.problem.hamiltonian_class
+            H_convective = np.asarray(H_class(x_grid, m_grid, p_grid, t=time), dtype=float)
 
-                # Prepare sigma for Hamiltonian call
-                if isinstance(sigma_val, (int, float)):
-                    sigma_for_call = sigma_val
-                elif isinstance(sigma_val, np.ndarray):
-                    sigma_for_call = sigma_val.ravel()  # (N_total,)
-                else:
-                    sigma_for_call = self.problem.sigma
+            # Diffusion term: -(sigma^2/2) * Laplacian(U) (Issue #787)
+            # Follows 1D pattern in base_hjb.py:774-803
+            sigma = sigma_at_n if sigma_at_n is not None else self.problem.sigma
+            lap_u = self._get_laplacian_op()(U).ravel()
+            H_values_flat = H_convective - 0.5 * sigma**2 * lap_u
 
-                # Call problem.hamiltonian with vectorized inputs
-                # Issue #545: Use try/except instead of hasattr
-                try:
-                    # Signature: hamiltonian(x, m, p, t=0.0, sigma=...)
-                    H_values_flat = self.problem.hamiltonian(x_grid, m_grid, p_grid, t=0.0, sigma=sigma_for_call)
-                except AttributeError:
-                    # Old interface - doesn't support vectorization
-                    try:
-                        _ = self.problem.H
-                        raise TypeError("Problem.H interface does not support vectorized evaluation")
-                    except AttributeError:
-                        raise AttributeError("Problem must have 'hamiltonian' or 'H' method") from None
-
-        # Reshape back to grid shape
-        H_values = H_values_flat.reshape(self.shape)
-        return H_values
+        return H_values_flat.reshape(self.shape)
 
     # =========================================================================
     # Strict Adjoint Mode (Issue #622)
