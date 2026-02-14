@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from mfg_pde.geometry import TensorProductGrid  # Required to check geometry type
+from mfg_pde.geometry.base import CartesianGrid  # nD FDM needs structured grid ABC
 from mfg_pde.utils.deprecation import deprecated_parameter
 from mfg_pde.utils.mfg_logging import get_logger
 from mfg_pde.utils.numerical import FixedPointSolver, NewtonSolver
@@ -243,9 +243,12 @@ class HJBFDMSolver(BaseHJBSolver):
 
         # For nD, extract grid info and create nonlinear solver
         if self.dimension > 1:
-            # We already imported TensorProductGrid at the top.
-            if not isinstance(problem.geometry, TensorProductGrid):
-                raise ValueError("nD FDM requires problem with TensorProductGrid geometry")
+            # nD FDM requires a structured grid with get_grid_shape/get_grid_spacing.
+            # CartesianGrid ABC guarantees these methods (Issue #732 Tier 1b).
+            if not isinstance(problem.geometry, CartesianGrid):
+                raise ValueError(
+                    f"nD FDM requires CartesianGrid geometry (structured grid). Got {type(problem.geometry).__name__}."
+                )
 
             self.grid = problem.geometry  # Geometry IS the grid
             self.shape = tuple(self.grid.get_grid_shape())

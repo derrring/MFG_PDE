@@ -34,6 +34,7 @@ from mfg_pde.geometry.protocols import (
     SupportsLipschitz,
     SupportsManifold,
 )
+from mfg_pde.geometry.traits import BoundaryDef, ConnectivityType, StructureType
 from mfg_pde.utils.mfg_logging import get_logger
 
 # Module logger
@@ -85,6 +86,23 @@ class ImplicitDomain(
         GeometryType.IMPLICIT regardless of dimension or specific shape.
         """
         return GeometryType.IMPLICIT
+
+    # --- Trait properties (Issue #732 Tier 1b) ---
+
+    @property
+    def connectivity_type(self) -> ConnectivityType:
+        """Dynamic: neighbors via runtime spatial search (meshfree)."""
+        return ConnectivityType.DYNAMIC
+
+    @property
+    def structure_type(self) -> StructureType:
+        """Unstructured: scattered point cloud."""
+        return StructureType.UNSTRUCTURED
+
+    @property
+    def boundary_def(self) -> BoundaryDef:
+        """Implicit: boundary defined by SDF phi(x) = 0."""
+        return BoundaryDef.IMPLICIT
 
     @property
     def num_spatial_points(self) -> int:
