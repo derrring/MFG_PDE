@@ -49,13 +49,17 @@ from .io import load_solver_config, save_solver_config, validate_yaml_config
 
 # MFG method configurations (unified)
 from .mfg_methods import (
+    BoundaryAccuracyConfig,
+    DerivativeConfig,
     FDMConfig,
     FPConfig,
     GFDMConfig,
     HJBConfig,
+    NeighborhoodConfig,
     NetworkConfig,
     NewtonConfig,
     ParticleConfig,
+    QPConfig,
     SLConfig,
     WENOConfig,
 )
@@ -95,8 +99,12 @@ __all__ = [
     "BackendConfig",
     "LoggingConfig",
     # Method configs (unified)
+    "BoundaryAccuracyConfig",
+    "DerivativeConfig",
     "FDMConfig",
     "GFDMConfig",
+    "NeighborhoodConfig",
+    "QPConfig",
     "SLConfig",
     "WENOConfig",
     "ParticleConfig",

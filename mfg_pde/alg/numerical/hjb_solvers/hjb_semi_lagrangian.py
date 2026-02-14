@@ -627,56 +627,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
         return cfl, n_substeps, dt_substep
 
-    def _get_boundary_conditions(self):
-        """
-        Retrieve BC from geometry or problem.
-
-        Priority order:
-        1. geometry.boundary_conditions (attribute)
-        2. geometry.get_boundary_conditions() (method)
-        3. problem.boundary_conditions (attribute)
-        4. problem.get_boundary_conditions() (method)
-
-        Returns:
-            BoundaryConditions object or None if not available
-
-        Note:
-            Issue #545: Centralized BC retrieval (NO hasattr pattern).
-            Consolidates duplicate BC detection logic from lines 935-940, 1066-1069.
-        """
-        # Priority 1: geometry.boundary_conditions
-        try:
-            bc = self.problem.geometry.boundary_conditions
-            if bc is not None:
-                return bc
-        except AttributeError:
-            pass
-
-        # Priority 2: geometry.get_boundary_conditions()
-        try:
-            bc = self.problem.geometry.get_boundary_conditions()
-            if bc is not None:
-                return bc
-        except AttributeError:
-            pass
-
-        # Priority 3: problem.boundary_conditions
-        try:
-            bc = self.problem.boundary_conditions
-            if bc is not None:
-                return bc
-        except AttributeError:
-            pass
-
-        # Priority 4: problem.get_boundary_conditions()
-        try:
-            bc = self.problem.get_boundary_conditions()
-            if bc is not None:
-                return bc
-        except AttributeError:
-            pass
-
-        return None
+    # _get_boundary_conditions() removed (Issue #634): was duplicating
+    # BaseMFGSolver.get_boundary_conditions() from base_solver.py:175-234.
+    # All callers now use the inherited get_boundary_conditions().
 
     def _get_bc_type_string(self, bc) -> str | None:
         """
@@ -768,7 +721,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             Solution with BCs enforced (modified in-place)
         """
-        bc = self._get_boundary_conditions()
+        bc = self.get_boundary_conditions()
         if bc is None:
             return U
 
@@ -1001,7 +954,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             U_current = self._apply_diffusion(U_star, self.dt)
 
             # Step 3: Enforce boundary conditions on solution using the applicator
-            bc = self._get_boundary_conditions()
+            bc = self.get_boundary_conditions()
             if bc:
                 time = time_idx * self.dt
                 U_current = self.bc_applicator.enforce_values(
@@ -1374,7 +1327,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             # Apply boundary conditions
             # Issue #702: Use centralized bc_utils for consistent BC handling
-            bc = self._get_boundary_conditions()
+            bc = self.get_boundary_conditions()
             bc_type = get_bc_type_string(bc)
             bc_op = bc_type_to_geometric_operation(bc_type)
 
@@ -1398,7 +1351,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             )
 
             # Issue #702: Use centralized bc_utils for consistent BC handling
-            bc = self._get_boundary_conditions()
+            bc = self.get_boundary_conditions()
             bc_type = get_bc_type_string(bc)
             bc_op = bc_type_to_geometric_operation(bc_type)
 
@@ -1506,7 +1459,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
 
             # Handle boundary points - get BC type once
             # Issue #545: Use centralized BC retrieval (NO hasattr)
-            bc = self._get_boundary_conditions()
+            bc = self.get_boundary_conditions()
             bc_type = self._get_bc_type_string(bc)
 
             if i == 0:
@@ -1925,7 +1878,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             BC type for all boundary points. Mixed BC support would require
             querying BC segments based on point spatial coordinates.
         """
-        bc = self._get_boundary_conditions()
+        bc = self.get_boundary_conditions()
         if bc is None:
             return "none"
 
