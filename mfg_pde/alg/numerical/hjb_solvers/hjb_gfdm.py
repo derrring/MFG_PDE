@@ -17,7 +17,8 @@ from mfg_pde.alg.numerical.gfdm_components import (
     NeighborhoodBuilder,
     PrecomputedMonotoneStencils,
 )
-from mfg_pde.geometry.boundary import BCType, DiscretizationType
+from mfg_pde.geometry.boundary.applicator_base import DiscretizationType
+from mfg_pde.geometry.boundary.types import BCType
 from mfg_pde.utils.mfg_logging import get_logger
 
 # Legacy operator for backward compatibility (deprecated)

@@ -41,74 +41,125 @@ Usage:
 """
 
 # =============================================================================
-# Solver BC Protocol (Issue #545 - Unified BC handling across all solvers)
-# =============================================================================
-
-# =============================================================================
-# Variational Inequality Constraints (Issue #591 - Tier 2 BCs)
-# =============================================================================
-# =============================================================================
-# Base Classes and Protocols (applicator hierarchy)
-# =============================================================================
-# Deprecated ghost value functions (Issue #577)
-# DEPRECATED: Use pad_array_with_ghosts() instead
-from ._compat import get_ghost_values_nd
-from .applicator_base import (
-    # Base classes
-    BaseBCApplicator,
-    BaseGraphApplicator,
-    BaseMeshfreeApplicator,
-    BaseStructuredApplicator,
-    BaseUnstructuredApplicator,
-    # Protocols
-    BCApplicatorProtocol,
-    BoundaryCalculator,
-    BoundaryCapable,
-    # Topology implementations (Issue #516)
-    BoundedTopology,
-    # Calculator implementations (physics-based naming)
-    DirichletCalculator,
-    # Enums
-    DiscretizationType,
-    FPNoFluxCalculator,  # -> ZeroFluxCalculator
-    GridType,
-    LinearExtrapolationCalculator,
-    NeumannCalculator,
-    # Backward compatibility aliases
-    NoFluxCalculator,  # -> ZeroGradientCalculator
-    PeriodicTopology,
-    QuadraticExtrapolationCalculator,
-    RobinCalculator,
-    Topology,
-    ZeroFluxCalculator,  # J·n = 0 (mass conservation)
-    ZeroGradientCalculator,  # du/dn = 0 (edge extension)
-    # Physics-aware ghost cell (for advection-diffusion/FP)
-    ghost_cell_advection_diffusion_no_flux,
-    # Ghost cell helpers (2nd-order)
-    ghost_cell_dirichlet,
-    ghost_cell_fp_no_flux,
-    # Extrapolation ghost cell (for unbounded domains)
-    ghost_cell_linear_extrapolation,
-    ghost_cell_neumann,
-    ghost_cell_quadratic_extrapolation,
-    ghost_cell_robin,
-    # High-order ghost cell extrapolation (4th/5th order for WENO)
-    high_order_ghost_dirichlet,
-    high_order_ghost_neumann,
-)
-
-# =============================================================================
 # FDM Applicator (ghost cell method for structured grids)
 # =============================================================================
+# Internal implementation details — kept importable for backward compat
+# but not part of public API (__all__). Import directly from submodule:
+#   from mfg_pde.geometry.boundary.applicator_base import DirichletCalculator
+#   from mfg_pde.geometry.boundary.applicator_fdm import PreallocatedGhostBuffer
+from ._compat import get_ghost_values_nd as get_ghost_values_nd
+from .applicator_base import (
+    BaseBCApplicator as BaseBCApplicator,
+)
+from .applicator_base import (
+    BaseGraphApplicator as BaseGraphApplicator,
+)
+from .applicator_base import (
+    BaseMeshfreeApplicator as BaseMeshfreeApplicator,
+)
+from .applicator_base import (
+    BaseStructuredApplicator as BaseStructuredApplicator,
+)
+from .applicator_base import (
+    BaseUnstructuredApplicator as BaseUnstructuredApplicator,
+)
+from .applicator_base import (
+    BCApplicatorProtocol as BCApplicatorProtocol,
+)
+from .applicator_base import (
+    BoundaryCalculator as BoundaryCalculator,
+)
+from .applicator_base import (
+    BoundaryCapable as BoundaryCapable,
+)
+from .applicator_base import (
+    BoundedTopology as BoundedTopology,
+)
+from .applicator_base import (
+    DirichletCalculator as DirichletCalculator,
+)
+from .applicator_base import (
+    DiscretizationType as DiscretizationType,
+)
+from .applicator_base import (
+    FPNoFluxCalculator as FPNoFluxCalculator,
+)
+from .applicator_base import (
+    GridType as GridType,
+)
+from .applicator_base import (
+    LinearExtrapolationCalculator as LinearExtrapolationCalculator,
+)
+from .applicator_base import (
+    NeumannCalculator as NeumannCalculator,
+)
+from .applicator_base import (
+    NoFluxCalculator as NoFluxCalculator,
+)
+from .applicator_base import (
+    PeriodicTopology as PeriodicTopology,
+)
+from .applicator_base import (
+    QuadraticExtrapolationCalculator as QuadraticExtrapolationCalculator,
+)
+from .applicator_base import (
+    RobinCalculator as RobinCalculator,
+)
+from .applicator_base import (
+    Topology as Topology,
+)
+from .applicator_base import (
+    ZeroFluxCalculator as ZeroFluxCalculator,
+)
+from .applicator_base import (
+    ZeroGradientCalculator as ZeroGradientCalculator,
+)
+from .applicator_base import (
+    ghost_cell_advection_diffusion_no_flux as ghost_cell_advection_diffusion_no_flux,
+)
+from .applicator_base import (
+    ghost_cell_dirichlet as ghost_cell_dirichlet,
+)
+from .applicator_base import (
+    ghost_cell_fp_no_flux as ghost_cell_fp_no_flux,
+)
+from .applicator_base import (
+    ghost_cell_linear_extrapolation as ghost_cell_linear_extrapolation,
+)
+from .applicator_base import (
+    ghost_cell_neumann as ghost_cell_neumann,
+)
+from .applicator_base import (
+    ghost_cell_quadratic_extrapolation as ghost_cell_quadratic_extrapolation,
+)
+from .applicator_base import (
+    ghost_cell_robin as ghost_cell_robin,
+)
+from .applicator_base import (
+    high_order_ghost_dirichlet as high_order_ghost_dirichlet,
+)
+from .applicator_base import (
+    high_order_ghost_neumann as high_order_ghost_neumann,
+)
 from .applicator_fdm import (
     FDMApplicator,
-    GhostBuffer,
-    GhostCellConfig,
-    PreallocatedGhostBuffer,
-    bc_to_topology_calculator,
-    create_ghost_buffer_from_bc,
     # Concrete function API (Issue #577 - preferred)
     pad_array_with_ghosts,
+)
+from .applicator_fdm import (
+    GhostBuffer as GhostBuffer,
+)
+from .applicator_fdm import (
+    GhostCellConfig as GhostCellConfig,
+)
+from .applicator_fdm import (
+    PreallocatedGhostBuffer as PreallocatedGhostBuffer,
+)
+from .applicator_fdm import (
+    bc_to_topology_calculator as bc_to_topology_calculator,
+)
+from .applicator_fdm import (
+    create_ghost_buffer_from_bc as create_ghost_buffer_from_bc,
 )
 
 # =============================================================================
@@ -206,8 +257,10 @@ from .applicator_particle import ParticleApplicator
 from .bc_coupling import (
     compute_adjoint_consistent_bc_values,
     compute_boundary_log_density_gradient_1d,
-    compute_coupled_hjb_bc_values,  # Backward compat alias
     create_adjoint_consistent_bc_1d,
+)
+from .bc_coupling import (
+    compute_coupled_hjb_bc_values as compute_coupled_hjb_bc_values,
 )
 
 # BC utilities for solver-agnostic BC type detection (Issue #702)
@@ -219,15 +272,17 @@ from .bc_utils import (
 # Unified BoundaryConditions class and factory functions
 from .conditions import (
     BoundaryConditions,
-    MixedBoundaryConditions,  # Alias for backward compatibility
     dirichlet_bc,
     mixed_bc,
-    mixed_bc_from_regions,  # Issue #596 Phase 2.5
+    mixed_bc_from_regions,
     neumann_bc,
     no_flux_bc,
     periodic_bc,
     robin_bc,
     uniform_bc,
+)
+from .conditions import (
+    MixedBoundaryConditions as MixedBoundaryConditions,
 )
 from .constraint_protocol import ConstraintProtocol
 from .constraints import BilateralConstraint, ObstacleConstraint
@@ -244,7 +299,9 @@ from .corner import (
     reflect_velocity,
     reflect_velocity_with_normal,
     validate_corner_strategy,
-    wrap_positions,  # Deprecated - use periodic.wrap_positions
+)
+from .corner import (
+    wrap_positions as wrap_positions,
 )
 
 # =============================================================================
@@ -330,68 +387,14 @@ LegacyBoundaryConditions1D = BoundaryConditions1DFDM
 compute_boundary_log_density_gradient = compute_boundary_log_density_gradient_1d
 
 __all__ = [
-    # Solver BC Protocol (Issue #545)
-    "BoundaryHandler",
-    "AdvancedBoundaryHandler",
-    "validate_boundary_handler",
-    # Variational Inequality Constraints (Issue #591)
-    "ConstraintProtocol",
-    "ObstacleConstraint",
-    "BilateralConstraint",
-    # Base classes and protocols
-    "DiscretizationType",
-    "GridType",
-    "BCApplicatorProtocol",
-    "BoundaryCapable",
-    "Topology",
-    "BoundaryCalculator",
-    "BaseBCApplicator",
-    "BaseStructuredApplicator",
-    "BaseUnstructuredApplicator",
-    "BaseMeshfreeApplicator",
-    "BaseGraphApplicator",
-    # Topology implementations (Issue #516)
-    "PeriodicTopology",
-    "BoundedTopology",
-    # Calculator implementations (Issue #516)
-    "DirichletCalculator",
-    "NeumannCalculator",
-    "RobinCalculator",
-    "NoFluxCalculator",
-    "LinearExtrapolationCalculator",
-    "QuadraticExtrapolationCalculator",
-    "FPNoFluxCalculator",
-    # Ghost cell helper functions
-    "ghost_cell_dirichlet",
-    "ghost_cell_neumann",
-    "ghost_cell_robin",
-    # High-order ghost cell extrapolation (4th/5th order for WENO)
-    "high_order_ghost_dirichlet",
-    "high_order_ghost_neumann",
-    # Physics-aware ghost cell (for advection-diffusion/FP)
-    "ghost_cell_fp_no_flux",
-    "ghost_cell_advection_diffusion_no_flux",
-    # Extrapolation ghost cell (for unbounded domains)
-    "ghost_cell_linear_extrapolation",
-    "ghost_cell_quadratic_extrapolation",
-    # Core types
+    # =========================================================================
+    # Core Types (dimension-agnostic BC specification)
+    # =========================================================================
     "BCType",
     "BCSegment",
     "create_standard_boundary_names",
-    # BC utilities (Issue #702)
-    "bc_type_to_geometric_operation",
-    "get_bc_type_string",
-    # Dynamic BC Value Providers (Issue #625)
-    "BCValueProvider",
-    "BaseBCValueProvider",
-    "AdjointConsistentProvider",
-    "ConstantProvider",
-    "is_provider",
-    "resolve_provider",
-    # Unified BC class
+    # Unified BC class and factory functions
     "BoundaryConditions",
-    "MixedBoundaryConditions",
-    # Factory functions (uniform BCs)
     "uniform_bc",
     "periodic_bc",
     "dirichlet_bc",
@@ -399,27 +402,46 @@ __all__ = [
     "no_flux_bc",
     "robin_bc",
     "mixed_bc",
-    "mixed_bc_from_regions",  # Issue #596 Phase 2.5
-    # Physics-based Calculator names (preferred)
-    "ZeroGradientCalculator",  # du/dn = 0 (edge extension)
-    "ZeroFluxCalculator",  # J·n = 0 (mass conservation)
-    # FDM Applicator (Topology/Calculator composition - Issue #516)
-    "GhostBuffer",
-    "bc_to_topology_calculator",
-    "create_ghost_buffer_from_bc",
+    "mixed_bc_from_regions",
+    # =========================================================================
+    # Dynamic BC Value Providers (Issue #625)
+    # =========================================================================
+    "BCValueProvider",
+    "BaseBCValueProvider",
+    "AdjointConsistentProvider",
+    "ConstantProvider",
+    "is_provider",
+    "resolve_provider",
+    # =========================================================================
+    # Solver BC Protocol (Issue #545)
+    # =========================================================================
+    "BoundaryHandler",
+    "AdvancedBoundaryHandler",
+    "validate_boundary_handler",
+    # =========================================================================
+    # Variational Inequality Constraints (Issue #591)
+    # =========================================================================
+    "ConstraintProtocol",
+    "ObstacleConstraint",
+    "BilateralConstraint",
+    # =========================================================================
+    # BC utilities (Issue #702)
+    # =========================================================================
+    "bc_type_to_geometric_operation",
+    "get_bc_type_string",
+    # =========================================================================
+    # Applicators (public API)
+    # =========================================================================
+    # FDM (ghost cell method for structured grids)
     "FDMApplicator",
-    "GhostCellConfig",
-    "PreallocatedGhostBuffer",
     "pad_array_with_ghosts",
-    # FEM Applicator - dispatchers
+    # FEM (mesh-based method for unstructured grids)
     "FEMApplicator",
-    "MFGBoundaryHandlerFEM",
-    # FEM base class alias
     "BoundaryConditionFEM",
-    # FEM Applicator - managers
+    "MFGBoundaryHandlerFEM",
     "BoundaryManager",
     "GeometricBoundaryCondition",
-    # FEM 1D classes
+    # FEM dimension-specific classes
     "BoundaryCondition1D",
     "BoundaryConditionManager1D",
     "DirichletBC1D",
@@ -428,7 +450,6 @@ __all__ = [
     "PeriodicBC1D",
     "MFGBoundaryHandler1D",
     "create_interval_boundary_conditions",
-    # FEM 2D classes
     "BoundaryCondition2D",
     "BoundaryConditionManager2D",
     "DirichletBC2D",
@@ -438,7 +459,6 @@ __all__ = [
     "MFGBoundaryHandler2D",
     "create_rectangle_boundary_conditions",
     "create_circle_boundary_conditions",
-    # FEM 3D classes
     "BoundaryCondition3D",
     "BoundaryConditionManager3D",
     "DirichletBC3D",
@@ -448,33 +468,9 @@ __all__ = [
     "MFGBoundaryHandler3D",
     "create_box_boundary_conditions",
     "create_sphere_boundary_conditions",
-    # Helper functions
     "get_bc_class",
     "get_manager_class",
-    # Shared BC Enforcement Utilities (Issue #636)
-    "enforce_dirichlet_value_nd",
-    "enforce_neumann_value_nd",
-    "enforce_periodic_value_nd",
-    "enforce_robin_value_nd",
-    # Implicit Applicator (dual geometry: grid + SDF - Issue #637)
-    "ImplicitApplicator",
-    "create_implicit_applicator",
-    # Interpolation Applicator (Semi-Lagrangian, particle, RBF - Issue #636)
-    "InterpolationApplicator",
-    "create_interpolation_applicator",
-    # Meshfree Applicator (geometry-based)
-    "MeshfreeApplicator",
-    "ParticleReflector",
-    "SDFParticleBCHandler",
-    # Particle Applicator (BC-segment-based)
-    "ParticleApplicator",
-    # BC Coupling (for coupled MFG systems - Issue #574)
-    "compute_adjoint_consistent_bc_values",
-    "create_adjoint_consistent_bc_1d",
-    "compute_boundary_log_density_gradient_1d",
-    "compute_boundary_log_density_gradient",  # Backward compat alias (deprecated)
-    "compute_coupled_hjb_bc_values",  # Backward compat alias (deprecated)
-    # Graph Applicator
+    # Graph (graph, network, maze domains)
     "GraphApplicator",
     "GraphBCConfig",
     "GraphBCType",
@@ -482,29 +478,53 @@ __all__ = [
     "EdgeBC",
     "create_graph_applicator",
     "create_maze_applicator",
-    # 1D FDM boundary conditions
-    "BoundaryConditions1DFDM",
-    "LegacyBoundaryConditions1D",  # Backward compat alias
-    # Deprecated functions (Issue #577 - use pad_array_with_ghosts instead)
-    "get_ghost_values_nd",
+    # Implicit (dual geometry: structured grid + SDF - Issue #637)
+    "ImplicitApplicator",
+    "create_implicit_applicator",
+    # Interpolation (Semi-Lagrangian, particle, RBF - Issue #636)
+    "InterpolationApplicator",
+    "create_interpolation_applicator",
+    # Meshfree (geometry-based collocation methods)
+    "MeshfreeApplicator",
+    "ParticleReflector",
+    "SDFParticleBCHandler",
+    # Particle (BC-segment-based Lagrangian solvers)
+    "ParticleApplicator",
+    # =========================================================================
     # BC Dispatch (unified entry point for solvers - Issue #527)
+    # =========================================================================
     "apply_bc",
     "get_applicator_for_geometry",
     "validate_bc_compatibility",
-    # Corner Handling (Issue #521) - for NON-PERIODIC boundaries
+    # =========================================================================
+    # BC Enforcement Utilities (Issue #636)
+    # =========================================================================
+    "enforce_dirichlet_value_nd",
+    "enforce_neumann_value_nd",
+    "enforce_periodic_value_nd",
+    "enforce_robin_value_nd",
+    # =========================================================================
+    # BC Coupling (for coupled MFG systems - Issue #574)
+    # =========================================================================
+    "compute_adjoint_consistent_bc_values",
+    "create_adjoint_consistent_bc_1d",
+    "compute_boundary_log_density_gradient_1d",
+    # =========================================================================
+    # Corner Handling (Issue #521)
+    # =========================================================================
     "reflect_positions",
     "absorb_positions",
-    "wrap_positions",  # Deprecated - use periodic.wrap_positions
-    # Periodic BC utilities (Issue #711) - parallel to enforcement.py
-    "create_periodic_ghost_points",
-    "periodic_wrap_positions",
     "reflect_velocity",
     "reflect_velocity_with_normal",
     "CornerStrategy",
     "CornerStrategyLiteral",
     "DEFAULT_CORNER_STRATEGY",
     "validate_corner_strategy",
-    # Ghost point utilities (reflection-based, for NEUMANN/NO-FLUX)
+    # =========================================================================
+    # Periodic / Ghost Point Utilities
+    # =========================================================================
+    "create_periodic_ghost_points",
+    "periodic_wrap_positions",
     "compute_normal_from_bounds",
     "compute_normal_from_sdf",
     "reflect_point_across_plane",
@@ -512,3 +532,30 @@ __all__ = [
     "create_ghost_stencil",
     "create_ghost_points_for_kde",
 ]
+
+# =========================================================================
+# Internal implementation details (importable but not part of public API)
+# =========================================================================
+# The following are still importable via:
+#   from mfg_pde.geometry.boundary import DirichletCalculator
+# but are NOT in __all__ (not shown in autocomplete, not part of public API).
+#
+# Internal to FDM applicator:
+#   Topology, PeriodicTopology, BoundedTopology
+#   BoundaryCalculator, DirichletCalculator, NeumannCalculator, RobinCalculator,
+#   ZeroGradientCalculator, ZeroFluxCalculator, LinearExtrapolationCalculator,
+#   QuadraticExtrapolationCalculator, NoFluxCalculator, FPNoFluxCalculator
+#   ghost_cell_*, high_order_ghost_*
+#   DiscretizationType, GridType
+#   GhostBuffer, PreallocatedGhostBuffer, GhostCellConfig
+#   bc_to_topology_calculator, create_ghost_buffer_from_bc
+#   BaseBCApplicator, BaseStructuredApplicator, BaseUnstructuredApplicator,
+#   BaseMeshfreeApplicator, BaseGraphApplicator, BCApplicatorProtocol, BoundaryCapable
+#
+# Deprecated aliases (will be removed in v1.0.0):
+#   MixedBoundaryConditions -> BoundaryConditions
+#   LegacyBoundaryConditions1D, BoundaryConditions1DFDM
+#   compute_boundary_log_density_gradient -> compute_boundary_log_density_gradient_1d
+#   compute_coupled_hjb_bc_values -> compute_adjoint_consistent_bc_values
+#   get_ghost_values_nd -> pad_array_with_ghosts
+#   wrap_positions -> periodic_wrap_positions

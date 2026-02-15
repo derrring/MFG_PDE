@@ -43,7 +43,8 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from mfg_pde.core.derivatives import DerivativeTensors, to_multi_index_dict
-from mfg_pde.geometry.boundary import PreallocatedGhostBuffer, neumann_bc
+from mfg_pde.geometry.boundary.applicator_fdm import PreallocatedGhostBuffer
+from mfg_pde.geometry.boundary.conditions import neumann_bc
 
 from .base_hjb import BaseHJBSolver
 
