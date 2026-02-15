@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfg_pde"
-version = "0.17.10"  # v0.17.10: Batch-polymorphic Hamiltonian __call__/dp/dm (Issue #775)
+version = "0.17.11"  # v0.17.11: Geometry trait dispatch, BC infrastructure, boundary test coverage (#732, #794)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

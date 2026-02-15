@@ -876,6 +876,6 @@ Before marking an issue as complete or creating a PR:
 
 ---
 
-**Last Updated**: 2026-02-06
-**Repository Version**: v0.17.10 (Pre-1.0.0)
+**Last Updated**: 2026-02-15
+**Repository Version**: v0.17.11 (Pre-1.0.0)
 **Claude Code**: Always reference this file for MFG_PDE conventions
