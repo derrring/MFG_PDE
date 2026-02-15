@@ -95,7 +95,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.backends.backend_manager import ArrayBackend
-    from mfg_pde.geometry.boundary import BoundaryConditions, MixedBoundaryConditions
+    from mfg_pde.geometry.boundary.conditions import BoundaryConditions
 
 
 # =============================================================================
@@ -464,7 +464,7 @@ def diffusion(
     u: NDArray,
     coeff: float | NDArray,
     spacings: list[float] | tuple[float, ...],
-    bc: BoundaryConditions | MixedBoundaryConditions | None = None,
+    bc: BoundaryConditions | None = None,
     backend: ArrayBackend | None = None,
     domain_bounds: NDArray | None = None,
     time: float = 0.0,
@@ -568,7 +568,7 @@ def _diffusion_tensor(
     u: NDArray,
     Sigma: NDArray,
     spacings: list[float] | tuple[float, ...],
-    bc: BoundaryConditions | MixedBoundaryConditions | None,
+    bc: BoundaryConditions | None,
     domain_bounds: NDArray | None,
     time: float,
 ) -> NDArray:
@@ -587,7 +587,7 @@ def tensor_diffusion(
     u: NDArray,
     Sigma: NDArray,
     spacings: list[float] | tuple[float, ...],
-    bc: BoundaryConditions | MixedBoundaryConditions | None = None,
+    bc: BoundaryConditions | None = None,
     domain_bounds: NDArray | None = None,
     time: float = 0.0,
 ) -> NDArray:
@@ -1035,7 +1035,7 @@ def _tensor_diffusion_2d(
     Sigma: NDArray,
     dx: float,
     dy: float,
-    bc: BoundaryConditions | MixedBoundaryConditions | None,
+    bc: BoundaryConditions | None,
     domain_bounds: NDArray | None,
     time: float,
 ) -> NDArray:
@@ -1057,11 +1057,11 @@ def _tensor_diffusion_2d(
     # ghost cells: zero flux at boundary requires ghost=boundary (mode='edge'), not
     # ghost=next_interior (reflection). See Issue #542 vs flux conservation.
     if bc is not None:
-        from mfg_pde.geometry.boundary import MixedBoundaryConditions
+        from mfg_pde.geometry.boundary.conditions import BoundaryConditions
 
         # Check if this is a uniform no-flux/Neumann BC
         is_noflux = False
-        if isinstance(bc, MixedBoundaryConditions):
+        if isinstance(bc, BoundaryConditions):
             # Mixed BC - use unified interface (may not be uniform no-flux)
             u_padded = pad_array_with_ghosts(u, bc, ghost_depth=1, time=time)
         else:
