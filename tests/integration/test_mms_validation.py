@@ -563,6 +563,10 @@ class BackwardHeatSolution1D:
     where D = sigma^2/2.
 
     Note: This propagates BACKWARD from t=T to t=0.
+
+    For MMS with quadratic Hamiltonian H(p) = |p|^2/2:
+        The source S(t,x) = H(grad u_exact) = k^2 A^2 sin^2(kx) exp(-2Dk^2(T-t)) / 2
+        cancels the Hamiltonian contribution so u_exact satisfies the full HJB PDE.
     """
 
     def __init__(self, sigma: float = 0.2, amplitude: float = 1.0, k: float = 2.0 * np.pi, T: float = 1.0):
@@ -581,29 +585,43 @@ class BackwardHeatSolution1D:
         """u(T,x) = A*cos(k*x)"""
         return self.solution(self.T, x)
 
+    def hjb_source(self, t: float, x: np.ndarray) -> np.ndarray:
+        """
+        Source term for MMS with quadratic Hamiltonian H(p) = |p|^2/2.
+
+        Since u_exact solves -du/dt - (sigma^2/2)*Laplacian(u) = 0 (backward heat),
+        the residual of the full HJB equation is exactly H(grad u_exact).
+
+        S(t,x) = H(grad u_exact) = |grad u_exact|^2 / 2
+               = k^2 * A^2 * sin^2(kx) * exp(-2*D*k^2*(T-t)) / 2
+
+        Args:
+            t: Time
+            x: Spatial grid, shape (N,) or (N, 1)
+
+        Returns:
+            Source values, same shape as x (flattened)
+        """
+        x = np.atleast_1d(x).ravel()
+        decay = np.exp(-self.D * self.k**2 * (self.T - t))
+        grad_u = -self.k * self.amplitude * np.sin(self.k * x) * decay
+        return 0.5 * grad_u**2
+
 
 class TestMMSHJB1D:
     """MMS validation tests for 1D HJB solver."""
 
-    @pytest.mark.skip(
-        reason="HJB FDM has quadratic Hamiltonian H(p)=|p|²/2, not linear. "
-        "MMS requires source term support - see Issue #523."
-    )
     def test_backward_heat_periodic_convergence(self):
         """
         Test HJB convergence for backward heat equation with periodic BC.
 
-        NOTE: This test is skipped because the HJB FDM solver includes
-        a quadratic Hamiltonian H(∇u) = |∇u|²/2. The manufactured backward
-        heat solution assumes H=0, making this test invalid.
+        Uses MMS (Method of Manufactured Solutions): the backward heat solution
+        u(t,x) = A*cos(kx)*exp(-Dk^2(T-t)) solves the backward heat equation
+        exactly. The quadratic Hamiltonian H(p) = |p|^2/2 introduces a residual
+        that we supply as a source term S = H(grad u_exact).
 
-        To enable MMS testing for HJB:
-        1. Add source term parameter to solve_hjb_system
-        2. Compute source S(t,x) that cancels the Hamiltonian contribution
-        3. Verify convergence with manufactured solution
-
-        When running cost f=0 and Hamiltonian is linear, HJB reduces to
-        backward heat equation with exact analytical solution.
+        With this source, the solver should recover u_exact and show convergence
+        as the grid is refined.
         """
         from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
         from mfg_pde.geometry import periodic_bc
@@ -634,11 +652,17 @@ class TestMMSHJB1D:
 
             solver = HJBFDMSolver(problem)
 
-            # Solve HJB backward in time
+            # MMS source term: S(t, x) = H(grad u_exact) = |grad u_exact|^2 / 2
+            # Wraps hjb_source to accept (t, x_grid) with x_grid as (N, d) ndarray
+            def source_fn(t, x_arr, _mfg=manufactured):
+                return _mfg.hjb_source(t, x_arr)
+
+            # Solve HJB backward in time with source term
             U_numerical = solver.solve_hjb_system(
                 M_density=M_zero,
                 U_terminal=u_terminal,
                 U_coupling_prev=U_prev,
+                source_term=source_fn,
             )
 
             # Compare initial time solution (t=0) with exact
@@ -652,7 +676,8 @@ class TestMMSHJB1D:
 
         # HJB FDM should give ~1st order convergence (upwind scheme)
         assert np.all(ratios > 1.5), (
-            f"HJB convergence ratio too low: {ratios} (orders: {orders}). Expected ratio >1.5 for upwind scheme."
+            f"HJB convergence ratio too low: {ratios} (orders: {orders}). "
+            f"Errors: {errors}. Expected ratio >1.5 for upwind scheme."
         )
 
     def test_hjb_terminal_condition_preserved(self):

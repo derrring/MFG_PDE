@@ -240,6 +240,8 @@ class FPFDMSolver(BaseFPSolver):
         diffusion_field: float | np.ndarray | Callable | None = None,  # Issue #717: deprecated
         tensor_diffusion_field: np.ndarray | Callable | None = None,  # Issue #717: deprecated
         volatility_matrix: np.ndarray | Callable | None = None,  # Deprecated: use volatility_field
+        # MMS verification support
+        source_term: Callable | None = None,
     ) -> np.ndarray:
         """
         Solve FP system forward in time with general drift and diffusion support.
@@ -421,6 +423,7 @@ class FPFDMSolver(BaseFPSolver):
                 drift_field=drift_field,
                 advection_scheme=self.advection_scheme,
                 progress_callback=progress_callback,
+                source_term=source_term,
             )
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
@@ -534,6 +537,7 @@ class FPFDMSolver(BaseFPSolver):
                 tensor_diffusion_field=effective_sigma,  # Internal API uses old name
                 advection_scheme=self.advection_scheme,
                 progress_callback=progress_callback,
+                source_term=source_term,
             )
 
         # Issue #641: Always route to unified nD solver (works for all dimensions)
@@ -548,6 +552,7 @@ class FPFDMSolver(BaseFPSolver):
             diffusion_field=effective_sigma if volatility_field is not None else None,
             advection_scheme=self.advection_scheme,
             progress_callback=progress_callback,
+            source_term=source_term,
         )
 
     # =========================================================================

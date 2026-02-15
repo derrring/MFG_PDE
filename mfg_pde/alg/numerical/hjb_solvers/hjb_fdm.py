@@ -313,6 +313,8 @@ class HJBFDMSolver(BaseHJBSolver):
         tensor_diffusion_field: NDArray | None = None,
         bc_values: dict[str, float] | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
+        # MMS verification support
+        source_term: Callable | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: NDArray | None = None,
         U_final_condition_at_T: NDArray | None = None,
@@ -477,6 +479,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 use_upwind=self.use_upwind,
                 bc=bc,  # Uses Robin BC from geometry; providers resolved by iterator (Issue #625)
                 domain_bounds=domain_bounds,
+                source_term=source_term,
             )
 
             # Apply variational inequality constraint via projection (Issue #591)
@@ -495,6 +498,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 diffusion_field,
                 tensor_diffusion_field,
                 progress_callback=progress_callback,
+                source_term=source_term,
             )
 
     def _solve_hjb_nd(
@@ -505,6 +509,7 @@ class HJBFDMSolver(BaseHJBSolver):
         diffusion_field: float | NDArray | None = None,
         tensor_diffusion_field: NDArray | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
+        source_term: Callable | None = None,  # MMS verification
     ) -> NDArray:
         """Solve nD HJB using centralized nonlinear solvers with variable diffusion support.
 
@@ -588,9 +593,23 @@ class HJBFDMSolver(BaseHJBSolver):
             # Compute current time for time-dependent BCs
             t_current = n * self.dt
 
+            # Evaluate source term at current timestep (if provided)
+            if source_term is not None:
+                x_grid = self.problem.geometry.get_spatial_grid()  # (N, d)
+                source_at_n = source_term(t_current, x_grid).reshape(self.shape)
+            else:
+                source_at_n = None
+
             # Solve nonlinear system using centralized solver
             U_solution[n] = self._solve_single_timestep(
-                U_next, M_next, U_guess, sigma_at_n, Sigma_at_n, time=t_current, constraint=self.constraint
+                U_next,
+                M_next,
+                U_guess,
+                sigma_at_n,
+                Sigma_at_n,
+                time=t_current,
+                constraint=self.constraint,
+                source_term=source_at_n,
             )
 
             # Issue #640: Update external progress if callback provided
@@ -608,6 +627,7 @@ class HJBFDMSolver(BaseHJBSolver):
         Sigma_at_n: NDArray | None = None,
         time: float = 0.0,
         constraint: ConstraintProtocol | None = None,
+        source_term: NDArray | None = None,
     ) -> NDArray:
         """
         Solve single HJB timestep using centralized nonlinear solver.
@@ -632,21 +652,27 @@ class HJBFDMSolver(BaseHJBSolver):
         if self.solver_type == "fixed_point":
             # Define fixed-point map G: u → u
             # HJB uses H which includes viscosity term (σ²/2)|∇u|²
-            # Fixed-point iteration: u_n = u_{n+1} - dt·H(∇u_n, m)
+            # Fixed-point iteration: u_n = u_{n+1} - dt·(H(∇u_n, m) - S)
             def G(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U, time=time)
                 H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n, time=time)
-                return U_next - self.dt * H_values
+                rhs = H_values
+                if source_term is not None:
+                    rhs = rhs - source_term
+                return U_next - self.dt * rhs
 
             U_solution, info = self.nonlinear_solver.solve(G, U_guess)
 
         else:  # newton
             # Define residual F: u → residual
-            # F(u) = (u - u_next)/dt + H(∇u, m) = 0
+            # F(u) = (u - u_next)/dt + H(∇u, m) - S = 0
             def F(U: NDArray) -> NDArray:
                 gradients = self._compute_gradients_nd(U, time=time)
                 H_values = self._evaluate_hamiltonian_nd(U, M_next, gradients, sigma_at_n, Sigma_at_n, time=time)
-                return (U - U_next) / self.dt + H_values
+                residual = (U - U_next) / self.dt + H_values
+                if source_term is not None:
+                    residual = residual - source_term
+                return residual
 
             # Issue #669: Newton-to-Value-Iteration adaptive fallback
             newton_failed = False
@@ -669,7 +695,10 @@ class HJBFDMSolver(BaseHJBSolver):
                         H_values = self._evaluate_hamiltonian_nd(
                             U, M_next, gradients, sigma_at_n, Sigma_at_n, time=time
                         )
-                        return U_next - self.dt * H_values
+                        rhs = H_values
+                        if source_term is not None:
+                            rhs = rhs - source_term
+                        return U_next - self.dt * rhs
 
                     fallback_solver = FixedPointSolver(
                         damping_factor=self.damping_factor,
