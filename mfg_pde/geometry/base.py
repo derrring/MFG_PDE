@@ -141,14 +141,14 @@ class Geometry(ABC):
         Check if this is an unstructured mesh geometry.
 
         Returns:
-            True if geometry_type is DOMAIN_2D or DOMAIN_3D
+            True if geometry_type is UNSTRUCTURED_MESH
 
         Examples:
             >>> mesh = Mesh2D(...)
             >>> mesh.is_mesh
             True
         """
-        return self.geometry_type in (GeometryType.DOMAIN_2D, GeometryType.DOMAIN_3D)
+        return self.geometry_type == GeometryType.UNSTRUCTURED_MESH
 
     @property
     def is_implicit(self) -> bool:
@@ -982,15 +982,10 @@ class UnstructuredMesh(Geometry):
         """
         Type of geometry.
 
-        Returns DOMAIN_2D or DOMAIN_3D based on dimension.
+        Returns UNSTRUCTURED_MESH for all dimensions.
         Subclasses can override for more specific types.
         """
-        if self._dimension == 2:
-            return GeometryType.DOMAIN_2D
-        elif self._dimension == 3:
-            return GeometryType.DOMAIN_3D
-        else:
-            return GeometryType.CUSTOM
+        return GeometryType.UNSTRUCTURED_MESH
 
     @property
     def num_spatial_points(self) -> int:
