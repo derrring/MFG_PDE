@@ -7,18 +7,22 @@ supporting boxes, spheres, cylinders, complex shapes, and CAD import.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.geometry.base import UnstructuredMesh
+from mfg_pde.geometry.meshes.mesh_base import _GmshMeshBase
 from mfg_pde.geometry.meshes.mesh_data import MeshData
+from mfg_pde.utils.deprecation import deprecated_parameter
 from mfg_pde.utils.mfg_logging import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = get_logger(__name__)
 
 
-class Mesh3D(UnstructuredMesh):
+class Mesh3D(_GmshMeshBase):
     """3D unstructured tetrahedral mesh for FEM/FVM methods using Gmsh pipeline."""
 
     def __init__(
@@ -39,22 +43,24 @@ class Mesh3D(UnstructuredMesh):
             mesh_size: Target mesh element size
             **kwargs: Additional domain-specific parameters
         """
-        super().__init__(dimension=3)
+        super().__init__(
+            dimension=3,
+            domain_type=domain_type,
+            bounds_tuple=bounds,
+            holes=holes,
+            mesh_size=mesh_size,
+            **kwargs,
+        )
 
-        self.domain_type = domain_type
-        self.bounds_box = bounds  # (xmin, xmax, ymin, ymax, zmin, zmax)
-        self.holes = holes or []
-        self.mesh_size = mesh_size
-        self.kwargs = kwargs
-        self._mesh_data: MeshData | None = None
-
-        # Domain-specific parameters
-        self._setup_domain_parameters()
+    @property
+    def bounds_box(self) -> tuple[float, float, float, float, float, float]:
+        """Backward-compatible alias for ``_bounds_tuple``."""
+        return self._bounds_tuple
 
     def _setup_domain_parameters(self):
         """Setup parameters based on domain type."""
         if self.domain_type == "box":
-            self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax = self.bounds_box
+            self.xmin, self.xmax, self.ymin, self.ymax, self.zmin, self.zmax = self._bounds_tuple
 
         elif self.domain_type == "sphere":
             self.center = self.kwargs.get("center", (0.5, 0.5, 0.5))
@@ -84,41 +90,25 @@ class Mesh3D(UnstructuredMesh):
             if self.cad_file is None:
                 raise ValueError("CAD import requires 'cad_file' parameter")
 
-    def create_gmsh_geometry(self) -> Any:
-        """Create 3D geometry using Gmsh API."""
-        try:
-            import gmsh
-        except ImportError:
-            raise ImportError("gmsh is required for mesh generation") from None
+    def _get_domain_type_dispatch(self) -> dict[str, Callable[[], None]]:
+        """Map domain_type to Gmsh geometry creator method."""
+        return {
+            "box": self._create_box_gmsh,
+            "sphere": self._create_sphere_gmsh,
+            "cylinder": self._create_cylinder_gmsh,
+            "polyhedron": self._create_polyhedron_gmsh,
+            "custom": self._create_custom_gmsh,
+            "cad_import": self._import_cad_gmsh,
+        }
 
-        gmsh.initialize()
-        gmsh.clear()
-        gmsh.model.add("domain_3d")
+    def _get_model_name(self) -> str:
+        return "domain_3d"
 
-        if self.domain_type == "box":
-            self._create_box_gmsh()
-        elif self.domain_type == "sphere":
-            self._create_sphere_gmsh()
-        elif self.domain_type == "cylinder":
-            self._create_cylinder_gmsh()
-        elif self.domain_type == "polyhedron":
-            self._create_polyhedron_gmsh()
-        elif self.domain_type == "custom":
-            self._create_custom_gmsh()
-        elif self.domain_type == "cad_import":
-            self._import_cad_gmsh()
-        else:
-            raise ValueError(f"Unknown domain type: {self.domain_type}")
+    def _post_gmsh_options(self) -> None:
+        """Set 3D-specific Gmsh options."""
+        import gmsh
 
-        # Add holes if specified
-        self._add_holes_gmsh()
-
-        # Set mesh parameters
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMax", self.mesh_size)
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMin", self.mesh_size / 10)
         gmsh.option.setNumber("Mesh.Algorithm3D", 1)  # Delaunay for 3D
-
-        return gmsh.model
 
     def _create_box_gmsh(self):
         """Create box geometry in Gmsh."""
@@ -488,6 +478,7 @@ class Mesh3D(UnstructuredMesh):
         mesh_data.quality_metrics = self.compute_mesh_quality_3d(mesh_data)
         mesh_data.element_volumes = self._compute_tetrahedron_volumes(mesh_data.vertices, mesh_data.elements)
 
+        self.mesh_data = mesh_data
         return mesh_data
 
     def compute_mesh_quality_3d(self, mesh_data: MeshData) -> dict[str, float]:
@@ -620,23 +611,31 @@ class Mesh3D(UnstructuredMesh):
 
         else:
             # For custom domains, generate mesh first to get bounds
-            if self._mesh_data is None:
-                self._mesh_data = self.generate_mesh()
-            return self._mesh_data.bounds
+            if self.mesh_data is None:
+                self.mesh_data = self.generate_mesh()
+            return self.mesh_data.bounds
 
-    def set_mesh_parameters(self, mesh_size: float | None = None, algorithm: str = "delaunay", **kwargs) -> None:
-        """Set mesh generation parameters."""
-        if mesh_size is not None:
-            self.mesh_size = mesh_size
+    @deprecated_parameter(
+        param_name="format_type",
+        since="v0.17.12",
+        replacement="file_format",
+    )
+    def export_mesh(self, file_format: str = "", filename: str = "", format_type: str | None = None) -> None:
+        """Export mesh in specified format.
 
-        self.mesh_algorithm = algorithm
-        self.mesh_kwargs = kwargs
+        Args:
+            file_format: Meshio file format string (e.g. "vtk", "gmsh")
+            filename: Output file path
+            format_type: Deprecated, use ``file_format`` instead.
+        """
+        if format_type is not None:
+            file_format = format_type
 
-    def export_mesh(self, format_type: str, filename: str):
-        """Export mesh in specified format."""
-        # Issue #543: Explicit None check instead of hasattr (initialized in __init__)
-        if self._mesh_data is None:
-            self._mesh_data = self.generate_mesh()
+        if self.mesh_data is None:
+            self.generate_mesh()
+
+        if self.mesh_data is None:
+            raise RuntimeError("Failed to generate mesh data")
 
         try:
             import meshio
@@ -644,14 +643,17 @@ class Mesh3D(UnstructuredMesh):
             raise ImportError("meshio required for mesh export") from None
 
         # Convert to meshio format
-        cells = [("tetra", self._mesh_data.elements)]
+        cells = [("tetra", self.mesh_data.elements)]
 
         mesh = meshio.Mesh(
-            points=self._mesh_data.vertices, cells=cells, cell_data={"physical": [self._mesh_data.element_tags]}
+            points=self.mesh_data.vertices, cells=cells, cell_data={"physical": [self.mesh_data.element_tags]}
         )
 
         # Write mesh
-        mesh.write(filename)
+        if file_format:
+            mesh.write(filename, file_format=file_format)
+        else:
+            mesh.write(filename)
 
     def visualize_interactive(self, show_quality: bool = False):
         """Create interactive 3D visualization using PyVista."""
@@ -661,27 +663,27 @@ class Mesh3D(UnstructuredMesh):
             raise ImportError("pyvista required for interactive visualization") from None
 
         # Issue #543: Explicit None check instead of hasattr (initialized in __init__)
-        if self._mesh_data is None:
-            self._mesh_data = self.generate_mesh()
+        if self.mesh_data is None:
+            self.mesh_data = self.generate_mesh()
 
         # Create PyVista mesh
         cells = np.hstack(
             [
-                np.full((len(self._mesh_data.elements), 1), 4),  # Tetrahedron cell type
-                self._mesh_data.elements,
+                np.full((len(self.mesh_data.elements), 1), 4),  # Tetrahedron cell type
+                self.mesh_data.elements,
             ]
         )
 
-        mesh = pv.UnstructuredGrid(cells, np.full(len(self._mesh_data.elements), 10), self._mesh_data.vertices)
+        mesh = pv.UnstructuredGrid(cells, np.full(len(self.mesh_data.elements), 10), self.mesh_data.vertices)
 
         # Create plotter
         plotter = pv.Plotter()
         plotter.add_mesh(mesh, show_edges=True, opacity=0.6)
 
-        if show_quality and self._mesh_data.quality_metrics:
+        if show_quality and self.mesh_data.quality_metrics:
             # Add quality visualization
             quality_data = np.array(
-                [self._mesh_data.quality_metrics.get("min_quality", 0.5)] * len(self._mesh_data.elements)
+                [self.mesh_data.quality_metrics.get("min_quality", 0.5)] * len(self.mesh_data.elements)
             )
             mesh.cell_data["quality"] = quality_data  # type: ignore[attr-defined]
             plotter.add_mesh(mesh, scalars="quality", cmap="coolwarm")

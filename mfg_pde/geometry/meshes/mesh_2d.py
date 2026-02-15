@@ -7,18 +7,18 @@ supporting rectangles, circles, complex shapes, holes, and CAD import.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.geometry.base import UnstructuredMesh
+from mfg_pde.geometry.meshes.mesh_base import _GmshMeshBase
 from mfg_pde.geometry.meshes.mesh_data import MeshData
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class Mesh2D(UnstructuredMesh):
+class Mesh2D(_GmshMeshBase):
     """2D unstructured triangular mesh for FEM/FVM methods using Gmsh pipeline."""
 
     def __init__(
@@ -39,22 +39,24 @@ class Mesh2D(UnstructuredMesh):
             mesh_size: Target mesh element size
             **kwargs: Additional domain-specific parameters
         """
-        super().__init__(dimension=2)
+        super().__init__(
+            dimension=2,
+            domain_type=domain_type,
+            bounds_tuple=bounds,
+            holes=holes,
+            mesh_size=mesh_size,
+            **kwargs,
+        )
 
-        self.domain_type = domain_type
-        self.bounds_rect = bounds  # (xmin, xmax, ymin, ymax)
-        self.holes = holes or []
-        self.mesh_size = mesh_size
-        self.kwargs = kwargs
-        self._gmsh_model: Any = None
-
-        # Domain-specific parameters
-        self._setup_domain_parameters()
+    @property
+    def bounds_rect(self) -> tuple[float, float, float, float]:
+        """Backward-compatible alias for ``_bounds_tuple``."""
+        return self._bounds_tuple
 
     def _setup_domain_parameters(self):
         """Setup parameters based on domain type."""
         if self.domain_type == "rectangle":
-            self.xmin, self.xmax, self.ymin, self.ymax = self.bounds_rect
+            self.xmin, self.xmax, self.ymin, self.ymax = self._bounds_tuple
 
         elif self.domain_type == "circle":
             self.center = self.kwargs.get("center", (0.5, 0.5))
@@ -75,39 +77,18 @@ class Mesh2D(UnstructuredMesh):
             if self.cad_file is None:
                 raise ValueError("CAD import requires 'cad_file' parameter")
 
-    def create_gmsh_geometry(self) -> Any:
-        """Create 2D geometry using Gmsh API."""
-        try:
-            import gmsh
-        except ImportError:
-            raise ImportError("gmsh is required for mesh generation") from None
+    def _get_domain_type_dispatch(self) -> dict[str, Callable[[], None]]:
+        """Map domain_type to Gmsh geometry creator method."""
+        return {
+            "rectangle": self._create_rectangle_gmsh,
+            "circle": self._create_circle_gmsh,
+            "polygon": self._create_polygon_gmsh,
+            "custom": self._create_custom_gmsh,
+            "cad_import": self._import_cad_gmsh,
+        }
 
-        gmsh.initialize()
-        gmsh.clear()
-        gmsh.model.add("domain_2d")
-
-        if self.domain_type == "rectangle":
-            self._create_rectangle_gmsh()
-        elif self.domain_type == "circle":
-            self._create_circle_gmsh()
-        elif self.domain_type == "polygon":
-            self._create_polygon_gmsh()
-        elif self.domain_type == "custom":
-            self._create_custom_gmsh()
-        elif self.domain_type == "cad_import":
-            self._import_cad_gmsh()
-        else:
-            raise ValueError(f"Unknown domain type: {self.domain_type}")
-
-        # Add holes if specified
-        self._add_holes_gmsh()
-
-        # Set mesh parameters
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMax", self.mesh_size)
-        gmsh.option.setNumber("Mesh.CharacteristicLengthMin", self.mesh_size / 10)
-
-        self._gmsh_model = gmsh.model
-        return gmsh.model
+    def _get_model_name(self) -> str:
+        return "domain_2d"
 
     def _create_rectangle_gmsh(self):
         """Create rectangular domain in Gmsh."""
@@ -304,14 +285,6 @@ class Mesh2D(UnstructuredMesh):
 
             warnings.warn(f"Hole creation failed: {e}. Continuing with domain without holes.", stacklevel=2)
 
-    def set_mesh_parameters(self, mesh_size: float | None = None, algorithm: str = "delaunay", **kwargs) -> None:
-        """Set mesh generation parameters."""
-        if mesh_size is not None:
-            self.mesh_size = mesh_size
-
-        self.mesh_algorithm = algorithm
-        self.mesh_kwargs = kwargs
-
     def generate_mesh(self) -> MeshData:
         """Generate 2D triangular mesh using Gmsh → Meshio pipeline."""
         try:
@@ -365,7 +338,7 @@ class Mesh2D(UnstructuredMesh):
             metadata={
                 "domain_type": self.domain_type,
                 "mesh_size": self.mesh_size,
-                "bounds": self.bounds_rect,
+                "bounds": self._bounds_tuple,
             },
         )
 
