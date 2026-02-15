@@ -357,7 +357,7 @@ if TORCH_AVAILABLE:
             optimizer = self._create_optimizer(operator)
 
             # Setup scheduler
-            scheduler = self._create_scheduler(optimizer, len(train_loader))
+            scheduler = self._create_scheduler(optimizer)
 
             # Setup loss function
             criterion = self._create_loss_function()
@@ -438,9 +438,7 @@ if TORCH_AVAILABLE:
             else:
                 raise ValueError(f"Unknown optimizer: {self.config.optimizer}")
 
-        def _create_scheduler(
-            self, optimizer: optim.Optimizer, steps_per_epoch: int
-        ) -> optim.lr_scheduler.LRScheduler | None:
+        def _create_scheduler(self, optimizer: optim.Optimizer) -> optim.lr_scheduler.LRScheduler | None:
             """Create learning rate scheduler."""
             if self.config.scheduler.lower() == "cosine":
                 return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.config.max_epochs)
@@ -553,16 +551,13 @@ if TORCH_AVAILABLE:
             self.parameter_sampler = parameter_sampler
             self.logger = get_logger(__name__)
 
-        def generate_dataset(
-            self, num_samples: int, save_path: Path | None = None, cache_solutions: bool = True
-        ) -> OperatorDataset:
+        def generate_dataset(self, num_samples: int, save_path: Path | None = None) -> OperatorDataset:
             """
             Generate training dataset.
 
             Args:
                 num_samples: Number of parameter-solution pairs to generate
                 save_path: Path to save generated dataset
-                cache_solutions: Whether to cache solutions
 
             Returns:
                 Generated operator dataset

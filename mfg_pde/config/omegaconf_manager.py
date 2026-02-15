@@ -446,13 +446,12 @@ class OmegaConfManager:
 
         return sweep_configs
 
-    def validate_config(self, config: OmegaConfig, schema_name: str | None = None) -> bool:
+    def validate_config(self, config: OmegaConfig) -> bool:
         """
-        Validate configuration against schema.
+        Validate configuration.
 
         Args:
             config: Configuration to validate
-            schema_name: Optional schema name for validation
 
         Returns:
             True if valid, False otherwise

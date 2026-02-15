@@ -170,7 +170,7 @@ class OptimizationCompiler:
 
             # Add memory optimization if needed
             if profile.memory_constraint:
-                optimized = self._add_memory_optimization(optimized, profile.memory_constraint)
+                optimized = self._add_memory_optimization(optimized)
 
             return optimized
 
@@ -219,7 +219,7 @@ class OptimizationCompiler:
 
         return optimized_func
 
-    def _add_memory_optimization(self, func: Callable, memory_limit: int) -> Callable:
+    def _add_memory_optimization(self, func: Callable) -> Callable:
         """Add memory optimization wrapper."""
 
         @functools.wraps(func)

@@ -612,7 +612,7 @@ class ConvergenceWrapper:
                 U, M = results[0], results[1]
                 info = results[2] if len(results) > 2 else {}
 
-                advanced_info = self._analyze_solution_convergence(U, M, x_grid, info)
+                advanced_info = self._analyze_solution_convergence(U, M, x_grid)
 
                 if isinstance(info, dict):
                     info.update(advanced_info)
@@ -627,9 +627,7 @@ class ConvergenceWrapper:
             warnings.warn(f"Distribution convergence analysis failed: {e}. Falling back to classical.")
             return self._classical_solve(Niter, l2errBound, verbose, **kwargs)
 
-    def _analyze_solution_convergence(
-        self, U: np.ndarray, M: np.ndarray, x_grid: np.ndarray, original_info: dict
-    ) -> dict[str, Any]:
+    def _analyze_solution_convergence(self, U: np.ndarray, M: np.ndarray, x_grid: np.ndarray) -> dict[str, Any]:
         """Post-hoc analysis of solution convergence using distribution criteria."""
         if U.ndim >= 2 and M.ndim >= 2:
             final_m = M[-1, :]
