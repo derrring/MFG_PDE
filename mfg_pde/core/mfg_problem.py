@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
@@ -26,6 +27,90 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from mfg_pde.types.pde_coefficients import DiffusionField, DriftField
+
+
+# ============================================================================
+# Diffusion / Volatility Conversion Helpers (Issue #811)
+# ============================================================================
+#
+# Physics/PDE convention: D = sigma^2/2 = (1/2)*Sigma*Sigma^T
+# SDE convention: dX = alpha*dt + Sigma*dW
+#
+# diffusion= parameter: D (PDE coefficient, appears directly in PDE)
+# sigma= parameter: Sigma (SDE volatility, what solvers use internally)
+
+
+def _diffusion_to_volatility(
+    D: float | int | np.ndarray,
+) -> float | np.ndarray:
+    """Convert PDE diffusion coefficient D to SDE volatility sigma.
+
+    Scalar:   D = sigma^2/2  =>  sigma = sqrt(2D)
+    Diagonal: D_i = sigma_i^2/2  =>  sigma_i = sqrt(2 D_i)
+    Tensor:   D = (1/2) Sigma Sigma^T  =>  Sigma = cholesky(2D)
+
+    Args:
+        D: PDE diffusion coefficient (non-negative scalar, 1D diagonal, or 2D SPD tensor).
+
+    Returns:
+        SDE volatility sigma (same shape semantics as input).
+
+    Raises:
+        ValueError: If D is negative (scalar) or has unsupported shape.
+    """
+    if isinstance(D, (int, float)):
+        D_f = float(D)
+        if D_f < 0:
+            raise ValueError(f"Diffusion coefficient must be non-negative, got {D_f}")
+        return math.sqrt(2.0 * D_f)
+
+    D_arr = np.asarray(D, dtype=float)
+    if D_arr.ndim == 0:
+        # 0-d numpy array
+        val = float(D_arr)
+        if val < 0:
+            raise ValueError(f"Diffusion coefficient must be non-negative, got {val}")
+        return math.sqrt(2.0 * val)
+    if D_arr.ndim == 1:
+        # Diagonal: element-wise
+        if np.any(D_arr < 0):
+            raise ValueError("Diffusion coefficient array must be non-negative")
+        return np.sqrt(2.0 * D_arr)
+    if D_arr.ndim == 2:
+        # Full tensor: D = (1/2) Sigma Sigma^T => Sigma = cholesky(2D)
+        return np.linalg.cholesky(2.0 * D_arr)
+
+    raise ValueError(f"Unsupported diffusion shape: {D_arr.shape}")
+
+
+def _volatility_to_diffusion(
+    sigma: float | int | np.ndarray,
+) -> float | np.ndarray:
+    """Convert SDE volatility sigma to PDE diffusion coefficient D.
+
+    Scalar:   sigma => D = sigma^2/2
+    Diagonal: sigma_i => D_i = sigma_i^2/2
+    Tensor:   Sigma => D = (1/2) Sigma Sigma^T
+
+    Args:
+        sigma: SDE volatility (scalar, 1D diagonal, or 2D matrix).
+
+    Returns:
+        PDE diffusion coefficient D.
+    """
+    if isinstance(sigma, (int, float)):
+        return float(sigma) ** 2 / 2.0
+
+    sigma_arr = np.asarray(sigma, dtype=float)
+    if sigma_arr.ndim == 0:
+        return float(sigma_arr) ** 2 / 2.0
+    if sigma_arr.ndim == 1:
+        return sigma_arr**2 / 2.0
+    if sigma_arr.ndim == 2:
+        # Full matrix: D = (1/2) Sigma Sigma^T
+        return 0.5 * (sigma_arr @ sigma_arr.T)
+
+    raise ValueError(f"Unsupported volatility shape: {sigma_arr.shape}")
 
 
 # ============================================================================
@@ -62,10 +147,11 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     hjb_geometry: GeometryProtocol | None
     fp_geometry: GeometryProtocol | None
 
-    # Type annotations for PDE coefficient fields
-    # sigma: float is the scalar volatility (sigma) for backward compatibility
-    # diffusion_field: DiffusionField stores the full field (float, array, or callable)
-    # drift_field: DriftField stores optional drift (float, array, or callable)
+    # Type annotations for PDE coefficient fields (Issue #811)
+    # sigma: SDE volatility (scalar, used by all solvers as problem.sigma)
+    # diffusion_field: Full volatility field — stores SDE volatility, NOT PDE D
+    #   (historical naming; all solvers expect sigma, not D)
+    # drift_field: Optional drift (float, array, or callable)
     sigma: float
     diffusion_field: DiffusionField
     drift_field: DriftField
@@ -116,12 +202,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         return list(value)
 
     @deprecated_parameter(
-        param_name="sigma",
-        since="v0.17.0",
-        replacement="diffusion",
-        removal_blockers=["internal_usage", "equivalence_test", "migration_docs"],
-    )
-    @deprecated_parameter(
         param_name="Lx",
         since="v0.17.1",
         replacement="geometry=TensorProductGrid(...)",
@@ -167,9 +247,10 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         T: float | None = None,
         Nt: int | None = None,
         time_domain: tuple[float, int] | None = None,  # Alternative to T/Nt
-        # Physical parameters - support DiffusionField (float, array, or callable)
-        diffusion: float | NDArray[np.floating] | Callable | None = None,  # Primary parameter
-        sigma: float | NDArray[np.floating] | Callable | None = None,  # Legacy alias (deprecated)
+        # Physical parameters — Issue #811 convention: diffusion = D = sigma^2/2
+        diffusion: float | NDArray[np.floating] | Callable | None = None,  # PDE coefficient D = sigma^2/2
+        sigma: float | NDArray[np.floating] | Callable | None = None,  # SDE volatility sigma
+        volatility: float | NDArray[np.floating] | Callable | None = None,  # Alias for sigma
         drift: float | NDArray[np.floating] | Callable | None = None,  # Optional drift field
         coupling_coefficient: float = 0.5,
         # MFG coupling parameters
@@ -205,13 +286,19 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                         Note: Both hjb_geometry and fp_geometry must be specified together
             network: NetworkGraph for network MFG problems
             T, Nt, time_domain: Time domain parameters (T, Nt) or tuple (T, Nt)
-            diffusion: Diffusion coefficient (primary parameter). None → 0 (deterministic).
+            diffusion: PDE diffusion coefficient D = sigma^2/2 (Issue #811).
+                None -> 0 (deterministic). Internally converted to SDE volatility
+                sigma = sqrt(2D) for solver consumption.
                 Supports:
                 - None: No diffusion (deterministic dynamics)
-                - float: Constant isotropic diffusion σ²
-                - ndarray: Spatially/temporally varying diffusion
-                - Callable: State-dependent σ(t, x, m) -> float | ndarray
-            sigma: Legacy alias for diffusion (deprecated, use diffusion instead).
+                - float: Constant isotropic D
+                - ndarray: Spatially varying D (element-wise conversion)
+                - Callable: State-dependent D(t, x, m) (wrapped with conversion)
+                Mutually exclusive with sigma= and volatility=.
+            sigma: SDE volatility sigma. Mutually exclusive with diffusion=.
+                Direct specification of noise coefficient in dX = alpha dt + sigma dW.
+                Supports same types as diffusion= (no conversion applied).
+            volatility: Alias for sigma (SDE volatility). Same semantics.
             drift: Drift field α(t, x, m) for FP equation. None → 0 (no drift).
                 Supports:
                 - None: No drift (no advection)
@@ -308,12 +395,39 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 raise ValueError("Specify EITHER (T, Nt) OR time_domain, not both")
             T, Nt = time_domain
 
-        # Handle sigma as legacy alias for diffusion
-        # Note: Deprecation warning issued by @deprecated_parameter decorator
+        # --- Diffusion / sigma / volatility: mutual exclusion (Issue #811) ---
+        # Convention: diffusion = D = sigma^2/2 (PDE coefficient)
+        #             sigma = SDE volatility (what solvers use internally)
+        #             volatility = alias for sigma
+        _n_phys = sum(x is not None for x in [diffusion, sigma, volatility])
+        if _n_phys > 1:
+            _names = [
+                n for n, v in [("diffusion", diffusion), ("sigma", sigma), ("volatility", volatility)] if v is not None
+            ]
+            raise ValueError(f"Specify at most one of: diffusion=, sigma=, volatility=. Got: {', '.join(_names)}")
+
+        # Resolve volatility alias
+        if volatility is not None:
+            sigma = volatility
+
+        # Convert to SDE volatility (the internal representation used by all solvers).
+        # After this block, `vola_value` holds the SDE volatility field.
         if sigma is not None:
-            if diffusion is not None:
-                raise ValueError("Specify EITHER diffusion OR sigma, not both")
-            diffusion = sigma
+            # User provided SDE volatility directly — no conversion needed
+            vola_value = sigma
+        elif diffusion is not None:
+            # User provided PDE coefficient D = sigma^2/2.
+            # Convert to SDE volatility: sigma = sqrt(2D).
+            if callable(diffusion):
+                _D_callable = diffusion
+
+                def vola_value(t, x, m, *, _D=_D_callable):  # type: ignore[misc]
+                    return _diffusion_to_volatility(_D(t, x, m))
+            else:
+                vola_value = _diffusion_to_volatility(diffusion)
+        else:
+            # No physical parameter specified — deterministic (sigma = 0)
+            vola_value = 0.0
 
         # Set defaults for T, Nt if not provided
         if T is None:
@@ -321,29 +435,28 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         if Nt is None:
             Nt = 51
 
-        # Convert None to 0 for diffusion and drift (None = no diffusion/drift)
-        if diffusion is None:
-            diffusion = 0.0
+        # drift default
         if drift is None:
             drift = 0.0
 
-        # Store the full diffusion field (may be float, array, or callable)
-        # self.sigma will be the scalar/default for backward compatibility
-        # self.diffusion_field stores the full field for advanced solvers
-        self.diffusion_field = diffusion
+        # Store the full volatility field for advanced solvers.
+        # Note (Issue #811): diffusion_field stores SDE VOLATILITY (not PDE D),
+        # because all existing solvers expect sigma and compute (1/2)*sigma^2
+        # internally. The naming is historical; changing it would break solvers.
+        self.diffusion_field = vola_value
         self.drift_field = drift
 
-        # Extract scalar sigma for backward compatibility
-        # If diffusion is callable or array, use a representative scalar value
-        if callable(diffusion):
+        # Extract scalar sigma for backward compatibility.
+        # If volatility is callable or array, use a representative scalar value.
+        if callable(vola_value):
             # Callable: store 1.0 as default, solvers should use diffusion_field
             sigma_scalar = 1.0
-        elif isinstance(diffusion, np.ndarray):
+        elif isinstance(vola_value, np.ndarray):
             # Array: use mean value as representative scalar
-            sigma_scalar = float(np.mean(diffusion))
+            sigma_scalar = float(np.mean(vola_value))
         else:
             # Scalar: use directly
-            sigma_scalar = float(diffusion)
+            sigma_scalar = float(vola_value)
 
         # Normalize spatial parameters to arrays (with deprecation warnings for scalars)
         # This enables dimension-agnostic code while maintaining backward compatibility
@@ -1089,6 +1202,32 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             True
         """
         return self.domain_type == "implicit"
+
+    # =========================================================================
+    # Physical Parameter Properties (Issue #811)
+    # =========================================================================
+
+    @property
+    def volatility(self) -> float:
+        """SDE volatility sigma. Alias for ``self.sigma``.
+
+        Returns the scalar SDE noise coefficient. For the full field
+        (array or callable), use ``self.diffusion_field``.
+        """
+        return self.sigma
+
+    @property
+    def diffusion(self) -> float:
+        """PDE diffusion coefficient D = sigma^2/2.
+
+        This is the coefficient appearing directly in the PDE:
+            dm/dt + div(alpha m) = D Laplacian(m)
+
+        Computed from the scalar ``self.sigma``. For non-scalar or
+        state-dependent diffusion, evaluate ``self.diffusion_field`` and
+        apply the conversion ``D = sigma^2/2`` as needed.
+        """
+        return self.sigma**2 / 2.0
 
     # =========================================================================
     # Hamiltonian Properties (Issue #673)

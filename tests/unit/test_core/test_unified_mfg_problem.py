@@ -67,7 +67,7 @@ class TestLegacy1DMode:
 
     def test_basic_1d_problem(self):
         """Test basic 1D problem creation."""
-        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=0.1, components=_default_components())
 
         assert problem.dimension == 1
         assert problem.domain_type == "grid"
@@ -83,7 +83,7 @@ class TestLegacy1DMode:
         """Test 1D problem with Lx parameter (alternative to xmin/xmax)."""
         # Note: Lx alias is specified in design but not yet implemented
         # For now, test the standard xmin/xmax interface
-        problem = MFGProblem(xmin=0, xmax=2.0, Nx=100, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(xmin=0, xmax=2.0, Nx=100, T=1.0, Nt=50, sigma=0.1, components=_default_components())
 
         assert problem.dimension == 1
         bounds = problem.geometry.get_bounds()
@@ -93,7 +93,7 @@ class TestLegacy1DMode:
 
     def test_1d_solver_compatibility(self):
         """Test solver compatibility for 1D problems."""
-        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1.0, Nt=50, sigma=0.1, components=_default_components())
 
         assert "fdm" in problem.solver_compatible
         assert "semi_lagrangian" in problem.solver_compatible
@@ -111,7 +111,7 @@ class TestNDGridMode:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=100,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
 
@@ -130,7 +130,7 @@ class TestNDGridMode:
             spatial_discretization=[30, 30, 30],
             T=1.0,
             Nt=50,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(3),
         )
 
@@ -146,7 +146,7 @@ class TestNDGridMode:
                 spatial_discretization=[10, 10, 10, 10],
                 T=1.0,
                 Nt=50,
-                diffusion=0.1,  # Use diffusion instead of deprecated sigma
+                sigma=0.1,  # SDE volatility (Issue #811)
                 components=_default_components_nd(4),
             )
 
@@ -169,7 +169,7 @@ class TestNDGridMode:
             spatial_discretization=[100, 50],
             T=1.0,
             Nt=100,
-            diffusion=0.05,
+            sigma=0.05,
             components=_default_components_nd(2),
         )
 
@@ -182,15 +182,17 @@ class TestNDGridMode:
             spatial_bounds=[(0, 1), (0, 1)],
             spatial_discretization=[50, 50],
             time_domain=(2.0, 200),
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
 
         assert problem.T == 2.0
         assert problem.Nt == 200
 
-    def test_diffusion_alias(self):
-        """Test diffusion parameter alias."""
+    def test_diffusion_converts_to_sigma(self):
+        """Test diffusion= D converts to sigma = sqrt(2D) (Issue #811)."""
+        import math
+
         problem = MFGProblem(
             spatial_bounds=[(0, 1), (0, 1)],
             spatial_discretization=[50, 50],
@@ -200,7 +202,9 @@ class TestNDGridMode:
             components=_default_components_nd(2),
         )
 
-        assert problem.sigma == 0.2
+        # diffusion=0.2 means D=0.2, so sigma = sqrt(2*0.2) ~ 0.6325
+        assert problem.sigma == pytest.approx(math.sqrt(2 * 0.2))
+        assert problem.diffusion == pytest.approx(0.2)
 
 
 class TestModeDetection:
@@ -209,7 +213,7 @@ class TestModeDetection:
     def test_unambiguous_1d_mode(self):
         """Test that 1D mode is detected correctly."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, sigma=0.1, components=_default_components())
         assert problem.dimension == 1
 
     def test_unambiguous_nd_mode(self):
@@ -219,7 +223,7 @@ class TestModeDetection:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=50,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
         assert problem.dimension == 2
@@ -234,7 +238,7 @@ class TestModeDetection:
                 spatial_discretization=[50],
                 T=1.0,
                 Nt=50,
-                diffusion=0.1,
+                sigma=0.1,
                 components=_default_components(),
             )
 
@@ -243,7 +247,7 @@ class TestModeDetection:
         # MFGProblem has defaults for parameters, including default 1D domain
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            problem = MFGProblem(T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+            problem = MFGProblem(T=1.0, Nt=50, sigma=0.1, components=_default_components())
 
             # Should warn about using default domain
             assert any("default" in str(x.message).lower() for x in w)
@@ -260,7 +264,7 @@ class TestSolverCompatibility:
     def test_fdm_compatibility_1d(self):
         """Test FDM compatibility with 1D grid."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, sigma=0.1, components=_default_components())
         assert "fdm" in problem.solver_compatible
 
     def test_fdm_compatibility_2d(self):
@@ -270,7 +274,7 @@ class TestSolverCompatibility:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=50,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
         assert "fdm" in problem.solver_compatible
@@ -284,7 +288,7 @@ class TestSolverCompatibility:
                 spatial_discretization=[10, 10, 10, 10],
                 T=1.0,
                 Nt=50,
-                diffusion=0.1,
+                sigma=0.1,
                 components=_default_components_nd(4),
             )
 
@@ -299,7 +303,7 @@ class TestSolverCompatibility:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=50,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
         assert "particle" in problem.solver_compatible
@@ -311,7 +315,7 @@ class TestSolverCompatibility:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=50,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
 
@@ -336,7 +340,7 @@ class TestSolverCompatibility:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=50,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
 
@@ -351,7 +355,7 @@ class TestSolverCompatibility:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=50,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
 
@@ -366,7 +370,7 @@ class TestBackwardCompatibility:
     def test_old_1d_interface(self):
         """Test that old 1D interface still works."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, sigma=0.1, components=_default_components())
 
         # Old attributes should exist (for backward compatibility)
         bounds = problem.geometry.get_bounds()
@@ -385,7 +389,7 @@ class TestBackwardCompatibility:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=100,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
 
@@ -404,7 +408,7 @@ class TestComplexityEstimation:
     def test_1d_complexity(self):
         """Test 1D problem complexity estimation."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, sigma=0.1, components=_default_components())
         info = problem.get_solver_info()
 
         assert "complexity" in info
@@ -418,7 +422,7 @@ class TestComplexityEstimation:
             spatial_discretization=[50, 50],
             T=1.0,
             Nt=100,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components_nd(2),
         )
         info = problem.get_solver_info()
@@ -437,7 +441,7 @@ class TestComplexityEstimation:
                 spatial_discretization=[10] * 4,
                 T=1.0,
                 Nt=50,
-                diffusion=0.1,
+                sigma=0.1,
                 components=_default_components_nd(4),
             )
 
@@ -461,7 +465,7 @@ class TestEdgeCases:
                 spatial_discretization=[],
                 T=1.0,
                 Nt=50,
-                diffusion=0.1,
+                sigma=0.1,
                 components=_default_components(),
             )
 
@@ -473,7 +477,7 @@ class TestEdgeCases:
                 spatial_discretization=[50, 50, 50],  # 3D
                 T=1.0,
                 Nt=50,
-                diffusion=0.1,
+                sigma=0.1,
                 components=_default_components_nd(2),
             )
 
@@ -484,7 +488,7 @@ class TestEdgeCases:
             geometry = TensorProductGrid(
                 bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
             )
-            problem = MFGProblem(geometry=geometry, T=-1.0, Nt=50, diffusion=0.1, components=_default_components())
+            problem = MFGProblem(geometry=geometry, T=-1.0, Nt=50, sigma=0.1, components=_default_components())
             # If no error, just check that problem was created
             assert problem.T == -1.0  # May need validation in future
         except ValueError:
@@ -497,24 +501,18 @@ class TestEdgeCases:
             geometry = TensorProductGrid(
                 bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
             )
-            problem = MFGProblem(geometry=geometry, T=1.0, Nt=0, diffusion=0.1, components=_default_components())
+            problem = MFGProblem(geometry=geometry, T=1.0, Nt=0, sigma=0.1, components=_default_components())
             # If no error, check problem was created
             assert problem.Nt == 0
         except (ValueError, ZeroDivisionError):
             pass  # Expected behavior
 
     def test_negative_diffusion_raises_error(self):
-        """Test that negative diffusion raises error or creates problem."""
-        # Note: Current implementation may not validate this
-        try:
-            geometry = TensorProductGrid(
-                bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1)
-            )
-            problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=-0.1, components=_default_components())
-            # If no error, check problem was created
-            assert problem.sigma == -0.1  # Access via deprecated alias still works
-        except ValueError:
-            pass  # Expected behavior
+        """Test that negative diffusion D raises ValueError (Issue #811)."""
+        # Negative D is non-physical — sqrt(2*D) is imaginary
+        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
+        with pytest.raises(ValueError, match="non-negative"):
+            MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=-0.1, components=_default_components())
 
 
 class TestCustomComponentExceptionPropagation:
@@ -548,7 +546,7 @@ class TestCustomComponentExceptionPropagation:
             problem_type="custom",
         )
 
-        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, diffusion=0.1, components=components)
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.1, components=components)
 
         # Exception should propagate, not be silently caught
         with pytest.raises(ValueError, match="Intentional error"):
@@ -583,7 +581,7 @@ class TestCustomComponentExceptionPropagation:
             problem_type="custom",
         )
 
-        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, diffusion=0.1, components=components)
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=10, sigma=0.1, components=components)
 
         # Exception should propagate, not be silently caught
         with pytest.raises(RuntimeError, match="Intentional error"):

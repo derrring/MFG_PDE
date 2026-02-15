@@ -1,7 +1,7 @@
 # MFG_PDE Naming Conventions
 
-**Last Updated**: 2026-02-06
-**Status**: Current reference document (v0.17.6+)
+**Last Updated**: 2026-02-16
+**Status**: Current reference document (v0.17.11+)
 **Related**: See "Derivative Tensor Standard" section for the canonical derivative representation
 
 ---
@@ -25,7 +25,7 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 - `Nt_points`: Number of time grid points (`Nt + 1`)
 - `dx`: Spatial grid spacing Δx
 - `dt`: Time step size Δt
-- `sigma`: Diffusion coefficient σ
+- `sigma`: SDE volatility σ (canonical name; `volatility` is accepted alias)
 - `T`: Terminal time
 - `xSpace`: Spatial grid array (all dimensions)
 - `tSpace`: Temporal grid array
@@ -585,55 +585,111 @@ For adaptive mesh refinement, use external libraries:
 
 | Parameter | Type | Meaning | Math Symbol |
 |-----------|------|---------|-------------|
-| `volatility_field` | float/array/callable | Volatility (SDE noise coefficient) | σ or Σ |
-| `sigma` | float | **Legacy** - use `volatility_field` instead | σ |
+| `sigma` | float | SDE volatility (canonical property) | σ |
+| `volatility` | float | Alias for `sigma` | σ |
+| `diffusion` | float/array | PDE diffusion coefficient (MFGProblem input) | D = σ²/2 |
+| `volatility_field` | float/array/callable | Volatility field for FP solvers | σ(t,x,m) or Σ(t,x,m) |
 | `coupling_coefficient` | float | MFG coupling strength | λ |
 | `terminal_cost` | callable | Terminal cost function | g(x,m) |
 | `running_cost` | callable | Running cost function | f(x,m) |
 | `hamiltonian` | callable | Hamiltonian function | H(x,p,m) |
 
-### ⚠️ CRITICAL: Volatility vs Diffusion (v0.17.6+)
+### ⚠️ CRITICAL: Volatility vs Diffusion — Physics/PDE Convention (Issue #811)
 
-**Mathematical definitions**:
-- **Volatility**: σ (scalar) or Σ (matrix) — the SDE noise coefficient
-- **Diffusion**: D = ΣᵀΣ/2 (or D = σ²/2 for scalar) — the PDE diffusion coefficient
+Two canonical quantities arise from the Itô SDE:
 
-**SDE**: dX = μ dt + Σ dW (where Σ is volatility)
-**PDE**: ∂ₜm = -∇·(μm) + ∇·(D∇m) where D = ΣᵀΣ/2
+| Quantity | Tensor (d × d) | Scalar | Code name | Where used |
+|----------|----------------|--------|-----------|------------|
+| **SDE volatility** | Σ (d × k matrix) | σ | `sigma`, `volatility` | Solvers, particle methods |
+| **Diffusion coefficient** | D = (1/2)ΣΣᵀ (d × d, symmetric PSD) | D = σ²/2 | `diffusion` | User-facing input, PDE |
 
-**Canonical parameter**: `volatility_field` for FP solvers (represents σ or Σ)
+This follows the **physics/PDE convention** used across Fick's law, the Einstein relation,
+the Achdou-Laurière MFG numerics framework, and heat equation theory.
+
+**General tensor form** (d-dimensional state, k-dimensional Brownian motion):
+```
+SDE:  dXₜ = α(Xₜ) dt + Σ dWₜ               Σ is d × k
+PDE:  ∂m/∂t + ∇·(αm) = ∇·(D ∇m)           D = (1/2)ΣΣᵀ is d × d, symmetric PSD
+
+      equivalently: Σᵢⱼ ∂/∂xᵢ (Dᵢⱼ ∂m/∂xⱼ)   where Dᵢⱼ = (1/2)(ΣΣᵀ)ᵢⱼ
+```
+
+**Scalar isotropic case** (Σ = σI):
+```
+SDE:  dXₜ = α dt + σ dWₜ                    equivalently: dXₜ = α dt + √(2D) dWₜ
+PDE:  ∂m/∂t + ∇·(αm) = D Δm                D = σ²/2 appears DIRECTLY — no extra factors
+```
+
+**Naming**:
+```
+sigma (Σ)      = SDE volatility matrix (d × k)
+diffusion (D)  = (1/2)ΣΣᵀ                    (d × d symmetric PSD, PDE coefficient)
+
+Scalar:  σ → D = σ²/2          D → σ = √(2D)
+Tensor:  Σ → D = (1/2)ΣΣᵀ     D → Σ = cholesky(2D)
+```
+
+**Note on transpose order**: The standard diffusion matrix is ΣΣᵀ (Øksendal, Karatzas-Shreve),
+**not** ΣᵀΣ. For d × k volatility Σ, only ΣΣᵀ has the correct d × d shape for the PDE.
+For square symmetric Σ the distinction vanishes: ΣΣᵀ = ΣᵀΣ = Σ².
 
 **In code formulas**:
 ```python
-# Formula: g = -σ²/2 · ∂ln(m)/∂n
-# Code:
-g = -(volatility**2) / 2 * grad_ln_m  # volatility = σ
+# Scalar: solvers use sigma and compute D internally
+D = 0.5 * sigma**2                     # = σ²/2
 
-# The term σ²/2 IS the diffusion coefficient D
-# So: g = -D · ∂ln(m)/∂n where D = σ²/2
+# Tensor: solvers use Sigma and compute D internally
+D = 0.5 * Sigma @ Sigma.T              # = (1/2)ΣΣᵀ
+
+# BC coupling formula: g = -D · ∂ln(m)/∂n  (D appears directly)
+g = -diffusion * grad_ln_m             # scalar
+g = -D @ grad_ln_m                     # tensor
 ```
 
-**Legacy parameter mapping**:
-- `sigma` → `volatility_field` (same quantity, clearer name)
-- MFGProblem still accepts `diffusion` parameter for backward compatibility
-  (internally stored as `self.sigma`, used as volatility σ)
+### MFGProblem Input Parameters (mutually exclusive)
 
-**Example**:
+| Parameter | Meaning | Example (σ=0.5) | Conversion |
+|-----------|---------|-----------------|------------|
+| `diffusion=` | D (PDE coefficient) | `diffusion=0.125` | `σ = √(2D) = 0.5` |
+| `sigma=` | Σ (SDE volatility) | `sigma=0.5` | `D = σ²/2 = 0.125` |
+| `volatility=` | Alias for `sigma=` | `volatility=0.5` | `D = σ²/2 = 0.125` |
+
+Only **one** of the three may be specified. Specifying more than one raises `ValueError`.
+
+**Scalar conversion** (Issue #811):
 ```python
-# ✅ FP solvers: use volatility_field
-fp_solver.solve_fp_system(volatility_field=0.2)  # σ = 0.2
+# User provides diffusion coefficient D = σ²/2:
+problem = MFGProblem(diffusion=0.125, ...)
+# Internally: sigma = √(2 * 0.125) = 0.5
 
-# ✅ BC providers: use diffusion (legacy name, represents σ)
-provider = AdjointConsistentProvider(side="left", diffusion=0.2)
+# User provides SDE volatility:
+problem = MFGProblem(sigma=0.5, ...)
+# Internally: sigma = 0.5, diffusion = 0.5²/2 = 0.125
 
-# ⚠️ Deprecated
-provider = AdjointConsistentProvider(side="left", sigma=0.2)  # Warns
+# Both produce identical solver behavior:
+# problem.sigma == 0.5
+# problem.diffusion == 0.125
 ```
 
-**Key insight**: When you see "σ²/2" in formulas, that IS the diffusion coefficient D.
-The parameter `sigma` or `volatility_field` represents σ (volatility), not D.
+**Tensor conversion** (Issue #811):
+```python
+# Diagonal anisotropic: D = diag(σ₁²/2, σ₂²/2)  →  Σ = diag(√(2D₁), √(2D₂))
+problem = MFGProblem(diffusion=np.array([0.125, 0.045]), ...)  # σ = [0.5, 0.3]
 
-### Volatility Field Convention (v0.17.2+)
+# Full tensor: D = (1/2)ΣΣᵀ  →  Σ = cholesky(2D)
+D = np.array([[0.125, 0.025],
+              [0.025, 0.045]])    # symmetric PSD
+problem = MFGProblem(diffusion=D, ...)
+# Internally: Sigma = cholesky(2D), a d×d lower-triangular matrix
+
+# Equivalently, provide volatility directly:
+Sigma = np.array([[0.4, 0.0],
+                  [0.1, 0.2]])    # lower triangular (not necessarily symmetric)
+problem = MFGProblem(sigma=Sigma, ...)
+# Internally: D = (1/2) Sigma @ Sigma.T
+```
+
+### Solver-Level Parameters
 
 For FP particle solvers and spatially-varying diffusion, use `volatility_field`:
 
@@ -643,32 +699,28 @@ For FP particle solvers and spatially-varying diffusion, use `volatility_field`:
 | `volatility_field` | `(d,d)` array | Σ (noise matrix) | Anisotropic diffusion |
 | `volatility_field` | `Callable` | σ(t,x,m) or Σ(t,x,m) | State-dependent |
 
-**SDE vs PDE convention**:
-```python
-# SDE: dX = v dt + Σ dW
-#   volatility_field = Σ (or σ for scalar)
-
-# PDE: ∂m/∂t + div(m·v) = div(D ∇m)
-#   diffusion tensor D = ΣΣᵀ/2 (or D = σ²/2 for scalar)
-```
-
 **Example**:
 ```python
 # Isotropic (scalar volatility)
-fp_solver.solve_fp_system(volatility_field=0.3)  # σ = 0.3
+fp_solver.solve_fp_system(volatility_field=0.3)  # σ = 0.3, D = 0.045
 
 # Anisotropic (matrix volatility)
-Sigma = np.array([[0.3, 0.1], [0.0, 0.2]])  # Lower triangular
+Sigma = np.array([[0.3, 0.1], [0.0, 0.2]])  # Lower triangular, D = (1/2)ΣΣᵀ
 fp_solver.solve_fp_system(volatility_field=Sigma)
 
 # State-dependent
 fp_solver.solve_fp_system(volatility_field=lambda t, x, m: 0.3 * (1 + 0.1*m))
 ```
 
-**Relationship to `diffusion` parameter**:
-- `diffusion` (scalar, MFGProblem): Same as σ, used for backward compatibility
-- `volatility_field` (field, FP solver): σ or Σ, supports spatial/state dependence
-- Both represent the SDE noise coefficient, NOT the PDE diffusion coefficient D = σ²/2
+### Key Rules
+
+1. **`sigma` is the canonical property name** — all solvers use `problem.sigma`
+2. **`volatility` is an accepted alias** — `problem.volatility == problem.sigma`
+3. **`diffusion` parameter means D = (1/2)ΣΣᵀ** — the PDE coefficient (physics convention)
+4. **D appears directly in the PDE** — `∂m/∂t + ∇·(αm) = ∇·(D∇m)`, no extra 1/2
+5. **Solvers compute D from Σ internally** — `D = 0.5 * Sigma @ Sigma.T` (or `0.5 * sigma**2` for scalar)
+6. **ΣΣᵀ, not ΣᵀΣ** — the standard transpose order (Øksendal convention)
+7. **Conversion happens once** at the `MFGProblem.__init__` boundary
 
 ---
 
@@ -947,7 +999,7 @@ assert problem.Nt_points == 101
 | Old Name | New Name | Reason | Removal |
 |----------|----------|--------|---------|
 | `u_final` | `u_terminal` | MFG literature uses "terminal condition" | v1.0.0 |
-| `sigma` | `volatility_field` | σ = Σ = volatility (SDE noise); D = ΣᵀΣ/2 = diffusion (PDE) | v1.0.0 |
+| `sigma=` (parameter) | `diffusion=` (primary input) | `sigma=` still accepted; `diffusion=` is preferred as it accepts ΣᵀΣ directly (Issue #811) | v1.0.0 |
 | `num_points` | `Nx_points` | Unclear (which N?) | v1.0.0 |
 | `thetaUM` | `damping_factor` | Unclear acronym | Legacy |
 | `Niter_max` | `max_iterations` | Inconsistent capitalization | Legacy |
@@ -1156,4 +1208,4 @@ When adding new parameters:
 
 ---
 
-**Authoritative Source**: This document reflects actual codebase standards as of v0.17.0
+**Authoritative Source**: This document reflects actual codebase standards as of v0.17.11

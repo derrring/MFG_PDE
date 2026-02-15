@@ -192,8 +192,9 @@ def test_mfg_problem_custom_time():
 
 @pytest.mark.unit
 def test_mfg_problem_custom_coefficients():
-    """Test MFGProblem with custom coefficients."""
-    problem = create_test_problem(diffusion=0.5, coupling_coefficient=0.8)
+    """Test MFGProblem with custom coefficients (Issue #811 convention)."""
+    # sigma= provides SDE volatility directly
+    problem = create_test_problem(sigma=0.5, coupling_coefficient=0.8)
 
     assert problem.sigma == 0.5
     assert problem.coupling_coefficient == 0.8
@@ -454,7 +455,7 @@ def test_mfg_problem_validates_zero_mass_m_initial():
 @pytest.mark.unit
 def test_hamiltonian_h_default():
     """Test default Hamiltonian H computation."""
-    problem = create_test_problem(diffusion=1.0, coupling_coefficient=0.5)
+    problem = create_test_problem(sigma=1.0, coupling_coefficient=0.5)
 
     x_idx = 5
     m_at_x = 1.0
@@ -621,7 +622,7 @@ def test_get_initial_m():
 def test_get_problem_info():
     """Test get_problem_info returns comprehensive info dict."""
     geometry = default_geometry(bounds=[(0.0, 1.0)], Nx_points=[51])  # Nx=50 intervals
-    problem = create_test_problem(geometry=geometry, T=1.0, Nt=100, diffusion=0.5, coupling_coefficient=0.8)
+    problem = create_test_problem(geometry=geometry, T=1.0, Nt=100, sigma=0.5, coupling_coefficient=0.8)
 
     info = problem.get_problem_info()
 
@@ -709,7 +710,7 @@ def test_dual_geometry_specification():
         hjb_geometry=hjb_grid,
         fp_geometry=fp_grid,
         time_domain=(1.0, 50),
-        diffusion=0.1,
+        sigma=0.1,
         components=components,
     )
 
@@ -738,7 +739,7 @@ def test_dual_geometry_backward_compatibility():
         u_terminal=lambda x: 0.0,
     )
     # Create problem with unified geometry (old API)
-    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=0.1, components=components)
+    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=0.1, components=components)
 
     # Check that both hjb_geometry and fp_geometry point to the same geometry
     assert problem.hjb_geometry is grid
@@ -829,7 +830,7 @@ def test_dual_geometry_with_1d_grids():
 
     components = MFGComponents(hamiltonian=default_hamiltonian(), m_initial=lambda x: 1.0, u_terminal=lambda x: 0.0)
     problem = MFGProblem(
-        hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), diffusion=0.1, components=components
+        hjb_geometry=hjb_grid, fp_geometry=fp_grid, time_domain=(1.0, 50), sigma=0.1, components=components
     )
 
     # Verify dual geometry setup
@@ -869,11 +870,15 @@ def test_diffusion_field_none():
 
 @pytest.mark.unit
 def test_diffusion_field_scalar():
-    """Test MFGProblem with scalar diffusion coefficient."""
-    problem = create_test_problem(diffusion=0.5)
+    """Test MFGProblem with scalar diffusion D = sigma^2/2 (Issue #811)."""
+    # diffusion=0.125 means D=0.125, so sigma = sqrt(2*0.125) = 0.5
+    problem = create_test_problem(diffusion=0.125)
 
-    assert problem.sigma == 0.5
-    assert problem.diffusion_field == 0.5
+    assert problem.sigma == pytest.approx(0.5)
+    # diffusion_field stores SDE volatility (for solver compatibility)
+    assert problem.diffusion_field == pytest.approx(0.5)
+    # diffusion property returns PDE coefficient D
+    assert problem.diffusion == pytest.approx(0.125)
     assert not problem.has_state_dependent_coefficients()
 
 
@@ -915,33 +920,71 @@ def test_diffusion_field_callable():
 
 @pytest.mark.unit
 def test_diffusion_primary_parameter():
-    """Test that 'diffusion' is the primary parameter."""
+    """Test that 'diffusion' converts D -> sigma (Issue #811)."""
+    # diffusion=0.3 means D=0.3, sigma = sqrt(2*0.3) ~ 0.7746
+    import math
+
     problem = create_test_problem(diffusion=0.3)
 
-    assert problem.sigma == 0.3
-    assert problem.diffusion_field == 0.3
+    assert problem.sigma == pytest.approx(math.sqrt(2 * 0.3))
+    assert problem.diffusion == pytest.approx(0.3)
+    # diffusion_field stores converted volatility
+    assert problem.diffusion_field == pytest.approx(math.sqrt(2 * 0.3))
 
 
 @pytest.mark.unit
-def test_sigma_deprecated_alias():
-    """Test that 'sigma' parameter is deprecated alias for 'diffusion'."""
-    import warnings
+def test_sigma_direct_sde_volatility():
+    """Test that sigma= provides SDE volatility directly (Issue #811)."""
+    # sigma= is NOT deprecated — it's the canonical SDE volatility input
+    problem = create_test_problem(sigma=0.4)
 
-    # Using sigma= should emit a deprecation warning
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        problem = create_test_problem(sigma=0.4)  # Deprecated parameter
-
-        # Check deprecation warning was raised for using sigma=
-        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
-        assert len(deprecation_warnings) >= 1, "Expected deprecation warning when using sigma= parameter"
-        # At least one warning should mention sigma or diffusion
-        warning_messages = [str(w.message) for w in deprecation_warnings]
-        assert any("sigma" in msg or "diffusion" in msg for msg in warning_messages)
-
-    # Value should still work via backward compat
+    # sigma stored directly (no conversion)
     assert problem.sigma == 0.4
     assert problem.diffusion_field == 0.4
+    # diffusion property computes D = sigma^2/2
+    assert problem.diffusion == pytest.approx(0.4**2 / 2.0)
+    # volatility is alias for sigma
+    assert problem.volatility == 0.4
+
+
+@pytest.mark.unit
+def test_volatility_alias_for_sigma():
+    """Test that volatility= is an alias for sigma= (Issue #811)."""
+    problem = create_test_problem(volatility=0.6)
+
+    assert problem.sigma == 0.6
+    assert problem.volatility == 0.6
+    assert problem.diffusion == pytest.approx(0.6**2 / 2.0)
+
+
+@pytest.mark.unit
+def test_diffusion_sigma_mutual_exclusion():
+    """Test that diffusion=, sigma=, volatility= are mutually exclusive."""
+    # Two at once should raise
+    with pytest.raises(ValueError, match="at most one"):
+        create_test_problem(diffusion=0.1, sigma=0.5)
+
+    with pytest.raises(ValueError, match="at most one"):
+        create_test_problem(sigma=0.5, volatility=0.5)
+
+    with pytest.raises(ValueError, match="at most one"):
+        create_test_problem(diffusion=0.1, volatility=0.5)
+
+
+@pytest.mark.unit
+def test_diffusion_sigma_equivalence():
+    """Test that diffusion=D and sigma=sqrt(2D) give identical results (Issue #811)."""
+    import math
+
+    D = 0.125  # PDE coefficient
+    sigma = math.sqrt(2 * D)  # SDE volatility = 0.5
+
+    p1 = create_test_problem(diffusion=D)
+    p2 = create_test_problem(sigma=sigma)
+
+    assert p1.sigma == pytest.approx(p2.sigma)
+    assert p1.diffusion == pytest.approx(p2.diffusion)
+    assert p1.volatility == pytest.approx(p2.volatility)
 
 
 @pytest.mark.unit
@@ -993,7 +1036,7 @@ def test_drift_field_callable():
 @pytest.mark.unit
 def test_get_diffusion_coefficient_field():
     """Test get_diffusion_coefficient_field returns CoefficientField wrapper."""
-    problem = create_test_problem(diffusion=0.5)
+    problem = create_test_problem(sigma=0.5)
 
     coeff_field = problem.get_diffusion_coefficient_field()
 
@@ -1027,19 +1070,19 @@ def test_has_state_dependent_coefficients_mixed():
     def sigma_func(t, x, m):
         return 0.1 + 0.5 * m
 
-    # Scalar drift, callable diffusion (default_geometry has 11 grid points)
-    problem1 = create_test_problem(diffusion=sigma_func, drift=np.zeros(11))
+    # Scalar drift, callable volatility (default_geometry has 11 grid points)
+    problem1 = create_test_problem(sigma=sigma_func, drift=np.zeros(11))
     assert problem1.has_state_dependent_coefficients()
 
     # Callable drift, scalar diffusion
     def drift_func(t, x, m):
         return -0.1 * x
 
-    problem2 = create_test_problem(diffusion=0.5, drift=drift_func)
+    problem2 = create_test_problem(sigma=0.5, drift=drift_func)
     assert problem2.has_state_dependent_coefficients()
 
     # Both scalar
-    problem3 = create_test_problem(diffusion=0.5, drift=np.zeros(11))
+    problem3 = create_test_problem(sigma=0.5, drift=np.zeros(11))
     assert not problem3.has_state_dependent_coefficients()
 
 
@@ -1062,7 +1105,7 @@ def test_diffusion_field_with_geometry():
         m_initial=lambda x: 1.0,
         u_terminal=lambda x: 0.0,
     )
-    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), diffusion=sigma_func, components=components)
+    problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=sigma_func, components=components)
 
     assert callable(problem.diffusion_field)
     assert problem.has_state_dependent_coefficients()

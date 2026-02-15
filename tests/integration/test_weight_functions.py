@@ -38,7 +38,7 @@ def test_weight_functions():
         bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=10 intervals
     problem = MFGProblem(
-        geometry=geometry, T=0.02, Nt=2, diffusion=0.1, coupling_coefficient=0.1, components=_default_components()
+        geometry=geometry, T=0.02, Nt=2, sigma=0.1, coupling_coefficient=0.1, components=_default_components()
     )
 
     num_collocation_points = 5

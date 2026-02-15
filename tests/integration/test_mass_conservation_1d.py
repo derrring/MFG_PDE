@@ -71,7 +71,7 @@ class TestMassConservation1D:
             geometry=geometry,
             T=1.0,
             Nt=20,
-            diffusion=0.1,
+            sigma=0.1,
             coupling_coefficient=1.0,
             components=_default_components(),
         )
@@ -322,7 +322,7 @@ class TestMassConservation1D:
                 geometry=geometry,
                 T=1.0,
                 Nt=20,
-                diffusion=0.1,
+                sigma=0.1,
                 coupling_coefficient=1.0,
                 components=make_custom_components(center_frac, std_frac, L),
             )

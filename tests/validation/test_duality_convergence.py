@@ -65,7 +65,7 @@ class TestDualityConvergence:
             Nx=[40],
             Nt=20,
             T=1.0,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components(),
         )
 
@@ -97,7 +97,7 @@ class TestDualityConvergence:
             Nx=[40],
             Nt=20,
             T=1.0,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components(),
         )
 
@@ -122,7 +122,7 @@ class TestDualityConvergence:
                 Nx=[Nx],
                 Nt=Nx // 2,  # Keep CFL condition reasonable
                 T=1.0,
-                diffusion=0.1,
+                sigma=0.1,
                 components=_default_components(),
             )
 
@@ -207,7 +207,7 @@ class TestConvergenceRate:
                 Nx=[Nx],
                 Nt=Nx,  # Match time steps to space steps
                 T=1.0,
-                diffusion=0.1,
+                sigma=0.1,
                 components=_default_components(),
             )
 
@@ -241,7 +241,7 @@ class TestNumericalStability:
             Nx=[40],
             Nt=20,
             T=1.0,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components(),
         )
 
@@ -264,7 +264,7 @@ class TestNumericalStability:
             Nx=[40],
             Nt=20,
             T=1.0,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components(),
         )
 
@@ -298,7 +298,7 @@ if __name__ == "__main__":
 
     # Test 2: Verify convergence
     print("\nTest 2: Convergence with dual pair")
-    problem = MFGProblem(Nx=[40], Nt=20, T=1.0, diffusion=0.1, components=_default_components())
+    problem = MFGProblem(Nx=[40], Nt=20, T=1.0, sigma=0.1, components=_default_components())
     solve_result = problem.solve(
         scheme=NumericalScheme.FDM_UPWIND,
         max_iterations=30,
