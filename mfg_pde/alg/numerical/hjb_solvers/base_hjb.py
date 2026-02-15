@@ -1379,7 +1379,7 @@ if __name__ == "__main__":
     from mfg_pde.geometry import TensorProductGrid
 
     geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=5, diffusion=0.1)
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=5, sigma=0.1)
 
     try:
         base_solver = BaseHJBSolver(problem)

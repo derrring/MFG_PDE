@@ -37,7 +37,7 @@ class CrowdMotion2D(MFGProblem):
         grid_resolution=15,
         time_horizon=0.5,
         num_timesteps=20,
-        diffusion=0.05,
+        sigma=0.05,
         congestion_weight=0.5,
         goal=(0.8, 0.8),
         start=(0.2, 0.2),
@@ -47,7 +47,7 @@ class CrowdMotion2D(MFGProblem):
             spatial_discretization=[grid_resolution, grid_resolution],
             T=time_horizon,
             Nt=num_timesteps,
-            sigma=diffusion,
+            sigma=sigma,
         )
         self.grid_resolution = grid_resolution  # Store for convenience
         self.congestion_weight = congestion_weight
@@ -163,7 +163,7 @@ def run_fdm_solver(grid_resolution: int, num_timesteps: int, max_iterations: int
         grid_resolution=grid_resolution,
         time_horizon=0.4,
         num_timesteps=num_timesteps,
-        diffusion=0.05,
+        sigma=0.05,
         congestion_weight=0.3,
         goal=(0.8, 0.8),
         start=(0.2, 0.2),

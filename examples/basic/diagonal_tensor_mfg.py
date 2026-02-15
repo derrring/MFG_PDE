@@ -90,7 +90,7 @@ problem = MFGProblem(
     geometry=domain,
     T=0.1,  # Short time horizon
     Nt=20,  # 20 timesteps (dt=0.005 for CFL stability)
-    diffusion=0.1,  # Base diffusion (tensor_diffusion_field overrides)
+    sigma=0.1,  # Base diffusion (tensor_diffusion_field overrides)
     components=components,
 )
 

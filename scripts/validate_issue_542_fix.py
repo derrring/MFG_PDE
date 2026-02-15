@@ -36,7 +36,7 @@ def test_neumann_bc():
         ]
     )
     grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=bc)
-    problem = MFGProblem(geometry=grid, T=0.5, Nt=10, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.5, Nt=10, sigma=0.1)
 
     solver = HJBFDMSolver(problem)
     U = solver.solve()
@@ -72,7 +72,7 @@ def test_dirichlet_bc():
         ]
     )
     grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=bc)
-    problem = MFGProblem(geometry=grid, T=0.5, Nt=10, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.5, Nt=10, sigma=0.1)
 
     solver = HJBFDMSolver(problem)
     U = solver.solve()
@@ -106,7 +106,7 @@ def test_mixed_bc():
         ]
     )
     grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100], boundary_conditions=bc)
-    problem = MFGProblem(geometry=grid, T=0.5, Nt=10, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.5, Nt=10, sigma=0.1)
 
     solver = HJBFDMSolver(problem)
     U = solver.solve()
@@ -136,7 +136,7 @@ def test_periodic_fallback():
 
     grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100])
     # No BC specified → should fall back to periodic
-    problem = MFGProblem(geometry=grid, T=0.5, Nt=10, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.5, Nt=10, sigma=0.1)
 
     solver = HJBFDMSolver(problem)
     U = solver.solve()

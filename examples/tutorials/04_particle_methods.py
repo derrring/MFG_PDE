@@ -55,7 +55,7 @@ problem = MFGProblem(
     geometry=grid,
     T=1.0,
     Nt=50,
-    diffusion=0.15,
+    sigma=0.15,
     components=components,
 )
 

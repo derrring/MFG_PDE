@@ -1311,7 +1311,7 @@ if __name__ == "__main__":
         geometry=grid_1d,
         Nt=25,
         T=1.0,
-        diffusion=0.1,  # Use 'diffusion' instead of deprecated 'sigma'
+        sigma=0.1,
         coupling_coefficient=1.0,
     )
 
@@ -1375,7 +1375,7 @@ if __name__ == "__main__":
         geometry=grid_2d,
         Nt=20,
         T=0.5,
-        diffusion=0.2,  # Use 'diffusion' instead of deprecated 'sigma'
+        sigma=0.2,
         coupling_coefficient=1.0,
     )
 

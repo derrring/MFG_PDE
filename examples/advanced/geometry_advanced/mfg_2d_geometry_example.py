@@ -34,14 +34,14 @@ class MFGProblem2D(MFGProblem):
     providing a template for future 2D/3D MFG implementations.
     """
 
-    def __init__(self, geometry_config: dict, time_domain: tuple = (1.0, 51), diffusion: float = 1.0, **kwargs):
+    def __init__(self, geometry_config: dict, time_domain: tuple = (1.0, 51), sigma: float = 1.0, **kwargs):
         """
         Initialize 2D MFG problem.
 
         Args:
             geometry_config: Configuration for 2D domain geometry
             time_domain: (T_final, N_time_steps)
-            diffusion: Diffusion coefficient
+            sigma: SDE volatility
             **kwargs: Additional MFG problem parameters
         """
 
@@ -62,7 +62,7 @@ class MFGProblem2D(MFGProblem):
             Nx=int(np.sqrt(self.mesh_data.num_vertices)),  # Approximate 1D grid size
             T=time_domain[0],
             Nt=time_domain[1],
-            diffusion=diffusion,
+            sigma=sigma,
             **kwargs,
         )
 
@@ -133,9 +133,7 @@ def create_rectangle_with_holes_problem():
     }
 
     # Create MFG problem
-    problem = MFGProblem2D(
-        geometry_config=geometry_config, time_domain=(1.0, 51), diffusion=0.5, coupling_coefficient=1.0
-    )
+    problem = MFGProblem2D(geometry_config=geometry_config, time_domain=(1.0, 51), sigma=0.5, coupling_coefficient=1.0)
 
     return problem
 
@@ -150,7 +148,7 @@ def create_l_shaped_domain_problem():
     geometry_config = {"domain_type": "polygon", "vertices": l_vertices, "mesh_size": 0.06}
 
     # Create MFG problem
-    problem = MFGProblem2D(geometry_config=geometry_config, time_domain=(1.0, 51), diffusion=0.8)
+    problem = MFGProblem2D(geometry_config=geometry_config, time_domain=(1.0, 51), sigma=0.8)
 
     return problem
 
@@ -274,7 +272,7 @@ def integration_with_existing_config():
     problem = MFGProblem2D(
         geometry_config=dict(config.geometry),
         time_domain=(config.problem.T, config.problem.Nt),
-        diffusion=config.problem.diffusion,
+        sigma=config.problem.sigma,
         coupling_coefficient=config.problem.coupling_coefficient,
     )
 

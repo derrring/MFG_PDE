@@ -94,7 +94,7 @@ def create_validation_problem(nx: int = 51, nt: int = 51) -> MFGProblem:
         Nx=nx,
         T=0.5,
         Nt=nt,
-        diffusion=0.1,
+        sigma=0.1,
         coupling_coefficient=0.5,  # Moderate diffusion  # Standard control cost
     )
 

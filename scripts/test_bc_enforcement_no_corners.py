@@ -30,7 +30,7 @@ def test_same_value_all_boundaries():
     )
 
     grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=bc)
-    problem = MFGProblem(geometry=grid, T=0.2, Nt=3, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.2, Nt=3, sigma=0.1)
     solver = HJBFDMSolver(problem, max_newton_iterations=10)
     U = solver.solve()
 
@@ -71,7 +71,7 @@ def test_opposite_boundaries_only():
     )
 
     grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=bc)
-    problem = MFGProblem(geometry=grid, T=0.2, Nt=3, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.2, Nt=3, sigma=0.1)
     solver = HJBFDMSolver(problem, max_newton_iterations=10)
     U = solver.solve()
 
@@ -111,7 +111,7 @@ def test_homogeneous_bc():
     )
 
     grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[20, 20], boundary_conditions=bc)
-    problem = MFGProblem(geometry=grid, T=0.2, Nt=3, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.2, Nt=3, sigma=0.1)
     solver = HJBFDMSolver(problem, max_newton_iterations=10)
     U = solver.solve()
 

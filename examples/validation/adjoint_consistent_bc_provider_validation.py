@@ -152,7 +152,7 @@ def create_towel_problem_standard_bc(
         geometry=geometry,
         T=T,
         Nt=Nt,
-        diffusion=sigma,
+        sigma=sigma,
         components=components,
     )
 
@@ -248,7 +248,7 @@ def create_towel_problem_adjoint_bc(
         geometry=geometry,
         T=T,
         Nt=Nt,
-        diffusion=sigma,
+        sigma=sigma,
         components=components,
     )
 

@@ -2530,7 +2530,7 @@ if __name__ == "__main__":
 
     # Test 1D problem with uniform collocation points matching problem grid
     geometry_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21])
-    problem_1d = MFGProblem(geometry=geometry_1d, T=1.0, Nt=10, diffusion=0.1)
+    problem_1d = MFGProblem(geometry=geometry_1d, T=1.0, Nt=10, sigma=0.1)
 
     # Use problem grid points as collocation points to avoid index mismatch
     collocation_points = problem_1d.xSpace.reshape(-1, 1)
@@ -2577,7 +2577,7 @@ if __name__ == "__main__":
     points_2d = np.column_stack([xx.ravel(), yy.ravel()])
 
     geometry_2d = TensorProductGrid(bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[Nx_2d, Nx_2d])
-    problem_2d = MFGProblem(geometry=geometry_2d, T=1.0, Nt=5, diffusion=0.1)
+    problem_2d = MFGProblem(geometry=geometry_2d, T=1.0, Nt=5, sigma=0.1)
 
     solver_2d = HJBGFDMSolver(
         problem_2d,

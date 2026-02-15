@@ -2173,7 +2173,7 @@ if __name__ == "__main__":
         Nx_points=[31],
         boundary_conditions=neumann_bc(dimension=1),
     )
-    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1, components=components)
+    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, sigma=0.1, components=components)
     solver = FPParticleSolver(problem, num_particles=1000)
 
     # Test solver initialization
@@ -2207,7 +2207,7 @@ if __name__ == "__main__":
         Nx_points=[16, 16],
         boundary_conditions=neumann_bc(dimension=2),
     )
-    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, diffusion=0.1, components=components)
+    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, sigma=0.1, components=components)
 
     solver_2d = FPParticleSolver(problem_2d, num_particles=500, mode="hybrid")
 

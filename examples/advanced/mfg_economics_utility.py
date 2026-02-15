@@ -273,7 +273,7 @@ def main():
         geometry=geometry,
         T=T,
         Nt=Nt,
-        diffusion=sigma,
+        sigma=sigma,
         coupling_coefficient=0.0,  # No density coupling for clarity
     )
 

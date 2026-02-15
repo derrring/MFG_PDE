@@ -75,18 +75,18 @@ print()
 diffusion_values = [0.05, 0.15, 0.30]
 results_diffusion = {}
 
-for diffusion in diffusion_values:
-    print(f"Solving with diffusion={diffusion}...")
+for sigma in diffusion_values:
+    print(f"Solving with sigma={sigma}...")
     geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(
         geometry=geometry,
         T=1.0,
         Nt=50,
-        diffusion=diffusion,
+        sigma=sigma,
         components=create_lq_components(coupling_strength=0.5),
     )
-    results_diffusion[diffusion] = problem.solve(verbose=False)
-    print(f"  Converged in {results_diffusion[diffusion].iterations} iterations")
+    results_diffusion[sigma] = problem.solve(verbose=False)
+    print(f"  Converged in {results_diffusion[sigma].iterations} iterations")
 
 print()
 
@@ -113,7 +113,7 @@ for coupling in coupling_values:
         geometry=geometry,
         T=1.0,
         Nt=50,
-        diffusion=0.15,
+        sigma=0.15,
         components=create_lq_components(coupling_strength=coupling),
     )
     results_coupling[coupling] = problem.solve(verbose=False)
@@ -144,7 +144,7 @@ for Nx in Nx_values:
         geometry=geometry,
         T=1.0,
         Nt=Nx,  # Keep dt/dx ratio constant
-        diffusion=0.15,
+        sigma=0.15,
         components=create_lq_components(coupling_strength=0.5),
     )
     results_grid[Nx] = problem.solve(verbose=False)
@@ -174,14 +174,14 @@ print()
 
 # Example analysis: mass conservation
 print("Mass Conservation Check (diffusion variations):")
-for diffusion, result in results_diffusion.items():
+for sigma, result in results_diffusion.items():
     # Use the stored result's shape to compute dx
     Nx = result.M.shape[1]
     dx = 1.0 / (Nx - 1)
     initial_mass = np.sum(result.M[0, :]) * dx
     final_mass = np.sum(result.M[-1, :]) * dx
     print(
-        f"  diffusion={diffusion}: Initial={initial_mass:.4f}, "
+        f"  sigma={sigma}: Initial={initial_mass:.4f}, "
         f"Final={final_mass:.4f}, Drift={abs(final_mass - initial_mass):.2e}"
     )
 
@@ -227,9 +227,9 @@ try:
 
     # Row 1: Diffusion study - final densities
     ax = axes[0, 0]
-    for diffusion, result in results_diffusion.items():
+    for sigma, result in results_diffusion.items():
         x_grid = np.linspace(0, 1, result.M.shape[1])
-        ax.plot(x_grid, result.M[-1, :], label=f"diff={diffusion}")
+        ax.plot(x_grid, result.M[-1, :], label=f"sigma={sigma}")
     ax.set_xlabel("x")
     ax.set_ylabel("m(T, x)")
     ax.set_title("Final Density: Diffusion Study")
@@ -260,9 +260,9 @@ try:
 
     # Row 2: Value functions
     ax = axes[1, 0]
-    for diffusion, result in results_diffusion.items():
+    for sigma, result in results_diffusion.items():
         x_grid = np.linspace(0, 1, result.U.shape[1])
-        ax.plot(x_grid, result.U[-1, :], label=f"diff={diffusion}")
+        ax.plot(x_grid, result.U[-1, :], label=f"sigma={sigma}")
     ax.set_xlabel("x")
     ax.set_ylabel("u(T, x)")
     ax.set_title("Terminal Value: Diffusion Study")

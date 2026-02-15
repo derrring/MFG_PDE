@@ -24,7 +24,7 @@ def main():
 
     # Setup
     np.random.seed(42)
-    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=51, T=1.0, Nt=51, diffusion=1.0, coupling_coefficient=0.5)
+    problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=51, T=1.0, Nt=51, sigma=1.0, coupling_coefficient=0.5)
     bc = neumann_bc(dimension=1, value=0.0)
 
     fp_solver = FPParticleSolver(problem, num_particles=1000, normalize_kde_output=True, boundary_conditions=bc)

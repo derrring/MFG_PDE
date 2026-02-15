@@ -72,7 +72,7 @@ class MFGProblemProtocol(Protocol):
         ...     return u
 
         >>> # Runtime validation
-        >>> problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1, Nt=50, diffusion=0.1)
+        >>> problem = MFGProblem(xmin=0, xmax=1, Nx=100, T=1, Nt=50, sigma=0.1)
         >>> assert isinstance(problem, MFGProblemProtocol)  # Should pass!
     """
 

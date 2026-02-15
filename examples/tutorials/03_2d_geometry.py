@@ -38,7 +38,7 @@ print()
 TARGET = np.array([5.0, 5.0])  # Target location (center of room)
 CONGESTION_WEIGHT = 1.0
 GRID_RESOLUTION = 15  # Reduced from 30 for faster execution
-DIFFUSION = 0.3  # Slightly higher for stability
+SIGMA = 0.3  # Slightly higher for stability
 
 # Create 2D geometry
 print("Creating 2D geometry...")
@@ -101,7 +101,7 @@ problem = MFGProblem(
     geometry=geometry,
     T=2.0,  # Reduced terminal time for faster demo
     Nt=20,  # Reduced time steps
-    diffusion=DIFFUSION,
+    sigma=SIGMA,
     components=components,
 )
 

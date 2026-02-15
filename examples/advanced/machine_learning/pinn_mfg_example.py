@@ -72,7 +72,7 @@ def create_mfg_problem() -> MFGProblem:
 
     # Create MFG problem with Geometry-First API
     geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[65], boundary_conditions=no_flux_bc(dimension=1))
-    problem = MFGProblem(geometry=geometry, T=1.0, diffusion=0.1)
+    problem = MFGProblem(geometry=geometry, T=1.0, sigma=0.1)
 
     # Set terminal and initial conditions
     problem.terminal_condition = terminal_condition

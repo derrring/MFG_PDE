@@ -39,7 +39,7 @@ def test_ghost_nodes_initialization():
         geometry=geometry,
         T=1.0,
         Nt=10,
-        diffusion=0.1,
+        sigma=0.1,
         lambda_=1.0,
         gamma=0.5,
         boundary_conditions=bc,
