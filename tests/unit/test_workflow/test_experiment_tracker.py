@@ -975,7 +975,7 @@ def test_tracker_export_experiments_json():
 @pytest.mark.unit
 def test_tracker_export_experiments_csv():
     """Test exporting experiments to CSV."""
-    pytest.importorskip("pandas")
+    pytest.importorskip("polars")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tracker = ExperimentTracker(workspace_path=Path(tmpdir))

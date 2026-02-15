@@ -757,12 +757,15 @@ class ExperimentTracker:
 
         elif export_format == "csv":
             # Flatten data for CSV export
-            import pandas as pd
+            import polars as pl
 
             flattened_data = []
             for exp_data in experiments_data:
                 flat_row = {}
-                flat_row.update(exp_data["metadata"])
+                # Only include scalar metadata values (skip nested dicts/lists)
+                for k, v in exp_data["metadata"].items():
+                    if isinstance(v, (int, float, str, bool, type(None))):
+                        flat_row[k] = v
 
                 # Add result values
                 for result_name, result_data in exp_data["results"].items():
@@ -772,9 +775,9 @@ class ExperimentTracker:
                 flat_row["execution_time"] = exp_data["execution_time"]
                 flattened_data.append(flat_row)
 
-            df = pd.DataFrame(flattened_data)
+            df = pl.DataFrame(flattened_data)
             export_file = self.workspace_path / f"export_{timestamp}.csv"
-            df.to_csv(export_file, index=False)
+            df.write_csv(export_file)
 
         else:
             raise ValueError(f"Unsupported export format: {export_format}")

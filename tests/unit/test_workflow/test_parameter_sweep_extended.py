@@ -11,12 +11,13 @@ import tempfile
 import time
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
-import numpy as np
+pl = pytest.importorskip("polars")
 
-from mfg_pde.workflow.parameter_sweep import (
+import numpy as np  # noqa: E402
+
+from mfg_pde.workflow.parameter_sweep import (  # noqa: E402
     ParameterSweep,
     SweepConfiguration,
     create_adaptive_sweep,
@@ -340,7 +341,7 @@ def test_to_dataframe_basic():
     df = sweep.to_dataframe()
 
     assert df is not None
-    assert isinstance(df, pd.DataFrame)
+    assert isinstance(df, pl.DataFrame)
     assert len(df) == 3
     assert "x" in df.columns  # Parameter column
     assert "my_output" in df.columns  # Result column (flattened from returned dict)
@@ -433,7 +434,7 @@ def test_save_to_csv_content():
         csv_path = sweep.save_to_csv("output.csv")
 
         # Read CSV and verify content
-        df_loaded = pd.read_csv(csv_path)
+        df_loaded = pl.read_csv(csv_path)
 
         assert len(df_loaded) == 2
         assert "x" in df_loaded.columns
