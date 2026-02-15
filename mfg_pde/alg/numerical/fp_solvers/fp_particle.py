@@ -14,12 +14,10 @@ if TYPE_CHECKING:
     from mfg_pde.geometry.implicit import ImplicitDomain
 
 try:  # pragma: no cover - optional SciPy dependency
-    import scipy.interpolate as _scipy_interpolate
     from scipy.stats import gaussian_kde
 
     SCIPY_AVAILABLE = True
 except ImportError:  # pragma: no cover - graceful fallback when SciPy missing
-    _scipy_interpolate = None
     gaussian_kde = None
     SCIPY_AVAILABLE = False
 

@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     # For static typing, use minimal type definitions
 
     DictConfig = dict[str, Any]
-    ListConfig = list[Any]
 
     class OmegaConf:
         @staticmethod
@@ -62,7 +61,7 @@ if TYPE_CHECKING:
 else:
     # Runtime imports and fallbacks
     try:
-        from omegaconf import DictConfig, ListConfig, OmegaConf
+        from omegaconf import DictConfig, OmegaConf
         from omegaconf.errors import ConfigAttributeError
 
         try:
@@ -74,7 +73,6 @@ else:
     except ImportError:
         OMEGACONF_AVAILABLE = False
         DictConfig = dict
-        ListConfig = list
 
         class OmegaConf:
             @staticmethod
