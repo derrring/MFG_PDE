@@ -916,7 +916,6 @@ class UnstructuredMesh(Geometry):
         """
         self._dimension = dimension
         self.mesh_data: Any | None = None  # MeshData from meshes.mesh_data
-        self._gmsh_model: Any = None
 
     @property
     def dimension(self) -> int:

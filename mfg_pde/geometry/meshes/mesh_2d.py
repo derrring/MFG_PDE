@@ -48,11 +48,6 @@ class Mesh2D(_GmshMeshBase):
             **kwargs,
         )
 
-    @property
-    def bounds_rect(self) -> tuple[float, float, float, float]:
-        """Backward-compatible alias for ``_bounds_tuple``."""
-        return self._bounds_tuple
-
     def _setup_domain_parameters(self):
         """Setup parameters based on domain type."""
         if self.domain_type == "rectangle":

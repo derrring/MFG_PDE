@@ -13,6 +13,7 @@ import numpy as np
 
 from mfg_pde.geometry.base import UnstructuredMesh
 from mfg_pde.geometry.meshes.mesh_data import MeshData
+from mfg_pde.utils.deprecation import deprecated_parameter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -50,8 +51,6 @@ class Mesh1D(UnstructuredMesh):
 
         if self.xmax <= self.xmin:
             raise ValueError("xmax must be greater than xmin")
-
-        self._mesh_data: MeshData | None = None
 
     def create_gmsh_geometry(self):
         """
@@ -102,7 +101,7 @@ class Mesh1D(UnstructuredMesh):
         # Compute element lengths
         mesh_data.element_volumes = self._compute_element_lengths(vertices, elements)
 
-        self._mesh_data = mesh_data
+        self.mesh_data = mesh_data
         return mesh_data
 
     def _generate_uniform_mesh(self) -> np.ndarray:
@@ -187,10 +186,27 @@ class Mesh1D(UnstructuredMesh):
         if spacing is not None:
             self.mesh_spacing = spacing
 
-    def export_mesh(self, format_type: str, filename: str):
-        """Export mesh in specified format."""
-        if self._mesh_data is None:
-            self._mesh_data = self.generate_mesh()
+    @deprecated_parameter(
+        param_name="format_type",
+        since="v0.17.12",
+        replacement="file_format",
+    )
+    def export_mesh(self, file_format: str = "", filename: str = "", format_type: str | None = None) -> None:
+        """Export mesh in specified format.
+
+        Args:
+            file_format: Meshio file format string (e.g. "vtk", "gmsh")
+            filename: Output file path
+            format_type: Deprecated, use ``file_format`` instead.
+        """
+        if format_type is not None:
+            file_format = format_type
+
+        if self.mesh_data is None:
+            self.generate_mesh()
+
+        if self.mesh_data is None:
+            raise RuntimeError("Failed to generate mesh data")
 
         try:
             import meshio
@@ -198,16 +214,19 @@ class Mesh1D(UnstructuredMesh):
             raise ImportError("meshio required for mesh export") from None
 
         # Convert to meshio format
-        cells = [("line", self._mesh_data.elements)]
+        cells = [("line", self.mesh_data.elements)]
 
         mesh = meshio.Mesh(
-            points=self._mesh_data.vertices,
+            points=self.mesh_data.vertices,
             cells=cells,
-            cell_data={"physical": [self._mesh_data.element_tags]},
+            cell_data={"physical": [self.mesh_data.element_tags]},
         )
 
         # Write mesh
-        mesh.write(filename)
+        if file_format:
+            mesh.write(filename, file_format=file_format)
+        else:
+            mesh.write(filename)
 
     def __str__(self) -> str:
         """String representation."""

@@ -137,5 +137,4 @@ class _GmshMeshBase(UnstructuredMesh):
         gmsh.option.setNumber("Mesh.CharacteristicLengthMin", self.mesh_size / 10)
         self._post_gmsh_options()
 
-        self._gmsh_model = gmsh.model
         return gmsh.model
