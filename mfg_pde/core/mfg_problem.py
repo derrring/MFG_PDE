@@ -900,7 +900,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             self.spatial_bounds = config["spatial_bounds"]
             self.spatial_discretization = config["spatial_discretization"]
 
-        elif geometry.geometry_type in (GeometryType.DOMAIN_2D, GeometryType.DOMAIN_3D):
+        elif geometry.geometry_type == GeometryType.UNSTRUCTURED_MESH:
             # BaseGeometry - unstructured mesh via Gmsh
             self.mesh_data = geometry.generate_mesh()
             self.collocation_points = self.mesh_data.vertices
@@ -1034,7 +1034,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         gt = self.geometry.geometry_type
         if gt == GeometryType.CARTESIAN_GRID:
             return "grid"
-        elif gt in (GeometryType.DOMAIN_2D, GeometryType.DOMAIN_3D):
+        elif gt == GeometryType.UNSTRUCTURED_MESH:
             return "mesh"
         elif gt == GeometryType.IMPLICIT:
             return "implicit"

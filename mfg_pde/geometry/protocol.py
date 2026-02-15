@@ -33,8 +33,7 @@ class GeometryType(Enum):
         CARTESIAN_GRID: Rectangular tensor product grid
         NETWORK: Graph/network topology
         MAZE: Grid-based maze with obstacles
-        DOMAIN_2D: 2D complex geometry with boundary
-        DOMAIN_3D: 3D complex geometry with boundary
+        UNSTRUCTURED_MESH: Unstructured mesh geometry (any dimension)
         IMPLICIT: Implicit geometry (level set or SDF)
         CUSTOM: User-defined custom geometry
     """
@@ -42,8 +41,7 @@ class GeometryType(Enum):
     CARTESIAN_GRID = "cartesian_grid"
     NETWORK = "network"
     MAZE = "maze"
-    DOMAIN_2D = "domain_2d"
-    DOMAIN_3D = "domain_3d"
+    UNSTRUCTURED_MESH = "unstructured_mesh"
     IMPLICIT = "implicit"
     CUSTOM = "custom"
 
@@ -638,10 +636,21 @@ def detect_geometry_type(geometry: object) -> GeometryType:
         return GeometryType.NETWORK
     elif "maze" in class_name:
         return GeometryType.MAZE
-    elif "domain2d" in class_name or "domain_2d" in class_name:
-        return GeometryType.DOMAIN_2D
-    elif "domain3d" in class_name or "domain_3d" in class_name:
-        return GeometryType.DOMAIN_3D
+    elif any(
+        x in class_name
+        for x in [
+            "domain2d",
+            "domain_2d",
+            "domain3d",
+            "domain_3d",
+            "mesh2d",
+            "mesh_2d",
+            "mesh3d",
+            "mesh_3d",
+            "unstructured",
+        ]
+    ):
+        return GeometryType.UNSTRUCTURED_MESH
     elif "implicit" in class_name or "levelset" in class_name or "sdf" in class_name:
         return GeometryType.IMPLICIT
     elif any(x in class_name for x in ["domain1d", "domain_1d", "cartesian", "grid"]):
