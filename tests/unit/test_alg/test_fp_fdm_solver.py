@@ -61,10 +61,10 @@ def standard_problem():
     Standard MFGProblem configuration:
     - Domain: [0, 1] with 51 grid points
     - Time: T=1.0 with 51 time steps
-    - Diffusion: diffusion=1.0
+    - Diffusion: sigma=1.0
     """
     domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
-    return MFGProblem(geometry=domain, T=1.0, Nt=51, diffusion=1.0, components=_default_components())
+    return MFGProblem(geometry=domain, T=1.0, Nt=51, sigma=1.0, components=_default_components())
 
 
 class TestFPFDMSolverInitialization:
@@ -768,7 +768,7 @@ class TestFPFDMSolverTensorDiffusion:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[31, 21], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -802,7 +802,7 @@ class TestFPFDMSolverTensorDiffusion:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
         boundary_conditions = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -834,7 +834,7 @@ class TestFPFDMSolverTensorDiffusion:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[26, 16], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -872,7 +872,7 @@ class TestFPFDMSolverTensorDiffusion:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[21, 16], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -905,7 +905,7 @@ class TestFPFDMSolverTensorDiffusion:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
         boundary_conditions = BoundaryConditions(type="periodic")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -940,7 +940,7 @@ class TestFPFDMSolverTensorDiffusion:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[26, 26], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -979,7 +979,7 @@ class TestFPFDMSolverTensorDiffusion:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=5, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1, components=_default_components_2d())
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -1001,7 +1001,7 @@ class TestFPFDMSolverTensorDiffusion:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[31, 21], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.05, Nt=50, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.05, Nt=50, sigma=0.1, components=_default_components_2d())
 
         boundary_conditions = BoundaryConditions(type="no_flux")
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
@@ -1137,7 +1137,7 @@ class TestFPFDMSolverCallableDrift:
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)
         )
-        problem = MFGProblem(geometry=domain, T=0.1, Nt=10, diffusion=0.1, components=_default_components_2d())
+        problem = MFGProblem(geometry=domain, T=0.1, Nt=10, sigma=0.1, components=_default_components_2d())
 
         solver = FPFDMSolver(problem)
 

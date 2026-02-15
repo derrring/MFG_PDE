@@ -37,7 +37,7 @@ def test_kde_normalization():
         bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1)
     )  # Nx=20 -> 21 points
     problem = MFGProblem(
-        geometry=geometry, T=0.1, Nt=5, diffusion=1.0, coupling_coefficient=0.5, components=_default_components()
+        geometry=geometry, T=0.1, Nt=5, sigma=1.0, coupling_coefficient=0.5, components=_default_components()
     )
 
     bc = no_flux_bc(dimension=1)

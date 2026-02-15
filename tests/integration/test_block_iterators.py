@@ -54,7 +54,7 @@ class TestBlockIteratorBasic:
     def simple_problem(self):
         """Create a simple 1D MFG problem for testing."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, diffusion=0.2, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=10, sigma=0.2, components=_default_components())
         return problem
 
     @pytest.fixture
@@ -146,7 +146,7 @@ class TestBlockIteratorConvergence:
     def convergence_problem(self):
         """Problem sized for convergence testing."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[25], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=0.4, Nt=12, diffusion=0.18, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.4, Nt=12, sigma=0.18, components=_default_components())
         return problem
 
     @pytest.mark.slow
@@ -206,7 +206,7 @@ class TestBlockIteratorParameters:
     def param_problem(self):
         """Small problem for parameter testing."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, diffusion=0.2, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, sigma=0.2, components=_default_components())
         return problem
 
     def test_no_damping(self, param_problem):
@@ -269,7 +269,7 @@ class TestBlockVsFixedPoint:
     def comparison_problem(self):
         """Problem for comparison testing."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[21], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, diffusion=0.2, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.3, Nt=8, sigma=0.2, components=_default_components())
         return problem
 
     def test_gauss_seidel_similar_to_fixed_point(self, comparison_problem):

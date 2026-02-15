@@ -32,7 +32,7 @@ class MockMFGProblem:
         xmin=0.0,
         xmax=1.0,
         Nx=100,
-        diffusion=0.1,
+        sigma=0.1,
         coupling_coefficient=0.5,
     ):
         self.T = T
@@ -44,8 +44,8 @@ class MockMFGProblem:
         self.Dx = (xmax - xmin) / Nx if Nx > 0 else 0.0
         # Dt = T / Nt (number of intervals)
         self.Dt = T / Nt if Nt > 0 else 0.0
-        self.diffusion = diffusion
-        self.sigma = diffusion  # Backward compat alias
+        self.sigma = sigma
+        self.diffusion = sigma**2 / 2.0  # PDE coefficient D = sigma^2/2
         self.coupling_coefficient = coupling_coefficient
 
 

@@ -329,7 +329,7 @@ class TestGetSpatialGrid:
     def test_geometry_based_api_1d(self):
         """Test grid extraction with geometry-based API (1D)."""
         domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=domain, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=domain, T=1.0, Nt=50, sigma=0.1, components=_default_components())
 
         grid = get_spatial_grid(problem)
 
@@ -341,7 +341,7 @@ class TestGetSpatialGrid:
         """Test grid extraction with legacy API (1D)."""
         # This test now uses Geometry-First API instead of deprecated legacy API
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, sigma=0.1, components=_default_components())
 
         grid = get_spatial_grid(problem)
 

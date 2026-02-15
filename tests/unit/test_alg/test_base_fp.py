@@ -59,7 +59,7 @@ class MockMFGProblem(MFGProblem):
             geometry=geometry,
             T=1.0,
             Nt=100,
-            diffusion=0.1,
+            sigma=0.1,
             components=_default_components(),
         )
         self.dim = 1

@@ -59,7 +59,7 @@ class SimpleLQMFG2D(MFGProblem):
             Nx=30,
             Lx=1.0,
             xmin=0.0,
-            diffusion=0.2,
+            sigma=0.2,
             coupling_coefficient=0.5,
             dimension=2,
             components=_default_components_2d(),

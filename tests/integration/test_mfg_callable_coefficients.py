@@ -52,7 +52,7 @@ class TestMFGCallableCoefficients:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
         )  # Nx=30 intervals
-        problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, sigma=0.1, components=_default_components())
 
         # Porous medium diffusion: D(m) = σ² m
         def porous_medium_diffusion(t, x, m):
@@ -90,7 +90,7 @@ class TestMFGCallableCoefficients:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
         )  # Nx=30 intervals
-        problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, sigma=0.1, components=_default_components())
 
         # Crowd diffusion: lower diffusion in high-density regions
         def crowd_diffusion(t, x, m):
@@ -127,7 +127,7 @@ class TestMFGCallableCoefficients:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
         )  # Nx=30 intervals
-        problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.15, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, sigma=0.15, components=_default_components())
 
         # Callable returning constant
         def constant_diffusion(t, x, m):
@@ -171,7 +171,7 @@ class TestMFGCallableCoefficients:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[31]
         )  # Nx=30 intervals
-        problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.5, Nt=20, sigma=0.1, components=_default_components())
 
         # Spatially varying diffusion (higher at boundaries)
         (Nx_points,) = problem.geometry.get_grid_shape()  # 1D spatial grid
@@ -212,7 +212,7 @@ class TestMFGCallableCoefficients:
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[21]
         )  # Nx=20 intervals
-        problem = MFGProblem(geometry=geometry, T=0.3, Nt=10, diffusion=0.1, components=_default_components())
+        problem = MFGProblem(geometry=geometry, T=0.3, Nt=10, sigma=0.1, components=_default_components())
 
         # Simple state-dependent diffusion
         def state_diffusion(t, x, m):

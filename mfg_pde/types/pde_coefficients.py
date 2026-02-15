@@ -93,15 +93,20 @@ class DriftCallable(Protocol):
 @runtime_checkable
 class DiffusionCallable(Protocol):
     """
-    Protocol for state-dependent diffusion coefficient/tensor D(t, x, m).
+    Protocol for state-dependent diffusion coefficient D(t, x, m).
 
-    The diffusion represents the stochastic part of the dynamics:
-        dx_t = α dt + √(2D) dW_t
+    Convention (Issue #811, physics/PDE standard):
+        PDE:  dm/dt + div(alpha m) = D Laplacian(m)    (D appears directly)
+        SDE:  dX = alpha dt + sigma dW,  where sigma = sqrt(2D)
+
+    The callable returns the PDE diffusion coefficient D = sigma^2/2,
+    NOT the SDE volatility sigma. This is the physics convention where
+    D appears directly in the PDE without extra factors.
 
     Three forms supported:
-    1. Isotropic: D = σ² (scalar, same in all directions)
-    2. Anisotropic: D = diag(σ₁², σ₂², ...) (diagonal, different per direction)
-    3. Full tensor: D = Σ (general positive-definite matrix)
+    1. Isotropic: D = sigma^2/2 (scalar, same in all directions)
+    2. Anisotropic: D = diag(sigma_1^2/2, ...) (diagonal, per direction)
+    3. Full tensor: D = (1/2) Sigma Sigma^T (general SPD matrix)
 
     Args:
         t: Current time (scalar)
@@ -116,26 +121,26 @@ class DiffusionCallable(Protocol):
         - Full tensor: (*spatial_shape, d, d) (general elliptic operator)
 
     Examples:
-        >>> # Isotropic constant
+        >>> # Isotropic constant: D = 0.05 (i.e. sigma = sqrt(2*0.05) ~ 0.316)
         >>> def constant_diffusion(t, x, m):
-        ...     return 0.1  # σ² = 0.1
+        ...     return 0.05  # PDE coefficient D
 
         >>> # State-dependent isotropic
         >>> def density_diffusion(t, x, m):
-        ...     return 0.1 * (1.0 + m)  # Increases with density
+        ...     return 0.05 * (1.0 + m)  # D increases with density
 
-        >>> # Anisotropic (2D)
+        >>> # Anisotropic (2D): different D per direction
         >>> def anisotropic_2d(t, x, m):
         ...     D = np.zeros((*m.shape, 2))
-        ...     D[..., 0] = 0.1  # Faster diffusion in x
-        ...     D[..., 1] = 0.5  # Slower diffusion in y
+        ...     D[..., 0] = 0.05  # D_x
+        ...     D[..., 1] = 0.25  # D_y (faster diffusion in y)
         ...     return D
 
         >>> # Full tensor (2D, with cross-diffusion)
         >>> def full_tensor_2d(t, x, m):
         ...     D = np.zeros((*m.shape, 2, 2))
-        ...     D[..., 0, 0] = 0.1
-        ...     D[..., 1, 1] = 0.5
+        ...     D[..., 0, 0] = 0.05
+        ...     D[..., 1, 1] = 0.25
         ...     D[..., 0, 1] = D[..., 1, 0] = 0.02  # Cross-diffusion
         ...     return D
 

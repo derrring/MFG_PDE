@@ -41,7 +41,7 @@ def test_weno_uses_high_order_ghosts():
         geometry=domain,
         T=1.0,
         Nt=10,
-        diffusion=0.1,
+        sigma=0.1,
         components=_default_components(),
     )
 
@@ -70,7 +70,7 @@ def test_weno_ghost_cells_work():
         geometry=domain,
         T=1.0,
         Nt=10,
-        diffusion=0.1,
+        sigma=0.1,
         components=_default_components(),
     )
 
