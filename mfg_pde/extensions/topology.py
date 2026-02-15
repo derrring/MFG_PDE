@@ -156,11 +156,10 @@ class NetworkMFGProblem(MFGProblem):
         self.problem_name = problem_name
 
         # Phase 3.1 integration: geometry is already set by parent
-        self.domain_type = "network"  # Domain classification for solver selection
         self.dimension = "network"  # Special dimension indicator for network problems
 
-        # Re-detect solver compatibility now that domain_type is set correctly
-        # (parent __init__ called _detect_solver_compatibility() with grid domain)
+        # Re-detect solver compatibility after overriding dimension
+        # (parent __init__ called _detect_solver_compatibility() before this override)
         self._detect_solver_compatibility()
 
         # Override spatial properties for network

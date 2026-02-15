@@ -616,9 +616,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         self.spatial_bounds = [(xmin_scalar, xmax_scalar)]
         self.spatial_discretization = [Nx_scalar]
 
-        # Set domain type
-        self.domain_type = "grid"
-
     def _init_nd(
         self,
         spatial_bounds: list[tuple[float, float]],
@@ -711,9 +708,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Coefficients
         self.sigma: float = sigma
         self.coupling_coefficient: float = coupling_coefficient
-
-        # Set domain type
-        self.domain_type = "grid"
 
         # Check computational feasibility and warn if needed
         if not suppress_warnings:
@@ -906,8 +900,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             self.spatial_bounds = config["spatial_bounds"]
             self.spatial_discretization = config["spatial_discretization"]
 
-            self.domain_type = "grid"
-
         elif geometry.geometry_type in (GeometryType.DOMAIN_2D, GeometryType.DOMAIN_3D):
             # BaseGeometry - unstructured mesh via Gmsh
             self.mesh_data = geometry.generate_mesh()
@@ -919,8 +911,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             self.spatial_bounds = None  # Not a regular grid
             self.spatial_discretization = None
 
-            self.domain_type = "mesh"
-
         elif geometry.geometry_type == GeometryType.IMPLICIT:
             # ImplicitDomain - point cloud from SDF
             self.num_spatial_points = geometry.num_spatial_points
@@ -928,8 +918,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             self.spatial_shape = (self.num_spatial_points,)
             self.spatial_bounds = geometry.get_bounding_box()
             self.spatial_discretization = None
-
-            self.domain_type = "implicit"
 
         elif geometry.geometry_type in (GeometryType.MAZE, GeometryType.NETWORK):
             # Graph-based geometries (mazes, networks)
@@ -944,8 +932,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             if "graph_data" in config:
                 self.graph_data = config["graph_data"]
 
-            self.domain_type = str(geometry.geometry_type.value)
-
         else:
             # Generic GeometryProtocol object - extract config
             # Issue #557 fix: Extract spatial_bounds from get_problem_config()
@@ -956,8 +942,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             self.spatial_shape = config["spatial_shape"]
             self.spatial_bounds = config.get("spatial_bounds")
             self.spatial_discretization = config.get("spatial_discretization")
-
-            self.domain_type = str(geometry.geometry_type.value)
 
     def _init_network(
         self,
@@ -983,7 +967,6 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Store network
         self.network = network
         self.dimension = "network"  # Special dimension indicator
-        self.domain_type = "network"
 
         # Create CustomNetwork geometry from the network
         try:
@@ -1037,6 +1020,28 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     # =========================================================================
 
     @property
+    def domain_type(self) -> str:
+        """Domain type derived from geometry (Issue #794).
+
+        Returns a string classification of the domain:
+        - ``"grid"`` for Cartesian tensor-product grids
+        - ``"mesh"`` for unstructured 2D/3D meshes
+        - ``"implicit"`` for implicit/SDF-based domains
+        - ``"network"``, ``"maze"``, ``"custom"`` for other geometry types
+        """
+        from mfg_pde.geometry import GeometryType
+
+        gt = self.geometry.geometry_type
+        if gt == GeometryType.CARTESIAN_GRID:
+            return "grid"
+        elif gt in (GeometryType.DOMAIN_2D, GeometryType.DOMAIN_3D):
+            return "mesh"
+        elif gt == GeometryType.IMPLICIT:
+            return "implicit"
+        else:
+            return str(gt.value)  # "network", "maze", "custom"
+
+    @property
     def is_network(self) -> bool:
         """
         Check if this problem is defined on a network/graph domain.
@@ -1051,7 +1056,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             >>> problem.is_network
             True
         """
-        return getattr(self, "domain_type", None) == "network"
+        return self.domain_type == "network"
 
     @property
     def is_cartesian(self) -> bool:
@@ -1066,7 +1071,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             >>> problem.is_cartesian
             True
         """
-        return getattr(self, "domain_type", None) == "grid"
+        return self.domain_type == "grid"
 
     @property
     def is_implicit(self) -> bool:
@@ -1083,7 +1088,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             >>> problem.is_implicit
             True
         """
-        return getattr(self, "domain_type", None) == "implicit"
+        return self.domain_type == "implicit"
 
     # =========================================================================
     # Hamiltonian Properties (Issue #673)
