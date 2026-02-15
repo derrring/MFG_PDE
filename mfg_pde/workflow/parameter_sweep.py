@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     import logging
     from collections.abc import Callable
 
-    import pandas as pd
+    import polars as pl
 
 
 @dataclass
@@ -345,12 +345,14 @@ class ParameterSweep:
 
         return analysis
 
-    def _analyze_parameter_effects(self, df: pd.DataFrame) -> dict[str, Any]:
+    def _analyze_parameter_effects(self, df: pl.DataFrame) -> dict[str, Any]:
         """Analyze effects of different parameters on results."""
+        import polars as pl
+
         effects = {}
 
         # Get numeric result columns
-        numeric_columns = df.select_dtypes(include=[np.number]).columns
+        numeric_columns = [col for col in df.columns if df[col].dtype.is_numeric()]
         result_columns = [
             col for col in numeric_columns if col not in [*self.parameters.keys(), "run_id", "execution_time"]
         ]
@@ -362,24 +364,30 @@ class ParameterSweep:
                 for result_col in result_columns:
                     if result_col in df.columns:
                         # Group by parameter value and compute statistics
-                        grouped = df.groupby(param_name)[result_col].agg(["mean", "std", "min", "max"])
-                        param_effects[result_col] = grouped.to_dict()
+                        grouped = df.group_by(param_name).agg(
+                            pl.col(result_col).mean().alias("mean"),
+                            pl.col(result_col).std().alias("std"),
+                            pl.col(result_col).min().alias("min"),
+                            pl.col(result_col).max().alias("max"),
+                        )
+                        param_effects[result_col] = grouped.to_dict(as_series=False)
 
                 effects[param_name] = param_effects
 
         return effects
 
-    def _analyze_performance(self, df: pd.DataFrame) -> dict[str, Any]:
+    def _analyze_performance(self, df: pl.DataFrame) -> dict[str, Any]:
         """Analyze performance characteristics."""
         performance = {}
 
         if "execution_time" in df.columns:
+            col = df["execution_time"]
             performance["execution_time"] = {
-                "mean": df["execution_time"].mean(),
-                "std": df["execution_time"].std(),
-                "min": df["execution_time"].min(),
-                "max": df["execution_time"].max(),
-                "median": df["execution_time"].median(),
+                "mean": col.mean(),
+                "std": col.std(),
+                "min": col.min(),
+                "max": col.max(),
+                "median": col.median(),
             }
 
         # Analyze convergence if available
@@ -387,22 +395,23 @@ class ParameterSweep:
             performance["convergence_rate"] = df["converged"].mean()
 
         if "iterations" in df.columns:
+            col = df["iterations"]
             performance["iterations"] = {
-                "mean": df["iterations"].mean(),
-                "std": df["iterations"].std(),
-                "min": df["iterations"].min(),
-                "max": df["iterations"].max(),
+                "mean": col.mean(),
+                "std": col.std(),
+                "min": col.min(),
+                "max": col.max(),
             }
 
         return performance
 
-    def to_dataframe(self) -> pd.DataFrame | None:
-        """Convert results to pandas DataFrame for analysis."""
+    def to_dataframe(self) -> pl.DataFrame | None:
+        """Convert results to Polars DataFrame for analysis."""
         if not self.results:
             return None
 
         try:
-            import pandas as pd
+            import polars as pl
 
             # Flatten results
             flattened_results = []
@@ -426,7 +435,7 @@ class ParameterSweep:
 
                 flattened_results.append(flat_result)
 
-            return pd.DataFrame(flattened_results)
+            return pl.DataFrame(flattened_results)
 
         except Exception as e:
             self.logger.error(f"Failed to create DataFrame: {e}")
@@ -443,7 +452,7 @@ class ParameterSweep:
             filename = f"parameter_sweep_{timestamp}.csv"
 
         filepath = self.config.output_dir / filename if self.config.output_dir is not None else Path(filename)
-        df.to_csv(filepath, index=False)
+        df.write_csv(filepath)
 
         self.logger.info(f"Saved results to {filepath}")
         return str(filepath)

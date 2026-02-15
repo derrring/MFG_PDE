@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-pd = pytest.importorskip("pandas")
+pl = pytest.importorskip("polars")
 
 import numpy as np  # noqa: E402
 
@@ -341,7 +341,7 @@ def test_to_dataframe_basic():
     df = sweep.to_dataframe()
 
     assert df is not None
-    assert isinstance(df, pd.DataFrame)
+    assert isinstance(df, pl.DataFrame)
     assert len(df) == 3
     assert "x" in df.columns  # Parameter column
     assert "my_output" in df.columns  # Result column (flattened from returned dict)
@@ -434,7 +434,7 @@ def test_save_to_csv_content():
         csv_path = sweep.save_to_csv("output.csv")
 
         # Read CSV and verify content
-        df_loaded = pd.read_csv(csv_path)
+        df_loaded = pl.read_csv(csv_path)
 
         assert len(df_loaded) == 2
         assert "x" in df_loaded.columns
