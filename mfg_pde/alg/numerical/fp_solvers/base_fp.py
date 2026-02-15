@@ -163,6 +163,8 @@ class BaseFPSolver(BaseNumericalSolver):
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
         # Deprecated parameter (Issue #717)
         diffusion_field: float | np.ndarray | Callable | None = None,
+        # MMS verification support
+        source_term: Callable[[float, np.ndarray], np.ndarray] | None = None,
     ) -> np.ndarray:
         """
         Solves the full Fokker-Planck (FP) system forward in time.
@@ -224,6 +226,13 @@ class BaseFPSolver(BaseNumericalSolver):
                 Default: None
 
             diffusion_field: DEPRECATED. Use volatility_field instead.
+
+            source_term: Source term for MMS verification (optional):
+                - None: No source term (default, standard PDE)
+                - Callable: Function S(t, x_grid) -> np.ndarray
+                  Evaluated analytically at each timestep.
+                  Used for Method of Manufactured Solutions verification.
+                Default: None
 
             show_progress: Display progress bar for timesteps
                 Default: True

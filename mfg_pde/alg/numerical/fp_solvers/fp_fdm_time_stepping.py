@@ -327,6 +327,7 @@ def solve_timestep_explicit_with_drift(
     spacing: tuple[float, ...],
     ndim: int,
     boundary_conditions: BoundaryConditions | None = None,
+    source_term: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Solve one timestep using semi-implicit scheme with direct drift.
@@ -410,6 +411,10 @@ def solve_timestep_explicit_with_drift(
     advection_term = compute_advection_from_drift_nd(M_star, drift, spacing, ndim)
     M_next = M_star - dt * advection_term
 
+    # Step 3: Add source term (MMS verification)
+    if source_term is not None:
+        M_next += dt * source_term.reshape(shape)
+
     return M_next
 
 
@@ -427,6 +432,8 @@ def solve_fp_nd_full_system(
     drift_field: Callable | None = None,
     # Progress callback for HierarchicalProgress (Issue #640)
     progress_callback: Callable[[int], None] | None = None,
+    # MMS verification support
+    source_term: Callable | None = None,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
@@ -613,9 +620,20 @@ def solve_fp_nd_full_system(
             disable=False,
         )
 
+    # Pre-compute spatial grid for source term evaluation (if needed)
+    if source_term is not None:
+        x_grid = grid.get_spatial_grid()  # (N, d) ndarray
+
     # Time evolution loop (forward in time)
     for k in timestep_range:
         M_current = M_solution[k]
+
+        # Evaluate source term at current timestep (implicit: evaluate at t_{k+1})
+        if source_term is not None:
+            t_next = (k + 1) * dt
+            source_values = source_term(t_next, x_grid).ravel()
+        else:
+            source_values = None
 
         # Determine drift source using _DriftDispatcher evaluator (Issue #641)
         if drift.is_callable():
@@ -646,6 +664,7 @@ def solve_fp_nd_full_system(
                 boundary_conditions,
                 k,
                 drift=drift_values,
+                source_term=source_values,
             )
         elif drift.is_callable():
             # Callable drift with scalar diffusion - use explicit Forward Euler
@@ -661,6 +680,7 @@ def solve_fp_nd_full_system(
                 spacing,
                 ndim,
                 boundary_conditions,
+                source_term=source_values,
             )
         else:
             # MFG-coupled mode: scalar diffusion + U-based drift - use implicit solver
@@ -680,6 +700,7 @@ def solve_fp_nd_full_system(
                 shape,
                 boundary_conditions,
                 advection_scheme=advection_scheme,
+                source_term=source_values,
             )
 
         M_solution[k + 1] = M_next
@@ -713,6 +734,7 @@ def solve_timestep_tensor_explicit(
     boundary_conditions: Any,
     timestep_idx: int,
     drift: np.ndarray | None = None,
+    source_term: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Solve one timestep with tensor diffusion using explicit Forward Euler.
@@ -806,6 +828,10 @@ def solve_timestep_tensor_explicit(
     # Explicit Forward Euler update
     M_next = M_current + dt * (diffusion_term - advection_term)
 
+    # Add source term (MMS verification)
+    if source_term is not None:
+        M_next += dt * source_term.reshape(shape)
+
     return M_next
 
 
@@ -822,6 +848,7 @@ def solve_timestep_full_nd(
     shape: tuple[int, ...],
     boundary_conditions: Any,
     advection_scheme: str = "divergence_upwind",
+    source_term: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Solve one timestep of the full nD FP equation.
@@ -1066,6 +1093,10 @@ def solve_timestep_full_nd(
 
     # Right-hand side
     b_rhs = m_flat / dt
+
+    # Add source term to RHS (MMS verification)
+    if source_term is not None:
+        b_rhs = b_rhs + source_term
 
     # Solve linear system
     m_next_flat = sparse.linalg.spsolve(A_matrix, b_rhs)

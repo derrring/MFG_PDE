@@ -11,6 +11,8 @@ from mfg_pde.backends.compat import backend_aware_assign, backend_aware_copy, ha
 from mfg_pde.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mfg_pde.geometry.boundary import BoundaryConditions
 
 # BC-aware gradient computation (Issue #542 fix)
@@ -532,6 +534,7 @@ def compute_hjb_residual(
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
     current_time: float = 0.0,  # Current time for time-dependent BCs
     bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
+    source_term: np.ndarray | None = None,  # MMS verification: pre-evaluated S(t, x)
 ) -> np.ndarray:
     Nx = problem.geometry.get_grid_shape()[0]
     dx = problem.geometry.get_grid_spacing()[0]
@@ -630,6 +633,10 @@ def compute_hjb_residual(
         Phi_U[~nan_mask] += H_values[~nan_mask]
         Phi_U[nan_mask & ~np.isnan(Phi_U)] = np.nan  # New NaN from grad/H
 
+        # Subtract source term (MMS verification): F(u) = ... - S = 0
+        if source_term is not None:
+            Phi_U -= source_term
+
         return Phi_U
 
     # Fallback: per-point loop for backend != None or missing precomputed_grad
@@ -669,6 +676,10 @@ def compute_hjb_residual(
                 Phi_U[i] = float("nan")
                 continue
             Phi_U[i] += m_coupling_term
+
+    # Subtract source term (MMS verification): F(u) = ... - S = 0
+    if source_term is not None:
+        Phi_U -= source_term
 
     return Phi_U
 
@@ -906,6 +917,7 @@ def newton_hjb_step(
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
     current_time: float = 0.0,  # Current time for time-dependent BCs
     bc_values: dict[str, float] | None = None,  # Issue #574
+    source_term: np.ndarray | None = None,  # MMS verification
 ) -> tuple[np.ndarray, float]:
     dx = problem.geometry.get_grid_spacing()[0]
     dx_norm = dx if abs(dx) > 1e-12 else 1.0
@@ -926,6 +938,7 @@ def newton_hjb_step(
         domain_bounds=domain_bounds,
         current_time=current_time,
         bc_values=bc_values,  # Issue #574
+        source_term=source_term,
     )
     if has_nan_or_inf(residual_F_U, backend):
         return U_n_current_newton_iterate, np.inf
@@ -1006,6 +1019,7 @@ def solve_hjb_timestep_newton(
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
     current_time: float = 0.0,  # Current time for time-dependent BCs
     bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
+    source_term: np.ndarray | None = None,  # MMS verification
 ) -> np.ndarray:
     """
     Solve HJB timestep using Newton's method.
@@ -1078,6 +1092,7 @@ def solve_hjb_timestep_newton(
             domain_bounds=domain_bounds,
             current_time=current_time,
             bc_values=bc_values,  # Issue #574
+            source_term=source_term,
         )
 
         if has_nan_or_inf(U_n_next_newton_iterate, backend):
@@ -1211,6 +1226,7 @@ def solve_hjb_system_backward(
     bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
     bc_values: dict[str, float] | None = None,  # Issue #574: Per-boundary BC values
+    source_term: Callable | None = None,  # MMS verification: S(t, x_grid) -> values
 ) -> np.ndarray:
     """
     Solve HJB system backward in time using Newton's method.
@@ -1310,6 +1326,13 @@ def solve_hjb_system_backward(
         # Compute current time for time-dependent BCs
         current_time = n_idx_hjb * problem.dt
 
+        # Evaluate source term at current timestep (if provided)
+        if source_term is not None:
+            x_grid = problem.geometry.get_spatial_grid()  # (Nx, d) ndarray
+            source_at_n = source_term(current_time, x_grid).ravel()
+        else:
+            source_at_n = None
+
         U_new_n = solve_hjb_timestep_newton(
             U_n_plus_1_current_picard,  # U_new[n+1]
             U_n_prev_picard,  # U_k[n] (for Jacobian)
@@ -1325,6 +1348,7 @@ def solve_hjb_system_backward(
             domain_bounds=domain_bounds,
             current_time=current_time,
             bc_values=bc_values,  # Issue #574: Per-boundary BC values
+            source_term=source_at_n,
         )
         backend_aware_assign(U_solution_this_picard_iter, (n_idx_hjb, slice(None)), U_new_n, backend)
 
