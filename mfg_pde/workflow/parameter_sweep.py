@@ -18,8 +18,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import pandas as pd
-
 import numpy as np
 
 from .common import setup_workflow_logging
@@ -27,6 +25,8 @@ from .common import setup_workflow_logging
 if TYPE_CHECKING:
     import logging
     from collections.abc import Callable
+
+    import pandas as pd
 
 
 @dataclass
@@ -402,6 +402,8 @@ class ParameterSweep:
             return None
 
         try:
+            import pandas as pd
+
             # Flatten results
             flattened_results = []
 

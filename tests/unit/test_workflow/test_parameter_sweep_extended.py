@@ -11,12 +11,13 @@ import tempfile
 import time
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
-import numpy as np
+pd = pytest.importorskip("pandas")
 
-from mfg_pde.workflow.parameter_sweep import (
+import numpy as np  # noqa: E402
+
+from mfg_pde.workflow.parameter_sweep import (  # noqa: E402
     ParameterSweep,
     SweepConfiguration,
     create_adaptive_sweep,
