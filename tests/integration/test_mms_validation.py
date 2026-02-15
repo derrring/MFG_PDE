@@ -337,6 +337,71 @@ class TestMMSFokkerPlanck1D:
         # Expect < 5% error for this resolution
         assert rel_error < 0.05, f"Relative error {rel_error:.2%} exceeds 5%"
 
+    def test_source_term_steady_state_convergence(self):
+        """
+        Test FP source_term wiring with steady-state manufactured solution.
+
+        Uses m(t,x) = 1 + A*sin(kx), which is time-independent. Without source,
+        diffusion would decay the sine mode toward flat density. With the correct
+        source S = D*k^2*A*sin(kx), the solver maintains the steady state.
+
+        This directly tests that source_term is threaded through the FP FDM chain.
+        Expected: convergence as grid refines (error dominated by spatial discretization).
+        """
+        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+        from mfg_pde.geometry import periodic_bc
+
+        sigma = 0.2
+        T = 0.3
+        manufactured = SteadySinusoid1D(sigma=sigma, amplitude=0.3)
+
+        resolutions = [31, 61, 121]
+        errors = []
+
+        for Nx in resolutions:
+            geometry = TensorProductGrid(
+                bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1)
+            )
+            # Fine time stepping to minimize temporal error
+            Nt = max(200, Nx * 4)
+            problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, diffusion=sigma, components=_default_components())
+
+            x_grid = geometry.coordinates[0]
+            m_init = manufactured.solution(0.0, x_grid)
+
+            bc = periodic_bc(dimension=1)
+            solver = FPFDMSolver(problem, boundary_conditions=bc)
+
+            # Zero drift (pure diffusion + source)
+            U_zero = np.zeros((problem.Nt + 1, Nx))
+
+            # Source term: callable (t, x_grid) -> values
+            def source_fn(t, x_arr, _mfg=manufactured):
+                return _mfg.fp_source(t, x_arr)
+
+            M_numerical = solver.solve_fp_system(
+                M_initial=m_init,
+                drift_field=U_zero,
+                show_progress=False,
+                source_term=source_fn,
+            )
+
+            # Compare at final time — should match initial (steady state)
+            m_exact_final = manufactured.solution(T, x_grid)
+            error = np.max(np.abs(M_numerical[-1, :] - m_exact_final))
+            errors.append(error)
+
+        errors = np.array(errors)
+        ratios = errors[:-1] / errors[1:]
+        orders = np.log(ratios) / np.log(2)
+
+        # Should show convergence (ratio > 1.5 means order > 0.58)
+        assert np.all(ratios > 1.5), (
+            f"FP source_term convergence ratio too low: {ratios} "
+            f"(orders: {orders}). Errors: {errors}. "
+            f"Expected convergence when source_term is correctly wired."
+        )
+
     def test_mass_conservation_manufactured(self):
         """
         Test that mass is conserved for manufactured solution with no-flux BC.
@@ -547,6 +612,59 @@ class TestMassConservationStress:
         # This is a known limitation of upwind schemes near boundaries
         # TODO: Investigate if conservative schemes (divergence_upwind) perform better
         assert rel_error < 0.15, f"Mass conservation with weak drift violated: {rel_error:.2%}"
+
+
+class SteadySinusoid1D(ManufacturedSolution):
+    """
+    1D steady sinusoidal manufactured solution for source term verification.
+
+    Manufactured density:
+        m(t,x) = 1 + A*sin(k*x)     (time-independent)
+
+    The FP solver (with zero drift) solves: dm/dt - D*Lap(m) = S.
+    Since dm/dt = 0 and Lap(m) = -k^2*A*sin(kx), we need:
+        S(t,x) = dm/dt - D*Lap(m) = D*k^2*A*sin(kx)
+
+    Without the source, diffusion would decay the sinusoidal mode toward uniform
+    density. The source exactly compensates, maintaining the steady state.
+
+    This directly tests that source_term is wired correctly through the FP FDM
+    solver chain: if the source is ignored, the solution decays to 1.0 (flat),
+    producing large error. If wired correctly, m_exact is recovered.
+    """
+
+    def __init__(self, sigma: float = 0.2, amplitude: float = 0.3, k: float = 2.0 * np.pi):
+        super().__init__(dimension=1)
+        self.sigma = sigma
+        self.amplitude = amplitude
+        self.k = k
+        self.D = 0.5 * sigma**2
+
+    def solution(self, t: float, x: np.ndarray) -> np.ndarray:
+        """m(t,x) = 1 + A*sin(k*x) (independent of t)."""
+        x = np.atleast_1d(x)
+        return 1.0 + self.amplitude * np.sin(self.k * x)
+
+    def fp_source(self, t: float, x: np.ndarray) -> np.ndarray:
+        """
+        Source S = D*k^2*A*sin(kx) that balances diffusion to maintain steady state.
+
+        Derivation: The FP solver adds S to the RHS of:
+            dm/dt - D*Lap(m) = S
+        For m = 1 + A*sin(kx):
+            dm/dt = 0
+            Lap(m) = -k^2*A*sin(kx)
+            => S = 0 - D*(-k^2*A*sin(kx)) = D*k^2*A*sin(kx)
+
+        Args:
+            t: Time (unused, source is steady)
+            x: Spatial grid, shape (N,) or (N, 1)
+
+        Returns:
+            Source values, shape (N,)
+        """
+        x = np.atleast_1d(x).ravel()
+        return self.D * self.k**2 * self.amplitude * np.sin(self.k * x)
 
 
 class BackwardHeatSolution1D:
