@@ -307,3 +307,106 @@ class TestSideNameNormalization:
         provider = AdjointConsistentProvider(side=input_side, sigma=0.2)
         assert provider.side == expected_canonical
         assert provider._original_side == input_side
+
+
+# =============================================================================
+# Test: Uncovered Code Paths
+# =============================================================================
+
+
+@pytest.mark.unit
+@pytest.mark.fast
+class TestProviderEdgeCases:
+    """Tests for code paths not covered by main test classes."""
+
+    def test_compute_with_2d_density_takes_last_slice(self):
+        """When m has ndim > 1 (time-dependent), compute should use m[-1, :]."""
+        # Create 2D density: (T, N) = (5, 11)
+        x = np.linspace(0, 1, 11)
+        m_2d = np.stack([np.exp(-x) * (1 + 0.1 * t) for t in range(5)])
+        assert m_2d.ndim == 2
+
+        state = {
+            "m_current": m_2d,
+            "geometry": MockGeometry(dx=0.1),
+            "diffusion": 0.2,
+        }
+
+        # Provider should use m_2d[-1, :] (final time slice)
+        provider = AdjointConsistentProvider(side="left", diffusion=0.2)
+        g = provider.compute(state)
+
+        # Compute expected from the final slice directly
+        m_last = m_2d[-1, :]
+        state_1d = {
+            "m_current": m_last,
+            "geometry": MockGeometry(dx=0.1),
+            "diffusion": 0.2,
+        }
+        g_expected = provider.compute(state_1d)
+        assert abs(g - g_expected) < 1e-12
+
+    def test_nd_not_implemented_for_non_lr_side(self):
+        """nD geometry with side not in (left, right) should raise NotImplementedError."""
+
+        class MockGeometry2D:
+            dimension = 2
+
+            def get_grid_spacing(self):
+                return [0.1, 0.1]
+
+        provider = AdjointConsistentProvider(side="y_min", diffusion=0.2)
+        state = {
+            "m_current": np.ones(10),
+            "geometry": MockGeometry2D(),
+            "diffusion": 0.2,
+        }
+        with pytest.raises(NotImplementedError, match="2D not yet implemented"):
+            provider.compute(state)
+
+    def test_nd_geometry_with_left_right_uses_1d_path(self):
+        """nD geometry with side='left' should fall through to 1D finite diff path."""
+
+        class MockGeometry2D:
+            dimension = 2
+
+            def get_grid_spacing(self):
+                return [0.1, 0.1]
+
+        x = np.linspace(0, 1, 11)
+        m = np.exp(-x)
+
+        provider = AdjointConsistentProvider(side="left", diffusion=0.2)
+        state = {
+            "m_current": m,
+            "geometry": MockGeometry2D(),
+            "diffusion": 0.2,
+        }
+        # Should not raise — falls through to 1D path via OR condition
+        g = provider.compute(state)
+        expected = -(0.2**2) / 2 * 1.0  # d(ln m)/dn_left ~ 1
+        assert abs(g - expected) < 0.01
+
+    def test_sigma_and_diffusion_both_set_diffusion_wins(self):
+        """When both sigma and diffusion are set, diffusion takes priority."""
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            provider = AdjointConsistentProvider(side="left", diffusion=0.3, sigma=0.5)
+            # sigma triggers warning
+            assert len(w) == 1
+            # diffusion=0.3 should take priority over sigma=0.5
+            assert provider.diffusion == 0.3
+
+    def test_resolve_provider_with_ndarray_return(self):
+        """resolve_provider should pass through ndarray returns from compute()."""
+
+        class ArrayProvider:
+            """Provider that returns an array."""
+
+            def compute(self, state):
+                return np.array([1.0, 2.0, 3.0])
+
+        provider = ArrayProvider()
+        result = resolve_provider(provider, {})
+        assert isinstance(result, np.ndarray)
+        np.testing.assert_array_equal(result, [1.0, 2.0, 3.0])
