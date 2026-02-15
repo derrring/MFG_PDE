@@ -475,7 +475,6 @@ if TORCH_AVAILABLE:
             self,
             low_fidelity_data: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
             high_fidelity_data: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
-            fidelity_weight: float = 0.1,
         ) -> None:
             """
             Train DeepONet with multi-fidelity data.
@@ -483,7 +482,6 @@ if TORCH_AVAILABLE:
             Args:
                 low_fidelity_data: (branch, trunk, solution) low-fidelity data
                 high_fidelity_data: (branch, trunk, solution) high-fidelity data
-                fidelity_weight: Weight for low-fidelity data in loss
             """
             # Combine datasets with different weights
             low_branch, low_trunk, low_solution = low_fidelity_data

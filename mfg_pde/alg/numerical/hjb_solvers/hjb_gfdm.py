@@ -2134,13 +2134,11 @@ class HJBGFDMSolver(BaseHJBSolver):
         if is_meshfree_input:
             # Pure meshfree mode: input already at collocation points
             M_collocation = M_density.copy()
-            U_prev_collocation = U_coupling_prev.copy()
             # U_terminal should also be at collocation points
             U_solution_collocation[n_time_points - 1, :] = U_terminal.copy()
         else:
             # Hybrid mode: map grid data to collocation points
             M_collocation = self._mapper.map_grid_to_collocation_batch(M_density)
-            U_prev_collocation = self._mapper.map_grid_to_collocation_batch(U_coupling_prev)
             # Set final condition at t=T (last time index = n_time_points - 1)
             U_solution_collocation[n_time_points - 1, :] = self._mapper.map_grid_to_collocation(U_terminal.flatten())
 
@@ -2157,7 +2155,6 @@ class HJBGFDMSolver(BaseHJBSolver):
         for n in timestep_range:
             U_solution_collocation[n, :] = self._solve_timestep(
                 U_solution_collocation[n + 1, :],
-                U_prev_collocation[n, :],
                 M_collocation[n, :],  # FIXED: Use m^n, not m^{n+1} (same-time coupling)
                 n,
             )
@@ -2178,7 +2175,6 @@ class HJBGFDMSolver(BaseHJBSolver):
     def _solve_timestep(
         self,
         u_n_plus_1: np.ndarray,
-        u_prev_picard: np.ndarray,
         m_n_plus_1: np.ndarray,
         time_idx: int,
     ) -> np.ndarray:
@@ -2421,7 +2417,6 @@ class HJBGFDMSolver(BaseHJBSolver):
         self,
         u_current: np.ndarray,
         u_n_plus_1: np.ndarray,  # FIXED: Added actual u_n_plus_1 parameter
-        u_prev_picard: np.ndarray,
         m_n_plus_1: np.ndarray,
         time_idx: int,
     ) -> np.ndarray:

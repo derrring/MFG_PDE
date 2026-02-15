@@ -640,14 +640,13 @@ class ParallelSparseOperations:
     """Parallel sparse matrix operations for multi-core systems."""
 
     @staticmethod
-    def parallel_matvec(matrix: csr_matrix, vectors: np.ndarray, num_threads: int | None = None) -> np.ndarray:
+    def parallel_matvec(matrix: csr_matrix, vectors: np.ndarray) -> np.ndarray:
         """
         Parallel matrix-vector multiplication for multiple vectors.
 
         Args:
             matrix: Sparse matrix
             vectors: Array of vectors (shape: n_vectors x matrix_size)
-            num_threads: Number of threads (None for auto-detect)
 
         Returns:
             Result of matrix-vector products
