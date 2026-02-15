@@ -596,7 +596,7 @@ if __name__ == "__main__":
         geometry=domain,
         T=T,
         Nt=Nt,
-        diffusion=SIGMA,
+        sigma=SIGMA,
         components=components,
     )
 
@@ -700,7 +700,7 @@ if __name__ == "__main__":
         geometry=domain_2d,
         T=T2D,
         Nt=Nt2D,
-        diffusion=SIGMA2D,
+        sigma=SIGMA2D,
         components=components_2d,
     )
 

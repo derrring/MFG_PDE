@@ -138,7 +138,7 @@ def create_capacity_constrained_problem(
         spatial_discretization=[Nx, Ny],
         T=T,
         Nt=Nt,
-        diffusion=sigma,
+        sigma=sigma,
     )
 
     print(f"   Problem created: dimension={problem.dimension}")
@@ -305,7 +305,7 @@ def main():
         Ny=63,
         T=1.0,
         Nt=50,
-        diffusion=0.01,
+        sigma=0.01,
     )
 
     # Solve and visualize

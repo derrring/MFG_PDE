@@ -2349,7 +2349,7 @@ Use MFGComponents for custom problem definitions:
   problem = MFGProblem(
       geometry=my_geometry,
       T=T, Nt=Nt,
-      diffusion=sigma,
+      sigma=sigma,
       components=components,
   )
 

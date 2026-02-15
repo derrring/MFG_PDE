@@ -95,7 +95,7 @@ def create_standard_problem() -> MFGProblem:
         geometry=geometry,
         T=T,
         Nt=NT,
-        diffusion=SIGMA,
+        sigma=SIGMA,
         components=create_lq_components(),
     )
 
@@ -148,7 +148,7 @@ def create_adjoint_consistent_problem() -> MFGProblem:
         geometry=geometry,
         T=T,
         Nt=NT,
-        diffusion=SIGMA,
+        sigma=SIGMA,
         components=create_lq_components(),
     )
 

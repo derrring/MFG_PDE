@@ -570,7 +570,7 @@ if __name__ == "__main__":
         geometry=domain,
         T=T,
         Nt=Nt,
-        diffusion=SIGMA,
+        sigma=SIGMA,
         components=components,
     )
 

@@ -198,7 +198,7 @@ def test_problem_creation_overhead(benchmark):
             Nx=40,
             T=1.0,
             Nt=50,
-            diffusion=0.12,
+            sigma=0.12,
             coupling_coefficient=0.02,
         )
 

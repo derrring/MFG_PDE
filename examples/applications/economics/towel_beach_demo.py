@@ -166,7 +166,7 @@ def create_towel_beach_problem(
         geometry=geometry,
         T=T,
         Nt=Nt,
-        diffusion=sigma,
+        sigma=sigma,
         components=components,
     )
 

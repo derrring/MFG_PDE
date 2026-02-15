@@ -47,7 +47,7 @@ def create_problem():
         geometry=geometry,
         Nt=20,
         T=1.0,
-        diffusion=0.1,
+        sigma=0.1,
         components=create_lq_components(),
     )
 

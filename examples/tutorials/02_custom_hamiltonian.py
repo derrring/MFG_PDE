@@ -104,7 +104,7 @@ grid = TensorProductGrid(
 )
 
 # Physical parameters
-diffusion = 0.1
+sigma = 0.1  # SDE volatility
 congestion_strength = 2.0
 
 
@@ -140,7 +140,7 @@ problem = MFGProblem(
     geometry=grid,
     T=1.0,
     Nt=50,
-    diffusion=diffusion,
+    sigma=sigma,
     components=components,
 )
 
@@ -176,7 +176,7 @@ baseline = MFGProblem(
     geometry=grid,
     T=1.0,
     Nt=50,
-    diffusion=diffusion,
+    sigma=sigma,
     components=baseline_components,
 )
 result_baseline = baseline.solve(verbose=False)

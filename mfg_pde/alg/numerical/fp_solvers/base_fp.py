@@ -320,7 +320,7 @@ if __name__ == "__main__":
         Nx_points=[21],
         boundary_conditions=neumann_bc(dimension=1),
     )
-    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, diffusion=0.1, components=components)
+    problem = MFGProblem(geometry=geometry, T=1.0, Nt=10, sigma=0.1, components=components)
 
     try:
         # This should fail because BaseFPSolver is abstract

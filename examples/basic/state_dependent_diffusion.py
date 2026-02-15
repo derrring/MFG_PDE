@@ -72,7 +72,7 @@ def scenario_porous_medium():
         geometry=domain,
         T=1.0,
         Nt=100,
-        diffusion=0.1,  # Base diffusion (used if diffusion_field=None)
+        sigma=0.1,  # Base diffusion (used if diffusion_field=None)
         components=create_lq_components(coupling_strength=1.0),
     )
 
@@ -135,7 +135,7 @@ def scenario_crowd_dynamics():
         geometry=domain,
         T=1.0,
         Nt=100,
-        diffusion=0.1,
+        sigma=0.1,
         components=create_lq_components(coupling_strength=1.0),
     )
 
@@ -192,7 +192,7 @@ def scenario_spatially_varying():
         geometry=domain,
         T=1.0,
         Nt=100,
-        diffusion=0.1,
+        sigma=0.1,
         components=create_lq_components(coupling_strength=1.0),
     )
 

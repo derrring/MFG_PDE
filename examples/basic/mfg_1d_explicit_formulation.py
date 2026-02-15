@@ -203,7 +203,7 @@ problem = MFGProblem(
     geometry=geometry,
     T=T,
     Nt=Nt,
-    diffusion=sigma,
+    sigma=sigma,
     coupling_coefficient=coupling_coefficient,
     components=components,
 )

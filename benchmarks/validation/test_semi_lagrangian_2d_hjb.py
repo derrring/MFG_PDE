@@ -36,7 +36,7 @@ class Simple2DMFGProblem(MFGProblem):
         grid_resolution=25,
         time_horizon=1.0,
         num_timesteps=20,
-        diffusion=0.1,
+        sigma=0.1,
         coupling_strength=0.5,
         goal_position=None,
     ):
@@ -45,7 +45,7 @@ class Simple2DMFGProblem(MFGProblem):
             spatial_discretization=[grid_resolution, grid_resolution],
             T=time_horizon,
             Nt=num_timesteps,
-            sigma=diffusion,
+            sigma=sigma,
         )
         self.grid_resolution = grid_resolution
         self.coupling_strength = coupling_strength

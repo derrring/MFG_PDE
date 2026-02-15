@@ -1488,7 +1488,7 @@ if __name__ == "__main__":
 
     # Test 1D problem
     geometry_1d = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[31])
-    problem_1d = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1)
+    problem_1d = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, sigma=0.1)
 
     # Test standard WENO variant
     solver_1d = HJBWenoSolver(problem_1d, weno_variant="weno-z")

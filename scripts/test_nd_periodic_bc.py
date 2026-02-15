@@ -19,7 +19,7 @@ def test_2d_periodic_bc():
 
     # No BC specified -> should use periodic
     grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[50, 50])
-    problem = MFGProblem(geometry=grid, T=0.5, Nt=5, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.5, Nt=5, sigma=0.1)
 
     solver = HJBFDMSolver(problem)
     U = solver.solve()
@@ -44,7 +44,7 @@ def test_3d_periodic_bc():
 
     # No BC specified -> should use periodic
     grid = TensorProductGrid(dimension=3, bounds=[(0.0, 1.0), (0.0, 1.0), (0.0, 1.0)], Nx=[20, 20, 20])
-    problem = MFGProblem(geometry=grid, T=0.2, Nt=3, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.2, Nt=3, sigma=0.1)
 
     solver = HJBFDMSolver(problem)
     U = solver.solve()

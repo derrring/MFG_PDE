@@ -31,7 +31,7 @@ def test_2d_dirichlet_x_boundaries():
 
     grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[40, 40], boundary_conditions=bc)
 
-    problem = MFGProblem(geometry=grid, T=0.5, Nt=5, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.5, Nt=5, sigma=0.1)
 
     solver = HJBFDMSolver(problem)
     U = solver.solve()
@@ -101,7 +101,7 @@ def test_2d_dirichlet_all_boundaries():
 
     grid = TensorProductGrid(dimension=2, bounds=[(0.0, 1.0), (0.0, 1.0)], Nx=[30, 30], boundary_conditions=bc)
 
-    problem = MFGProblem(geometry=grid, T=0.3, Nt=3, diffusion=0.1)
+    problem = MFGProblem(geometry=grid, T=0.3, Nt=3, sigma=0.1)
 
     solver = HJBFDMSolver(problem)
     U = solver.solve()

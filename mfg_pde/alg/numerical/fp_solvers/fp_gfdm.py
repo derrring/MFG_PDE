@@ -56,7 +56,7 @@ class FPGFDMSolver(BaseFPSolver):
         >>> from mfg_pde import MFGProblem
         >>> from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
         >>>
-        >>> problem = MFGProblem(Nx=30, Nt=20, T=1.0, diffusion=0.1)
+        >>> problem = MFGProblem(Nx=30, Nt=20, T=1.0, sigma=0.1)
         >>> points = np.random.rand(100, 1)  # Scattered 1D points
         >>> solver = FPGFDMSolver(problem, collocation_points=points)
         >>>
@@ -581,7 +581,7 @@ if __name__ == "__main__":
         Nx_points=[31],
         boundary_conditions=neumann_bc(dimension=1),
     )
-    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, diffusion=0.1, components=components)
+    problem = MFGProblem(geometry=geometry_1d, T=1.0, Nt=20, sigma=0.1, components=components)
 
     # Create 1D collocation points
     points_1d = np.linspace(0, 1, 50).reshape(-1, 1)
@@ -616,7 +616,7 @@ if __name__ == "__main__":
         Nx_points=[10, 10],
         boundary_conditions=neumann_bc(dimension=2),
     )
-    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, diffusion=0.1, components=components)
+    problem_2d = MFGProblem(geometry=geometry_2d, Nt=10, T=0.5, sigma=0.1, components=components)
 
     # Create 2D scattered points
     np.random.seed(42)

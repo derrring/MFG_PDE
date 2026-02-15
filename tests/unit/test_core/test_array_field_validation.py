@@ -207,7 +207,7 @@ def test_mfg_problem_valid_diffusion_array_accepted():
     problem = _problem(
         m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
         u_terminal=lambda x: x**2,
-        diffusion=sigma_array,
+        sigma=sigma_array,
     )
     assert problem is not None
     assert isinstance(problem.diffusion_field, np.ndarray)
@@ -223,7 +223,7 @@ def test_mfg_problem_nan_diffusion_array_rejected():
         _problem(
             m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),
             u_terminal=lambda x: x**2,
-            diffusion=sigma_array,
+            sigma=sigma_array,
         )
 
 

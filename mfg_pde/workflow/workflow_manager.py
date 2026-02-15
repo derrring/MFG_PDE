@@ -588,7 +588,7 @@ class WorkflowManager:
             geometry = TensorProductGrid(
                 bounds=[(0.0, 1.0)], Nx_points=[Nx + 1], boundary_conditions=no_flux_bc(dimension=1)
             )
-            problem = MFGProblem(geometry=geometry, diffusion=sigma, Nt=Nt)
+            problem = MFGProblem(geometry=geometry, sigma=sigma, Nt=Nt)
             result = problem.solve()
             return {
                 "converged": getattr(result, "converged", False),

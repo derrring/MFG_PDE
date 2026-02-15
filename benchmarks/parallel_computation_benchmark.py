@@ -43,7 +43,7 @@ def mfg_solve_function(Nx, Nt, sigma):
     from mfg_pde.core.mfg_problem import MFGProblem
     from mfg_pde.factory import create_fast_solver
 
-    problem = MFGProblem(Nx=Nx, Nt=Nt, diffusion=sigma)
+    problem = MFGProblem(Nx=Nx, Nt=Nt, sigma=sigma)
     solver = create_fast_solver(problem)
     result = solver.solve()
 

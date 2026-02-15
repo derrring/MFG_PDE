@@ -189,7 +189,7 @@ def create_santa_fe_problem(
         Nx=Nx,
         T=T,
         Nt=Nt,
-        diffusion=sigma,
+        sigma=sigma,
         components=components,
     )
 

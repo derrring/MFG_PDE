@@ -28,14 +28,14 @@ class Simple1DMFG(MFGProblem):
         grid_resolution=32,
         time_horizon=0.5,
         num_timesteps=15,
-        diffusion=0.05,
+        sigma=0.05,
     ):
         super().__init__(
             spatial_bounds=[(0.0, 1.0)],
             spatial_discretization=[grid_resolution],
             T=time_horizon,
             Nt=num_timesteps,
-            sigma=diffusion,
+            sigma=sigma,
         )
         self.grid_resolution = grid_resolution  # Store for convenience
         self.center = 0.3  # Initial density center
@@ -153,7 +153,7 @@ def test_1d_mass_conservation():
         grid_resolution=grid_resolution,
         time_horizon=0.5,
         num_timesteps=num_timesteps,
-        diffusion=0.05,
+        sigma=0.05,
     )
 
     # Check grid spacing

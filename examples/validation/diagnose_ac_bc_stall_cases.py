@@ -129,7 +129,7 @@ def create_towel_problem(
         geometry=geometry,
         T=T,
         Nt=Nt,
-        diffusion=sigma,
+        sigma=sigma,
         components=components,
     )
 

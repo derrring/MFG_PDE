@@ -156,7 +156,7 @@ def create_mfg_problem(phi_current: np.ndarray) -> MFGProblem:
         geometry=grid,
         T=T_final,
         Nt=Nt,
-        diffusion=sigma,
+        sigma=sigma,
         components=components,
     )
 

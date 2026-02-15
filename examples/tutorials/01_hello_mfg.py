@@ -49,7 +49,7 @@ print()
 # ==============================================================================
 
 # Physical parameters
-diffusion = 0.1  # Controls agent randomness
+sigma = 0.1  # SDE volatility (controls agent randomness)
 coupling = 0.5  # Congestion cost strength
 
 
@@ -87,14 +87,14 @@ problem = MFGProblem(
     geometry=grid,
     T=1.0,  # Time horizon
     Nt=50,  # Time steps
-    diffusion=diffusion,
+    sigma=sigma,
     components=components,
 )
 
 print("Problem created:")
 print(f"  Time horizon: T = {problem.T}")
 print(f"  Time steps: {problem.Nt}")
-print(f"  Diffusion: {diffusion}")
+print(f"  Sigma (volatility): {sigma}")
 print()
 
 print("Solving MFG system...")
