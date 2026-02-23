@@ -41,6 +41,8 @@ CVXPY_AVAILABLE = importlib.util.find_spec("cvxpy") is not None
 OSQP_AVAILABLE = importlib.util.find_spec("osqp") is not None
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from mfg_pde.config.mfg_methods import GFDMConfig
     from mfg_pde.core.derivatives import DerivativeTensors
     from mfg_pde.core.mfg_problem import MFGProblem
@@ -775,8 +777,51 @@ class HJBGFDMSolver(BaseHJBSolver):
         self._D_lap: Any | None = None  # Laplacian differentiation matrix
         self._potential_at_collocation: np.ndarray | None = None  # Interpolated potential field
         self._cached_derivative_weights: dict | None = None  # Pre-computed GFDM weights
-        self._running_cost: np.ndarray | None = None  # Running cost L(x) for Hamiltonian
+        self._running_cost_fn: Callable[[int], np.ndarray] | None = None  # Running cost f(n) -> (n_points,)
         self._f_potential_warned: bool = False  # One-time warning for unused f_potential (Issue #766)
+
+    def _normalize_running_cost(
+        self,
+        running_cost: np.ndarray | Callable[[int], np.ndarray] | None,
+        n_time_points: int,
+    ) -> Callable[[int], np.ndarray] | None:
+        """Normalize running cost input to a callable f(n) -> (n_points,).
+
+        Accepts three input forms:
+            - None: no running cost
+            - 1D array (n_points,): static cost, same at every timestep
+            - 2D array (n_time_points, n_points): time-dependent cost
+            - Callable: f(time_index) -> (n_points,) array, used directly
+        """
+        if running_cost is None:
+            return None
+
+        # Callable path: validate output shape and return directly
+        if callable(running_cost):
+            test_output = np.asarray(running_cost(0))
+            if test_output.shape != (self.n_points,):
+                raise ValueError(f"running_cost callable must return shape ({self.n_points},), got {test_output.shape}")
+            return running_cost
+
+        # Array path: normalize to callable
+        running_cost = np.asarray(running_cost)
+        if running_cost.ndim == 1:
+            if running_cost.shape[0] != self.n_points:
+                raise ValueError(
+                    f"running_cost must have shape ({self.n_points},) or "
+                    f"({n_time_points}, {self.n_points}), got {running_cost.shape}"
+                )
+            rc_static = running_cost.copy()
+            return lambda _n: rc_static
+        elif running_cost.ndim == 2:
+            if running_cost.shape != (n_time_points, self.n_points):
+                raise ValueError(
+                    f"running_cost must have shape ({n_time_points}, {self.n_points}), got {running_cost.shape}"
+                )
+            rc_full = running_cost.copy()
+            return lambda n: rc_full[n]
+        else:
+            raise ValueError(f"running_cost must be 1D or 2D array, got {running_cost.ndim}D")
 
     def _compute_n_spatial_grid_points(self) -> int:
         """Compute total number of spatial grid points from geometry."""
@@ -1470,6 +1515,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         m_n_plus_1: np.ndarray,
         grad_u: np.ndarray,
         lap_u: np.ndarray,
+        running_cost: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Compute HJB residual using vectorized operations (LQ fast path).
@@ -1539,11 +1585,9 @@ class HJBGFDMSolver(BaseHJBSolver):
             H_interaction = gamma_val * domain_volume * m_n_plus_1
             H_total = H_kinetic + H_potential + H_interaction
 
-        # Running cost term L(x) if provided
-        # This implements: H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)
-        # _running_cost initialized in __init__, hasattr check removed (Issue #543 fix)
-        if self._running_cost is not None:
-            H_total = H_total + self._running_cost
+        # Running cost L(x) at this timestep (passed explicitly from backward loop)
+        if running_cost is not None:
+            H_total = H_total + running_cost
 
         # Diffusion term: (sigma^2 / 2) * Laplacian
         sigma = getattr(self.problem, "diffusion", 0.0) or getattr(self.problem, "sigma", 0.0)
@@ -1563,6 +1607,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         lap_u: np.ndarray,
         H_class: Any,
         current_time: float,
+        running_cost: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Compute HJB residual using batch Hamiltonian class (Issue #775).
@@ -1589,9 +1634,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         x = self.collocation_points  # (N, d)
         H_total = np.asarray(H_class(x, m_n_plus_1, grad_u, t=current_time), dtype=float)
 
-        # Running cost L(x) if provided (additive to Hamiltonian)
-        if self._running_cost is not None:
-            H_total = H_total + self._running_cost
+        # Running cost L(x) at this timestep (passed explicitly from backward loop)
+        if running_cost is not None:
+            H_total = H_total + running_cost
 
         # Diffusion term: (sigma^2 / 2) * Laplacian
         sigma = getattr(self.problem, "diffusion", 0.0) or getattr(self.problem, "sigma", 0.0)
@@ -1700,6 +1745,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         m_n_plus_1: np.ndarray,
         time_idx: int,
         cached_derivs: dict[int, dict[tuple[int, ...], float]],
+        running_cost: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Compute HJB residual using pre-computed derivatives (per-point path).
@@ -1724,10 +1770,9 @@ class HJBGFDMSolver(BaseHJBSolver):
 
             H = self.problem.H(i, m_n_plus_1[i], derivs=p_derivs, x_position=x_pos)
 
-            # Add running cost L(x) if provided
-            # _running_cost initialized in __init__, hasattr check removed (Issue #543 fix)
-            if self._running_cost is not None:
-                H = H + self._running_cost[i]
+            # Running cost L(x) at this timestep (passed explicitly from backward loop)
+            if running_cost is not None:
+                H = H + running_cost[i]
 
             sigma_val = self._get_sigma_value(i)
             diffusion_term = 0.5 * sigma_val**2 * laplacian
@@ -2029,7 +2074,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         U_coupling_prev: np.ndarray | None = None,
         show_progress: bool = True,
         diffusion_field: float | np.ndarray | None = None,
-        running_cost: np.ndarray | None = None,
+        running_cost: np.ndarray | Callable[[int], np.ndarray] | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: np.ndarray | None = None,
         U_final_condition_at_T: np.ndarray | None = None,
@@ -2043,9 +2088,11 @@ class HJBGFDMSolver(BaseHJBSolver):
             U_terminal: (*spatial_shape,) terminal condition u(T,x)
             U_coupling_prev: (Nt, *spatial_shape) previous coupling iteration estimate
             show_progress: Whether to display progress bar for timesteps
-            running_cost: (n_points,) time-independent running cost L(x) at collocation points.
-                This is added to the Hamiltonian at each backward time step:
-                H(x,p,m) = |p|^2/(2*lambda) + gamma*m + L(x)
+            running_cost: Running cost L(x) or L(t,x) at collocation points.
+                Static array: shape (n_points,) -- same cost at every backward step.
+                Time-dependent array: shape (n_time_points, n_points) -- L(t_n, x) per step.
+                Callable: f(time_index) -> (n_points,) array, evaluated per step.
+                Added to Hamiltonian: H_total = H(x,p,m) + L(t,x).
             diffusion_field: Optional diffusion coefficient override
 
         Returns:
@@ -2112,16 +2159,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Store original spatial shape for reshaping output
         self._output_spatial_shape = M_density.shape[1:]
 
-        # Store running cost for use in residual computation
-        # Running cost L(x) is added to Hamiltonian at each backward step
-        if running_cost is not None:
-            if running_cost.shape[0] != self.n_points:
-                raise ValueError(
-                    f"running_cost must have shape (n_points,) = ({self.n_points},), got shape {running_cost.shape}"
-                )
-            self._running_cost = running_cost.copy()
-        else:
-            self._running_cost = None
+        # Normalize running cost to callable f(n) -> (n_points,)
+        # Accepts: None, 1D array, 2D array, or callable
+        self._running_cost_fn = self._normalize_running_cost(running_cost, n_time_points)
 
         # Detect if input is already in collocation format (pure meshfree mode)
         # Grid format: M_density.shape = (Nt, Nx, Ny, ...)
@@ -2153,10 +2193,13 @@ class HJBGFDMSolver(BaseHJBSolver):
         )
 
         for n in timestep_range:
+            rc_n = self._running_cost_fn(n) if self._running_cost_fn is not None else None
+
             U_solution_collocation[n, :] = self._solve_timestep(
                 U_solution_collocation[n + 1, :],
                 M_collocation[n, :],  # FIXED: Use m^n, not m^{n+1} (same-time coupling)
                 n,
+                running_cost=rc_n,
             )
 
             # Update progress bar with QP statistics if available (Issue #587 Protocol - no hasattr needed)
@@ -2177,6 +2220,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         u_n_plus_1: np.ndarray,
         m_n_plus_1: np.ndarray,
         time_idx: int,
+        running_cost: np.ndarray | None = None,
     ) -> np.ndarray:
         """Solve HJB at one time step using Newton iteration."""
         from scipy.sparse.linalg import spsolve
@@ -2235,6 +2279,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                     lap_u,
                     H_class,
                     current_time,
+                    running_cost=running_cost,
                 )
 
                 if np.linalg.norm(residual) < self.newton_tolerance:
@@ -2250,7 +2295,14 @@ class HJBGFDMSolver(BaseHJBSolver):
                 # Legacy LQ vectorized path (no hamiltonian_class available)
                 grad_u, lap_u = self._compute_derivatives_vectorized(u_current)
 
-                residual = self._compute_hjb_residual_vectorized(u_current, u_n_plus_1, m_n_plus_1, grad_u, lap_u)
+                residual = self._compute_hjb_residual_vectorized(
+                    u_current,
+                    u_n_plus_1,
+                    m_n_plus_1,
+                    grad_u,
+                    lap_u,
+                    running_cost=running_cost,
+                )
 
                 if np.linalg.norm(residual) < self.newton_tolerance:
                     break
@@ -2261,7 +2313,12 @@ class HJBGFDMSolver(BaseHJBSolver):
                 all_derivs = self._approximate_all_derivatives_cached(u_current)
 
                 residual = self._compute_hjb_residual_with_cache(
-                    u_current, u_n_plus_1, m_n_plus_1, time_idx, all_derivs
+                    u_current,
+                    u_n_plus_1,
+                    m_n_plus_1,
+                    time_idx,
+                    all_derivs,
+                    running_cost=running_cost,
                 )
 
                 if np.linalg.norm(residual) < self.newton_tolerance:
