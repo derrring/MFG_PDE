@@ -98,7 +98,7 @@ def run_formatting() -> bool:
     """Run ruff format on the codebase."""
     try:
         print("\n📝 Running ruff format...")
-        result = subprocess.run(["ruff", "format", "mfg_pde/"], capture_output=True, text=True, check=False)
+        result = subprocess.run(["ruff", "format", "mfgarchon/"], capture_output=True, text=True, check=False)
 
         if result.returncode == 0:
             print("✅ Formatting complete")

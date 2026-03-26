@@ -4,7 +4,7 @@
 **Last Updated**: 2025-01-03
 **Consolidates**: `boundary_conditions_and_geometry.md`, `BC_UNIFICATION_TECHNICAL_REPORT.md`, `GEOMETRY_DOMAIN_BC_ARCHITECTURE.md`
 **See Also**: [Mathematical Foundation](./boundary_framework_mathematical_foundation.md) (L-S theory, Lagrangian submanifolds)
-**Enhancement Tracking**: [Issue #535](https://github.com/derrring/MFG_PDE/issues/535)
+**Enhancement Tracking**: [Issue #535](https://github.com/derrring/mfgarchon/issues/535)
 
 ---
 
@@ -24,7 +24,7 @@
 
 ## 1. Overview
 
-Boundary condition (BC) handling in MFG_PDE follows a layered architecture separating **specification** (what conditions apply), **application** (how to enforce them numerically), and **solver integration** (when to apply them during computation).
+Boundary condition (BC) handling in MFGarchon follows a layered architecture separating **specification** (what conditions apply), **application** (how to enforce them numerically), and **solver integration** (when to apply them during computation).
 
 ### 1.1 Design Principles
 
@@ -36,7 +36,7 @@ Boundary condition (BC) handling in MFG_PDE follows a layered architecture separ
 ### 1.2 Quick Start
 
 ```python
-from mfg_pde.geometry.boundary import BoundaryConditions, BCType, BCSegment
+from mfgarchon.geometry.boundary import BoundaryConditions, BCType, BCSegment
 
 # Uniform BC (all boundaries same)
 bc = BoundaryConditions(dimension=2, bc_type=BCType.NO_FLUX)
@@ -264,7 +264,7 @@ For cell-centered grids, ghost cells extend the domain for stencil computation.
 
 **Usage**:
 ```python
-from mfg_pde.geometry.boundary import apply_boundary_conditions_2d
+from mfgarchon.geometry.boundary import apply_boundary_conditions_2d
 
 u_padded = apply_boundary_conditions_2d(
     field=u,
@@ -422,7 +422,7 @@ Rigorous BC validation requires MMS:
 
 ## 8. Future Plans
 
-> **See [Issue #535](https://github.com/derrring/MFG_PDE/issues/535) for detailed tracking.**
+> **See [Issue #535](https://github.com/derrring/mfgarchon/issues/535) for detailed tracking.**
 > **See [Mathematical Foundation](./boundary_framework_mathematical_foundation.md) for theory.**
 
 ### 8.1 Phase 1: Particle Absorbing BC (Priority: Critical)
@@ -443,7 +443,7 @@ Enable `FPParticleSolver` to interpret `DIRICHLET` segments as absorbing:
 
 Add Lopatinski-Shapiro validation to catch ill-posed BC combinations:
 
-- [ ] Create `mfg_pde/geometry/boundary/analysis.py`
+- [ ] Create `mfgarchon/geometry/boundary/analysis.py`
 - [ ] Implement `PDESymbol` enum (ELLIPTIC, HYPERBOLIC, PARABOLIC)
 - [ ] Implement basic L-S checks for common BC combinations
 - [ ] Integrate stability check into solver initialization (warning mode)
@@ -477,7 +477,7 @@ Support PINN/DGM boundary loss computation:
 Instead of a base class, use a shared utility function:
 
 ```python
-# mfg_pde/geometry/boundary/utils.py
+# mfgarchon/geometry/boundary/utils.py
 def get_boundary_conditions(
     problem,
     explicit_bc: BoundaryConditions | None = None
@@ -522,7 +522,7 @@ Each solver calls this and implements its own padding. Code review ensures consi
 ### 9.1 File Locations
 
 ```
-mfg_pde/geometry/boundary/
+mfgarchon/geometry/boundary/
 ├── __init__.py              # Public API exports
 ├── types.py                 # BCType enum, BCSegment dataclass
 ├── conditions.py            # BoundaryConditions class
@@ -533,7 +533,7 @@ mfg_pde/geometry/boundary/
 ├── applicator_graph.py      # Network node constraints
 └── fdm_bc_1d.py             # Legacy 1D (deprecated)
 
-mfg_pde/alg/numerical/
+mfgarchon/alg/numerical/
 ├── hjb_solvers/
 │   ├── hjb_fdm.py           # Needs BC wiring
 │   ├── hjb_weno.py          # Needs BC wiring
@@ -549,7 +549,7 @@ mfg_pde/alg/numerical/
 
 ```python
 # BC Specification
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     BCType,                    # Enum: DIRICHLET, NEUMANN, ROBIN, PERIODIC, NO_FLUX
     BCSegment,                 # Dataclass: single BC on region
     BoundaryConditions,        # Container: collection of segments
@@ -557,7 +557,7 @@ from mfg_pde.geometry.boundary import (
 )
 
 # BC Application
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     apply_boundary_conditions_1d,
     apply_boundary_conditions_2d,
     apply_boundary_conditions_nd,
@@ -569,9 +569,9 @@ from mfg_pde.geometry.boundary import (
 ### 9.3 Example: Complete Evacuation Setup
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BoundaryConditions, BCType, BCSegment
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import BoundaryConditions, BCType, BCSegment
 
 # 1. Geometry
 grid = TensorProductGrid(
@@ -625,4 +625,4 @@ This reference consolidates and supersedes:
 
 ---
 
-*This document is the canonical reference for boundary condition handling in MFG_PDE.*
+*This document is the canonical reference for boundary condition handling in MFGarchon.*

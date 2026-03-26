@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from mfg_pde.geometry import BCSegment, BCType, MixedBoundaryConditions
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.geometry import BCSegment, BCType, MixedBoundaryConditions
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 class TestBCType:
@@ -328,8 +328,8 @@ class TestMixedBCFromRegions:
 
     def test_basic_usage(self):
         """Test basic usage of mixed_bc_from_regions()."""
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import mixed_bc_from_regions
 
         # Setup geometry with marked regions (placeholder BC, will be replaced by mixed_bc_from_regions)
         geometry = TensorProductGrid(
@@ -357,8 +357,8 @@ class TestMixedBCFromRegions:
 
     def test_auto_populates_region_name(self):
         """Test that region_name is auto-populated from config keys."""
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import mixed_bc_from_regions
 
         geometry = TensorProductGrid(bounds=[(0, 10)], Nx_points=[101], boundary_conditions=no_flux_bc(dimension=1))
         geometry.mark_region("left", boundary="x_min")
@@ -383,8 +383,8 @@ class TestMixedBCFromRegions:
 
     def test_infers_dimension_from_geometry(self):
         """Test dimension inference from geometry."""
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import mixed_bc_from_regions
 
         geometry = TensorProductGrid(
             bounds=[(0, 1), (0, 1), (0, 1)],
@@ -403,7 +403,7 @@ class TestMixedBCFromRegions:
         """Test error when geometry doesn't support SupportsRegionMarking."""
         import pytest
 
-        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+        from mfgarchon.geometry.boundary import mixed_bc_from_regions
 
         # Mock geometry without SupportsRegionMarking
         class FakeGeometry:
@@ -419,8 +419,8 @@ class TestMixedBCFromRegions:
         """Test error when region doesn't exist in geometry."""
         import pytest
 
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import mixed_bc_from_regions
 
         geometry = TensorProductGrid(
             bounds=[(0, 1), (0, 1)], Nx_points=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
@@ -435,8 +435,8 @@ class TestMixedBCFromRegions:
 
     def test_default_bc_optional(self):
         """Test that default BC is optional."""
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import mixed_bc_from_regions
 
         geometry = TensorProductGrid(
             bounds=[(0, 1), (0, 1)], Nx_points=[50, 50], boundary_conditions=no_flux_bc(dimension=2)
@@ -454,8 +454,8 @@ class TestMixedBCFromRegions:
 
     def test_preserves_segment_fields(self):
         """Test that all segment fields are preserved."""
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import mixed_bc_from_regions
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import mixed_bc_from_regions
 
         geometry = TensorProductGrid(
             bounds=[(0, 1), (0, 1)], Nx_points=[50, 50], boundary_conditions=no_flux_bc(dimension=2)

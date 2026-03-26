@@ -10,15 +10,15 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver, KDENormalization
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver, KDENormalization
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 # Legacy 1D BC: testing compatibility with 1D FP solvers (deprecated in v0.14, remove in v1.0)
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 
 def _default_hamiltonian():
@@ -666,7 +666,7 @@ class TestFPParticleSolverCallableDrift:
 
     def test_constant_drift_callable_2d(self):
         """Test constant drift via callable function in 2D."""
-        from mfg_pde.geometry import TensorProductGrid
+        from mfgarchon.geometry import TensorProductGrid
 
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[21, 21], boundary_conditions=no_flux_bc(dimension=2)

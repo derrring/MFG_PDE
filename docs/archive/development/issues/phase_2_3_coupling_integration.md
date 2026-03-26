@@ -21,7 +21,7 @@ Phase 2.3 focused on **coupling layer validation**, not refactoring:
 ### Coupling Solvers Analyzed
 
 **1. FixedPointIterator (Picard Iteration)**
-- **File**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
+- **File**: `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`
 - **Pattern**: Alternates HJB and FP solves with damping
 - **Usage**:
   ```python
@@ -31,7 +31,7 @@ Phase 2.3 focused on **coupling layer validation**, not refactoring:
 - **Geometry Operations**: None (delegates to component solvers)
 
 **2. NewtonMFGSolver (Newton's Method)**
-- **File**: `mfg_pde/alg/numerical/coupling/newton_mfg_solver.py`
+- **File**: `mfgarchon/alg/numerical/coupling/newton_mfg_solver.py`
 - **Pattern**: Wraps HJB+FP in residual function for Newton iteration
 - **Usage**:
   ```python
@@ -42,7 +42,7 @@ Phase 2.3 focused on **coupling layer validation**, not refactoring:
 - **Geometry Operations**: None (MFGResidual delegates to component solvers)
 
 **3. FictitiousPlayIterator (Fictitious Play)**
-- **File**: `mfg_pde/alg/numerical/coupling/fictitious_play.py`
+- **File**: `mfgarchon/alg/numerical/coupling/fictitious_play.py`
 - **Pattern**: Similar to Picard but with decaying learning rate
 - **Usage**:
   ```python
@@ -79,9 +79,9 @@ Required Geometry Traits (Issue #596 Phase 2.3):
 ```
 
 **Files Modified**:
-1. `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py` - Lines 47-53
-2. `mfg_pde/alg/numerical/coupling/newton_mfg_solver.py` - Lines 65-71
-3. `mfg_pde/alg/numerical/coupling/fictitious_play.py` - Lines 91-97
+1. `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py` - Lines 47-53
+2. `mfgarchon/alg/numerical/coupling/newton_mfg_solver.py` - Lines 65-71
+3. `mfgarchon/alg/numerical/coupling/fictitious_play.py` - Lines 91-97
 
 **Parameter Updates**:
 - `hjb_solver` parameter now documented as "(must be trait-validated)"
@@ -154,15 +154,15 @@ Required Geometry Traits (Issue #596 Phase 2.3):
 
 **Total**: 3 files (documentation only)
 
-1. **`mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`**
+1. **`mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`**
    - Added trait requirements section to class docstring (lines 47-53)
    - Updated parameter documentation for hjb_solver and fp_solver
 
-2. **`mfg_pde/alg/numerical/coupling/newton_mfg_solver.py`**
+2. **`mfgarchon/alg/numerical/coupling/newton_mfg_solver.py`**
    - Added trait requirements section to class docstring (lines 65-71)
    - Updated parameter documentation for hjb_solver and fp_solver
 
-3. **`mfg_pde/alg/numerical/coupling/fictitious_play.py`**
+3. **`mfgarchon/alg/numerical/coupling/fictitious_play.py`**
    - Added trait requirements section to class docstring (lines 91-97)
    - Updated parameter documentation for hjb_solver and fp_solver
 

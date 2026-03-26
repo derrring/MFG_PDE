@@ -10,10 +10,10 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver, KDENormalization
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers import FPParticleSolver, KDENormalization
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
 
 
 def _default_hamiltonian():
@@ -187,8 +187,8 @@ class TestBoundaryConditionRequirements:
 
     def test_fp_particle_with_geometry_bc(self):
         """Test FPParticleSolver with geometry-provided BCs."""
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import dirichlet_bc
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import dirichlet_bc
 
         # Geometry with BCs
         geometry = TensorProductGrid(
@@ -204,7 +204,7 @@ class TestBoundaryConditionRequirements:
 
     def test_fp_particle_with_explicit_bc_parameter(self):
         """Test FPParticleSolver with explicit BC parameter."""
-        from mfg_pde.geometry.boundary import periodic_bc
+        from mfgarchon.geometry.boundary import periodic_bc
 
         # Problem without geometry
         problem = MFGProblem(T=1.0, Nt=10, components=_default_components())
@@ -216,8 +216,8 @@ class TestBoundaryConditionRequirements:
 
     def test_fp_particle_bc_parameter_takes_priority(self):
         """Test that explicit BC parameter overrides geometry BC."""
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import dirichlet_bc, periodic_bc
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import dirichlet_bc, periodic_bc
 
         # Geometry with Dirichlet BC
         geometry = TensorProductGrid(

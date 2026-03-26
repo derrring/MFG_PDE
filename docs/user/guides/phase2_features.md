@@ -18,9 +18,9 @@ The `solve_mfg()` function provides a one-line interface for solving MFG problem
 
 **Before (Factory API - ~30 lines)**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
-from mfg_pde.config import create_fast_config
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_standard_solver
+from mfgarchon.config import create_fast_config
 
 problem = MFGProblem()
 config = create_fast_config()
@@ -36,7 +36,7 @@ result = solver.solve(verbose=True)
 
 **After (solve_mfg() - 1 line)**:
 ```python
-from mfg_pde import MFGProblem, solve_mfg
+from mfgarchon import MFGProblem, solve_mfg
 
 problem = MFGProblem()
 result = solve_mfg(problem)
@@ -75,7 +75,7 @@ result = solve_mfg(problem, backend="torch")
 result = solve_mfg(problem, backend="auto")
 
 # Or use backend objects directly
-from mfg_pde.backends import create_backend
+from mfgarchon.backends import create_backend
 backend = create_backend("numpy")
 result = solve_mfg(problem, backend=backend)
 ```
@@ -165,7 +165,7 @@ Performance optimizations for quadratic programming operations used in particle-
 
 **Usage**:
 ```python
-from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
+from mfgarchon.utils.numerical.qp_utils import QPCache, QPSolver
 
 # Create cache with size limit
 cache = QPCache(max_size=100)
@@ -207,7 +207,7 @@ print(f"Hit rate: {cache.hit_rate:.1%}")
 
 **Usage**:
 ```python
-from mfg_pde.utils.numerical.qp_utils import QPSolver
+from mfgarchon.utils.numerical.qp_utils import QPSolver
 
 # Create solver with warm-starting enabled
 solver = QPSolver(backend="osqp", enable_warm_start=True, cache=None)
@@ -236,7 +236,7 @@ print(f"Warm starts: {solver.stats['warm_starts']}")
 ### Combined Caching + Warm-Starting
 
 ```python
-from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
+from mfgarchon.utils.numerical.qp_utils import QPCache, QPSolver
 
 # Create cache and solver
 cache = QPCache(max_size=100)
@@ -339,7 +339,7 @@ Utilities for converting between grid-based and particle-based representations u
 **Use Case**: Initialize particle ensemble from grid-based density.
 
 ```python
-from mfg_pde.utils.numerical.particle_interpolation import grid_to_particles
+from mfgarchon.utils.numerical.particle_interpolation import grid_to_particles
 import numpy as np
 
 # Grid-based density
@@ -374,7 +374,7 @@ particles, weights = grid_to_particles(
 **Use Case**: Convert particle ensemble to smooth grid-based density.
 
 ```python
-from mfg_pde.utils.numerical.particle_interpolation import particles_to_grid_kde
+from mfgarchon.utils.numerical.particle_interpolation import particles_to_grid_kde
 import numpy as np
 
 # Particle ensemble
@@ -438,7 +438,7 @@ density_2d = particles_to_grid_kde_2d(
 Particle interpolation is used internally by hybrid solvers:
 
 ```python
-from mfg_pde.factory import create_standard_solver
+from mfgarchon.factory import create_standard_solver
 
 # Standard solver uses HJB-FDM + FP-Particle (hybrid)
 solver = create_standard_solver(problem, "fixed_point")
@@ -482,8 +482,8 @@ Simplified aliases for creating obstacles and domains in MFG problems.
 
 **Before (verbose)**:
 ```python
-from mfg_pde.geometry.obstacles import RectangularObstacle, CircularObstacle
-from mfg_pde.geometry.domain import Union, Intersection, Difference
+from mfgarchon.geometry.obstacles import RectangularObstacle, CircularObstacle
+from mfgarchon.geometry.domain import Union, Intersection, Difference
 
 rect = RectangularObstacle(center=(0.5, 0.5), width=0.2, height=0.1)
 circle = CircularObstacle(center=(0.3, 0.3), radius=0.1)
@@ -492,7 +492,7 @@ combined = Union([rect, circle])
 
 **After (aliases)**:
 ```python
-from mfg_pde.utils.geometry import Rectangle, Circle, Union, Intersection, Difference
+from mfgarchon.utils.geometry import Rectangle, Circle, Union, Intersection, Difference
 
 rect = Rectangle(center=(0.5, 0.5), width=0.2, height=0.1)
 circle = Circle(center=(0.3, 0.3), radius=0.1)
@@ -514,7 +514,7 @@ combined = Union([rect, circle])
 Combine obstacles using Constructive Solid Geometry:
 
 ```python
-from mfg_pde.utils.geometry import Rectangle, Circle, Union, Difference
+from mfgarchon.utils.geometry import Rectangle, Circle, Union, Difference
 
 # Create two obstacles
 rect = Rectangle(center=(0.5, 0.5), width=0.3, height=0.2)
@@ -558,8 +558,8 @@ for i in range(len(x)):
 Use geometry utilities to define spatial domains and obstacles:
 
 ```python
-from mfg_pde.core import BaseMFGProblem
-from mfg_pde.utils.geometry import Rectangle, Circle, Union
+from mfgarchon.core import BaseMFGProblem
+from mfgarchon.utils.geometry import Rectangle, Circle, Union
 
 class RoomEvacuationProblem(BaseMFGProblem):
     def __init__(self, Nx, Ny, Nt, T):

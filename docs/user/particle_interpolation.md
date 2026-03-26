@@ -2,7 +2,7 @@
 
 **Feature**: Convert between grid and particle representations
 **Added**: v0.9.0 (Issue #216, Part 1/4)
-**Module**: `mfg_pde.utils.numerical.particle_interpolation`
+**Module**: `mfgarchon.utils.numerical.particle_interpolation`
 
 ---
 
@@ -19,7 +19,7 @@ This is essential for hybrid MFG solvers and visualization of particle simulatio
 ## Quick Start
 
 ```python
-from mfg_pde.utils.numerical import (
+from mfgarchon.utils.numerical import (
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
     estimate_kde_bandwidth,
@@ -46,7 +46,7 @@ u_grid_reconstructed = interpolate_particles_to_grid(
 
 ```python
 import numpy as np
-from mfg_pde.utils.numerical import interpolate_grid_to_particles
+from mfgarchon.utils.numerical import interpolate_grid_to_particles
 
 # Define grid values
 x = np.linspace(0, 1, 51)
@@ -304,4 +304,4 @@ See `tests/unit/utils/test_particle_interpolation.py` for comprehensive examples
 
 **Documentation Version**: 1.0
 **Last Updated**: 2025-11-03
-**MFG_PDE Version**: v0.9.0+
+**MFGarchon Version**: v0.9.0+

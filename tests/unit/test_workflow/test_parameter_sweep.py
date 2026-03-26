@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from mfg_pde.workflow.parameter_sweep import ParameterSweep, SweepConfiguration
+from mfgarchon.workflow.parameter_sweep import ParameterSweep, SweepConfiguration
 
 # ============================================================================
 # Test: SweepConfiguration

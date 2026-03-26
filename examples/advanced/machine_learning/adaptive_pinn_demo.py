@@ -39,9 +39,9 @@ except ImportError:
     print("⚠️  PyTorch not available - Adaptive PINN demo requires PyTorch")
     exit(1)
 
-# Import MFG_PDE components
-from mfg_pde.alg.neural import AdaptiveTrainingConfig, AdaptiveTrainingStrategy, PhysicsGuidedSampler
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+# Import MFGarchon components
+from mfgarchon.alg.neural import AdaptiveTrainingConfig, AdaptiveTrainingStrategy, PhysicsGuidedSampler
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 
 def demonstrate_adaptive_configuration():
@@ -334,7 +334,7 @@ def main():
     print("🧠 Advanced Adaptive PINN Training Demonstration")
     print("=" * 60)
     print("Showcasing sophisticated adaptive training capabilities")
-    print("integrated into the MFG_PDE PINN solvers.")
+    print("integrated into the MFGarchon PINN solvers.")
     print()
 
     # Configure logging

@@ -1,7 +1,7 @@
 .PHONY: help test test-fast lint type-check coverage clean install format
 
 help:
-	@echo "MFG_PDE Development Commands"
+	@echo "MFGarchon Development Commands"
 	@echo "============================"
 	@echo "test          - Run all tests"
 	@echo "test-fast     - Run fast tests only"
@@ -19,16 +19,16 @@ test-fast:
 	pytest -m "not slow" -x
 
 lint:
-	ruff check mfg_pde/
+	ruff check mfgarchon/
 
 type-check:
-	mypy mfg_pde/ --show-error-codes
+	mypy mfgarchon/ --show-error-codes
 
 coverage:
-	pytest --cov=mfg_pde --cov-report=html --cov-report=term
+	pytest --cov=mfgarchon --cov-report=html --cov-report=term
 
 format:
-	ruff format mfg_pde/ tests/ examples/
+	ruff format mfgarchon/ tests/ examples/
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

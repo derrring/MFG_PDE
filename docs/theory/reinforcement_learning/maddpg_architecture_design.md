@@ -1,4 +1,4 @@
-# MADDPG Architecture Design for MFG_PDE
+# MADDPG Architecture Design for MFGarchon
 
 **Date**: October 2, 2025
 **Status**: Architecture Design (Future Extension)
@@ -8,9 +8,9 @@
 
 ## Executive Summary
 
-This document presents the architecture design for implementing **Mean Field MADDPG (MF-MADDPG)** in MFG_PDE. MADDPG extends the current discrete-action RL paradigm to **continuous action spaces**, which is essential for many real-world MFG applications.
+This document presents the architecture design for implementing **Mean Field MADDPG (MF-MADDPG)** in MFGarchon. MADDPG extends the current discrete-action RL paradigm to **continuous action spaces**, which is essential for many real-world MFG applications.
 
-**Status**: This is a design document for future implementation. Current MFG_PDE focuses on discrete actions. Continuous action support requires:
+**Status**: This is a design document for future implementation. Current MFGarchon focuses on discrete actions. Continuous action support requires:
 1. New network architectures (action as input to critic)
 2. Deterministic policy gradient updates
 3. Exploration strategies for continuous spaces
@@ -43,7 +43,7 @@ critic(s, a, m) → Q(s, a, m) ∈ ℝ
 ### File Structure
 
 ```
-mfg_pde/alg/reinforcement/
+mfgarchon/alg/reinforcement/
 ├── algorithms/
 │   ├── mean_field_q_learning.py       # Existing (discrete)
 │   ├── mean_field_actor_critic.py      # Existing (discrete)
@@ -393,7 +393,7 @@ class MeanFieldMADDPG:
 
 ---
 
-## Integration with MFG_PDE
+## Integration with MFGarchon
 
 ### Factory Function
 

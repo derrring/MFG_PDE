@@ -1,14 +1,14 @@
 #!/bin/bash
 """
-Modern development environment setup script for MFG_PDE.
+Modern development environment setup script for MFGarchon.
 Supports both UV and traditional pip/conda workflows.
 """
 
 set -euo pipefail  # Exit on error, undefined vars, pipe failures
 
 # Configuration
-PROJECT_NAME="MFG_PDE"
-VENV_NAME="mfg_pde_dev"
+PROJECT_NAME="MFGarchon"
+VENV_NAME="mfgarchon_dev"
 PYTHON_VERSION="3.12"
 
 # Colors for output
@@ -58,7 +58,7 @@ setup_uv_environment() {
     source .venv/bin/activate
 
     # Install package in development mode
-    log_info "Installing MFG_PDE in development mode..."
+    log_info "Installing MFGarchon in development mode..."
     uv pip install -e ".[dev,test,interactive]"
 
     # Install pre-commit hooks
@@ -83,7 +83,7 @@ setup_pip_environment() {
     pip install --upgrade pip
 
     # Install package in development mode
-    log_info "Installing MFG_PDE in development mode..."
+    log_info "Installing MFGarchon in development mode..."
     pip install -e ".[dev,test,interactive]"
 
     # Install pre-commit hooks
@@ -100,7 +100,7 @@ verify_installation() {
     log_info "Verifying installation..."
 
     # Test basic import
-    python -c "import mfg_pde; print(f'✅ MFG_PDE version: {getattr(mfg_pde, \"__version__\", \"dev\")}')" || {
+    python -c "import mfgarchon; print(f'✅ MFGarchon version: {getattr(mfgarchon, \"__version__\", \"dev\")}')" || {
         log_error "Package import failed"
         return 1
     }

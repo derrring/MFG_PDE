@@ -20,7 +20,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.protocols import (
+from mfgarchon.geometry.protocols import (
     SupportsAdvection,
     SupportsBoundaryDistance,
     SupportsBoundaryNormal,

@@ -11,7 +11,7 @@
 ## Current State
 
 **GeometryProtocol Status**: ✅ **EXISTS** (since v0.16.16)
-- Location: `mfg_pde/geometry/protocol.py`
+- Location: `mfgarchon/geometry/protocol.py`
 - Decorator: `@runtime_checkable`
 - Required properties: `dimension`, `geometry_type`, `num_spatial_points`
 - Required methods: `get_spatial_grid()`, `get_bounds()`, `get_boundary_conditions()`, etc.
@@ -60,7 +60,7 @@ except AttributeError:
 
 ### Phase 1: Core Module (2 violations) ✅
 
-**File**: `mfg_pde/core/mfg_problem.py`
+**File**: `mfgarchon/core/mfg_problem.py`
 **Lines**: 2000, 2003
 
 **Current Code**:
@@ -76,7 +76,7 @@ elif hasattr(self.geometry, "interior_points"):
 
 **Fix**:
 ```python
-from mfg_pde.geometry.protocol import GeometryProtocol
+from mfgarchon.geometry.protocol import GeometryProtocol
 
 if not isinstance(self.geometry, GeometryProtocol):
     raise TypeError(
@@ -174,7 +174,7 @@ if hasattr(geometry, "network_data") and geometry.network_data is not None:
 2. **Use try/except** (pragmatic)
 3. **Use isinstance with concrete type**:
    ```python
-   from mfg_pde.geometry.graph import NetworkGeometry
+   from mfgarchon.geometry.graph import NetworkGeometry
    if isinstance(geometry, NetworkGeometry):
        network_data = geometry.network_data
    ```
@@ -200,7 +200,7 @@ pytest tests/unit/test_core/test_mfg_problem.py -v
 pytest tests/integration/test_variational_solver.py -v
 
 # Validate reduction
-python scripts/check_fail_fast.py --path mfg_pde/core --all
+python scripts/check_fail_fast.py --path mfgarchon/core --all
 # Should show: 5 → 3 violations (only docstring examples remain)
 ```
 
@@ -210,7 +210,7 @@ pytest tests/unit/test_geometry/ -v
 pytest tests/integration/ -k geometry -v
 
 # Validate reduction
-python scripts/check_fail_fast.py --path mfg_pde/geometry --all
+python scripts/check_fail_fast.py --path mfgarchon/geometry --all
 # Should show: 38 → ~3-5 violations (remaining edge cases)
 ```
 

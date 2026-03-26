@@ -117,7 +117,7 @@ Successfully eliminated all 17 hasattr checks from `hjb_fdm.py`.
 Created `BoundaryHandler` protocol for unified BC handling across all solvers.
 
 **File Created**:
-- `mfg_pde/geometry/boundary/handler_protocol.py` (252 lines)
+- `mfgarchon/geometry/boundary/handler_protocol.py` (252 lines)
 
 **Protocol Methods**:
 1. `get_boundary_indices()` - Identify boundary points in discretization
@@ -183,7 +183,7 @@ Successfully eliminated all 16 hasattr checks from `hjb_semi_lagrangian.py` and 
 From Issue #545:
 
 - [x] **GFDM refactored** using composition pattern ✅
-- [x] **Define BoundaryHandler protocol** in `mfg_pde/geometry/boundary/` ✅ (2026-01-11)
+- [x] **Define BoundaryHandler protocol** in `mfgarchon/geometry/boundary/` ✅ (2026-01-11)
 - [x] **Geometry interface** includes `get_boundary_indices()`, `get_normals()` ✅ (already exists)
 - [x] **Eliminate hasattr** from FDM solver ✅ (2026-01-11)
 - [x] **Apply pattern** to remaining solvers ✅ (Semi-Lagrangian completed 2026-01-11)

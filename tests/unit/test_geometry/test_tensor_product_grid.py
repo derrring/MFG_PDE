@@ -15,8 +15,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.geometry.grids.tensor_grid import TensorProductGrid
 
 # ============================================================================
 # Test Fixtures

@@ -9,11 +9,11 @@ that error spikes are normal stochastic behavior.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers.fixed_point_iterator import FixedPointIterator
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry.boundary import neumann_bc
+from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfgarchon.alg.numerical.mfg_solvers.fixed_point_iterator import FixedPointIterator
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry.boundary import neumann_bc
 
 
 def main():

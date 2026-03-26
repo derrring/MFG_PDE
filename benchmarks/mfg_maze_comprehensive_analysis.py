@@ -14,7 +14,7 @@ Usage:
     python test_mfg_maze_comprehensive.py --layout all --visualization
     python test_mfg_maze_comprehensive.py --policy comparison
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -25,8 +25,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Import our maze modules
-from mfg_pde.alg.reinforcement.environments.mfg_maze_env import MFGMazeEnvironment
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.alg.reinforcement.environments.mfg_maze_env import MFGMazeEnvironment
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Import maze analysis tools from examples
 # Note: This benchmark script depends on advanced maze examples

@@ -17,8 +17,8 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import (
     BCSegment,
     BCType,
     FDMApplicator,
@@ -228,7 +228,7 @@ def demonstrate_priority_resolution(geometry: TensorProductGrid):
     geometry.mark_region("bottom_half", predicate=lambda x: x[:, 1] < CORRIDOR_HEIGHT / 2)
 
     # Create segments with different priorities
-    from mfg_pde.geometry.boundary import BoundaryConditions
+    from mfgarchon.geometry.boundary import BoundaryConditions
 
     bc_left = BCSegment(
         name="left_bc",

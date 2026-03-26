@@ -17,11 +17,11 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+from mfgarchon.alg.numerical.coupling.hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid, no_flux_bc
 
 
 def _default_hamiltonian():

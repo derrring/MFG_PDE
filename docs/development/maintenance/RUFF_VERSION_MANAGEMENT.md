@@ -4,7 +4,7 @@
 
 ## Overview
 
-MFG_PDE pins the ruff version to ensure consistent formatting across all environments (local dev, pre-commit hooks, CI/CD). This provides:
+MFGarchon pins the ruff version to ensure consistent formatting across all environments (local dev, pre-commit hooks, CI/CD). This provides:
 
 - ✅ **Consistency**: Same formatting behavior everywhere
 - ✅ **Reproducibility**: Code formatting is deterministic
@@ -169,7 +169,7 @@ git push
 
 **Solution**:
 1. Check ruff release notes for breaking changes
-2. Run `ruff check --diff mfg_pde/` to see specific changes
+2. Run `ruff check --diff mfgarchon/` to see specific changes
 3. Evaluate if changes are acceptable
 4. If not, defer update and wait for next version
 

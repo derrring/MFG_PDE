@@ -16,10 +16,10 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
 
 
 def _default_hamiltonian():

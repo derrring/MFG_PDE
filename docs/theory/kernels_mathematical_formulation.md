@@ -1,6 +1,6 @@
 # Smoothing Kernels: Mathematical Formulation
 
-**Module**: `mfg_pde.utils.numerical.kernels`
+**Module**: `mfgarchon.utils.numerical.kernels`
 **Date**: 2025-12-03
 **Status**: ✅ COMPLETE
 
@@ -14,7 +14,7 @@
 4. [Mollifiers and Regularization](#mollifiers-and-regularization)
 5. [Convolution and Approximation](#convolution-and-approximation)
 6. [Kernel Types](#kernel-types)
-7. [Applications in MFG_PDE](#applications-in-mfg_pde)
+7. [Applications in MFGarchon](#applications-in-mfgarchon)
 8. [References](#references)
 
 ---
@@ -168,7 +168,7 @@ $$\Delta K_h(r) = \frac{1}{h^{d+2}} \left[ k''(q) + \frac{d-1}{q} k'(q) \right],
 
 **GFDM Weight Functions**:
 - The gradient $\nabla_{\mathbf{x}} K_h(\mathbf{x} - \mathbf{x}_i)$ provides directional weights for computing partial derivatives
-- Used in weighted least squares reconstruction: `mfg_pde.utils.numerical.gfdm_operators`
+- Used in weighted least squares reconstruction: `mfgarchon.utils.numerical.gfdm_operators`
 
 **Kernel Derivatives in Code**:
 The `kernels` module provides `evaluate_with_derivative()` method returning both $k(q)$ and $k'(q)$, which can be used to construct $\nabla K$ and $\Delta K$ using the formulas above.
@@ -233,7 +233,7 @@ If $\int K_h = 1$, then $(f * K_h)(\mathbf{x}) \to f(\mathbf{x})$ as $h \to 0$ (
 Given particles $\{\mathbf{x}_i\}_{i=1}^N$, approximate density:
 $$\rho_h(\mathbf{x}) = \frac{1}{N} \sum_{i=1}^N K_h(\mathbf{x} - \mathbf{x}_i)$$
 
-**Used in MFG_PDE**: `FPParticleSolver` in hybrid mode uses KDE to project particle density onto grid.
+**Used in MFGarchon**: `FPParticleSolver` in hybrid mode uses KDE to project particle density onto grid.
 
 ### 5.3 SPH Approximation
 
@@ -256,7 +256,7 @@ $$w_{ij} = K_h(\mathbf{x}_i - \mathbf{x}_j)$$
 Minimize weighted residual:
 $$\min_{\nabla f} \sum_j w_{ij} \left[ f(\mathbf{x}_j) - f(\mathbf{x}_i) - \nabla f \cdot (\mathbf{x}_j - \mathbf{x}_i) \right]^2$$
 
-**Used in MFG_PDE**: `gfdm_operators.py` uses Gaussian RBF weights for GFDM derivative approximation.
+**Used in MFGarchon**: `gfdm_operators.py` uses Gaussian RBF weights for GFDM derivative approximation.
 
 ---
 
@@ -275,7 +275,7 @@ $$K_h(r) = \frac{1}{(\pi h^2)^{d/2}} \exp\left(-\frac{r^2}{h^2}\right)$$
 - Infinite support (practically zero for $r > 3h$)
 - Fourier transform: Gaussian (ideal low-pass filter)
 
-**MFG_PDE Implementation**: `GaussianKernel()` in `mfg_pde.utils.numerical.kernels`
+**MFGarchon Implementation**: `GaussianKernel()` in `mfgarchon.utils.numerical.kernels`
 
 ### 6.2 Wendland Kernels (Compact Support)
 
@@ -325,7 +325,7 @@ $$\frac{dk}{dq} = \begin{cases}
 Wendland kernels require normalization constants $\sigma_d$:
 $$K_h(r) = \frac{\sigma_d}{h^d} k\left(\frac{r}{h}\right)$$
 
-**MFG_PDE Implementation**: `WendlandKernel(k, dimension)` with $k \in \{0, 1, 2, 3\}$
+**MFGarchon Implementation**: `WendlandKernel(k, dimension)` with $k \in \{0, 1, 2, 3\}$
 - Unified parameterized class replaces separate C0/C2/C4/C6 classes
 - Automatic polynomial coefficient generation based on $k$
 - Factory: `create_kernel('wendland_c2')` → `WendlandKernel(k=1)`
@@ -372,7 +372,7 @@ The cubic spline is the B-spline of order 4, obtained by convolving the box func
 - Computational efficiency
 - Numerical stability
 
-**MFG_PDE Implementation**: `CubicSplineKernel(dimension=d)`
+**MFGarchon Implementation**: `CubicSplineKernel(dimension=d)`
 
 ### 6.4 Quintic Spline (B-Spline M6)
 
@@ -435,7 +435,7 @@ However, the larger support radius (3h vs 2h) increases computational cost by ~3
 | Accuracy | Good | Excellent |
 | Cost | Low | Medium |
 
-**MFG_PDE Implementation**: `QuinticSplineKernel(dimension=d)`
+**MFGarchon Implementation**: `QuinticSplineKernel(dimension=d)`
 
 **Note on Implementation**: B-splines are kept as separate classes (cubic and quintic) rather than parameterized by degree because:
 1. Only these two orders are standard in SPH literature
@@ -477,15 +477,15 @@ These simple kernels are useful for:
 - Educational examples
 - Cases where C^n continuity is not critical
 
-**MFG_PDE Implementation**: `CubicKernel()`, `QuarticKernel()`
+**MFGarchon Implementation**: `CubicKernel()`, `QuarticKernel()`
 
 ---
 
-## 7. Applications in MFG_PDE
+## 7. Applications in MFGarchon
 
 ### 6.1 Kernel Density Estimation (KDE)
 
-**Module**: `mfg_pde.alg.numerical.fp_solvers.fp_particle`
+**Module**: `mfgarchon.alg.numerical.fp_solvers.fp_particle`
 
 **Usage**: Project particle distribution onto grid
 ```python
@@ -497,7 +497,7 @@ M_grid[t, x] = Σ_i w_i * K_h(x - x_i)
 
 ### 6.2 GFDM Spatial Derivatives
 
-**Module**: `mfg_pde.utils.numerical.gfdm_operators`
+**Module**: `mfgarchon.utils.numerical.gfdm_operators`
 
 **Usage**: Weight neighbors in least squares for derivative approximation
 ```python
@@ -509,7 +509,7 @@ w_ij = gaussian_rbf_weight(r_ij, h)
 
 ### 6.3 Semi-Lagrangian Interpolation
 
-**Module**: `mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian`
+**Module**: `mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian`
 
 **Usage**: Interpolate along characteristics
 ```python
@@ -521,7 +521,7 @@ u_interp = Σ_i w_i u_i / Σ_i w_i
 
 ### 6.4 SPH (Future)
 
-**Potential Module**: `mfg_pde.alg.numerical.sph_solvers` (not yet implemented)
+**Potential Module**: `mfgarchon.alg.numerical.sph_solvers` (not yet implemented)
 
 **Usage**: Smoothed Particle Hydrodynamics for fluid dynamics
 ```python
@@ -577,7 +577,7 @@ u_interp = Σ_i w_i u_i / Σ_i w_i
 
 ## Summary
 
-This document provides the mathematical foundation for the `kernels` module in MFG_PDE. Key concepts:
+This document provides the mathematical foundation for the `kernels` module in MFGarchon. Key concepts:
 
 1. **Kernels** are normalized, non-negative functions for smoothing and approximation
 2. **Mollifiers** are $C^\infty$ compactly supported kernels for regularization
@@ -590,4 +590,4 @@ This document provides the mathematical foundation for the `kernels` module in M
 
 All kernels in the module satisfy normalization $\int K_h = 1$ and converge to Dirac delta as $h \to 0$, making them suitable for numerical PDE methods.
 
-**Code Reference**: `mfg_pde/utils/numerical/kernels.py`
+**Code Reference**: `mfgarchon/utils/numerical/kernels.py`

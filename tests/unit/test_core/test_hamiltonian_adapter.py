@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils import HamiltonianAdapter, adapt_hamiltonian, create_hamiltonian_adapter
+from mfgarchon.utils import HamiltonianAdapter, adapt_hamiltonian, create_hamiltonian_adapter
 
 
 class TestSignatureDetection:

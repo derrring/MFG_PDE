@@ -24,9 +24,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.numerical.pde_solvers import ImplicitHeatSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import neumann_bc
+from mfgarchon.alg.numerical.pde_solvers import ImplicitHeatSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import neumann_bc
 
 # ========================================
 # Benchmark Configuration

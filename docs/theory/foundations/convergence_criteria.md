@@ -241,13 +241,13 @@ $$\mathbb{E}[W_2^2(m_k^N, m_k)] = O(N^{-1/d}) \quad \text{(curse of dimensionali
 
 ---
 
-## 5. Implementation in MFG_PDE
+## 5. Implementation in MFGarchon
 
-The MFG_PDE package implements these convergence criteria through:
+The MFGarchon package implements these convergence criteria through:
 
 ### 5.1 Core Components
 
-**Location**: `mfg_pde/utils/convergence.py`
+**Location**: `mfgarchon/utils/convergence.py`
 
 **Classes**:
 1. **`AdvancedConvergenceMonitor`** - Tracks multiple convergence metrics simultaneously
@@ -267,9 +267,9 @@ The MFG_PDE package implements these convergence criteria through:
 
 ### 5.2 Integration with Solvers
 
-**Example Usage** (see `mfg_pde/alg/numerical/hjb_solvers/`):
+**Example Usage** (see `mfgarchon/alg/numerical/hjb_solvers/`):
 ```python
-from mfg_pde.utils.convergence import AdvancedConvergenceMonitor
+from mfgarchon.utils.convergence import AdvancedConvergenceMonitor
 
 monitor = AdvancedConvergenceMonitor(
     metrics=['wasserstein', 'moment_stability'],
@@ -294,7 +294,7 @@ for k in range(max_iter):
 - Spectral analysis of oscillations
 - Diagnostic reports with convergence assessment
 
-**Location**: `mfg_pde/utils/visualization/convergence_diagnostics.py`
+**Location**: `mfgarchon/utils/visualization/convergence_diagnostics.py`
 
 ---
 
@@ -388,4 +388,4 @@ for k in range(max_iter):
 
 **Document Status**: Enhanced with mathematical rigor and comprehensive references
 **Usage**: Reference for MFG solver convergence criteria and implementation
-**Related Code**: `mfg_pde/utils/convergence.py`, solver implementations in `mfg_pde/alg/numerical/`
+**Related Code**: `mfgarchon/utils/convergence.py`, solver implementations in `mfgarchon/alg/numerical/`

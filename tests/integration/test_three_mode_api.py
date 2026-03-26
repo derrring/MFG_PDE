@@ -8,12 +8,12 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.types import NumericalScheme
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.types import NumericalScheme
 
 
 def _default_hamiltonian():
@@ -128,7 +128,7 @@ class TestExpertMode:
 
     def test_expert_mode_mismatched_solvers_warning(self):
         """Test Expert Mode with mismatched solvers emits warning."""
-        from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPSLSolver
 
         problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
 
@@ -138,7 +138,7 @@ class TestExpertMode:
         fp = FPSLSolver(problem)  # Semi-Lagrangian FP with FDM HJB = not dual
 
         # Verify they're detected as non-dual
-        from mfg_pde.utils import check_solver_duality
+        from mfgarchon.utils import check_solver_duality
 
         result = check_solver_duality(hjb, fp, warn_on_mismatch=False)
         assert not result.is_valid_pairing()
@@ -190,14 +190,14 @@ class TestAutoMode:
         import logging
 
         # Configure logger to ensure INFO messages are captured
-        from mfg_pde.utils.mfg_logging import get_logger
+        from mfgarchon.utils.mfg_logging import get_logger
 
-        logger = get_logger("mfg_pde.core.mfg_problem")
+        logger = get_logger("mfgarchon.core.mfg_problem")
         logger.setLevel(logging.INFO)
 
         problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
 
-        with caplog.at_level(logging.INFO, logger="mfg_pde.core.mfg_problem"):
+        with caplog.at_level(logging.INFO, logger="mfgarchon.core.mfg_problem"):
             result = problem.solve(max_iterations=5, verbose=True)
 
         # Should log which scheme was selected
@@ -280,7 +280,7 @@ class TestConfigIntegration:
     @pytest.mark.slow
     def test_safe_mode_with_config(self):
         """Test Safe Mode with custom config."""
-        from mfg_pde.config import MFGSolverConfig
+        from mfgarchon.config import MFGSolverConfig
 
         problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
         config = MFGSolverConfig()
@@ -297,7 +297,7 @@ class TestConfigIntegration:
     @pytest.mark.slow
     def test_expert_mode_with_config(self):
         """Test Expert Mode with custom config."""
-        from mfg_pde.config import MFGSolverConfig
+        from mfgarchon.config import MFGSolverConfig
 
         problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
         config = MFGSolverConfig()

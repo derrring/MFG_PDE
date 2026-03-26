@@ -4,7 +4,7 @@ Unit tests for multi-population configuration.
 Tests PopulationConfig validation, coupling utilities, and configuration
 validation for multi-population MFG systems.
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -24,7 +24,7 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.reinforcement.multi_population.population_config import (
+    from mfgarchon.alg.reinforcement.multi_population.population_config import (
         PopulationConfig,
         create_asymmetric_coupling,
         create_symmetric_coupling,

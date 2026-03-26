@@ -469,15 +469,15 @@ where $\bar{F} = m F(m) + (1-m) U_{\text{home}}$ is average fitness.
 
 ---
 
-## 11. Implementation in MFG_PDE
+## 11. Implementation in MFGarchon
 
 ### 11.1 Discrete MFG Solver
 
-**Location**: `mfg_pde/core/discrete_mfg_problem.py` (planned)
+**Location**: `mfgarchon/core/discrete_mfg_problem.py` (planned)
 
 **Usage**:
 ```python
-from mfg_pde import DiscreteMFGProblem
+from mfgarchon import DiscreteMFGProblem
 
 problem = DiscreteMFGProblem(
     payoff_good=1.0,      # G
@@ -495,7 +495,7 @@ m_equilibrium = result.M  # Attendance trajectory
 
 **Use Existing Framework**:
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(
     domain_type="1D",

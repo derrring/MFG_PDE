@@ -9,7 +9,7 @@
 
 ## Overview
 
-Phase 2.5 implemented anisotropic tensor diffusion operators for MFG_PDE, completing infrastructure originally planned for Phase 3. This work enables direction-dependent diffusion with applications in:
+Phase 2.5 implemented anisotropic tensor diffusion operators for MFGarchon, completing infrastructure originally planned for Phase 3. This work enables direction-dependent diffusion with applications in:
 
 - Crowd dynamics (preferential flow directions)
 - Traffic networks (road orientation effects)
@@ -22,7 +22,7 @@ Phase 2.5 implemented anisotropic tensor diffusion operators for MFG_PDE, comple
 
 ### 1. Tensor Diffusion Operators (340 lines)
 
-**File**: `mfg_pde/utils/numerical/tensor_operators.py`
+**File**: `mfgarchon/utils/numerical/tensor_operators.py`
 
 **Functions**:
 - `divergence_tensor_diffusion_2d()` - Full 2D anisotropic diffusion
@@ -45,7 +45,7 @@ where Σ = [[σ₁₁, σ₁₂],
 
 ### 2. PSD Validation (137 lines)
 
-**File**: `mfg_pde/utils/pde_coefficients.py`
+**File**: `mfgarchon/utils/pde_coefficients.py`
 
 **Method**: `CoefficientField.validate_tensor_psd()`
 
@@ -334,7 +334,7 @@ Tensor diffusion involves 7× more operations than scalar Laplacian. Performance
 
 ## Conclusion
 
-Phase 2.5 successfully delivered anisotropic tensor diffusion infrastructure for MFG_PDE. The work completed ~80% of the original Phase 3.3 feature (tensor diffusion) but deliberately stopped before full MFG integration to allow thorough validation.
+Phase 2.5 successfully delivered anisotropic tensor diffusion infrastructure for MFGarchon. The work completed ~80% of the original Phase 3.3 feature (tensor diffusion) but deliberately stopped before full MFG integration to allow thorough validation.
 
 **Key Achievements**:
 - Production-ready tensor operators with comprehensive tests

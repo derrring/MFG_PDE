@@ -4,7 +4,7 @@ This document provides guidance for choosing discretization methods based on dom
 
 ## Architecture Overview
 
-MFG_PDE separates boundary condition handling into three layers:
+MFGarchon separates boundary condition handling into three layers:
 
 ```
 Layer 1: BC Specification (geometry/boundary/conditions.py)
@@ -101,7 +101,7 @@ This works because obstacles are still axis-aligned.
 - Matrix assembly more complex than FDM
 - Mesh quality affects solution quality
 
-**Implementation status in MFG_PDE**:
+**Implementation status in MFGarchon**:
 - `FEMApplicator` available
 - 1D/2D/3D boundary condition classes implemented
 - Less tested than FDM solvers
@@ -121,7 +121,7 @@ This works because obstacles are still axis-aligned.
 - Consistency/stability analysis more complex
 - Less mature solvers than FDM/FEM
 
-**Implementation status in MFG_PDE**:
+**Implementation status in MFGarchon**:
 - `MeshfreeApplicator` with `ParticleReflector`
 - GFDM solvers available
 - Good for particle-based MFG methods
@@ -169,7 +169,7 @@ For Fokker-Planck equations, boundary conditions affect mass conservation:
 ### When to Use Each Applicator
 
 ```python
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     FDMApplicator,
     FEMApplicator,
     MeshfreeApplicator,
@@ -237,12 +237,12 @@ abstracting this provides marginal value.
 
 ## Code References
 
-- BC specification: `mfg_pde/geometry/boundary/conditions.py`
-- BC types: `mfg_pde/geometry/boundary/types.py`
-- FDM applicator: `mfg_pde/geometry/boundary/applicator_fdm.py`
-- FEM applicator: `mfg_pde/geometry/boundary/applicator_fem.py`
-- Meshfree applicator: `mfg_pde/geometry/boundary/applicator_meshfree.py`
-- Graph applicator: `mfg_pde/geometry/boundary/applicator_graph.py`
+- BC specification: `mfgarchon/geometry/boundary/conditions.py`
+- BC types: `mfgarchon/geometry/boundary/types.py`
+- FDM applicator: `mfgarchon/geometry/boundary/applicator_fdm.py`
+- FEM applicator: `mfgarchon/geometry/boundary/applicator_fem.py`
+- Meshfree applicator: `mfgarchon/geometry/boundary/applicator_meshfree.py`
+- Graph applicator: `mfgarchon/geometry/boundary/applicator_graph.py`
 
 ## Related Documents
 

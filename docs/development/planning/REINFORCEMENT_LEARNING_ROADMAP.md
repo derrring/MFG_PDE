@@ -1,4 +1,4 @@
-# Reinforcement Learning Development Roadmap for MFG_PDE
+# Reinforcement Learning Development Roadmap for MFGarchon
 
 **Status**: [IN PROGRESS] Phase 1 Complete - Core algorithms in development
 **Date**: 2025-10-01
@@ -11,8 +11,8 @@ With the successful completion of the algorithm reorganization establishing thre
 
 ## Strategic Context
 
-### Position in MFG_PDE Evolution
-The RL paradigm represents the next major expansion of MFG_PDE's capabilities:
+### Position in MFGarchon Evolution
+The RL paradigm represents the next major expansion of MFGarchon's capabilities:
 
 **Completed Foundation** (September 2025):
 - ✅ **Numerical Paradigm**: 16 algorithms (finite difference, particle methods)
@@ -40,7 +40,7 @@ This paradigm is especially valuable for:
 ### Paradigm Structure Design
 
 ```
-mfg_pde/alg/reinforcement/     # RL paradigm for MFG
+mfgarchon/alg/reinforcement/     # RL paradigm for MFG
 ├── core/                      # Shared RL infrastructure
 │   ├── base_rl.py            # Base classes for MFG-RL solvers
 │   ├── environments.py       # MFG environment wrappers
@@ -99,11 +99,11 @@ m_t = E[φ(s_t) | π]  # Population state matches agent distribution
 
 #### 1.1 Base Architecture ✅
 - [x] **Base RL Solver Classes**: Inherit from `BaseMFGSolver`
-  - Implemented in `mfg_pde/alg/reinforcement/core/base_rl.py`
+  - Implemented in `mfgarchon/alg/reinforcement/core/base_rl.py`
   - Full integration with MFG solver hierarchy
 
 - [x] **MFG Environment Interface**: Gymnasium-compatible environments
-  - Implemented `MFGMazeEnvironment` in `mfg_pde/alg/reinforcement/environments/mfg_maze_env.py`
+  - Implemented `MFGMazeEnvironment` in `mfgarchon/alg/reinforcement/environments/mfg_maze_env.py`
   - Multi-agent support with `num_agents` parameter
   - Population state tracking with `PopulationState` class
   - Flexible action spaces (4-connected, 8-connected)
@@ -126,7 +126,7 @@ m_t = E[φ(s_t) | π]  # Population state matches agent distribution
   - Gymnasium optional with graceful degradation
   - Scipy optional for density smoothing
   - `GYMNASIUM_AVAILABLE` and `SCIPY_AVAILABLE` flags
-  - Clear error messages directing to `pip install mfg_pde[rl]`
+  - Clear error messages directing to `pip install mfgarchon[rl]`
 
 #### 1.4 Testing & Examples ✅
 - [x] **Unit Tests**: Comprehensive test suite
@@ -143,7 +143,7 @@ m_t = E[φ(s_t) | π]  # Population state matches agent distribution
 
 #### 2.1 Mean Field Q-Learning ✅
 - [x] **Deep Q-Networks for MFG**: Value learning with population state
-  - Implemented in `mfg_pde/alg/reinforcement/algorithms/mean_field_q_learning.py`
+  - Implemented in `mfgarchon/alg/reinforcement/algorithms/mean_field_q_learning.py`
   - Full DQN with experience replay, target networks, epsilon-greedy exploration
   - Population-aware Q-network: Q(s, a, m)
 - [x] **Experience Replay**: Population-aware replay mechanisms
@@ -155,7 +155,7 @@ m_t = E[φ(s_t) | π]  # Population state matches agent distribution
 - [x] **Policy Networks**: π(a|s,m) with population conditioning
 - [x] **Value Networks**: V(s,m) and Q(s,a,m) estimation
 - [x] **Population-Aware Training**: Handle non-stationary population dynamics
-  - Implemented in `mfg_pde/alg/reinforcement/algorithms/mean_field_actor_critic.py`
+  - Implemented in `mfgarchon/alg/reinforcement/algorithms/mean_field_actor_critic.py`
   - PPO-style with GAE (Generalized Advantage Estimation)
 
 #### 2.3 Multi-Agent Extensions ✅ COMPLETED
@@ -188,9 +188,9 @@ m_t = E[φ(s_t) | π]  # Population state matches agent distribution
 
 #### 3.2 Multi-Population Extensions ✅ COMPLETED (October 2025)
 - [x] **Heterogeneous Agents**: Multiple agent types with different objectives
-  - Implemented in `mfg_pde/alg/reinforcement/environments/multi_population_maze_env.py`
+  - Implemented in `mfgarchon/alg/reinforcement/environments/multi_population_maze_env.py`
   - Mathematical framework: `docs/theory/reinforcement_learning/heterogeneous_agents_formulation.md`
-  - Multi-population Q-Learning: `mfg_pde/alg/reinforcement/algorithms/multi_population_q_learning.py`
+  - Multi-population Q-Learning: `mfgarchon/alg/reinforcement/algorithms/multi_population_q_learning.py`
   - Tests: `tests/unit/test_multi_population_env.py` (12/12 passing)
   - Example: `examples/advanced/predator_prey_mfg.py`
 - [ ] **Coalition Formation**: Agent grouping and cooperation
@@ -367,7 +367,7 @@ wandb>=0.15.0  # Experiment tracking
 - **Voronoi-Based Environments**: Non-grid MFG spaces for robustness testing
 
 ### Long-Term Vision
-**5-Year Goal**: Establish MFG_PDE as the definitive framework for RL-based approaches to Mean Field Games, with:
+**5-Year Goal**: Establish MFGarchon as the definitive framework for RL-based approaches to Mean Field Games, with:
 - **Comprehensive Algorithm Library**: 20+ RL algorithms for MFG
 - **Diverse Environment Suite**: Grid-based, Voronoi, continuous, and hybrid spaces
 - **Real-World Impact**: Deployed solutions in transportation, finance, and energy

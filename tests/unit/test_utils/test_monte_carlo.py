@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numerical.particle.sampling import (
+from mfgarchon.utils.numerical.particle.sampling import (
     ControlVariates,
     ImportanceMCSampler,
     MCConfig,

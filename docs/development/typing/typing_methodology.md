@@ -1,4 +1,4 @@
-# Systematic Typing Methodology - MFG_PDE Success Story
+# Systematic Typing Methodology - MFGarchon Success Story
 
 ## 🎯 **Spectacular Results**
 
@@ -21,7 +21,7 @@ This principle proved transformational for handling complex libraries like Omega
 ### **Phase 1: Strategic Library Analysis**
 1. **Identify Problem Libraries**: Run `mypy` and count errors by library
    ```bash
-   mypy mfg_pde/ --show-error-codes 2>&1 | grep -o "pydantic\|polars\|jax\|omegaconf" | sort | uniq -c
+   mypy mfgarchon/ --show-error-codes 2>&1 | grep -o "pydantic\|polars\|jax\|omegaconf" | sort | uniq -c
    ```
 
 2. **Categorize by Solution Type**:
@@ -149,7 +149,7 @@ import pandas as pd  # type: ignore[import-untyped]  # ✅
 # Find libraries causing most errors
 python -c "
 import subprocess
-result = subprocess.run(['mypy', 'mfg_pde/', '--show-error-codes'], capture_output=True, text=True)
+result = subprocess.run(['mypy', 'mfgarchon/', '--show-error-codes'], capture_output=True, text=True)
 # Parse and rank error sources
 "
 ```
@@ -190,7 +190,7 @@ Create reusable pattern for complex dynamic libraries
 ### **Essential Commands**
 ```bash
 # Error analysis
-mypy mfg_pde/ --show-error-codes | tail -3
+mypy mfgarchon/ --show-error-codes | tail -3
 
 # Stub generation (two approaches)
 stubgen -p library_name -o stubs  # Auto-generated (high impact, syntax issues)
@@ -281,5 +281,5 @@ The systematic approach scales: **identify, categorize, apply tools in order of 
 
 ---
 
-*Generated during MFG_PDE systematic typing improvement sessions (Phase 1 & 2)*
+*Generated during MFGarchon systematic typing improvement sessions (Phase 1 & 2)*
 *Methodology proven reproducible and scalable for complex Python projects*

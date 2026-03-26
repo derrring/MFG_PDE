@@ -58,7 +58,7 @@ if type(geom).__name__ == "TensorProductGrid":
 
 ## References
 
-- GeometryProtocol: `mfg_pde/geometry/protocol.py`
+- GeometryProtocol: `mfgarchon/geometry/protocol.py`
 - CLAUDE.md: Fail-fast principle, no hasattr()
 - Documentation: `docs/development/HASATTR_CLEANUP_PLAN.md` (remaining work)
 

@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Systematic audit of MFG_PDE codebase for API consistency violations. This report catalogs naming convention issues, boolean pair patterns, and tuple return opportunities for Phase 2 standardization.
+Systematic audit of MFGarchon codebase for API consistency violations. This report catalogs naming convention issues, boolean pair patterns, and tuple return opportunities for Phase 2 standardization.
 
 **Status**: ✅ Mostly consistent, minor violations found
 
@@ -23,8 +23,8 @@ Systematic audit of MFG_PDE codebase for API consistency violations. This report
 - ⚠️ **2 violations** of `self.Dx` (DEPRECATED)
 
 **Violations**:
-1. `mfg_pde/types/problem_protocols.py:142` - Docstring example only
-2. `mfg_pde/types/problem_protocols.py:254` - Docstring example only
+1. `mfgarchon/types/problem_protocols.py:142` - Docstring example only
+2. `mfgarchon/types/problem_protocols.py:254` - Docstring example only
 
 **Impact**: 🟢 **LOW** - Violations are in documentation examples only, not production code
 
@@ -220,11 +220,11 @@ Systematic audit of MFG_PDE codebase for API consistency violations. This report
 ### 8.1 Tuple Returns - Complete Inventory
 
 **High Priority**:
-1. `mfg_pde/core/mfg_problem.py:1733, 1749` - Hamiltonian Jacobians `return J_D_H, J_L_H, J_U_H`
+1. `mfgarchon/core/mfg_problem.py:1733, 1749` - Hamiltonian Jacobians `return J_D_H, J_L_H, J_U_H`
    - **Proposed**: `HamiltonianJacobians` dataclass
    - **Impact**: 🔴 HIGH - Core problem interface
 
-2. `mfg_pde/core/network_mfg_problem.py:330` - Network solve `return u, m`
+2. `mfgarchon/core/network_mfg_problem.py:330` - Network solve `return u, m`
    - **Proposed**: Use existing `SolverResult` or create `NetworkSolveResult`
    - **Impact**: 🟡 MEDIUM - Network MFG API
 

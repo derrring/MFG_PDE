@@ -5,7 +5,7 @@
 
 ## Summary
 
-**Starting point (Phase 2D complete)**: 57 violations remaining in `mfg_pde/alg/`
+**Starting point (Phase 2D complete)**: 57 violations remaining in `mfgarchon/alg/`
 **Violations addressed in Phase 2E**: 25 violations (43%)
 - **Fixed (replaced with getattr)**: 10 violations (18%)
 - **Documented as acceptable**: 15 violations (26%)

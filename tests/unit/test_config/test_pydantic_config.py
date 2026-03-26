@@ -11,8 +11,8 @@ import warnings
 import pytest
 from pydantic import ValidationError
 
-from mfg_pde.config.core import PicardConfig as CorePicardConfig
-from mfg_pde.config.pydantic_config import (
+from mfgarchon.config.core import PicardConfig as CorePicardConfig
+from mfgarchon.config.pydantic_config import (
     MFGSolverConfig,
     NewtonConfig,
     PicardConfig,

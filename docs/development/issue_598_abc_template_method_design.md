@@ -465,7 +465,7 @@ class BaseBCApplicator(ABC):
 
 ### Phase 1: Add Template Method to `BaseBCApplicator`
 
-**File**: `mfg_pde/geometry/boundary/applicator_base.py`
+**File**: `mfgarchon/geometry/boundary/applicator_base.py`
 
 **Changes**:
 1. Add template method `apply()` to `BaseBCApplicator`
@@ -478,7 +478,7 @@ class BaseBCApplicator(ABC):
 
 ### Phase 2: Refactor `FDMApplicator` to Use Template Method
 
-**File**: `mfg_pde/geometry/boundary/applicator_fdm.py`
+**File**: `mfgarchon/geometry/boundary/applicator_fdm.py`
 
 **Changes**:
 1. Override `_fill_ghost_cells()` in `FDMApplicator`

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/types/solver_types.py
+Unit tests for mfgarchon/types/solver_types.py
 
 Tests solver type definitions including:
 - Solver return types (SolverReturnTuple, JAXSolverReturn)
@@ -18,7 +18,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.types.solver_types import (
+from mfgarchon.types.solver_types import (
     ConfigurationError,
     ConvergenceError,
     SolverError,
@@ -32,7 +32,7 @@ from mfg_pde.types.solver_types import (
 @pytest.mark.unit
 def test_solver_return_tuple_type():
     """Test SolverReturnTuple type alias usage."""
-    from mfg_pde.types.solver_types import SolverReturnTuple
+    from mfgarchon.types.solver_types import SolverReturnTuple
 
     # Typical solver return
     U = np.zeros((31, 51))
@@ -51,7 +51,7 @@ def test_solver_return_tuple_type():
 @pytest.mark.unit
 def test_jax_solver_return_type():
     """Test JAXSolverReturn type alias usage."""
-    from mfg_pde.types.solver_types import JAXSolverReturn
+    from mfgarchon.types.solver_types import JAXSolverReturn
 
     # JAX solver return format (using numpy arrays as mock)
     U_jax = np.zeros((31, 51))
@@ -76,7 +76,7 @@ def test_jax_solver_return_type():
 @pytest.mark.unit
 def test_solver_state_tuple():
     """Test SolverState as tuple."""
-    from mfg_pde.types.solver_types import SolverState
+    from mfgarchon.types.solver_types import SolverState
 
     u = np.random.rand(31, 51)
     m = np.random.rand(31, 51)
@@ -90,7 +90,7 @@ def test_solver_state_tuple():
 @pytest.mark.unit
 def test_solver_state_dict():
     """Test SolverState as dict."""
-    from mfg_pde.types.solver_types import SolverState
+    from mfgarchon.types.solver_types import SolverState
 
     state: SolverState = {
         "u": np.zeros((31, 51)),
@@ -107,7 +107,7 @@ def test_solver_state_dict():
 @pytest.mark.unit
 def test_complex_solver_state():
     """Test ComplexSolverState type."""
-    from mfg_pde.types.solver_types import ComplexSolverState
+    from mfgarchon.types.solver_types import ComplexSolverState
 
     # Simple tuple state
     state1: ComplexSolverState = (np.zeros((31, 51)), np.ones((31, 51)))
@@ -135,7 +135,7 @@ def test_complex_solver_state():
 @pytest.mark.unit
 def test_intermediate_result_types():
     """Test IntermediateResult type variations."""
-    from mfg_pde.types.solver_types import IntermediateResult
+    from mfgarchon.types.solver_types import IntermediateResult
 
     # Simple array
     result1: IntermediateResult = np.random.rand(31, 51)
@@ -161,7 +161,7 @@ def test_intermediate_result_types():
 @pytest.mark.unit
 def test_parameter_dict():
     """Test ParameterDict type."""
-    from mfg_pde.types.solver_types import ParameterDict
+    from mfgarchon.types.solver_types import ParameterDict
 
     params: ParameterDict = {
         "dt": 0.01,
@@ -180,7 +180,7 @@ def test_parameter_dict():
 @pytest.mark.unit
 def test_solver_options():
     """Test SolverOptions type with None values."""
-    from mfg_pde.types.solver_types import SolverOptions
+    from mfgarchon.types.solver_types import SolverOptions
 
     options: SolverOptions = {
         "tolerance": 1e-6,
@@ -197,7 +197,7 @@ def test_solver_options():
 @pytest.mark.unit
 def test_config_value_flexible():
     """Test ConfigValue flexible type."""
-    from mfg_pde.types.solver_types import ConfigValue
+    from mfgarchon.types.solver_types import ConfigValue
 
     # Various value types
     val1: ConfigValue = 3.14  # float
@@ -231,7 +231,7 @@ def test_config_value_flexible():
 @pytest.mark.unit
 def test_error_callback():
     """Test ErrorCallback type."""
-    from mfg_pde.types.solver_types import ErrorCallback
+    from mfgarchon.types.solver_types import ErrorCallback
 
     def error_handler(exc: Exception) -> None:
         print(f"Error: {exc}")
@@ -247,7 +247,7 @@ def test_error_callback():
 @pytest.mark.unit
 def test_progress_callback():
     """Test ProgressCallback type."""
-    from mfg_pde.types.solver_types import ProgressCallback
+    from mfgarchon.types.solver_types import ProgressCallback
 
     progress_data = []
 
@@ -265,7 +265,7 @@ def test_progress_callback():
 @pytest.mark.unit
 def test_convergence_callback():
     """Test ConvergenceCallback type."""
-    from mfg_pde.types.solver_types import ConvergenceCallback
+    from mfgarchon.types.solver_types import ConvergenceCallback
 
     result_data = {}
 
@@ -289,7 +289,7 @@ def test_convergence_callback():
 @pytest.mark.unit
 def test_multi_index_tuple():
     """Test MultiIndexTuple type."""
-    from mfg_pde.types.solver_types import MultiIndexTuple
+    from mfgarchon.types.solver_types import MultiIndexTuple
 
     # Second derivative in x: ∂²/∂x²
     index1: MultiIndexTuple = (2, 0)
@@ -307,7 +307,7 @@ def test_multi_index_tuple():
 @pytest.mark.unit
 def test_derivative_dict():
     """Test DerivativeDict type."""
-    from mfg_pde.types.solver_types import DerivativeDict
+    from mfgarchon.types.solver_types import DerivativeDict
 
     derivatives: DerivativeDict = {
         (2, 0): 0.5,  # ∂²/∂x²
@@ -322,7 +322,7 @@ def test_derivative_dict():
 @pytest.mark.unit
 def test_gradient_dict():
     """Test GradientDict type."""
-    from mfg_pde.types.solver_types import GradientDict
+    from mfgarchon.types.solver_types import GradientDict
 
     gradient: GradientDict = {"dx": 1.5, "dy": -0.8, "dz": 0.3}
 
@@ -334,7 +334,7 @@ def test_gradient_dict():
 @pytest.mark.unit
 def test_stencil_result():
     """Test StencilResult type."""
-    from mfg_pde.types.solver_types import StencilResult
+    from mfgarchon.types.solver_types import StencilResult
 
     stencil1 = np.array([1.0, -2.0, 1.0])
     stencil2 = np.array([0.5, 0.0, -0.5])
@@ -357,7 +357,7 @@ def test_stencil_result():
 @pytest.mark.unit
 def test_metadata_dict():
     """Test MetadataDict type."""
-    from mfg_pde.types.solver_types import MetadataDict
+    from mfgarchon.types.solver_types import MetadataDict
 
     metadata: MetadataDict = {
         "dt": 0.01,
@@ -376,7 +376,7 @@ def test_metadata_dict():
 @pytest.mark.unit
 def test_convergence_metadata():
     """Test ConvergenceMetadata type."""
-    from mfg_pde.types.solver_types import ConvergenceMetadata
+    from mfgarchon.types.solver_types import ConvergenceMetadata
 
     conv_info: ConvergenceMetadata = {
         "converged": True,
@@ -398,7 +398,7 @@ def test_convergence_metadata():
 @pytest.mark.unit
 def test_hamiltonian_function():
     """Test HamiltonianFunction type."""
-    from mfg_pde.types.solver_types import HamiltonianFunction
+    from mfgarchon.types.solver_types import HamiltonianFunction
 
     def quadratic_hamiltonian(x: float, p: float, m: float, t: float) -> float:
         return 0.5 * p**2 + 0.1 * m
@@ -413,7 +413,7 @@ def test_hamiltonian_function():
 @pytest.mark.unit
 def test_lagrangian_function():
     """Test LagrangianFunction type."""
-    from mfg_pde.types.solver_types import LagrangianFunction
+    from mfgarchon.types.solver_types import LagrangianFunction
 
     def quadratic_lagrangian(x: float, v: float, m: float, t: float) -> float:
         return 0.5 * v**2
@@ -427,7 +427,7 @@ def test_lagrangian_function():
 @pytest.mark.unit
 def test_density_function():
     """Test DensityFunction type."""
-    from mfg_pde.types.solver_types import DensityFunction
+    from mfgarchon.types.solver_types import DensityFunction
 
     def gaussian_density(x: float) -> float:
         return np.exp(-((x - 0.5) ** 2) / 0.1)
@@ -441,7 +441,7 @@ def test_density_function():
 @pytest.mark.unit
 def test_value_function():
     """Test ValueFunction type."""
-    from mfg_pde.types.solver_types import ValueFunction
+    from mfgarchon.types.solver_types import ValueFunction
 
     def quadratic_value(x: float) -> float:
         return x**2
@@ -559,7 +559,7 @@ def test_legacy_solver_return():
     # Test that deprecation warning is emitted
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        from mfg_pde.types.solver_types import LegacySolverReturn
+        from mfgarchon.types.solver_types import LegacySolverReturn
 
         # Check warning was issued
         deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
@@ -587,7 +587,7 @@ def test_legacy_solver_return():
 @pytest.mark.unit
 def test_module_exports():
     """Test all types and exceptions are importable."""
-    from mfg_pde.types import solver_types
+    from mfgarchon.types import solver_types
 
     # Check key exports
     assert hasattr(solver_types, "SolverReturnTuple")
@@ -602,7 +602,7 @@ def test_module_exports():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has comprehensive docstring."""
-    from mfg_pde.types import solver_types
+    from mfgarchon.types import solver_types
 
     assert solver_types.__doc__ is not None
     assert "Solver Type Definitions" in solver_types.__doc__

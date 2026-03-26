@@ -10,15 +10,15 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.backends import create_backend, get_available_backends
+from mfgarchon.backends import create_backend, get_available_backends
 
 # Import acceleration utilities
-from mfg_pde.utils.acceleration import JAX_UTILS_AVAILABLE, TORCH_UTILS_AVAILABLE
+from mfgarchon.utils.acceleration import JAX_UTILS_AVAILABLE, TORCH_UTILS_AVAILABLE
 
 # Try importing PyTorch utilities (may fail if not installed)
 try:
-    from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
-    from mfg_pde.utils.acceleration.torch_utils import tridiagonal_solve as torch_tridiag
+    from mfgarchon.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
+    from mfgarchon.utils.acceleration.torch_utils import tridiagonal_solve as torch_tridiag
 
     TORCH_IMPORTS_AVAILABLE = True
 except ImportError:
@@ -28,7 +28,7 @@ except ImportError:
 
 # Try importing JAX utilities (may fail if not installed)
 try:
-    from mfg_pde.utils.acceleration.jax_utils import tridiagonal_solve as jax_tridiag
+    from mfgarchon.utils.acceleration.jax_utils import tridiagonal_solve as jax_tridiag
 
     JAX_IMPORTS_AVAILABLE = True
 except ImportError:
@@ -302,7 +302,7 @@ def test_performance_comparison():
         print(f"   PyTorch (CPU): {torch_cpu_time:.4f}s")
 
         # MPS if available
-        from mfg_pde.utils.acceleration.torch_utils import HAS_MPS
+        from mfgarchon.utils.acceleration.torch_utils import HAS_MPS
 
         if HAS_MPS:
             start = time.time()

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the relationship between geometry, domain, and boundary conditions in MFG_PDE at both the implementation and application levels.
+This document describes the relationship between geometry, domain, and boundary conditions in MFGarchon at both the implementation and application levels.
 
 ---
 
@@ -61,7 +61,7 @@ This document describes the relationship between geometry, domain, and boundary 
 
 ## 2. Implementation Architecture
 
-### 2.1 Geometry Types (`mfg_pde/geometry/`)
+### 2.1 Geometry Types (`mfgarchon/geometry/`)
 
 | Type | Class | File | Use Case |
 |:-----|:------|:-----|:---------|
@@ -219,8 +219,8 @@ class BCSegment:
 ### 4.1 Path 1: Simple Rectangular Domain (Most Common)
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BoundaryConditions, BCType, BCSegment
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import BoundaryConditions, BCType, BCSegment
 
 # 1. Create geometry
 grid = TensorProductGrid(
@@ -242,8 +242,8 @@ problem = MFGProblem(geometry=grid, boundary_conditions=bc, ...)
 ### 4.2 Path 2: Complex Domain (SDF-based)
 
 ```python
-from mfg_pde.geometry.implicit import Hyperrectangle, Hypersphere
-from mfg_pde.geometry.implicit.csg_operations import DifferenceDomain
+from mfgarchon.geometry.implicit import Hyperrectangle, Hypersphere
+from mfgarchon.geometry.implicit.csg_operations import DifferenceDomain
 
 # 1. Create domain with obstacle
 room = Hyperrectangle(bounds=[(0, 10), (0, 5)])
@@ -261,7 +261,7 @@ bc.add_segment(BCSegment("exit", BCType.DIRICHLET, value=0.0,
 ### 4.3 Path 3: Network Domain
 
 ```python
-from mfg_pde.geometry import GridNetwork
+from mfgarchon.geometry import GridNetwork
 
 # 1. Create network geometry
 network = GridNetwork(rows=10, cols=10, spacing=1.0)
@@ -314,7 +314,7 @@ Every domain has a boundary (even "unbounded" uses computational truncation). Th
 ## 6. File Reference
 
 ```
-mfg_pde/geometry/
+mfgarchon/geometry/
 ├── __init__.py              # Public API exports
 ├── protocol.py              # GeometryProtocol, GeometryType
 ├── base.py                  # Geometry ABC
@@ -396,4 +396,4 @@ mfg_pde/geometry/
 
 *Generated: 2025-12-09*
 *Last audited: 2025-12-10*
-*Part of: MFG_PDE Deprecation Cleanup Phase 2*
+*Part of: MFGarchon Deprecation Cleanup Phase 2*

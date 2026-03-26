@@ -15,7 +15,7 @@ This document outlines the prioritized roadmap for infrastructure improvements f
 
 ## ✅ Priority 1: Fix FDM Periodic BC Bug (#542) - **COMPLETED**
 
-**Issue**: [#542](https://github.com/derrring/MFG_PDE/issues/542)
+**Issue**: [#542](https://github.com/derrring/mfgarchon/issues/542)
 **Status**: ✅ CLOSED (2026-01-10)
 **Priority**: High (correctness bug)
 **Size**: Medium
@@ -45,7 +45,7 @@ FDM 1D HJB solver used `np.roll()` for Laplacian computation, implementing perio
 
 ## ✅ Priority 2: Eliminate Silent Fallbacks (#547) - **COMPLETED**
 
-**Issue**: [#547](https://github.com/derrring/MFG_PDE/issues/547)
+**Issue**: [#547](https://github.com/derrring/mfgarchon/issues/547)
 **Status**: ✅ CLOSED (2026-01-11)
 **Priority**: Medium
 **Size**: Medium
@@ -73,7 +73,7 @@ Code catches broad exceptions and silently falls back to lower-fidelity methods 
 - ✅ 100% completion (13/13 fixes)
 - ✅ All broad `except Exception:` replaced with specific exception types
 - ✅ Comprehensive logging with context throughout
-- ✅ Consistent MFG_PDE logging infrastructure
+- ✅ Consistent MFGarchon logging infrastructure
 - ✅ All fallback behavior preserved for robustness
 - ✅ Critical bugs (Newton solver) now surface instead of silently failing
 
@@ -89,7 +89,7 @@ Code catches broad exceptions and silently falls back to lower-fidelity methods 
 
 ## ✅ Priority 3: hasattr() Elimination - Protocol Duck Typing (#543) - **COMPLETED**
 
-**Issue**: [#543](https://github.com/derrring/MFG_PDE/issues/543)
+**Issue**: [#543](https://github.com/derrring/mfgarchon/issues/543)
 **Status**: ✅ COMPLETED (2026-01-10)
 **Priority**: High
 **Size**: Large (but incremental)
@@ -119,12 +119,12 @@ Protocol duck typing with `hasattr()` violates Fail Fast principle and creates u
 **Remaining Work**: ~341 hasattr violations in other patterns (caching, legacy compatibility) - see `HASATTR_CLEANUP_PLAN.md`
 
 **Phase 3: Utils & Workflow** (Priority 7)
-- `mfg_pde/utils/`
-- `mfg_pde/workflow/`
+- `mfgarchon/utils/`
+- `mfgarchon/workflow/`
 
 ### Acceptance Criteria (Phase 1)
 - [ ] Define additional protocols (SolverProtocol, ConfigProtocol)
-- [ ] Replace all hasattr in `mfg_pde/core/` with isinstance checks
+- [ ] Replace all hasattr in `mfgarchon/core/` with isinstance checks
 - [ ] Add CI check to reject new hasattr in core/
 - [ ] Document protocol usage in `docs/development/CONSISTENCY_GUIDE.md`
 
@@ -138,8 +138,8 @@ Protocol duck typing with `hasattr()` violates Fail Fast principle and creates u
 
 ## ✅ Priority 3.5: Adjoint-Aware Solver Pairing (#580) - **COMPLETED**
 
-**Issue**: [#580](https://github.com/derrring/MFG_PDE/issues/580)
-**PR**: [#585](https://github.com/derrring/MFG_PDE/pull/585)
+**Issue**: [#580](https://github.com/derrring/mfgarchon/issues/580)
+**PR**: [#585](https://github.com/derrring/mfgarchon/pull/585)
 **Status**: ✅ COMPLETED (2026-01-17)
 **Priority**: High (scientific correctness)
 **Size**: Large
@@ -198,8 +198,8 @@ Users could accidentally mix incompatible discretization schemes (e.g., FDM HJB 
 
 ## ✅ Priority 3.6: Unified Ghost Node Architecture (#576) - **COMPLETED**
 
-**Issue**: [#576](https://github.com/derrring/MFG_PDE/issues/576)
-**PR**: [#586](https://github.com/derrring/MFG_PDE/pull/586)
+**Issue**: [#576](https://github.com/derrring/mfgarchon/issues/576)
+**PR**: [#586](https://github.com/derrring/mfgarchon/pull/586)
 **Status**: ✅ COMPLETED (2026-01-17)
 **Priority**: Medium (infrastructure improvement)
 **Size**: Large
@@ -241,8 +241,8 @@ For Neumann BC (∂u/∂n = 0):
 - ✅ Zero breaking changes (default `order=2` unchanged)
 
 **Implementation**:
-- `mfg_pde/geometry/boundary/applicator_fdm.py`: Core architecture (~245 lines)
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py`: WENO integration (~17 lines)
+- `mfgarchon/geometry/boundary/applicator_fdm.py`: Core architecture (~245 lines)
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py`: WENO integration (~17 lines)
 - 3 test files: Parameter validation, accuracy verification, integration tests
 
 **Documentation**:
@@ -263,8 +263,8 @@ For Neumann BC (∂u/∂n = 0):
 
 ## ✅ Priority 4: Mixin Refactoring - FPParticle Template (#545) - **COMPLETED**
 
-**Issue**: [#545](https://github.com/derrring/MFG_PDE/issues/545)
-**PR**: [#548](https://github.com/derrring/MFG_PDE/pull/548)
+**Issue**: [#545](https://github.com/derrring/mfgarchon/issues/545)
+**PR**: [#548](https://github.com/derrring/mfgarchon/pull/548)
 **Status**: ✅ CLOSED (2026-01-11)
 **Priority**: High
 **Size**: Large
@@ -292,7 +292,7 @@ Deep mixin hierarchies with implicit state sharing made solvers hard to understa
 
 ## ✅ Priority 5: hasattr() Elimination - Phase 2 (Algorithms) (#543) - **COMPLETED**
 
-**Issue**: [#543](https://github.com/derrring/MFG_PDE/issues/543)
+**Issue**: [#543](https://github.com/derrring/mfgarchon/issues/543)
 **Status**: ✅ COMPLETED (2026-01-17)
 **Priority**: High
 **Size**: Medium
@@ -344,7 +344,7 @@ Remaining hasattr violations in numerical solvers and optimization algorithms (2
 
 ## ✅ Priority 5.5: Progress Bar Protocol Pattern (#587) - **COMPLETED**
 
-**Issue**: [#587](https://github.com/derrring/MFG_PDE/issues/587)
+**Issue**: [#587](https://github.com/derrring/mfgarchon/issues/587)
 **Status**: ✅ COMPLETED (2026-01-17)
 **Priority**: Medium
 **Size**: Medium
@@ -394,14 +394,14 @@ Remaining hasattr violations in numerical solvers and optimization algorithms (2
 
 ## ✅ Priority 6: hasattr() Elimination - Phase 3 (RL Code) (#543) - **COMPLETED**
 
-**Issue**: [#543](https://github.com/derrring/MFG_PDE/issues/543)
+**Issue**: [#543](https://github.com/derrring/mfgarchon/issues/543)
 **Status**: ✅ COMPLETED (2026-01-17)
 **Priority**: High
 **Size**: Small
 **Actual Effort**: 1 hour (1 commit)
 
 ### Problem
-Remaining 11 hasattr violations in RL subsystem (`mfg_pde/alg/reinforcement/`).
+Remaining 11 hasattr violations in RL subsystem (`mfgarchon/alg/reinforcement/`).
 
 ### Solution Implemented
 
@@ -421,7 +421,7 @@ Remaining 11 hasattr violations in RL subsystem (`mfg_pde/alg/reinforcement/`).
 - ✅ All backend compatibility patterns properly documented
 - ✅ Issue #543 fully complete for core solver infrastructure
 
-**Out of Scope**: Meta-programming infrastructure (22 patterns in `mfg_pde/meta/`) - deferred as non-critical
+**Out of Scope**: Meta-programming infrastructure (22 patterns in `mfgarchon/meta/`) - deferred as non-critical
 
 **Documentation**: `/tmp/issue_543_phase3_summary.md`
 
@@ -429,8 +429,8 @@ Remaining 11 hasattr violations in RL subsystem (`mfg_pde/alg/reinforcement/`).
 
 ## ✅ Priority 6.5: Adjoint-Consistent Boundary Conditions (#574) - **COMPLETED**
 
-**Issue**: [#574](https://github.com/derrring/MFG_PDE/issues/574)
-**PR**: [#588](https://github.com/derrring/MFG_PDE/pull/588)
+**Issue**: [#574](https://github.com/derrring/mfgarchon/issues/574)
+**PR**: [#588](https://github.com/derrring/mfgarchon/pull/588)
 **Status**: ✅ COMPLETED (2026-01-17)
 **Priority**: Medium (scientific correctness)
 **Size**: Medium
@@ -459,7 +459,7 @@ At reflecting boundaries with zero total flux J·n = 0 where J = -σ²/2·∇m +
 4. **Phase 4: Documentation** - Protocol, conventions, tutorial
 
 **Key Components**:
-- `mfg_pde/geometry/boundary/bc_coupling.py` - BC computation utilities (230 lines)
+- `mfgarchon/geometry/boundary/bc_coupling.py` - BC computation utilities (230 lines)
 - `bc_mode` parameter in `HJBFDMSolver` ("standard" | "adjoint_consistent")
 - Automatic BC computation from density gradient each Picard iteration
 - Parameter threading through 6-level solver call chain
@@ -507,7 +507,7 @@ At reflecting boundaries with zero total flux J·n = 0 where J = -σ²/2·∇m +
 
 ## ✅ Priority 6.6: LinearOperator Architecture Completion (#595) - **COMPLETED**
 
-**Issue**: [#595](https://github.com/derrring/MFG_PDE/issues/595) Phase 2
+**Issue**: [#595](https://github.com/derrring/mfgarchon/issues/595) Phase 2
 **Status**: ✅ COMPLETED (2026-01-17)
 **Priority**: Medium (infrastructure improvement)
 **Size**: Small
@@ -519,17 +519,17 @@ Incomplete migration to scipy.sparse.linalg.LinearOperator interface. Several di
 ### Solution Implemented
 
 **Created Operator Classes**:
-1. **DivergenceOperator** (`mfg_pde/geometry/operators/divergence.py`)
+1. **DivergenceOperator** (`mfgarchon/geometry/operators/divergence.py`)
    - Computes ∇·F for vector fields
    - Supports 1D, 2D, nD
    - Central differences with ghost cell BC handling
 
-2. **AdvectionOperator** (`mfg_pde/geometry/operators/advection.py`)
+2. **AdvectionOperator** (`mfgarchon/geometry/operators/advection.py`)
    - Computes b·∇u for scalar fields with drift b
    - Supports variable drift coefficients
    - 2nd-order upwind biasing
 
-3. **InterpolationOperator** (`mfg_pde/geometry/operators/interpolation.py`)
+3. **InterpolationOperator** (`mfgarchon/geometry/operators/interpolation.py`)
    - Maps between staggered and collocated grids
    - Linear interpolation
    - Preserves boundary information
@@ -562,13 +562,13 @@ All operators integrated into:
 - ✅ ~220 lines of new operator code
 
 **Files Created**:
-- `mfg_pde/geometry/operators/divergence.py` (~75 lines)
-- `mfg_pde/geometry/operators/advection.py` (~80 lines)
-- `mfg_pde/geometry/operators/interpolation.py` (~65 lines)
+- `mfgarchon/geometry/operators/divergence.py` (~75 lines)
+- `mfgarchon/geometry/operators/advection.py` (~80 lines)
+- `mfgarchon/geometry/operators/interpolation.py` (~65 lines)
 
 **Files Modified**:
-- `mfg_pde/geometry/operators/__init__.py` - Export new operators
-- `mfg_pde/geometry/operators/laplacian.py` - Ruff linting fixes
+- `mfgarchon/geometry/operators/__init__.py` - Export new operators
+- `mfgarchon/geometry/operators/laplacian.py` - Ruff linting fixes
 
 ### Why 6.6?
 - **Infrastructure improvement** (not user-facing)
@@ -581,7 +581,7 @@ All operators integrated into:
 
 ## ✅ Priority 6.7: Variational Inequality Constraints (#591) - **COMPLETED**
 
-**Issue**: [#591](https://github.com/derrring/MFG_PDE/issues/591) Phase 2
+**Issue**: [#591](https://github.com/derrring/mfgarchon/issues/591) Phase 2
 **Status**: ✅ COMPLETED (2026-01-17)
 **Priority**: Medium (feature addition)
 **Size**: Medium
@@ -594,16 +594,16 @@ No infrastructure for variational inequality constraints (obstacle problems, box
 
 **Core Infrastructure**:
 
-1. **ConstraintProtocol** (`mfg_pde/geometry/boundary/constraint_protocol.py`)
+1. **ConstraintProtocol** (`mfgarchon/geometry/boundary/constraint_protocol.py`)
    - Protocol-based interface for duck typing
    - Three required methods: `project()`, `is_feasible()`, `get_active_set()`
 
-2. **ObstacleConstraint** (`mfg_pde/geometry/boundary/constraints.py`)
+2. **ObstacleConstraint** (`mfgarchon/geometry/boundary/constraints.py`)
    - Unilateral constraints: u ≥ ψ (lower) or u ≤ ψ (upper)
    - Regional support: Constraints active only in spatial subdomains
    - Projection: P_K(u) = max(u, ψ) or min(u, ψ)
 
-3. **BilateralConstraint** (`mfg_pde/geometry/boundary/constraints.py`)
+3. **BilateralConstraint** (`mfgarchon/geometry/boundary/constraints.py`)
    - Box constraints: ψ_lower ≤ u ≤ ψ_upper
    - Regional support
    - Projection: P_K(u) = clip(u, ψ_lower, ψ_upper)
@@ -620,15 +620,15 @@ Properties:
 
 ### Integration
 
-**HJB FDM Solver** (`mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`):
+**HJB FDM Solver** (`mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`):
 - Added `constraint` parameter to `__init__()`
 - Projection applied after each timestep
 - Both 1D and nD paths supported
 
 **Usage**:
 ```python
-from mfg_pde.geometry.boundary import ObstacleConstraint
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.geometry.boundary import ObstacleConstraint
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
 # Define obstacle
 psi = -0.5 * (x - 0.5) ** 2
@@ -691,8 +691,8 @@ All examples demonstrate:
 - ✅ Complete documentation (~2400 lines total)
 
 **Files Created**:
-- `mfg_pde/geometry/boundary/constraint_protocol.py` (~60 lines)
-- `mfg_pde/geometry/boundary/constraints.py` (~640 lines)
+- `mfgarchon/geometry/boundary/constraint_protocol.py` (~60 lines)
+- `mfgarchon/geometry/boundary/constraints.py` (~640 lines)
 - `tests/unit/geometry/boundary/test_constraints.py` (~370 lines)
 - `examples/advanced/obstacle_problem_1d_heat.py` (~400 lines)
 - `examples/advanced/obstacle_problem_1d_bilateral.py` (~420 lines)
@@ -700,8 +700,8 @@ All examples demonstrate:
 - `docs/development/VARIATIONAL_INEQUALITY_CONSTRAINTS_SUMMARY.md` (~440 lines)
 
 **Files Modified**:
-- `mfg_pde/geometry/boundary/__init__.py` - Export constraint classes
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` - Constraint integration
+- `mfgarchon/geometry/boundary/__init__.py` - Export constraint classes
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` - Constraint integration
 
 **Known Limitations**:
 1. Pre-existing HJB running cost bug prevents proper obstacle problems with Hamiltonians
@@ -760,7 +760,7 @@ All solver mixin refactoring was already complete from Issue #545 (closed 2026-0
 
 ## ✅ Priority 8: Legacy Parameter Deprecation (#544) - **COMPLETED**
 
-**Issue**: [#544](https://github.com/derrring/MFG_PDE/issues/544)
+**Issue**: [#544](https://github.com/derrring/mfgarchon/issues/544)
 **Priority**: High
 **Size**: Large
 **Status**: ✅ **PHASE 1 & 2 COMPLETE** (2026-01-18)
@@ -880,7 +880,7 @@ Run tests after each priority, validate with research experiments.
 
 ### ✅ Issue #594: Documentation & Testing (Phases 5-6) - **COMPLETED**
 
-**Issue**: [#594](https://github.com/derrring/MFG_PDE/issues/594)
+**Issue**: [#594](https://github.com/derrring/mfgarchon/issues/594)
 **Part of**: #589 (Geometry & BC Architecture - Master Tracking)
 **Status**: ✅ COMPLETED (2026-01-18)
 **Priority**: Medium
@@ -947,7 +947,7 @@ No comprehensive documentation or testing for new features from Issues #590-593 
 
 ### ✅ Issue #573: Non-Quadratic Hamiltonian Support - **COMPLETED**
 
-**Issue**: [#573](https://github.com/derrring/MFG_PDE/issues/573)
+**Issue**: [#573](https://github.com/derrring/mfgarchon/issues/573)
 **Status**: ✅ CLOSED (2026-01-18)
 **Priority**: Medium
 **Size**: Medium
@@ -981,7 +981,7 @@ M = fp_solver.solve_fp_system(m0, drift_field=alpha_L1)
 
 ### ✅ Issue #590: Geometry Trait System (Phase 1) - **COMPLETED**
 
-**Issue**: [#590](https://github.com/derrring/MFG_PDE/issues/590) - Phase 1: Geometry Trait System & Region Registry
+**Issue**: [#590](https://github.com/derrring/mfgarchon/issues/590) - Phase 1: Geometry Trait System & Region Registry
 **Part of**: #589 (Geometry & BC Architecture Master Tracking)
 **Status**: ✅ COMPLETED (2026-01-18)
 **Commit**: TBD (to be committed)
@@ -991,7 +991,7 @@ M = fp_solver.solve_fp_system(m0, drift_field=alpha_L1)
 **Implementation**:
 
 **Phase 1.1: Protocol Definition**
-- ✅ 12 protocols defined in `mfg_pde/geometry/protocols/`:
+- ✅ 12 protocols defined in `mfgarchon/geometry/protocols/`:
   - **Operator traits** (5): SupportsLaplacian, SupportsGradient, SupportsDivergence, SupportsAdvection, SupportsInterpolation
   - **Region traits** (4): SupportsBoundaryNormal, SupportsBoundaryProjection, SupportsBoundaryDistance, SupportsRegionMarking
   - **Topology traits** (3): SupportsManifold, SupportsLipschitz, SupportsPeriodic
@@ -1000,7 +1000,7 @@ M = fp_solver.solve_fp_system(m0, drift_field=alpha_L1)
 
 **Phase 1.2: TensorProductGrid Retrofitting**
 - ✅ TensorProductGrid implements all 12 protocols
-- ✅ Operator methods delegate to `mfg_pde/geometry/operators/` (Issue #595)
+- ✅ Operator methods delegate to `mfgarchon/geometry/operators/` (Issue #595)
 - ✅ Protocol compliance verified with `isinstance()` checks
 
 **Phase 1.3: Region Marking System** (completed 2026-01-18)
@@ -1021,7 +1021,7 @@ M = fp_solver.solve_fp_system(m0, drift_field=alpha_L1)
 
 **Usage Example**:
 ```python
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 
 grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 50])
 
@@ -1041,7 +1041,7 @@ u_flat[inlet_mask] = 1.0  # Dirichlet BC on inlet
 
 ### ✅ Issue #598: BCApplicatorProtocol → ABC Refactoring - **COMPLETED**
 
-**Issue**: [#598](https://github.com/derrring/MFG_PDE/issues/598)
+**Issue**: [#598](https://github.com/derrring/mfgarchon/issues/598)
 **Status**: ✅ CLOSED (2026-01-18)
 **Priority**: Medium
 **Size**: Medium

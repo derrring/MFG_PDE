@@ -21,7 +21,7 @@ from typing import Any
 
 import numpy as np
 
-from mfg_pde.utils.numerical.qp_utils import QPCache, QPSolver
+from mfgarchon.utils.numerical.qp_utils import QPCache, QPSolver
 
 
 def benchmark_cache_performance(

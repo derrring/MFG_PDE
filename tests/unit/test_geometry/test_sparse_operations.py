@@ -9,9 +9,9 @@ import pytest
 import numpy as np
 import scipy.sparse as sp
 
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
-from mfg_pde.utils.sparse_operations import SparseMatrixBuilder, SparseSolver, estimate_sparsity, sparse_matmul
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.geometry.grids.tensor_grid import TensorProductGrid
+from mfgarchon.utils.sparse_operations import SparseMatrixBuilder, SparseSolver, estimate_sparsity, sparse_matmul
 
 
 class TestSparseMatrixBuilder:

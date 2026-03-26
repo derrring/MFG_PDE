@@ -27,7 +27,7 @@ Usage:
     python examples/basic/core_infrastructure/custom_hamiltonian_derivs_demo.py
 
 See Also:
-    - mfg_pde/core/hamiltonian.py (class definitions)
+    - mfgarchon/core/hamiltonian.py (class definitions)
 """
 
 from pathlib import Path
@@ -35,9 +35,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_problem import MFGComponents, MFGProblem
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("custom_hamiltonian_derivs_demo", level="INFO")
@@ -342,7 +342,7 @@ def main():
     logger.info("  3. Methods: H(), dp(), dm(), legendre_transform()")
     logger.info("  4. Pass directly to MFGComponents(hamiltonian=H)")
     logger.info("\nSee Also:")
-    logger.info("  - mfg_pde/core/hamiltonian.py (HamiltonianBase, SeparableHamiltonian)")
+    logger.info("  - mfgarchon/core/hamiltonian.py (HamiltonianBase, SeparableHamiltonian)")
     logger.info("  - examples/basic/core_infrastructure/ (more examples)")
 
 

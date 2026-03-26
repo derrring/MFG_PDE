@@ -9,10 +9,10 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.utils import SparseMatrixBuilder, SparseSolver
-from mfg_pde.visualization import MultiDimVisualizer
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.utils import SparseMatrixBuilder, SparseSolver
+from mfgarchon.visualization import MultiDimVisualizer
 
 
 class TestMultiDimWorkflow2D:

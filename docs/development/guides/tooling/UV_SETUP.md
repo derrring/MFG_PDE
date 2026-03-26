@@ -1,6 +1,6 @@
-# Using UV with MFG_PDE
+# Using UV with MFGarchon
 
-This document explains how to use the modern `uv` package manager with MFG_PDE instead of conda.
+This document explains how to use the modern `uv` package manager with MFGarchon instead of conda.
 
 ## Why UV?
 

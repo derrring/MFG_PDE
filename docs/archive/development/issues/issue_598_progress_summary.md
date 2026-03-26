@@ -1,6 +1,6 @@
 # Issue #598: BCApplicatorProtocol → ABC Refactoring - Progress Summary
 
-**Issue**: [#598](https://github.com/derrring/MFG_PDE/issues/598)
+**Issue**: [#598](https://github.com/derrring/mfgarchon/issues/598)
 **Status**: **Phase 2 Production COMPLETE** ✅
 **Priority**: MEDIUM
 **Size**: MEDIUM (2-3 days estimated)
@@ -28,7 +28,7 @@ Refactor `BCApplicatorProtocol` from Protocol to ABC with Template Method Patter
    - Migration strategy (incremental, dimension-by-dimension)
    - Timeline and success criteria
 
-2. **Shared Ghost Cell Formula Methods** (`mfg_pde/geometry/boundary/applicator_base.py`)
+2. **Shared Ghost Cell Formula Methods** (`mfgarchon/geometry/boundary/applicator_base.py`)
    - `BaseStructuredApplicator._compute_ghost_dirichlet()` - 40 lines
    - `BaseStructuredApplicator._compute_ghost_neumann()` - 50 lines
    - `BaseStructuredApplicator._compute_ghost_robin()` - 35 lines
@@ -37,7 +37,7 @@ Refactor `BCApplicatorProtocol` from Protocol to ABC with Template Method Patter
    - `BaseStructuredApplicator._compute_grid_spacing()` - 20 lines
    - **Total**: ~190 lines of shared infrastructure
 
-3. **Comprehensive Smoke Tests** (`mfg_pde/geometry/boundary/_test_shared_ghost_formulas.py`)
+3. **Comprehensive Smoke Tests** (`mfgarchon/geometry/boundary/_test_shared_ghost_formulas.py`)
    - 8 test functions covering all shared methods
    - Tests cell-centered and vertex-centered grids
    - Tests callable BC values (time-dependent)
@@ -54,7 +54,7 @@ Refactor `BCApplicatorProtocol` from Protocol to ABC with Template Method Patter
 
 **Deliverables**:
 
-1. **Refactored BC Application Demo** (`mfg_pde/geometry/boundary/_demo_shared_formulas_usage.py`)
+1. **Refactored BC Application Demo** (`mfgarchon/geometry/boundary/_demo_shared_formulas_usage.py`)
    - `apply_bc_1d_refactored()` - 1D BC application using shared methods
    - Demonstrates uniform Dirichlet, Neumann, mixed BC cases
    - Shows pattern for replacing inline formulas with shared method calls
@@ -244,7 +244,7 @@ padded[0] = applicator._compute_ghost_neumann(
 
 ### Smoke Tests (Phase 1)
 
-**File**: `mfg_pde/geometry/boundary/_test_shared_ghost_formulas.py`
+**File**: `mfgarchon/geometry/boundary/_test_shared_ghost_formulas.py`
 
 **Coverage**:
 1. ✅ Dirichlet (cell-centered): Scalar, array, callable values
@@ -260,7 +260,7 @@ padded[0] = applicator._compute_ghost_neumann(
 
 ### Demonstration Tests (Phase 2)
 
-**File**: `mfg_pde/geometry/boundary/_demo_shared_formulas_usage.py`
+**File**: `mfgarchon/geometry/boundary/_demo_shared_formulas_usage.py`
 
 **Test Cases**:
 1. ✅ Uniform Dirichlet BC (g=0.0)
@@ -289,19 +289,19 @@ padded[0] = applicator._compute_ghost_neumann(
    - Architecture specification
    - Migration strategy
 
-2. **`mfg_pde/geometry/boundary/_test_shared_ghost_formulas.py`** (246 lines)
+2. **`mfgarchon/geometry/boundary/_test_shared_ghost_formulas.py`** (246 lines)
    - Comprehensive smoke tests
    - All shared methods tested
    - Callable BC values tested
 
-3. **`mfg_pde/geometry/boundary/_demo_shared_formulas_usage.py`** (246 lines)
+3. **`mfgarchon/geometry/boundary/_demo_shared_formulas_usage.py`** (246 lines)
    - Migration pattern demonstration
    - Refactored 1D BC application
    - 3 test cases with validation
 
 ### Modified Files
 
-1. **`mfg_pde/geometry/boundary/applicator_base.py`** (+280 lines)
+1. **`mfgarchon/geometry/boundary/applicator_base.py`** (+280 lines)
    - Added 6 shared methods to `BaseStructuredApplicator`
    - Comprehensive docstrings with mathematical formulas
    - Type hints with `Callable[[float], float]` for time-dependent BCs

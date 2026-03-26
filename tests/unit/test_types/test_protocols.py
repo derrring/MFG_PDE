@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/types/protocols.py
+Unit tests for mfgarchon/types/protocols.py
 
 Tests Protocol interfaces including:
 - MFGProblem (runtime-checkable protocol)
@@ -15,7 +15,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.types.protocols import (
+from mfgarchon.types.protocols import (
     MFGProblem,
     MFGResult,
     MFGSolver,
@@ -615,7 +615,7 @@ def test_protocol_integration_full_workflow():
 @pytest.mark.unit
 def test_module_exports():
     """Test all protocols are importable."""
-    from mfg_pde.types import protocols
+    from mfgarchon.types import protocols
 
     assert hasattr(protocols, "MFGProblem")
     assert hasattr(protocols, "MFGSolver")
@@ -626,7 +626,7 @@ def test_module_exports():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has comprehensive docstring."""
-    from mfg_pde.types import protocols
+    from mfgarchon.types import protocols
 
     assert protocols.__doc__ is not None
     assert "Core Type Protocols" in protocols.__doc__

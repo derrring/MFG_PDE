@@ -28,8 +28,8 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.geometry.boundary.conditions import no_flux_bc
-from mfg_pde.utils.numerical.tensor_calculus import diffusion
+from mfgarchon.geometry.boundary.conditions import no_flux_bc
+from mfgarchon.utils.numerical.tensor_calculus import diffusion
 
 
 def create_corridor_diffusion_tensor(

@@ -409,7 +409,7 @@ def _compute_violation_severity(self, D_coeffs: np.ndarray) -> float:
 1. **M-matrix theory**: Varga, R. S. (2009). *Matrix Iterative Analysis*.
 2. **Monotone schemes**: Barles, G., & Souganidis, P. E. (1991). "Convergence of approximation schemes for fully nonlinear second order equations." *Asymptotic Analysis*.
 3. **GFDM+QP**: `docs/theory/numerical_methods/[PRIVATE]_particle_collocation_qp_monotone.md`
-4. **Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+4. **Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 
 ---
 

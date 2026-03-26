@@ -13,7 +13,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numerical import (
+from mfgarchon.utils.numerical import (
     estimate_kde_bandwidth,
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,

@@ -31,10 +31,10 @@ on:
         default: 'true'
         type: boolean
   pull_request:
-    paths: ['mfg_pde/**/*.py', 'pyproject.toml', '.github/workflows/*.yml']
+    paths: ['mfgarchon/**/*.py', 'pyproject.toml', '.github/workflows/*.yml']
   push:
     branches: [main]
-    paths: ['mfg_pde/**/*.py', 'pyproject.toml', '.github/workflows/*.yml']
+    paths: ['mfgarchon/**/*.py', 'pyproject.toml', '.github/workflows/*.yml']
   release:
     types: [published]
 
@@ -61,7 +61,7 @@ jobs:
     - name: MyPy type checking (Informational)
       run: |
         echo "🔍 Running MyPy type checking (informational for research codebase)..."
-        mypy mfg_pde --ignore-missing-imports --show-error-codes --pretty || true
+        mypy mfgarchon --ignore-missing-imports --show-error-codes --pretty || true
         echo ""
         echo "📊 Type checking status:"
         echo "  • Local development: 366 → 0 errors (100% achieved)"
@@ -93,12 +93,12 @@ jobs:
         echo "🧠 Testing memory usage with small problem..."
         python -c "
         import numpy as np
-        from mfg_pde import MFGProblem
-        from mfg_pde.core.mfg_components import MFGComponents
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import no_flux_bc
-        from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
-        from mfg_pde.utils.memory_management import MemoryMonitor
+        from mfgarchon import MFGProblem
+        from mfgarchon.core.mfg_components import MFGComponents
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import no_flux_bc
+        from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+        from mfgarchon.utils.memory_management import MemoryMonitor
         import psutil
 
         # Default Hamiltonian for tests (Issue #673)
@@ -155,11 +155,11 @@ jobs:
         echo "⚡ Testing performance regression..."
         python -c "
         import numpy as np
-        from mfg_pde import MFGProblem
-        from mfg_pde.core.mfg_components import MFGComponents
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import no_flux_bc
-        from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+        from mfgarchon import MFGProblem
+        from mfgarchon.core.mfg_components import MFGComponents
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import no_flux_bc
+        from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
         import time
 
         # Default Hamiltonian for tests (Issue #673)
@@ -226,7 +226,7 @@ jobs:
             return missing
 
         all_missing = []
-        for py_file in Path('mfg_pde').rglob('*.py'):
+        for py_file in Path('mfgarchon').rglob('*.py'):
             if '__pycache__' not in str(py_file):
                 missing = check_docstrings(py_file)
                 all_missing.extend(missing)
@@ -263,15 +263,15 @@ jobs:
         echo "⚡ Quick API validation test..."
         python -c "
         import numpy as np
-        from mfg_pde import MFGProblem
-        from mfg_pde.core.mfg_components import MFGComponents
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import no_flux_bc
-        from mfg_pde.config import MFGSolverConfig
-        from mfg_pde.alg.numerical.coupling import FixedPointIterator
-        from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
-        from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+        from mfgarchon import MFGProblem
+        from mfgarchon.core.mfg_components import MFGComponents
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import no_flux_bc
+        from mfgarchon.config import MFGSolverConfig
+        from mfgarchon.alg.numerical.coupling import FixedPointIterator
+        from mfgarchon.alg.numerical.fp_solvers import FPParticleSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBGFDMSolver
+        from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
         import psutil
         import os
 

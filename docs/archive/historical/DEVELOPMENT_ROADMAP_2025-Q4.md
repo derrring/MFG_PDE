@@ -1,4 +1,4 @@
-# MFG_PDE Development Roadmap: Q4 2025 - Q2 2026
+# MFGarchon Development Roadmap: Q4 2025 - Q2 2026
 
 **Last Updated**: 2025-10-09  
 **Current Version**: v0.7.1  
@@ -41,7 +41,7 @@
 ## 🎯 Strategic Vision
 
 ### Mission
-Transform MFG_PDE from **research-grade** to **production-grade** while maintaining mathematical rigor and flexibility for research.
+Transform MFGarchon from **research-grade** to **production-grade** while maintaining mathematical rigor and flexibility for research.
 
 ### Guiding Principles
 
@@ -59,7 +59,7 @@ Transform MFG_PDE from **research-grade** to **production-grade** while maintain
 **Goal**: Solidify codebase foundation for confident future development
 
 #### Priority 1A: Test Coverage Expansion ⭐⭐⭐⭐⭐
-**Issue**: [#124](https://github.com/derrring/MFG_PDE/issues/124)  
+**Issue**: [#124](https://github.com/derrring/mfgarchon/issues/124)  
 **Timeline**: 3 weeks | **Effort**: 12 hours  
 **Target**: 37% → 50-55% coverage
 
@@ -78,7 +78,7 @@ Transform MFG_PDE from **research-grade** to **production-grade** while maintain
 ---
 
 #### Priority 1B: API Consistency Audit ⭐⭐⭐⭐
-**Issue**: [#125](https://github.com/derrring/MFG_PDE/issues/125)  
+**Issue**: [#125](https://github.com/derrring/mfgarchon/issues/125)  
 **Timeline**: 2 weeks | **Effort**: 7 days
 
 **Deliverables**:
@@ -97,7 +97,7 @@ Transform MFG_PDE from **research-grade** to **production-grade** while maintain
 ---
 
 #### Priority 1C: Dependency Management ⭐⭐⭐⭐
-**Issue**: [#126](https://github.com/derrring/MFG_PDE/issues/126)  
+**Issue**: [#126](https://github.com/derrring/mfgarchon/issues/126)  
 **Timeline**: 1 week | **Effort**: 5 days
 
 **Deliverables**:
@@ -117,7 +117,7 @@ Transform MFG_PDE from **research-grade** to **production-grade** while maintain
 **Goal**: Add high-value features with confidence from solid foundation
 
 #### Priority 2A: Solver Result Analysis Tools ⭐⭐⭐
-**Issue**: [#127](https://github.com/derrring/MFG_PDE/issues/127)
+**Issue**: [#127](https://github.com/derrring/mfgarchon/issues/127)
 **Timeline**: 2 weeks | **Effort**: 10 days
 
 **Deliverables**:
@@ -134,7 +134,7 @@ Transform MFG_PDE from **research-grade** to **production-grade** while maintain
 ---
 
 #### Priority 2B: Performance Monitoring Dashboard ⭐⭐⭐
-**Issue**: [#128](https://github.com/derrring/MFG_PDE/issues/128)
+**Issue**: [#128](https://github.com/derrring/mfgarchon/issues/128)
 **Timeline**: 3 weeks | **Effort**: 12 days
 
 **Deliverables**:
@@ -151,7 +151,7 @@ Transform MFG_PDE from **research-grade** to **production-grade** while maintain
 ---
 
 #### Priority 2C: Configuration System Unification ⭐⭐⭐
-**Issue**: [#113](https://github.com/derrring/MFG_PDE/issues/113) (existing)  
+**Issue**: [#113](https://github.com/derrring/mfgarchon/issues/113) (existing)  
 **Timeline**: 4 weeks | **Effort**: 15 days
 
 **Deliverables**:
@@ -171,7 +171,7 @@ Transform MFG_PDE from **research-grade** to **production-grade** while maintain
 **Goal**: Research-enabling features (only if Phase 1 & 2 complete)
 
 #### Optional 3A: Autodiff Integration ⭐⭐
-**Issue**: [#129](https://github.com/derrring/MFG_PDE/issues/129)
+**Issue**: [#129](https://github.com/derrring/mfgarchon/issues/129)
 **Timeline**: 6 weeks | **Effort**: 25 days
 
 **Deliverables**:

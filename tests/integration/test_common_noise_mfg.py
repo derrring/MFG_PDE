@@ -9,9 +9,9 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 @pytest.mark.slow
@@ -20,7 +20,7 @@ class TestCommonNoiseMFGSolver:
 
     def test_solver_initialization(self):
         """Test solver can be initialized with valid problem."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
         # Create simple stochastic problem
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
@@ -48,8 +48,8 @@ class TestCommonNoiseMFGSolver:
 
     def test_solver_requires_common_noise(self):
         """Test that solver raises error if problem has no common noise."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
-        from mfg_pde.core import MFGProblem
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
+        from mfgarchon.core import MFGProblem
 
         # Regular MFG problem without noise
         geometry = TensorProductGrid(
@@ -63,7 +63,7 @@ class TestCommonNoiseMFGSolver:
 
     def test_noise_path_sampling(self):
         """Test noise path sampling with variance reduction."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
         noise_process = OrnsteinUhlenbeckProcess(kappa=1.0, mu=0.0, sigma=0.1)
 
@@ -120,7 +120,7 @@ class TestCommonNoiseMFGResult:
 
     def test_confidence_interval_computation(self):
         """Test confidence interval calculation."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGResult
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGResult
 
         # Create mock result
         Nt, Nx = 11, 21
@@ -165,7 +165,7 @@ class TestCommonNoiseMFGResult:
 
     def test_result_attributes(self):
         """Test CommonNoiseMFGResult has all required attributes."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGResult
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGResult
 
         # Create minimal result
         result = CommonNoiseMFGResult(

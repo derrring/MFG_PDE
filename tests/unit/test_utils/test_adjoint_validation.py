@@ -8,12 +8,12 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg import SchemeFamily
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.utils import (
+from mfgarchon.alg import SchemeFamily
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.utils import (
     DualityStatus,
     DualityValidationResult,
     check_solver_duality,
@@ -146,8 +146,8 @@ class TestCheckSolverDualityFDM:
 
     def test_fdm_hjb_fp_match(self):
         """Test that FDM HJB and FP solvers are discrete dual."""
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         result = check_solver_duality(HJBFDMSolver, FPFDMSolver)
 
@@ -159,8 +159,8 @@ class TestCheckSolverDualityFDM:
 
     def test_fdm_weno_compatibility(self):
         """Test that WENO and FDM are compatible (both FDM family)."""
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBWenoSolver
 
         result = check_solver_duality(HJBWenoSolver, FPFDMSolver)
 
@@ -174,8 +174,8 @@ class TestCheckSolverDualitySL:
 
     def test_sl_hjb_fp_match(self):
         """Test that SL HJB and FP solvers are discrete dual."""
-        from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPSLSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 
         result = check_solver_duality(HJBSemiLagrangianSolver, FPSLSolver)
 
@@ -187,8 +187,8 @@ class TestCheckSolverDualitySL:
 
     def test_sl_adjoint_match(self):
         """Test that SL HJB pairs with SL Adjoint FP (forward splatting)."""
-        from mfg_pde.alg.numerical.fp_solvers import FPSLAdjointSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPSLAdjointSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 
         result = check_solver_duality(HJBSemiLagrangianSolver, FPSLAdjointSolver)
 
@@ -202,8 +202,8 @@ class TestCheckSolverDualityGFDM:
 
     def test_gfdm_hjb_fp_match(self):
         """Test that GFDM HJB and FP solvers have continuous duality."""
-        from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBGFDMSolver
 
         result = check_solver_duality(HJBGFDMSolver, FPGFDMSolver)
 
@@ -219,8 +219,8 @@ class TestCheckSolverDualityMixed:
 
     def test_fdm_hjb_gfdm_fp_mismatch(self):
         """Test that FDM HJB with GFDM FP is not dual."""
-        from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         result = check_solver_duality(HJBFDMSolver, FPGFDMSolver, warn_on_mismatch=False)
 
@@ -231,8 +231,8 @@ class TestCheckSolverDualityMixed:
 
     def test_sl_hjb_fdm_fp_mismatch(self):
         """Test that SL HJB with FDM FP is not dual."""
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 
         result = check_solver_duality(HJBSemiLagrangianSolver, FPFDMSolver, warn_on_mismatch=False)
 
@@ -243,8 +243,8 @@ class TestCheckSolverDualityMixed:
 
     def test_mismatch_warning_emitted(self):
         """Test that mismatched pairs emit warnings when warn_on_mismatch=True."""
-        from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         with pytest.warns(UserWarning, match="DUALITY MISMATCH WARNING"):
             result = check_solver_duality(HJBFDMSolver, FPGFDMSolver, warn_on_mismatch=True)
@@ -253,8 +253,8 @@ class TestCheckSolverDualityMixed:
 
     def test_mismatch_warning_suppressed(self):
         """Test that warnings can be suppressed with warn_on_mismatch=False."""
-        from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         # Should not emit warning
         result = check_solver_duality(HJBFDMSolver, FPGFDMSolver, warn_on_mismatch=False)
@@ -266,8 +266,8 @@ class TestCheckSolverDualityGeneric:
 
     def test_particle_solver_skips_validation(self):
         """Test that GENERIC family solvers skip validation."""
-        from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPParticleSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         result = check_solver_duality(HJBFDMSolver, FPParticleSolver)
 
@@ -301,9 +301,9 @@ class TestCheckSolverDualityInstances:
 
     def test_validation_with_instances(self):
         """Test validation works when passing solver instances."""
-        from mfg_pde import MFGProblem
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon import MFGProblem
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         # Create a minimal problem for initialization
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=no_flux_bc(dimension=1))
@@ -324,9 +324,9 @@ class TestValidateSchemeConfig:
 
     def test_matching_scheme_and_solvers(self):
         """Test that matching scheme and solvers validate successfully."""
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-        from mfg_pde.types import NumericalScheme
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.types import NumericalScheme
 
         result = validate_scheme_config(NumericalScheme.FDM_UPWIND, HJBFDMSolver, FPFDMSolver)
 
@@ -335,9 +335,9 @@ class TestValidateSchemeConfig:
 
     def test_mismatched_scheme_and_solvers(self):
         """Test that mismatched scheme and solvers are detected."""
-        from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-        from mfg_pde.types import NumericalScheme
+        from mfgarchon.alg.numerical.fp_solvers import FPGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.types import NumericalScheme
 
         result = validate_scheme_config(NumericalScheme.FDM_UPWIND, HJBFDMSolver, FPGFDMSolver)
 
@@ -346,8 +346,8 @@ class TestValidateSchemeConfig:
 
     def test_string_scheme_conversion(self):
         """Test that string scheme names are converted to enum."""
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         result = validate_scheme_config("FDM_UPWIND", HJBFDMSolver, FPFDMSolver)
 
@@ -355,8 +355,8 @@ class TestValidateSchemeConfig:
 
     def test_invalid_scheme_string(self):
         """Test that invalid scheme strings are handled."""
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         result = validate_scheme_config("INVALID_SCHEME", HJBFDMSolver, FPFDMSolver)
 
@@ -381,7 +381,7 @@ class TestDualityValidationEdgeCases:
 
     def test_same_class_both_sides(self):
         """Test using same solver class for both HJB and FP."""
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         # Should still validate (though nonsensical MFG setup)
         result = check_solver_duality(HJBFDMSolver, HJBFDMSolver)
@@ -395,8 +395,8 @@ if __name__ == "__main__":
     # Smoke test - run basic checks
     print("Running adjoint validation smoke tests...")
 
-    from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver, FPGFDMSolver
-    from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver, HJBGFDMSolver
+    from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver, FPGFDMSolver
+    from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver, HJBGFDMSolver
 
     # Test FDM pairing (should be discrete dual)
     result = check_solver_duality(HJBFDMSolver, FPFDMSolver)

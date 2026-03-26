@@ -17,9 +17,9 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 class ProblemWithCallableSigma:

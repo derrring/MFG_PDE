@@ -9,7 +9,7 @@
 
 ## 🎯 Executive Summary
 
-Implement advanced stochastic formulations for Mean Field Games, enabling modeling of uncertain environments and common noise scenarios. This positions MFG_PDE at the research frontier by supporting both Common Noise MFG and Master Equation formulations.
+Implement advanced stochastic formulations for Mean Field Games, enabling modeling of uncertain environments and common noise scenarios. This positions MFGarchon at the research frontier by supporting both Common Noise MFG and Master Equation formulations.
 
 **Strategic Impact**:
 - **Research Leadership**: First comprehensive framework for stochastic MFG
@@ -75,7 +75,7 @@ L[δU/δm](x,y) = -div_y(m(y) ∇_p H(y, δU/δm(x,y)))
 ### Module Organization
 
 ```
-mfg_pde/alg/
+mfgarchon/alg/
 ├── numerical/
 │   ├── stochastic/                    # NEW: Stochastic MFG methods
 │   │   ├── __init__.py
@@ -89,11 +89,11 @@ mfg_pde/alg/
 │       └── stochastic_pinn.py        # PINNs for stochastic MFG
 └── ...
 
-mfg_pde/core/
+mfgarchon/core/
 ├── stochastic_problem.py              # NEW: Stochastic MFG problem class
 └── noise_processes.py                 # NEW: Common noise processes
 
-mfg_pde/utils/
+mfgarchon/utils/
 ├── functional_calculus.py             # NEW: Functional derivative computation
 └── monte_carlo.py                     # ENHANCED: Stochastic integration
 ```
@@ -309,7 +309,7 @@ class MasterEquationSolver(BaseMFGSolver):
         Network Architecture:
         U_θ: (t, x, m) → ℝ where m ∈ ℝ^{N×d}
         """
-        from mfg_pde.neural.stochastic import MasterEquationPINN
+        from mfgarchon.neural.stochastic import MasterEquationPINN
 
         # Create neural network for U(t, x, m)
         network = MasterEquationPINN(
@@ -607,7 +607,7 @@ corrected ~100,000x errors in linear functional derivative computation.
 ### Factory Integration
 
 ```python
-# mfg_pde/factory/solver_factory.py
+# mfgarchon/factory/solver_factory.py
 def create_solver(problem, **kwargs):
     """Create solver with automatic type detection."""
 
@@ -624,7 +624,7 @@ def create_solver(problem, **kwargs):
 ### Configuration System
 
 ```python
-# mfg_pde/config/solver_config.py
+# mfgarchon/config/solver_config.py
 @dataclass
 class CommonNoiseConfig(SolverConfig):
     """Configuration for common noise MFG solver."""

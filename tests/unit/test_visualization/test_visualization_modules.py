@@ -12,12 +12,12 @@ from pathlib import Path
 
 import numpy as np
 
-# Add the parent directory to the path so we can import mfg_pde
+# Add the parent directory to the path so we can import mfgarchon
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from mfg_pde.utils import configure_logging, get_logger
-from mfg_pde.visualization.interactive_plots import quick_2d_plot as create_mfg_solution_plot
-from mfg_pde.visualization.mathematical_plots import create_mathematical_visualizer
+from mfgarchon.utils import configure_logging, get_logger
+from mfgarchon.visualization.interactive_plots import quick_2d_plot as create_mfg_solution_plot
+from mfgarchon.visualization.mathematical_plots import create_mathematical_visualizer
 
 
 def create_test_data():
@@ -89,7 +89,7 @@ def test_quick_functions():
 
 def main():
     """Run all visualization tests."""
-    print("Testing MFG_PDE Visualization Modules")
+    print("Testing MFGarchon Visualization Modules")
     print("=" * 50)
 
     # Configure logging

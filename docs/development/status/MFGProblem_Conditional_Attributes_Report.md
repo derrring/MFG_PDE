@@ -1,7 +1,7 @@
 # MFGProblem Conditional Attributes: Architecture Decision Report
 
-**Issue**: [#417](https://github.com/derrring/MFG_PDE/issues/417)
-**Implementation**: [#435](https://github.com/derrring/MFG_PDE/issues/435)
+**Issue**: [#417](https://github.com/derrring/mfgarchon/issues/417)
+**Implementation**: [#435](https://github.com/derrring/mfgarchon/issues/435)
 **Status**: ✅ IMPLEMENTED (Phases 1-6 Complete)
 **Date**: 2025-12-11
 **Author**: Claude Code Analysis
@@ -13,7 +13,7 @@
 
 ## Executive Summary
 
-`MFGProblem` is the central domain object in MFG_PDE, representing a Mean Field Game problem. Currently, it has ~30 public attributes whose availability depends on the initialization mode (1D legacy, n-D grid, geometry, network, mesh). This creates type safety issues and runtime errors.
+`MFGProblem` is the central domain object in MFGarchon, representing a Mean Field Game problem. Currently, it has ~30 public attributes whose availability depends on the initialization mode (1D legacy, n-D grid, geometry, network, mesh). This creates type safety issues and runtime errors.
 
 Two architectural solutions are proposed:
 - **Option A**: Domain-Specific Subclasses
@@ -213,7 +213,7 @@ class MFGProblem:
 ### 4.1 Unify Around `geometry` Attribute
 
 The codebase already has:
-1. `GeometryProtocol` abstraction in `mfg_pde.geometry`
+1. `GeometryProtocol` abstraction in `mfgarchon.geometry`
 2. Deprecation warnings pushing toward `geometry=` parameter
 3. Internal creation of `TensorProductGrid` for all grid modes
 
@@ -340,7 +340,7 @@ class NetworkGeometry:
 ### 7.1 Current Usage (Problematic)
 
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 # User creates problem
 problem = MFGProblem(Nx=100, xmin=0, xmax=1, Nt=50, T=1.0, sigma=0.1)
@@ -355,8 +355,8 @@ def process_grid(problem: MFGProblem):
 ### 7.2 After Modified Option B
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # User creates problem (same API)
 problem = MFGProblem(Nx=100, xmin=0, xmax=1, Nt=50, T=1.0, sigma=0.1)
@@ -379,7 +379,7 @@ def process_grid_legacy(problem: MFGProblem):
 ### 7.3 Option A Alternative
 
 ```python
-from mfg_pde import CartesianMFGProblem, NetworkMFGProblem
+from mfgarchon import CartesianMFGProblem, NetworkMFGProblem
 
 # User must choose correct class
 problem = CartesianMFGProblem(
@@ -403,23 +403,23 @@ def process_cartesian(problem: CartesianMFGProblem):
 
 ## 8. Appendix: Current Codebase Statistics
 
-- **MFGProblem file**: `mfg_pde/core/mfg_problem.py` (1985 lines)
+- **MFGProblem file**: `mfgarchon/core/mfg_problem.py` (1985 lines)
 - **Initialization modes**: 4 (`_init_1d_legacy`, `_init_nd`, `_init_geometry`, `_init_network`)
 - **Public attributes**: ~30
 - **Conditional attributes**: ~20
 - **GeometryProtocol implementations**: `TensorProductGrid`, `NetworkGeometry` (with subclasses), `Mesh2D`, `Mesh3D`, `ImplicitDomain`
-- **Network geometry classes**: `NetworkGeometry`, `GridNetwork`, `RandomNetwork`, `ScaleFreeNetwork` (all in `mfg_pde/geometry/graph/network_geometry.py`)
+- **Network geometry classes**: `NetworkGeometry`, `GridNetwork`, `RandomNetwork`, `ScaleFreeNetwork` (all in `mfgarchon/geometry/graph/network_geometry.py`)
 - **Note**: `BaseNetworkGeometry` is a backward compatibility alias for `NetworkGeometry` (renamed in PR #434)
 
 ---
 
 ## 9. References
 
-- Issue #417: https://github.com/derrring/MFG_PDE/issues/417
-- GeometryProtocol: `mfg_pde/geometry/protocol.py`
-- TensorProductGrid: `mfg_pde/geometry/grids/tensor_grid.py`
-- NetworkGeometry: `mfg_pde/geometry/graph/network_geometry.py` (renamed from BaseNetworkGeometry in PR #434)
-- MFGProblem: `mfg_pde/core/mfg_problem.py`
+- Issue #417: https://github.com/derrring/mfgarchon/issues/417
+- GeometryProtocol: `mfgarchon/geometry/protocol.py`
+- TensorProductGrid: `mfgarchon/geometry/grids/tensor_grid.py`
+- NetworkGeometry: `mfgarchon/geometry/graph/network_geometry.py` (renamed from BaseNetworkGeometry in PR #434)
+- MFGProblem: `mfgarchon/core/mfg_problem.py`
 - Deprecation roadmap: `docs/development/DEPRECATION_ROADMAP.md`
 
 ---
@@ -539,7 +539,7 @@ class NetworkGeometry:
 The original report stated "NetworkGeometry needs to be created". This was **incorrect**.
 
 **Actual state of codebase** (updated after PR #434):
-- `NetworkGeometry` exists at `mfg_pde/geometry/graph/network_geometry.py` (renamed from `BaseNetworkGeometry`)
+- `NetworkGeometry` exists at `mfgarchon/geometry/graph/network_geometry.py` (renamed from `BaseNetworkGeometry`)
 - It now properly inherits from `GraphGeometry` (fixed in PR #434)
 - It implements full `GeometryProtocol` (including all boundary methods)
 - Concrete subclasses exist: `GridNetwork`, `RandomNetwork`, `ScaleFreeNetwork`
@@ -550,7 +550,7 @@ The original report stated "NetworkGeometry needs to be created". This was **inc
 The issue is not missing classes but **missing wiring**:
 
 ```python
-# mfg_pde/core/mfg_problem.py:939
+# mfgarchon/core/mfg_problem.py:939
 def _init_network(...):
     ...
     self.geometry = None  # <-- THE PROBLEM: sets geometry to None instead of NetworkGeometry
@@ -574,7 +574,7 @@ def _init_network(self, network, ...):
         self.geometry = network
     elif hasattr(network, 'adjacency_matrix'):
         # Raw network - wrap in GridNetwork or similar
-        from mfg_pde.geometry import create_network
+        from mfgarchon.geometry import create_network
         self.geometry = create_network('custom', num_nodes=len(network.nodes), ...)
     else:
         # NetworkX graph
@@ -612,7 +612,7 @@ def __setstate__(self, state):
     # Detect legacy format: geometry=None but has legacy 1D attrs
     if state.get('geometry') is None and state.get('xmin') is not None:
         try:
-            from mfg_pde.geometry import TensorProductGrid
+            from mfgarchon.geometry import TensorProductGrid
             # Reconstruct geometry from legacy attributes
             xmin = state.get('xmin')
             xmax = state.get('xmax')

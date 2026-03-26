@@ -8,7 +8,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.level_set.eikonal import (
+from mfgarchon.geometry.level_set.eikonal import (
     godunov_update_1d,
     godunov_update_2d,
     godunov_update_nd,

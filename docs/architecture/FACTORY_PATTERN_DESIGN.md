@@ -1,4 +1,4 @@
-# MFG_PDE Factory Pattern Design
+# MFGarchon Factory Pattern Design
 
 **Document**: Factory Pattern Design
 **Status**: Active Design Reference (Issue #580 Implementation)
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-MFG_PDE uses a **three-concern factory organization** to separate concerns:
+MFGarchon uses a **three-concern factory organization** to separate concerns:
 - **Concern 1 (WHAT)**: Application-domain problem configuration
 - **Concern 2 (HOW)**: Numerical scheme selection with mathematical guarantees
 - **Concern 3 (WHO)**: Solver assembly and iteration control
@@ -63,7 +63,7 @@ scheme = NumericalScheme.FDM_UPWIND  # Enum, not factory call
 
 ### Comparison with Other Architecture "Layers"
 
-To avoid confusion with other uses of "layer" terminology in MFG_PDE:
+To avoid confusion with other uses of "layer" terminology in MFGarchon:
 
 **Boundary Conditions Architecture** (different context):
 - Layer 1: BC Specification (`geometry/boundary/conditions.py`)
@@ -85,12 +85,12 @@ These are **separable concerns** (orthogonal dimensions), not stacked layers.
 
 ## Current Implementation Status
 
-**Purpose**: Ground factory design in MFG_PDE's actual codebase state (as of 2026-01-16).
+**Purpose**: Ground factory design in MFGarchon's actual codebase state (as of 2026-01-16).
 
 ### What Currently Exists ✅
 
 #### 1. Config System (Production-Ready)
-- **Location**: `mfg_pde/config/`
+- **Location**: `mfgarchon/config/`
 - **Structure**: Hierarchical Pydantic models with auto-validation
 - **Status**: ✅ Ready for routing logic integration
 - **Example**:
@@ -101,7 +101,7 @@ These are **separable concerns** (orthogonal dimensions), not stacked layers.
   ```
 
 #### 2. Solver Hierarchy (Production-Ready)
-- **Location**: `mfg_pde/alg/numerical/`
+- **Location**: `mfgarchon/alg/numerical/`
 - **Structure**: `BaseMFGSolver` → `BaseNumericalSolver` → `BaseHJBSolver`/`BaseFPSolver`
 - **Concrete Implementations**:
   - HJB: `HJBFDMSolver`, `HJBGFDMSolver`, `HJBSemiLagrangianSolver`, `HJBWENOSolver`
@@ -109,7 +109,7 @@ These are **separable concerns** (orthogonal dimensions), not stacked layers.
 - **Status**: ✅ Ready for trait annotations
 
 #### 3. Geometry Protocol (Production-Ready)
-- **Location**: `mfg_pde/geometry/protocol.py`
+- **Location**: `mfgarchon/geometry/protocol.py`
 - **Features**: Runtime-checkable protocol, `GeometryType` enum
 - **Available Properties**: `dimension`, `geometry_type`, `num_spatial_points`
 - **Available Methods**: `is_on_boundary()`, `get_boundary_normal()`, boundary projection
@@ -117,18 +117,18 @@ These are **separable concerns** (orthogonal dimensions), not stacked layers.
 - **Status**: ✅ Ready with workarounds
 
 #### 4. Problem Factories (Production-Ready)
-- **Location**: `mfg_pde/factory/problem_factories.py`
+- **Location**: `mfgarchon/factory/problem_factories.py`
 - **Implemented**: `create_lq_problem()`, `create_crowd_problem()`, `create_network_problem()`, etc.
 - **Status**: ✅ Fully functional (Concern 1: WHAT)
 
 #### 5. Backend Selection (Template for Solver Selection)
-- **Location**: `mfg_pde/factory/backend_factory.py`
+- **Location**: `mfgarchon/factory/backend_factory.py`
 - **Feature**: Intelligent JAX vs NumPy selection based on problem size
 - **Status**: ✅ Existing pattern to replicate for solver selection
 
 **Current Pattern** (Use as template):
 ```python
-# mfg_pde/factory/backend_factory.py
+# mfgarchon/factory/backend_factory.py
 def create_optimal_backend(
     problem: MFGProblem,
     prefer_gpu: bool = False,
@@ -148,7 +148,7 @@ def create_optimal_backend(
 
 **Analog for Solver Selection** (Target for Issue #580):
 ```python
-# mfg_pde/factory/scheme_factory.py (NEW)
+# mfgarchon/factory/scheme_factory.py (NEW)
 def create_paired_solvers(
     scheme: NumericalScheme | None = None,
     problem: MFGProblem,
@@ -295,7 +295,7 @@ result = problem.solve(scheme=...)   # Layers 2+3: HOW + WHO (internal)
 
 ### Concern 1: WHAT to Solve (Problem Configuration)
 
-**Location**: `mfg_pde/factory/problem_factories.py`
+**Location**: `mfgarchon/factory/problem_factories.py`
 **Responsibility**: Configure MFGProblem for specific applications
 **Output**: `MFGProblem` instance
 
@@ -307,7 +307,7 @@ result = problem.solve(scheme=...)   # Layers 2+3: HOW + WHO (internal)
 #### Examples
 
 ```python
-from mfg_pde.factory import create_lq_problem, create_crowd_problem
+from mfgarchon.factory import create_lq_problem, create_crowd_problem
 
 # Linear-Quadratic MFG
 problem_lq = create_lq_problem(
@@ -337,7 +337,7 @@ problem_crowd = create_crowd_problem(
 
 ### Concern 2: HOW to Solve (Numerical Scheme Selection)
 
-**Location**: `mfg_pde/factory/scheme_factory.py` (NEW in Issue #580)
+**Location**: `mfgarchon/factory/scheme_factory.py` (NEW in Issue #580)
 **Responsibility**: Select discretization with guaranteed mathematical properties
 **Output**: `(hjb_solver, fp_solver)` tuple with validated duality
 
@@ -367,7 +367,7 @@ Property: May stagnate around 1e-4 without renormalization
 #### Implementation
 
 ```python
-# NEW: mfg_pde/factory/scheme_factory.py
+# NEW: mfgarchon/factory/scheme_factory.py
 
 from enum import Enum
 
@@ -411,10 +411,10 @@ def create_paired_solvers(
         - Complementary parameters (e.g., upwind vs downwind)
         - AUTO-INJECT renormalization wrapper for mass conservation
     """
-    from mfg_pde.alg.numerical.hjb_solvers import (
+    from mfgarchon.alg.numerical.hjb_solvers import (
         HJBFDMSolver, HJBSemiLagrangianSolver, HJBGFDMSolver
     )
-    from mfg_pde.alg.numerical.fp_solvers import (
+    from mfgarchon.alg.numerical.fp_solvers import (
         FPFDMSolver, FPSplattingSolver, FPGFDMSolver, RenormalizationWrapper
     )
 
@@ -456,7 +456,7 @@ def create_paired_solvers(
 
 ### Concern 3: WHO Couples Them (Solver Assembly)
 
-**Location**: `mfg_pde/factory/solver_factory.py`
+**Location**: `mfgarchon/factory/solver_factory.py`
 **Responsibility**: Wire HJB + FP into fixed-point iterator
 **Output**: `FixedPointIterator` instance
 
@@ -468,7 +468,7 @@ def create_paired_solvers(
 #### Implementation (Deprecated)
 
 ```python
-# mfg_pde/factory/solver_factory.py
+# mfgarchon/factory/solver_factory.py
 
 def create_solver(
     problem: MFGProblem,
@@ -500,7 +500,7 @@ def create_solver(
         stacklevel=2
     )
 
-    from mfg_pde.alg.numerical.coupling import FixedPointIterator
+    from mfgarchon.alg.numerical.coupling import FixedPointIterator
     return FixedPointIterator(
         problem=problem,
         hjb_solver=hjb_solver,
@@ -521,7 +521,7 @@ def create_solver(
 **Key Design Decision**: `problem.solve()` is the ONLY user-facing entry point.
 
 ```python
-# In mfg_pde/core/mfg_problem.py
+# In mfgarchon/core/mfg_problem.py
 
 def solve(
     self,
@@ -631,7 +631,7 @@ def _create_paired_solvers(
     scheme: NumericalScheme
 ) -> tuple[BaseHJBSolver, BaseFPSolver]:
     """Internal: Call Layer 2 factory with validated scheme."""
-    from mfg_pde.factory.scheme_factory import create_paired_solvers
+    from mfgarchon.factory.scheme_factory import create_paired_solvers
     return create_paired_solvers(scheme, self)
 
 
@@ -643,7 +643,7 @@ def _create_solver_iterator(
     config: MFGSolverConfig | None,
 ) -> FixedPointIterator:
     """Internal: Call Layer 3 factory to assemble iterator."""
-    from mfg_pde.alg.numerical.coupling import FixedPointIterator
+    from mfgarchon.alg.numerical.coupling import FixedPointIterator
 
     return FixedPointIterator(
         problem=self,
@@ -660,7 +660,7 @@ def _validate_manual_pairing(
     fp_solver: BaseFPSolver
 ) -> None:
     """Validate manually injected solvers and emit warnings."""
-    from mfg_pde.utils.adjoint_validation import check_solver_duality
+    from mfgarchon.utils.adjoint_validation import check_solver_duality
 
     duality_type = check_solver_duality(hjb_solver, fp_solver)
 
@@ -706,7 +706,7 @@ def _auto_select_scheme(self) -> NumericalScheme:
 
     Conservative philosophy: When in doubt, choose FDM (most stable).
     """
-    from mfg_pde.types import NumericalScheme
+    from mfgarchon.types import NumericalScheme
 
     # Priority 1: Obstacles force GFDM
     if self.has_obstacles:
@@ -850,7 +850,7 @@ if (hjb_type, fp_type) in exact_pairs:
 **Solution**: Trait-based validation (extensible and refactoring-safe):
 
 ```python
-# NEW: mfg_pde/alg/numerical/base_solver.py
+# NEW: mfgarchon/alg/numerical/base_solver.py
 
 from enum import Enum
 
@@ -908,7 +908,7 @@ def check_solver_duality(hjb_solver, fp_solver) -> AdjointType:
 - ✅ Plugin-friendly: Custom solvers declare their family
 
 **Note on Validator Pattern** (Issue #543):
-MFG_PDE uses `try/except AttributeError` instead of `hasattr()` for attribute validation (see Issue #543). The `getattr(..., default)` pattern above is preferred for optional attributes like `_scheme_family`. For required attributes, use:
+MFGarchon uses `try/except AttributeError` instead of `hasattr()` for attribute validation (see Issue #543). The `getattr(..., default)` pattern above is preferred for optional attributes like `_scheme_family`. For required attributes, use:
 ```python
 try:
     family = solver._scheme_family
@@ -944,7 +944,7 @@ def _auto_select_scheme(self) -> NumericalScheme:
     4. Medium dimension (3D) → SL (better scaling)
     5. High dimension (4D+) → Error (explicit choice required)
     """
-    from mfg_pde.types import NumericalScheme
+    from mfgarchon.types import NumericalScheme
 
     # Priority 1: Obstacles force GFDM
     if self.has_obstacles:
@@ -1022,7 +1022,7 @@ if not hasattr(self.geometry, 'is_structured'):
 ### Directory Structure
 
 ```
-mfg_pde/
+mfgarchon/
 ├── factory/
 │   ├── __init__.py                # Public API exports
 │   ├── problem_factories.py       # Concern 1: WHAT (applications)
@@ -1043,7 +1043,7 @@ docs/
     └── adjoint_operators_mfg.md   # Mathematical foundation
 ```
 
-### File: `mfg_pde/utils/adjoint_validation.py` (NEW)
+### File: `mfgarchon/utils/adjoint_validation.py` (NEW)
 
 ```python
 """
@@ -1155,7 +1155,7 @@ result = solver.solve()
 
 ```python
 # User attempts wrong pattern
->>> from mfg_pde.factory import create_crowd_problem
+>>> from mfgarchon.factory import create_crowd_problem
 >>> create_crowd_problem(scheme=NumericalScheme.FDM_UPWIND)
 
 ValueError:
@@ -1197,9 +1197,9 @@ ValueError:
 
 **Before (OLD API - confusing)**:
 ```python
-from mfg_pde import MFGProblem, create_solver
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon import MFGProblem, create_solver
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
 
 problem = MFGProblem(...)
 hjb = HJBFDMSolver(problem, scheme="upwind")
@@ -1210,8 +1210,8 @@ result = solver.solve()
 
 **After (NEW API - clear)**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.types import NumericalScheme
+from mfgarchon import MFGProblem
+from mfgarchon.types import NumericalScheme
 
 problem = MFGProblem(...)
 result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
@@ -1251,9 +1251,9 @@ result = problem.solve()  # ← Now auto-selects based on problem
 ### Example 1: Crowd Evacuation (Mode 1 - Safe Mode)
 
 ```python
-from mfg_pde.factory import create_crowd_problem
-from mfg_pde.types import NumericalScheme
-from mfg_pde.geometry import Hyperrectangle
+from mfgarchon.factory import create_crowd_problem
+from mfgarchon.types import NumericalScheme
+from mfgarchon.geometry import Hyperrectangle
 
 # Concern 1: Configure problem (WHAT)
 room = Hyperrectangle(bounds=[[0, 10], [0, 10]])
@@ -1278,8 +1278,8 @@ print(f"Final error: {result.error:.2e}")
 ### Example 2: LQ Problem with Auto-Selection (Mode 3)
 
 ```python
-from mfg_pde.factory import create_lq_problem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.factory import create_lq_problem
+from mfgarchon.geometry import TensorProductGrid
 
 # Concern 1: Configure LQ problem
 domain = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
@@ -1301,9 +1301,9 @@ result = problem.solve(verbose=True)
 ### Example 3: Research Experiment (Mode 2 - Expert Mode)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
 
 # Research question: "What happens if I mix SL + FDM?"
 
@@ -1332,9 +1332,9 @@ result = problem.solve(hjb_solver=hjb, fp_solver=fp)
 ### Example 4: Plugin Mode (Custom Solver)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
 
 # Implement custom research algorithm
 class MyNovelHJBSolver(BaseHJBSolver):
@@ -1426,7 +1426,7 @@ elif scheme == NumericalScheme.GFDM:
 **Solution**: Plugin-style registry for extensibility:
 
 ```python
-# mfg_pde/factory/scheme_registry.py (NEW - Optional)
+# mfgarchon/factory/scheme_registry.py (NEW - Optional)
 
 from typing import Callable, Protocol
 
@@ -1503,7 +1503,7 @@ def create_paired_solvers(
 ```
 
 **Benefits**:
-- ✅ **Extensibility**: Users can register custom schemes without modifying MFG_PDE
+- ✅ **Extensibility**: Users can register custom schemes without modifying MFGarchon
 - ✅ **Separation**: Each scheme's pairing logic isolated in single function
 - ✅ **Testability**: Individual factories unit-testable
 - ✅ **Plugin-friendly**: Third-party packages can register schemes
@@ -1511,7 +1511,7 @@ def create_paired_solvers(
 **Usage** (custom scheme):
 ```python
 # User's custom package: my_mfg_extensions/solvers.py
-from mfg_pde.factory import register_scheme, NumericalScheme
+from mfgarchon.factory import register_scheme, NumericalScheme
 
 # Extend enum (requires Python 3.11+ or aenum)
 class CustomScheme(NumericalScheme):
@@ -1536,13 +1536,13 @@ result = problem.solve(scheme=CustomScheme.MY_SCHEME)
 Follow this order for Issue #580 implementation:
 
 **Step 1: Infrastructure** (Foundation)
-- Define `NumericalScheme` enum (`mfg_pde/types/schemes.py`)
-- Add `SchemeFamily` enum (`mfg_pde/alg/numerical/base_solver.py`)
+- Define `NumericalScheme` enum (`mfgarchon/types/schemes.py`)
+- Add `SchemeFamily` enum (`mfgarchon/alg/numerical/base_solver.py`)
 - Add `_scheme_family` trait to `BaseSolver` and all solver subclasses
 
 **Step 2: Validation Logic** (Core)
-- Implement `check_solver_duality()` using trait-based validation (`mfg_pde/utils/adjoint_validation.py`)
-- Implement `create_paired_solvers()` with config threading (`mfg_pde/factory/scheme_factory.py`)
+- Implement `check_solver_duality()` using trait-based validation (`mfgarchon/utils/adjoint_validation.py`)
+- Implement `create_paired_solvers()` with config threading (`mfgarchon/factory/scheme_factory.py`)
 
 **Step 3: Facade Integration** (User API)
 - Refactor `problem.solve()` to accept `scheme` parameter

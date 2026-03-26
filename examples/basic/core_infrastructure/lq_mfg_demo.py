@@ -28,7 +28,7 @@ except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
 try:
-    from mfg_pde.alg.reinforcement.environments import LQMFGEnv
+    from mfgarchon.alg.reinforcement.environments import LQMFGEnv
 
     ENV_AVAILABLE = True
 except ImportError:

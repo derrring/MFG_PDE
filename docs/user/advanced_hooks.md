@@ -28,7 +28,7 @@ Hooks are callback functions that execute at specific points during solving:
 ### Monitoring and Debugging
 
 ```python
-from mfg_pde.hooks import (
+from mfgarchon.hooks import (
     DebugHook, ProgressHook, PerformanceHook,
     ConvergenceAnalysisHook, VisualizationHook
 )
@@ -73,7 +73,7 @@ viz_hook = VisualizationHook(
 ### Multiple Hook Usage
 
 ```python
-from mfg_pde.hooks import HookCollection
+from mfgarchon.hooks import HookCollection
 
 # Combine multiple hooks
 hooks = HookCollection([
@@ -91,7 +91,7 @@ result = solver.solve(problem, hooks=hooks)
 ### Basic Custom Hook
 
 ```python
-from mfg_pde.hooks import SolverHooks
+from mfgarchon.hooks import SolverHooks
 
 class CustomMonitoringHook(SolverHooks):
     def __init__(self):
@@ -654,7 +654,7 @@ class ProductionMonitoringHook(SolverHooks):
     def _setup_logging(self):
         """Setup structured logging."""
         import logging
-        logger = logging.getLogger('mfg_pde.hooks')
+        logger = logging.getLogger('mfgarchon.hooks')
         logger.setLevel(self.config['log_level'])
         return logger
 

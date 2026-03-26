@@ -16,7 +16,7 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.reinforcement.algorithms import (
+    from mfgarchon.alg.reinforcement.algorithms import (
         MultiPopulationDDPG,
         MultiPopulationSAC,
         MultiPopulationTD3,

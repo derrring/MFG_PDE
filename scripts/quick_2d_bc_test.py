@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BCSegment, BCType, BoundaryConditions
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import BCSegment, BCType, BoundaryConditions
 
 print("Testing 2D FDM BC enforcement (refactored)...")
 

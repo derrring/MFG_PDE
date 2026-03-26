@@ -1,5 +1,5 @@
 """
-Performance Tracking System for MFG_PDE
+Performance Tracking System for MFGarchon
 ========================================
 
 Automated performance monitoring to track solver performance over time,

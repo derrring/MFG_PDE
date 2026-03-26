@@ -25,24 +25,24 @@
 ### Files by Priority
 
 **Priority 1: Core (Week 1)**
-- `mfg_pde/core/mfg_problem.py` - Primary attribute definitions
-- `mfg_pde/core/base_problem.py` - Base class
-- `mfg_pde/types/problem_protocols.py` - Protocol definitions
+- `mfgarchon/core/mfg_problem.py` - Primary attribute definitions
+- `mfgarchon/core/base_problem.py` - Base class
+- `mfgarchon/types/problem_protocols.py` - Protocol definitions
 
 **Priority 2: Solvers (Week 1)**
-- `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py` (10 occurrences)
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py`
-- `mfg_pde/alg/numerical/fp_solvers/fp_particle.py` (11 xSpace occurrences - NO CHANGE)
-- `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py` (2 Dt)
-- `mfg_pde/alg/optimization/variational_solvers/base_variational.py`
+- `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py` (10 occurrences)
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py`
+- `mfgarchon/alg/numerical/fp_solvers/fp_particle.py` (11 xSpace occurrences - NO CHANGE)
+- `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py` (2 Dt)
+- `mfgarchon/alg/optimization/variational_solvers/base_variational.py`
 
 **Priority 3: Utilities (Week 2)**
-- `mfg_pde/utils/experiment_manager.py` (7 Dx, 2 tSpace - tSpace NO CHANGE)
-- `mfg_pde/utils/numerical/convergence.py` (5 Dx)
-- `mfg_pde/utils/numerical/hjb_policy_iteration.py`
-- `mfg_pde/utils/aux_func.py` (2 Dx)
-- `mfg_pde/visualization/legacy_plotting.py` (2 tSpace - NO CHANGE)
+- `mfgarchon/utils/experiment_manager.py` (7 Dx, 2 tSpace - tSpace NO CHANGE)
+- `mfgarchon/utils/numerical/convergence.py` (5 Dx)
+- `mfgarchon/utils/numerical/hjb_policy_iteration.py`
+- `mfgarchon/utils/aux_func.py` (2 Dx)
+- `mfgarchon/visualization/legacy_plotting.py` (2 tSpace - NO CHANGE)
 
 **Priority 4: Tests (Week 2)**
 - `tests/unit/test_convergence.py` (8 Dt)
@@ -75,7 +75,7 @@
 
 ### Phase 1: Core Infrastructure (Days 1-3)
 
-#### Step 1: Update `mfg_pde/core/mfg_problem.py`
+#### Step 1: Update `mfgarchon/core/mfg_problem.py`
 
 **Current**:
 ```python
@@ -120,7 +120,7 @@ class MFGProblem:
         return self.dx
 ```
 
-#### Step 2: Update `mfg_pde/types/problem_protocols.py`
+#### Step 2: Update `mfgarchon/types/problem_protocols.py`
 
 **Current**:
 ```python
@@ -199,7 +199,7 @@ def migrate_file(filepath: Path) -> None:
     print(f"✓ Migrated: {filepath}")
 
 # Usage
-for pyfile in Path("mfg_pde").rglob("*.py"):
+for pyfile in Path("mfgarchon").rglob("*.py"):
     migrate_file(pyfile)
 ```
 
@@ -324,23 +324,23 @@ Replace all instances:
 ## Migration Checklist
 
 ### Core Changes
-- [ ] `mfg_pde/core/mfg_problem.py` - Add `dt`, `dx` attributes + deprecated `Dt`, `Dx` properties
-- [ ] `mfg_pde/core/base_problem.py` - Update base class
-- [ ] `mfg_pde/types/problem_protocols.py` - Update protocols
+- [ ] `mfgarchon/core/mfg_problem.py` - Add `dt`, `dx` attributes + deprecated `Dt`, `Dx` properties
+- [ ] `mfgarchon/core/base_problem.py` - Update base class
+- [ ] `mfgarchon/types/problem_protocols.py` - Update protocols
 
 ### Solvers (20 files)
-- [ ] `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py`
-- [ ] `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
-- [ ] `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py`
-- [ ] `mfg_pde/alg/numerical/fp_solvers/*`
-- [ ] `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
-- [ ] `mfg_pde/alg/optimization/variational_solvers/base_variational.py`
+- [ ] `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py`
+- [ ] `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
+- [ ] `mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py`
+- [ ] `mfgarchon/alg/numerical/fp_solvers/*`
+- [ ] `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`
+- [ ] `mfgarchon/alg/optimization/variational_solvers/base_variational.py`
 
 ### Utilities (5 files)
-- [ ] `mfg_pde/utils/experiment_manager.py`
-- [ ] `mfg_pde/utils/numerical/convergence.py`
-- [ ] `mfg_pde/utils/numerical/hjb_policy_iteration.py`
-- [ ] `mfg_pde/utils/aux_func.py`
+- [ ] `mfgarchon/utils/experiment_manager.py`
+- [ ] `mfgarchon/utils/numerical/convergence.py`
+- [ ] `mfgarchon/utils/numerical/hjb_policy_iteration.py`
+- [ ] `mfgarchon/utils/aux_func.py`
 
 ### Tests (20+ files)
 - [ ] `tests/unit/test_convergence.py`

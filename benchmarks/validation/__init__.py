@@ -1,5 +1,5 @@
 """
-Validation benchmarks for MFG_PDE solvers.
+Validation benchmarks for MFGarchon solvers.
 
 This module contains validation tests comparing different solver implementations
 on canonical MFG problems with known properties or established baselines.

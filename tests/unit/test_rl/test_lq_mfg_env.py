@@ -17,12 +17,12 @@ except ImportError:
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.environments import CONTINUOUS_MFG_AVAILABLE
+from mfgarchon.alg.reinforcement.environments import CONTINUOUS_MFG_AVAILABLE
 
 pytestmark = pytest.mark.environment
 
 if CONTINUOUS_MFG_AVAILABLE:
-    from mfg_pde.alg.reinforcement.environments.lq_mfg_env import LQMFGEnv
+    from mfgarchon.alg.reinforcement.environments.lq_mfg_env import LQMFGEnv
 
 
 @pytest.mark.skipif(not CONTINUOUS_MFG_AVAILABLE, reason="Gymnasium not available")

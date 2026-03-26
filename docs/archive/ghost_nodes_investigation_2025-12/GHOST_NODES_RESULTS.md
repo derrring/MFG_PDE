@@ -233,7 +233,7 @@ GFDM-Ghost:   3.06 → 10.12  (Δx = + 7.06 units,  63% of baseline)
 
 **Immediate**:
 - ✅ **Deploy ghost nodes** as default for GFDM with Neumann BC
-- ✅ **Document method** in MFG_PDE user guide
+- ✅ **Document method** in MFGarchon user guide
 - ⚠️ **Set user expectations**: Ghost nodes improve GFDM but don't match FDM
 
 **Future Research**:

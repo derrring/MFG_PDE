@@ -3,7 +3,7 @@ Advanced example: MFG problem on 2D complex geometry using new mesh pipeline.
 
 This example demonstrates solving a Mean Field Game on a 2D domain with
 complex geometry using the Gmsh → Meshio → PyVista pipeline integrated
-with MFG_PDE's existing solver architecture.
+with MFGarchon's existing solver architecture.
 """
 
 import contextlib
@@ -12,14 +12,14 @@ from pathlib import Path
 
 import numpy as np
 
-# Add MFG_PDE to path
+# Add MFGarchon to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from mfg_pde.config import OmegaConfManager
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import BoundaryManager, Mesh2D, MeshPipeline
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
-from mfg_pde.utils.polars_integration import create_analysis_dataframe
+from mfgarchon.config import OmegaConfManager
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import BoundaryManager, Mesh2D, MeshPipeline
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.utils.polars_integration import create_analysis_dataframe
 
 # Configure logging
 configure_research_logging("mfg_2d_geometry", level="INFO")

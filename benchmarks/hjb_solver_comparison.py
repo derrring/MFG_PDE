@@ -16,8 +16,8 @@ import pandas as pd
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
 
 class QuadraticHamiltonian2D(MFGProblem):

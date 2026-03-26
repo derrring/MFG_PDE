@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from mfg_pde.utils.deprecation import deprecated_parameter
+from mfgarchon.utils.deprecation import deprecated_parameter
 
 
 def test_deprecated_parameter_issues_warning_automatically():

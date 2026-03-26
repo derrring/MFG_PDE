@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This plan strategically improves MFG_PDE test coverage from **37% to 50-60%** by focusing on:
+This plan strategically improves MFGarchon test coverage from **37% to 50-60%** by focusing on:
 1. **Quick wins** (0% coverage utils) → 42%
 2. **High-impact core** (backends, config, geometry) → 50%
 3. **Comprehensive validation** (RL, factory, performance) → 60%
@@ -63,7 +63,7 @@ This plan strategically improves MFG_PDE test coverage from **37% to 50-60%** by
 **Impact**: +245 covered lines
 
 ### 1.1 Utils/Progress (0% → 80%)
-**File**: `mfg_pde/utils/progress.py`
+**File**: `mfgarchon/utils/progress.py`
 **Lines**: 156 → +125 covered
 **Why**: Used by solvers, simple to test
 
@@ -73,7 +73,7 @@ This plan strategically improves MFG_PDE test coverage from **37% to 50-60%** by
 
 def test_tqdm_available():
     """Test progress bar when tqdm available."""
-    from mfg_pde.utils.progress import ProgressBar
+    from mfgarchon.utils.progress import ProgressBar
     pbar = ProgressBar(total=100, desc="Test")
     # Verify tqdm integration
 
@@ -94,7 +94,7 @@ def test_custom_formatters():
 ```
 
 ### 1.2 Utils/Solver Decorators (0% → 70%)
-**File**: `mfg_pde/utils/solver_decorators.py`
+**File**: `mfgarchon/utils/solver_decorators.py`
 **Lines**: 112 → +78 covered
 **Why**: Logging/timing decorators, straightforward
 
@@ -104,7 +104,7 @@ def test_custom_formatters():
 
 def test_timed_solver_decorator():
     """Test @timed_solver decorator."""
-    from mfg_pde.utils.solver_decorators import timed_solver
+    from mfgarchon.utils.solver_decorators import timed_solver
 
     @timed_solver
     def dummy_solver():
@@ -128,7 +128,7 @@ def test_decorator_combinations():
 ```
 
 ### 1.3 Utils/Solver Result (62% → 90%)
-**File**: `mfg_pde/utils/solver_result.py`
+**File**: `mfgarchon/utils/solver_result.py`
 **Lines**: 151 → +42 covered
 **Why**: Critical API, already partially tested
 
@@ -185,7 +185,7 @@ def test_export_functionality():
 
 def test_gpu_detection():
     """Test GPU availability detection."""
-    from mfg_pde.backends import TorchBackend
+    from mfgarchon.backends import TorchBackend
     backend = TorchBackend()
     # Verify correct device selection
 
@@ -235,7 +235,7 @@ def test_solver_cpu_vs_gpu():
 
 def test_valid_config_loading():
     """Test loading valid configurations."""
-    from mfg_pde.config import SolverConfig
+    from mfgarchon.config import SolverConfig
     config = SolverConfig(solver_type="fixed_point", max_iterations=100)
     # Verify validation passes
 
@@ -274,7 +274,7 @@ def test_default_values():
 
 def test_neumann_bc_enforcement():
     """Test Neumann BC zero flux."""
-    from mfg_pde.geometry import BoundaryConditions
+    from mfgarchon.geometry import BoundaryConditions
     bc = BoundaryConditions(type="neumann")
     # Verify zero gradient at boundaries
 
@@ -296,7 +296,7 @@ def test_mixed_bc():
 
 def test_2d_domain_creation():
     """Test 2D rectangular domain."""
-    from mfg_pde.geometry import Domain2D
+    from mfgarchon.geometry import Domain2D
     domain = Domain2D(xmin=0, xmax=1, ymin=0, ymax=1, Nx=50, Ny=50)
     assert domain.ndim == 2
 
@@ -358,7 +358,7 @@ def test_mass_conservation_edge_cases():
 
 def test_ddpg_policy_gradient():
     """Test DDPG computes correct policy gradients."""
-    from mfg_pde.alg.reinforcement import MeanFieldDDPG
+    from mfgarchon.alg.reinforcement import MeanFieldDDPG
     # Verify gradient calculations
 
 def test_td3_twin_critics():
@@ -414,14 +414,14 @@ def test_backward_compatibility():
 
 def test_memory_tracking():
     """Test memory monitoring."""
-    from mfg_pde.utils.performance import MemoryMonitor
+    from mfgarchon.utils.performance import MemoryMonitor
     monitor = MemoryMonitor(max_memory_gb=2.0)
     # Allocate large array
     # Verify monitor detects it
 
 def test_cpu_profiling():
     """Test CPU time profiling."""
-    from mfg_pde.utils.performance import profile_function
+    from mfgarchon.utils.performance import profile_function
 
     @profile_function
     def expensive_operation():
@@ -535,10 +535,10 @@ coverage:
         target: 70%        # New code should have high coverage
 
 ignore:
-  - "mfg_pde/workflow/**"           # Experimental
-  - "mfg_pde/visualization/**"      # Hard to test
-  - "mfg_pde/meta/**"               # Low priority
-  - "mfg_pde/_internal/**"          # Private
+  - "mfgarchon/workflow/**"           # Experimental
+  - "mfgarchon/visualization/**"      # Hard to test
+  - "mfgarchon/meta/**"               # Low priority
+  - "mfgarchon/_internal/**"          # Private
 ```
 
 ### Property-Based Testing Example
@@ -613,8 +613,8 @@ def test_solver_always_converges(sigma, Nx, Nt):
 ## Measurement & Tracking
 
 ### Daily
-- Run tests locally: `pytest tests/ --cov=mfg_pde`
-- Check coverage delta: `pytest --cov=mfg_pde --cov-report=term`
+- Run tests locally: `pytest tests/ --cov=mfgarchon`
+- Check coverage delta: `pytest --cov=mfgarchon --cov-report=term`
 
 ### Weekly
 - Review Codecov dashboard

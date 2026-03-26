@@ -23,14 +23,14 @@ sys.path.insert(0, str(project_root))
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
-from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig  # noqa: E402
-from mfg_pde.core.mfg_problem import BoundaryConditions, MFGProblem  # noqa: E402
+from mfgarchon.alg.neural.dgm.base_dgm import DGMConfig  # noqa: E402
+from mfgarchon.core.mfg_problem import BoundaryConditions, MFGProblem  # noqa: E402
 
 # Check if PyTorch is available
 try:
     import torch
 
-    from mfg_pde.alg.neural.dgm.mfg_dgm_solver import MFGDGMSolver
+    from mfgarchon.alg.neural.dgm.mfg_dgm_solver import MFGDGMSolver
 
     TORCH_AVAILABLE = True
     print("✓ PyTorch available - DGM solver ready")

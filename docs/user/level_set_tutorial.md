@@ -1,7 +1,7 @@
 # Tutorial: Level Set Methods for Free Boundary Problems
 
 **Tutorial Level**: Advanced
-**Prerequisites**: PDEs, basic numerical methods, MFG_PDE geometry module
+**Prerequisites**: PDEs, basic numerical methods, MFGarchon geometry module
 **Estimated Time**: 60-90 minutes
 **Version**: 1.0 (2026-01-18)
 
@@ -145,8 +145,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import erf
 
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.level_set import TimeDependentDomain
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.level_set import TimeDependentDomain
 
 # Parameters
 x_min, x_max = 0.0, 1.0
@@ -453,8 +453,8 @@ Level set: ∂φ/∂t + V_n|∇φ| = 0
 ### Step 1: Set Up 2D Grid and Circular Interface
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.level_set import TimeDependentDomain
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.level_set import TimeDependentDomain
 
 # 2D Parameters
 x_min, x_max = 0.0, 1.0
@@ -946,7 +946,7 @@ if n % 10 == 0:
 **Upgrade**: WENO5 (5th-order Weighted Essentially Non-Oscillatory).
 
 ```python
-# MFG_PDE currently uses Godunov (Issue #592)
+# MFGarchon currently uses Godunov (Issue #592)
 # Future: WENO5 for reduced diffusion
 
 # Expected improvement:
@@ -963,7 +963,7 @@ if n % 10 == 0:
 
 ```python
 # Compute mean curvature κ = ∇·(∇φ/|∇φ|)
-from mfg_pde.geometry.level_set import compute_curvature
+from mfgarchon.geometry.level_set import compute_curvature
 
 kappa = compute_curvature(phi, grid)
 
@@ -1036,5 +1036,5 @@ vapor_region = (phi_water_vapor > 0)
 ---
 
 **Last Updated**: 2026-01-18
-**Author**: MFG_PDE Documentation Team
+**Author**: MFGarchon Documentation Team
 **Related Issues**: #592 (Level Set Methods), #594 (Documentation)

@@ -407,10 +407,10 @@ When implementing a new PDE solver or BC type, verify:
 
 ## 8. Reference Implementation
 
-See `mfg_pde/geometry/boundary/applicator_base.py`:
+See `mfgarchon/geometry/boundary/applicator_base.py`:
 
 ```python
-from mfg_pde.geometry.boundary.applicator_base import (
+from mfgarchon.geometry.boundary.applicator_base import (
     LinearConstraint,
     calculator_to_constraint,
     DirichletCalculator,

@@ -1,13 +1,13 @@
 # Capacity-Constrained Mean Field Games: Example Pattern
 
-**Author**: MFG_PDE Development Team
+**Author**: MFGarchon Development Team
 **Date**: 2025-11-12
 **Status**: ✅ IMPLEMENTED AS EXAMPLE
 **Location**: `examples/advanced/capacity_constrained_mfg/`
 **Related Issues**: Capacity-constrained MFG, maze navigation, congestion modeling
 
-**Architecture Note**: This implementation demonstrates how to extend the MFG_PDE framework
-with application-specific features. It resides in `examples/` rather than `mfg_pde/core/`
+**Architecture Note**: This implementation demonstrates how to extend the MFGarchon framework
+with application-specific features. It resides in `examples/` rather than `mfgarchon/core/`
 to keep the core framework minimal. Users can adapt this pattern for their own
 capacity-constrained or congestion-aware MFG applications.
 
@@ -115,7 +115,7 @@ This couples the density back into the FP equation, creating a **nonlinear drift
 **Why Examples, Not Core?**
 
 The capacity-constrained MFG infrastructure resides in `examples/advanced/` rather than
-`mfg_pde/core/` to maintain a **minimal framework design**:
+`mfgarchon/core/` to maintain a **minimal framework design**:
 
 **Rationale**:
 1. **Framework minimalism**: Core provides base classes (`MFGProblem`, protocols, solvers)
@@ -400,7 +400,7 @@ def get_congestion_ratio(self, density, positions):
 ### Basic Usage
 
 ```python
-from mfg_pde.geometry.graph import PerfectMazeGenerator, MazeConfig
+from mfgarchon.geometry.graph import PerfectMazeGenerator, MazeConfig
 from examples.advanced.capacity_constrained_mfg import (
     CapacityField,
     CapacityConstrainedMFGProblem,
@@ -432,7 +432,7 @@ problem = CapacityConstrainedMFGProblem(
 )
 
 # 4. Solve with any MFG solver
-from mfg_pde.solvers import solve_mfg
+from mfgarchon.solvers import solve_mfg
 result = solve_mfg(problem, method="semi_lagrangian")
 ```
 
@@ -589,7 +589,7 @@ The capacity-constrained framework is compatible with:
 **Total Implementation**: ~1,879 lines (example pattern complete)
 
 **Note**: This is an example implementation residing in `examples/` to demonstrate
-how users can extend the MFG_PDE framework with application-specific features.
+how users can extend the MFGarchon framework with application-specific features.
 Users can adapt this pattern for their own capacity-constrained problems.
 
 ---

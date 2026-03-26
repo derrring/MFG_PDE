@@ -53,7 +53,7 @@ where Σ can be:
 
 ```python
 # In _solve_timestep_full_nd() or equivalent
-from mfg_pde.utils.numerical.tensor_operators import divergence_tensor_diffusion_nd
+from mfgarchon.utils.numerical.tensor_operators import divergence_tensor_diffusion_nd
 
 # Get diffusion tensor at this timestep
 if tensor_diffusion_field is not None:
@@ -151,7 +151,7 @@ for n in range(Nt-1, -1, -1):  # Backward in time
 
 **Modification**:
 ```python
-from mfg_pde.utils.numerical.tensor_operators import divergence_tensor_diffusion_nd
+from mfgarchon.utils.numerical.tensor_operators import divergence_tensor_diffusion_nd
 
 for n in range(Nt-1, -1, -1):
     H_values = _evaluate_hamiltonian_nd(U, M, gradients, sigma)

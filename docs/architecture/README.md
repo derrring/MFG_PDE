@@ -1,4 +1,4 @@
-# MFG_PDE Architecture Documentation
+# MFGarchon Architecture Documentation
 
 **Last Updated**: 2025-12-14
 **Current Version**: v0.16.8
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This directory contains architecture documentation for MFG_PDE. Historical audit documents and completed phase plans have been archived to `docs/archive/historical/`.
+This directory contains architecture documentation for MFGarchon. Historical audit documents and completed phase plans have been archived to `docs/archive/historical/`.
 
 ## Current Architecture
 
@@ -16,13 +16,13 @@ This directory contains architecture documentation for MFG_PDE. Historical audit
 
 | Component | Location | Description |
 |-----------|----------|-------------|
-| **Problem Classes** | `mfg_pde/core/` | MFGProblem, MFGComponents |
-| **HJB Solvers** | `mfg_pde/alg/numerical/hjb_solvers/` | FDM, GFDM, Semi-Lagrangian, WENO |
-| **FP Solvers** | `mfg_pde/alg/numerical/fp_solvers/` | FDM, Particle methods |
-| **Coupling** | `mfg_pde/alg/numerical/coupling/` | Fixed-point iteration |
-| **Geometry** | `mfg_pde/geometry/` | Grids, meshes, boundaries |
-| **Configuration** | `mfg_pde/config/` | Pydantic + OmegaConf dual system |
-| **Convergence** | `mfg_pde/utils/convergence/` | Protocol-based checkers |
+| **Problem Classes** | `mfgarchon/core/` | MFGProblem, MFGComponents |
+| **HJB Solvers** | `mfgarchon/alg/numerical/hjb_solvers/` | FDM, GFDM, Semi-Lagrangian, WENO |
+| **FP Solvers** | `mfgarchon/alg/numerical/fp_solvers/` | FDM, Particle methods |
+| **Coupling** | `mfgarchon/alg/numerical/coupling/` | Fixed-point iteration |
+| **Geometry** | `mfgarchon/geometry/` | Grids, meshes, boundaries |
+| **Configuration** | `mfgarchon/config/` | Pydantic + OmegaConf dual system |
+| **Convergence** | `mfgarchon/utils/convergence/` | Protocol-based checkers |
 
 ### Solver Ecosystem
 
@@ -45,7 +45,7 @@ This directory contains architecture documentation for MFG_PDE. Historical audit
 ### Recent Architecture Changes (v0.16.x)
 
 1. **Convergence Module Consolidation** (v0.16.0)
-   - Moved from `mfg_pde/alg/numerical/convergence/` to `mfg_pde/utils/convergence/`
+   - Moved from `mfgarchon/alg/numerical/convergence/` to `mfgarchon/utils/convergence/`
    - Protocol-based checkers: `HJBConvergenceChecker`, `FPConvergenceChecker`, `MFGConvergenceChecker`
    - `ConvergenceConfig` for unified configuration
 
@@ -69,7 +69,7 @@ This directory contains architecture documentation for MFG_PDE. Historical audit
 | `GEOMETRY_AND_TOPOLOGY.md` | Geometry trait system design |
 | `FACTORY_PATTERN_DESIGN.md` | Three-concern factory architecture |
 | `proposals/DIMENSION_AGNOSTIC_FDM_ANALYSIS.md` | FDM extension analysis |
-| `proposals/MFG_PDE_ARCHITECTURE_REFACTOR_PROPOSAL.md` | Long-term refactoring plan |
+| `proposals/MFGarchon_ARCHITECTURE_REFACTOR_PROPOSAL.md` | Long-term refactoring plan |
 | `proposals/EXTERNAL_PDE_INTEROPERABILITY_PROPOSAL.md` | **[DEFERRED]** External PDE framework interop & problem extension (post-v1.0) |
 
 ## Archived Documents
@@ -91,7 +91,7 @@ Active discussion on coupling module architecture:
 - Module structure (`solvers/mfg/` vs `alg/numerical/coupling/`)
 - Convergence integration
 
-See: https://github.com/derrring/MFG_PDE/issues/476
+See: https://github.com/derrring/mfgarchon/issues/476
 
 ---
 
@@ -108,7 +108,7 @@ See: https://github.com/derrring/MFG_PDE/issues/476
 ### Configuration Pattern
 
 ```python
-from mfg_pde.utils.convergence import ConvergenceConfig
+from mfgarchon.utils.convergence import ConvergenceConfig
 
 config = ConvergenceConfig(
     tolerance=1e-6,

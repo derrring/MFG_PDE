@@ -75,7 +75,7 @@ class FPParticleSolver(BaseFPSolver):
 FPParticleSolver implements a **fail-fast** BC resolution hierarchy:
 
 ```python
-# Location: mfg_pde/alg/numerical/fp_solvers/fp_particle.py:163-188
+# Location: mfgarchon/alg/numerical/fp_solvers/fp_particle.py:163-188
 
 # 1. Explicit parameter (highest priority)
 if boundary_conditions is not None:
@@ -385,8 +385,8 @@ After refactoring to composition:
 ## Example: Complete Solver Structure
 
 ```python
-from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
-from mfg_pde.geometry.boundary.applicator_particle import ParticleApplicator
+from mfgarchon.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+from mfgarchon.geometry.boundary.applicator_particle import ParticleApplicator
 
 class FPParticleSolver(BaseFPSolver):
     """
@@ -449,4 +449,4 @@ class FPParticleSolver(BaseFPSolver):
 
 **Template Status**: ✅ Production-ready composition pattern
 **Tested**: See `tests/unit/test_fp_particle.py`
-**Reference Implementation**: `mfg_pde/alg/numerical/fp_solvers/fp_particle.py`
+**Reference Implementation**: `mfgarchon/alg/numerical/fp_solvers/fp_particle.py`

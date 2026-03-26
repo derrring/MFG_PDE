@@ -1,6 +1,6 @@
 # Dimension-Agnostic MFG Solver Landscape
 
-**Purpose**: Comprehensive overview of dimension-agnostic approaches for Mean Field Games in MFG_PDE
+**Purpose**: Comprehensive overview of dimension-agnostic approaches for Mean Field Games in MFGarchon
 **Date**: 2025-10-31
 **Status**: Living document
 
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary dimensions (2D, 3D, 4D, ...). This document categorizes approaches by:
+MFGarchon supports multiple strategies for solving Mean Field Games in arbitrary dimensions (2D, 3D, 4D, ...). This document categorizes approaches by:
 - **Grid structure**: Regular vs irregular vs dynamic
 - **Dimension handling**: Direct vs dimensional splitting
 - **Implementation status**: Production vs research
@@ -28,11 +28,11 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
 
 1. FIXED REGULAR GRID
    ├─ FDM 1D (production)
-   │  └─ Files: mfg_pde/alg/numerical/{hjb,fp}_solvers/base_{hjb,fp}.py
+   │  └─ Files: mfgarchon/alg/numerical/{hjb,fp}_solvers/base_{hjb,fp}.py
    │  └─ Direct finite difference on uniform 1D grid
    │
    ├─ FDM nD via Full Coupled System (production - FP only)
-   │  └─ Files: mfg_pde/alg/numerical/fp_solvers/fp_fdm.py (_solve_fp_nd_full_system)
+   │  └─ Files: mfgarchon/alg/numerical/fp_solvers/fp_fdm.py (_solve_fp_nd_full_system)
    │  └─ Direct sparse linear system for nD FP equation
    │  └─ No splitting error, ~1-2% mass error
    │
@@ -43,7 +43,7 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
 
 2. FIXED IRREGULAR GRID (Meshfree Eulerian)
    ├─ GFDM (production)
-   │  └─ Files: mfg_pde/alg/numerical/hjb_solvers/gfdm_*.py
+   │  └─ Files: mfgarchon/alg/numerical/hjb_solvers/gfdm_*.py
    │  └─ Generalized Finite Difference on scattered points
    │
    └─ Adaptive Eulerian (research, external)
@@ -65,7 +65,7 @@ MFG_PDE supports multiple strategies for solving Mean Field Games in arbitrary d
 **Status**: ✅ Production-ready for FP equation, ❌ HJB not yet implemented
 **Approach**: Direct sparse linear system for full nD discretization
 **Key Idea**: Solve coupled advection-diffusion system without operator splitting
-**Implementation**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py:383` (`_solve_fp_nd_full_system`)
+**Implementation**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py:383` (`_solve_fp_nd_full_system`)
 
 ### Algorithm
 
@@ -173,8 +173,8 @@ For each timestep backward from T to 0:
 ### Implementation Details
 
 **Files**:
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid.py`: Core splitting algorithm
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`: Dimension detection and routing
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm_multid.py`: Core splitting algorithm
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`: Dimension detection and routing
 
 **Key Functions**:
 ```python
@@ -233,7 +233,7 @@ where S_i(Δt) is the solution operator for dimension i.
 
 **Approach**: Meshfree method using local polynomial approximation
 **Key Idea**: Compute derivatives from scattered neighbors via least squares
-**Implementation**: Production-ready in MFG_PDE
+**Implementation**: Production-ready in MFGarchon
 
 ### Algorithm
 
@@ -272,13 +272,13 @@ For each point x_i and each timestep:
 ### Implementation Details
 
 **Files**:
-- `mfg_pde/alg/numerical/hjb_solvers/gfdm_hjb.py`: HJB solver
-- `mfg_pde/alg/numerical/fp_solvers/gfdm_fp.py`: FP solver
-- `mfg_pde/geometry/meshfree/`: Geometry utilities
+- `mfgarchon/alg/numerical/hjb_solvers/gfdm_hjb.py`: HJB solver
+- `mfgarchon/alg/numerical/fp_solvers/gfdm_fp.py`: FP solver
+- `mfgarchon/geometry/meshfree/`: Geometry utilities
 
 **Key Configuration**:
 ```python
-from mfg_pde.alg.numerical.hjb_solvers import GFDMHJBSolver
+from mfgarchon.alg.numerical.hjb_solvers import GFDMHJBSolver
 
 solver = GFDMHJBSolver(
     problem,
@@ -393,7 +393,7 @@ where w_j are weights (e.g., inverse distance).
 
 **Location**: `mfg-research/algorithms/particle_collocation/`
 
-> **Note**: For basic meshfree density evolution in MFG_PDE, use `FPGFDMSolver`.
+> **Note**: For basic meshfree density evolution in MFGarchon, use `FPGFDMSolver`.
 > This section describes more advanced fully-Lagrangian research methods.
 
 ### Algorithm
@@ -502,7 +502,7 @@ Different MFG problems have different needs:
 
 ### Principle 3: Production + Research
 
-- **Production code** (MFG_PDE): Stable, tested, documented
+- **Production code** (MFGarchon): Stable, tested, documented
 - **Research code** (mfg-research): Experimental, flexible, evolving
 - Clear separation prevents research instability from affecting production
 
@@ -515,10 +515,10 @@ Different MFG problems have different needs:
 **Problem Classes**:
 ```python
 # 1D
-from mfg_pde.core.mfg_problem import MFGProblem
+from mfgarchon.core.mfg_problem import MFGProblem
 
 # nD (arbitrary dimension)
-from mfg_pde.core.highdim_mfg_problem import (
+from mfgarchon.core.highdim_mfg_problem import (
     HighDimMFGProblem,      # Abstract base
     GridBasedMFGProblem,    # Concrete: regular grids
 )
@@ -526,7 +526,7 @@ from mfg_pde.core.highdim_mfg_problem import (
 
 **Geometry**:
 ```python
-from mfg_pde.geometry.grids.tensor_grid import TensorProductGrid
+from mfgarchon.geometry.grids.tensor_grid import TensorProductGrid
 
 # Works for any dimension
 grid_2d = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx_points=[50, 50])
@@ -631,7 +631,7 @@ START: Need to solve nD MFG problem
 
 ## Related Documentation
 
-### MFG_PDE
+### MFGarchon
 
 - `docs/architecture/README.md`: Overall architecture
 - `docs/architecture/proposals/DIMENSION_AGNOSTIC_FDM_ANALYSIS.md`: FDM splitting design
@@ -666,4 +666,4 @@ START: Need to solve nD MFG problem
 
 **Document Version**: 1.0
 **Last Updated**: 2025-10-31
-**Maintainer**: MFG_PDE Development Team
+**Maintainer**: MFGarchon Development Team

@@ -105,7 +105,7 @@ Lu_ghost[0] = -1948.99 = 2 × (-974.49) ❌
 
 ### Ghost Cell Implementation
 
-File: `mfg_pde/geometry/operators/laplacian.py:228-231`
+File: `mfgarchon/geometry/operators/laplacian.py:228-231`
 
 ```python
 dense = np.zeros((N, N))
@@ -123,7 +123,7 @@ The `tensor_calculus.laplacian()` function applies ghost cells during `_matvec()
 
 ### Coefficient Folding Implementation
 
-File: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:229-248`
+File: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:229-248`
 
 ```python
 # When ghost cell is accessed (neighbor_col < 0 or >= N):

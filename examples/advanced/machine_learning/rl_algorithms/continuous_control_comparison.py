@@ -16,7 +16,7 @@ Results show:
 - TD3: More stable than DDPG, reduced variance
 - SAC: Best exploration and robustness via entropy
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -36,9 +36,9 @@ if TYPE_CHECKING:
 package_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(package_root))
 
-from mfg_pde.alg.reinforcement.algorithms.mean_field_ddpg import MeanFieldDDPG  # noqa: E402
-from mfg_pde.alg.reinforcement.algorithms.mean_field_sac import MeanFieldSAC  # noqa: E402
-from mfg_pde.alg.reinforcement.algorithms.mean_field_td3 import MeanFieldTD3  # noqa: E402
+from mfgarchon.alg.reinforcement.algorithms.mean_field_ddpg import MeanFieldDDPG  # noqa: E402
+from mfgarchon.alg.reinforcement.algorithms.mean_field_sac import MeanFieldSAC  # noqa: E402
+from mfgarchon.alg.reinforcement.algorithms.mean_field_td3 import MeanFieldTD3  # noqa: E402
 
 # Check for PyTorch
 TORCH_AVAILABLE = find_spec("torch") is not None

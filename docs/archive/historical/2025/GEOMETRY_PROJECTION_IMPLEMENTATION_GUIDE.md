@@ -6,7 +6,7 @@
 
 ## Overview
 
-This guide covers the implementation details of the geometry projection system for MFG_PDE developers who need to:
+This guide covers the implementation details of the geometry projection system for MFGarchon developers who need to:
 - Understand the codebase structure
 - Add new projection methods
 - Extend to new geometry types
@@ -17,7 +17,7 @@ This guide covers the implementation details of the geometry projection system f
 
 ### Core Files
 
-#### `mfg_pde/geometry/projection.py` (500+ lines)
+#### `mfgarchon/geometry/projection.py` (500+ lines)
 Main implementation file containing:
 
 ```
@@ -44,7 +44,7 @@ projection.py
     └── validate_projection_shapes(source_shape, target_shape)
 ```
 
-#### `mfg_pde/core/mfg_problem.py` (modified lines 89-120, 685-689)
+#### `mfgarchon/core/mfg_problem.py` (modified lines 89-120, 685-689)
 Integration points:
 
 ```python
@@ -67,7 +67,7 @@ def __init__(self, ...):
         self.fp_geometry = getattr(self, "geometry", None)
 ```
 
-#### `mfg_pde/geometry/__init__.py` (lines 98-99, 139-140)
+#### `mfgarchon/geometry/__init__.py` (lines 98-99, 139-140)
 Public API exports:
 
 ```python
@@ -83,7 +83,7 @@ __all__ = [
 
 ### Modified Interpolators
 
-#### `mfg_pde/geometry/simple_grid_1d.py` (lines 110-140)
+#### `mfgarchon/geometry/simple_grid_1d.py` (lines 110-140)
 ```python
 def get_interpolator(self) -> Callable:
     """Return vectorized linear interpolator."""
@@ -102,7 +102,7 @@ def get_interpolator(self) -> Callable:
     return interpolate_1d
 ```
 
-#### `mfg_pde/geometry/simple_grid.py` (lines 85-110, 240-265)
+#### `mfgarchon/geometry/simple_grid.py` (lines 85-110, 240-265)
 ```python
 # SimpleGrid2D
 def get_interpolator(self) -> Callable:
@@ -171,7 +171,7 @@ test_geometry_projection.py
 
 **Step 1: Implement projection function**
 ```python
-# In mfg_pde/geometry/projection.py
+# In mfgarchon/geometry/projection.py
 
 def _spectral_projection(self, values_on_source_grid: NDArray) -> NDArray:
     """
@@ -235,7 +235,7 @@ def project_hjb_to_fp(self, U_on_hjb_geometry: NDArray, backend=None) -> NDArray
 
 def test_spectral_projection_accuracy():
     """Test spectral projection on smooth periodic function."""
-    from mfg_pde.geometry import SimpleGrid1D, BoundaryConditions
+    from mfgarchon.geometry import SimpleGrid1D, BoundaryConditions
 
     bc = BoundaryConditions(type="periodic")
     coarse = SimpleGrid1D(xmin=0.0, xmax=2*np.pi, boundary_conditions=bc)
@@ -266,7 +266,7 @@ def test_spectral_projection_accuracy():
 **Example: Unstructured Mesh → Grid**
 
 ```python
-from mfg_pde.geometry import ProjectionRegistry
+from mfgarchon.geometry import ProjectionRegistry
 from scipy.interpolate import LinearNDInterpolator
 
 @ProjectionRegistry.register(UnstructuredMesh, SimpleGrid2D, "hjb_to_fp")
@@ -332,7 +332,7 @@ def grid_to_mesh_projection(grid_geo, mesh_geo, grid_values, **kwargs):
 
 **Usage:**
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 mesh = UnstructuredMesh(...)  # Your mesh geometry
 grid = SimpleGrid2D(...)      # Regular grid
@@ -355,7 +355,7 @@ assert projector.fp_to_hjb_method == "registry"
 **Scenario:** Register projection for all CartesianGrid types (SimpleGrid1D/2D/3D).
 
 ```python
-from mfg_pde.geometry.base_geometry import CartesianGrid
+from mfgarchon.geometry.base_geometry import CartesianGrid
 
 @ProjectionRegistry.register(CartesianGrid, CartesianGrid, "hjb_to_fp")
 def conservative_grid_projection(source_grid, target_grid, values, **kwargs):
@@ -394,7 +394,7 @@ def solve_mfg_with_dual_geometries(problem: MFGProblem, max_iterations: int = 10
     Returns:
         (U_hjb, M_fp): Solution on respective geometries
     """
-    from mfg_pde.solvers import create_hjb_solver, create_fp_solver
+    from mfgarchon.solvers import create_hjb_solver, create_fp_solver
 
     # Initialize on FP geometry
     M_fp = problem.m0  # Assumed on fp_geometry
@@ -614,7 +614,7 @@ print("Expected shape:", problem.fp_geometry.get_grid_shape())
 ### Debugging KDE Bandwidth
 
 ```python
-from mfg_pde.geometry.projection import estimate_bandwidth
+from mfgarchon.geometry.projection import estimate_bandwidth
 
 particles = fp_geometry.get_spatial_grid()
 
@@ -782,8 +782,8 @@ def test_projection_shapes():
 ## References
 
 ### Implementation Files
-- `mfg_pde/geometry/projection.py`: Core implementation
-- `mfg_pde/core/mfg_problem.py`: Integration
+- `mfgarchon/geometry/projection.py`: Core implementation
+- `mfgarchon/core/mfg_problem.py`: Integration
 - `tests/unit/geometry/test_geometry_projection.py`: Test suite
 
 ### Related Documentation

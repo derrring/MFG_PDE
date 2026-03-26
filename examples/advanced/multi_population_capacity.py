@@ -45,7 +45,7 @@ from __future__ import annotations
 import numpy as np
 from matplotlib import pyplot as plt
 
-from mfg_pde.extensions import MultiPopulationMFGProblem
+from mfgarchon.extensions import MultiPopulationMFGProblem
 
 
 class CapacityConstrainedMFGProblem(MultiPopulationMFGProblem):

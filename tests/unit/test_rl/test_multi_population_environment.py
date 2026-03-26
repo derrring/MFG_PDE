@@ -3,7 +3,7 @@ Unit tests for multi-population environment.
 
 Tests MultiPopulationMFGEnvironment base class and SimpleMultiPopulationEnv.
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -23,11 +23,11 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.reinforcement.multi_population.base_environment import (
+    from mfgarchon.alg.reinforcement.multi_population.base_environment import (
         SimpleMultiPopulationEnv,
     )
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.reinforcement.multi_population.population_config import (
+    from mfgarchon.alg.reinforcement.multi_population.population_config import (
         PopulationConfig,
     )
 

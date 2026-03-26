@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'mfg_pde/**/*.py'
+      - 'mfgarchon/**/*.py'
       - 'benchmarks/**/*.py'
       - '.github/workflows/performance_regression.yml'
 

@@ -335,9 +335,9 @@ Time-parallel extends ConditionsMixin methods but doesn't change the conditions/
 
 ## Related Documentation
 
-- `mfg_pde/core/mfg_components.py` - ConditionsMixin implementation
-- `mfg_pde/geometry/boundary/constraint_protocol.py` - ConstraintProtocol definition
-- `mfg_pde/geometry/boundary/constraints.py` - ObstacleConstraint implementation
+- `mfgarchon/core/mfg_components.py` - ConditionsMixin implementation
+- `mfgarchon/geometry/boundary/constraint_protocol.py` - ConstraintProtocol definition
+- `mfgarchon/geometry/boundary/constraints.py` - ObstacleConstraint implementation
 - Issue #591: Constraint Protocol & Obstacle Problems
 - Issue #589: Boundary Condition Tier System
 - Issue proposal: MFGProblem Mixin Documentation (this effort)

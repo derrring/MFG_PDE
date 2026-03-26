@@ -101,8 +101,8 @@ M = solver.solve_fp_system(M_initial=m0, drift_field=alpha_custom)
 ### Phase 1: Documentation Updates ✅
 
 **Files**:
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
-- `mfg_pde/alg/numerical/fp_solvers/fp_gfdm.py`
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
+- `mfgarchon/alg/numerical/fp_solvers/fp_gfdm.py`
 
 **Changes**:
 1. Updated `drift_field` docstring to clarify it accepts drift velocity α* for ANY Hamiltonian
@@ -245,6 +245,6 @@ M_fp = fp_solver.solve_fp_system(
 
 ## References
 
-- Issue #573: https://github.com/derrring/MFG_PDE/issues/573
+- Issue #573: https://github.com/derrring/mfgarchon/issues/573
 - TOWEL_ON_BEACH_1D_PROTOCOL.md: § "HJB-FP Coupling: General Design Principle"
 - exp14a validation bug (mentioned in #573)

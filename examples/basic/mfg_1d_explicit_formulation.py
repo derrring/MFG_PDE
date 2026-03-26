@@ -21,18 +21,18 @@ Components Demonstrated:
 Issue #670, #671: These functions were previously silent defaults.
 Now they must be explicitly provided for clarity and correctness.
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Created: 2026-01-26
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.core import MFGComponents
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon import MFGProblem
+from mfgarchon.core import MFGComponents
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 # =============================================================================
 # Step 1: Define Problem Domain

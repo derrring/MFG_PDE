@@ -120,7 +120,7 @@ FPFDMSolver.solve_fp_system()
 
 ## Code Changes Made
 
-### Fixed FP Solver API (mfg_pde/alg/numerical/fp_solvers/fp_fdm.py)
+### Fixed FP Solver API (mfgarchon/alg/numerical/fp_solvers/fp_fdm.py)
 
 **Before**:
 ```python
@@ -147,7 +147,7 @@ def __init__(self, problem, boundary_conditions=None):
         if problem.components.boundary_conditions is not None:
             self.boundary_conditions = problem.components.boundary_conditions
         else:
-            from mfg_pde.geometry.boundary import no_flux_bc
+            from mfgarchon.geometry.boundary import no_flux_bc
             self.boundary_conditions = no_flux_bc(dimension=self.dimension)
     ...
 ```
@@ -161,8 +161,8 @@ def __init__(self, problem, boundary_conditions=None):
 ### Creating Problems with Mixed BC
 
 ```python
-from mfg_pde import MFGProblem, MFGComponents
-from mfg_pde.geometry.boundary import BCSegment, BCType, BoundaryConditions
+from mfgarchon import MFGProblem, MFGComponents
+from mfgarchon.geometry.boundary import BCSegment, BCType, BoundaryConditions
 
 # Define boundary segments
 exit = BCSegment(
@@ -196,7 +196,7 @@ problem = MFGProblem(
 )
 
 # Solvers automatically use mixed BC
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
 solver = FPFDMSolver(problem)  # ✓ Retrieves mixed BC automatically
 ```
 
@@ -247,7 +247,7 @@ solver = FPFDMSolver(problem)  # ✓ Retrieves mixed BC automatically
 
 ## Files Modified
 
-1. `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py` - Updated BC API
+1. `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py` - Updated BC API
 2. `test_mixed_bc_solver.py` - Integration test (created)
 3. `docs/development/BC_SOLVER_INTEGRATION_STATUS.md` - This document
 

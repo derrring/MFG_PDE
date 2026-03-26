@@ -32,7 +32,7 @@ References:
       interaction PDEs with two distinct species." DCDS-B, 18(6).
 
 Created: 2025-11-12
-Author: MFG_PDE Team
+Author: MFGarchon Team
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ class CapacityField:
         bounds: Bounding box ((x_min, x_max), (y_min, y_max))
 
     Examples:
-        >>> from mfg_pde.geometry.graph import create_perfect_maze
+        >>> from mfgarchon.geometry.graph import create_perfect_maze
         >>> maze = create_perfect_maze(rows=20, cols=20, wall_thickness=3)
         >>> maze_array = maze.to_numpy_array(wall_thickness=3)
         >>> capacity = CapacityField.from_maze_geometry(maze_array, wall_thickness=3)
@@ -377,7 +377,7 @@ def visualize_capacity_field(
         figsize: Figure size (width, height)
 
     Examples:
-        >>> from mfg_pde.geometry.graph import create_perfect_maze
+        >>> from mfgarchon.geometry.graph import create_perfect_maze
         >>> maze = create_perfect_maze(rows=20, cols=20, wall_thickness=3)
         >>> maze_array = maze.to_numpy_array(wall_thickness=3)
         >>> capacity = CapacityField.from_maze_geometry(maze_array)

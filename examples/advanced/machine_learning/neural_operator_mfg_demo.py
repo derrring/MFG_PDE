@@ -40,7 +40,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Standard imports for MFG problems
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger  # noqa: E402
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger  # noqa: E402
 
 # Check if PyTorch is available
 try:
@@ -53,7 +53,7 @@ except ImportError:
     print("⚠️  PyTorch not available - Neural operator demo requires PyTorch")
 
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.neural.operator_learning import (
+    from mfgarchon.alg.neural.operator_learning import (
         DeepONet,
         DeepONetConfig,
         FNOConfig,

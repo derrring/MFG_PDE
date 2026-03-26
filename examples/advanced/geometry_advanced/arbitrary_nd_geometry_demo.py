@@ -1,5 +1,5 @@
 """
-Arbitrary nD Geometry Demonstration for MFG_PDE
+Arbitrary nD Geometry Demonstration for MFGarchon
 
 This example showcases the power of dimension-agnostic implicit geometry:
 1. Same code works in 2D, 4D, 10D, 100D
@@ -11,7 +11,7 @@ This example showcases the power of dimension-agnostic implicit geometry:
 Key Innovation: Implicit domains via signed distance functions (SDFs) enable
 true arbitrary nD support without mesh generation.
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: November 2025
 """
 
@@ -21,7 +21,7 @@ import time
 
 import numpy as np
 
-from mfg_pde.geometry.implicit import DifferenceDomain, Hyperrectangle, Hypersphere
+from mfgarchon.geometry.implicit import DifferenceDomain, Hyperrectangle, Hypersphere
 
 print("=" * 70)
 print("ARBITRARY nD GEOMETRY DEMONSTRATION")
@@ -330,9 +330,9 @@ print("  → Demonstrate on high-D MFG problems (d ≥ 4)")
 print()
 
 print("Related Files:")
-print("  - mfg_pde/geometry/implicit/: Implicit domain implementation")
-print("  - mfg_pde/geometry/mazes/: Maze generation (newly migrated!)")
-print("  - mfg_pde/alg/numerical/fp_solvers/fp_particle.py: Particle-collocation")
+print("  - mfgarchon/geometry/implicit/: Implicit domain implementation")
+print("  - mfgarchon/geometry/mazes/: Maze generation (newly migrated!)")
+print("  - mfgarchon/alg/numerical/fp_solvers/fp_particle.py: Particle-collocation")
 print()
 
 print("=" * 70)

@@ -25,7 +25,7 @@ A = sparse.eye(N) - dt * D * L_sparse
 
 ### Method Added
 
-**File**: `mfg_pde/geometry/operators/laplacian.py`
+**File**: `mfgarchon/geometry/operators/laplacian.py`
 
 ```python
 def as_scipy_sparse(self) -> sparse.spmatrix:
@@ -141,8 +141,8 @@ assert np.allclose(Lu_operator, Lu_matrix)  # ✓ Agree to machine precision
 ## Usage Example
 
 ```python
-from mfg_pde.geometry.operators.laplacian import LaplacianOperator
-from mfg_pde.geometry.boundary import neumann_bc
+from mfgarchon.geometry.operators.laplacian import LaplacianOperator
+from mfgarchon.geometry.boundary import neumann_bc
 import scipy.sparse as sp
 import numpy as np
 
@@ -197,7 +197,7 @@ u_solution = spsolve(A, rhs)
 
 **1 file modified**:
 
-1. **`mfg_pde/geometry/operators/laplacian.py`**
+1. **`mfgarchon/geometry/operators/laplacian.py`**
    - Added `as_scipy_sparse()` method (lines 186-233, 48 lines)
    - Comprehensive docstring with examples
    - Import scipy.sparse inside method (lazy import)
@@ -295,4 +295,4 @@ Milestone 1 successfully added sparse matrix export to LaplacianOperator:
 **Contributors**: Claude Opus 4.5
 **Date**: 2026-01-17
 **Related Issues**: #597 (FP Operator Refactoring), #596 (Phase 2 Trait Integration)
-**Related Files**: `mfg_pde/geometry/operators/laplacian.py`
+**Related Files**: `mfgarchon/geometry/operators/laplacian.py`

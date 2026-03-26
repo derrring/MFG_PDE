@@ -100,9 +100,9 @@ fc07ae3 - test(issue-580): Convergence validation (8 tests)
 ### Created (12 files)
 
 **Core Implementation**:
-- `mfg_pde/types/schemes.py` (235 lines)
-- `mfg_pde/utils/adjoint_validation.py` (323 lines)
-- `mfg_pde/factory/scheme_factory.py` (289 lines)
+- `mfgarchon/types/schemes.py` (235 lines)
+- `mfgarchon/utils/adjoint_validation.py` (323 lines)
+- `mfgarchon/factory/scheme_factory.py` (289 lines)
 
 **Tests**:
 - `tests/unit/alg/test_scheme_family.py` (276 lines)
@@ -122,12 +122,12 @@ fc07ae3 - test(issue-580): Convergence validation (8 tests)
 ### Modified (14 files)
 
 **Solver Traits** (12 files):
-- `mfg_pde/alg/numerical/hjb_solvers/*.py` (6 files) - Added `_scheme_family` traits
-- `mfg_pde/alg/numerical/fp_solvers/*.py` (6 files) - Added `_scheme_family` traits
+- `mfgarchon/alg/numerical/hjb_solvers/*.py` (6 files) - Added `_scheme_family` traits
+- `mfgarchon/alg/numerical/fp_solvers/*.py` (6 files) - Added `_scheme_family` traits
 
 **Core API** (2 files):
-- `mfg_pde/core/mfg_problem.py` - solve() refactored (+134 lines)
-- `mfg_pde/factory/solver_factory.py` - Deprecation warning (+25 lines)
+- `mfgarchon/core/mfg_problem.py` - solve() refactored (+134 lines)
+- `mfgarchon/factory/solver_factory.py` - Deprecation warning (+25 lines)
 
 ---
 

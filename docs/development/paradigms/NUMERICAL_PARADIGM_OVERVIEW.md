@@ -1,6 +1,6 @@
 # Numerical Methods Paradigm for Mean Field Games
 
-**Status**: ✅ ACTIVE (Core paradigm for MFG_PDE)
+**Status**: ✅ ACTIVE (Core paradigm for MFGarchon)
 **Last Updated**: 2025-10-11
 **Related Issues**: #105
 
@@ -42,7 +42,7 @@ The **Numerical Methods Paradigm** provides the foundational computational frame
 ### Package Structure
 
 ```
-mfg_pde/alg/numerical/
+mfgarchon/alg/numerical/
 ├── hjb_solvers/              # Hamilton-Jacobi-Bellman equation solvers
 │   ├── base_hjb.py           # Abstract base class for HJB solvers
 │   ├── hjb_fdm.py            # Finite difference method (Newton iteration)
@@ -118,7 +118,7 @@ $$
 
 ### Base Class: `BaseHJBSolver`
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py:23`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py:23`
 
 **Interface**:
 ```python
@@ -135,7 +135,7 @@ class BaseHJBSolver(BaseNumericalSolver):
 
 ### 1. Finite Difference Method (FDM)
 
-**Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:15`
+**Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:15`
 
 **Method**: Newton iteration with upwind finite differences
 
@@ -156,8 +156,8 @@ $$
 
 **Usage Example**:
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
 problem = ExampleMFGProblem(T=1.0, Nx=100, Nt=100)
 hjb_solver = HJBFDMSolver(
@@ -181,7 +181,7 @@ U_solution = hjb_solver.solve_hjb_system(
 
 ### 2. WENO (Weighted Essentially Non-Oscillatory)
 
-**Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py`
+**Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py`
 
 **Method**: High-order accurate scheme for discontinuous solutions
 
@@ -199,7 +199,7 @@ U_solution = hjb_solver.solve_hjb_system(
 
 ### 3. Semi-Lagrangian Method
 
-**Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
+**Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
 
 **Method**: Lax-Friedrichs scheme with characteristic tracing
 
@@ -222,7 +222,7 @@ $$
 
 ### 4. Generalized FDM (GFDM)
 
-**Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+**Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 
 **Method**: Meshless FDM for irregular domains
 
@@ -240,7 +240,7 @@ $$
 
 ### 5. Network HJB Solver
 
-**Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_network.py`
+**Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_network.py`
 
 **Method**: Graph-based HJB on networks
 
@@ -277,7 +277,7 @@ with initial condition $m(0, x) = m_0(x)$ and mass conservation $\int_\Omega m(t
 
 ### Base Class: `BaseFPSolver`
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/base_fp.py:12`
+**File**: `mfgarchon/alg/numerical/fp_solvers/base_fp.py:12`
 
 **Interface**:
 ```python
@@ -293,7 +293,7 @@ class BaseFPSolver(ABC):
 
 ### 1. Finite Difference Method (FDM)
 
-**Implementation**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py:15`
+**Implementation**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py:15`
 
 **Method**: Implicit Euler with upwind advection
 
@@ -312,8 +312,8 @@ where drift $v_i^n = -\nabla H_p(\nabla u_i^n, x_i, m_i^n)$.
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.geometry import BoundaryConditions
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.geometry import BoundaryConditions
 
 problem = ExampleMFGProblem(T=1.0, Nx=100, Nt=100)
 fp_solver = FPFDMSolver(
@@ -334,7 +334,7 @@ M_solution = fp_solver.solve_fp_system(
 
 ### 2. Particle Method
 
-**Implementation**: `mfg_pde/alg/numerical/fp_solvers/fp_particle.py`
+**Implementation**: `mfgarchon/alg/numerical/fp_solvers/fp_particle.py`
 
 **Method**: Monte Carlo SDE simulation
 
@@ -359,7 +359,7 @@ M_solution = fp_solver.solve_fp_system(
 
 ### 3. Network FP Solver
 
-**Implementation**: `mfg_pde/alg/numerical/fp_solvers/fp_network.py`
+**Implementation**: `mfgarchon/alg/numerical/fp_solvers/fp_network.py`
 
 **Method**: Graph-based FP on networks
 
@@ -383,7 +383,7 @@ where $\Phi$ is the flux function determined by optimal control.
 
 ### Base Class: `BaseMFGSolver`
 
-**File**: `mfg_pde/alg/numerical/mfg_solvers/base_mfg.py:15`
+**File**: `mfgarchon/alg/numerical/mfg_solvers/base_mfg.py:15`
 
 **Interface**:
 ```python
@@ -400,7 +400,7 @@ class BaseMFGSolver(ABC):
 
 ### 1. Fixed-Point Iterator (Picard Iteration)
 
-**Implementation**: `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py:34`
+**Implementation**: `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py:34`
 
 **Algorithm**:
 ```
@@ -423,11 +423,11 @@ Until convergence or max_iterations
 
 **Usage Example**:
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
-from mfg_pde.config import create_fast_config
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.config import create_fast_config
 
 # Create problem and solvers
 problem = ExampleMFGProblem(T=1.0, Nx=100, Nt=100)
@@ -466,7 +466,7 @@ print(f"Final error: {result.error_u:.2e}")
 
 ### 2. Hybrid FP-Particle HJB-FDM
 
-**Implementation**: `mfg_pde/alg/numerical/mfg_solvers/hybrid_fp_particle_hjb_fdm.py`
+**Implementation**: `mfgarchon/alg/numerical/mfg_solvers/hybrid_fp_particle_hjb_fdm.py`
 
 **Method**: Particle-based FP + grid-based HJB
 
@@ -493,7 +493,7 @@ print(f"Final error: {result.error_u:.2e}")
 
 ### 3. Particle Collocation Solver
 
-**Implementation**: `mfg_pde/alg/numerical/mfg_solvers/particle_collocation_solver.py`
+**Implementation**: `mfgarchon/alg/numerical/mfg_solvers/particle_collocation_solver.py`
 
 **Method**: Particle representation + Quadratic Programming (QP) collocation
 
@@ -512,7 +512,7 @@ print(f"Final error: {result.error_u:.2e}")
 
 ### 4. Network MFG Solver
 
-**Implementation**: `mfg_pde/alg/numerical/mfg_solvers/network_mfg_solver.py`
+**Implementation**: `mfgarchon/alg/numerical/mfg_solvers/network_mfg_solver.py`
 
 **Method**: Complete graph-based MFG solver
 
@@ -527,7 +527,7 @@ print(f"Final error: {result.error_u:.2e}")
 
 ### 5. Common Noise Solver
 
-**Implementation**: `mfg_pde/alg/numerical/stochastic/common_noise_solver.py`
+**Implementation**: `mfgarchon/alg/numerical/stochastic/common_noise_solver.py`
 
 **Method**: Stochastic MFG with common noise
 
@@ -605,8 +605,8 @@ START
 #### Example 1: Standard 1D MFG
 
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.factory import create_fast_solver
 
 # Create problem
 problem = ExampleMFGProblem(T=1.0, Nx=100, Nt=100, sigma=0.5)
@@ -618,18 +618,18 @@ solver = create_fast_solver(problem)
 result = solver.solve()
 
 # Visualize
-from mfg_pde.visualization import plot_mfg_solution
+from mfgarchon.visualization import plot_mfg_solution
 plot_mfg_solution(result, problem)
 ```
 
 #### Example 2: 2D Traffic Flow with WENO
 
 ```python
-from mfg_pde import TrafficFlowProblem2D
-from mfg_pde.alg.numerical.hjb_solvers import HJBWENOSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
-from mfg_pde.config import create_balanced_config
+from mfgarchon import TrafficFlowProblem2D
+from mfgarchon.alg.numerical.hjb_solvers import HJBWENOSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.config import create_balanced_config
 
 # Create 2D problem
 problem = TrafficFlowProblem2D(T=1.0, Nx=50, Ny=50, Nt=100)
@@ -648,8 +648,8 @@ result = mfg_solver.solve()
 
 ```python
 import networkx as nx
-from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
-from mfg_pde.alg.numerical.mfg_solvers import NetworkMFGSolver
+from mfgarchon.core.network_mfg_problem import NetworkMFGProblem
+from mfgarchon.alg.numerical.mfg_solvers import NetworkMFGSolver
 
 # Create network
 G = nx.erdos_renyi_graph(100, 0.1)
@@ -663,7 +663,7 @@ result = solver.solve(max_iterations=100, tolerance=1e-6)
 #### Example 4: Particle-Based Method for d=5
 
 ```python
-from mfg_pde.alg.numerical.mfg_solvers import HybridFPParticleHJBFDM
+from mfgarchon.alg.numerical.mfg_solvers import HybridFPParticleHJBFDM
 
 # Create high-dimensional problem
 problem = HighDimMFGProblem(dim=5, T=1.0)
@@ -687,7 +687,7 @@ result = solver.solve(max_iterations=50, tolerance=1e-5)
 Accelerates fixed-point convergence via extrapolation:
 
 ```python
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
 
 solver = FixedPointIterator(
     problem, hjb_solver, fp_solver,
@@ -704,7 +704,7 @@ solver = FixedPointIterator(
 Choose computational backend for performance:
 
 ```python
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
 # NumPy (default, CPU)
 solver = HJBFDMSolver(problem, backend="numpy")
@@ -724,7 +724,7 @@ solver = HJBFDMSolver(problem, backend="jax")
 ### Boundary Conditions
 
 ```python
-from mfg_pde.geometry import BoundaryConditions
+from mfgarchon.geometry import BoundaryConditions
 
 # Periodic (default for many problems)
 bc = BoundaryConditions(type="periodic")
@@ -759,7 +759,7 @@ $$
 \frac{\sigma^2 \Delta t}{\Delta x^2} \leq \frac{1}{2}
 $$
 
-(Implicit FDM used in MFG_PDE removes this restriction.)
+(Implicit FDM used in MFGarchon removes this restriction.)
 
 ### Mass Conservation
 
@@ -798,5 +798,5 @@ print(f"Max mass conservation error: {mass_error.max():.2e}")
 
 ---
 
-**Maintained by**: MFG_PDE Development Team
+**Maintained by**: MFGarchon Development Team
 **Last Updated**: 2025-10-11

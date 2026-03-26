@@ -16,8 +16,8 @@ Issue #625: Boundary adjoint consistency investigation
 import numpy as np
 import scipy.sparse as sparse
 
-from mfg_pde.geometry.boundary import neumann_bc
-from mfg_pde.operators.differential.laplacian import LaplacianOperator
+from mfgarchon.geometry.boundary import neumann_bc
+from mfgarchon.operators.differential.laplacian import LaplacianOperator
 
 
 def build_hjb_advection_matrix_1d(

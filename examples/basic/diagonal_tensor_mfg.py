@@ -24,13 +24,13 @@ Diffusion enters as an anisotropic Laplacian (1/2) sum_i sigma_i^2 d^2u/dx_i^2.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfg_pde.core import MFGComponents
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary.conditions import no_flux_bc
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfgarchon.core import MFGComponents
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
 print("=" * 70)
 print("MFG with Diagonal Anisotropic Tensor Diffusion")

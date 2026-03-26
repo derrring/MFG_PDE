@@ -16,8 +16,8 @@ Expected results:
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_basic_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_basic_solver
 
 
 class CrowdMotion2D(MFGProblem):
@@ -139,7 +139,7 @@ def test_pure_diffusion():
     )
 
     # Solve with isolated FP solver (no MFG coupling)
-    from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+    from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 
     fp_solver = FPFDMSolver(problem)
 

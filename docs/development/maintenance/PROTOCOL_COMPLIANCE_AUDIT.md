@@ -254,7 +254,7 @@ def spatial_grid(self) -> np.ndarray | list[np.ndarray]:
 
 ## Next Concrete Steps
 
-1. Add properties to `mfg_pde/core/mfg_problem.py`
+1. Add properties to `mfgarchon/core/mfg_problem.py`
 2. Create `tests/unit/test_core/test_protocol_compliance.py`
 3. Run tests
 4. Update plan with actual completion

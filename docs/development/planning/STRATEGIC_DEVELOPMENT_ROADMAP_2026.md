@@ -1,4 +1,4 @@
-# MFG_PDE Strategic Development Roadmap 2026
+# MFGarchon Strategic Development Roadmap 2026
 
 **Document Version**: 1.9
 **Created**: September 28, 2025
@@ -9,16 +9,16 @@
 
 ## 🎯 **Executive Summary**
 
-This strategic roadmap charts MFG_PDE's evolution from a comprehensive research platform to the definitive computational framework for Mean Field Games. Building on substantial 2025 achievements, the roadmap focuses on high-dimensional neural methods, multi-dimensional problems, and production-scale capabilities.
+This strategic roadmap charts MFGarchon's evolution from a comprehensive research platform to the definitive computational framework for Mean Field Games. Building on substantial 2025 achievements, the roadmap focuses on high-dimensional neural methods, multi-dimensional problems, and production-scale capabilities.
 
 ### **Vision Statement**
-Transform MFG_PDE into the premier platform for Mean Field Games computation, enabling breakthrough research in high-dimensional problems while providing production-ready solutions for industrial applications.
+Transform MFGarchon into the premier platform for Mean Field Games computation, enabling breakthrough research in high-dimensional problems while providing production-ready solutions for industrial applications.
 
 ## ✅ **Foundation Achieved (2025)**
 
 ### **🎉 BREAKTHROUGH: Multi-Paradigm Architecture COMPLETED (October 2025)**
 
-**MAJOR MILESTONE**: Complete **4-paradigm computational framework** operational as of October 1, 2025 via [PR #55](https://github.com/derrring/MFG_PDE/pull/55) - **3 MONTHS AHEAD OF SCHEDULE**.
+**MAJOR MILESTONE**: Complete **4-paradigm computational framework** operational as of October 1, 2025 via [PR #55](https://github.com/derrring/mfgarchon/pull/55) - **3 MONTHS AHEAD OF SCHEDULE**.
 
 #### **✅ All Four Paradigms Operational**
 - **✅ Numerical Paradigm**: 3D WENO with dimensional splitting
@@ -28,7 +28,7 @@ Transform MFG_PDE into the premier platform for Mean Field Games computation, en
 
 #### **✅ Production-Ready Infrastructure**
 - **✅ Factory Integration**: All paradigms accessible through unified API
-- **✅ Dependency Management**: Optional paradigm installation (`pip install mfg_pde[paradigm]`)
+- **✅ Dependency Management**: Optional paradigm installation (`pip install mfgarchon[paradigm]`)
 - **✅ Backward Compatibility**: Comprehensive compatibility layer maintained
 - **✅ Configuration System**: Paradigm-specific configs with Hydra integration
 
@@ -42,8 +42,8 @@ Transform MFG_PDE into the premier platform for Mean Field Games computation, en
 ### **Current Capabilities** ✅ **EXPANDED**
 ```python
 # ✅ Two-Level Research-Grade API (v1.4+)
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_fast_solver, create_accurate_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_fast_solver, create_accurate_solver
 
 # Level 1: Factory API for researchers (95% of users)
 class CrowdDynamicsProblem(MFGProblem):
@@ -61,21 +61,21 @@ solver = create_fast_solver(problem, solver_type="fixed_point")
 result = solver.solve()
 
 # ✅ Multi-Paradigm Access (All 4 paradigms operational)
-from mfg_pde.alg.numerical import HJBWenoSolver  # 3D WENO ready
-from mfg_pde.alg.optimization import VariationalMFGSolver, WassersteinMFGSolver
-from mfg_pde.alg.neural import nn  # PyTorch architectures
-from mfg_pde.alg.reinforcement import BaseMFRLSolver  # MFRL foundation
+from mfgarchon.alg.numerical import HJBWenoSolver  # 3D WENO ready
+from mfgarchon.alg.optimization import VariationalMFGSolver, WassersteinMFGSolver
+from mfgarchon.alg.neural import nn  # PyTorch architectures
+from mfgarchon.alg.reinforcement import BaseMFRLSolver  # MFRL foundation
 
 # ✅ Advanced Maze Environments for RL
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     RecursiveDivisionGenerator,
     CellularAutomataGenerator,
     add_loops,
 )
 
 # Level 2: Core API for developers (5% of users)
-from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver
-from mfg_pde.alg.numerical.fp_solvers import BaseFPSolver
+from mfgarchon.alg.numerical.hjb_solvers import BaseHJBSolver
+from mfgarchon.alg.numerical.fp_solvers import BaseFPSolver
 # Extend framework with custom solvers...
 ```
 
@@ -100,7 +100,7 @@ from mfg_pde.alg.numerical.fp_solvers import BaseFPSolver
 
 ```python
 # Target DGM Interface
-from mfg_pde.neural import MFGDGMSolver
+from mfgarchon.neural import MFGDGMSolver
 
 dgm_solver = MFGDGMSolver(
     problem=high_dim_problem,  # d=15 dimensional
@@ -136,7 +136,7 @@ result = dgm_solver.solve()  # Handles d > 10 efficiently
 
 ### **🎉 PHASE 1 COMPLETION SUMMARY (October 2025)**
 
-**BREAKTHROUGH ACHIEVEMENT**: Complete neural paradigm implementation finished **6 months ahead of Q1 2026 timeline**, establishing MFG_PDE as the first comprehensive neural framework for high-dimensional Mean Field Games.
+**BREAKTHROUGH ACHIEVEMENT**: Complete neural paradigm implementation finished **6 months ahead of Q1 2026 timeline**, establishing MFGarchon as the first comprehensive neural framework for high-dimensional Mean Field Games.
 
 **✅ Technical Achievements**:
 - **Complete DGM Framework**: High-dimensional solver (d > 10) with variance reduction
@@ -148,9 +148,9 @@ result = dgm_solver.solve()  # Handles d > 10 efficiently
 **✅ Delivered Capabilities**:
 ```python
 # ✅ IMPLEMENTED: High-dimensional MFG solving
-from mfg_pde.neural.dgm import MFGDGMSolver
-from mfg_pde.neural.pinn import MFGPINNSolver
-from mfg_pde.utils.mcmc import HamiltonianMonteCarlo
+from mfgarchon.neural.dgm import MFGDGMSolver
+from mfgarchon.neural.pinn import MFGPINNSolver
+from mfgarchon.utils.mcmc import HamiltonianMonteCarlo
 
 # Solve 15-dimensional MFG problem
 solver = MFGDGMSolver(problem, sampling="quasi_monte_carlo", variance_reduction=True)
@@ -161,7 +161,7 @@ pinn_solver = MFGPINNSolver(problem, bayesian=True)
 posterior_samples = pinn_solver.sample_posterior(mcmc_samples=1000)  # ✅ WORKS NOW
 ```
 
-**✅ Research Impact**: MFG_PDE now enables breakthrough research in dimensions previously computationally intractable (d > 10).
+**✅ Research Impact**: MFGarchon now enables breakthrough research in dimensions previously computationally intractable (d > 10).
 
 **✅ Next Priority**: Neural Operator Methods (FNO/DeepONet) for rapid parameter studies.
 
@@ -170,7 +170,7 @@ posterior_samples = pinn_solver.sample_posterior(mcmc_samples=1000)  # ✅ WORKS
 
 ```python
 # ✅ IMPLEMENTED: Neural operator interface
-from mfg_pde.alg.neural.operator_learning import (
+from mfgarchon.alg.neural.operator_learning import (
     FourierNeuralOperator,
     DeepONet,
     FNOConfig,
@@ -209,7 +209,7 @@ solution = fno.evaluate(new_parameters)  # 100x faster than solving
 - Comprehensive documentation and working examples
 
 **✅ Research Impact**:
-MFG_PDE is now the first comprehensive framework enabling:
+MFGarchon is now the first comprehensive framework enabling:
 - High-dimensional MFG problems (d > 10) via DGM
 - Uncertainty quantification via Bayesian PINNs
 - Real-time control via neural operators
@@ -227,7 +227,7 @@ MFG_PDE is now the first comprehensive framework enabling:
 
 ```python
 # ✅ IMPLEMENTED: 3D WENO Solver Available
-from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBWenoSolver
 
 # 3D Problem Support Now Available
 solver_3d = HJBWenoSolver(
@@ -239,7 +239,7 @@ solver_3d = HJBWenoSolver(
 result_3d = solver_3d.solve()  # ✅ 3D WENO solving operational
 
 # Target Multi-Dimensional Interface (Future)
-from mfg_pde.multidim import MFGProblem2D, TrafficFlow2D
+from mfgarchon.multidim import MFGProblem2D, TrafficFlow2D
 
 # 2D Traffic Flow Problem
 traffic_2d = TrafficFlow2D(
@@ -295,10 +295,10 @@ result_2d = solver_2d.solve()  # GPU-accelerated 2D solving
 
 ```python
 # Before Phase 3: Multiple specialized classes
-from mfg_pde.problems import LQMFGProblem, NetworkMFGProblem, VariationalMFGProblem
+from mfgarchon.problems import LQMFGProblem, NetworkMFGProblem, VariationalMFGProblem
 
 # After Phase 3: Unified MFGProblem
-from mfg_pde import MFGProblem, MFGComponents
+from mfgarchon import MFGProblem, MFGComponents
 
 # Single class supports ALL problem types
 problem = MFGProblem(
@@ -324,7 +324,7 @@ problem = MFGProblem(
 
 ```python
 # Three flexible usage patterns
-from mfg_pde.config import presets, ConfigBuilder, load_solver_config
+from mfgarchon.config import presets, ConfigBuilder, load_solver_config
 
 # Pattern 1: Presets (simplest)
 config = presets.accurate_solver()
@@ -358,7 +358,7 @@ result = solve_mfg(problem, config=config)
 
 ```python
 # Unified problem factories
-from mfg_pde.factory import (
+from mfgarchon.factory import (
     create_mfg_problem,      # Main factory for any type
     create_lq_problem,       # Linear-Quadratic
     create_standard_problem, # Standard HJB-FP
@@ -366,7 +366,7 @@ from mfg_pde.factory import (
 )
 
 # Updated solve_mfg() interface
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 
 # Three ways to specify configuration
 result = solve_mfg(problem, config=presets.accurate_solver())  # Preset object
@@ -398,7 +398,7 @@ result = solve_mfg(problem, config=config_builder.build())     # Builder
 
 ### **🎉 PHASE 3 COMPLETION SUMMARY (November 2025)**
 
-**BREAKTHROUGH ACHIEVEMENT**: Most significant architectural improvement in MFG_PDE history, delivering production-ready unified system that resolves 48 documented issues and enables all future development.
+**BREAKTHROUGH ACHIEVEMENT**: Most significant architectural improvement in MFGarchon history, delivering production-ready unified system that resolves 48 documented issues and enables all future development.
 
 **✅ Results Delivered**:
 - **Issues closed**: #200 (Architecture Refactoring), #221 (Config), #223 (Factory Integration)
@@ -480,7 +480,7 @@ Functional Derivatives: Efficient computation of δU/δm
 
 **Status**: Foundation complete (functional calculus implemented), solver deferred to future phase
 
-**✅ Research Impact**: MFG_PDE is now the **first comprehensive open-source framework** for stochastic MFG with common noise, enabling:
+**✅ Research Impact**: MFGarchon is now the **first comprehensive open-source framework** for stochastic MFG with common noise, enabling:
 - Financial applications with market volatility
 - Epidemic modeling with random events
 - Robotics with shared sensor noise
@@ -493,7 +493,7 @@ Functional Derivatives: Efficient computation of δU/δm
 
 ### **🎉 PHASE 2 COMPLETION SUMMARY (October 2025)**
 
-**BREAKTHROUGH ACHIEVEMENT**: Complete multi-dimensional framework and stochastic MFG extensions finished **6 months ahead of Q2-Q3 2026 timeline**, establishing MFG_PDE as the first comprehensive framework for both spatial multi-dimensional and stochastic Mean Field Games.
+**BREAKTHROUGH ACHIEVEMENT**: Complete multi-dimensional framework and stochastic MFG extensions finished **6 months ahead of Q2-Q3 2026 timeline**, establishing MFGarchon as the first comprehensive framework for both spatial multi-dimensional and stochastic Mean Field Games.
 
 #### **✅ Phase 2.1: Multi-Dimensional Framework**
 **Delivered Components**:
@@ -532,7 +532,7 @@ Functional Derivatives: Efficient computation of δU/δm
 - Complete documentation and examples
 - 3 diverse application domains demonstrated
 
-**Research Significance**: MFG_PDE is now the **only comprehensive open-source framework** supporting:
+**Research Significance**: MFGarchon is now the **only comprehensive open-source framework** supporting:
 1. High-dimensional problems (d > 10) via neural methods
 2. Multi-dimensional spatial domains (2D/3D) with memory efficiency
 3. Stochastic MFG with common noise and uncertainty quantification
@@ -576,7 +576,7 @@ Functional Derivatives: Efficient computation of δU/δm
 
 ```python
 # Target Advanced Visualization Interface
-from mfg_pde.visualization import Interactive3DPlotter, Animation3D, WebApp
+from mfgarchon.visualization import Interactive3DPlotter, Animation3D, WebApp
 
 # Interactive 3D exploration
 plotter = Interactive3DPlotter()
@@ -614,7 +614,7 @@ webapp.deploy_solver(problem_config, cloud_backend="aws")
 # Current: Basic Wiener processes (OU, GBM, CIR, Jump Diffusion)
 # Needed: Advanced Itô integration and calculus
 
-from mfg_pde.stochastic.calculus import (
+from mfgarchon.stochastic.calculus import (
     ItoIntegral,           # ∫f(t,ω) dW_t with multiple integration schemes
     QuadraticVariation,    # [W,W]_t = t computation and verification
     ItoFormula,            # d[f(W_t)] = f'(W_t)dW_t + (1/2)f''(W_t)dt
@@ -636,7 +636,7 @@ df = MultidimensionalIto.apply(f, drift, diffusion, dimension=2)
 
 **Stratonovich Calculus**:
 ```python
-from mfg_pde.stochastic.calculus import (
+from mfgarchon.stochastic.calculus import (
     StratonovichIntegral,    # ∫f(t,ω) ∘ dW_t (symmetric integration)
     ItoToStratonovich,       # Convert Itô SDE to Stratonovich form
     StratonovichToIto,       # Convert back for numerical solving
@@ -653,7 +653,7 @@ strat_sde = ItoToStratonovich.convert(ito_sde)  # Physical interpretation
 
 **Malliavin Calculus** (Advanced):
 ```python
-from mfg_pde.stochastic.malliavin import (
+from mfgarchon.stochastic.malliavin import (
     MalliavinDerivative,     # D_t F (derivative operator in Wiener space)
     DivergenceOperator,      # δ(u) (adjoint of D, Skorohod integral)
     OrnsteinUhlenbeckSemigroup,  # P_t (regularity analysis)
@@ -666,7 +666,7 @@ D_F = MalliavinDerivative(F, wiener_process)
 sensitivity = D_F.compute(t=0.5)  # ∂F/∂W_0.5
 
 # Application: Greeks in finance (delta, gamma via Malliavin)
-from mfg_pde.stochastic.malliavin import FinancialGreeks
+from mfgarchon.stochastic.malliavin import FinancialGreeks
 greeks = FinancialGreeks(option_payoff, diffusion_model)
 delta = greeks.delta()  # Computed via Malliavin calculus
 gamma = greeks.gamma()  # Second-order sensitivity
@@ -676,7 +676,7 @@ gamma = greeks.gamma()  # Second-order sensitivity
 
 **Lévy Process Library**:
 ```python
-from mfg_pde.stochastic.levy import (
+from mfgarchon.stochastic.levy import (
     PoissonProcess,          # N_t (standard Poisson)
     CompoundPoissonProcess,  # ∑_{i=1}^{N_t} Y_i (random jump sizes)
     LevyProcess,             # General Lévy process (Lévy-Khintchine)
@@ -716,7 +716,7 @@ alpha_stable = AlphaStableProcess(
 
 **Jump-Diffusion MFG**:
 ```python
-from mfg_pde.stochastic.jump_diffusion import (
+from mfgarchon.stochastic.jump_diffusion import (
     JumpDiffusionMFG,
     PIDEHJBSolver,           # Partial Integro-Differential Equation solver
     JumpFokkerPlanckSolver,  # FP with jump terms
@@ -747,7 +747,7 @@ result = pide_solver.solve()
 
 **Advanced SDE Solvers**:
 ```python
-from mfg_pde.stochastic.sde import (
+from mfgarchon.stochastic.sde import (
     EulerMaruyamaMethod,     # Basic O(Δt^{1/2}) strong convergence
     MilsteinMethod,          # O(Δt) strong convergence (uses Lévy area)
     StochasticRungeKutta,    # High-order explicit methods
@@ -786,7 +786,7 @@ expectation, variance = mlmc.estimate(functional=lambda x: x[-1]**2)
 
 **SPDE Numerical Methods**:
 ```python
-from mfg_pde.stochastic.spde import (
+from mfgarchon.stochastic.spde import (
     StochasticHeatEquation,   # ∂u/∂t = Δu + noise
     WalshDalangSPDE,          # General parabolic SPDE framework
     FiniteElementSPDE,        # Spatial discretization with FEM
@@ -824,7 +824,7 @@ solution = fem_solver.solve(T=1.0, dt=0.01)
 
 **Rough Paths for Low-Regularity SDEs**:
 ```python
-from mfg_pde.stochastic.rough_paths import (
+from mfgarchon.stochastic.rough_paths import (
     RoughPath,               # (X, 𝕏) iterated integrals
     LevyArea,                # 𝕏_{s,t} = ∫_s^t (W_r - W_s) ⊗ dW_r
     SignatureMethod,         # Truncated signature for controlled paths
@@ -854,7 +854,7 @@ features = signature.compute(trajectory)  # (1, X, 𝕏, ...)
 
 **Measure Theory & Weak Convergence**:
 ```python
-from mfg_pde.stochastic.measures import (
+from mfgarchon.stochastic.measures import (
     WassersteinDistance,     # W_p(μ, ν) in probability measure space
     WeakConvergence,         # μ_n → μ verification
     TightnessCheck,          # Prohorov's theorem conditions
@@ -876,7 +876,7 @@ is_convergent = convergence_test.verify(tolerance=1e-3)
 
 **Stochastic Filtering & Estimation**:
 ```python
-from mfg_pde.stochastic.filtering import (
+from mfgarchon.stochastic.filtering import (
     KalmanBucy,              # Linear Gaussian filtering
     ExtendedKalmanFilter,    # Nonlinear filtering (EKF)
     ParticleFilter,          # Sequential Monte Carlo
@@ -913,26 +913,26 @@ filtered_trajectory = particle_filter.run(observations)
 - Itô integral with Euler-Maruyama, Milstein
 - Stratonovich integral and conversion utilities
 - Multidimensional Itô formula
-- **Deliverable**: `mfg_pde/stochastic/calculus/` module
+- **Deliverable**: `mfgarchon/stochastic/calculus/` module
 
 **Week 3-4: Lévy Processes & Jump Diffusions**
 - Compound Poisson, Alpha-stable processes
 - Lévy measure simulation and truncation
 - PIDE solver for jump-diffusion HJB
-- **Deliverable**: `mfg_pde/stochastic/levy/` module
+- **Deliverable**: `mfgarchon/stochastic/levy/` module
 
 **Week 5-6: Advanced SDE/SPDE Solvers**
 - Milstein, Stochastic Runge-Kutta
 - Adaptive step size control
 - Multilevel Monte Carlo
 - Spectral Galerkin for SPDE
-- **Deliverable**: `mfg_pde/stochastic/sde/` and `mfg_pde/stochastic/spde/` modules
+- **Deliverable**: `mfgarchon/stochastic/sde/` and `mfgarchon/stochastic/spde/` modules
 
 **Week 7-8 (Optional): Rough Paths & Advanced Topics**
 - Rough path construction (Lévy area)
 - Signature methods
 - Stochastic filtering (Kalman-Bucy, particle filter)
-- **Deliverable**: `mfg_pde/stochastic/rough_paths/` module
+- **Deliverable**: `mfgarchon/stochastic/rough_paths/` module
 
 **Dependencies**:
 - ✅ **Current**: Basic Wiener processes (OU, GBM, CIR, Jump Diffusion) - 531 lines
@@ -974,7 +974,7 @@ N-Player Game System:
 **Implementation**:
 ```python
 # Target N-Player Game Interface
-from mfg_pde.stochastic.n_player import NPlayerStochasticGame, NashEquilibriumSolver
+from mfgarchon.stochastic.n_player import NPlayerStochasticGame, NashEquilibriumSolver
 
 # Define N-player game
 game = NPlayerStochasticGame(
@@ -1021,7 +1021,7 @@ Convergence Rate Theorem:
 **Implementation**:
 ```python
 # Target Convergence Analysis Interface
-from mfg_pde.stochastic.convergence import ConvergenceAnalyzer
+from mfgarchon.stochastic.convergence import ConvergenceAnalyzer
 
 # Create analyzer for convergence study
 analyzer = ConvergenceAnalyzer(
@@ -1069,7 +1069,7 @@ Regime-Switching MFG:
 **Implementation**:
 ```python
 # Target Regime-Switching Interface
-from mfg_pde.stochastic.regime_switching import RegimeSwitchingMFG, MarkovChain
+from mfgarchon.stochastic.regime_switching import RegimeSwitchingMFG, MarkovChain
 
 # Define regime transition matrix
 Q = np.array([[-0.1, 0.1], [0.2, -0.2]])  # 2-regime system
@@ -1134,10 +1134,10 @@ MFGC Formulation:
 **Publication Strategy**:
 - **Method Paper**: "Non-Asymptotic Convergence Rates for Stochastic Mean Field Games"
 - **Application Paper**: "Regime-Switching MFG for Financial Market Modeling"
-- **Software Paper**: "MFG_PDE: A Comprehensive Framework for Stochastic Differential Games"
+- **Software Paper**: "MFGarchon: A Comprehensive Framework for Stochastic Differential Games"
 
 **Competitive Advantage**:
-MFG_PDE will be the **only open-source framework** providing:
+MFGarchon will be the **only open-source framework** providing:
 - Complete spectrum: N-player games → MFG limit with convergence analysis
 - Stochastic extensions: Common noise, regime-switching, control interaction
 - Quantitative validation: Non-asymptotic convergence rate estimation
@@ -1150,11 +1150,11 @@ MFG_PDE will be the **only open-source framework** providing:
 
 #### **4.6.1 Metrics & Divergence Utilities** (2 weeks)
 
-**Location**: `mfg_pde/utils/metrics.py` (new utility module)
+**Location**: `mfgarchon/utils/metrics.py` (new utility module)
 
 **Deliverables**:
 ```python
-from mfg_pde.utils.metrics import (
+from mfgarchon.utils.metrics import (
     kullback_leibler,      # KL divergence computation
     fisher_rao_distance,   # Fisher-Rao metric
     alpha_divergence,      # α-divergences
@@ -1173,14 +1173,14 @@ fr_dist = fisher_rao_distance(mu, nu)
 
 #### **4.6.2 Optimization Enhancements** (3 weeks)
 
-**Location**: `mfg_pde/alg/optimization/` (enhance existing module)
+**Location**: `mfgarchon/alg/optimization/` (enhance existing module)
 
 **New Solvers**:
 
 1. **JKO Scheme** (`optimal_transport/jko_solver.py`):
    ```python
    # Jordan-Kinderlehrer-Otto scheme (Wasserstein implicit Euler)
-   from mfg_pde.alg.optimization import JKOSolver
+   from mfgarchon.alg.optimization import JKOSolver
 
    jko_solver = JKOSolver(
        energy_functional=energy,
@@ -1193,7 +1193,7 @@ fr_dist = fisher_rao_distance(mu, nu)
 2. **KL-Regularized MFG** (`variational_solvers/kl_regularized_solver.py`):
    ```python
    # Entropic regularization for robust MFG
-   from mfg_pde.alg.optimization import KLRegularizedMFGSolver
+   from mfgarchon.alg.optimization import KLRegularizedMFGSolver
 
    solver = KLRegularizedMFGSolver(
        problem=mfg_problem,
@@ -1206,7 +1206,7 @@ fr_dist = fisher_rao_distance(mu, nu)
 3. **Schrödinger Bridge** (`optimal_transport/schrodinger_bridge.py`):
    ```python
    # Entropic optimal transport with path constraints
-   from mfg_pde.alg.optimization import SchrodingerBridgeSolver
+   from mfgarchon.alg.optimization import SchrodingerBridgeSolver
 
    bridge_solver = SchrodingerBridgeSolver(
        initial_measure=mu0,
@@ -1220,18 +1220,18 @@ fr_dist = fisher_rao_distance(mu, nu)
 
 #### **4.6.3 Natural Gradient Methods** (3 weeks)
 
-**Core Utilities**: `mfg_pde/utils/optimization/natural_gradient.py`
+**Core Utilities**: `mfgarchon/utils/optimization/natural_gradient.py`
 ```python
-from mfg_pde.utils.optimization import (
+from mfgarchon.utils.optimization import (
     fisher_information_matrix,    # Compute Fisher information
     natural_gradient,              # Precondition gradient by F^{-1}
     mirror_descent_step,           # Bregman-based update
 )
 ```
 
-**Neural Methods**: `mfg_pde/alg/neural/optimizers/natural_gradient.py`
+**Neural Methods**: `mfgarchon/alg/neural/optimizers/natural_gradient.py`
 ```python
-from mfg_pde.alg.neural.optimizers import NaturalGradientPINN
+from mfgarchon.alg.neural.optimizers import NaturalGradientPINN
 
 # Natural gradient for physics-informed neural networks
 pinn_optimizer = NaturalGradientPINN(
@@ -1241,9 +1241,9 @@ pinn_optimizer = NaturalGradientPINN(
 )
 ```
 
-**Reinforcement Learning**: `mfg_pde/alg/reinforcement/natural_policy_gradient.py`
+**Reinforcement Learning**: `mfgarchon/alg/reinforcement/natural_policy_gradient.py`
 ```python
-from mfg_pde.alg.reinforcement import NaturalPolicyGradient
+from mfgarchon.alg.reinforcement import NaturalPolicyGradient
 
 # Natural policy gradient for mean field RL
 npg = NaturalPolicyGradient(
@@ -1275,7 +1275,7 @@ result = npg.update(trajectories)
 **Publication Strategy**:
 - **Method Paper**: "Information-Geometric Optimization for Mean Field Games"
 - **Application Paper**: "Robust Mean Field Control via KL Regularization"
-- **Software Paper**: "MFG_PDE: Information Geometry Implementation"
+- **Software Paper**: "MFGarchon: Information Geometry Implementation"
 
 **Novel Contributions**:
 - First open-source IG-enhanced MFG framework
@@ -1340,7 +1340,7 @@ result = npg.update(trajectories)
 ### **Research Impact**
 | Metric | Current | 2026 Target | 2027 Target |
 |--------|---------|-------------|-------------|
-| **Publications** | Research ready | 10+ papers using MFG_PDE | 25+ citations |
+| **Publications** | Research ready | 10+ papers using MFGarchon | 25+ citations |
 | **GitHub Stars** | ~100 | 1000+ | 2000+ |
 | **Contributors** | Core team | 50+ contributors | 200+ community |
 | **Industrial Users** | Academic | 10+ companies | 25+ production users |
@@ -1500,4 +1500,4 @@ result = npg.update(trajectories)
 - **Quarterly**: Strategic direction and resource allocation
 - **Annually**: Vision refinement and long-term planning
 
-This roadmap represents MFG_PDE's evolution from a comprehensive research platform to the definitive computational framework for Mean Field Games, positioned to enable breakthrough discoveries while serving production applications across academia and industry.
+This roadmap represents MFGarchon's evolution from a comprehensive research platform to the definitive computational framework for Mean Field Games, positioned to enable breakthrough discoveries while serving production applications across academia and industry.

@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.visualization.network_plots import NetworkMFGVisualizer
+from mfgarchon.visualization.network_plots import NetworkMFGVisualizer
 
 # ============================================================================
 # Test: Initialization and Setup

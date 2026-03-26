@@ -6,7 +6,7 @@ This is the primary API tier for research users who need to define custom Hamilt
 
 ## Architecture Overview
 
-The MFG_PDE core objects follow a clean pipeline:
+The MFGarchon core objects follow a clean pipeline:
 
 ```python
 MFGProblem → FixedPointSolver → MFGResult
@@ -21,7 +21,7 @@ MFGProblem → FixedPointSolver → MFGResult
 ### Custom Problem Definition
 
 ```python
-from mfg_pde.core import MFGProblem
+from mfgarchon.core import MFGProblem
 import numpy as np
 
 class CustomCrowdProblem(MFGProblem):
@@ -62,7 +62,7 @@ problem = CustomCrowdProblem((0, 5), 2.0)
 ### Basic Solver Setup
 
 ```python
-from mfg_pde.solvers import FixedPointSolver
+from mfgarchon.solvers import FixedPointSolver
 
 # Create solver with custom settings
 solver = FixedPointSolver(
@@ -76,7 +76,7 @@ solver = FixedPointSolver(
 ### Using Configuration Presets
 
 ```python
-from mfg_pde.config import (
+from mfgarchon.config import (
     fast_config, accurate_config, research_config,
     crowd_dynamics_config, financial_config
 )
@@ -100,7 +100,7 @@ solver = FixedPointSolver.from_config(config)
 ### Advanced Configuration
 
 ```python
-from mfg_pde.config import SolverConfig
+from mfgarchon.config import SolverConfig
 
 # Create completely custom configuration
 config = SolverConfig(
@@ -138,7 +138,7 @@ result = solver.solve(problem,
 ### Method Chaining
 
 ```python
-from mfg_pde.solvers import FixedPointSolver
+from mfgarchon.solvers import FixedPointSolver
 
 # Fluent interface for clean code
 result = (FixedPointSolver()
@@ -208,7 +208,7 @@ result.plot_solution()
 
 ```python
 # Compare solver results manually
-from mfg_pde.factory import create_fast_solver, create_accurate_solver
+from mfgarchon.factory import create_fast_solver, create_accurate_solver
 
 problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 
@@ -227,7 +227,7 @@ print(f"Accurate: {result_accurate.iterations} iter, converged={result_accurate.
 
 ```python
 # Create base problem using factory API
-from mfg_pde.factory import create_fast_solver
+from mfgarchon.factory import create_fast_solver
 
 problem = CustomCrowdProblem((0, 5), 2.0)
 
@@ -261,7 +261,7 @@ problem_modified = (problem
 ### Robust Solving
 
 ```python
-from mfg_pde.utils import ConvergenceError, ConfigurationError
+from mfgarchon.utils import ConvergenceError, ConfigurationError
 
 try:
     result = solver.solve()
@@ -294,8 +294,8 @@ if not result.converged:
 Combine custom problems with factory convenience functions:
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_fast_solver, create_accurate_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_fast_solver, create_accurate_solver
 import numpy as np
 
 # Define custom problem
@@ -354,8 +354,8 @@ print(f"Fastest backend: {fastest[0]} ({fastest[1]['time']:.2f}s)")
 
 ```python
 # Manual parameter sweep (parallel processing planned for future)
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_fast_solver
 
 results = {}
 for nx in [25, 50, 100]:
@@ -385,8 +385,8 @@ python examples/advanced/primal_dual_constrained_example.py
 ### **Quick Core Objects Test:**
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_fast_solver
 import numpy as np
 
 # Define simple test problem

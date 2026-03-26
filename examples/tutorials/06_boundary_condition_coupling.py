@@ -36,14 +36,14 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfg_pde.core import MFGComponents
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import (
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfgarchon.core import MFGComponents
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import (
     AdjointConsistentProvider,
     BCSegment,
     BCType,

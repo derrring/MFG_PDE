@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     RecursiveDivisionConfig,
     RecursiveDivisionGenerator,
     add_loops,

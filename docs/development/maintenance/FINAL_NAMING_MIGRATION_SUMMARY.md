@@ -76,9 +76,9 @@ class GridProblem(Protocol):
 **Goal**: Align with official naming conventions
 
 **Scope**: ~150 occurrences across ~40 files
-- Core: `mfg_pde/core/*.py`
-- Solvers: `mfg_pde/alg/**/*.py`
-- Utils: `mfg_pde/utils/*.py`
+- Core: `mfgarchon/core/*.py`
+- Solvers: `mfgarchon/alg/**/*.py`
+- Utils: `mfgarchon/utils/*.py`
 - Tests: `tests/**/*.py`
 - Examples: `examples/**/*.py`
 
@@ -122,7 +122,7 @@ class GridProblem(Protocol):
 
 **Implementation**:
 ```python
-# mfg_pde/core/mfg_problem.py
+# mfgarchon/core/mfg_problem.py
 
 @property
 def grid_shape(self) -> tuple[int, ...]:
@@ -219,9 +219,9 @@ Already planned. Keep separate from this effort to avoid scope creep.
 - **Day 5**: Plan file-by-file migration order
 
 ### Week 2-3: Systematic Migration
-- **Core first**: `mfg_pde/core/*.py` (highest priority)
-- **Solvers**: `mfg_pde/alg/**/*.py`
-- **Utilities**: `mfg_pde/utils/*.py`
+- **Core first**: `mfgarchon/core/*.py` (highest priority)
+- **Solvers**: `mfgarchon/alg/**/*.py`
+- **Utilities**: `mfgarchon/utils/*.py`
 - **Tests**: `tests/**/*.py`
 - **Examples**: `examples/**/*.py`
 - **Benchmarks**: `benchmarks/**/*.py`

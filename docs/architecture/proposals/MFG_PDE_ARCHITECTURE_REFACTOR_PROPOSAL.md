@@ -1,4 +1,4 @@
-# MFG_PDE Architecture Refactoring Proposal: Unified Problem Interface
+# MFGarchon Architecture Refactoring Proposal: Unified Problem Interface
 
 **Date**: 2025-10-30
 **Status**: ~~Proposal~~ **SUPERSEDED**
@@ -8,11 +8,11 @@
 
 ## ⚠️ PROPOSAL SUPERSEDED - DO NOT IMPLEMENT ⚠️
 
-**This proposal has been superseded by the current MFG_PDE architecture.**
+**This proposal has been superseded by the current MFGarchon architecture.**
 
 ### Why This Proposal Was Not Implemented
 
-After thorough analysis during Phase 3 gradient notation standardization (October 2025), we discovered that the **current MFG_PDE architecture already achieves all the goals of this proposal** through a superior design pattern:
+After thorough analysis during Phase 3 gradient notation standardization (October 2025), we discovered that the **current MFGarchon architecture already achieves all the goals of this proposal** through a superior design pattern:
 
 **Current Design (Implemented)**:
 - ✅ Concrete `MFGProblem` class with **composition via `MFGComponents`**
@@ -46,7 +46,7 @@ This proves the current architecture is **excellent** and does **not** need the 
 
 ### Conclusion
 
-**DO NOT implement this proposal.** The current MFG_PDE architecture already provides:
+**DO NOT implement this proposal.** The current MFGarchon architecture already provides:
 - Composition over inheritance (via MFGComponents)
 - Solver flexibility (via protocol interfaces)
 - Progressive complexity disclosure (ExampleMFGProblem → MFGProblem)
@@ -58,7 +58,7 @@ The original proposal text below is preserved for historical reference only.
 
 ## Executive Summary (HISTORICAL - DO NOT IMPLEMENT)
 
-MFG_PDE currently has three separate problem classes (`MFGProblem`, `HighDimMFGProblem`, `NetworkMFGProblem`) with incompatible APIs and different spatial discretization assumptions. This creates artificial limitations where:
+MFGarchon currently has three separate problem classes (`MFGProblem`, `HighDimMFGProblem`, `NetworkMFGProblem`) with incompatible APIs and different spatial discretization assumptions. This creates artificial limitations where:
 
 - FDM solvers only work with 1D problems
 - GFDM solvers only work with high-dimensional implicit geometry
@@ -393,10 +393,10 @@ class HJBGFDMSolver(BaseHJBSolver):
 # Example 1: 2D Maze with Regular Grid + FDM
 # ============================================
 
-from mfg_pde.geometry import RegularGrid2D, ObstacleMap
-from mfg_pde.problems import AbstractMFGProblem
-from mfg_pde.solvers.hjb import HJBFDMSolver
-from mfg_pde.solvers.fp import FPFDMSolver
+from mfgarchon.geometry import RegularGrid2D, ObstacleMap
+from mfgarchon.problems import AbstractMFGProblem
+from mfgarchon.solvers.hjb import HJBFDMSolver
+from mfgarchon.solvers.fp import FPFDMSolver
 
 # Define geometry (regular 2D grid with obstacles)
 maze_array = np.array([...])  # 1 = wall, 0 = free
@@ -432,8 +432,8 @@ U, M = picard_iteration(hjb_solver, fp_solver, max_iter=30)
 # Same problem definition as above
 # Just change solvers:
 
-from mfg_pde.solvers.hjb import HJBGFDMSolver
-from mfg_pde.solvers.fp import FPParticleSolver
+from mfgarchon.solvers.hjb import HJBGFDMSolver
+from mfgarchon.solvers.fp import FPParticleSolver
 
 hjb_solver = HJBGFDMSolver(problem, n_points=500)
 fp_solver = FPParticleSolver(problem, n_particles=500)
@@ -444,7 +444,7 @@ U, M = picard_iteration(hjb_solver, fp_solver, max_iter=30)
 # Example 3: Complex Geometry (Implicit, No Regular Grid)
 # ========================================================
 
-from mfg_pde.geometry import ImplicitDomain
+from mfgarchon.geometry import ImplicitDomain
 
 # Define complex geometry with level set
 def signed_distance(x):
@@ -473,7 +473,7 @@ fp_solver = FPParticleSolver(problem, n_particles=1000)
 # Example 4: Network/Graph MFG
 # ==============================
 
-from mfg_pde.geometry import NetworkDomain
+from mfgarchon.geometry import NetworkDomain
 
 graph = nx.karate_club_graph()
 geometry = NetworkDomain(graph)
@@ -487,8 +487,8 @@ problem = AbstractMFGProblem(
 )
 
 # Use network-specific solvers
-from mfg_pde.solvers.hjb import HJBNetworkSolver
-from mfg_pde.solvers.fp import FPNetworkSolver
+from mfgarchon.solvers.hjb import HJBNetworkSolver
+from mfgarchon.solvers.fp import FPNetworkSolver
 
 hjb_solver = HJBNetworkSolver(problem)
 fp_solver = FPNetworkSolver(problem)
@@ -612,13 +612,13 @@ for geom in geometries:
 
 ```python
 # Old code (still works in Phase 1-2):
-from mfg_pde import MFGProblem  # Deprecated warning
+from mfgarchon import MFGProblem  # Deprecated warning
 problem = MFGProblem(Nx=100, Nt=50, ...)
 solver = HJBFDMSolver(problem)
 
 # New code (preferred):
-from mfg_pde import AbstractMFGProblem
-from mfg_pde.geometry import RegularGrid1D
+from mfgarchon import AbstractMFGProblem
+from mfgarchon.geometry import RegularGrid1D
 
 geometry = RegularGrid1D(bounds=(0, 1))
 problem = AbstractMFGProblem(geometry=geometry, ...)
@@ -690,14 +690,14 @@ solver = HJBFDMSolver(problem, Nx=100)
 
 ## Conclusion
 
-The current MFG_PDE architecture artificially limits solver applicability to specific problem types. The proposed refactoring:
+The current MFGarchon architecture artificially limits solver applicability to specific problem types. The proposed refactoring:
 
 - **Enables**: Using any solver with any compatible geometry
 - **Simplifies**: Adding new geometries and discretization methods
 - **Maintains**: Backward compatibility during migration
 - **Improves**: Code clarity and extensibility
 
-This refactoring aligns MFG_PDE with modern computational frameworks and removes a major barrier to research flexibility.
+This refactoring aligns MFGarchon with modern computational frameworks and removes a major barrier to research flexibility.
 
 ---
 
@@ -707,4 +707,4 @@ This refactoring aligns MFG_PDE with modern computational frameworks and removes
 3. Benchmark and validate
 4. Roll out migration plan
 
-**Contact**: Submit issues/PRs to MFG_PDE repository with tag `architecture-refactor`
+**Contact**: Submit issues/PRs to MFGarchon repository with tag `architecture-refactor`

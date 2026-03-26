@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-The optimization paradigm in MFG_PDE provides **variational and direct optimization approaches** for solving Mean Field Games by reformulating the classical HJB-FPK coupled system as an optimization problem on probability measure spaces. This paradigm complements PDE-based methods by enabling:
+The optimization paradigm in MFGarchon provides **variational and direct optimization approaches** for solving Mean Field Games by reformulating the classical HJB-FPK coupled system as an optimization problem on probability measure spaces. This paradigm complements PDE-based methods by enabling:
 
 - **Convexity-based uniqueness** for potential MFG problems
 - **Gradient-based optimization** using Wasserstein geometry
@@ -27,7 +27,7 @@ The optimization paradigm in MFG_PDE provides **variational and direct optimizat
 ### Package Structure
 
 ```
-mfg_pde/alg/optimization/
+mfgarchon/alg/optimization/
 ├── __init__.py                      # Main optimization paradigm exports
 ├── variational_solvers/             # Variational formulation solvers
 │   ├── base_variational.py          # Base variational infrastructure
@@ -154,7 +154,7 @@ where:
 
 ### Implementation: `WassersteinMFGSolver`
 
-**File**: `mfg_pde/alg/optimization/optimal_transport/wasserstein_solver.py`
+**File**: `mfgarchon/alg/optimization/optimal_transport/wasserstein_solver.py`
 
 **Key Features**:
 - JKO time-stepping for Wasserstein gradient flows
@@ -164,8 +164,8 @@ where:
 
 **Usage Example**:
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.optimization import WassersteinMFGSolver, WassersteinSolverConfig
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.alg.optimization import WassersteinMFGSolver, WassersteinSolverConfig
 
 # Create potential MFG problem
 problem = ExampleMFGProblem(T=1.0, xmin=0, xmax=1, Nx=100, Nt=50)
@@ -230,7 +230,7 @@ where `K_ij = exp(-c(x_i, y_j)/ε)` is Gibbs kernel.
 
 ### Implementation: `SinkhornMFGSolver`
 
-**File**: `mfg_pde/alg/optimization/optimal_transport/sinkhorn_solver.py`
+**File**: `mfgarchon/alg/optimization/optimal_transport/sinkhorn_solver.py`
 
 **Key Features**:
 - GPU-accelerated Sinkhorn iterations (via POT)
@@ -240,7 +240,7 @@ where `K_ij = exp(-c(x_i, y_j)/ε)` is Gibbs kernel.
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.optimization import SinkhornMFGSolver, SinkhornSolverConfig
+from mfgarchon.alg.optimization import SinkhornMFGSolver, SinkhornSolverConfig
 
 # Configure Sinkhorn solver
 config = SinkhornSolverConfig(
@@ -305,7 +305,7 @@ m_{k+1} = m_k - τ_p (∇E[m_k] + ∇C[m_k]^T λ_k)
 
 ### Implementation: `PrimalDualMFGSolver`
 
-**File**: `mfg_pde/alg/optimization/variational_solvers/primal_dual_solver.py`
+**File**: `mfgarchon/alg/optimization/variational_solvers/primal_dual_solver.py`
 
 **Key Features**:
 - Chambolle-Pock algorithm for saddle-point problems
@@ -315,7 +315,7 @@ m_{k+1} = m_k - τ_p (∇E[m_k] + ∇C[m_k]^T λ_k)
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.optimization import PrimalDualMFGSolver
+from mfgarchon.alg.optimization import PrimalDualMFGSolver
 
 # Define MFG with constraints (e.g., obstacle avoidance)
 problem = ConstrainedMFGProblem(
@@ -363,7 +363,7 @@ where ρ > 0 is penalty parameter.
 
 ### Implementation
 
-**File**: `mfg_pde/alg/optimization/augmented_lagrangian/__init__.py`
+**File**: `mfgarchon/alg/optimization/augmented_lagrangian/__init__.py`
 
 **Key Features**:
 - Quadratic penalty for constraint enforcement
@@ -373,7 +373,7 @@ where ρ > 0 is penalty parameter.
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.optimization.augmented_lagrangian import AugmentedLagrangianSolver
+from mfgarchon.alg.optimization.augmented_lagrangian import AugmentedLagrangianSolver
 
 # MFG with hard mass conservation
 problem = MFGProblemWithConstraints(
@@ -392,7 +392,7 @@ result = solver.solve()
 
 ### Energy Functionals
 
-**File**: `mfg_pde/alg/optimization/variational_methods/__init__.py`
+**File**: `mfgarchon/alg/optimization/variational_methods/__init__.py`
 
 **Implemented Functionals**:
 
@@ -598,10 +598,10 @@ def wasserstein_gradient(E, m, epsilon=1e-2):
 ### Implementation References
 
 **Code Files**:
-- `mfg_pde/alg/optimization/variational_solvers/` - Variational methods
-- `mfg_pde/alg/optimization/optimal_transport/` - JKO and Sinkhorn
-- `mfg_pde/alg/optimization/primal_dual/` - Saddle-point methods
-- `mfg_pde/alg/optimization/augmented_lagrangian/` - Constrained optimization
+- `mfgarchon/alg/optimization/variational_solvers/` - Variational methods
+- `mfgarchon/alg/optimization/optimal_transport/` - JKO and Sinkhorn
+- `mfgarchon/alg/optimization/primal_dual/` - Saddle-point methods
+- `mfgarchon/alg/optimization/augmented_lagrangian/` - Constrained optimization
 
 **Theory Documentation**:
 - `docs/theory/variational_mfg_theory.md` - Complete variational formulation (25 refs)
@@ -621,18 +621,18 @@ def wasserstein_gradient(E, m, epsilon=1e-2):
 
 ```bash
 # Install with optimization solver support
-pip install mfg_pde[optimization]
+pip install mfgarchon[optimization]
 
 # Or install POT separately
-pip install mfg_pde
+pip install mfgarchon
 pip install POT  # Python Optimal Transport
 ```
 
 ### Minimal JKO Example
 
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.optimization import WassersteinMFGSolver, WassersteinSolverConfig
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.alg.optimization import WassersteinMFGSolver, WassersteinSolverConfig
 
 # 1. Create potential MFG problem
 problem = ExampleMFGProblem(T=1.0, xmin=0, xmax=1, Nx=100, Nt=50)
@@ -651,7 +651,7 @@ solver.plot_density_evolution()
 ### Minimal Sinkhorn Example
 
 ```python
-from mfg_pde.alg.optimization import SinkhornMFGSolver, SinkhornSolverConfig
+from mfgarchon.alg.optimization import SinkhornMFGSolver, SinkhornSolverConfig
 
 # 1. Create problem (same as above)
 problem = ExampleMFGProblem(T=1.0, xmin=0, xmax=1, Nx=200, Nt=50)
@@ -672,7 +672,7 @@ print(f"Final energy: {result.final_energy:.6f}")
 
 ## ✅ Summary
 
-The optimization paradigm in MFG_PDE provides **state-of-the-art variational and optimal transport methods** for solving Mean Field Games:
+The optimization paradigm in MFGarchon provides **state-of-the-art variational and optimal transport methods** for solving Mean Field Games:
 
 **✅ Production-Ready**: 2,218 lines of code, comprehensive implementation
 **✅ Four Solver Families**: Variational, Optimal Transport, Primal-Dual, Augmented Lagrangian

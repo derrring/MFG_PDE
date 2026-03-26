@@ -10,7 +10,7 @@
 
 ### **Base Hook System**
 ```python
-# mfg_pde/hooks/base.py
+# mfgarchon/hooks/base.py
 from typing import Optional, Any, Protocol
 from abc import ABC
 from ..types import SpatialTemporalState, MFGResult
@@ -111,7 +111,7 @@ class SolverHooks(ABC):
 
 ### **Hook Composition System**
 ```python
-# mfg_pde/hooks/composition.py
+# mfgarchon/hooks/composition.py
 from typing import List, Optional
 from .base import SolverHooks
 from ..types import SpatialTemporalState, MFGResult
@@ -176,7 +176,7 @@ class ConditionalHook(SolverHooks):
 
 ### **Debugging and Monitoring Hooks**
 ```python
-# mfg_pde/hooks/debugging.py
+# mfgarchon/hooks/debugging.py
 import time
 import logging
 from typing import Optional, Dict, Any
@@ -187,7 +187,7 @@ class DebugHook(SolverHooks):
     """Comprehensive debugging information."""
 
     def __init__(self, log_level: str = "INFO"):
-        self.logger = logging.getLogger("mfg_pde.solver")
+        self.logger = logging.getLogger("mfgarchon.solver")
         self.logger.setLevel(getattr(logging, log_level.upper()))
         self.start_time = None
         self.iteration_times = []
@@ -253,7 +253,7 @@ class PerformanceHook(SolverHooks):
 
 ### **Visualization Hooks**
 ```python
-# mfg_pde/hooks/visualization.py
+# mfgarchon/hooks/visualization.py
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Optional, Tuple
@@ -350,7 +350,7 @@ class ConvergenceMonitorHook(SolverHooks):
 
 ### **Modified Solver Base Class**
 ```python
-# mfg_pde/solvers/base.py
+# mfgarchon/solvers/base.py
 from abc import ABC, abstractmethod
 from typing import Optional
 from ..hooks import SolverHooks
@@ -449,7 +449,7 @@ class BaseSolver(ABC):
 
 ### **Example: Fixed Point Solver with Hooks**
 ```python
-# mfg_pde/solvers/fixed_point.py
+# mfgarchon/solvers/fixed_point.py
 import numpy as np
 from .base import BaseSolver
 from ..types import SpatialTemporalState, MFGResult
@@ -508,8 +508,8 @@ class FixedPointSolver(BaseSolver):
 
 ### **Basic Usage**
 ```python
-from mfg_pde.solvers import FixedPointSolver
-from mfg_pde.hooks import DebugHook, PlottingHook, MultiHook
+from mfgarchon.solvers import FixedPointSolver
+from mfgarchon.hooks import DebugHook, PlottingHook, MultiHook
 
 # Create solver
 solver = FixedPointSolver(config={'tolerance': 1e-8})

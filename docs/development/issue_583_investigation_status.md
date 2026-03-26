@@ -75,7 +75,7 @@ ValueError: array must not contain infs or NaNs
 
 ## Current Implementation
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_sl_interpolation.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_sl_interpolation.py`
 
 **Lines 78-85**:
 ```python
@@ -118,7 +118,7 @@ if method == "cubic":
 
 ## Files Modified
 
-1. `mfg_pde/alg/numerical/hjb_solvers/hjb_sl_interpolation.py`
+1. `mfgarchon/alg/numerical/hjb_solvers/hjb_sl_interpolation.py`
    - Added `from scipy.interpolate import PchipInterpolator`
    - Replaced cubic spline with PCHIP (lines 78-85)
 
@@ -147,9 +147,9 @@ during Picard iteration — rather than symptom treatment (gradient clipping).
 - Recovery never exceeds initial damping factor
 
 **Files added/modified**:
-- `mfg_pde/alg/numerical/coupling/fixed_point_utils.py` — `adapt_damping()` function
-- `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py` — integration + parameters
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py` — warning text update
+- `mfgarchon/alg/numerical/coupling/fixed_point_utils.py` — `adapt_damping()` function
+- `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py` — integration + parameters
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py` — warning text update
 - `tests/unit/test_alg/test_adaptive_damping.py` — 8 unit tests
 
 **Gradient clipping**: Warning now explicitly states it is a "SAFETY NET, not a solution"
@@ -181,7 +181,7 @@ All cubic interpolation tests remain `@pytest.mark.xfail`:
 
 ## References
 
-- **Issue**: [#583](https://github.com/derrring/MFG_PDE/issues/583)
+- **Issue**: [#583](https://github.com/derrring/mfgarchon/issues/583)
 - **Scipy Pchip**: [PchipInterpolator docs](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.PchipInterpolator.html)
 - **Runge Phenomenon**: Classic issue with high-order polynomial interpolation at discontinuities
 

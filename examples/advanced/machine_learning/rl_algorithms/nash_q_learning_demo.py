@@ -20,7 +20,7 @@ Mathematical Framework:
     - Nash value: V*(s, m) = max_a Q(s, a, m)
     - Nash equilibrium condition: All agents follow π*
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -41,7 +41,7 @@ except ImportError:
     print("PyTorch not available. Please install: pip install torch")
     sys.exit(1)
 
-from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import (
+from mfgarchon.alg.reinforcement.algorithms.mean_field_q_learning import (
     MeanFieldQNetwork,
 )
 

@@ -107,7 +107,7 @@ for t_idx in range(len(result.M)):
 
 ```python
 # Test 1D FP solver independently
-from mfg_pde.alg.numerical.fp_solvers.fdm_fp_1d import FDMFP1D
+from mfgarchon.alg.numerical.fp_solvers.fdm_fp_1d import FDMFP1D
 
 # Run 1D test with known analytical solution
 # Check if 1D solver conserves mass
@@ -115,8 +115,8 @@ from mfg_pde.alg.numerical.fp_solvers.fdm_fp_1d import FDMFP1D
 
 ### Step 3: Inspect FP Solver Implementation
 **Files to review**:
-- `mfg_pde/alg/numerical/fp_solvers/fdm_fp_nD.py`
-- `mfg_pde/alg/numerical/fp_solvers/fdm_fp_2d.py`
+- `mfgarchon/alg/numerical/fp_solvers/fdm_fp_nD.py`
+- `mfgarchon/alg/numerical/fp_solvers/fdm_fp_2d.py`
 - Focus on:
   - `_step_fp()` method
   - Dimensional splitting logic
@@ -180,7 +180,7 @@ For FDM with dimensional splitting on 2D problems:
 - `benchmarks/validation/test_2d_crowd_motion.py` - Test that revealed bug
 - `benchmarks/validation/verify_mass_fix.py` - Verification script
 - `benchmarks/validation/MASS_CONSERVATION_BUG_FIX.md` - Bug #1 (initial density) documentation
-- `mfg_pde/alg/numerical/fp_solvers/` - FP solver implementations
+- `mfgarchon/alg/numerical/fp_solvers/` - FP solver implementations
 
 ---
 

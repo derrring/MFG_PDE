@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/hooks/base.py
+Unit tests for mfgarchon/hooks/base.py
 
 Tests SolverHooks base class including:
 - Hook method signatures and default implementations
@@ -14,8 +14,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.hooks.base import SolverHooks
-from mfg_pde.types.state import SpatialTemporalState
+from mfgarchon.hooks.base import SolverHooks
+from mfgarchon.types.state import SpatialTemporalState
 
 # ===================================================================
 # Test SolverHooks Class Structure
@@ -469,7 +469,7 @@ def test_partial_override():
 @pytest.mark.unit
 def test_module_exports():
     """Test SolverHooks is importable."""
-    from mfg_pde.hooks import base
+    from mfgarchon.hooks import base
 
     assert hasattr(base, "SolverHooks")
     assert base.SolverHooks == SolverHooks
@@ -478,7 +478,7 @@ def test_module_exports():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has docstring."""
-    from mfg_pde.hooks import base
+    from mfgarchon.hooks import base
 
     assert base.__doc__ is not None
     assert "Base Hooks System" in base.__doc__

@@ -27,9 +27,9 @@ References:
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("common_noise_lq_demo", level="INFO")

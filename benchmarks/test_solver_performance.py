@@ -23,8 +23,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.mfg_solvers import HybridFPParticleHJBFDM, ParticleCollocationSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.mfg_solvers import HybridFPParticleHJBFDM, ParticleCollocationSolver
 
 
 # Test problem fixtures

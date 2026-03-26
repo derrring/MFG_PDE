@@ -1,4 +1,4 @@
-"""Tests for mfg_pde.utils.progress module."""
+"""Tests for mfgarchon.utils.progress module."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import time
 from io import StringIO
 from unittest.mock import patch
 
-from mfg_pde.utils.progress import (
+from mfgarchon.utils.progress import (
     IterationProgress,
     RichProgressBar,
     SolverTimer,

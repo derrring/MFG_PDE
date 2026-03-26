@@ -2,14 +2,14 @@
 
 **Date**: 2026-01-18
 **Issue**: #593 Phase 4.2 - GKS Stability Validation
-**Implementation**: `mfg_pde/geometry/boundary/validation/gks.py`
+**Implementation**: `mfgarchon/geometry/boundary/validation/gks.py`
 **Tests**: `tests/validation/test_gks_conditions.py`
 
 ---
 
 ## Executive Summary
 
-This document records GKS (Gustafsson-Kreiss-Sundström) stability validation results for standard boundary condition discretizations used in MFG_PDE.
+This document records GKS (Gustafsson-Kreiss-Sundström) stability validation results for standard boundary condition discretizations used in MFGarchon.
 
 **Purpose**: Developer-facing validation, ensuring BC implementations don't introduce numerical instabilities.
 
@@ -168,7 +168,7 @@ A[0, 0] = 1
 
 ### 3.1 Code Structure
 
-**Module**: `mfg_pde/geometry/boundary/validation/gks.py`
+**Module**: `mfgarchon/geometry/boundary/validation/gks.py`
 
 **Core functions**:
 - `check_gks_stability(operator, pde_type, ...)`: Single-grid validation
@@ -177,8 +177,8 @@ A[0, 0] = 1
 
 **Usage pattern**:
 ```python
-from mfg_pde.geometry.boundary.validation.gks import check_gks_stability
-from mfg_pde.geometry.operators import build_laplacian_1d
+from mfgarchon.geometry.boundary.validation.gks import check_gks_stability
+from mfgarchon.geometry.operators import build_laplacian_1d
 
 A = build_laplacian_1d(N=50, dx=0.02, bc_type=BCType.NEUMANN)
 
@@ -243,7 +243,7 @@ stable = (num_positive == len(eigenvalues)) or (num_negative == len(eigenvalues)
 
 ### 4.2 Smoke Test
 
-**Location**: `mfg_pde/geometry/boundary/validation/gks.py:__main__`
+**Location**: `mfgarchon/geometry/boundary/validation/gks.py:__main__`
 
 **Tests**:
 - 1D Laplacian with Dirichlet BC (identifies constraint row issue)
@@ -251,7 +251,7 @@ stable = (num_positive == len(eigenvalues)) or (num_negative == len(eigenvalues)
 
 **Usage**:
 ```bash
-python mfg_pde/geometry/boundary/validation/gks.py
+python mfgarchon/geometry/boundary/validation/gks.py
 ```
 
 ---
@@ -410,7 +410,7 @@ The GKS validation framework successfully verifies discrete stability for standa
 3. Extend to 2D/3D operators (Issue #535 coordination)
 4. Document in user-facing BC API
 
-This validation provides confidence in the numerical stability of MFG_PDE's boundary condition implementations and establishes a framework for validating future BC methods.
+This validation provides confidence in the numerical stability of MFGarchon's boundary condition implementations and establishes a framework for validating future BC methods.
 
 ---
 

@@ -14,17 +14,17 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
-from mfg_pde.factory import (
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_problem import MFGComponents, MFGProblem
+from mfgarchon.factory import (
     create_crowd_problem,
     create_lq_problem,
     create_mfg_problem,
     create_standard_problem,
     create_stochastic_problem,
 )
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def _default_hamiltonian():

@@ -33,7 +33,7 @@ For each grid point x_i at time t^{n+1}:
 
 #### `HJBSemiLagrangianSolver`
 Main solver class implementing the semi-Lagrangian method:
-- **Location**: `mfg_pde/alg/hjb_solvers/hjb_semi_lagrangian.py`
+- **Location**: `mfgarchon/alg/hjb_solvers/hjb_semi_lagrangian.py`
 - **Base Class**: `BaseHJBSolver`
 - **Key Features**:
   - Multiple interpolation methods (linear, cubic)
@@ -58,11 +58,11 @@ HJBSemiLagrangianSolver(
 
 #### `create_semi_lagrangian_solver()`
 Factory function for easy solver creation:
-- **Location**: `mfg_pde/factory/solver_factory.py`
+- **Location**: `mfgarchon/factory/solver_factory.py`
 - **Purpose**: Creates fixed-point iterator with semi-Lagrangian HJB method
 - **Usage**:
 ```python
-from mfg_pde.factory import create_semi_lagrangian_solver
+from mfgarchon.factory import create_semi_lagrangian_solver
 
 solver = create_semi_lagrangian_solver(
     problem,
@@ -126,8 +126,8 @@ result = solver.solve()
 
 ### Basic Usage
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_semi_lagrangian_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_semi_lagrangian_solver
 
 # Create problem
 problem = MFGProblem(

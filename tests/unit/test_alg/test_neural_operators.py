@@ -19,7 +19,7 @@ try:
     import torch
     import torch.nn as nn
 
-    from mfg_pde.alg.neural.operator_learning import (
+    from mfgarchon.alg.neural.operator_learning import (
         DeepONet,
         DeepONetConfig,
         FNOConfig,
@@ -251,7 +251,7 @@ class TestFourierNeuralOperator:
 
     def test_fno_spectral_conv_1d(self):
         """Test 1D spectral convolution layer."""
-        from mfg_pde.alg.neural.operator_learning.fourier_neural_operator import SpectralConv1d
+        from mfgarchon.alg.neural.operator_learning.fourier_neural_operator import SpectralConv1d
 
         in_channels = 8
         out_channels = 16
@@ -269,7 +269,7 @@ class TestFourierNeuralOperator:
 
     def test_fno_spectral_conv_2d(self):
         """Test 2D spectral convolution layer."""
-        from mfg_pde.alg.neural.operator_learning.fourier_neural_operator import SpectralConv2d
+        from mfgarchon.alg.neural.operator_learning.fourier_neural_operator import SpectralConv2d
 
         in_channels = 8
         out_channels = 16
@@ -302,7 +302,7 @@ class TestDeepONet:
 
     def test_deeponet_branch_network(self):
         """Test branch network component."""
-        from mfg_pde.alg.neural.operator_learning.deeponet import BranchNetwork
+        from mfgarchon.alg.neural.operator_learning.deeponet import BranchNetwork
 
         config = DeepONetConfig(sensor_points=20, branch_depth=3, branch_width=64, latent_dim=16)
 
@@ -318,7 +318,7 @@ class TestDeepONet:
 
     def test_deeponet_trunk_network(self):
         """Test trunk network component."""
-        from mfg_pde.alg.neural.operator_learning.deeponet import TrunkNetwork
+        from mfgarchon.alg.neural.operator_learning.deeponet import TrunkNetwork
 
         config = DeepONetConfig(coordinate_dim=2, trunk_depth=3, trunk_width=64, latent_dim=16)
 
@@ -475,7 +475,7 @@ class TestOperatorFactory:
         if not pytorch_available:
             pytest.skip("PyTorch not available")
 
-        from mfg_pde.alg.neural.operator_learning import create_mfg_operator
+        from mfgarchon.alg.neural.operator_learning import create_mfg_operator
 
         config = {"input_dim": 16, "output_dim": 64, "modes": 8, "width": 32}
 
@@ -487,7 +487,7 @@ class TestOperatorFactory:
         if not pytorch_available:
             pytest.skip("PyTorch not available")
 
-        from mfg_pde.alg.neural.operator_learning import create_mfg_operator
+        from mfgarchon.alg.neural.operator_learning import create_mfg_operator
 
         config = {"sensor_points": 30, "coordinate_dim": 2, "latent_dim": 16}
 
@@ -499,7 +499,7 @@ class TestOperatorFactory:
         if not pytorch_available:
             pytest.skip("PyTorch not available")
 
-        from mfg_pde.alg.neural.operator_learning import create_mfg_operator
+        from mfgarchon.alg.neural.operator_learning import create_mfg_operator
 
         with pytest.raises(ValueError):
             create_mfg_operator("invalid_type", {})

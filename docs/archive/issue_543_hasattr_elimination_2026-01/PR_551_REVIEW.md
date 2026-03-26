@@ -30,7 +30,7 @@
 
 ## Code Review by File
 
-### 1. `mfg_pde/core/mfg_problem.py` ✅
+### 1. `mfgarchon/core/mfg_problem.py` ✅
 
 **Changes**:
 - **Lines 330-347**: Explicit initialization of 10 attributes
@@ -107,7 +107,7 @@ if hasattr(self.geometry, "get_spatial_grid"):
 
 ---
 
-### 2. `mfg_pde/core/mfg_components.py` ✅
+### 2. `mfgarchon/core/mfg_components.py` ✅
 
 **Changes**:
 - **Line 14**: Import `contextlib` for suppress()
@@ -163,8 +163,8 @@ m_val = float(np.asarray(m_val))
 warnings.warn(
     "Specifying boundary conditions via MFGComponents is deprecated. "
     "Use the geometry-first API instead:\n\n"
-    "  from mfg_pde.geometry import TensorProductGrid\n"
-    "  from mfg_pde.geometry.boundary import BoundaryConditions, BCSegment\n\n"
+    "  from mfgarchon.geometry import TensorProductGrid\n"
+    "  from mfgarchon.geometry.boundary import BoundaryConditions, BCSegment\n\n"
     "  bc = BoundaryConditions(segments=[...])\n"
     "  grid = TensorProductGrid(..., boundary_conditions=bc)\n"
     "  problem = MFGProblem(geometry=grid, ...)\n\n"
@@ -186,7 +186,7 @@ warnings.warn(
   ```python
   # In pytest.ini or conftest.py
   filterwarnings =
-      ignore::DeprecationWarning:mfg_pde.core.mfg_components
+      ignore::DeprecationWarning:mfgarchon.core.mfg_components
   ```
   But keep warnings visible for actual usage.
 
@@ -194,7 +194,7 @@ warnings.warn(
 
 ---
 
-### 3. `mfg_pde/core/stochastic/stochastic_problem.py` ✅
+### 3. `mfgarchon/core/stochastic/stochastic_problem.py` ✅
 
 **Changes**:
 - **Lines 141**: Normalize terminal_cost attribute names

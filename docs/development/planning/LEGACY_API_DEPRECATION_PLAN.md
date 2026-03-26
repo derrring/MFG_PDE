@@ -16,7 +16,7 @@ Gradually deprecate the legacy 1D API (`xmin`, `xmax`, `Nx`) in favor of the uni
 
 ### Legacy API (Deprecated)
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 # Old way: manual grid construction
 problem = MFGProblem(
@@ -28,8 +28,8 @@ problem = MFGProblem(
 
 ### Modern API (Recommended)
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # New way: geometry-first with TensorProductGrid (unified API for all dimensions)
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
@@ -99,12 +99,12 @@ problem = MFGProblem(
   - Deleted: `tests/unit/test_geometry/test_simple_grid.py`
   - Updated all docs to reference TensorProductGrid
 - [x] Update user-facing documentation (README, guides)
-- [x] Update mfg_pde/geometry/README.md module documentation
+- [x] Update mfgarchon/geometry/README.md module documentation
 
 **Deferred to Phase 3**:
 - [ ] Raise `FutureWarning` instead of `DeprecationWarning` for legacy xmin/xmax/Nx
 - [ ] Add `strict_mode` flag to disable legacy API (opt-in for testing)
-- [ ] Create automated migration script: `python -m mfg_pde.migrate legacy_to_geometry`
+- [ ] Create automated migration script: `python -m mfgarchon.migrate legacy_to_geometry`
 
 ### Phase 3: Removal (v0.16.0)
 
@@ -143,10 +143,10 @@ class LegacyAPIDetector(ast.NodeVisitor):
 
 ```bash
 # Auto-migrate files
-python -m mfg_pde.migrate legacy_to_geometry examples/
+python -m mfgarchon.migrate legacy_to_geometry examples/
 
 # Preview changes without modifying
-python -m mfg_pde.migrate legacy_to_geometry examples/ --dry-run
+python -m mfgarchon.migrate legacy_to_geometry examples/ --dry-run
 ```
 
 Migration script transforms:
@@ -155,7 +155,7 @@ Migration script transforms:
 problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100)
 
 # After
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
 problem = MFGProblem(geometry=domain, T=1.0, Nt=100)
 ```
@@ -201,7 +201,7 @@ def test_solver_with_both_apis(api_style):
 
 ### Core Problem Class
 
-**File**: `mfg_pde/core/mfg_problem.py`
+**File**: `mfgarchon/core/mfg_problem.py`
 
 **Changes**:
 ```python
@@ -223,7 +223,7 @@ def __init__(self, geometry, T, Nt, sigma, ...):
 
 ### Utility Functions
 
-**File**: `mfg_pde/utils/pde_coefficients.py`
+**File**: `mfgarchon/utils/pde_coefficients.py`
 
 **Current** (dual API support):
 ```python
@@ -256,14 +256,14 @@ def get_spatial_grid(problem):
 
 ### Solver Updates
 
-**Files**: All solvers in `mfg_pde/alg/numerical/{hjb,fp}_solvers/`
+**Files**: All solvers in `mfgarchon/alg/numerical/{hjb,fp}_solvers/`
 
 **Phase 1-2**: Use `get_spatial_grid()` helper (✅ Done)
 **Phase 3**: Direct access to `problem.geometry.coordinates`
 
 ### Factory Functions
 
-**File**: `mfg_pde/factory/general_mfg_factory.py`
+**File**: `mfgarchon/factory/general_mfg_factory.py`
 
 **Current**:
 ```python
@@ -304,10 +304,10 @@ def create_mfg_problem(domain_spec, ...):
 python scripts/detect_legacy_api.py examples/
 
 # Step 2: Preview migration
-python -m mfg_pde.migrate legacy_to_geometry examples/ --dry-run
+python -m mfgarchon.migrate legacy_to_geometry examples/ --dry-run
 
 # Step 3: Apply migration
-python -m mfg_pde.migrate legacy_to_geometry examples/
+python -m mfgarchon.migrate legacy_to_geometry examples/
 
 # Step 4: Verify tests still pass
 pytest tests/
@@ -334,7 +334,7 @@ problem = MFGProblem(xmin=0.0, xmax=1.0, Nx=50, T=1.0, Nt=100)
 
 **New (recommended)**:
 ```python
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], num_points=[51])
 problem = MFGProblem(geometry=domain, T=1.0, Nt=100)
 ```
@@ -452,7 +452,7 @@ PR #434 refactored the network geometry hierarchy:
 
 A backward compatibility alias was added:
 ```python
-# mfg_pde/geometry/graph/__init__.py
+# mfgarchon/geometry/graph/__init__.py
 BaseNetworkGeometry = NetworkGeometry  # Backward compatibility alias
 ```
 
@@ -468,7 +468,7 @@ BaseNetworkGeometry = NetworkGeometry  # Backward compatibility alias
 
 **Old (deprecated)**:
 ```python
-from mfg_pde.geometry.graph import BaseNetworkGeometry
+from mfgarchon.geometry.graph import BaseNetworkGeometry
 
 class MyNetwork(BaseNetworkGeometry):
     ...
@@ -476,7 +476,7 @@ class MyNetwork(BaseNetworkGeometry):
 
 **New (recommended)**:
 ```python
-from mfg_pde.geometry.graph import NetworkGeometry
+from mfgarchon.geometry.graph import NetworkGeometry
 
 class MyNetwork(NetworkGeometry):
     ...
@@ -484,8 +484,8 @@ class MyNetwork(NetworkGeometry):
 
 #### Files Affected
 
-- `mfg_pde/geometry/graph/__init__.py` - alias definition
-- `mfg_pde/geometry/graph/network_geometry.py` - renamed class
+- `mfgarchon/geometry/graph/__init__.py` - alias definition
+- `mfgarchon/geometry/graph/network_geometry.py` - renamed class
 - User code inheriting from `BaseNetworkGeometry`
 
 ---

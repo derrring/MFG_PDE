@@ -102,7 +102,7 @@ warnings.simplefilter('always', DeprecationWarning)
 ### Step 3: Verify
 
 ```python
-from mfg_pde.core.mfg_problem import MFGProblem
+from mfgarchon.core.mfg_problem import MFGProblem
 
 problem = MFGProblem(xmin=0, xmax=1, Nx=50, T=1, Nt=50)
 
@@ -124,8 +124,8 @@ with warnings.catch_warnings(record=True) as w:
 ## Affected Components
 
 **Core** (2 files):
-- `mfg_pde/core/mfg_problem.py`
-- `mfg_pde/types/problem_protocols.py`
+- `mfgarchon/core/mfg_problem.py`
+- `mfgarchon/types/problem_protocols.py`
 
 **Solvers** (9 files):
 - HJB solvers: `base_hjb.py`, `hjb_semi_lagrangian.py`, `hjb_weno.py`

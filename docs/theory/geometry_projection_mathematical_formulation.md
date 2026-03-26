@@ -69,7 +69,7 @@ where $s = (x - x_i)/h_x$, $t = (y - y_j)/h_y$.
 **3D Trilinear Interpolation:**
 Extension of bilinear with 8 neighbors.
 
-**Implementation:** `mfg_pde/geometry/projection.py:158`
+**Implementation:** `mfgarchon/geometry/projection.py:158`
 ```python
 def _interpolate_grid_to_points(self, values_on_grid: NDArray, target_points: NDArray) -> NDArray:
     """Linear/bilinear/trilinear interpolation."""
@@ -101,13 +101,13 @@ $$K(z) = \frac{1}{(2\pi)^{d/2}} \exp\left(-\frac{\|z\|^2}{2}\right)$$
 - Smoothness: $m_h \in C^\infty(\mathbb{R}^d)$
 - Convergence: $m_h \to m$ as $h \to 0$ and $n \to \infty$
 
-**Implementation:** `mfg_pde/geometry/projection.py:234`
+**Implementation:** `mfgarchon/geometry/projection.py:234`
 ```python
 def _project_particles_to_grid_kde(self, particle_values: NDArray,
                                    bandwidth: str | float,
                                    backend: BaseBackend | None) -> NDArray:
     """KDE projection with GPU acceleration for 1D."""
-    from mfg_pde.alg.numerical.density_estimation import gaussian_kde_gpu
+    from mfgarchon.alg.numerical.density_estimation import gaussian_kde_gpu
     # ... bandwidth computation ...
     if dimension == 1:
         density = gaussian_kde_gpu(particles, grid, bandwidth, backend)
@@ -131,7 +131,7 @@ For density projection (fine → coarse), should satisfy:
 $$\int_{\Omega_j} m_h(x) dx = M_j$$
 where $\Omega_j$ is the coarse cell and $M_j$ is the coarse cell mass.
 
-**Implementation:** `mfg_pde/geometry/projection.py:171`
+**Implementation:** `mfgarchon/geometry/projection.py:171`
 ```python
 def _interpolate_grid_to_grid(self, values_on_source_grid: NDArray) -> NDArray:
     """Grid → Grid with automatic reshaping."""
@@ -157,7 +157,7 @@ where $N_j$ is number of fine grid points in coarse cell $\Omega_j$.
 **Current Implementation:** Uses interpolation (not fully conservative)
 **Future Enhancement:** True conservative restriction using averaging
 
-**Implementation:** `mfg_pde/geometry/projection.py:187`
+**Implementation:** `mfgarchon/geometry/projection.py:187`
 ```python
 def _restrict_grid_to_grid(self, values_on_source_grid: NDArray) -> NDArray:
     """Grid restriction (currently via interpolation)."""
@@ -200,7 +200,7 @@ For arbitrary geometries without specialized projectors, use KD-tree nearest nei
 
 $$u(y) = u_h(x_{i^*}) \quad \text{where} \quad i^* = \arg\min_i \|y - x_i\|$$
 
-**Implementation:** `mfg_pde/geometry/projection.py:201`
+**Implementation:** `mfgarchon/geometry/projection.py:201`
 ```python
 def _nearest_neighbor_projection(self, values: NDArray, target_points: NDArray) -> NDArray:
     """Generic fallback using KD-tree."""
@@ -215,7 +215,7 @@ def _nearest_neighbor_projection(self, values: NDArray, target_points: NDArray) 
 
 ### GeometryProjector Class
 
-**Location:** `mfg_pde/geometry/projection.py:90`
+**Location:** `mfgarchon/geometry/projection.py:90`
 
 **Core Methods:**
 - `project_hjb_to_fp(U_on_hjb_geometry)`: $\Pi_{\text{H→F}}(u)$
@@ -241,7 +241,7 @@ else:
 
 ### ProjectionRegistry Pattern
 
-**Location:** `mfg_pde/geometry/projection.py:41`
+**Location:** `mfgarchon/geometry/projection.py:41`
 
 **Design:** Decorator-based registration with hierarchical fallback
 
@@ -306,8 +306,8 @@ where $C$ depends on boundary effects and kernel normalization.
 ### Example 1: Particle FP + Grid HJB
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Grid for HJB (50×50)
 hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
@@ -371,7 +371,7 @@ problem = MFGProblem(
 ### Example 3: Custom Network Projection
 
 ```python
-from mfg_pde.geometry import GeometryProjector, ProjectionRegistry, GridNetwork
+from mfgarchon.geometry import GeometryProjector, ProjectionRegistry, GridNetwork
 
 # Register custom network → grid projector
 @ProjectionRegistry.register(GridNetwork, TensorProductGrid, "fp_to_hjb")
@@ -390,7 +390,7 @@ def network_to_grid_custom(network, grid, node_density, **kwargs):
 
 ## Integration with MFGProblem
 
-**Location:** `mfg_pde/core/mfg_problem.py:89-120`
+**Location:** `mfgarchon/core/mfg_problem.py:89-120`
 
 ### Dual Geometry Parameters
 
@@ -540,8 +540,8 @@ def implicit_to_grid_3d(implicit_geo, grid, values, **kwargs):
 
 ### Implemented
 - **Issue #257**: Dual geometry architecture
-- `mfg_pde/geometry/projection.py`: Core implementation
-- `mfg_pde/core/mfg_problem.py:89-120`: Integration
+- `mfgarchon/geometry/projection.py`: Core implementation
+- `mfgarchon/core/mfg_problem.py:89-120`: Integration
 - `tests/unit/geometry/test_geometry_projection.py`: Comprehensive tests
 
 ### Related Work

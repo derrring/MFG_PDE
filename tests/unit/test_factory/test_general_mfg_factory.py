@@ -24,8 +24,8 @@ except ImportError:
     OMEGACONF_AVAILABLE = False
     omegaconf = None
 
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.factory.general_mfg_factory import (
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.factory.general_mfg_factory import (
     GeneralMFGFactory,
     create_general_mfg_problem,
     get_general_factory,
@@ -281,7 +281,7 @@ def test_create_from_config_dict_simple(factory):
 @pytest.mark.fast
 def test_create_from_config_dict_validates_required_fields(factory):
     """Test that missing required fields are caught."""
-    from mfg_pde.utils.validation import ValidationError
+    from mfgarchon.utils.validation import ValidationError
 
     incomplete_config = {
         "domain": {"xmin": 0.0, "xmax": 1.0, "Nx": 20}

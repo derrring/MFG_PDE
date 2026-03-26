@@ -9,7 +9,7 @@
 
 ## Overview
 
-This guide documents deprecated usage patterns in MFG_PDE and provides migration paths to modern APIs. All deprecated patterns will continue to work until v1.0.0 but will emit deprecation warnings.
+This guide documents deprecated usage patterns in MFGarchon and provides migration paths to modern APIs. All deprecated patterns will continue to work until v1.0.0 but will emit deprecation warnings.
 
 ---
 
@@ -34,8 +34,8 @@ The `tqdm` external dependency has been fully removed. All progress bars now use
 
 | Old (Removed) | New (Current) | Status |
 |:--------------|:--------------|:-------|
-| `from tqdm import tqdm` | `from mfg_pde.utils.progress import tqdm` | **COMPLETED** |
-| `from tqdm.auto import tqdm` | `from mfg_pde.utils.progress import tqdm` | **COMPLETED** |
+| `from tqdm import tqdm` | `from mfgarchon.utils.progress import tqdm` | **COMPLETED** |
+| `from tqdm.auto import tqdm` | `from mfgarchon.utils.progress import tqdm` | **COMPLETED** |
 | External tqdm dependency | Rich-based `RichProgressBar` | **COMPLETED** |
 
 **What Changed**:
@@ -49,12 +49,12 @@ The `tqdm` external dependency has been fully removed. All progress bars now use
 
 ```python
 # Simple tqdm-like interface (backward compatible)
-from mfg_pde.utils.progress import tqdm, trange
+from mfgarchon.utils.progress import tqdm, trange
 for i in tqdm(range(100), desc="Processing"):
     ...
 
 # Preferred: Solver-specific utilities
-from mfg_pde.utils.progress import solver_progress, SolverTimer
+from mfgarchon.utils.progress import solver_progress, SolverTimer
 
 # For iterative solvers with convergence tracking
 with solver_progress(max_iterations, "Picard Iteration") as progress:
@@ -67,7 +67,7 @@ with SolverTimer("HJB Solve"):
     result = solver.solve()
 
 # Advanced: Direct Rich components
-from mfg_pde.utils.progress import console, Progress, Panel, Table
+from mfgarchon.utils.progress import console, Progress, Panel, Table
 ```
 
 **Migration Path**:
@@ -77,13 +77,13 @@ from mfg_pde.utils.progress import console, Progress, Panel, Table
 from tqdm import tqdm
 from tqdm.auto import tqdm
 
-# New MFG_PDE progress (use this)
-from mfg_pde.utils.progress import tqdm  # Alias for RichProgressBar
-from mfg_pde.utils.progress import solver_progress  # Preferred for solvers
+# New MFGarchon progress (use this)
+from mfgarchon.utils.progress import tqdm  # Alias for RichProgressBar
+from mfgarchon.utils.progress import solver_progress  # Preferred for solvers
 ```
 
 **Benefits**:
-- ✅ Consistent Rich-based UI across all MFG_PDE tools
+- ✅ Consistent Rich-based UI across all MFGarchon tools
 - ✅ No fallback complexity (Rich is required, not optional)
 - ✅ Enhanced solver-specific utilities with error tracking
 - ✅ Unified console output with panels and tables
@@ -115,7 +115,7 @@ The progress bar API has been refactored to use Python's Protocol pattern with N
 
 ```python
 # Old pattern (deprecated - hasattr checks)
-from mfg_pde.utils.progress import RichProgressBar
+from mfgarchon.utils.progress import RichProgressBar
 
 picard_range = range(max_iterations)
 if verbose:
@@ -130,7 +130,7 @@ for i in picard_range:
         break
 
 # New pattern (Protocol - no hasattr needed)
-from mfg_pde.utils.progress import create_progress_bar
+from mfgarchon.utils.progress import create_progress_bar
 
 progress = create_progress_bar(range(max_iterations), verbose=verbose, desc="Picard")
 
@@ -191,10 +191,10 @@ These are equivalent only when drift velocity μ = 0.
 **Migration**:
 ```python
 # Old (deprecated, will work until v0.19)
-from mfg_pde.geometry.boundary import NoFluxCalculator, FPNoFluxCalculator
+from mfgarchon.geometry.boundary import NoFluxCalculator, FPNoFluxCalculator
 
 # New (preferred)
-from mfg_pde.geometry.boundary import ZeroGradientCalculator, ZeroFluxCalculator
+from mfgarchon.geometry.boundary import ZeroGradientCalculator, ZeroFluxCalculator
 ```
 
 #### 9. Legacy 1D FDM BoundaryConditions (Issue #516)
@@ -207,10 +207,10 @@ from mfg_pde.geometry.boundary import ZeroGradientCalculator, ZeroFluxCalculator
 **Migration**:
 ```python
 # Old (deprecated)
-from mfg_pde.geometry.boundary import BoundaryConditions1DFDM
+from mfgarchon.geometry.boundary import BoundaryConditions1DFDM
 
 # New (preferred)
-from mfg_pde.geometry.boundary import BoundaryConditions, neumann_bc
+from mfgarchon.geometry.boundary import BoundaryConditions, neumann_bc
 bc = neumann_bc(dimension=1)
 ```
 
@@ -243,16 +243,16 @@ Function-based ghost cell APIs are deprecated in favor of concrete alternatives:
 **Migration**:
 ```python
 # Old (deprecated) - abstract name
-from mfg_pde.geometry.boundary import apply_boundary_conditions_nd
+from mfgarchon.geometry.boundary import apply_boundary_conditions_nd
 u_padded = apply_boundary_conditions_nd(u, bc, domain_bounds)
 
 # New (preferred) - simple one-time use
-from mfg_pde.geometry.boundary import pad_array_with_ghosts, neumann_bc
+from mfgarchon.geometry.boundary import pad_array_with_ghosts, neumann_bc
 bc = neumann_bc(dimension=1)
 u_padded = pad_array_with_ghosts(u, bc)
 
 # New (preferred) - zero-allocation for time-stepping
-from mfg_pde.geometry.boundary import PreallocatedGhostBuffer
+from mfgarchon.geometry.boundary import PreallocatedGhostBuffer
 ghost_buffer = PreallocatedGhostBuffer(
     interior_shape=u.shape,
     boundary_conditions=bc,
@@ -305,12 +305,12 @@ The differential operators have been unified into `tensor_calculus.py`:
 **Migration**:
 ```python
 # Old (deprecated)
-from mfg_pde.utils.numerical.grid_operators import gradient, laplacian
-from mfg_pde.utils.numerical.tensor_operators import divergence_tensor_diffusion_2d
-from mfg_pde.utils.numerical.differential_utils import gradient_fd
+from mfgarchon.utils.numerical.grid_operators import gradient, laplacian
+from mfgarchon.utils.numerical.tensor_operators import divergence_tensor_diffusion_2d
+from mfgarchon.utils.numerical.differential_utils import gradient_fd
 
 # New (preferred)
-from mfg_pde.utils.numerical.tensor_calculus import (
+from mfgarchon.utils.numerical.tensor_calculus import (
     gradient, laplacian, tensor_diffusion,
 )
 from scipy.optimize import approx_fprime  # For function gradients
@@ -318,7 +318,7 @@ from scipy.optimize import approx_fprime  # For function gradients
 
 **Module Organization After v0.18.0**:
 ```
-mfg_pde/utils/numerical/
+mfgarchon/utils/numerical/
 ├── tensor_calculus.py      # Regular grids (NEW - primary)
 ├── gfdm_strategies.py      # Scattered points (GFDM/RBF-FD)
 ├── grid_operators.py       # DEPRECATED → tensor_calculus
@@ -373,14 +373,14 @@ HJBGFDMSolver → GFDMInterpolationMixin → GFDMStencilMixin → GFDMBoundaryMi
 **Migration**:
 ```python
 # Old (deprecated)
-from mfg_pde.utils.numerical.convergence import (
+from mfgarchon.utils.numerical.convergence import (
     StochasticConvergenceMonitor,
     AdvancedConvergenceMonitor,
     create_default_monitor,
 )
 
 # New (preferred)
-from mfg_pde.utils.numerical.convergence import (
+from mfgarchon.utils.numerical.convergence import (
     RollingConvergenceMonitor,
     DistributionConvergenceMonitor,
     create_distribution_monitor,
@@ -408,7 +408,7 @@ from mfg_pde.utils.numerical.convergence import (
 ### Deprecated Pattern
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfgarchon import ExampleMFGProblem
 
 problem = ExampleMFGProblem(Nx=50, xmin=0.0, xmax=1.0, Nt=25, T=1.0, sigma=0.1)
 ```
@@ -422,8 +422,8 @@ problem = ExampleMFGProblem(Nx=50, xmin=0.0, xmax=1.0, Nt=25, T=1.0, sigma=0.1)
 ### Modern Pattern
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Step 1: Create geometry with boundary conditions
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
@@ -455,7 +455,7 @@ problem = MFGProblem(geometry=domain, T=1.0, Nt=25, sigma=0.1)
 problem = ExampleMFGProblem(Nx=50, xmin=0.0, xmax=1.0)  # Scalars
 ```
 
-**Deprecation warning**: `mfg_pde/core/mfg_problem.py:113`
+**Deprecation warning**: `mfgarchon/core/mfg_problem.py:113`
 
 ### Modern Pattern
 
@@ -493,8 +493,8 @@ spacing = problem.dx      # DeprecationWarning
 ### Modern Pattern
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Create problem with geometry-first API
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
@@ -541,17 +541,17 @@ elif problem.is_network:
 ### Deprecated Pattern
 
 ```python
-from mfg_pde.backends.strategies.strategy_selector import StrategySelector
+from mfgarchon.backends.strategies.strategy_selector import StrategySelector
 
 selector = StrategySelector(enable_profiling=True, verbose=False)
 ```
 
-**Deprecation location**: `mfg_pde/backends/strategies/strategy_selector.py`
+**Deprecation location**: `mfgarchon/backends/strategies/strategy_selector.py`
 
 ### Modern Pattern
 
 ```python
-from mfg_pde.backends.strategies.strategy_selector import StrategySelector, ProfilingMode
+from mfgarchon.backends.strategies.strategy_selector import StrategySelector, ProfilingMode
 
 selector = StrategySelector(profiling_mode=ProfilingMode.SILENT)
 ```
@@ -562,7 +562,7 @@ selector = StrategySelector(profiling_mode=ProfilingMode.SILENT)
 - `ProfilingMode.VERBOSE`: Profile and print stats
 
 ### Migration Impact
-- **Files affected**: `mfg_pde/alg/numerical/fp_solvers/fp_particle.py` (already fixed)
+- **Files affected**: `mfgarchon/alg/numerical/fp_solvers/fp_particle.py` (already fixed)
 - **Breaking change**: v1.0.0
 - **Effort**: Minimal (enum-based API)
 
@@ -573,7 +573,7 @@ selector = StrategySelector(profiling_mode=ProfilingMode.SILENT)
 ### Deprecated Pattern
 
 ```python
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 
 # Ambiguous "method" parameter
 result = solve_mfg(problem, method='accurate')
@@ -588,7 +588,7 @@ result = solve_mfg(problem, method='accurate')
 ### Modern Pattern
 
 ```python
-from mfg_pde.factory import create_accurate_solver
+from mfgarchon.factory import create_accurate_solver
 
 # Explicit factory function + direct parameter control
 solver = create_accurate_solver(
@@ -626,7 +626,7 @@ result = solver.solve()
 
 ### Deprecated Classes
 
-All classes in `mfg_pde/compat/legacy_problems.py`:
+All classes in `mfgarchon/compat/legacy_problems.py`:
 - `ExampleMFGProblem` → Use `MFGProblem` with geometry
 - `CrowdDynamicsProblem` → Use `MFGProblem` with factory
 - `TrafficFlowProblem` → Use `MFGProblem` with factory
@@ -636,8 +636,8 @@ All classes in `mfg_pde/compat/legacy_problems.py`:
 ### Modern Approach
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Example: Crowd dynamics problem
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
@@ -655,7 +655,7 @@ problem = MFGProblem(
 **For custom problems**: Inherit from `MFGProblem` and override methods:
 
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 class MyCustomProblem(MFGProblem):
     def potential(self, t, x, m):
@@ -710,7 +710,7 @@ config = AdaptiveTrainingConfig(enable_curriculum=True)
 config = DGMConfig(use_control_variates=True)
 
 # New (preferred)
-from mfg_pde.alg.neural import NormalizationType, TrainingMode, VarianceReduction
+from mfgarchon.alg.neural import NormalizationType, TrainingMode, VarianceReduction
 config = PINNConfig(normalization=NormalizationType.BATCH)
 config = AdaptiveTrainingConfig(training_mode=TrainingMode.CURRICULUM)
 config = DGMConfig(variance_reduction=VarianceReduction.CONTROL_VARIATES)
@@ -746,22 +746,22 @@ result = solver.solve(M_density=density, U_terminal=terminal)
 
 ### 12. Gradient Notation Module (compat/gradient_notation.py)
 
-The entire `mfg_pde.compat.gradient_notation` module is deprecated since v0.17.0.
+The entire `mfgarchon.compat.gradient_notation` module is deprecated since v0.17.0.
 
 | Old | New | Status |
 |:----|:----|:-------|
-| `mfg_pde.compat.gradient_notation` | `mfg_pde.core.DerivativeTensors` | Deprecated |
+| `mfgarchon.compat.gradient_notation` | `mfgarchon.core.DerivativeTensors` | Deprecated |
 | `dict[tuple[int,...], float]` format | `DerivativeTensors` class | Deprecated |
 | `p_values` parameter | `derivs` parameter | Deprecated |
 
 **Migration**:
 ```python
 # Old (deprecated)
-from mfg_pde.compat.gradient_notation import tuple_to_string_keys
+from mfgarchon.compat.gradient_notation import tuple_to_string_keys
 p_values = {(1,): u_x, (2,): u_xx}  # Legacy dict format
 
 # New (preferred)
-from mfg_pde.core import DerivativeTensors, from_multi_index_dict
+from mfgarchon.core import DerivativeTensors, from_multi_index_dict
 derivs = DerivativeTensors(gradient=np.array([u_x]), hessian_diag=np.array([u_xx]))
 # Or convert: derivs = from_multi_index_dict(p_values)
 ```
@@ -796,10 +796,10 @@ problem = MFGProblem(diffusion=0.1, ...)
 **Migration**:
 ```python
 # Old (deprecated)
-from mfg_pde.types import SpatialCoordinates, TemporalCoordinates
+from mfgarchon.types import SpatialCoordinates, TemporalCoordinates
 
 # New (preferred)
-from mfg_pde.types import SpatialGrid, TimeGrid
+from mfgarchon.types import SpatialGrid, TimeGrid
 ```
 
 ---
@@ -813,11 +813,11 @@ from mfg_pde.types import SpatialGrid, TimeGrid
 **Migration**:
 ```python
 # Old (deprecated)
-from mfg_pde.backends import get_legacy_backend_list
+from mfgarchon.backends import get_legacy_backend_list
 backends = get_legacy_backend_list()
 
 # New (preferred)
-from mfg_pde.backends import get_available_backends
+from mfgarchon.backends import get_available_backends
 backends = get_available_backends()
 ```
 
@@ -873,7 +873,7 @@ geometry.plot(mode='quality')
 - Document conversion pattern
 
 ### Phase 3: Systematic Migration (✅ Complete - 2025-12-18)
-- ✅ Batch convert remaining test files (55 files in MFG_PDE)
+- ✅ Batch convert remaining test files (55 files in MFGarchon)
 - ✅ Update all `examples/` to use modern API
 - ✅ Migrate mfg-research repository (8 files)
 - ✅ Issue deprecation warnings for all legacy patterns
@@ -926,7 +926,7 @@ geometry.plot(mode='quality')
 | HJB | `M_density_evolution_from_FP` | `M_density` | Low | v0.16 |
 | HJB | `U_final_condition_at_T` | `U_terminal` | Low | v0.16 |
 | HJB | `U_from_prev_picard` | `U_coupling_prev` | Low | v0.16 |
-| Compat | `mfg_pde.compat.gradient_notation` | `mfg_pde.core.DerivativeTensors` | Medium | v0.17 |
+| Compat | `mfgarchon.compat.gradient_notation` | `mfgarchon.core.DerivativeTensors` | Medium | v0.17 |
 | Problem | `sigma=0.1` | `diffusion=0.1` | Medium | v0.16 |
 | Types | `SpatialCoordinates` | `SpatialGrid` | Low | v0.16 |
 | Types | `TemporalCoordinates` | `TimeGrid` | Low | v0.16 |
@@ -981,7 +981,7 @@ pytest tests/unit/your_test_file.py
 - ✅ BC Topology/Calculator composition (PR #520, Issue #516)
 - ✅ **Tensor calculus unification** (v0.18.0)
 - ✅ **Comprehensive deprecation audit** (43 patterns documented)
-- ✅ **Test file migration complete** (55 files in MFG_PDE)
+- ✅ **Test file migration complete** (55 files in MFGarchon)
 - ✅ **Example migration complete** (examples/, benchmarks/, tutorials/)
 - ✅ **mfg-research migration complete** (8 files)
 - ✅ **Progress bars: tqdm eliminated, Rich-only** (v0.16.15)
@@ -1008,16 +1008,16 @@ pytest tests/unit/your_test_file.py
 - `enable_profiling`, `verbose` params → Use `profiling_mode` enum (v0.15)
 
 **Completed in v0.16.15**:
-- External `tqdm` dependency eliminated → Use `mfg_pde.utils.progress` (Rich-only)
-- `from tqdm import tqdm` → `from mfg_pde.utils.progress import tqdm` (alias for `RichProgressBar`)
+- External `tqdm` dependency eliminated → Use `mfgarchon.utils.progress` (Rich-only)
+- `from tqdm import tqdm` → `from mfgarchon.utils.progress import tqdm` (alias for `RichProgressBar`)
 - Deprecated fallback logic removed → Rich is now required, no optional fallback
 
 **Removed in v0.17.0**:
 - `adaptive_bandwidth_selection` alias → Use `estimate_kde_bandwidth` (v0.15)
-- `from . import mfg_logging as logging` alias → Import from `mfg_pde.utils.mfg_logging` directly (v0.15)
-- Unconditional deprecation warnings that fired on every import of `mfg_pde.utils` (fixed)
+- `from . import mfg_logging as logging` alias → Import from `mfgarchon.utils.mfg_logging` directly (v0.15)
+- Unconditional deprecation warnings that fired on every import of `mfgarchon.utils` (fixed)
 - Unconditional warning in `gradient_notation.py` → Warnings now fire when functions are called (fixed)
-- Updated internal code to use `mfg_pde.utils.convergence` instead of `mfg_pde.utils.numerical.convergence`
+- Updated internal code to use `mfgarchon.utils.convergence` instead of `mfgarchon.utils.numerical.convergence`
 - `kernel_rbf_operators.py` module → Use `LocalRBFOperator` from `gfdm_strategies.py` (v0.17)
 - `RBFOperator`, `create_rbf_operator` exports removed from `utils.numerical`
 
@@ -1048,8 +1048,8 @@ Modern approach for specifying boundary conditions on complex geometries using m
 **Basic Usage**:
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import mixed_bc_from_regions, BCSegment, BCType
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import mixed_bc_from_regions, BCSegment, BCType
 
 # Create geometry and mark regions
 geometry = TensorProductGrid(dimension=2, bounds=[(0, 2), (0, 1)], Nx_points=[41, 21])
@@ -1068,7 +1068,7 @@ bc_config = {
 bc = mixed_bc_from_regions(geometry, bc_config)
 
 # Apply BCs (must pass geometry parameter)
-from mfg_pde.geometry.boundary import FDMApplicator
+from mfgarchon.geometry.boundary import FDMApplicator
 applicator = FDMApplicator(dimension=2)
 padded = applicator.apply(field, bc, domain_bounds=geometry.bounds, geometry=geometry)
 ```
@@ -1103,4 +1103,4 @@ padded = applicator.apply(field, bc, domain_bounds=geometry.bounds, geometry=geo
 
 - `docs/development/GEOMETRY_PARAMETER_MIGRATION.md` - Detailed geometry API docs
 - `docs/development/CONSISTENCY_GUIDE.md` - Code style and naming conventions
-- `mfg_pde/geometry/README.md` - Geometry system overview
+- `mfgarchon/geometry/README.md` - Geometry system overview

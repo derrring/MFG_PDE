@@ -1,8 +1,8 @@
-# MFG_PDE Improvements Summary - 2025-11-23
+# MFGarchon Improvements Summary - 2025-11-23
 
 ## Overview
 
-This document summarizes three critical improvements to MFG_PDE based on gaps discovered during Protocol v1.4 implementation:
+This document summarizes three critical improvements to MFGarchon based on gaps discovered during Protocol v1.4 implementation:
 
 1. **Complete removal of deprecated `ExampleMFGProblem`**
 2. **Fixed Gap 1: 2D/nD Hamiltonian indexing**
@@ -18,15 +18,15 @@ This document summarizes three critical improvements to MFG_PDE based on gaps di
 ### Changes Made
 
 **Files Modified**:
-1. `mfg_pde/core/mfg_problem.py` - Removed function wrapper
-2. `mfg_pde/__init__.py` - Removed from imports and `__all__`
-3. `mfg_pde/core/__init__.py` - Removed from imports and `__all__`
-4. `mfg_pde/compat/legacy_problems.py` - **DELETED** (entire file)
+1. `mfgarchon/core/mfg_problem.py` - Removed function wrapper
+2. `mfgarchon/__init__.py` - Removed from imports and `__all__`
+3. `mfgarchon/core/__init__.py` - Removed from imports and `__all__`
+4. `mfgarchon/compat/legacy_problems.py` - **DELETED** (entire file)
 
 **Impact**:
 - Code trying to import `ExampleMFGProblem` will now fail with clear error
 - Users must use `MFGProblem` directly (modern API)
-- Migration: `from mfg_pde import MFGProblem` instead of `ExampleMFGProblem`
+- Migration: `from mfgarchon import MFGProblem` instead of `ExampleMFGProblem`
 
 **Rationale**:
 - Already deprecated in v0.12.0
@@ -38,7 +38,7 @@ This document summarizes three critical improvements to MFG_PDE based on gaps di
 
 **Old Code**:
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfgarchon import ExampleMFGProblem
 
 problem = ExampleMFGProblem(
     dimension=2,
@@ -53,7 +53,7 @@ problem = ExampleMFGProblem(
 
 **New Code**:
 ```python
-from mfg_pde import MFGProblem, MFGComponents
+from mfgarchon import MFGProblem, MFGComponents
 
 components = MFGComponents(
     hamiltonian_func=hamiltonian,
@@ -85,7 +85,7 @@ problem = MFGProblem(
 
 ### Problem
 
-**Location**: `mfg_pde/core/mfg_problem.py:1507, 1678`
+**Location**: `mfgarchon/core/mfg_problem.py:1507, 1678`
 
 **Error**:
 ```python
@@ -100,7 +100,7 @@ x_position = self.xSpace[x_idx]  # Fails for nD where x_idx = (i, j)
 ### Solution
 
 **Files Modified**:
-- `mfg_pde/core/mfg_problem.py`: Lines 1505-1526, 1676-1697
+- `mfgarchon/core/mfg_problem.py`: Lines 1505-1526, 1676-1697
 
 **Key Changes**:
 
@@ -151,7 +151,7 @@ H_val = problem.H(x_idx, m_at_x=1.0, derivs={(1,0): 0.5, (0,1): 0.3})
 
 ### Problem
 
-**Location**: `mfg_pde/core/mfg_problem.py:1449`
+**Location**: `mfgarchon/core/mfg_problem.py:1449`
 
 **Error**:
 ```python
@@ -168,7 +168,7 @@ for i in range(self.Nx + 1):  # self.Nx is None for nD
 ### Solution
 
 **File Modified**:
-- `mfg_pde/core/mfg_problem.py`: Lines 1442-1473
+- `mfgarchon/core/mfg_problem.py`: Lines 1442-1473
 
 **Key Changes**:
 
@@ -230,7 +230,7 @@ assert problem.u_fin.max() == 125.0  # (10-0)^2 + (5-0)^2
 ### Problem
 
 **Current Limitation**:
-- MFG_PDE only supports **uniform** BC types (periodic, Dirichlet, Neumann)
+- MFGarchon only supports **uniform** BC types (periodic, Dirichlet, Neumann)
 - Cannot specify different BC on different boundary segments
 - **Critical blocker**: Protocol v1.4 requires mixed BC:
   - Exit (x=10, y∈[4.25, 5.75]): Dirichlet `u=0` (absorbing)
@@ -242,7 +242,7 @@ assert problem.u_fin.max() == 125.0  # (10-0)^2 + (5-0)^2
 
 **Core Components**:
 
-1. **New Data Structures** (`mfg_pde/geometry/boundary/mixed_bc.py`):
+1. **New Data Structures** (`mfgarchon/geometry/boundary/mixed_bc.py`):
    ```python
    @dataclass
    class BCSegment:
@@ -379,12 +379,12 @@ SUCCESS: All fixes working!
 ## Files Reference
 
 ### Modified Files
-- `mfg_pde/core/mfg_problem.py` - Gap 1 & 2 fixes
-- `mfg_pde/__init__.py` - Removed `ExampleMFGProblem`
-- `mfg_pde/core/__init__.py` - Removed `ExampleMFGProblem`
+- `mfgarchon/core/mfg_problem.py` - Gap 1 & 2 fixes
+- `mfgarchon/__init__.py` - Removed `ExampleMFGProblem`
+- `mfgarchon/core/__init__.py` - Removed `ExampleMFGProblem`
 
 ### Deleted Files
-- `mfg_pde/compat/legacy_problems.py` - Legacy wrappers
+- `mfgarchon/compat/legacy_problems.py` - Legacy wrappers
 
 ### Created Files
 - `docs/development/MIXED_BC_DESIGN.md` - Mixed BC design document
@@ -392,6 +392,6 @@ SUCCESS: All fixes working!
 
 ---
 
-**Author**: MFG_PDE Development Team
+**Author**: MFGarchon Development Team
 **Date**: 2025-11-23
 **Version**: v0.13.0-dev

@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-17
 **Status**: PROPOSAL - Architectural Design
-**Scope**: Refactoring `mfg_pde.alg.numerical` time integration
+**Scope**: Refactoring `mfgarchon.alg.numerical` time integration
 
 ## Executive Summary
 
@@ -64,7 +64,7 @@ where $L_{\text{HJB}}$ and $L_{\text{FP}}$ are differential operators on the cyl
 
 ### 2.1 Existing Design Pattern
 
-**Current Interface** (`mfg_pde/alg/numerical/`):
+**Current Interface** (`mfgarchon/alg/numerical/`):
 
 ```python
 # HJB Solver
@@ -142,7 +142,7 @@ Sequence of Snapshots (Nt+1, Nx, ...)
 from dataclasses import dataclass
 from typing import Protocol
 import numpy as np
-from mfg_pde.geometry.base import Geometry
+from mfgarchon.geometry.base import Geometry
 
 @dataclass
 class SpacetimeField:
@@ -409,7 +409,7 @@ class ImplicitDiffusionStep(StepOperator):
         self.bc = bc
 
         # Pre-assemble Laplacian matrix (reusable across steps)
-        from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+        from mfgarchon.geometry.operators.laplacian import LaplacianOperator
         L_op = LaplacianOperator(
             spacings=domain.get_grid_spacing(),
             field_shape=domain.get_grid_shape(),
@@ -443,14 +443,14 @@ class ImplicitDiffusionStep(StepOperator):
 **Objective**: Add new layer without breaking existing code
 
 **Steps**:
-1. Create `mfg_pde/alg/propagation/` module
+1. Create `mfgarchon/alg/propagation/` module
 2. Define protocols: `TrajectorySolver`, `StepOperator`, `SpacetimeField`
 3. Implement `SequentialMarchingSolver` as wrapper around current time-stepping logic
 
 **Example Wrapper**:
 
 ```python
-# mfg_pde/alg/propagation/sequential.py
+# mfgarchon/alg/propagation/sequential.py
 
 class SequentialHJBSolver(TrajectorySolver):
     """
@@ -574,7 +574,7 @@ This is **impossible** with current time-stepping architecture!
 ### 5.1 Proposed Directory Structure
 
 ```
-mfg_pde/alg/
+mfgarchon/alg/
 ├── propagation/              # NEW MODULE (Space-Time Operators)
 │   ├── __init__.py
 │   ├── base.py              # Protocols: TrajectorySolver, StepOperator
@@ -625,7 +625,7 @@ hjb_solver = HJBFDMSolver(problem)
 U_solution = hjb_solver.solve_hjb_system(M_density, U_final, ...)
 
 # New API (coexists)
-from mfg_pde.alg.propagation import SequentialHJBSolver
+from mfgarchon.alg.propagation import SequentialHJBSolver
 
 trajectory_solver = SequentialHJBSolver(hjb_solver)
 result_field = trajectory_solver.solve_trajectory(
@@ -882,7 +882,7 @@ The proposed architecture supports **both** under unified interface!
 3. Decide on adoption timeline
 
 ### Short-Term (v0.17):
-1. Create `mfg_pde/alg/propagation/` module
+1. Create `mfgarchon/alg/propagation/` module
 2. Define protocols (TrajectorySolver, StepOperator, SpacetimeField)
 3. Implement SequentialMarchingSolver
 4. Add wrappers for existing solvers (backward compatible)
@@ -941,7 +941,7 @@ The Space-Time Operator Architecture offers a mathematically principled and comp
 
 **Recommendation**: **Proceed with phased adoption** starting with protocol definitions and wrappers (v0.17), followed by gradual solver refactoring (v0.18-v1.0), culminating in advanced features (v1.1+).
 
-This positions MFG_PDE as a cutting-edge research platform while preserving stability for existing users.
+This positions MFGarchon as a cutting-edge research platform while preserving stability for existing users.
 
 ---
 

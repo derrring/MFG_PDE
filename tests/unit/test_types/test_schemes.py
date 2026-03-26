@@ -5,7 +5,7 @@ Tests the numerical scheme enumeration used in the three-mode solving API
 for Issue #580 (adjoint-aware solver pairing).
 """
 
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 
 
 class TestNumericalSchemeEnum:
@@ -129,21 +129,21 @@ class TestImportability:
     """Test that enum is properly exported and importable."""
 
     def test_import_from_types(self):
-        """Test import from mfg_pde.types."""
-        from mfg_pde.types import NumericalScheme
+        """Test import from mfgarchon.types."""
+        from mfgarchon.types import NumericalScheme
 
         assert NumericalScheme.FDM_UPWIND.value == "fdm_upwind"
 
     def test_import_from_main(self):
-        """Test import from main mfg_pde module."""
-        from mfg_pde import NumericalScheme
+        """Test import from main mfgarchon module."""
+        from mfgarchon import NumericalScheme
 
         assert NumericalScheme.GFDM.value == "gfdm"
 
     def test_no_circular_imports(self):
         """Test that importing doesn't cause circular import errors."""
         # This test passes if no ImportError is raised
-        from mfg_pde.types.schemes import NumericalScheme
+        from mfgarchon.types.schemes import NumericalScheme
 
         assert NumericalScheme is not None
 
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     print(f"✓ Total schemes: {len(list(NumericalScheme))}")
 
     # Test importability
-    from mfg_pde import NumericalScheme as NumScheme
+    from mfgarchon import NumericalScheme as NumScheme
 
     print(f"✓ Import from main package: {NumScheme.FDM_UPWIND.value}")
 

@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-This document provides the complete implementation roadmap for Lipschitz boundary support in MFG_PDE. Lipschitz boundaries include curves, surfaces, and manifolds with bounded gradients - essential for realistic crowd dynamics, evacuation, and obstacle avoidance problems.
+This document provides the complete implementation roadmap for Lipschitz boundary support in MFGarchon. Lipschitz boundaries include curves, surfaces, and manifolds with bounded gradients - essential for realistic crowd dynamics, evacuation, and obstacle avoidance problems.
 
 ### Current State
 
@@ -373,8 +373,8 @@ def matches_point(
 ### 5.1 Circular Domain with Exit
 
 ```python
-from mfg_pde.geometry import BCSegment, BCType, MixedBoundaryConditions
-from mfg_pde.utils.numerical import sdf_sphere
+from mfgarchon.geometry import BCSegment, BCType, MixedBoundaryConditions
+from mfgarchon.utils.numerical import sdf_sphere
 
 # Define circular domain
 def circle_sdf(x):
@@ -408,7 +408,7 @@ mixed_bc = MixedBoundaryConditions(
 ### 5.2 L-Shaped Domain (Lipschitz)
 
 ```python
-from mfg_pde.utils.numerical import sdf_box, sdf_difference
+from mfgarchon.utils.numerical import sdf_box, sdf_difference
 
 # L-shaped domain: large box minus small box at corner
 def l_shape_sdf(x):
@@ -523,8 +523,8 @@ At corners of Lipschitz domains:
 ### HybridMFGSolver Integration
 
 ```python
-from mfg_pde.alg.coupling.hybrid_solver import HybridMFGSolver
-from mfg_pde.geometry.boundary import MixedBoundaryConditions, BCSegment
+from mfgarchon.alg.coupling.hybrid_solver import HybridMFGSolver
+from mfgarchon.geometry.boundary import MixedBoundaryConditions, BCSegment
 
 # Create domain with circular obstacle
 domain = DifferenceDomain(
@@ -647,11 +647,11 @@ For an exact SDF phi:
 
 ### Code Locations
 
-- `mfg_pde/geometry/implicit/implicit_domain.py` - Base ImplicitDomain class
-- `mfg_pde/geometry/implicit/csg_operations.py` - CSG operations (union, difference)
-- `mfg_pde/geometry/boundary/applicator_meshfree.py` - Particle BC applicator
-- `mfg_pde/geometry/boundary/types.py` - BCSegment dataclass
-- `mfg_pde/geometry/boundary/conditions.py` - MixedBoundaryConditions
+- `mfgarchon/geometry/implicit/implicit_domain.py` - Base ImplicitDomain class
+- `mfgarchon/geometry/implicit/csg_operations.py` - CSG operations (union, difference)
+- `mfgarchon/geometry/boundary/applicator_meshfree.py` - Particle BC applicator
+- `mfgarchon/geometry/boundary/types.py` - BCSegment dataclass
+- `mfgarchon/geometry/boundary/conditions.py` - MixedBoundaryConditions
 
 ### Documentation
 

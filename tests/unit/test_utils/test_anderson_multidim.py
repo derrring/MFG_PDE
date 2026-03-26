@@ -8,7 +8,7 @@ Issue:
     When used with 2D arrays (e.g., MFG density m(x,y) on a grid), it would fail.
 
 Fix Location:
-    mfg_pde/utils/numerical/anderson_acceleration.py:112-207
+    mfgarchon/utils/numerical/anderson_acceleration.py:112-207
 
 Test Strategy:
     1. Test with 1D arrays (original functionality)
@@ -21,7 +21,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numerical.anderson_acceleration import AndersonAccelerator
+from mfgarchon.utils.numerical.anderson_acceleration import AndersonAccelerator
 
 pytestmark = pytest.mark.experimental
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/types/state.py
+Unit tests for mfgarchon/types/state.py
 
 Tests internal state representations including:
 - SpatialTemporalState (NamedTuple for solver state)
@@ -13,7 +13,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.types.state import (
+from mfgarchon.types.state import (
     ConvergenceInfo,
     IterationCallback,
     ResidualHistory,
@@ -532,7 +532,7 @@ def test_complete_solver_result():
 @pytest.mark.unit
 def test_module_exports():
     """Test all types are importable."""
-    from mfg_pde.types import state
+    from mfgarchon.types import state
 
     assert hasattr(state, "SpatialTemporalState")
     assert hasattr(state, "ConvergenceInfo")
@@ -544,7 +544,7 @@ def test_module_exports():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has comprehensive docstring."""
-    from mfg_pde.types import state
+    from mfgarchon.types import state
 
     assert state.__doc__ is not None
     assert "Internal State Representations" in state.__doc__

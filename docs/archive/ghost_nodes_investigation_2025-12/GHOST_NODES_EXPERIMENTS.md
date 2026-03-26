@@ -61,10 +61,10 @@ hjb_solver = HJBGFDMSolver(
 
 ## Files Created/Modified
 
-### MFG_PDE Repository
+### MFGarchon Repository
 
 **Core Implementation**:
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`:
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`:
   - Added `use_ghost_nodes` parameter
   - Implemented `_create_ghost_neighbors()` (lines 887-948)
   - Implemented `_apply_ghost_nodes_to_neighborhoods()` (lines 950-1020)

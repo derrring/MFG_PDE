@@ -1,5 +1,5 @@
 """
-Standard Benchmark Problems for MFG_PDE
+Standard Benchmark Problems for MFGarchon
 
 Defines canonical test problems with known characteristics for consistent
 performance tracking and comparison across solver implementations.

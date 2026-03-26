@@ -1,4 +1,4 @@
-# MFG_PDE Theory Documentation Index
+# MFGarchon Theory Documentation Index
 
 **Document Type**: Navigation and Reference Guide
 **Created**: October 8, 2025
@@ -9,7 +9,7 @@
 
 ## Overview
 
-This index provides a comprehensive guide to all theoretical documentation in the MFG_PDE package. Documents are organized by topic with status indicators, cross-references, and implementation connections.
+This index provides a comprehensive guide to all theoretical documentation in the MFGarchon package. Documents are organized by topic with status indicators, cross-references, and implementation connections.
 
 **Enhancement Status Legend**:
 - ✅ **Enhanced**: Comprehensive mathematical rigor with footnoted references
@@ -53,7 +53,7 @@ This index provides a comprehensive guide to all theoretical documentation in th
 - **Size**: 391 lines, 19 footnoted references + additional bibliography
 - **Use For**: Designing stopping criteria for MFG solvers
 - **Related**: `mathematical_background.md`, `stochastic_differential_games_theory.md`
-- **Implementation**: `mfg_pde/utils/convergence.py`
+- **Implementation**: `mfgarchon/utils/convergence.py`
 
 ---
 
@@ -67,14 +67,14 @@ This index provides a comprehensive guide to all theoretical documentation in th
 - **Size**: 21K, 8 footnoted references
 - **Use For**: Production implementation of stochastic MFG with external uncertainty
 - **Related**: `stochastic_processes_and_functional_calculus.md`, `stochastic_differential_games_theory.md`
-- **Implementation**: `mfg_pde/alg/numerical/stochastic/`, `examples/basic/common_noise_lq_demo.py`
+- **Implementation**: `mfgarchon/alg/numerical/stochastic/`, `examples/basic/common_noise_lq_demo.py`
 
 **`stochastic_processes_and_functional_calculus.md`** 📝 **Adequate**
 - **Content**: Noise processes (OU, CIR, GBM, Jump Diffusion), functional derivative computation
 - **Size**: 459 lines, 3 references
 - **Use For**: Implementation guide for stochastic MFG components
 - **Related**: `stochastic_mfg_common_noise.md`, `mathematical_background.md`
-- **Implementation**: `mfg_pde/core/stochastic/`, `mfg_pde/utils/functional_calculus.py`
+- **Implementation**: `mfgarchon/core/stochastic/`, `mfgarchon/utils/functional_calculus.py`
 
 ### 2.2 Network MFG
 
@@ -84,7 +84,7 @@ This index provides a comprehensive guide to all theoretical documentation in th
 - **Size**: 528 lines, 30 footnoted references + additional bibliography
 - **Use For**: Complete reference for network MFG theory and numerical methods
 - **Related**: `mathematical_background.md`, `convergence_criteria.md`
-- **Implementation**: `mfg_pde/core/network_mfg_problem.py`, `mfg_pde/alg/mfg_solvers/network_mfg_solver.py`
+- **Implementation**: `mfgarchon/core/network_mfg_problem.py`, `mfgarchon/alg/mfg_solvers/network_mfg_solver.py`
 
 ### 2.3 Variational MFG
 
@@ -94,7 +94,7 @@ This index provides a comprehensive guide to all theoretical documentation in th
 - **Size**: 25+ footnoted references + additional bibliography
 - **Use For**: Gradient-based numerical methods, optimal transport connections, convexity analysis
 - **Related**: `information_geometry_mfg.md`, `mathematical_background.md`, `convergence_criteria.md`
-- **Implementation**: `mfg_pde/alg/optimization/wasserstein_gradient_flow.py`, `mfg_pde/alg/optimization/sinkhorn_solver.py`
+- **Implementation**: `mfgarchon/alg/optimization/wasserstein_gradient_flow.py`, `mfgarchon/alg/optimization/sinkhorn_solver.py`
 
 ### 2.4 Anisotropic MFG
 
@@ -116,7 +116,7 @@ This index provides a comprehensive guide to all theoretical documentation in th
 - **Size**: 46K, 13 footnoted references + categorized bibliography
 - **Use For**: Geometric perspective on MFG, gradient flows, optimal transport connections
 - **Related**: `variational_mfg_theory.md`, `mathematical_background.md`
-- **Implementation**: `mfg_pde/alg/optimization/` (planned Phase 4.6)
+- **Implementation**: `mfgarchon/alg/optimization/` (planned Phase 4.6)
 
 **`IG_MFG_SYNTHESIS.md`** ⭐ **New**
 - **Content**: Conceptual synthesis of information geometry + MFG paradigm shift
@@ -393,7 +393,7 @@ mathematical_background.md (foundation)
 
 ---
 
-**Document Status**: Comprehensive index of all MFG_PDE theory documentation
+**Document Status**: Comprehensive index of all MFGarchon theory documentation
 **Last Updated**: October 8, 2025
 **Maintained By**: Primary maintainer with AI assistance
 **Next Review**: January 2026

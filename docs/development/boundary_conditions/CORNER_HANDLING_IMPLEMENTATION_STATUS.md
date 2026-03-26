@@ -27,7 +27,7 @@ Corner handling in PDE solvers requires different strategies depending on the nu
 
 ### 1. FDM Sequential Update (✅ Done)
 
-**Location**: `mfg_pde/geometry/boundary/applicator_fdm.py`
+**Location**: `mfgarchon/geometry/boundary/applicator_fdm.py`
 
 **Strategy**: Ghost cells filled by sequential dimension updates. Last dimension "wins" at corners.
 
@@ -46,7 +46,7 @@ Corner C = overwritten by Y-pass (last dimension)
 
 ### 2. Position-based Particle Reflection (✅ Done)
 
-**Location**: `mfg_pde/geometry/boundary/corner/position.py`
+**Location**: `mfgarchon/geometry/boundary/corner/position.py`
 
 **Strategy**: Modular fold reflection per dimension. Diagonal reflection emerges naturally.
 
@@ -68,7 +68,7 @@ def reflect_positions(positions, bounds):
 
 ### 3. SDF Mollification (✅ Done)
 
-**Location**: `mfg_pde/geometry/base.py:530-547`
+**Location**: `mfgarchon/geometry/base.py:530-547`
 
 **Strategy**: Treat sharp corner as rounded. Normal points from corner vertex toward query point.
 
@@ -85,12 +85,12 @@ elif corner_strategy == "mollify":
 
 ### 4. Velocity-based Particle Reflection (✅ Done)
 
-**Location**: `mfg_pde/geometry/boundary/corner/velocity.py`
+**Location**: `mfgarchon/geometry/boundary/corner/velocity.py`
 
 **Strategy**: Specular reflection with corner_strategy parameter.
 
 ```python
-from mfg_pde.geometry.boundary.corner import reflect_velocity
+from mfgarchon.geometry.boundary.corner import reflect_velocity
 
 # Basic usage
 v_new = reflect_velocity(position, velocity, bounds)
@@ -124,7 +124,7 @@ v_new = reflect_velocity(position, velocity, bounds, damping=0.9)
 **Required Implementation**:
 
 ```python
-# Proposed location: mfg_pde/alg/numerical/fvm/corner_flux.py
+# Proposed location: mfgarchon/alg/numerical/fvm/corner_flux.py
 
 def compute_corner_flux(
     cell_values: NDArray,
@@ -168,7 +168,7 @@ def compute_corner_flux(
 **Required Implementation**:
 
 ```python
-# Proposed location: mfg_pde/alg/numerical/eikonal/corner_update.py
+# Proposed location: mfgarchon/alg/numerical/eikonal/corner_update.py
 
 def eikonal_corner_update(
     T: NDArray,           # Travel time array
@@ -217,7 +217,7 @@ def eikonal_corner_update(
 **Required Implementation**:
 
 ```python
-# Proposed location: mfg_pde/alg/numerical/hjb_solvers/subgradient.py
+# Proposed location: mfgarchon/alg/numerical/hjb_solvers/subgradient.py
 
 def select_subgradient(
     value_function: NDArray,

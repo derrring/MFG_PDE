@@ -61,7 +61,7 @@ The **Interface Segregation Principle** states that no client should be forced t
 | **Coupling** | High (Client depends on full hierarchy). | Low (Client depends on single method). |
 | **Flexibility** | Rigid taxonomy. | Mix-and-match traits. |
 
-**Example in MFG_PDE**:
+**Example in MFGarchon**:
 
 ```python
 # ✅ GOOD: Focused protocols (Interface Segregation)
@@ -108,7 +108,7 @@ render(external_lib.ThirdPartyShape())
 
 ### ✅ Case 3: Gradual Typing of Legacy Code
 
-For mature codebases like portions of `MFG_PDE`, refactoring deep inheritance hierarchies to add type hints is risky. Protocols allow you to define types for existing behaviors without changing the runtime code structure.
+For mature codebases like portions of `MFGarchon`, refactoring deep inheritance hierarchies to add type hints is risky. Protocols allow you to define types for existing behaviors without changing the runtime code structure.
 
 ```python
 # Legacy code (no types, no inheritance)
@@ -280,13 +280,13 @@ class ObstacleConstraint(ConstraintBase):  # Inherits ABC utilities
 
 ---
 
-## 5. MFG_PDE Contextual Audit
+## 5. MFGarchon Contextual Audit
 
-Based on the current architecture of `MFG_PDE`, here is the specific guidance:
+Based on the current architecture of `MFGarchon`, here is the specific guidance:
 
 ### ✅ Approved Uses (Keep as Protocols)
 
-1. **`ConstraintProtocol`** (`mfg_pde/geometry/boundary/constraint_protocol.py`):
+1. **`ConstraintProtocol`** (`mfgarchon/geometry/boundary/constraint_protocol.py`):
    - **Reasoning**: Constraints are often mathematical functions that don't share state. Users might pass simple lambdas or lightweight classes. Explicit inheritance is unnecessary friction here.
    - **Interface**: 3 methods (minimal)
    - **Shared logic**: None (projection is specific to each constraint type)
@@ -297,14 +297,14 @@ Based on the current architecture of `MFG_PDE`, here is the specific guidance:
    - **Use case**: Poisson solver only needs `SupportsLaplacian`, not full geometry
    - **Status**: ✅ Appropriate use of Protocol
 
-3. **`BoundaryHandler`** (`mfg_pde/geometry/boundary/handler_protocol.py`):
+3. **`BoundaryHandler`** (`mfgarchon/geometry/boundary/handler_protocol.py`):
    - **Reasoning**: Minimal solver integration interface
    - **Interface**: 2-3 methods
    - **Status**: ✅ Appropriate (if kept minimal)
 
 ### ⚠️ Refactor Recommendations (Switch to ABC)
 
-1. **`BCApplicatorProtocol`** (`mfg_pde/geometry/boundary/applicator_base.py`):
+1. **`BCApplicatorProtocol`** (`mfgarchon/geometry/boundary/applicator_base.py`):
    - **Issue**: This component likely requires shared logic for ghost cell indexing and input validation.
    - **Current**: ~10+ methods, shared ghost cell computation logic
    - **Action**: Convert to `BCApplicatorBase(ABC)`. Use the **Template Method Pattern**[^4] to handle the heavy lifting of ghost-cell iteration in the base class, requiring subclasses only to implement the local value calculation.
@@ -401,7 +401,7 @@ To decide between a Protocol and an ABC, ask these three questions:
 2. **ABCs** define **how** (behavior, implementation, identity)
 3. **Hybrid approach** often optimal: Protocol for public API, ABC for internal utilities
 
-**MFG_PDE Recommendation**:
+**MFGarchon Recommendation**:
 - ✅ Keep: `ConstraintProtocol`, geometry traits, minimal handler interfaces
 - ⚠️ Refactor: `BCApplicatorProtocol` → `BCApplicatorBase(ABC)` with template method
 - 📋 Guideline: Default to Protocol for < 5 methods with no shared logic, ABC otherwise
@@ -423,5 +423,5 @@ To decide between a Protocol and an ABC, ask these three questions:
 **Document Metadata**:
 - **Last Updated**: 2026-01-17
 - **Context**: Design review during Issue #591 (Variational Inequality Constraints)
-- **Status**: Authoritative architectural reference for MFG_PDE
+- **Status**: Authoritative architectural reference for MFGarchon
 - **Format**: Typora/Obsidian compatible with proper footnotes

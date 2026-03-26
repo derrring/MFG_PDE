@@ -2,14 +2,14 @@
 
 **Document**: Infrastructure Survey for Factory Pattern Design
 **Date**: 2026-01-16
-**Purpose**: Ground factory design in MFG_PDE's actual codebase
+**Purpose**: Ground factory design in MFGarchon's actual codebase
 **Related**: `FACTORY_PATTERN_DESIGN.md`, Issue #580
 
 ---
 
 ## Executive Summary
 
-**Survey Scope**: Comprehensive analysis of MFG_PDE infrastructure to validate factory pattern design assumptions.
+**Survey Scope**: Comprehensive analysis of MFGarchon infrastructure to validate factory pattern design assumptions.
 
 **Key Finding**: Infrastructure is **80% ready** for factory pattern implementation:
 - ✅ **Ready**: Config system (Pydantic), solver hierarchy, geometry protocol, BC applicators
@@ -173,7 +173,7 @@ def create_optimal_backend(problem, prefer_gpu=False, precision="float64"):
 
 ## 3. problem.solve() Current State
 
-**Location**: `mfg_pde/core/mfg_problem.py:1954-2026`
+**Location**: `mfgarchon/core/mfg_problem.py:1954-2026`
 
 **Current implementation** (CRITICAL):
 
@@ -313,7 +313,7 @@ hjb_solver = SOLVER_REGISTRY[config.hjb.method](problem, config)
 
 ### GeometryProtocol (PRODUCTION-READY)
 
-**Location**: `mfg_pde/geometry/protocol.py`
+**Location**: `mfgarchon/geometry/protocol.py`
 
 ```python
 @runtime_checkable
@@ -374,7 +374,7 @@ has_obstacles = geometry.geometry_type in [GeometryType.MAZE, GeometryType.IMPLI
 **Recommendation**: Add explicit methods to GeometryProtocol or provide helper functions:
 
 ```python
-# mfg_pde/geometry/utils.py (NEW)
+# mfgarchon/geometry/utils.py (NEW)
 def is_structured_grid(geometry: GeometryProtocol) -> bool:
     """Check if geometry is structured (FDM-compatible)."""
     return geometry.geometry_type in [
@@ -410,7 +410,7 @@ def has_complex_boundaries(geometry: GeometryProtocol) -> bool:
 **Recommendation**: Create consolidated enum with HJB-FP pairs:
 
 ```python
-# mfg_pde/types/numerical_schemes.py (NEW)
+# mfgarchon/types/numerical_schemes.py (NEW)
 
 from enum import Enum
 
@@ -520,33 +520,33 @@ Reality: No `is_convex()` method exists.
 ```markdown
 ## Current Implementation Status
 
-Before implementing Issue #580, understand MFG_PDE's current state:
+Before implementing Issue #580, understand MFGarchon's current state:
 
 ### What Currently Exists ✅
 
 1. **Config System** (Production-ready)
    - Hierarchical Pydantic models with validation
    - Method-specific configs auto-populated
-   - Location: `mfg_pde/config/`
+   - Location: `mfgarchon/config/`
 
 2. **Solver Hierarchy** (Production-ready)
    - Base classes: `BaseMFGSolver` → `BaseNumericalSolver` → `BaseHJBSolver`/`BaseFPSolver`
    - Concrete solvers: FDM, GFDM, Semi-Lagrangian, WENO, Particle
-   - Location: `mfg_pde/alg/numerical/`
+   - Location: `mfgarchon/alg/numerical/`
 
 3. **Geometry Protocol** (Production-ready)
    - Runtime-checkable protocol with boundary methods
    - `GeometryType` enum for categorization
-   - Location: `mfg_pde/geometry/protocol.py`
+   - Location: `mfgarchon/geometry/protocol.py`
 
 4. **Problem Factories** (Production-ready)
    - Application-specific: `create_lq_problem()`, `create_crowd_problem()`, etc.
-   - Location: `mfg_pde/factory/problem_factories.py`
+   - Location: `mfgarchon/factory/problem_factories.py`
 
 5. **Backend Selection** (Partial)
    - Intelligent JAX vs NumPy selection based on problem size
    - Template for solver selection logic
-   - Location: `mfg_pde/factory/backend_factory.py`
+   - Location: `mfgarchon/factory/backend_factory.py`
 
 ### What's Missing ❌
 
@@ -657,7 +657,7 @@ def create_paired_solvers(
 
         # Auto-inject renormalization for Type B
         if config.fp.gfdm.normalization != "none":
-            from mfg_pde.alg.numerical.fp_solvers.renormalization import RenormalizationWrapper
+            from mfgarchon.alg.numerical.fp_solvers.renormalization import RenormalizationWrapper
             fp = RenormalizationWrapper(fp)
 
         return hjb, fp
@@ -685,8 +685,8 @@ def _auto_select_scheme(self) -> NumericalScheme:
     Uses geometry_type as proxy for structural properties since
     is_structured() and is_convex() are not implemented.
     """
-    from mfg_pde.types import NumericalScheme
-    from mfg_pde.geometry.protocol import GeometryType
+    from mfgarchon.types import NumericalScheme
+    from mfgarchon.geometry.protocol import GeometryType
 
     # Priority 1: Complex geometries force GFDM
     if self.geometry.geometry_type in [
@@ -727,7 +727,7 @@ def _auto_select_scheme(self) -> NumericalScheme:
 
 ### Current Hardcoded State
 
-Location: `mfg_pde/core/mfg_problem.py:1954-2026`
+Location: `mfgarchon/core/mfg_problem.py:1954-2026`
 
 ```python
 def solve(self, max_iterations=100, tolerance=1e-6, verbose=True, config=None):

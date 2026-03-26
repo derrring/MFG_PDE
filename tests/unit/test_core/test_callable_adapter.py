@@ -13,7 +13,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.callable_adapter import CallableSignature, adapt_ic_callable
+from mfgarchon.utils.callable_adapter import CallableSignature, adapt_ic_callable
 
 # ===========================================================================
 # Standalone adapter tests
@@ -262,8 +262,8 @@ def test_adapt_spatiotemporal_xt_nd():
 
 def _geometry(Nx_points=11, dimension=1):
     """Create a test geometry."""
-    from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary.conditions import no_flux_bc
+    from mfgarchon.geometry import TensorProductGrid
+    from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
     bounds = [(0.0, 1.0)] * dimension
     nx = [Nx_points] * dimension
@@ -276,7 +276,7 @@ def _geometry(Nx_points=11, dimension=1):
 
 def _hamiltonian():
     """Create a test Hamiltonian."""
-    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+    from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 
     return SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=1.0),
@@ -287,8 +287,8 @@ def _hamiltonian():
 
 def _problem(m_initial, u_terminal, Nx_points=11, dimension=1, **kwargs):
     """Create a test MFGProblem."""
-    from mfg_pde.core.mfg_components import MFGComponents
-    from mfg_pde.core.mfg_problem import MFGProblem
+    from mfgarchon.core.mfg_components import MFGComponents
+    from mfgarchon.core.mfg_problem import MFGProblem
 
     geom = _geometry(Nx_points=Nx_points, dimension=dimension)
     components = MFGComponents(

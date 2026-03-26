@@ -64,13 +64,13 @@ def _compute_gradients_nd(self, U, time=0.0):
 
 ### Files Modified
 
-1. **`mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`**
+1. **`mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`**
    - Added trait validation in `__init__()`
    - Refactored `_compute_gradients_nd()` to use operators
    - Deleted `_get_ghost_values()` and `_warn_no_bc_once()`
    - Updated class docstring with required traits
 
-2. **`mfg_pde/geometry/grids/tensor_grid.py`**
+2. **`mfgarchon/geometry/grids/tensor_grid.py`**
    - Added `time` parameter to `get_gradient_operator()`
    - Enables time-dependent BC support
 
@@ -102,7 +102,7 @@ def _compute_gradients_nd(self, U, time=0.0):
 **Trait Validation**:
 ```python
 # Added in __init__()
-from mfg_pde.geometry.protocols import SupportsLaplacian
+from mfgarchon.geometry.protocols import SupportsLaplacian
 
 if not isinstance(problem.geometry, SupportsLaplacian):
     raise TypeError(
@@ -141,7 +141,7 @@ class FPFDMSolver(BaseFPSolver):
 
 ### Files Modified
 
-**`mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`**:
+**`mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`**:
 - Added trait validation in `__init__()`
 - Updated class docstring with required traits and compatible geometries
 
@@ -219,13 +219,13 @@ class CouplerSolver:
 
 **Total**: 3 files (documentation only, 0 lines of code changed)
 
-1. **`mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`**
+1. **`mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`**
    - Added trait requirements section (lines 47-53)
 
-2. **`mfg_pde/alg/numerical/coupling/newton_mfg_solver.py`**
+2. **`mfgarchon/alg/numerical/coupling/newton_mfg_solver.py`**
    - Added trait requirements section (lines 65-71)
 
-3. **`mfg_pde/alg/numerical/coupling/fictitious_play.py`**
+3. **`mfgarchon/alg/numerical/coupling/fictitious_play.py`**
    - Added trait requirements section (lines 91-97)
 
 ### Design Pattern Established
@@ -294,14 +294,14 @@ def compute_all_pairs_distance(self, weighted: bool) -> NDArray:
 
 **Total**: 3 files (~200 lines added)
 
-1. **`mfg_pde/geometry/graph/network_geometry.py`**
+1. **`mfgarchon/geometry/graph/network_geometry.py`**
    - Added 5 protocol-compliant methods
    - Updated class docstring with trait documentation
 
-2. **`mfg_pde/alg/numerical/network_solvers/hjb_network.py`**
+2. **`mfgarchon/alg/numerical/network_solvers/hjb_network.py`**
    - Updated NetworkHJBSolver docstring with trait requirements
 
-3. **`mfg_pde/alg/numerical/network_solvers/fp_network.py`**
+3. **`mfgarchon/alg/numerical/network_solvers/fp_network.py`**
    - Updated FPNetworkSolver docstring with trait requirements
 
 ### Architectural Validation

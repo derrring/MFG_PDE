@@ -3,7 +3,7 @@
 **Last Updated**: September 26, 2025
 **Status**: Strategic Typing Excellence with 100% Type Coverage
 
-This directory contains comprehensive tests for the MFG-PDE solver, organized by functionality and testing approach. All test code now benefits from **100% strategic typing coverage** (366 → 0 MyPy errors) ensuring enhanced reliability and maintainability.
+This directory contains comprehensive tests for the mfgarchon solver, organized by functionality and testing approach. All test code now benefits from **100% strategic typing coverage** (366 → 0 MyPy errors) ensuring enhanced reliability and maintainability.
 
 ## Directory Structure
 

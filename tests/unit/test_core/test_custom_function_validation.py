@@ -16,16 +16,16 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.hamiltonian import (
+from mfgarchon.core.hamiltonian import (
     HamiltonianBase,
     QuadraticControlCost,
     SeparableHamiltonian,
 )
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary.conditions import no_flux_bc
-from mfg_pde.utils.validation import (
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary.conditions import no_flux_bc
+from mfgarchon.utils.validation import (
     ValidationError,
     validate_custom_functions,
     validate_drift,

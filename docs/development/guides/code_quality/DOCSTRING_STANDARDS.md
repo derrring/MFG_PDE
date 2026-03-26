@@ -1,4 +1,4 @@
-# Docstring Standards for MFG_PDE Package
+# Docstring Standards for MFGarchon Package
 
 **Version:** 1.4.0  
 **Last Updated:** 2025-07-27  
@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document establishes comprehensive docstring standards for the MFG_PDE package to ensure consistency, clarity, and maintainability across all modules. All public code must follow these standards.
+This document establishes comprehensive docstring standards for the MFGarchon package to ensure consistency, clarity, and maintainability across all modules. All public code must follow these standards.
 
 ## Docstring Format
 
@@ -227,9 +227,9 @@ Link to related functionality using Sphinx-style references:
 ```python
 """
 See Also:
-    :class:`~mfg_pde.alg.base_mfg_solver.MFGSolver`: Base solver interface
-    :meth:`~mfg_pde.core.mfg_problem.ExampleMFGProblem.H`: Hamiltonian function
-    :func:`~mfg_pde.factory.create_solver`: Solver factory function
+    :class:`~mfgarchon.alg.base_mfg_solver.MFGSolver`: Base solver interface
+    :meth:`~mfgarchon.core.mfg_problem.ExampleMFGProblem.H`: Hamiltonian function
+    :func:`~mfgarchon.factory.create_solver`: Solver factory function
     :doc:`../theory/mathematical_background`: Mathematical foundations
 """
 ```
@@ -353,13 +353,13 @@ Use these tools to validate docstring quality:
 
 ```bash
 # Check docstring coverage
-pydocstyle mfg_pde/
+pydocstyle mfgarchon/
 
 # Validate type annotations  
-mypy mfg_pde/ --strict
+mypy mfgarchon/ --strict
 
 # Test examples in docstrings
-python -m doctest mfg_pde/module_name.py
+python -m doctest mfgarchon/module_name.py
 ```
 
 ## Migration from Legacy Documentation
@@ -400,4 +400,4 @@ Configure your IDE for docstring support:
 - Set up auto-formatting for docstring text
 - Configure spell-checking for documentation
 
-This comprehensive standard ensures that all MFG_PDE documentation is consistent, informative, and maintainable while supporting the mathematical and computational nature of the package.
+This comprehensive standard ensures that all MFGarchon documentation is consistent, informative, and maintainable while supporting the mathematical and computational nature of the package.

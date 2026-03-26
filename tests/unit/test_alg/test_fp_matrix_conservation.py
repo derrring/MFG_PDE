@@ -22,7 +22,7 @@ import pytest
 import numpy as np
 import scipy.sparse as sparse
 
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 
 
 class TestFPMatrixConservation:
@@ -75,7 +75,7 @@ class TestFPMatrixConservation:
         Returns:
             Sparse CSR matrix for FP transition
         """
-        from mfg_pde.utils.aux_func import npart, ppart
+        from mfgarchon.utils.aux_func import npart, ppart
 
         row_indices = []
         col_indices = []
@@ -420,10 +420,10 @@ class TestLinearConstraintMatrixAssembly:
 
     def test_neumann_bc_via_linear_constraint(self):
         """Test Neumann BC using LinearConstraint coefficient folding."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
             _build_diffusion_matrix_with_bc,
         )
-        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+        from mfgarchon.geometry.boundary.applicator_base import LinearConstraint
 
         # Setup
         Nx = 11
@@ -465,10 +465,10 @@ class TestLinearConstraintMatrixAssembly:
 
     def test_dirichlet_bc_via_linear_constraint(self):
         """Test Dirichlet BC using LinearConstraint coefficient folding."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
             _build_diffusion_matrix_with_bc,
         )
-        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+        from mfgarchon.geometry.boundary.applicator_base import LinearConstraint
 
         # Setup
         Nx = 11
@@ -508,10 +508,10 @@ class TestLinearConstraintMatrixAssembly:
 
     def test_linear_extrapolation_bc_via_linear_constraint(self):
         """Test linear extrapolation BC using LinearConstraint (Tier 4)."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
             _build_diffusion_matrix_with_bc,
         )
-        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+        from mfgarchon.geometry.boundary.applicator_base import LinearConstraint
 
         # Setup
         Nx = 11
@@ -552,10 +552,10 @@ class TestLinearConstraintMatrixAssembly:
 
     def test_2d_neumann_bc_via_linear_constraint(self):
         """Test 2D Neumann BC using LinearConstraint."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
             _build_diffusion_matrix_with_bc,
         )
-        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+        from mfgarchon.geometry.boundary.applicator_base import LinearConstraint
 
         # Setup
         Nx, Ny = 6, 6
@@ -597,10 +597,10 @@ class TestLinearConstraintMatrixAssembly:
 
     def test_mass_conservation_with_linear_constraint_neumann(self):
         """Test mass conservation using LinearConstraint-based matrix assembly."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm_time_stepping import (
             _build_diffusion_matrix_with_bc,
         )
-        from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
+        from mfgarchon.geometry.boundary.applicator_base import LinearConstraint
 
         # Setup
         Nx = 21
@@ -650,7 +650,7 @@ class TestLinearConstraintMatrixAssembly:
 
     def test_calculator_to_constraint_conversion(self):
         """Test conversion from Calculator to LinearConstraint."""
-        from mfg_pde.geometry.boundary.applicator_base import (
+        from mfgarchon.geometry.boundary.applicator_base import (
             DirichletCalculator,
             NeumannCalculator,
             ZeroFluxCalculator,
@@ -686,7 +686,7 @@ class TestLinearConstraintMatrixAssembly:
 
     def test_calculator_to_constraint_robin(self):
         """Test Robin case: alpha*u + beta*du/dn = g gives correct ghost cell relation."""
-        from mfg_pde.geometry.boundary.applicator_base import (
+        from mfgarchon.geometry.boundary.applicator_base import (
             RobinCalculator,
             calculator_to_constraint,
         )

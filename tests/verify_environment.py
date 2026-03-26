@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-MFG_PDE Environment Verification Script
+MFGarchon Environment Verification Script
 
 Run this script to verify your Anaconda environment is properly configured
-for MFG_PDE with NumPy 2.0+ compatibility.
+for MFGarchon with NumPy 2.0+ compatibility.
 """
 
 
 def verify_environment():
     """Comprehensive environment verification."""
-    print("🔍 MFG_PDE Environment Verification")
+    print("🔍 MFGarchon Environment Verification")
     print("=" * 50)
 
     # Check Python version
@@ -40,7 +40,7 @@ def verify_environment():
     print("-" * 30)
 
     try:
-        from mfg_pde.utils.numpy_compat import get_numpy_info, trapezoid
+        from mfgarchon.utils.numpy_compat import get_numpy_info, trapezoid
 
         info = get_numpy_info()
         print(f"✅ NumPy version: {info['numpy_version']}")
@@ -62,18 +62,18 @@ def verify_environment():
         print(f"❌ NumPy compatibility issue: {e}")
         return False
 
-    # Check MFG_PDE installation
-    print("\n🎯 MFG_PDE Installation Check")
+    # Check MFGarchon installation
+    print("\n🎯 MFGarchon Installation Check")
     print("-" * 35)
 
     try:
-        import mfg_pde
+        import mfgarchon
 
-        print(f"✅ MFG_PDE version: {mfg_pde.__version__}")
+        print(f"✅ MFGarchon version: {mfgarchon.__version__}")
 
         # Test core functionality
-        from mfg_pde.alg.optimization.variational_solvers import VariationalMFGSolver
-        from mfg_pde.core.lagrangian_mfg_problem import create_quadratic_lagrangian_mfg
+        from mfgarchon.alg.optimization.variational_solvers import VariationalMFGSolver
+        from mfgarchon.core.lagrangian_mfg_problem import create_quadratic_lagrangian_mfg
 
         problem = create_quadratic_lagrangian_mfg(xmin=0, xmax=1, Nx=10, T=0.1, Nt=5)
         solver = VariationalMFGSolver(problem)
@@ -87,7 +87,7 @@ def verify_environment():
         print(f"✅ Mass conservation test: {mass_error:.2e}")
 
     except Exception as e:
-        print(f"❌ MFG_PDE functionality issue: {e}")
+        print(f"❌ MFGarchon functionality issue: {e}")
         return False
 
     # Check optional packages
@@ -113,7 +113,7 @@ def verify_environment():
             print(f"⚪ {package}: Not installed ({description})")
 
     print("\n🎉 Environment Verification Complete!")
-    print("✅ Your environment is ready for MFG_PDE development")
+    print("✅ Your environment is ready for MFGarchon development")
     return True
 
 

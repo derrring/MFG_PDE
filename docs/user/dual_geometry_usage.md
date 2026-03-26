@@ -2,7 +2,7 @@
 
 **Status**: ✅ COMPLETED (Issue #257)
 **Created**: 2025-11-10
-**Audience**: MFG_PDE users (researchers, application developers)
+**Audience**: MFGarchon users (researchers, application developers)
 
 ## Overview
 
@@ -18,8 +18,8 @@ Dual geometry support allows you to solve the HJB and FP equations on **differen
 ### Basic Example: Unified Geometry (Traditional)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Single geometry for both HJB and FP (traditional approach)
 grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
@@ -39,8 +39,8 @@ assert problem.geometry_projector is None  # No projection needed
 ### Basic Example: Dual Geometry (New)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Different geometries for HJB and FP
 hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])  # Fine
@@ -66,8 +66,8 @@ assert problem.geometry_projector is not None  # Created automatically
 **Motivation**: Value function needs high resolution, but density evolution is smooth.
 
 ```python
-from mfg_pde import MFGProblem, solve_mfg
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem, solve_mfg
+from mfgarchon.geometry import TensorProductGrid
 
 # Fine grid for accurate HJB solution
 hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], Nx_points=[201, 201])
@@ -99,8 +99,8 @@ print(f"FP solution shape: {result.M.shape}")   # (51, 51)
 
 ```python
 import numpy as np
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Grid for HJB (Eulerian)
 hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
@@ -159,8 +159,8 @@ U_particles = projector.project_hjb_to_fp(U_grid)
 **Motivation**: Agents move on discrete network (roads, corridors) but value function is spatial.
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid, GridNetwork
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid, GridNetwork
 
 # Grid for HJB (continuous space)
 hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 10)], Nx_points=[101, 101])
@@ -202,8 +202,8 @@ M_grid = projector.project_fp_to_hjb(M_nodes)  # Density on grid (101, 101)
 **Motivation**: Full state space is high-dimensional, but value function has low-dimensional structure.
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # High-dimensional particle system (e.g., 10D state space)
 class HighDimParticles:
@@ -255,7 +255,7 @@ The `GeometryProjector` automatically selects appropriate projection methods bas
 ### Manual Control
 
 ```python
-from mfg_pde.geometry import GeometryProjector
+from mfgarchon.geometry import GeometryProjector
 
 projector = GeometryProjector(
     hjb_geometry=hjb_grid,
@@ -295,7 +295,7 @@ M_grid = projector.project_fp_to_hjb(particle_masses, bandwidth=0.05)
 If you have a custom geometry type, register specialized projections:
 
 ```python
-from mfg_pde.geometry import ProjectionRegistry
+from mfgarchon.geometry import ProjectionRegistry
 
 @ProjectionRegistry.register(MyCustomGeometry, TensorProductGrid, "hjb_to_fp")
 def custom_to_grid(custom_geo, grid_geo, values, **kwargs):
@@ -337,7 +337,7 @@ problem = MFGProblem(
 Register for all geometries of a base type:
 
 ```python
-from mfg_pde.geometry.base_geometry import CartesianGrid
+from mfgarchon.geometry.base_geometry import CartesianGrid
 
 @ProjectionRegistry.register(CartesianGrid, CartesianGrid, "hjb_to_fp")
 def conservative_projection(source, target, values, **kwargs):
@@ -506,8 +506,8 @@ if projector.hjb_to_fp_method == "registry":
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
-from mfg_pde import MFGProblem, solve_mfg
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem, solve_mfg
+from mfgarchon.geometry import TensorProductGrid
 
 # Problem: Evacuate building (10m × 10m) with exit at (0, 5)
 # Use fine grid for HJB (accurate value function near exit)
@@ -660,7 +660,7 @@ For true 3D, use `TensorProductGrid` for HJB geometry.
 ### Documentation
 - `docs/theory/geometry_projection_mathematical_formulation.md`: Mathematical details
 - `docs/development/GEOMETRY_PROJECTION_IMPLEMENTATION_GUIDE.md`: Developer guide
-- API Reference: `mfg_pde.geometry.GeometryProjector`
+- API Reference: `mfgarchon.geometry.GeometryProjector`
 
 ### Examples
 - `examples/basic/dual_geometry_multiresolution.py`: Multi-resolution example
@@ -676,4 +676,4 @@ For true 3D, use `TensorProductGrid` for HJB geometry.
 
 **Document Version**: 1.0
 **Last Updated**: 2025-11-10
-**Feature Status**: ✅ Available in MFG_PDE v1.0+
+**Feature Status**: ✅ Available in MFGarchon v1.0+

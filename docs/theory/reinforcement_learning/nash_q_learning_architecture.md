@@ -1,4 +1,4 @@
-# Nash Q-Learning Architecture Design for MFG_PDE
+# Nash Q-Learning Architecture Design for MFGarchon
 
 **Date**: October 2, 2025
 **Status**: Architecture Design
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document presents the architectural design for implementing Nash Q-Learning in MFG_PDE. Based on the theoretical formulation, we identify that:
+This document presents the architectural design for implementing Nash Q-Learning in MFGarchon. Based on the theoretical formulation, we identify that:
 
 1. **For symmetric MFG**: Nash Q-Learning ≈ Mean Field Q-Learning (already implemented)
 2. **Extension needed**: Support for heterogeneous agents and multi-population games
@@ -388,7 +388,7 @@ def _compute_multi_population_state(
 
 **Goal**: Support non-symmetric games
 
-**New File**: `mfg_pde/alg/reinforcement/nash_solver.py`
+**New File**: `mfgarchon/alg/reinforcement/nash_solver.py`
 
 **Contents**:
 - `NashSolver` class (from Extension 1 above)
@@ -399,7 +399,7 @@ def _compute_multi_population_state(
 
 **Goal**: Support multiple agent types
 
-**New File**: `mfg_pde/alg/reinforcement/heterogeneous_nash_q_learning.py`
+**New File**: `mfgarchon/alg/reinforcement/heterogeneous_nash_q_learning.py`
 
 **Contents**:
 - `HeterogeneousNashQNetwork` (from Extension 2 above)
@@ -447,7 +447,7 @@ def _compute_multi_population_state(
 ### Symmetric MFG (Current Implementation)
 
 ```python
-from mfg_pde.alg.reinforcement import create_mean_field_q_learning
+from mfgarchon.alg.reinforcement import create_mean_field_q_learning
 
 # Create algorithm (already Nash Q-Learning for symmetric MFG)
 algo = create_mean_field_q_learning(env, config)
@@ -462,7 +462,7 @@ actions = algo.predict(observations)
 ### Heterogeneous Agents (Proposed)
 
 ```python
-from mfg_pde.alg.reinforcement import create_heterogeneous_nash_q_learning
+from mfgarchon.alg.reinforcement import create_heterogeneous_nash_q_learning
 
 # Create algorithm with multiple agent types
 config = {
@@ -481,8 +481,8 @@ actions = algo.predict(observations, agent_types)
 ### Custom Nash Solver (Proposed)
 
 ```python
-from mfg_pde.alg.reinforcement import MeanFieldQLearning
-from mfg_pde.alg.reinforcement.nash_solver import NashSolver
+from mfgarchon.alg.reinforcement import MeanFieldQLearning
+from mfgarchon.alg.reinforcement.nash_solver import NashSolver
 
 # Create algorithm with custom Nash solver
 algo = MeanFieldQLearning(env, state_dim, action_dim, population_dim)

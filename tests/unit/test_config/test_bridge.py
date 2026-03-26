@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from mfg_pde.config import MFGSolverConfig
+from mfgarchon.config import MFGSolverConfig
 
 # Skip all tests if OmegaConf is not available
 pytest.importorskip("omegaconf")
@@ -21,7 +21,7 @@ class TestBridgeToPydantic:
         """Test basic OmegaConf to Pydantic conversion."""
         from omegaconf import OmegaConf
 
-        from mfg_pde.config.bridge import bridge_to_pydantic
+        from mfgarchon.config.bridge import bridge_to_pydantic
 
         # Create OmegaConf config with nested structure
         omega_cfg = OmegaConf.create(
@@ -43,7 +43,7 @@ class TestBridgeToPydantic:
         """Test conversion with nested configurations."""
         from omegaconf import OmegaConf
 
-        from mfg_pde.config.bridge import bridge_to_pydantic
+        from mfgarchon.config.bridge import bridge_to_pydantic
 
         omega_cfg = OmegaConf.create(
             {
@@ -69,7 +69,7 @@ class TestBridgeToPydantic:
         """Test that OmegaConf interpolations are resolved."""
         from omegaconf import OmegaConf
 
-        from mfg_pde.config.bridge import bridge_to_pydantic
+        from mfgarchon.config.bridge import bridge_to_pydantic
 
         omega_cfg = OmegaConf.create(
             {
@@ -90,7 +90,7 @@ class TestBridgeToPydantic:
         from omegaconf import OmegaConf
         from pydantic import ValidationError
 
-        from mfg_pde.config.bridge import bridge_to_pydantic
+        from mfgarchon.config.bridge import bridge_to_pydantic
 
         omega_cfg = OmegaConf.create(
             {
@@ -109,7 +109,7 @@ class TestSaveEffectiveConfig:
 
     def test_save_config(self) -> None:
         """Test saving config to JSON file."""
-        from mfg_pde.config.bridge import save_effective_config
+        from mfgarchon.config.bridge import save_effective_config
 
         config = MFGSolverConfig()
 
@@ -128,7 +128,7 @@ class TestSaveEffectiveConfig:
 
     def test_save_creates_directory(self) -> None:
         """Test that output directory is created if it doesn't exist."""
-        from mfg_pde.config.bridge import save_effective_config
+        from mfgarchon.config.bridge import save_effective_config
 
         config = MFGSolverConfig()
 
@@ -141,7 +141,7 @@ class TestSaveEffectiveConfig:
 
     def test_custom_filename(self) -> None:
         """Test saving with custom filename."""
-        from mfg_pde.config.bridge import save_effective_config
+        from mfgarchon.config.bridge import save_effective_config
 
         config = MFGSolverConfig()
 
@@ -152,7 +152,7 @@ class TestSaveEffectiveConfig:
 
     def test_include_defaults(self) -> None:
         """Test that defaults are included by default."""
-        from mfg_pde.config.bridge import save_effective_config
+        from mfgarchon.config.bridge import save_effective_config
 
         config = MFGSolverConfig()
 
@@ -174,7 +174,7 @@ class TestLoadEffectiveConfig:
 
     def test_load_config(self) -> None:
         """Test loading config from JSON file."""
-        from mfg_pde.config.bridge import load_effective_config, save_effective_config
+        from mfgarchon.config.bridge import load_effective_config, save_effective_config
 
         original = MFGSolverConfig()
 
@@ -187,7 +187,7 @@ class TestLoadEffectiveConfig:
 
     def test_roundtrip(self) -> None:
         """Test full save/load roundtrip preserves all values."""
-        from mfg_pde.config.bridge import load_effective_config, save_effective_config
+        from mfgarchon.config.bridge import load_effective_config, save_effective_config
 
         original = MFGSolverConfig()
 
@@ -199,8 +199,8 @@ class TestLoadEffectiveConfig:
 
     def test_roundtrip_with_custom_values(self) -> None:
         """Test roundtrip with custom config values."""
-        from mfg_pde.config import PicardConfig
-        from mfg_pde.config.bridge import load_effective_config, save_effective_config
+        from mfgarchon.config import PicardConfig
+        from mfgarchon.config.bridge import load_effective_config, save_effective_config
 
         original = MFGSolverConfig(
             picard=PicardConfig(

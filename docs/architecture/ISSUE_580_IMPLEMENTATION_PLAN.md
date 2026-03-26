@@ -66,7 +66,7 @@ result = problem.solve()  # Auto-selects based on geometry
 
 #### 1.1 Create NumericalScheme Enum
 
-**File**: `mfg_pde/types/schemes.py` (NEW)
+**File**: `mfgarchon/types/schemes.py` (NEW)
 
 ```python
 from enum import Enum
@@ -95,7 +95,7 @@ class NumericalScheme(Enum):
     GFDM = "gfdm"
 ```
 
-**Export**: Add to `mfg_pde/types/__init__.py`
+**Export**: Add to `mfgarchon/types/__init__.py`
 
 **Tests**:
 - `tests/unit/types/test_schemes.py` - Enum values, string representation
@@ -103,7 +103,7 @@ class NumericalScheme(Enum):
 
 **Acceptance Criteria**:
 - [ ] Enum defined with docstrings
-- [ ] Exported in `mfg_pde/__init__.py`
+- [ ] Exported in `mfgarchon/__init__.py`
 - [ ] Unit tests passing
 - [ ] Type checker passes (mypy)
 
@@ -111,7 +111,7 @@ class NumericalScheme(Enum):
 
 #### 1.2 Create SchemeFamily Enum
 
-**File**: `mfg_pde/alg/numerical/base_solver.py` (MODIFY)
+**File**: `mfgarchon/alg/numerical/base_solver.py` (MODIFY)
 
 ```python
 from enum import Enum
@@ -187,7 +187,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
 #### 2.1 Implement Duality Validation
 
-**File**: `mfg_pde/utils/adjoint_validation.py` (NEW)
+**File**: `mfgarchon/utils/adjoint_validation.py` (NEW)
 
 ```python
 """
@@ -199,7 +199,7 @@ See docs/theory/adjoint_operators_mfg.md for mathematical foundation.
 
 from typing import Literal
 
-from mfg_pde.alg.numerical.base_solver import SchemeFamily
+from mfgarchon.alg.numerical.base_solver import SchemeFamily
 
 AdjointType = Literal["exact", "asymptotic", "none"]
 
@@ -275,13 +275,13 @@ def get_duality_description(adjoint_type: AdjointType) -> str:
 - [ ] Function implemented with comprehensive docstring
 - [ ] Uses validator pattern (Issue #543)
 - [ ] Unit tests cover all cases
-- [ ] Exported in mfg_pde/__init__.py
+- [ ] Exported in mfgarchon/__init__.py
 
 ---
 
 #### 2.2 Create Scheme Factory
 
-**File**: `mfg_pde/factory/scheme_factory.py` (NEW)
+**File**: `mfgarchon/factory/scheme_factory.py` (NEW)
 
 ```python
 """
@@ -290,16 +290,16 @@ Numerical Scheme Factory
 Creates adjoint-paired HJB-FP solver pairs with guaranteed mathematical duality.
 """
 
-from mfg_pde.config import MFGSolverConfig, GFDMConfig
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.types import NumericalScheme
-from mfg_pde.alg.numerical.hjb_solvers import (
+from mfgarchon.config import MFGSolverConfig, GFDMConfig
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.types import NumericalScheme
+from mfgarchon.alg.numerical.hjb_solvers import (
     HJBFDMSolver, HJBSLSolver, HJBGFDMSolver
 )
-from mfg_pde.alg.numerical.fp_solvers import (
+from mfgarchon.alg.numerical.fp_solvers import (
     FPFDMSolver, FPSLAdjointSolver, FPGFDMSolver
 )
-from mfg_pde.workflow import RenormalizationWrapper
+from mfgarchon.workflow import RenormalizationWrapper
 
 
 def create_paired_solvers(
@@ -326,8 +326,8 @@ def create_paired_solvers(
         ValueError: If scheme is unknown
 
     Example:
-        >>> from mfg_pde import create_crowd_problem, NumericalScheme
-        >>> from mfg_pde.factory import create_paired_solvers
+        >>> from mfgarchon import create_crowd_problem, NumericalScheme
+        >>> from mfgarchon.factory import create_paired_solvers
         >>>
         >>> problem = create_crowd_problem(...)
         >>> hjb, fp = create_paired_solvers(NumericalScheme.FDM_UPWIND, problem)
@@ -452,7 +452,7 @@ def _create_gfdm_pair(
 - [ ] All Phase 1 schemes supported (FDM, SL, GFDM)
 - [ ] Config parameters thread through correctly
 - [ ] Unit tests passing
-- [ ] Exported in mfg_pde/factory/__init__.py
+- [ ] Exported in mfgarchon/factory/__init__.py
 
 ---
 
@@ -464,7 +464,7 @@ def _create_gfdm_pair(
 
 #### 3.1 Implement Auto-Selection Logic
 
-**File**: `mfg_pde/core/mfg_problem.py` (MODIFY)
+**File**: `mfgarchon/core/mfg_problem.py` (MODIFY)
 
 Add method to MFGProblem class:
 
@@ -485,7 +485,7 @@ def _auto_select_scheme(self) -> NumericalScheme:
 
     Conservative philosophy: When in doubt, choose FDM (most stable).
     """
-    from mfg_pde.types import NumericalScheme
+    from mfgarchon.types import NumericalScheme
 
     # Priority 1: Obstacles force GFDM
     if self.has_obstacles:
@@ -566,7 +566,7 @@ def _get_selection_rationale(self, scheme: NumericalScheme) -> str:
 
 #### 3.2 Refactor problem.solve() Signature
 
-**File**: `mfg_pde/core/mfg_problem.py` (MODIFY)
+**File**: `mfgarchon/core/mfg_problem.py` (MODIFY)
 
 **Current signature** (line ~1954):
 ```python
@@ -619,7 +619,7 @@ def solve(
         ValueError: If mode detection fails or invalid parameter combination
 
     Example:
-        >>> from mfg_pde import create_crowd_problem, NumericalScheme
+        >>> from mfgarchon import create_crowd_problem, NumericalScheme
         >>> problem = create_crowd_problem(...)
         >>>
         >>> # Safe Mode (recommended)
@@ -640,7 +640,7 @@ def solve(
             print(f"[Safe Mode] Using scheme: {scheme.value}")
 
         # Create paired solvers via factory
-        from mfg_pde.factory import create_paired_solvers
+        from mfgarchon.factory import create_paired_solvers
         hjb_solver, fp_solver = create_paired_solvers(scheme, self, config)
 
     elif hjb_solver is not None and fp_solver is not None:
@@ -661,7 +661,7 @@ def solve(
             print(f"  Rationale: {rationale}")
 
         # Create paired solvers via factory
-        from mfg_pde.factory import create_paired_solvers
+        from mfgarchon.factory import create_paired_solvers
         hjb_solver, fp_solver = create_paired_solvers(scheme, self, config)
 
     else:
@@ -676,7 +676,7 @@ def solve(
         )
 
     # Create coupling iterator and solve
-    from mfg_pde.workflow import FixedPointIterator
+    from mfgarchon.workflow import FixedPointIterator
 
     solver = FixedPointIterator(
         problem=self,
@@ -703,7 +703,7 @@ def solve(
 
 #### 3.3 Implement Manual Pairing Validation
 
-**File**: `mfg_pde/core/mfg_problem.py` (MODIFY)
+**File**: `mfgarchon/core/mfg_problem.py` (MODIFY)
 
 Add method:
 
@@ -720,7 +720,7 @@ def _validate_manual_pairing(
     This is an educational function - it doesn't prevent mismatched solvers,
     but guides users toward correct pairings.
     """
-    from mfg_pde.utils.adjoint_validation import (
+    from mfgarchon.utils.adjoint_validation import (
         check_solver_duality, get_duality_description
     )
 
@@ -803,8 +803,8 @@ def _validate_manual_pairing(
 """Integration tests for three-mode solving API."""
 
 import pytest
-from mfg_pde import create_lq_problem, NumericalScheme
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon import create_lq_problem, NumericalScheme
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 
 class TestSafeMode:
@@ -856,7 +856,7 @@ class TestExpertMode:
         """Invalid pairing (SL-FDM) should warn."""
         problem = create_lq_problem(dimension=1, nx=50, T=1.0)
 
-        from mfg_pde.alg.numerical import HJBSLSolver
+        from mfgarchon.alg.numerical import HJBSLSolver
         hjb = HJBSLSolver(problem)
         fp = FPFDMSolver(problem, upwind=True)
 
@@ -937,7 +937,7 @@ and maintain mathematical properties (mass conservation, energy decay).
 """
 
 import numpy as np
-from mfg_pde import create_lq_problem, NumericalScheme
+from mfgarchon import create_lq_problem, NumericalScheme
 
 
 def test_fdm_convergence_rate():
@@ -1039,7 +1039,7 @@ def test_mass_conservation():
 result = problem.solve(max_iterations=100, tolerance=1e-6)
 
 # NEW (explicit scheme)
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 result = problem.solve(
     scheme=NumericalScheme.FDM_UPWIND,  # Or SL_LINEAR, GFDM
     max_iterations=100,
@@ -1061,7 +1061,7 @@ result = problem.solve(
 
 #### 5.2 Deprecation Warnings
 
-**File**: `mfg_pde/factory/solver_factory.py` (MODIFY)
+**File**: `mfgarchon/factory/solver_factory.py` (MODIFY)
 
 ```python
 def create_solver(
@@ -1083,7 +1083,7 @@ def create_solver(
         >>> result = solver.solve()
         >>>
         >>> # NEW
-        >>> from mfg_pde.types import NumericalScheme
+        >>> from mfgarchon.types import NumericalScheme
         >>> result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
     """
     import warnings
@@ -1122,7 +1122,7 @@ def create_solver(
 **Use when**: You want validated solver pairings with guaranteed duality.
 
 ```python
-from mfg_pde import create_crowd_problem, NumericalScheme
+from mfgarchon import create_crowd_problem, NumericalScheme
 
 problem = create_crowd_problem(...)
 
@@ -1142,7 +1142,7 @@ result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 **Use when**: You need full control (custom solvers, research).
 
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 problem = create_crowd_problem(...)
 
@@ -1163,7 +1163,7 @@ result = problem.solve(hjb_solver=hjb, fp_solver=fp)
 ```python
 problem = create_crowd_problem(...)
 
-# Let MFG_PDE choose based on geometry
+# Let MFGarchon choose based on geometry
 result = problem.solve()
 ```
 
@@ -1218,7 +1218,7 @@ result = problem.solve()
 ### New Way (v0.17.0+)
 ```python
 # Explicit scheme control
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 ```
 

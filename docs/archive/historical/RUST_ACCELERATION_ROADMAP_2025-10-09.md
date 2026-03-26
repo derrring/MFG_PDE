@@ -1,4 +1,4 @@
-# Rust Acceleration Roadmap for MFG_PDE
+# Rust Acceleration Roadmap for MFGarchon
 
 **Date**: 2025-10-09
 **Status**: Planning Phase
@@ -6,14 +6,14 @@
 
 ## Executive Summary
 
-Strategic plan for integrating Rust extensions into MFG_PDE to accelerate compute-intensive numerical operations. Primary focus: WENO5 stencil computations with expected 5-10× speedup.
+Strategic plan for integrating Rust extensions into MFGarchon to accelerate compute-intensive numerical operations. Primary focus: WENO5 stencil computations with expected 5-10× speedup.
 
 ## Strategic Analysis: Where to Use Rust
 
 Based on codebase profiling and architectural analysis:
 
 ### 1. WENO5 Stencil Computations ⭐ **TOP PRIORITY**
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py`
 
 **Why Rust?**
 - Tight loops with complex arithmetic (smoothness indicators, weight calculations)
@@ -70,7 +70,7 @@ fn compute_smoothness_indicators(u: PyReadonlyArray1<f64>) -> Py<PyArray1<f64>> 
 ---
 
 ### 2. Particle Evolution and Monte Carlo ⭐ **HIGH PRIORITY**
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_particle.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_particle.py`
 
 **Why Rust?**
 - Particle advection loop (5000-10000 particles per time step)
@@ -114,7 +114,7 @@ fn evolve_particles_parallel(
 ---
 
 ### 3. Kernel Density Estimation (KDE) ⭐ **MEDIUM PRIORITY**
-**File**: `mfg_pde/alg/numerical/density_estimation.py`
+**File**: `mfgarchon/alg/numerical/density_estimation.py`
 
 **Why Rust?**
 - Currently uses `scipy.stats.gaussian_kde` (Python overhead)
@@ -155,7 +155,7 @@ fn gaussian_kde_rust(
 ---
 
 ### 4. Anderson Acceleration ⭐ **LOW-MEDIUM PRIORITY**
-**File**: `mfg_pde/alg/numerical/mfg_solvers/fixed_point_utils.py`
+**File**: `mfgarchon/alg/numerical/mfg_solvers/fixed_point_utils.py`
 
 **Why Consider?**
 - Dense linear algebra (QR decomposition, least squares)
@@ -196,12 +196,12 @@ fn gaussian_kde_rust(
 **Example Workflow**:
 ```bash
 # Create Rust extension
-cargo new --lib mfg_pde_rust
-cd mfg_pde_rust
+cargo new --lib mfgarchon_rust
+cd mfgarchon_rust
 
 # Add to Cargo.toml
 [lib]
-name = "mfg_pde_rust"
+name = "mfgarchon_rust"
 crate-type = ["cdylib"]
 
 [dependencies]
@@ -213,7 +213,7 @@ rayon = "1.8"  # Parallelism
 maturin develop --release
 
 # Import in Python
-from mfg_pde_rust import compute_smoothness_indicators
+from mfgarchon_rust import compute_smoothness_indicators
 ```
 
 ---
@@ -231,11 +231,11 @@ from mfg_pde_rust import compute_smoothness_indicators
 Add Rust as a 4th backend alongside NumPy, PyTorch, JAX:
 
 ```python
-# mfg_pde/backends/rust_backend.py
+# mfgarchon/backends/rust_backend.py
 class RustBackend(BackendProtocol):
     def __init__(self):
-        import mfg_pde_rust
-        self.rust = mfg_pde_rust
+        import mfgarchon_rust
+        self.rust = mfgarchon_rust
 
     def weno_smoothness(self, u):
         return self.rust.compute_smoothness_indicators(u)
@@ -253,7 +253,7 @@ class RustBackend(BackendProtocol):
 **Priority**: Critical for high-order solver performance
 
 **Tasks**:
-1. ✅ Create `mfg_pde_rust` crate with PyO3
+1. ✅ Create `mfgarchon_rust` crate with PyO3
 2. ✅ Implement `compute_smoothness_indicators` in Rust
 3. ✅ Add `compute_weno_weights` with SIMD
 4. ✅ Benchmark against NumPy version
@@ -301,12 +301,12 @@ class RustBackend(BackendProtocol):
 ## Project Structure
 
 ```
-MFG_PDE/
-├── mfg_pde/                  # Python package
+MFGarchon/
+├── mfgarchon/                  # Python package
 │   ├── backends/
 │   │   └── rust_backend.py   # Rust backend interface
 │   └── ...
-├── mfg_pde_rust/             # Rust extension (NEW)
+├── mfgarchon_rust/             # Rust extension (NEW)
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── lib.rs            # PyO3 bindings
@@ -325,12 +325,12 @@ MFG_PDE/
 ### Rust Dependencies (Cargo.toml)
 ```toml
 [package]
-name = "mfg_pde_rust"
+name = "mfgarchon_rust"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "mfg_pde_rust"
+name = "mfgarchon_rust"
 crate-type = ["cdylib"]
 
 [dependencies]
@@ -351,7 +351,7 @@ build-backend = "maturin"
 
 [project.optional-dependencies]
 rust = [
-    "mfg-pde-rust>=0.1.0",  # Rust extension (optional)
+    "mfgarchon-rust>=0.1.0",  # Rust extension (optional)
 ]
 ```
 
@@ -382,7 +382,7 @@ mod tests {
 ```python
 def test_rust_weno_accuracy():
     """Verify Rust WENO matches Python implementation."""
-    import mfg_pde_rust
+    import mfgarchon_rust
     import numpy as np
 
     u = np.array([1.0, 2.0, 3.0, 2.0, 1.0])
@@ -391,7 +391,7 @@ def test_rust_weno_accuracy():
     beta_py = compute_smoothness_indicators_python(u)
 
     # Rust implementation
-    beta_rust = mfg_pde_rust.compute_smoothness_indicators(u)
+    beta_rust = mfgarchon_rust.compute_smoothness_indicators(u)
 
     np.testing.assert_allclose(beta_rust, beta_py, rtol=1e-14)
 ```
@@ -401,12 +401,12 @@ def test_rust_weno_accuracy():
 def benchmark_weno_rust_vs_python():
     """Benchmark Rust vs Python WENO."""
     import timeit
-    import mfg_pde_rust
+    import mfgarchon_rust
 
     setup = "import numpy as np; u = np.random.randn(5)"
 
     time_py = timeit.timeit("compute_smoothness_indicators_python(u)", setup=setup, number=10000)
-    time_rust = timeit.timeit("mfg_pde_rust.compute_smoothness_indicators(u)", setup=setup, number=10000)
+    time_rust = timeit.timeit("mfgarchon_rust.compute_smoothness_indicators(u)", setup=setup, number=10000)
 
     speedup = time_py / time_rust
     print(f"Rust speedup: {speedup:.1f}×")
@@ -420,11 +420,11 @@ def benchmark_weno_rust_vs_python():
 ### Development Build
 ```bash
 # Install in development mode
-cd mfg_pde_rust
+cd mfgarchon_rust
 maturin develop --release
 
 # Python can now import Rust extension
-python -c "import mfg_pde_rust; print('Success!')"
+python -c "import mfgarchon_rust; print('Success!')"
 ```
 
 ### PyPI Distribution
@@ -439,9 +439,9 @@ maturin publish
 ### Optional Dependency
 Make Rust extension optional:
 ```python
-# mfg_pde/backends/rust_backend.py
+# mfgarchon/backends/rust_backend.py
 try:
-    import mfg_pde_rust
+    import mfgarchon_rust
     RUST_AVAILABLE = True
 except ImportError:
     RUST_AVAILABLE = False
@@ -510,7 +510,7 @@ if not RUST_AVAILABLE:
 
 ## Next Steps
 
-1. **Immediate**: Create `mfg_pde_rust` crate skeleton
+1. **Immediate**: Create `mfgarchon_rust` crate skeleton
 2. **Week 1**: Implement WENO5 smoothness indicators
 3. **Week 2**: Benchmark and integrate with `HJBWenoSolver`
 4. **Week 3**: Document and publish Phase 1 results

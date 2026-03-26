@@ -12,7 +12,7 @@ Refactor HJB solvers to use trait-based geometry interfaces, eliminating manual 
 
 ### HJBFDMSolver (nD solver)
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` (~1,100 lines)
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` (~1,100 lines)
 
 **Current Geometry Interaction**:
 ```python
@@ -59,7 +59,7 @@ def _compute_gradients_nd(self, U: NDArray, time: float = 0.0) -> dict[int, NDAr
 
 ### BaseHJBSolver (1D solver)
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py` (~900 lines)
+**File**: `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py` (~900 lines)
 
 **Current Operator Computation**:
 ```python
@@ -194,7 +194,7 @@ def __init__(self, problem: MFGProblem, ...):
     super().__init__(problem)
 
     # Validate geometry traits
-    from mfg_pde.geometry.protocols import SupportsGradient
+    from mfgarchon.geometry.protocols import SupportsGradient
 
     if not isinstance(problem.geometry, SupportsGradient):
         raise TypeError(
@@ -256,7 +256,7 @@ def _compute_laplacian_1d(U_array, Dx, bc=None, time=0.0):
         L = LaplacianOperator(spacings=[Dx], field_shape=U_array.shape, bc=bc)
         return L(U_array)
     """
-    from mfg_pde.geometry.operators import LaplacianOperator
+    from mfgarchon.geometry.operators import LaplacianOperator
     L = LaplacianOperator(spacings=[Dx], field_shape=U_array.shape, bc=bc, time=time)
     return L(U_array)
 ```
@@ -283,8 +283,8 @@ class HJBFDMSolver(BaseHJBSolver):
         - Any geometry implementing SupportsGradient
 
     Example:
-        >>> from mfg_pde import MFGProblem
-        >>> from mfg_pde.geometry import TensorProductGrid
+        >>> from mfgarchon import MFGProblem
+        >>> from mfgarchon.geometry import TensorProductGrid
         >>>
         >>> grid = TensorProductGrid(...)  # Implements SupportsGradient ✓
         >>> problem = MFGProblem(geometry=grid, ...)
@@ -328,7 +328,7 @@ def test_hjb_fdm_uses_gradient_operators():
     assert len(solver._gradient_operators) == grid.dimension
 
     # Verify operators are correct type
-    from mfg_pde.operators import PartialDerivOperator
+    from mfgarchon.operators import PartialDerivOperator
     assert all(isinstance(op, PartialDerivOperator) for op in solver._gradient_operators)
 ```
 

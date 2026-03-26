@@ -89,7 +89,7 @@ def test_numerical_scheme_discrete_dual():
 ```python
 def test_hjb_fdm_solver_has_fdm_family():
     """HJBFDMSolver has FDM family trait."""
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+    from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
     assert HJBFDMSolver._scheme_family == SchemeFamily.FDM
 
 def test_trait_accessible_from_instance():
@@ -649,10 +649,10 @@ pytest tests/ -v  # All tests including slow
 ### Line Coverage (Estimated)
 
 **Core Components**:
-- `mfg_pde/types/schemes.py`: **100%**
-- `mfg_pde/utils/adjoint_validation.py`: **100%**
-- `mfg_pde/factory/scheme_factory.py`: **~95%** (some error paths defensive)
-- `mfg_pde/core/mfg_problem.py` (solve method): **100%**
+- `mfgarchon/types/schemes.py`: **100%**
+- `mfgarchon/utils/adjoint_validation.py`: **100%**
+- `mfgarchon/factory/scheme_factory.py`: **~95%** (some error paths defensive)
+- `mfgarchon/core/mfg_problem.py` (solve method): **100%**
 
 **Overall**: **~98%** for Issue #580 code
 

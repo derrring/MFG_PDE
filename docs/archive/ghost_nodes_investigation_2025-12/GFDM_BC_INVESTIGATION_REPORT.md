@@ -1,6 +1,6 @@
 # GFDM Boundary Condition Handling Investigation Report
 
-**Date**: 2025-12-18 (Updated: Integration with MFG_PDE Infrastructure)
+**Date**: 2025-12-18 (Updated: Integration with MFGarchon Infrastructure)
 **Status**: In Progress - Infrastructure Integration Phase
 **Authors**: Claude Code Investigation
 
@@ -12,11 +12,11 @@ Investigation of HJB-GFDM solver producing catastrophic negative values (U(0) mi
 
 1. **Geometric Issue (Fixed)**: Ghost particles corrupting derivative computation
 2. **Algebraic Issue (Partially Implemented)**: Missing Row Replacement for Neumann BC
-3. **Infrastructure Integration (New)**: GFDM should use existing MFG_PDE BC infrastructure
+3. **Infrastructure Integration (New)**: GFDM should use existing MFGarchon BC infrastructure
 
 Both issues stem from conflating **derivative computation** with **boundary condition enforcement**.
 
-**Key Finding**: The MFG_PDE codebase already has mature BC infrastructure (`BoundaryConditions`, `MeshfreeApplicator`, Calculator/Topology pattern) that GFDM should integrate with rather than bypass. See **Section 11** for integration details.
+**Key Finding**: The MFGarchon codebase already has mature BC infrastructure (`BoundaryConditions`, `MeshfreeApplicator`, Calculator/Topology pattern) that GFDM should integrate with rather than bypass. See **Section 11** for integration details.
 
 ---
 
@@ -119,7 +119,7 @@ g[i] = 0
 
 ### 4.1 Geometric Fix (Completed)
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 
 **Change**: Removed ghost particles from GFDMOperator initialization
 
@@ -139,7 +139,7 @@ self._gfdm_operator = GFDMOperator(..., boundary_type=None, ...)
 
 ### 4.2 Algebraic Fix (Implemented but Not Activated)
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 
 **Added Methods**:
 1. `_compute_outward_normal(point_idx)` - Compute normal vector at boundary
@@ -363,7 +363,7 @@ Only after Phase 1 & 2 pass with < 1% error vs FDM:
 ### 5.1 Ghost Particle Test
 
 ```python
-from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
+from mfgarchon.utils.numerical.gfdm_operators import GFDMOperator
 import numpy as np
 
 # Test function that does NOT satisfy no-flux BC
@@ -521,14 +521,14 @@ def test_neumann_bc_row_replacement():
 
 ---
 
-## 11. Existing MFG_PDE Boundary Condition Infrastructure
+## 11. Existing MFGarchon Boundary Condition Infrastructure
 
 ### 11.1 Architecture Overview
 
-The MFG_PDE codebase already has a mature BC infrastructure that GFDM should integrate with rather than bypass:
+The MFGarchon codebase already has a mature BC infrastructure that GFDM should integrate with rather than bypass:
 
 ```
-mfg_pde/geometry/boundary/
+mfgarchon/geometry/boundary/
 ├── conditions.py           # BoundaryConditions class (unified BC specification)
 ├── types.py               # BCType enum, BCSegment dataclass
 ├── applicator_base.py     # Base applicators + Calculator/Topology pattern
@@ -544,7 +544,7 @@ mfg_pde/geometry/boundary/
 The codebase already provides robust normal vector computation in `conditions.py:450-488`:
 
 ```python
-# mfg_pde/geometry/boundary/conditions.py
+# mfgarchon/geometry/boundary/conditions.py
 
 class BoundaryConditions:
     def get_outward_normal(self, point: np.ndarray, epsilon: float = 1e-5) -> np.ndarray | None:
@@ -661,7 +661,7 @@ def _compute_outward_normal(self, point_idx: int) -> np.ndarray:
 
 ```python
 # In HJBGFDMSolver.__init__
-from mfg_pde.geometry.boundary import MeshfreeApplicator
+from mfgarchon.geometry.boundary import MeshfreeApplicator
 
 class HJBGFDMSolver:
     def __init__(self, problem, ...):
@@ -693,10 +693,10 @@ class HJBGFDMSolver:
 Based on the existing infrastructure, here's the recommended `BoundaryConditionManager`:
 
 ```python
-# mfg_pde/alg/numerical/bc_manager.py
+# mfgarchon/alg/numerical/bc_manager.py
 
-from mfg_pde.geometry.boundary import BoundaryConditions, MeshfreeApplicator
-from mfg_pde.geometry.boundary.applicator_base import (
+from mfgarchon.geometry.boundary import BoundaryConditions, MeshfreeApplicator
+from mfgarchon.geometry.boundary.applicator_base import (
     DirichletCalculator,
     NeumannCalculator,
     ZeroFluxCalculator,
@@ -708,7 +708,7 @@ class BoundaryConditionManager:
     """
     Single source of truth for GFDM boundary condition handling.
 
-    Integrates with existing MFG_PDE infrastructure to provide:
+    Integrates with existing MFGarchon infrastructure to provide:
     - Consistent BC type resolution
     - Normal vector computation (via BoundaryConditions/MeshfreeApplicator)
     - Row Replacement matrix assembly
@@ -1296,7 +1296,7 @@ u^{n+1} = u^n + Δt · L(u^n)
 | Hermite GFDM | ❌ No | Low priority for MFG |
 | Explicit GFDM | ✅ Yes | Time-stepping in solvers |
 
-### 14.6 Recommendations for MFG_PDE
+### 14.6 Recommendations for MFGarchon
 
 **Priority Order**:
 

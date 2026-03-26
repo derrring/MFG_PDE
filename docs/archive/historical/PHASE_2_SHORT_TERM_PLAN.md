@@ -58,7 +58,7 @@ Week 12:    Documentation, Testing, Release
 
 #### Week 1-2: HJB FDM 2D Extension
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 **Approach**: Dimensional splitting
 ```python
@@ -94,7 +94,7 @@ Week 12:    Documentation, Testing, Release
 
 #### Week 3-4: FP FDM 2D Extension
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 
 **Approach**: Dimensional splitting for advection-diffusion
 ```python
@@ -151,8 +151,8 @@ Week 12:    Documentation, Testing, Release
 
 **Factory Integration**:
 ```python
-from mfg_pde.factory import create_fast_solver
-from mfg_pde import HighDimMFGProblem
+from mfgarchon.factory import create_fast_solver
+from mfgarchon import HighDimMFGProblem
 
 # 2D problem
 problem = HighDimMFGProblem(dim=2, bounds=[(0, 1), (0, 1)], N=[50, 50])
@@ -220,12 +220,12 @@ result = solver.solve()
 
 #### Week 7: Particle Interpolation Utilities
 
-**File**: `mfg_pde/utils/interpolation.py` (new)
+**File**: `mfgarchon/utils/interpolation.py` (new)
 
 **Functionality**:
 1. **RBF Interpolation**:
    ```python
-   from mfg_pde.utils.interpolation import RBFInterpolator
+   from mfgarchon.utils.interpolation import RBFInterpolator
 
    interp = RBFInterpolator(particles, values, kernel='gaussian')
    values_at_x = interp(query_points)
@@ -233,7 +233,7 @@ result = solver.solve()
 
 2. **K-Nearest Neighbors**:
    ```python
-   from mfg_pde.utils.interpolation import KNNInterpolator
+   from mfgarchon.utils.interpolation import KNNInterpolator
 
    interp = KNNInterpolator(particles, values, k=10)
    values_at_x = interp(query_points)
@@ -255,12 +255,12 @@ result = solver.solve()
 
 #### Week 8: SDF and Geometry Helpers
 
-**File**: `mfg_pde/utils/geometry.py` (enhance existing)
+**File**: `mfgarchon/utils/geometry.py` (enhance existing)
 
 **Functionality**:
 1. **SDF computation**:
    ```python
-   from mfg_pde.utils.geometry import compute_sdf
+   from mfgarchon.utils.geometry import compute_sdf
 
    # For obstacles
    obstacle_sdf = compute_sdf(obstacle_points, query_points)
@@ -292,12 +292,12 @@ result = solver.solve()
 
 #### Week 9: Convergence Monitoring
 
-**File**: `mfg_pde/utils/monitoring.py` (new)
+**File**: `mfgarchon/utils/monitoring.py` (new)
 
 **Functionality**:
 1. **Convergence Tracker**:
    ```python
-   from mfg_pde.utils.monitoring import ConvergenceMonitor
+   from mfgarchon.utils.monitoring import ConvergenceMonitor
 
    monitor = ConvergenceMonitor(
        metrics=['residual', 'value_change', 'density_change'],
@@ -323,7 +323,7 @@ result = solver.solve()
 
 2. **Progress Display**:
    ```python
-   from mfg_pde.utils.monitoring import ProgressDisplay
+   from mfgarchon.utils.monitoring import ProgressDisplay
 
    with ProgressDisplay(max_iter=100) as progress:
        for i in range(max_iter):
@@ -342,12 +342,12 @@ result = solver.solve()
 
 #### Week 10: QP Result Caching
 
-**File**: `mfg_pde/utils/caching.py` (new)
+**File**: `mfgarchon/utils/caching.py` (new)
 
 **Functionality**:
 1. **QP Cache**:
    ```python
-   from mfg_pde.utils.caching import QPCache
+   from mfgarchon.utils.caching import QPCache
 
    cache = QPCache(max_size=1000)
 
@@ -362,7 +362,7 @@ result = solver.solve()
 
 2. **Particle Neighborhood Cache**:
    ```python
-   from mfg_pde.utils.caching import NeighborhoodCache
+   from mfgarchon.utils.caching import NeighborhoodCache
 
    cache = NeighborhoodCache(particles)
    neighbors = cache.get_neighbors(particle_idx, radius=0.1)
@@ -380,10 +380,10 @@ result = solver.solve()
 ### Deliverables (Priority 2)
 
 **Code**:
-- ✅ `mfg_pde.utils.interpolation` module
-- ✅ `mfg_pde.utils.geometry` enhancements
-- ✅ `mfg_pde.utils.monitoring` module
-- ✅ `mfg_pde.utils.caching` module
+- ✅ `mfgarchon.utils.interpolation` module
+- ✅ `mfgarchon.utils.geometry` enhancements
+- ✅ `mfgarchon.utils.monitoring` module
+- ✅ `mfgarchon.utils.caching` module
 
 **Documentation**:
 - API documentation for each utility
@@ -581,7 +581,7 @@ raise ConvergenceError(
 
 **Release Notes Structure**:
 ```markdown
-# MFG_PDE v0.8.0 - Phase 2 Short-Term Improvements
+# MFGarchon v0.8.0 - Phase 2 Short-Term Improvements
 
 ## New Features
 
@@ -591,10 +591,10 @@ raise ConvergenceError(
 - Example: `examples/basic/2d_fdm_crowd_motion.py`
 
 ### New Utilities
-- `mfg_pde.utils.interpolation`: RBF and KNN interpolators
-- `mfg_pde.utils.geometry`: SDF and geometry helpers
-- `mfg_pde.utils.monitoring`: Convergence tracking
-- `mfg_pde.utils.caching`: QP and neighborhood caching
+- `mfgarchon.utils.interpolation`: RBF and KNN interpolators
+- `mfgarchon.utils.geometry`: SDF and geometry helpers
+- `mfgarchon.utils.monitoring`: Convergence tracking
+- `mfgarchon.utils.caching`: QP and neighborhood caching
 
 ### Quick Wins
 - Standardized `MFGSolution` return type

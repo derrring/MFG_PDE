@@ -149,8 +149,8 @@ The GFDM implementation follows a **composition pattern**:
 ```
 
 **Key Files**:
-- `mfg_pde/utils/numerical/gfdm_operators.py`: `GFDMOperator` class (general GFDM)
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`: `HJBGFDMSolver` class (HJB-specific)
+- `mfgarchon/utils/numerical/gfdm_operators.py`: `GFDMOperator` class (general GFDM)
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`: `HJBGFDMSolver` class (HJB-specific)
 
 **Fast Path (no QP, no ghost particles)**:
 ```python
@@ -346,9 +346,9 @@ $$
 - Optimization (convex QP, constraint construction)
 
 **Code**:
-- `mfg_pde/utils/numerical/gfdm_operators.py`: `GFDMOperator` class (base GFDM)
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`: `HJBGFDMSolver` class (HJB solver)
-- `mfg_pde/utils/numerical/kernels.py`: Weight kernels (Gaussian, Wendland)
+- `mfgarchon/utils/numerical/gfdm_operators.py`: `GFDMOperator` class (base GFDM)
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`: `HJBGFDMSolver` class (HJB solver)
+- `mfgarchon/utils/numerical/kernels.py`: Weight kernels (Gaussian, Wendland)
 
 ---
 
@@ -401,7 +401,7 @@ $$
 
 **Last Updated**: 2025-12-03
 
-**Maintainers**: MFG_PDE Development Team
+**Maintainers**: MFGarchon Development Team
 
 **Status**:
 - ✅ Mathematical foundation documented
@@ -416,5 +416,5 @@ $$
 **For implementation details, see**: `docs/development/GFDM_QP_MONOTONICITY_IMPLEMENTATION.md`
 
 **For code reference, see**:
-- Base GFDM: `mfg_pde/utils/numerical/gfdm_operators.py` (`GFDMOperator` class)
-- HJB Solver: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py` (`HJBGFDMSolver` class)
+- Base GFDM: `mfgarchon/utils/numerical/gfdm_operators.py` (`GFDMOperator` class)
+- HJB Solver: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py` (`HJBGFDMSolver` class)

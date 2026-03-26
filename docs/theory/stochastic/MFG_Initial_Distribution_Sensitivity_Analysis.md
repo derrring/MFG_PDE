@@ -3,7 +3,7 @@
 **Research Report**  
 **Date**: August 2025  
 **Classification**: Theoretical Analysis  
-**Framework**: MFG_PDE  
+**Framework**: MFGarchon  
 
 ---
 
@@ -90,9 +90,9 @@ The coupling term $\kappa m(x)^2$ creates **feedback loops**:
 3. This creates persistent **spatial segregation**
 4. Final equilibrium reflects initial clustering patterns
 
-**Computational Verification** (MFG_PDE):
+**Computational Verification** (MFGarchon):
 ```python
-from mfg_pde import MFGProblem, create_fast_solver
+from mfgarchon import MFGProblem, create_fast_solver
 import numpy as np
 
 # Traffic flow problem
@@ -282,7 +282,7 @@ On network domains $G = (V, E)$:
 - **Homogeneous networks**: $m_0$-sensitive (persistent clustering)
 
 ```python
-from mfg_pde import create_grid_mfg_problem
+from mfgarchon import create_grid_mfg_problem
 
 # Hub-spoke network
 hub_problem = create_grid_mfg_problem(
@@ -298,14 +298,14 @@ hub_problem = create_grid_mfg_problem(
 
 ## 6. Computational Methods and Verification
 
-### 6.1 Numerical Implementation in MFG_PDE
+### 6.1 Numerical Implementation in MFGarchon
 
-The MFG_PDE framework provides robust tools for studying $m_0$-sensitivity:
+The MFGarchon framework provides robust tools for studying $m_0$-sensitivity:
 
 **Solver Configuration**:
 ```python
-from mfg_pde.config import create_research_config
-from mfg_pde.factory import create_solver
+from mfgarchon.config import create_research_config
+from mfgarchon.factory import create_solver
 
 # High-accuracy configuration for sensitivity analysis
 config = create_research_config(
@@ -508,7 +508,7 @@ In these limits, **ergodic behavior** emerges and $m_0$-sensitivity vanishes.
 **Machine Learning Integration**:
 ```python
 # Neural network approximation of sensitivity functions
-from mfg_pde.ml import NeuralMFGSolver
+from mfgarchon.ml import NeuralMFGSolver
 
 class SensitivityAwareNNSolver(NeuralMFGSolver):
     def __init__(self, sensitivity_regularization=True):
@@ -557,7 +557,7 @@ class SensitivityAwareNNSolver(NeuralMFGSolver):
    - **Type II**: Moderately $m_0$-sensitive (balanced systems)  
    - **Type III**: Strongly $m_0$-sensitive (interaction-dominated, slow dynamics)
 
-5. **Computational Verification**: The MFG_PDE framework successfully demonstrates these theoretical predictions numerically.
+5. **Computational Verification**: The MFGarchon framework successfully demonstrates these theoretical predictions numerically.
 
 ### 11.2 Implications
 
@@ -599,7 +599,7 @@ The dichotomy between $m_0$-sensitive and $m_0$-insensitive MFG systems represen
 
 4. **Achdou, Y., et al.** (2012). Mean field games: numerical methods. *SIAM Journal on Numerical Analysis*, 50(1), 77-109.
 
-5. **MFG_PDE Documentation** (2025). *Advanced Mean Field Games Framework*. Available at: https://github.com/derrring/MFG_PDE
+5. **MFGarchon Documentation** (2025). *Advanced Mean Field Games Framework*. Available at: https://github.com/derrring/mfgarchon
 
 6. **Gomes, D. A., et al.** (2014). *Regularity Theory for Mean Field Game Systems*. Springer Briefs in Mathematics.
 
@@ -618,8 +618,8 @@ Run with: uv run python sensitivity_analysis_complete.py
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mfg_pde import MFGProblem, create_fast_solver
-from mfg_pde.config import create_research_config
+from mfgarchon import MFGProblem, create_fast_solver
+from mfgarchon.config import create_research_config
 
 def analyze_m0_sensitivity():
     """Complete sensitivity analysis for MFG systems."""
@@ -760,6 +760,6 @@ def generate_phase_diagram():
 
 **Report Status**: ✅ **COMPLETED**  
 **Total Length**: ~15,000 words  
-**Code Examples**: Fully executable with MFG_PDE framework  
+**Code Examples**: Fully executable with MFGarchon framework  
 **Mathematical Rigor**: Graduate research level  
 **Practical Applications**: Urban planning, economics, social dynamics  

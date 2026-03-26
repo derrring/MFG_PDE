@@ -38,8 +38,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import ObstacleConstraint, no_flux_bc
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import ObstacleConstraint, no_flux_bc
 
 print("=" * 70)
 print("Heat Equation with Minimum Temperature Constraint")

@@ -10,7 +10,7 @@ Migration pattern:
     logger = logging.getLogger(__name__)
 
   After:
-    from mfg_pde.utils.mfg_logging import get_logger
+    from mfgarchon.utils.mfg_logging import get_logger
     logger = get_logger(__name__)
 
 Files using logging.DEBUG, logging.INFO etc. will keep both imports.
@@ -26,43 +26,43 @@ from pathlib import Path
 
 # Files to migrate (excluding mfg_logging/logger.py which needs direct import)
 FILES_TO_MIGRATE = [
-    "mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py",
-    "mfg_pde/alg/numerical/hjb_solvers/hjb_sl_interpolation.py",
-    "mfg_pde/alg/numerical/hjb_solvers/base_hjb.py",
-    "mfg_pde/alg/numerical/fp_solvers/fp_semi_lagrangian_adjoint.py",
-    "mfg_pde/alg/numerical/fp_solvers/fp_semi_lagrangian.py",
-    "mfg_pde/alg/numerical/coupling/mfg_residual.py",
-    "mfg_pde/alg/numerical/coupling/newton_mfg_solver.py",
-    "mfg_pde/alg/numerical/coupling/block_iterators.py",
-    "mfg_pde/alg/neural/dgm/base_dgm.py",
-    "mfg_pde/alg/neural/dgm/mfg_dgm_solver.py",
-    "mfg_pde/alg/neural/dgm/sampling.py",
-    "mfg_pde/alg/neural/dgm/variance_reduction.py",
-    "mfg_pde/alg/neural/pinn_solvers/adaptive_training.py",
-    "mfg_pde/alg/optimization/variational_solvers/variational_mfg_solver.py",
-    "mfg_pde/alg/optimization/variational_solvers/primal_dual_solver.py",
-    "mfg_pde/alg/optimization/variational_solvers/base_variational.py",
-    "mfg_pde/alg/optimization/optimal_transport/wasserstein_solver.py",
-    "mfg_pde/alg/optimization/optimal_transport/sinkhorn_solver.py",
-    "mfg_pde/alg/reinforcement/core/base_mfrl.py",
-    "mfg_pde/backends/__init__.py",
-    "mfg_pde/config/omegaconf_manager.py",
-    "mfg_pde/core/plugin_system.py",
-    "mfg_pde/geometry/collocation.py",
-    "mfg_pde/geometry/meshes/mesh_manager.py",
-    "mfg_pde/solvers/variational.py",
-    "mfg_pde/utils/acceleration/__init__.py",
-    "mfg_pde/utils/convergence/convergence_monitors.py",
-    "mfg_pde/utils/data/polars_integration.py",
-    "mfg_pde/utils/numerical/nonlinear_solvers.py",
-    "mfg_pde/utils/numerical/particle/sampling.py",
-    "mfg_pde/utils/numerical/particle/mcmc.py",
-    "mfg_pde/visualization/interactive_plots.py",
-    "mfg_pde/visualization/mfg_analytics.py",
+    "mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py",
+    "mfgarchon/alg/numerical/hjb_solvers/hjb_sl_interpolation.py",
+    "mfgarchon/alg/numerical/hjb_solvers/base_hjb.py",
+    "mfgarchon/alg/numerical/fp_solvers/fp_semi_lagrangian_adjoint.py",
+    "mfgarchon/alg/numerical/fp_solvers/fp_semi_lagrangian.py",
+    "mfgarchon/alg/numerical/coupling/mfg_residual.py",
+    "mfgarchon/alg/numerical/coupling/newton_mfg_solver.py",
+    "mfgarchon/alg/numerical/coupling/block_iterators.py",
+    "mfgarchon/alg/neural/dgm/base_dgm.py",
+    "mfgarchon/alg/neural/dgm/mfg_dgm_solver.py",
+    "mfgarchon/alg/neural/dgm/sampling.py",
+    "mfgarchon/alg/neural/dgm/variance_reduction.py",
+    "mfgarchon/alg/neural/pinn_solvers/adaptive_training.py",
+    "mfgarchon/alg/optimization/variational_solvers/variational_mfg_solver.py",
+    "mfgarchon/alg/optimization/variational_solvers/primal_dual_solver.py",
+    "mfgarchon/alg/optimization/variational_solvers/base_variational.py",
+    "mfgarchon/alg/optimization/optimal_transport/wasserstein_solver.py",
+    "mfgarchon/alg/optimization/optimal_transport/sinkhorn_solver.py",
+    "mfgarchon/alg/reinforcement/core/base_mfrl.py",
+    "mfgarchon/backends/__init__.py",
+    "mfgarchon/config/omegaconf_manager.py",
+    "mfgarchon/core/plugin_system.py",
+    "mfgarchon/geometry/collocation.py",
+    "mfgarchon/geometry/meshes/mesh_manager.py",
+    "mfgarchon/solvers/variational.py",
+    "mfgarchon/utils/acceleration/__init__.py",
+    "mfgarchon/utils/convergence/convergence_monitors.py",
+    "mfgarchon/utils/data/polars_integration.py",
+    "mfgarchon/utils/numerical/nonlinear_solvers.py",
+    "mfgarchon/utils/numerical/particle/sampling.py",
+    "mfgarchon/utils/numerical/particle/mcmc.py",
+    "mfgarchon/visualization/interactive_plots.py",
+    "mfgarchon/visualization/mfg_analytics.py",
     # Complex files (workflow) - will review manually after
-    "mfg_pde/workflow/workflow_manager.py",
-    "mfg_pde/workflow/experiment_tracker.py",
-    "mfg_pde/workflow/parameter_sweep.py",
+    "mfgarchon/workflow/workflow_manager.py",
+    "mfgarchon/workflow/experiment_tracker.py",
+    "mfgarchon/workflow/parameter_sweep.py",
 ]
 
 # Patterns for logging constants that require keeping the import
@@ -106,7 +106,7 @@ def migrate_file(file_path: Path, dry_run: bool = False) -> dict:
     # If file still needs logging, keep it and add mfg_logging
     if result["needs_logging_import"]:
         # Keep import logging, add mfg_logging after
-        new_import = "import logging\nfrom mfg_pde.utils.mfg_logging import get_logger"
+        new_import = "import logging\nfrom mfgarchon.utils.mfg_logging import get_logger"
         if "import logging\n" in content:
             content = content.replace("import logging\n", new_import + "\n", 1)
             result["changes"].append("Added mfg_logging import (kept logging for constants)")
@@ -114,7 +114,7 @@ def migrate_file(file_path: Path, dry_run: bool = False) -> dict:
         # Replace import logging entirely
         content = re.sub(
             r"^import logging\s*$",
-            "from mfg_pde.utils.mfg_logging import get_logger",
+            "from mfgarchon.utils.mfg_logging import get_logger",
             content,
             count=1,
             flags=re.MULTILINE,

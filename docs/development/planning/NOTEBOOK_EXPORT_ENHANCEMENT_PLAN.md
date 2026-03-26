@@ -7,14 +7,14 @@
 
 ## Context
 
-Currently, `SolverResult.export_summary()` supports only `markdown` and `latex` output formats. However, MFG_PDE has comprehensive Jupyter notebook support through `mfg_pde.utils.notebooks.reporting.MFGNotebookReporter`.
+Currently, `SolverResult.export_summary()` supports only `markdown` and `latex` output formats. However, MFGarchon has comprehensive Jupyter notebook support through `mfgarchon.utils.notebooks.reporting.MFGNotebookReporter`.
 
 **User Request**: Add notebook export support to `export_summary()` method to enable interactive exploration of solver results.
 
 ## Existing Infrastructure
 
 ### Available Assets
-- ✅ **`MFGNotebookReporter`** (`mfg_pde/utils/notebooks/reporting.py`, 973 lines)
+- ✅ **`MFGNotebookReporter`** (`mfgarchon/utils/notebooks/reporting.py`, 973 lines)
   - Complete notebook generation system
   - Plotly integration for interactive visualizations
   - LaTeX math support
@@ -65,7 +65,7 @@ Currently, `SolverResult.export_summary()` supports only `markdown` and `latex` 
 
 **API Example**:
 ```python
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 
 result = solve_mfg(problem)
 
@@ -95,7 +95,7 @@ result.export_summary(output_format="latex", filename="summary.tex")
 
 # Cell 2 (code):
 import numpy as np
-from mfg_pde.utils.solver_result import SolverResult
+from mfgarchon.utils.solver_result import SolverResult
 
 # Recreate SolverResult for interactive exploration
 result = SolverResult(
@@ -178,7 +178,7 @@ paths = result.create_research_report(
 ### Phase 1: Simple Template Export
 
 #### 1. Core Implementation
-**File**: `mfg_pde/utils/solver_result.py`
+**File**: `mfgarchon/utils/solver_result.py`
 
 **Changes**:
 ```python
@@ -238,7 +238,7 @@ def _export_notebook(self, filename: str | Path | None = None) -> str:
     setup_code = """# Import required libraries
 import numpy as np
 import matplotlib.pyplot as plt
-from mfg_pde.utils.solver_result import SolverResult
+from mfgarchon.utils.solver_result import SolverResult
 
 # Note: This notebook demonstrates analysis methods.
 # To recreate the full result, you need the original data.
@@ -465,7 +465,7 @@ The generated notebook includes:
 ### Phase 2: Rich Report Convenience Wrapper
 
 #### 1. Core Implementation (Phase 2)
-**File**: `mfg_pde/utils/solver_result.py`
+**File**: `mfgarchon/utils/solver_result.py`
 
 **Add Method**:
 ```python
@@ -512,7 +512,7 @@ def create_research_report(
         For simple summaries, use export_summary(format='notebook').
     """
     try:
-        from mfg_pde.utils.notebooks.reporting import create_mfg_research_report
+        from mfgarchon.utils.notebooks.reporting import create_mfg_research_report
     except ImportError:
         raise ImportError(
             "Research reports require notebook support. "
@@ -737,7 +737,7 @@ def main():
 - Issue #127: Solver Result Analysis Tools ✅ (Completed)
 
 **Related Features**:
-- `MFGNotebookReporter` (`mfg_pde/utils/notebooks/reporting.py`)
+- `MFGNotebookReporter` (`mfgarchon/utils/notebooks/reporting.py`)
 - `analyze_convergence()`, `plot_convergence()`, `compare_to()` methods
 - Markdown/LaTeX export infrastructure
 

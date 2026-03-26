@@ -12,7 +12,7 @@
 
 **Verdict**: Competent Research Prototype.
 
-The implementation successfully integrates the Level Set Method (LSM) into the existing MFG_PDE framework without breaking changes. It meets the critical accuracy targets for the Stefan Problem (< 5% error), but relies on computationally expensive explicit time-stepping and first-order spatial schemes. It is "correct but inefficient," making it suitable for research demonstrations but not yet ready for high-performance production workloads.
+The implementation successfully integrates the Level Set Method (LSM) into the existing MFGarchon framework without breaking changes. It meets the critical accuracy targets for the Stefan Problem (< 5% error), but relies on computationally expensive explicit time-stepping and first-order spatial schemes. It is "correct but inefficient," making it suitable for research demonstrations but not yet ready for high-performance production workloads.
 
 ---
 
@@ -186,7 +186,7 @@ To move from "Research Prototype" to "Production Ready," the following roadmap i
 1. **Implicit Time Stepping**
    - Implement Crank-Nicolson or IMEX (Implicit-Explicit) schemes for physics solvers
    - Expected speedup: 10-100× (reduce $N_t$ from 16,000 to ~500)
-   - Implementation: `mfg_pde/alg/numerical/pde_solvers/implicit_heat.py`
+   - Implementation: `mfgarchon/alg/numerical/pde_solvers/implicit_heat.py`
 
 2. **Narrow Banding**
    - Restrict level set updates to $\pm 3dx$ around interface
@@ -272,7 +272,7 @@ Additional References:
 
 ## 10. Conclusion
 
-The Level Set v1.0 implementation successfully integrates LSM into MFG_PDE with:
+The Level Set v1.0 implementation successfully integrates LSM into MFGarchon with:
 - ✅ Correct physics (Stefan < 5% error)
 - ✅ Clean architecture (composition, operator reuse)
 - ✅ No breaking changes

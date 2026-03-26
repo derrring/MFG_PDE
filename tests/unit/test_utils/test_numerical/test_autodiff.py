@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/numerical/autodiff.py
+Unit tests for mfgarchon/utils/numerical/autodiff.py
 
 Tests AutoDiffBackend enum including:
 - Enum values and string representation
@@ -11,7 +11,7 @@ Tests AutoDiffBackend enum including:
 
 import pytest
 
-from mfg_pde.utils.numerical.autodiff import AutoDiffBackend
+from mfgarchon.utils.numerical.autodiff import AutoDiffBackend
 
 # ===================================================================
 # Test AutoDiffBackend Enum Values
@@ -349,7 +349,7 @@ def test_backend_type_annotation():
 @pytest.mark.unit
 def test_module_exports():
     """Test AutoDiffBackend is importable."""
-    from mfg_pde.utils.numerical import autodiff
+    from mfgarchon.utils.numerical import autodiff
 
     assert hasattr(autodiff, "AutoDiffBackend")
     assert autodiff.AutoDiffBackend == AutoDiffBackend
@@ -358,7 +358,7 @@ def test_module_exports():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has comprehensive docstring."""
-    from mfg_pde.utils.numerical import autodiff
+    from mfgarchon.utils.numerical import autodiff
 
     assert autodiff.__doc__ is not None
     assert "Automatic Differentiation" in autodiff.__doc__

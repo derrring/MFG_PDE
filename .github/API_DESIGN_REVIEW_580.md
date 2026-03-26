@@ -26,7 +26,7 @@
 
 **Current API (Auto Mode)**:
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 result = problem.solve()
@@ -42,8 +42,8 @@ result = problem.solve()
 
 **New API (Safe Mode)**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.types import NumericalScheme
+from mfgarchon import MFGProblem
+from mfgarchon.types import NumericalScheme
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -63,8 +63,8 @@ result_gfdm = problem.solve(scheme=NumericalScheme.GFDM)
 
 **New API (Expert Mode)**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -115,7 +115,7 @@ result = problem.solve(max_iterations=100, tolerance=1e-6)
 
 **Behavior**:
 ```python
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 
 result = problem.solve(
     scheme=NumericalScheme.FDM_UPWIND,
@@ -144,7 +144,7 @@ result = problem.solve(
 
 **Behavior**:
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 hjb = HJBFDMSolver(problem)
 fp = FPFDMSolver(problem, advection_scheme="custom")
@@ -521,8 +521,8 @@ result = problem.solve()  # Still works! (Auto Mode)
 
 **Before**:
 ```python
-from mfg_pde.factory import create_solver
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.factory import create_solver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 hjb = HJBFDMSolver(problem)
 fp = FPFDMSolver(problem)
@@ -532,7 +532,7 @@ result = solver.solve()
 
 **After** (with deprecation warning):
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 hjb = HJBFDMSolver(problem)
 fp = FPFDMSolver(problem)
@@ -573,14 +573,14 @@ SolverResult  # Same type regardless of mode
 
 **Safe Mode**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.types import NumericalScheme
+from mfgarchon import MFGProblem
+from mfgarchon.types import NumericalScheme
 ```
 
 **Expert Mode**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 ```
 
 **Assessment**: ✅ Logical import hierarchy

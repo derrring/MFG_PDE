@@ -17,7 +17,7 @@ Usage:
 
 Requirements:
     - numpy, matplotlib
-    - mfg_pde with strategic typing excellence
+    - mfgarchon with strategic typing excellence
 """
 
 import time
@@ -25,9 +25,9 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBWenoSolver
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging for research session
 configure_research_logging("weno_family_comparison", level="INFO")

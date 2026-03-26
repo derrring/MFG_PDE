@@ -7,7 +7,7 @@ Verifies torch > jax > numpy auto-selection logic with OS-aware device selection
 
 import logging
 
-from mfg_pde.backends import create_backend, get_available_backends, get_backend_info
+from mfgarchon.backends import create_backend, get_available_backends, get_backend_info
 
 # Configure logging to see auto-selection messages
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")

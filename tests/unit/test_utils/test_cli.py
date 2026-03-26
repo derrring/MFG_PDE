@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/cli.py
+Unit tests for mfgarchon/utils/cli.py
 
 Tests command-line interface utilities including:
 - Argument parser creation and configuration
@@ -19,7 +19,7 @@ from unittest.mock import patch
 
 import pytest
 
-from mfg_pde.utils.cli import (
+from mfgarchon.utils.cli import (
     args_to_config,
     create_base_parser,
     create_solver_cli,
@@ -257,7 +257,7 @@ def test_load_config_file_yaml_without_pyyaml():
         config_path.write_text("problem: {T: 2.0}")
 
         with (
-            patch("mfg_pde.utils.cli.YAML_AVAILABLE", False),
+            patch("mfgarchon.utils.cli.YAML_AVAILABLE", False),
             pytest.raises(ValueError, match="YAML support requires PyYAML"),
         ):
             load_config_file(config_path)

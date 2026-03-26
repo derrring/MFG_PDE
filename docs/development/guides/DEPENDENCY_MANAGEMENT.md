@@ -2,7 +2,7 @@
 
 ## Overview
 
-MFG_PDE provides clear error messages and diagnostics for optional dependencies through `mfg_pde/utils/dependencies.py`.
+MFGarchon provides clear error messages and diagnostics for optional dependencies through `mfgarchon/utils/dependencies.py`.
 
 ## Core Utilities
 
@@ -11,7 +11,7 @@ MFG_PDE provides clear error messages and diagnostics for optional dependencies 
 Check if an optional dependency is available with helpful error messages.
 
 ```python
-from mfg_pde.utils.dependencies import check_dependency
+from mfgarchon.utils.dependencies import check_dependency
 
 # Raise ImportError with install instructions if missing
 check_dependency('torch', purpose='neural network solvers')
@@ -31,14 +31,14 @@ check_dependency('package', install_command='conda install package')
 Display status of all optional features with version information.
 
 ```python
-from mfg_pde import show_optional_features
+from mfgarchon import show_optional_features
 
 show_optional_features()
 ```
 
 **Output**:
 ```
-MFG_PDE Optional Features Status
+MFGarchon Optional Features Status
 ================================================================================
 
 Core (always available):
@@ -48,14 +48,14 @@ Core (always available):
 
 Neural Methods:
   ✓ torch 2.8.0 - Deep learning backends, RL algorithms, GPU acceleration
-  ✗ jax - JAX backend, autodiff, GPU kernels (pip install mfg-pde[performance])
+  ✗ jax - JAX backend, autodiff, GPU kernels (pip install mfgarchon[performance])
 
 Visualization:
   ✓ plotly 6.3.0 - Interactive visualizations, 3D plots
-  ✗ bokeh - Interactive plots, dashboards (pip install mfg-pde[visualization])
+  ✗ bokeh - Interactive plots, dashboards (pip install mfgarchon[visualization])
 
 GPU Acceleration:
-  ✗ cupy - GPU arrays and operations (pip install mfg-pde[gpu])
+  ✗ cupy - GPU arrays and operations (pip install mfgarchon[gpu])
 ...
 ```
 
@@ -64,7 +64,7 @@ GPU Acceleration:
 Simple check without error messages.
 
 ```python
-from mfg_pde.utils.dependencies import is_available
+from mfgarchon.utils.dependencies import is_available
 
 if is_available('plotly'):
     import plotly.graph_objects as go
@@ -79,7 +79,7 @@ else:
 Decorator to require dependencies for a function or class.
 
 ```python
-from mfg_pde.utils.dependencies import require_dependencies
+from mfgarchon.utils.dependencies import require_dependencies
 
 @require_dependencies('torch', purpose='Mean Field DDPG')
 def create_ddpg_agent(env):
@@ -100,7 +100,7 @@ class JAXBackend:
 Use pre-checked flags for performance:
 
 ```python
-from mfg_pde.utils.dependencies import TORCH_AVAILABLE, PLOTLY_AVAILABLE
+from mfgarchon.utils.dependencies import TORCH_AVAILABLE, PLOTLY_AVAILABLE
 
 if TORCH_AVAILABLE:
     import torch
@@ -139,7 +139,7 @@ if PLOTLY_AVAILABLE:
     # Use Plotly
 else:
     # Fallback or raise helpful error
-    from mfg_pde.utils.dependencies import check_dependency
+    from mfgarchon.utils.dependencies import check_dependency
     check_dependency('plotly', purpose='interactive visualizations')
 ```
 
@@ -150,7 +150,7 @@ Check dependencies when features are actually used:
 ```python
 def create_interactive_plot(data):
     """Create interactive plot (requires Plotly)."""
-    from mfg_pde.utils.dependencies import check_dependency
+    from mfgarchon.utils.dependencies import check_dependency
 
     check_dependency('plotly', purpose='interactive visualizations')
 
@@ -168,29 +168,29 @@ def create_interactive_plot(data):
 - tqdm
 - omegaconf
 
-### Neural (`pip install mfg-pde[neural]`)
+### Neural (`pip install mfgarchon[neural]`)
 - torch
 
-### Reinforcement (`pip install mfg-pde[reinforcement]`)
+### Reinforcement (`pip install mfgarchon[reinforcement]`)
 - gymnasium
 
-### Numerical (`pip install mfg-pde[numerical]`)
+### Numerical (`pip install mfgarchon[numerical]`)
 - igraph
 - networkx
 
-### Visualization (`pip install mfg-pde[visualization]`)
+### Visualization (`pip install mfgarchon[visualization]`)
 - plotly
 - bokeh
 
-### Performance (`pip install mfg-pde[performance]`)
+### Performance (`pip install mfgarchon[performance]`)
 - jax
 - polars
 - numba
 
-### GPU (`pip install mfg-pde[gpu]`)
+### GPU (`pip install mfgarchon[gpu]`)
 - cupy
 
-### All (`pip install mfg-pde[all]`)
+### All (`pip install mfgarchon[all]`)
 - All optional groups
 
 ## Error Message Format
@@ -201,20 +201,20 @@ When a dependency is missing, users see:
 ImportError: torch required for neural network solvers.
 
 Install options:
-  1. pip install mfg-pde[neural]
+  1. pip install mfgarchon[neural]
   2. pip install torch
 ```
 
 ## Adding New Optional Dependencies
 
-1. **Add to DEPENDENCY_MAP** in `mfg_pde/utils/dependencies.py`:
+1. **Add to DEPENDENCY_MAP** in `mfgarchon/utils/dependencies.py`:
 
 ```python
 DEPENDENCY_MAP = {
     # ...
     "new_package": {
         "install_group": "performance",
-        "install_cmd": "pip install mfg-pde[performance]",
+        "install_cmd": "pip install mfgarchon[performance]",
         "alternative": "pip install new_package",
         "description": "What this package does",
         "required": False,
@@ -242,7 +242,7 @@ def get_available_features() -> dict[str, bool]:
 4. **Use in code**:
 
 ```python
-from mfg_pde.utils.dependencies import check_dependency
+from mfgarchon.utils.dependencies import check_dependency
 
 def feature_using_new_package():
     check_dependency('new_package', purpose='specific feature')
@@ -291,20 +291,20 @@ def feature_using_new_package():
 **Q: How do I know what features are available?**
 
 ```python
-from mfg_pde import show_optional_features
+from mfgarchon import show_optional_features
 show_optional_features()
 ```
 
 **Q: How do I install all optional dependencies?**
 
 ```bash
-pip install mfg-pde[all]
+pip install mfgarchon[all]
 ```
 
 **Q: How do I check if a specific feature is available?**
 
 ```python
-from mfg_pde.utils.dependencies import is_available
+from mfgarchon.utils.dependencies import is_available
 print(f"PyTorch available: {is_available('torch')}")
 ```
 
@@ -320,7 +320,7 @@ check_dependency('python-igraph')  # Wrong
 ## See Also
 
 - Issue #278 (Dependency Management)
-- `mfg_pde/utils/dependencies.py` (implementation)
+- `mfgarchon/utils/dependencies.py` (implementation)
 - `tests/unit/test_utils/test_dependencies.py` (tests)
 - CLAUDE.md (Development Guidelines)
 

@@ -13,7 +13,7 @@
 
 ## Overview
 
-This document maps boundary condition support across all numerical solvers in MFG_PDE. It serves as:
+This document maps boundary condition support across all numerical solvers in MFGarchon. It serves as:
 1. Reference for users selecting appropriate solvers
 2. Gap analysis for infrastructure integration
 3. Guide for new solver development
@@ -75,7 +75,7 @@ This document maps boundary condition support across all numerical solvers in MF
 
 ### HJB FDM Solver
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 | Aspect | Details |
 |--------|---------|
@@ -83,7 +83,7 @@ This document maps boundary condition support across all numerical solvers in MF
 | **Ghost Depth** | 1 cell per side |
 | **BC Source** | `geometry.boundary_conditions` or `problem.boundary_conditions` |
 | **Fallback** | One-sided stencils (warns once) |
-| **Key Import** | `from mfg_pde.geometry.boundary import get_ghost_values_nd` |
+| **Key Import** | `from mfgarchon.geometry.boundary import get_ghost_values_nd` |
 
 **BC Application Pattern**:
 ```python
@@ -94,7 +94,7 @@ ghost_values = get_ghost_values_nd(u, bc, domain_bounds)
 
 ### HJB GFDM Solver
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 
 | Aspect | Details |
 |--------|---------|
@@ -102,7 +102,7 @@ ghost_values = get_ghost_values_nd(u, bc, domain_bounds)
 | **Ghost Depth** | N/A (meshfree) |
 | **BC Source** | `BoundaryConditions` parameter |
 | **Normal Computation** | `BoundaryConditions.get_outward_normal()` (SDF-based) |
-| **Key Import** | `from mfg_pde.geometry import BoundaryConditions` |
+| **Key Import** | `from mfgarchon.geometry import BoundaryConditions` |
 
 **BC Application Pattern**:
 ```python
@@ -116,14 +116,14 @@ normal = bc.get_outward_normal(point)
 
 ### HJB Semi-Lagrangian Solver
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
 
 | Aspect | Details |
 |--------|---------|
 | **Dimensions** | 1D (production), nD (supported) |
 | **BC Mechanism** | Characteristic clamping at boundaries |
 | **BC Source** | `problem.get_boundary_conditions()` |
-| **Key Import** | `from mfg_pde.geometry.boundary.conditions import periodic_bc` |
+| **Key Import** | `from mfgarchon.geometry.boundary.conditions import periodic_bc` |
 
 **BC Application Pattern**:
 ```python
@@ -136,7 +136,7 @@ x_foot = np.clip(x_foot, xmin, xmax)  # Simple clamping
 
 ### HJB WENO Solver
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py`
 
 | Aspect | Details |
 |--------|---------|
@@ -144,7 +144,7 @@ x_foot = np.clip(x_foot, xmin, xmax)  # Simple clamping
 | **Ghost Depth** | 2 cells per side (WENO5 stencil) |
 | **BC Source** | `problem.geometry.boundary_conditions` |
 | **Default BC** | `neumann_bc()` (no-flux) |
-| **Key Import** | `from mfg_pde.geometry.boundary import PreallocatedGhostBuffer, neumann_bc` |
+| **Key Import** | `from mfgarchon.geometry.boundary import PreallocatedGhostBuffer, neumann_bc` |
 
 **BC Application Pattern**:
 ```python
@@ -159,7 +159,7 @@ ghost_buffer.update_ghosts()
 
 ### FP FDM Solver
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 
 | Aspect | Details |
 |--------|---------|
@@ -167,7 +167,7 @@ ghost_buffer.update_ghosts()
 | **Advection Schemes** | `gradient_upwind` (default), `divergence_upwind`, centered variants |
 | **BC Source** | `BoundaryConditions` parameter |
 | **Default BC** | `no_flux_bc()` |
-| **Key Import** | `from mfg_pde.geometry import BoundaryConditions` |
+| **Key Import** | `from mfgarchon.geometry import BoundaryConditions` |
 
 **BC Application Pattern**:
 ```python
@@ -179,7 +179,7 @@ bc_value = self._get_bc_value(t_idx)
 
 ### FP Particle Solver
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_particle.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_particle.py`
 
 | Aspect | Details |
 |--------|---------|
@@ -187,7 +187,7 @@ bc_value = self._get_bc_value(t_idx)
 | **BC Mechanism** | Particle reflection at boundaries |
 | **BC Source** | Optional `BoundaryConditions` parameter |
 | **Default BC** | `periodic_bc()` |
-| **Key Import** | `from mfg_pde.geometry.boundary.conditions import periodic_bc` |
+| **Key Import** | `from mfgarchon.geometry.boundary.conditions import periodic_bc` |
 
 **BC Application Pattern**:
 ```python
@@ -201,7 +201,7 @@ particles = np.clip(particles, xmin, xmax)  # Simple version
 
 ### FP GFDM Solver
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_gfdm.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_gfdm.py`
 
 | Aspect | Details |
 |--------|---------|
@@ -323,7 +323,7 @@ Each paradigm base class provides appropriate BC helpers:
 ### Example: Adding BC Support to New Solver
 
 ```python
-from mfg_pde.alg.base_solver import BaseNumericalSolver
+from mfgarchon.alg.base_solver import BaseNumericalSolver
 
 class MyNewSolver(BaseNumericalSolver):
     discretization_type = "FDM"  # or "GFDM", "FEM"

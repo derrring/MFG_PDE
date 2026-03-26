@@ -1,5 +1,5 @@
 """
-Benchmarks module for MFG_PDE performance and validation testing.
+Benchmarks module for MFGarchon performance and validation testing.
 
 Sub-modules:
 - validation: Solver validation tests (FDM vs GFDM comparison)

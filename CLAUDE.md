@@ -1,6 +1,6 @@
-# Claude Code Preferences for MFG_PDE
+# Claude Code Preferences for MFGarchon
 
-This file contains preferences and conventions for Claude Code when working with the MFG_PDE repository.
+This file contains preferences and conventions for Claude Code when working with the MFGarchon repository.
 
 ## ⚠️ **Communication Principles**
 
@@ -18,7 +18,7 @@ This file contains preferences and conventions for Claude Code when working with
 
 ## 🎯 **Repository Mission & Scope** ⚠️ **CRITICAL**
 
-### **MFG_PDE: Public Infrastructure Package**
+### **MFGarchon: Public Infrastructure Package**
 Production-ready infrastructure for Mean Field Games research and applications.
 
 **Scope**:
@@ -33,11 +33,11 @@ Novel research, experimental algorithms, unpublished methods.
 - 🔬 Research algorithms (novel schemes, experimental architectures)
 - 🔬 Research applications (case studies, parameter studies, publications)
 
-**Key Principle**: MFG-Research **imports** MFG_PDE but **never modifies** it.
+**Key Principle**: MFG-Research **imports** MFGarchon but **never modifies** it.
 
 ### **Decision Criteria**
 
-| Criterion | MFG_PDE (Public) | MFG-Research (Private) |
+| Criterion | MFGarchon (Public) | MFG-Research (Private) |
 |:----------|:-----------------|:-----------------------|
 | **Maturity** | Production-ready, tested | Experimental |
 | **Publication** | Published methods | Unpublished |
@@ -46,12 +46,12 @@ Novel research, experimental algorithms, unpublished methods.
 | **Testing** | Full coverage | Exploratory |
 
 ### **Migration Path: Research → Infrastructure**
-When research matures: Add tests, write docs, ensure API consistency, open PR in MFG_PDE.
+When research matures: Add tests, write docs, ensure API consistency, open PR in MFGarchon.
 
 ### **Bug Fixes from Research** ⚠️ **CRITICAL**
 When bugs are discovered and validated in mfg-research:
 
-**Requirements before modifying MFG_PDE**:
+**Requirements before modifying MFGarchon**:
 1. GitHub issue created with quantified validation evidence
 2. Standalone validation experiment in mfg-research demonstrating the fix
 3. Discussion and approval of approach
@@ -116,14 +116,14 @@ Only after v1.0.0 when:
 ## 🏗️ **Repository Structure**
 
 ### **Top-Level Directories**
-- **`mfg_pde/`** - Core package code
+- **`mfgarchon/`** - Core package code
 - **`tests/`** - Unit and integration tests only
 - **`benchmarks/`** - Performance benchmark scripts (peer to `tests/`)
 - **`examples/`** - Demos organized by complexity: `basic/`, `advanced/`, `notebooks/`, `tutorials/`
 - **`docs/`** - Documentation by category
 - **`archive/`** - Historical code (do not modify)
 
-### **Package Structure** (`mfg_pde/`)
+### **Package Structure** (`mfgarchon/`)
 `alg/`, `backends/`, `config/`, `core/`, `factory/`, `geometry/`, `hooks/`, `solvers/`, `types/`, `utils/`, `visualization/`, `workflow/`, `compat/`, `meta/`
 
 ---
@@ -151,9 +151,9 @@ Pragmatic approach optimized for research:
 
 ### **Import Style**
 ```python
-from mfg_pde import MFGProblem, BoundaryConditions
-from mfg_pde.factory import create_fast_solver
-from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
+from mfgarchon import MFGProblem, BoundaryConditions
+from mfgarchon.factory import create_fast_solver
+from mfgarchon.utils.mfg_logging import get_logger, configure_research_logging
 ```
 
 ### **Documentation Style**
@@ -278,7 +278,7 @@ For reflecting boundaries in MFG systems, the HJB boundary condition couples to 
 
 **Example** (Provider pattern, v0.18.0+):
 ```python
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     AdjointConsistentProvider, BCSegment, BCType, BoundaryConditions, neumann_bc
 )
 
@@ -312,11 +312,11 @@ problem = MFGProblem(..., boundary_conditions=bc)
 - ❌ Not needed for interior stall points or periodic BC
 
 **Implementation**:
-- Provider: `mfg_pde/geometry/boundary/providers.py`
+- Provider: `mfgarchon/geometry/boundary/providers.py`
   - `BCValueProvider` protocol, `AdjointConsistentProvider` implementation
-- BC coupling utilities: `mfg_pde/geometry/boundary/bc_coupling.py`
+- BC coupling utilities: `mfgarchon/geometry/boundary/bc_coupling.py`
   - `create_adjoint_consistent_bc_1d()`: Creates Robin BC from density
-- Iterator integration: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
+- Iterator integration: `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`
   - Resolves providers via `problem.using_resolved_bc(state)`
 
 **Reference**: See `docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md` § Boundary Condition Consistency Issue
@@ -356,8 +356,8 @@ Claude Code must proactively check at these triggers:
 
 ### **Logging and Progress Bars**
 ```python
-from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
-from mfg_pde.utils.progress import create_progress_bar, solver_progress
+from mfgarchon.utils.mfg_logging import get_logger, configure_research_logging
+from mfgarchon.utils.progress import create_progress_bar, solver_progress
 
 configure_research_logging("session_name", level="INFO")
 logger = get_logger(__name__)
@@ -434,7 +434,7 @@ For long-running computations (GFDM solvers, Picard iterations, parameter sweeps
 
 ## 🧪 **Testing Philosophy**
 
-MFG_PDE uses a **hybrid testing approach** optimized for research code that evolves rapidly.
+MFGarchon uses a **hybrid testing approach** optimized for research code that evolves rapidly.
 
 ### **1. Unit Tests (`tests/`) - For Stable APIs**
 
@@ -462,7 +462,7 @@ MFG_PDE uses a **hybrid testing approach** optimized for research code that evol
 
 **Example pattern**:
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/my_solver.py
+# mfgarchon/alg/numerical/hjb_solvers/my_solver.py
 
 class MySolver:
     """Implementation of my solver."""
@@ -472,7 +472,7 @@ class MySolver:
 
 if __name__ == "__main__":
     """Quick smoke test for development."""
-    from mfg_pde import MFGProblem
+    from mfgarchon import MFGProblem
     import matplotlib.pyplot as plt
 
     print("Testing MySolver...")
@@ -496,7 +496,7 @@ if __name__ == "__main__":
 **Usage**:
 ```bash
 # Quick test during development
-python mfg_pde/alg/numerical/hjb_solvers/my_solver.py
+python mfgarchon/alg/numerical/hjb_solvers/my_solver.py
 ```
 
 **Benefits**:
@@ -657,7 +657,7 @@ gh pr create --title "Title" --body "Fixes #[issue_number]" \
 ### **Feature Development Process**
 1. Create/verify issue with proper labels
 2. Create branch: `git checkout -b <type>/descriptive-name`
-3. Add core code to `mfg_pde/` subdirectory
+3. Add core code to `mfgarchon/` subdirectory
 4. Create examples in `examples/basic/` or `examples/advanced/`
 5. Add tests to `tests/unit/` or `tests/integration/`
 6. Update docs in `docs/` category
@@ -687,8 +687,8 @@ Test before extend:
 **Pre-commit checklist**:
 ```bash
 pytest tests/unit/test_affected_module.py
-mypy mfg_pde/affected_module.py
-ruff check mfg_pde/affected_module.py
+mypy mfgarchon/affected_module.py
+ruff check mfgarchon/affected_module.py
 python examples/basic/relevant_example.py
 git add ... && git commit -m "..."
 ```
@@ -878,4 +878,4 @@ Before marking an issue as complete or creating a PR:
 
 **Last Updated**: 2026-02-15
 **Repository Version**: v0.17.11 (Pre-1.0.0)
-**Claude Code**: Always reference this file for MFG_PDE conventions
+**Claude Code**: Always reference this file for MFGarchon conventions

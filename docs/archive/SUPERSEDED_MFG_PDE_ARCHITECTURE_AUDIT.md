@@ -1,4 +1,4 @@
-# [SUPERSEDED] MFG_PDE Architecture Audit: Comprehensive Refactoring Critique
+# [SUPERSEDED] MFGarchon Architecture Audit: Comprehensive Refactoring Critique
 
 > **Superseded Note (2025-12-09)**: This audit contains outdated analysis. Key findings
 > have been addressed or found to be based on incomplete understanding:
@@ -10,14 +10,14 @@
 > significantly since this analysis. See current docs for accurate architecture info.
 
 **Date**: 2025-10-30
-**Purpose**: Validate refactoring proposal against actual MFG_PDE architecture
+**Purpose**: Validate refactoring proposal against actual MFGarchon architecture
 **Context**: Analysis based on current codebase structure and maze navigation research findings
 
 ---
 
 ## Executive Summary
 
-This audit evaluates the proposed refactoring against the **actual** MFG_PDE architecture as of commit 02e0066. The analysis reveals significant gaps between the idealized proposal and production reality.
+This audit evaluates the proposed refactoring against the **actual** MFGarchon architecture as of commit 02e0066. The analysis reveals significant gaps between the idealized proposal and production reality.
 
 **Key Findings**:
 - Proposal correctly identifies major pain points (dimensional limitations, API inconsistency)
@@ -53,7 +53,7 @@ class MazeNavigationMFG(HighDimMFGProblem):  # Must inherit HighDimMFGProblem
 **Issue 2: HighDimMFGProblem only works with meshfree** ✓ CORRECT
 
 ```python
-# mfg_pde/core/highdim_mfg_problem.py
+# mfgarchon/core/highdim_mfg_problem.py
 class HighDimMFGProblem(ABC):
     def solve_with_damped_fixed_point(self, ...):
         # Creates 1D adapter problem - only works with methods that accept this
@@ -96,7 +96,7 @@ Reality (2D maze):
 **Confirmed by Code**:
 
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py (line ~120)
+# mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py (line ~120)
 def solve_hjb_system(self, M_density_evolution_from_FP, U_final_condition_at_T, ...):
     Nx = self.problem.Nx  # Assumes 1D problem attribute
     U_all_times = np.zeros((Nt + 1, Nx + 1))  # 1D spatial dimension
@@ -116,10 +116,10 @@ def solve_hjb_system(self, M_density_evolution_from_FP, U_final_condition_at_T, 
 
 ### 2.1 Backend System (Not Mentioned)
 
-**Reality**: MFG_PDE has a sophisticated backend abstraction layer.
+**Reality**: MFGarchon has a sophisticated backend abstraction layer.
 
 ```python
-# mfg_pde/backends/
+# mfgarchon/backends/
 ├── base_backend.py         # Abstract backend interface
 ├── numpy_backend.py        # NumPy implementation
 ├── torch_backend.py        # PyTorch (GPU) implementation
@@ -133,7 +133,7 @@ def solve_hjb_system(self, M_density_evolution_from_FP, U_final_condition_at_T, 
 **Backend-Aware Operations**:
 
 ```python
-# From mfg_pde/backends/compat.py
+# From mfgarchon/backends/compat.py
 def backend_aware_assign(target, indices, values, backend=None):
     """Assign values to array - respects backend semantics."""
     if backend_type == "torch":
@@ -166,7 +166,7 @@ def backend_aware_assign(target, indices, values, backend=None):
 
 3. **Solver selection depends on backend availability**
    ```python
-   # mfg_pde/factory/solver_factory.py
+   # mfgarchon/factory/solver_factory.py
    def create_fast_solver(problem, solver_type, backend="auto"):
        if backend == "torch" and solver_type == "fixed_point":
            # GPU-accelerated Picard iteration
@@ -180,10 +180,10 @@ def backend_aware_assign(target, indices, values, backend=None):
 
 ### 2.2 Configuration System (Oversimplified)
 
-**Reality**: MFG_PDE has **three** configuration systems (not one).
+**Reality**: MFGarchon has **three** configuration systems (not one).
 
 ```python
-# mfg_pde/config/
+# mfgarchon/config/
 ├── pydantic_config.py         # Modern: Pydantic with validation
 ├── solver_config.py           # Legacy: Dataclasses
 ├── modern_config.py           # Builder: Fluent API
@@ -195,7 +195,7 @@ def backend_aware_assign(target, indices, values, backend=None):
 
 ```python
 # Pydantic config (recommended)
-from mfg_pde.config import create_fast_config
+from mfgarchon.config import create_fast_config
 
 config = create_fast_config()
 config.hjb.method = "gfdm"
@@ -203,7 +203,7 @@ config.fp.method = "particle"
 config.picard.max_iterations = 100
 
 # Modern builder config
-from mfg_pde.config import fast_config
+from mfgarchon.config import fast_config
 
 config = fast_config() \
     .with_hjb("gfdm") \
@@ -212,7 +212,7 @@ config = fast_config() \
     .build()
 
 # OmegaConf (YAML-based)
-from mfg_pde.config import load_experiment_config
+from mfgarchon.config import load_experiment_config
 
 config = load_experiment_config("experiments/maze_navigation/config.yaml")
 ```
@@ -254,7 +254,7 @@ config = load_experiment_config("experiments/maze_navigation/config.yaml")
 **Reality**: Solver creation is abstracted through factories, not direct instantiation.
 
 ```python
-# mfg_pde/factory/
+# mfgarchon/factory/
 ├── solver_factory.py      # Main solver factory
 ├── backend_factory.py     # Backend selection factory
 └── __init__.py
@@ -263,7 +263,7 @@ config = load_experiment_config("experiments/maze_navigation/config.yaml")
 **User-Facing API**:
 
 ```python
-from mfg_pde.factory import create_fast_solver
+from mfgarchon.factory import create_fast_solver
 
 # Current usage (1D problems)
 problem = ExampleMFGProblem(Nx=100, ...)
@@ -281,7 +281,7 @@ solver = create_fast_solver(problem, solver_type="fixed_point")
 **Factory Logic (Current)**:
 
 ```python
-# mfg_pde/factory/solver_factory.py
+# mfgarchon/factory/solver_factory.py
 def create_solver(problem, solver_type, config=None, backend="auto"):
     # Detect problem dimensionality
     if hasattr(problem, 'dimension') and problem.dimension > 1:
@@ -334,10 +334,10 @@ def create_solver(problem, solver_type, config=None, backend="auto"):
 
 ### 2.4 Geometry System (More Complex Than Proposed)
 
-**Reality**: MFG_PDE has dimension-specific geometry classes.
+**Reality**: MFGarchon has dimension-specific geometry classes.
 
 ```python
-# mfg_pde/geometry/
+# mfgarchon/geometry/
 ├── base_geometry.py           # Abstract base
 ├── grids/grid_1d.py          # 1D grids (formerly domain_1d)
 ├── meshes/mesh_2d.py         # 2D domains (triangle meshes via Gmsh)
@@ -375,7 +375,7 @@ def create_solver(problem, solver_type, config=None, backend="auto"):
 2. **Adaptive mesh refinement**
    ```python
    # AMR subsystem for error-driven refinement
-   from mfg_pde.geometry import AMRTriangular2D
+   from mfgarchon.geometry import AMRTriangular2D
 
    amr = AMRTriangular2D(domain)
    amr.refine_by_error(error_indicator, threshold=0.01)
@@ -384,7 +384,7 @@ def create_solver(problem, solver_type, config=None, backend="auto"):
 3. **Boundary condition system**
    ```python
    # Dimension-specific boundary handling
-   from mfg_pde.geometry import BoundaryManager
+   from mfgarchon.geometry import BoundaryManager
 
    bm = BoundaryManager(mesh_data)
    bm.mark_boundary("obstacle", obstacle_vertices)
@@ -397,10 +397,10 @@ def create_solver(problem, solver_type, config=None, backend="auto"):
 
 ### 2.5 Plugin System (Completely Ignored)
 
-**Reality**: MFG_PDE has an extensibility mechanism.
+**Reality**: MFGarchon has an extensibility mechanism.
 
 ```python
-# mfg_pde/core/plugin_system.py
+# mfgarchon/core/plugin_system.py
 class SolverPlugin(ABC):
     """Abstract base for third-party solver plugins."""
 
@@ -467,12 +467,12 @@ Current Inventory:
    - HYBRID mode: Particles internally, grid output (1D)
    - COLLOCATION mode: Particles in, particles out (N-D)
 
-2. MFG_PDE's FPParticleSolver - IMPLICIT HYBRID
+2. MFGarchon's FPParticleSolver - IMPLICIT HYBRID
    - Input: Grid density (Nx,)
    - Internal: Particles (sampled from grid)
    - Output: Grid density via KDE
 
-3. MFG_PDE's HJBGFDMSolver - Flexible (not dual-mode)
+3. MFGarchon's HJBGFDMSolver - Flexible (not dual-mode)
    - Grid mode: Problem has Nx, maps grid → collocation
    - Collocation mode: No Nx, identity mapping
 ```
@@ -488,7 +488,7 @@ Current Inventory:
 **Example from Production**:
 
 ```python
-# mfg_pde/alg/numerical/mfg_solvers/hybrid_fp_particle_hjb_fdm.py
+# mfgarchon/alg/numerical/mfg_solvers/hybrid_fp_particle_hjb_fdm.py
 class HybridFPParticleHJBFDM(BaseMFGSolver):
     """
     Hybrid solver: FP with particles, HJB with FDM.
@@ -511,8 +511,8 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
 **Discovered During Maze Navigation Research**:
 
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:453
-# Bug Report: https://github.com/derrring/MFG_PDE/issues/14
+# mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:453
+# Bug Report: https://github.com/derrring/mfgarchon/issues/14
 
 # Current (WRONG - see Issue #14):
 grad_u = -coeffs @ u_neighbors  # Negative sign is INCORRECT
@@ -547,7 +547,7 @@ grad_u = coeffs @ u_neighbors   # Positive sign
 **Bug in Fixed-Point Iteration**:
 
 ```python
-# mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py
+# mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py
 # Issue #199: np.column_stack with 1D arrays
 
 # Current (WRONG):
@@ -616,7 +616,7 @@ def apply_obstacle_boundaries(self, U, obstacle_mask):
 **Example from HJB-GFDM**:
 
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py
+# mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py
 
 def _map_grid_to_collocation(self, u_grid):
     """
@@ -751,7 +751,7 @@ Solution: Use Anderson acceleration or switch to Newton method.
 **Current Factory Logic**:
 
 ```python
-# mfg_pde/factory/solver_factory.py
+# mfgarchon/factory/solver_factory.py
 class SolverFactory:
     @staticmethod
     def create_solver(problem, solver_type, config=None):
@@ -802,7 +802,7 @@ class SolverFactory:
 **Current Config Structure**:
 
 ```python
-# mfg_pde/config/pydantic_config.py
+# mfgarchon/config/pydantic_config.py
 class MFGSolverConfig(BaseModel):
     hjb: HJBConfig
     fp: FPConfig
@@ -848,7 +848,7 @@ class MFGSolverConfig(BaseModel):
 **Current Backend Selection**:
 
 ```python
-# mfg_pde/factory/backend_factory.py
+# mfgarchon/factory/backend_factory.py
 def create_backend_for_problem(problem, backend_type="auto"):
     if backend_type == "auto":
         # Auto-detect based on problem size
@@ -980,11 +980,11 @@ tests/
 2. **Migration examples**
    ```python
    # Before (v1.x):
-   from mfg_pde import ExampleMFGProblem
+   from mfgarchon import ExampleMFGProblem
    problem = ExampleMFGProblem(Nx=100, T=1.0, ...)
 
    # After (v2.0):
-   from mfg_pde import MFGProblem, Domain1D
+   from mfgarchon import MFGProblem, Domain1D
    domain = Domain1D(xmin=0, xmax=1, num_points=100)
    problem = MFGProblem(domain=domain, T=1.0, ...)
    ```
@@ -1034,7 +1034,7 @@ tests/
 
 1. **Create `Domain` base class**
    ```python
-   # mfg_pde/geometry/unified_domain.py
+   # mfgarchon/geometry/unified_domain.py
    class Domain(ABC):
        @property
        @abstractmethod
@@ -1100,7 +1100,7 @@ tests/
 
 1. **Create compatibility matrix**
    ```python
-   # mfg_pde/core/solver_compatibility.py
+   # mfgarchon/core/solver_compatibility.py
    SOLVER_COMPATIBILITY = {
        ("hjb_fdm", 1, True, False): True,   # 1D structured, no obstacles
        ("hjb_fdm", 1, True, True): False,   # 1D structured, with obstacles
@@ -1156,7 +1156,7 @@ tests/
 
        def generate_mesh(self, mesh_size):
            # Use existing Domain2D from geometry/
-           from mfg_pde.geometry import Domain2D as GeometryDomain2D
+           from mfgarchon.geometry import Domain2D as GeometryDomain2D
            geo_domain = GeometryDomain2D(...)
            self._mesh = geo_domain.generate_mesh(mesh_size)
    ```
@@ -1367,7 +1367,7 @@ Plus:
 
 ### What We Learned
 
-1. **Proposal is directionally correct** - MFG_PDE needs unification
+1. **Proposal is directionally correct** - MFGarchon needs unification
 2. **BUT significantly underestimates complexity** - 6-12 months, not weeks
 3. **AND misses critical infrastructure** - backends, factories, configs
 4. **AND overlooks existing solutions** - dual-mode patterns, geometry subsystem
@@ -1379,7 +1379,7 @@ Plus:
 1. Fix known bugs (Issue #14, #199)
 2. Graduate `PureParticleFPSolver` from research to production
 3. Document domain-solver compatibility matrix
-4. Add 2D maze navigation example to MFG_PDE docs
+4. Add 2D maze navigation example to MFGarchon docs
 
 **Medium-term (Months 4-9)**:
 1. Implement Domain abstraction with backward compatibility
@@ -1397,7 +1397,7 @@ Plus:
 
 **Key Message to Proposal Author**:
 
-> Your diagnosis is correct - MFG_PDE needs architectural improvements.
+> Your diagnosis is correct - MFGarchon needs architectural improvements.
 > However, this is not a simple refactoring. It's a **v2.0 → v3.0 redesign**.
 >
 > The codebase has:
@@ -1422,7 +1422,7 @@ Plus:
 
 **Document Prepared By**: MFG Research Team
 **Based On**:
-- MFG_PDE codebase commit 02e0066
+- MFGarchon codebase commit 02e0066
 - Maze navigation research findings (PR #197)
 - Issues #14 (GFDM gradient), #199 (Anderson), #13 (Picard)
 - Analysis documents: SOLVER_ORGANIZATION_ANALYSIS.md, PURE_PARTICLE_FP_PROPOSAL.md

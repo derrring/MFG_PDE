@@ -1,4 +1,4 @@
-"""Tests for mfg_pde.utils.solver_result module."""
+"""Tests for mfgarchon.utils.solver_result module."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.solver_result import (
+from mfgarchon.utils.solver_result import (
     ConvergenceResult,
     MFGSolverResult,
     SolverResult,

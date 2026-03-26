@@ -1,4 +1,4 @@
-"""Tests for mfg_pde.visualization.multidim_viz module."""
+"""Tests for mfgarchon.visualization.multidim_viz module."""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ class TestMultiDimVisualizerInitialization:
     @patch("plotly.graph_objects")
     def test_initialization_plotly_backend(self, mock_go, mock_grid_2d):
         """Test initialization with Plotly backend."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         viz = MultiDimVisualizer(mock_grid_2d, backend="plotly", colorscale="Viridis")
 
@@ -81,7 +81,7 @@ class TestMultiDimVisualizerInitialization:
     @patch("matplotlib.pyplot")
     def test_initialization_matplotlib_backend(self, mock_plt, mock_grid_2d):
         """Test initialization with Matplotlib backend."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         viz = MultiDimVisualizer(mock_grid_2d, backend="matplotlib", colorscale="Plasma")
 
@@ -92,7 +92,7 @@ class TestMultiDimVisualizerInitialization:
 
     def test_initialization_invalid_dimension(self, mock_grid_2d):
         """Test initialization fails with 1D grid."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_grid_2d.dimension = 1  # Invalid
 
@@ -101,7 +101,7 @@ class TestMultiDimVisualizerInitialization:
 
     def test_initialization_plotly_not_available(self, mock_grid_2d):
         """Test initialization fails gracefully without Plotly."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         # Mock the import to raise ImportError
         with (
@@ -117,7 +117,7 @@ class TestSurfacePlot:
     @patch("plotly.graph_objects")
     def test_surface_plot_2d_data(self, mock_go, mock_grid_2d, sample_2d_data):
         """Test surface plot with 2D data."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         # Setup mock
         mock_fig = Mock()
@@ -134,7 +134,7 @@ class TestSurfacePlot:
     @patch("plotly.graph_objects")
     def test_surface_plot_3d_temporal_data(self, mock_go, mock_grid_2d, sample_3d_temporal_data):
         """Test surface plot with 3D temporal data."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -148,7 +148,7 @@ class TestSurfacePlot:
     @patch("plotly.graph_objects")
     def test_surface_plot_invalid_data_shape(self, mock_go, mock_grid_2d):
         """Test surface plot with invalid data shape."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         viz = MultiDimVisualizer(mock_grid_2d, backend="plotly")
         invalid_data = np.array([1, 2, 3])  # 1D data
@@ -159,7 +159,7 @@ class TestSurfacePlot:
     @patch("matplotlib.pyplot")
     def test_surface_plot_matplotlib_backend(self, mock_plt, mock_grid_2d, sample_2d_data):
         """Test surface plot with Matplotlib backend."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_ax = Mock()
@@ -179,7 +179,7 @@ class TestContourPlot:
     @patch("plotly.graph_objects")
     def test_contour_plot_2d_data(self, mock_go, mock_grid_2d, sample_2d_data):
         """Test contour plot with 2D data."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -194,7 +194,7 @@ class TestContourPlot:
     @patch("plotly.graph_objects")
     def test_contour_plot_with_time_index(self, mock_go, mock_grid_2d, sample_3d_temporal_data):
         """Test contour plot with temporal data and time index."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -208,7 +208,7 @@ class TestContourPlot:
     @patch("matplotlib.pyplot")
     def test_contour_plot_matplotlib(self, mock_plt, mock_grid_2d, sample_2d_data):
         """Test contour plot with Matplotlib backend."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_ax = Mock()
@@ -227,7 +227,7 @@ class TestHeatmap:
     @patch("plotly.graph_objects")
     def test_heatmap_2d_data(self, mock_go, mock_grid_2d, sample_2d_data):
         """Test heatmap with 2D data."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -241,7 +241,7 @@ class TestHeatmap:
     @patch("plotly.graph_objects")
     def test_heatmap_3d_temporal_default_time(self, mock_go, mock_grid_2d, sample_3d_temporal_data):
         """Test heatmap with 3D data using default time index."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -255,7 +255,7 @@ class TestHeatmap:
     @patch("matplotlib.pyplot")
     def test_heatmap_matplotlib(self, mock_plt, mock_grid_2d, sample_2d_data):
         """Test heatmap with Matplotlib backend."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_ax = Mock()
@@ -273,7 +273,7 @@ class TestSlicePlot:
     @patch("plotly.graph_objects")
     def test_slice_plot_2d_data_x_slice(self, mock_go, mock_grid_2d, sample_2d_data):
         """Test slice plot along x dimension."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -287,7 +287,7 @@ class TestSlicePlot:
     @patch("plotly.graph_objects")
     def test_slice_plot_2d_data_y_slice(self, mock_go, mock_grid_2d, sample_2d_data):
         """Test slice plot along y dimension."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -301,7 +301,7 @@ class TestSlicePlot:
     @patch("matplotlib.pyplot")
     def test_slice_plot_matplotlib(self, mock_plt, mock_grid_2d, sample_2d_data):
         """Test slice plot with Matplotlib backend."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_ax = Mock()
@@ -315,7 +315,7 @@ class TestSlicePlot:
     @patch("plotly.graph_objects")
     def test_slice_plot_3d_temporal_data(self, mock_go, mock_grid_2d, sample_3d_temporal_data):
         """Test slice plot with 3D temporal data."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -333,7 +333,7 @@ class TestAnimation:
     @patch("plotly.graph_objects")
     def test_animation_creation(self, mock_go, mock_grid_2d, sample_3d_temporal_data):
         """Test animation creation with temporal data."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -349,10 +349,10 @@ class TestAnimation:
     @patch("plotly.graph_objects")
     def test_animation_matplotlib_raises_error(self, mock_go, mock_grid_2d, sample_3d_temporal_data):
         """Test animation with Matplotlib backend raises error."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         # Create with matplotlib backend
-        with patch("mfg_pde.visualization.multidim_viz.plt", create=True):
+        with patch("mfgarchon.visualization.multidim_viz.plt", create=True):
             viz = MultiDimVisualizer(mock_grid_2d, backend="matplotlib")
 
         with pytest.raises(ValueError, match="Animation requires Plotly backend"):
@@ -361,7 +361,7 @@ class TestAnimation:
     @patch("plotly.graph_objects")
     def test_animation_invalid_data_shape(self, mock_go, mock_grid_2d, sample_2d_data):
         """Test animation with invalid data shape."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         viz = MultiDimVisualizer(mock_grid_2d, backend="plotly")
 
@@ -371,7 +371,7 @@ class TestAnimation:
     @patch("plotly.graph_objects")
     def test_animation_3d_grid_raises_error(self, mock_go, mock_grid_3d):
         """Test animation with 3D grid raises error."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         viz = MultiDimVisualizer(mock_grid_3d, backend="plotly")
         data = np.zeros((10, 11, 11))  # Valid 3D temporal data
@@ -386,7 +386,7 @@ class TestSaveAndShow:
     @patch("plotly.graph_objects")
     def test_save_plotly_html(self, mock_go, mock_grid_2d, tmp_path):
         """Test saving Plotly figure as HTML."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -402,7 +402,7 @@ class TestSaveAndShow:
     @patch("matplotlib.pyplot")
     def test_save_matplotlib_image(self, mock_plt, mock_grid_2d, tmp_path):
         """Test saving Matplotlib figure as image."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
 
@@ -416,7 +416,7 @@ class TestSaveAndShow:
     @patch("plotly.graph_objects")
     def test_show_plotly(self, mock_go, mock_grid_2d):
         """Test showing Plotly figure."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
 
@@ -428,7 +428,7 @@ class TestSaveAndShow:
     @patch("matplotlib.pyplot")
     def test_show_matplotlib(self, mock_plt, mock_grid_2d):
         """Test showing Matplotlib figure."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
 
@@ -444,7 +444,7 @@ class TestDimensionValidation:
     @patch("plotly.graph_objects")
     def test_surface_plot_requires_2d_grid(self, mock_go, mock_grid_3d, sample_2d_data):
         """Test surface plot requires 2D grid."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         viz = MultiDimVisualizer(mock_grid_3d, backend="plotly")
 
@@ -454,7 +454,7 @@ class TestDimensionValidation:
     @patch("plotly.graph_objects")
     def test_contour_plot_requires_2d_grid(self, mock_go, mock_grid_3d, sample_2d_data):
         """Test contour plot requires 2D grid."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         viz = MultiDimVisualizer(mock_grid_3d, backend="plotly")
 
@@ -464,7 +464,7 @@ class TestDimensionValidation:
     @patch("plotly.graph_objects")
     def test_heatmap_requires_2d_grid(self, mock_go, mock_grid_3d, sample_2d_data):
         """Test heatmap requires 2D grid."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         viz = MultiDimVisualizer(mock_grid_3d, backend="plotly")
 
@@ -478,7 +478,7 @@ class TestIntegration:
     @patch("plotly.graph_objects")
     def test_full_workflow_plotly(self, mock_go, mock_grid_2d, sample_3d_temporal_data, tmp_path):
         """Test complete workflow with Plotly backend."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_go.Figure.return_value = mock_fig
@@ -505,7 +505,7 @@ class TestIntegration:
     @patch("matplotlib.pyplot")
     def test_full_workflow_matplotlib(self, mock_plt, mock_grid_2d, sample_2d_data, tmp_path):
         """Test complete workflow with Matplotlib backend."""
-        from mfg_pde.visualization.multidim_viz import MultiDimVisualizer
+        from mfgarchon.visualization.multidim_viz import MultiDimVisualizer
 
         mock_fig = Mock()
         mock_ax = Mock()

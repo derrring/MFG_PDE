@@ -13,9 +13,9 @@ Run:
     python examples/basic/core_infrastructure/solve_mfg_demo.py
 """
 
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def demo_simple_usage():
@@ -67,7 +67,7 @@ def demo_factory_api():
     print("Demo 3: Factory API (Advanced)")
     print("=" * 60)
 
-    from mfg_pde.factory import create_standard_solver
+    from mfgarchon.factory import create_standard_solver
 
     geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=20)
@@ -86,10 +86,10 @@ def demo_direct_solver():
     print("Demo 4: Direct Solver (Full Control)")
     print("=" * 60)
 
-    from mfg_pde.alg.numerical.coupling import FixedPointIterator
-    from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
-    from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-    from mfg_pde.config.core import SolverConfig
+    from mfgarchon.alg.numerical.coupling import FixedPointIterator
+    from mfgarchon.alg.numerical.fp_solvers import FPParticleSolver
+    from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+    from mfgarchon.config.core import SolverConfig
 
     geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
     problem = MFGProblem(geometry=geometry, T=1.0, Nt=20)

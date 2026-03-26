@@ -19,7 +19,7 @@ Phase 3.0 Task 1 (FP-FDM tensor integration) is complete and production-ready. T
 
 ### 1. FP-FDM Tensor Integration ✅ PRODUCTION-READY
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py` (+488 lines)
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py` (+488 lines)
 
 **New API**:
 ```python
@@ -130,7 +130,7 @@ Mass conservation:
 
 ### 4. HJB-FDM API Compatibility ⚠️ PLACEHOLDER
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` (+30 lines)
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` (+30 lines)
 
 **Changes**:
 - Added `tensor_diffusion_field` parameter to `solve_hjb_system()`

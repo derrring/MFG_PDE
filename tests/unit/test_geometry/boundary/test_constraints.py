@@ -17,7 +17,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     BilateralConstraint,
     ConstraintProtocol,
     ObstacleConstraint,

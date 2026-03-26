@@ -43,7 +43,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.core import MFGProblem
+from mfgarchon.core import MFGProblem
 
 from .capacity_field import CapacityField
 from .congestion import CongestionModel
@@ -71,9 +71,9 @@ class CapacityConstrainedMFGProblem(MFGProblem):
         congestion_weight: Weight parameter γ for congestion cost
 
     Examples:
-        >>> from mfg_pde.geometry.graph import create_perfect_maze
-        >>> from mfg_pde.geometry.graph import CapacityField
-        >>> from mfg_pde.core.congestion import QuadraticCongestion
+        >>> from mfgarchon.geometry.graph import create_perfect_maze
+        >>> from mfgarchon.geometry.graph import CapacityField
+        >>> from mfgarchon.core.congestion import QuadraticCongestion
         >>>
         >>> # Generate maze and compute capacity
         >>> maze = create_perfect_maze(rows=20, cols=20, wall_thickness=3)

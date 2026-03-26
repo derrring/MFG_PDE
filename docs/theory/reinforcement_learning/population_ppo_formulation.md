@@ -12,7 +12,7 @@ This document presents the theoretical foundation for **Population PPO (Proximal
 
 **Key Finding**: Population PPO for MFG = PPO + Population State Conditioning
 
-**Implementation Status**: ✅ Already implemented in `mfg_pde/alg/reinforcement/algorithms/mean_field_actor_critic.py`
+**Implementation Status**: ✅ Already implemented in `mfgarchon/alg/reinforcement/algorithms/mean_field_actor_critic.py`
 
 ---
 
@@ -243,7 +243,7 @@ m* = μ(π*)
 
 ---
 
-## Implementation in MFG_PDE
+## Implementation in MFGarchon
 
 ### Network Architecture
 
@@ -534,7 +534,7 @@ config = {
 
 ### ✅ Completed Features
 
-**File**: `mfg_pde/alg/reinforcement/algorithms/mean_field_actor_critic.py`
+**File**: `mfgarchon/alg/reinforcement/algorithms/mean_field_actor_critic.py`
 
 **Implemented**:
 - [x] Population-aware actor network

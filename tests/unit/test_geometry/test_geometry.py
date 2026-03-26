@@ -8,7 +8,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.implicit import (
+from mfgarchon.geometry.implicit import (
     ComplementDomain,
     DifferenceDomain,
     Hyperrectangle,

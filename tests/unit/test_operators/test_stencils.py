@@ -11,8 +11,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import neumann_bc
-from mfg_pde.operators.stencils.finite_difference import (
+from mfgarchon.geometry.boundary import neumann_bc
+from mfgarchon.operators.stencils.finite_difference import (
     fix_boundaries_one_sided,
     get_gradient_stencil_coefficients,
     get_laplacian_stencil_coefficients,

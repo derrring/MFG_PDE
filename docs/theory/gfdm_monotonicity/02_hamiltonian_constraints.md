@@ -4,7 +4,7 @@
 **Updated**: 2025-12-05
 **Purpose**: Mathematical foundation for direct Hamiltonian gradient constraints in GFDM HJB solver
 **Status**: ✅ IMPLEMENTED (Issue #271, PR #376)
-**Related**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1608-1729`
+**Related**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:1608-1729`
 
 ---
 
@@ -400,4 +400,4 @@ Implement as **optional feature** with toggle `use_hamiltonian_constraints=True/
 
 **Last Updated**: 2025-12-05
 **Status**: ✅ IMPLEMENTED (Issue #271, PR #376)
-**Code Reference**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1608-1729`
+**Code Reference**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:1608-1729`

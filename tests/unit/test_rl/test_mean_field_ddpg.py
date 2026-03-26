@@ -30,7 +30,7 @@ except ImportError:
     GYMNASIUM_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.reinforcement.algorithms.mean_field_ddpg import (
+    from mfgarchon.alg.reinforcement.algorithms.mean_field_ddpg import (
         DDPGActor,
         DDPGCritic,
         MeanFieldDDPG,

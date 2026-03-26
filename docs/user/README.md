@@ -1,4 +1,4 @@
-# MFG_PDE User Documentation
+# MFGarchon User Documentation
 
 **Research-grade Mean Field Games solver for academic and industrial applications**
 
@@ -7,7 +7,7 @@
 ## 🚀 **Get Started in 5 Minutes**
 
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 # Create and solve
 problem = MFGProblem(Nx=50, Nt=20, T=1.0)
@@ -24,7 +24,7 @@ print(result.M)  # Density m(t,x)
 
 ## 📚 **Two-Level API Design**
 
-MFG_PDE is designed for users who **understand Mean Field Games** (HJB-FP systems, Nash equilibria).
+MFGarchon is designed for users who **understand Mean Field Games** (HJB-FP systems, Nash equilibria).
 
 | **API Level** | **Target Users** | **Entry Point** | **What You Get** |
 |---------------|------------------|-----------------|------------------|
@@ -46,7 +46,7 @@ MFG_PDE is designed for users who **understand Mean Field Games** (HJB-FP system
 **Get started**: [Factory API Quickstart](quickstart.md)
 
 ```python
-from mfg_pde.factory import (
+from mfgarchon.factory import (
     create_basic_solver,    # Tier 1: Basic FDM (benchmark)
     create_standard_solver, # Tier 2: Hybrid (DEFAULT - mass-conserving)
     create_accurate_solver  # Tier 3: Accurate configuration
@@ -74,7 +74,7 @@ result_accurate = solver_accurate.solve()
 **Get started**: Extend the base solver classes below
 
 ```python
-from mfg_pde.alg.numerical.hjb_solvers import BaseHJBSolver
+from mfgarchon.alg.numerical.hjb_solvers import BaseHJBSolver
 
 class MyCustomSolver(BaseHJBSolver):
     def solve_hjb_system(self, M, final_u, U_prev):
@@ -133,7 +133,7 @@ You need developer API if you want to:
 
 ### **Example 1: Standard Workflow**
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 # Define and solve problem
 problem = MFGProblem(Nx=100, Nt=50, T=1.0)
@@ -146,7 +146,7 @@ print(f"Iterations: {result.iterations}")
 
 ### **Example 2: Custom Parameters**
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(Nx=100, Nt=50, T=1.0)
 
@@ -160,7 +160,7 @@ result = problem.solve(
 
 ### **Example 3: Custom Problem**
 ```python
-from mfg_pde.core import BaseMFGProblem
+from mfgarchon.core import BaseMFGProblem
 import numpy as np
 
 class CustomCrowdProblem(BaseMFGProblem):
@@ -193,20 +193,20 @@ result = solver.solve()
 
 ## 🔄 **Migration from Old API**
 
-Already using MFG_PDE? The new API is backward compatible. See [quickstart](quickstart.md) for the latest patterns.
+Already using MFGarchon? The new API is backward compatible. See [quickstart](quickstart.md) for the latest patterns.
 
 ---
 
 ## 🤝 **Community and Support**
 
-- **💬 Discussions**: [GitHub Discussions](https://github.com/derrring/MFG_PDE/discussions)
-- **🐛 Issues**: [GitHub Issues](https://github.com/derrring/MFG_PDE/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/derrring/mfgarchon/discussions)
+- **🐛 Issues**: [GitHub Issues](https://github.com/derrring/mfgarchon/issues)
 
 ---
 
 ## 📋 **What You Should Know**
 
-MFG_PDE assumes you understand:
+MFGarchon assumes you understand:
 - **Mean Field Games**: HJB-FP coupled systems, Nash equilibria
 - **Numerical PDEs**: Finite difference methods, stability, convergence
 - **Python**: Basic programming and scientific computing (NumPy)

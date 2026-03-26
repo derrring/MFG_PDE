@@ -1,7 +1,7 @@
 """
 Capacity-constrained MFG for maze navigation and crowd dynamics.
 
-This example demonstrates how to extend the MFG_PDE framework with application-specific
+This example demonstrates how to extend the MFGarchon framework with application-specific
 capacity constraints for modeling congestion effects in maze environments.
 
 Key Components:
@@ -23,7 +23,7 @@ Examples:
     ...     QuadraticCongestion,
     ...     CapacityConstrainedMFGProblem
     ... )
-    >>> from mfg_pde.geometry.graph import MazeGeometry, MazeConfig
+    >>> from mfgarchon.geometry.graph import MazeGeometry, MazeConfig
     >>>
     >>> # Generate maze
     >>> config = MazeConfig(rows=20, cols=20, wall_thickness=3)
@@ -46,7 +46,7 @@ Examples:
     ... )
     >>>
     >>> # Solve with any MFG solver
-    >>> from mfg_pde.factory import create_fast_solver
+    >>> from mfgarchon.factory import create_fast_solver
     >>> solver = create_fast_solver(problem)
     >>> result = solver.solve()
 

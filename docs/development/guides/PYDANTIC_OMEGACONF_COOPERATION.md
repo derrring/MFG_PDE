@@ -1,4 +1,4 @@
-# Pydantic and OmegaConf Cooperation in MFG_PDE
+# Pydantic and OmegaConf Cooperation in MFGarchon
 
 **Status**: [APPROVED / ARCHITECTURE_V2]
 **Created**: 2025-12-10
@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-MFG_PDE employs a **Dual-System Configuration Architecture** to balance runtime safety with experimental flexibility.
+MFGarchon employs a **Dual-System Configuration Architecture** to balance runtime safety with experimental flexibility.
 
 | System | Role | Primary Responsibility |
 |:-------|:-----|:-----------------------|
@@ -24,12 +24,12 @@ MFG_PDE employs a **Dual-System Configuration Architecture** to balance runtime 
 
 ### 2.1 Pydantic Configuration (The Kernel)
 
-*File: `mfg_pde/config/core.py`*
+*File: `mfgarchon/config/core.py`*
 
 The **canonical** source of truth for solver instantiation. It enforces mathematical constraints (e.g., `tolerance > 0`).
 
 ```python
-from mfg_pde.config import MFGSolverConfig, HJBConfig, FPConfig
+from mfgarchon.config import MFGSolverConfig, HJBConfig, FPConfig
 
 # Strict validation happens here
 config = MFGSolverConfig(
@@ -41,12 +41,12 @@ config = MFGSolverConfig(
 
 ### 2.2 OmegaConf Configuration (The Interface)
 
-*File: `mfg_pde/config/structured_schemas.py`*
+*File: `mfgarchon/config/structured_schemas.py`*
 
 The **experiment-oriented** layer. It handles YAML parsing, interpolation, and merging.
 
 ```python
-from mfg_pde.config.omegaconf_manager import load_structured_mfg_config
+from mfgarchon.config.omegaconf_manager import load_structured_mfg_config
 
 # Supports interpolation: ${experiment.output_dir}, merging, and CLI overrides
 config = load_structured_mfg_config("experiment.yaml")
@@ -266,7 +266,7 @@ We enforce a **Universal Naming Convention** based on the layer where the class 
 To handle the renaming smoothly, we implement a module-level `__getattr__` hook in `structured_schemas.py` to warn users who are still importing the old names.
 
 ```python
-# mfg_pde/config/structured_schemas.py
+# mfgarchon/config/structured_schemas.py
 import warnings
 from dataclasses import dataclass
 
@@ -324,7 +324,7 @@ This architecture adopts a **"Loose Coupling, Tight Validation"** strategy.
 - **Loose Coupling** allows researchers to organize YAMLs however they like.
 - **Tight Validation** ensures the Math Kernel never receives invalid parameters.
 
-By implementing the **Generic Bridge** and **Strict Naming Strategy** defined in this revision, `MFG_PDE` achieves production-grade robustness while maintaining research-grade flexibility.
+By implementing the **Generic Bridge** and **Strict Naming Strategy** defined in this revision, `MFGarchon` achieves production-grade robustness while maintaining research-grade flexibility.
 
 ---
 

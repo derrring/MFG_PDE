@@ -3,7 +3,7 @@
 **Date**: 2025-12-20
 **Status**: ✅ **IMPLEMENTED AND TESTED**
 **Issue**: #531 - Terminal BC compatibility
-**Files Modified**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+**Files Modified**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 
 ---
 
@@ -133,11 +133,11 @@ First boundary point (100) neighborhood:
 ## Usage Example
 
 ```python
-from mfg_pde import MFGProblem, BoundaryConditions
-from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BCType
-from mfg_pde.geometry.collocation import CollocationSampler
+from mfgarchon import MFGProblem, BoundaryConditions
+from mfgarchon.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import BCType
+from mfgarchon.geometry.collocation import CollocationSampler
 
 # Create problem with Neumann BC
 geometry = TensorProductGrid(dimension=2, bounds=[(0, 10), (0, 5)], Nx=[21, 11])

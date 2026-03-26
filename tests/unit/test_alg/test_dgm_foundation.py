@@ -9,13 +9,13 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig, DGMResult, VarianceReductionMethod
-from mfg_pde.alg.neural.dgm.sampling import (
+from mfgarchon.alg.neural.dgm.base_dgm import DGMConfig, DGMResult, VarianceReductionMethod
+from mfgarchon.alg.neural.dgm.sampling import (
     MonteCarloSampler,
     QuasiMonteCarloSampler,
     adaptive_sampling,
 )
-from mfg_pde.alg.neural.dgm.variance_reduction import (
+from mfgarchon.alg.neural.dgm.variance_reduction import (
     ControlVariates,
     ImportanceSampling,
     adaptive_importance_distribution,
@@ -29,7 +29,7 @@ pytorch_available = True
 try:
     import torch
 
-    from mfg_pde.alg.neural.dgm.architectures import (
+    from mfgarchon.alg.neural.dgm.architectures import (
         DeepGalerkinNetwork,
         HighDimMLP,
         ResidualDGMNetwork,

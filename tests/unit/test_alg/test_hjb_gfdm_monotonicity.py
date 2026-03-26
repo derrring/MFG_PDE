@@ -10,7 +10,7 @@ component (Issue #545) for better testability and reusability.
 
 import numpy as np
 
-from mfg_pde.alg.numerical.gfdm_components.monotonicity_enforcer import MonotonicityEnforcer
+from mfgarchon.alg.numerical.gfdm_components.monotonicity_enforcer import MonotonicityEnforcer
 
 
 def _create_minimal_enforcer(

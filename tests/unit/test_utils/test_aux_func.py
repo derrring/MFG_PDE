@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/aux_func.py
+Unit tests for mfgarchon/utils/aux_func.py
 
 Tests auxiliary mathematical functions including:
 - ppart() - Positive part function
@@ -15,7 +15,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.aux_func import npart, ppart
+from mfgarchon.utils.aux_func import npart, ppart
 
 # ===================================================================
 # Test ppart() - Positive Part Function
@@ -367,7 +367,7 @@ def test_npart_return_type_array():
 @pytest.mark.unit
 def test_module_exports():
     """Test all functions are importable."""
-    from mfg_pde.utils import aux_func
+    from mfgarchon.utils import aux_func
 
     assert hasattr(aux_func, "ppart")
     assert hasattr(aux_func, "npart")

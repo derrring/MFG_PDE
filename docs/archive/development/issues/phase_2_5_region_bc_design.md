@@ -33,8 +33,8 @@ bc_inlet = BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0, regio
 ### Target API
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BCSegment, BCType, mixed_bc_from_regions
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import BCSegment, BCType, mixed_bc_from_regions
 
 # 1. Mark regions using SupportsRegionMarking
 geometry = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[50, 50])
@@ -105,9 +105,9 @@ class BCSegment:
 ```
 
 **Changes Required**:
-1. `mfg_pde/geometry/boundary/types.py`: Add `region_name` field to `BCSegment`
-2. `mfg_pde/geometry/boundary/conditions.py`: Pass geometry to `matches_point()` calls
-3. `mfg_pde/geometry/boundary/applicator_fdm.py`: Update BC application logic
+1. `mfgarchon/geometry/boundary/types.py`: Add `region_name` field to `BCSegment`
+2. `mfgarchon/geometry/boundary/conditions.py`: Pass geometry to `matches_point()` calls
+3. `mfgarchon/geometry/boundary/applicator_fdm.py`: Update BC application logic
 4. Add helper function `mixed_bc_from_regions()` for convenient creation
 
 ---
@@ -131,7 +131,7 @@ class BCSegment:
 ### 3.1 BCSegment Extension
 
 ```python
-# mfg_pde/geometry/boundary/types.py
+# mfgarchon/geometry/boundary/types.py
 
 @dataclass
 class BCSegment:
@@ -190,7 +190,7 @@ class BCSegment:
 ### 3.2 Geometry Region Lookup
 
 ```python
-# mfg_pde/geometry/boundary/applicator_fdm.py
+# mfgarchon/geometry/boundary/applicator_fdm.py
 
 class FDMBCApplicator1D(BaseStructuredApplicator):
     """Boundary condition applicator for 1D FDM."""
@@ -239,7 +239,7 @@ class FDMBCApplicator1D(BaseStructuredApplicator):
 ### 3.3 Helper Function
 
 ```python
-# mfg_pde/geometry/boundary/conditions.py
+# mfgarchon/geometry/boundary/conditions.py
 
 def mixed_bc_from_regions(
     geometry: SupportsRegionMarking,
@@ -324,8 +324,8 @@ def mixed_bc_from_regions(
 4. Add unit tests for `BCSegment` with `region_name`
 
 **Files Modified**:
-- `mfg_pde/geometry/boundary/types.py` (+10 lines)
-- `mfg_pde/geometry/boundary/conditions.py` (+60 lines)
+- `mfgarchon/geometry/boundary/types.py` (+10 lines)
+- `mfgarchon/geometry/boundary/conditions.py` (+60 lines)
 - `tests/unit/test_bc_types.py` (+50 lines)
 
 **Success Criteria**:
@@ -344,9 +344,9 @@ def mixed_bc_from_regions(
 4. Update all solver callsites to pass geometry
 
 **Files Modified**:
-- `mfg_pde/geometry/boundary/applicator_fdm.py` (+80 lines)
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` (pass geometry to applicator)
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py` (pass geometry to applicator)
+- `mfgarchon/geometry/boundary/applicator_fdm.py` (+80 lines)
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` (pass geometry to applicator)
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py` (pass geometry to applicator)
 
 **Success Criteria**:
 - ✅ Applicators can look up region masks from geometry

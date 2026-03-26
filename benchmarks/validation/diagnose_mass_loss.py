@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from mfg_pde import MFGComponents, MFGProblem
-from mfg_pde.factory import create_basic_solver
+from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon.factory import create_basic_solver
 
 
 class CrowdMotion2D(MFGProblem):

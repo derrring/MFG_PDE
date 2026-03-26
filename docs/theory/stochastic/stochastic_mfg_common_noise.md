@@ -328,13 +328,13 @@ This analytical solution serves as a benchmark for testing the Common Noise MFG 
 
 ---
 
-## Implementation in MFG_PDE
+## Implementation in MFGarchon
 
 ### Basic Usage
 
 ```python
-from mfg_pde.core.stochastic import StochasticMFGProblem, OrnsteinUhlenbeckProcess
-from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+from mfgarchon.core.stochastic import StochasticMFGProblem, OrnsteinUhlenbeckProcess
+from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
 # Define common noise process (market volatility)
 vix_process = OrnsteinUhlenbeckProcess(
@@ -380,7 +380,7 @@ mc_error = result.mc_error_u  # Monte Carlo error estimate
 ### Advanced: Custom Conditional Solver
 
 ```python
-from mfg_pde.factory import create_solver
+from mfgarchon.factory import create_solver
 
 # Define custom conditional solver
 def my_conditional_solver_factory(conditional_problem):
@@ -561,6 +561,6 @@ result = solver.solve()
 ---
 
 **Document Status**: Theoretical foundation with production implementation
-**Implementation**: `mfg_pde.alg.numerical.stochastic.CommonNoiseMFGSolver`
+**Implementation**: `mfgarchon.alg.numerical.stochastic.CommonNoiseMFGSolver`
 **Notation Standards**: See `NOTATION_STANDARDS.md` for cross-document consistency
 **Related Theory**: `stochastic_differential_games_theory.md` for convergence theory

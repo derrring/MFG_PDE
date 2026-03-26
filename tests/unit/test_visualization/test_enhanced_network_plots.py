@@ -1,4 +1,4 @@
-"""Tests for mfg_pde.visualization.enhanced_network_plots module."""
+"""Tests for mfgarchon.visualization.enhanced_network_plots module."""
 
 from __future__ import annotations
 
@@ -60,10 +60,10 @@ def sample_velocity_field():
 class TestEnhancedNetworkMFGVisualizerInitialization:
     """Test EnhancedNetworkMFGVisualizer initialization."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_initialization_with_network_data(self, mock_super_init, mock_network_data):
         """Test initialization with network data."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -75,10 +75,10 @@ class TestEnhancedNetworkMFGVisualizerInitialization:
         assert viz.flow_arrow_scale == 1.0
         assert viz.velocity_field_resolution == 20
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_initialization_without_data(self, mock_super_init):
         """Test initialization without data."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -91,11 +91,11 @@ class TestEnhancedNetworkMFGVisualizerInitialization:
 class TestLagrangianTrajectories:
     """Test Lagrangian trajectory plotting."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_trajectories_interactive(self, mock_super_init, mock_network_data, sample_trajectories):
         """Test interactive trajectory plotting with Plotly."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -110,12 +110,12 @@ class TestLagrangianTrajectories:
         assert fig is not None
         assert hasattr(fig, "data") or hasattr(fig, "layout")
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", False)
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", False)
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_trajectories_matplotlib(self, mock_super_init, mock_plt, mock_network_data, sample_trajectories):
         """Test trajectory plotting with matplotlib."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_fig = Mock()
@@ -133,13 +133,13 @@ class TestLagrangianTrajectories:
         assert mock_plt.subplots.called
         assert mock_ax.plot.called
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_trajectories_with_solution_data(
         self, mock_super_init, mock_network_data, sample_trajectories, sample_solution_data
     ):
         """Test trajectory plotting with U and M data."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -155,11 +155,11 @@ class TestLagrangianTrajectories:
         # Functional assertion: verify a figure was returned
         assert fig is not None
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_trajectories_empty_trajectory(self, mock_super_init, mock_plt, mock_network_data):
         """Test handling of empty trajectories."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_fig = Mock()
@@ -181,11 +181,11 @@ class TestLagrangianTrajectories:
 class TestVelocityField:
     """Test velocity field visualization."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_velocity_field_interactive(self, mock_super_init, mock_network_data, sample_velocity_field):
         """Test interactive velocity field plotting."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -199,11 +199,11 @@ class TestVelocityField:
         assert fig is not None
         assert hasattr(fig, "data") or hasattr(fig, "layout")
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_velocity_field_matplotlib(self, mock_super_init, mock_plt, mock_network_data, sample_velocity_field):
         """Test velocity field plotting with matplotlib."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_fig = Mock()
@@ -220,13 +220,13 @@ class TestVelocityField:
         assert fig == mock_fig
         assert mock_plt.subplots.called
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_velocity_field_with_density(
         self, mock_super_init, mock_plt, mock_network_data, sample_velocity_field, sample_solution_data
     ):
         """Test velocity field with density background."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_fig = Mock()
@@ -244,11 +244,11 @@ class TestVelocityField:
 
         assert mock_plt.subplots.called
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_velocity_field_1d(self, mock_super_init, mock_plt, mock_network_data):
         """Test velocity field with 1D velocities."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_fig = Mock()
@@ -271,11 +271,11 @@ class TestVelocityField:
 class TestSchemeComparison:
     """Test discretization scheme comparison."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_scheme_comparison_interactive(self, mock_super_init, mock_network_data):
         """Test interactive scheme comparison."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -297,12 +297,12 @@ class TestSchemeComparison:
         assert fig is not None
         assert hasattr(fig, "data") or hasattr(fig, "layout")
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
     @patch("matplotlib.cm")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_scheme_comparison_matplotlib(self, mock_super_init, mock_cm, mock_plt, mock_network_data):
         """Test scheme comparison with matplotlib."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_fig = Mock()
@@ -325,12 +325,12 @@ class TestSchemeComparison:
         assert fig == mock_fig
         assert mock_plt.subplots.called
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
     @patch("matplotlib.cm")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_scheme_comparison_default_nodes(self, mock_super_init, mock_cm, mock_plt, mock_network_data):
         """Test scheme comparison with default node selection."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_fig = Mock()
@@ -355,11 +355,11 @@ class TestSchemeComparison:
 class TestNetwork3D:
     """Test 3D network visualization."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_network_3d_with_values(self, mock_super_init, mock_network_data):
         """Test 3D network plot with node values."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -376,11 +376,11 @@ class TestNetwork3D:
         assert fig is not None
         assert hasattr(fig, "data") or hasattr(fig, "layout")
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_network_3d_without_values(self, mock_super_init, mock_network_data):
         """Test 3D network plot without node values."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -395,11 +395,11 @@ class TestNetwork3D:
         assert fig is not None
         assert hasattr(fig, "data") or hasattr(fig, "layout")
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_network_3d_without_positions(self, mock_super_init, mock_network_data):
         """Test 3D network plot with default circular layout."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -414,11 +414,11 @@ class TestNetwork3D:
         assert fig is not None
         assert hasattr(fig, "data") or hasattr(fig, "layout")
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", False)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", False)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_plot_network_3d_plotly_not_available(self, mock_super_init, mock_network_data):
         """Test 3D network plot raises error without Plotly."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -433,11 +433,11 @@ class TestNetwork3D:
 class TestHelperMethods:
     """Test helper methods."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_add_network_topology_to_matplotlib_with_values(self, mock_super_init, mock_plt, mock_network_data):
         """Test adding network topology to matplotlib with values."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_ax = Mock()
@@ -453,11 +453,11 @@ class TestHelperMethods:
         assert mock_ax.plot.called
         assert mock_ax.scatter.called
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_add_network_topology_to_matplotlib_without_values(self, mock_super_init, mock_plt, mock_network_data):
         """Test adding network topology to matplotlib without values."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_ax = Mock()
@@ -475,10 +475,10 @@ class TestHelperMethods:
 class TestFactoryFunction:
     """Test factory function."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.EnhancedNetworkMFGVisualizer")
+    @patch("mfgarchon.visualization.enhanced_network_plots.EnhancedNetworkMFGVisualizer")
     def test_create_enhanced_network_visualizer(self, mock_visualizer_class, mock_network_data):
         """Test factory function."""
-        from mfg_pde.visualization.enhanced_network_plots import create_enhanced_network_visualizer
+        from mfgarchon.visualization.enhanced_network_plots import create_enhanced_network_visualizer
 
         mock_instance = Mock()
         mock_visualizer_class.return_value = mock_instance
@@ -488,10 +488,10 @@ class TestFactoryFunction:
         assert viz == mock_instance
         mock_visualizer_class.assert_called_once_with(problem=None, network_data=mock_network_data)
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.EnhancedNetworkMFGVisualizer")
+    @patch("mfgarchon.visualization.enhanced_network_plots.EnhancedNetworkMFGVisualizer")
     def test_create_enhanced_network_visualizer_no_args(self, mock_visualizer_class):
         """Test factory function with no arguments."""
-        from mfg_pde.visualization.enhanced_network_plots import create_enhanced_network_visualizer
+        from mfgarchon.visualization.enhanced_network_plots import create_enhanced_network_visualizer
 
         mock_instance = Mock()
         mock_visualizer_class.return_value = mock_instance
@@ -505,11 +505,11 @@ class TestFactoryFunction:
 class TestFileSaving:
     """Test file saving functionality."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_save_trajectory_plot(self, mock_super_init, mock_network_data, sample_trajectories, tmp_path):
         """Test saving trajectory plot to file."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -525,11 +525,11 @@ class TestFileSaving:
         # Functional assertion: verify file was created
         assert (tmp_path / "trajectories.html").exists()
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_save_3d_network(self, mock_super_init, mock_network_data, tmp_path):
         """Test saving 3D network plot."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -549,11 +549,11 @@ class TestFileSaving:
 class TestIntegration:
     """Integration tests combining multiple features."""
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_full_workflow_plotly(self, mock_super_init, mock_network_data, sample_trajectories, sample_velocity_field):
         """Test complete workflow with Plotly."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
 
@@ -572,14 +572,14 @@ class TestIntegration:
         assert fig2 is not None
         assert fig3 is not None
 
-    @patch("mfg_pde.visualization.enhanced_network_plots.plt")
+    @patch("mfgarchon.visualization.enhanced_network_plots.plt")
     @patch("matplotlib.cm")
-    @patch("mfg_pde.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
+    @patch("mfgarchon.visualization.enhanced_network_plots.NetworkMFGVisualizer.__init__")
     def test_full_workflow_matplotlib(
         self, mock_super_init, mock_cm, mock_plt, mock_network_data, sample_trajectories, sample_velocity_field
     ):
         """Test complete workflow with matplotlib."""
-        from mfg_pde.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
+        from mfgarchon.visualization.enhanced_network_plots import EnhancedNetworkMFGVisualizer
 
         mock_super_init.return_value = None
         mock_fig = Mock()

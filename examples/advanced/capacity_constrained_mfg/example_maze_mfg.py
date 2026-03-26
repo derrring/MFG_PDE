@@ -45,7 +45,7 @@ from examples.advanced.capacity_constrained_mfg import (
     create_congestion_model,
     visualize_capacity_field,
 )
-from mfg_pde.geometry.graph import MazeConfig, MazeGeometry
+from mfgarchon.geometry.graph import MazeConfig, MazeGeometry
 
 
 def generate_maze_with_capacity(
@@ -164,8 +164,8 @@ def solve_and_visualize(
     print("\n4. Solving capacity-constrained MFG system...")
     print("   Note: This is a placeholder - full solver integration pending")
 
-    # TODO: Integrate with MFG_PDE solvers
-    # from mfg_pde.factory import create_fast_solver
+    # TODO: Integrate with MFGarchon solvers
+    # from mfgarchon.factory import create_fast_solver
     # solver = create_fast_solver(problem)
     # result = solver.solve()
 

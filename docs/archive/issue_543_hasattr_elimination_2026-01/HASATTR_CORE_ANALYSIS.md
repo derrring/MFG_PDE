@@ -1,4 +1,4 @@
-# hasattr() Analysis: mfg_pde/core Module
+# hasattr() Analysis: mfgarchon/core Module
 
 **Issue**: #543 - Eliminate hasattr() duck typing
 **Scope**: Core module (base_problem.py, mfg_problem.py)
@@ -102,7 +102,7 @@ def Lx(self):
 
 ### Step 1: Fix Lazy Initialization (Low Risk)
 
-**File**: `mfg_pde/core/mfg_problem.py`
+**File**: `mfgarchon/core/mfg_problem.py`
 **Lines**: 428-435
 
 **Changes**:
@@ -116,7 +116,7 @@ def Lx(self):
 
 ### Step 2: Replace Override hasattr with Explicit Checks (Medium Risk)
 
-**Files**: `mfg_pde/core/mfg_problem.py` (properties: Lx, Nx, dx, xSpace, grid, etc.)
+**Files**: `mfgarchon/core/mfg_problem.py` (properties: Lx, Nx, dx, xSpace, grid, etc.)
 
 **Pattern**:
 ```python
@@ -172,13 +172,13 @@ if self._Lx_override is not None:
 ### Validation
 ```bash
 # Before changes
-python scripts/check_fail_fast.py --path mfg_pde/core
+python scripts/check_fail_fast.py --path mfgarchon/core
 
 # After Step 1 (should reduce by 2)
-python scripts/check_fail_fast.py --path mfg_pde/core
+python scripts/check_fail_fast.py --path mfgarchon/core
 
 # After Step 2 (should reduce by 22)
-python scripts/check_fail_fast.py --path mfg_pde/core
+python scripts/check_fail_fast.py --path mfgarchon/core
 
 # Target: 3 remaining (doc examples - intentional)
 ```

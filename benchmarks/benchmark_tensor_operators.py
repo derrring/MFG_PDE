@@ -20,10 +20,10 @@ from collections.abc import Callable
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.geometry.boundary import no_flux_bc
 
 # Import unified diffusion API and Numba flags
-from mfg_pde.utils.numerical.tensor_calculus import (
+from mfgarchon.utils.numerical.tensor_calculus import (
     NUMBA_AVAILABLE,
     USE_NUMBA,
     diffusion,

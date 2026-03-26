@@ -12,7 +12,7 @@ Key Concepts:
 - Critic: Q(s, a, m)
 - Exploration: Ornstein-Uhlenbeck noise
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -43,8 +43,8 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfg_pde.alg.reinforcement.algorithms.mean_field_ddpg import MeanFieldDDPG
-from mfg_pde.alg.reinforcement.environments.continuous_action_maze_env import (
+from mfgarchon.alg.reinforcement.algorithms.mean_field_ddpg import MeanFieldDDPG
+from mfgarchon.alg.reinforcement.environments.continuous_action_maze_env import (
     ContinuousActionMazeConfig,
     ContinuousActionMazeEnvironment,
     RewardType,

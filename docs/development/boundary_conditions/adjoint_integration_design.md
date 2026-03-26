@@ -30,9 +30,9 @@ FixedPointIterator (adjoint_mode="transpose")
 - Mass conservation is violated (experimentally observed 97% mass loss!)
 
 **Key Files (to be deprecated):**
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:1016` - `build_advection_matrix()` — ⚠️ Returns gradient matrix
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py:511` - `solve_fp_step_adjoint_mode()` — ⚠️ Uses wrong matrix
-- `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py` - `_solve_fp_strict_adjoint()` — ⚠️ Broken
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:1016` - `build_advection_matrix()` — ⚠️ Returns gradient matrix
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py:511` - `solve_fp_step_adjoint_mode()` — ⚠️ Uses wrong matrix
+- `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py` - `_solve_fp_strict_adjoint()` — ⚠️ Broken
 
 ---
 
@@ -83,7 +83,7 @@ The key difference: velocity indices! `divergence_upwind` uses $v_{i-1}$ and $v_
 Runtime verification that `gradient_upwind` and `divergence_upwind` produce consistent results:
 
 ```python
-from mfg_pde.alg.numerical.adjoint import check_operator_adjoint
+from mfgarchon.alg.numerical.adjoint import check_operator_adjoint
 
 # Compare the schemes at a given U
 A_hjb = hjb_solver._build_gradient_matrix(U)  # gradient_upwind
@@ -98,7 +98,7 @@ A_fp = fp_solver._build_divergence_matrix(U)   # divergence_upwind
 The `adjoint/` module's diagnostics can verify scheme consistency:
 
 ```python
-from mfg_pde.alg.numerical.adjoint import diagnose_adjoint_error
+from mfgarchon.alg.numerical.adjoint import diagnose_adjoint_error
 
 report = diagnose_adjoint_error(A_gradient, A_divergence, geometry=geometry)
 # Identifies if discrepancy is at boundaries or interior
@@ -116,7 +116,7 @@ Add verification at matrix exchange point:
 ```python
 # In fixed_point_iterator.py
 
-from mfg_pde.alg.numerical.adjoint import (
+from mfgarchon.alg.numerical.adjoint import (
     verify_discrete_adjoint,
     diagnose_adjoint_error,
     check_operator_adjoint,
@@ -166,7 +166,7 @@ class FixedPointIterator:
 
     def _generate_adjoint_report(self) -> AdjointDiagnosticReport:
         """Generate comprehensive adjoint consistency report."""
-        from mfg_pde.alg.numerical.adjoint import diagnose_adjoint_error
+        from mfgarchon.alg.numerical.adjoint import diagnose_adjoint_error
 
         # Use final timestep operators
         A_hjb = self.hjb_solver.build_advection_matrix(self._U_final[-2])
@@ -185,7 +185,7 @@ class FixedPointIterator:
 ### 3.1 Problem-Level Configuration
 
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(
     ...,
@@ -212,7 +212,7 @@ if result.adjoint_report:
 ### 3.3 Solver-Level Override
 
 ```python
-from mfg_pde.alg.numerical.coupling import FixedPointIterator
+from mfgarchon.alg.numerical.coupling import FixedPointIterator
 
 solver = FixedPointIterator(
     problem=problem,
@@ -251,7 +251,7 @@ Level 3: RUN-TIME (verification)
 ### 4.2 Protocol Definition
 
 ```python
-# In mfg_pde/alg/numerical/adjoint/protocols.py (NEW)
+# In mfgarchon/alg/numerical/adjoint/protocols.py (NEW)
 
 from typing import Protocol, runtime_checkable
 from scipy import sparse
@@ -293,7 +293,7 @@ class FixedPointIterator:
 
     def _validate_adjoint_capability(self):
         """Ensure solvers support strict adjoint mode."""
-        from mfg_pde.alg.numerical.adjoint.protocols import (
+        from mfgarchon.alg.numerical.adjoint.protocols import (
             AdjointCapableHJBSolver,
             AdjointCapableFPSolver,
         )
@@ -443,7 +443,7 @@ class FixedPointIterator:
 For cases where even BC-aware transpose is insufficient:
 
 ```python
-from mfg_pde.alg.numerical.adjoint import create_adjoint_consistent_bc_1d
+from mfgarchon.alg.numerical.adjoint import create_adjoint_consistent_bc_1d
 
 class FixedPointIterator:
     def _solve_fp_strict_adjoint(self, ...):
@@ -509,7 +509,7 @@ For unsupported BC types, use `adjoint_mode="off"` and handle BCs manually.
 ### 7.1 Basic Strict Adjoint
 
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(
     geometry=grid,
@@ -544,8 +544,8 @@ if result.adjoint_report.severity != ErrorSeverity.OK:
 ### 7.3 Low-Level Solver Access
 
 ```python
-from mfg_pde.alg.numerical.coupling import FixedPointIterator
-from mfg_pde.alg.numerical.adjoint import verify_discrete_adjoint
+from mfgarchon.alg.numerical.coupling import FixedPointIterator
+from mfgarchon.alg.numerical.adjoint import verify_discrete_adjoint
 
 solver = FixedPointIterator(
     problem=problem,

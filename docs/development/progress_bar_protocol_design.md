@@ -171,7 +171,7 @@ def create_progress_bar(
 Add new infrastructure without breaking existing code:
 
 ```python
-# mfg_pde/utils/progress.py
+# mfgarchon/utils/progress.py
 + class ProgressTracker(Protocol[T]): ...
 + class NoOpProgressBar: ...
 + def create_progress_bar(...) -> ProgressTracker: ...
@@ -203,7 +203,7 @@ for i in picard_range:
 
 **After**:
 ```python
-from mfg_pde.utils.progress import create_progress_bar
+from mfgarchon.utils.progress import create_progress_bar
 
 progress = create_progress_bar(range(max_iter), verbose=verbose, desc="Picard")
 

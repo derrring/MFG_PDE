@@ -1,6 +1,6 @@
 # Issue #576: Unified Ghost Node Architecture Implementation
 
-**Issue**: [#576](https://github.com/derrring/MFG_PDE/issues/576)
+**Issue**: [#576](https://github.com/derrring/mfgarchon/issues/576)
 **Branch**: feature/issue-576-unified-ghost-nodes
 **Date Started**: 2026-01-17
 **Status**: In Progress
@@ -47,7 +47,7 @@ u_{-k} = Σ w_{k,j} · u_j + β_k · g_bc
 
 ### Phase 1: Add `order` Parameter ✅
 
-**File**: `mfg_pde/geometry/boundary/applicator_fdm.py`
+**File**: `mfgarchon/geometry/boundary/applicator_fdm.py`
 
 **Changes**:
 1. Add `order: int = 2` parameter to `PreallocatedGhostBuffer.__init__`
@@ -133,7 +133,7 @@ Solve for coefficients, then evaluate at ghost points.
 
 **Optimization**: Pre-compute weights for common (order, width) pairs.
 
-**File**: `mfg_pde/geometry/boundary/ghost_weights.py` (new)
+**File**: `mfgarchon/geometry/boundary/ghost_weights.py` (new)
 
 ```python
 # Pre-computed extrapolation weights
@@ -153,7 +153,7 @@ EXTRAP_WEIGHTS = {
 
 ### Phase 6: Refactor WENO Solver
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py`
 
 **Current**: WENO implements its own ghost cell logic
 
@@ -172,7 +172,7 @@ self.ghost_buffer = PreallocatedGhostBuffer(
 
 ### Phase 7: Refactor Semi-Lagrangian Solver
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
 
 **Current**: Uses `pad_with_ghost_cells()` from `hjb_sl_interpolation.py`
 

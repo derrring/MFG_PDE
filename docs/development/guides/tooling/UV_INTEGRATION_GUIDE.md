@@ -1,4 +1,4 @@
-# UV Integration Guide for MFG_PDE
+# UV Integration Guide for MFGarchon
 
 **Date**: 2025-08-12  
 **Status**: ✅ **IMPLEMENTED**  
@@ -15,7 +15,7 @@ pip install uv
 uv sync --extra dev
 
 # 3. Verify installation
-uv run python -c "import mfg_pde; print('✅ MFG_PDE ready!')"
+uv run python -c "import mfgarchon; print('✅ MFGarchon ready!')"
 ```
 
 ### **Daily Development Workflow**
@@ -27,11 +27,11 @@ uv run python examples/basic/simple_demo.py
 uv run pytest tests/unit/
 
 # Code formatting
-uv run black mfg_pde/
-uv run isort mfg_pde/
+uv run black mfgarchon/
+uv run isort mfgarchon/
 
 # Type checking
-uv run mypy mfg_pde/core/
+uv run mypy mfgarchon/core/
 
 # Interactive development
 uv run python        # Python REPL with all dependencies
@@ -47,7 +47,7 @@ uv run jupyter lab   # Jupyter with full MFG environment
 | Lock file generation | 30-60 seconds | 1-3 seconds | **20x faster** |
 | Clean environment rebuild | 3-5 minutes | 15-30 seconds | **10x faster** |
 
-## 🔧 **UV Features for MFG_PDE**
+## 🔧 **UV Features for MFGarchon**
 
 ### **1. Exact Reproducible Environments**
 ```bash
@@ -120,10 +120,10 @@ uv run python benchmarks/solver_comparison.py
 pre-commit run --config .pre-commit-config-uv.yaml
 
 # Full test suite
-uv run pytest tests/ --cov=mfg_pde
+uv run pytest tests/ --cov=mfgarchon
 
 # Type checking (scientific computing friendly)
-uv run mypy mfg_pde/core/ --ignore-missing-imports
+uv run mypy mfgarchon/core/ --ignore-missing-imports
 ```
 
 ### **Documentation Development**
@@ -138,7 +138,7 @@ uv run sphinx-autobuild docs/ build/html
 ## 📁 **File Structure Created**
 
 ```
-MFG_PDE/
+MFGarchon/
 ├── .venv/                   # UV-managed virtual environment  
 ├── uv.lock                  # Exact dependency versions (294 packages)
 ├── .pre-commit-config-uv.yaml    # UV-powered pre-commit hooks
@@ -154,7 +154,7 @@ conda activate mfg_env_pde
 
 # Use uv for specific tasks
 uv run pytest                    # Faster testing
-uv run black mfg_pde/           # Faster formatting
+uv run black mfgarchon/           # Faster formatting
 uv run jupyter lab              # Reproducible notebooks
 ```
 
@@ -332,7 +332,7 @@ uv sync --all-extras
 
 ## 🏆 **Summary**
 
-**UV integration is successful** and provides significant performance improvements for MFG_PDE development:
+**UV integration is successful** and provides significant performance improvements for MFGarchon development:
 
 - ✅ **10-100x faster** dependency management
 - ✅ **Perfect reproducibility** with uv.lock (294 packages)  

@@ -1,6 +1,6 @@
 # Stochastic MFG User Guide
 
-**Target Audience**: Researchers and practitioners using MFG_PDE for stochastic problems
+**Target Audience**: Researchers and practitioners using MFGarchon for stochastic problems
 **Prerequisites**: Basic understanding of Mean Field Games and HJB-FP systems
 **Related Documentation**: [High Dimensional MFG](../theory/high_dimensional_mfg.md)
 
@@ -11,8 +11,8 @@
 ### Your First Common Noise MFG
 
 ```python
-from mfg_pde.core.stochastic import StochasticMFGProblem, OrnsteinUhlenbeckProcess
-from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+from mfgarchon.core.stochastic import StochasticMFGProblem, OrnsteinUhlenbeckProcess
+from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
 # 1. Define common noise (mean-reverting process)
 noise = OrnsteinUhlenbeckProcess(kappa=2.0, mu=0.0, sigma=0.2)
@@ -65,7 +65,7 @@ Parallel execution: True
 **Mean-reverting process** - typical for interest rates, volatility
 
 ```python
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess
 
 # VIX-like volatility process
 vix = OrnsteinUhlenbeckProcess(
@@ -93,7 +93,7 @@ print(f"Std: {np.std(path[-20:]):.2f}")    # ≈ sigma/sqrt(2*kappa)
 **Always positive** - for quantities that cannot go negative
 
 ```python
-from mfg_pde.core.stochastic import CoxIngersollRossProcess
+from mfgarchon.core.stochastic import CoxIngersollRossProcess
 
 # Interest rate (always positive)
 interest_rate = CoxIngersollRossProcess(
@@ -117,7 +117,7 @@ The $\sqrt{\theta_t}$ term ensures positivity (Feller condition).
 **Exponential growth** - classic for stock prices
 
 ```python
-from mfg_pde.core.stochastic import GeometricBrownianMotion
+from mfgarchon.core.stochastic import GeometricBrownianMotion
 
 # Stock index
 market_index = GeometricBrownianMotion(
@@ -139,7 +139,7 @@ Solution: $\theta_t = \theta_0 \exp((\mu - \sigma^2/2)t + \sigma B_t)$
 **Rare events** - combines diffusion with jumps
 
 ```python
-from mfg_pde.core.stochastic import JumpDiffusionProcess
+from mfgarchon.core.stochastic import JumpDiffusionProcess
 
 # Market with crashes
 market = JumpDiffusionProcess(
@@ -242,7 +242,7 @@ solver = CommonNoiseMFGSolver(
 For each noise realization, a conditional MFG is solved. Customize this:
 
 ```python
-from mfg_pde.factory import create_solver
+from mfgarchon.factory import create_solver
 
 def my_solver_factory(conditional_problem):
     """Create solver for each conditional MFG."""
@@ -265,7 +265,7 @@ solver = CommonNoiseMFGSolver(
 ### Monte Carlo Configuration
 
 ```python
-from mfg_pde.utils.numerical.monte_carlo import MCConfig
+from mfgarchon.utils.numerical.monte_carlo import MCConfig
 
 mc_config = MCConfig(
     num_samples=100,
@@ -435,8 +435,8 @@ solver._solve = lambda: custom_solve_with_streaming()
 ### Pattern 1: Market with Stochastic Volatility
 
 ```python
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
 # VIX-like volatility
 vix = OrnsteinUhlenbeckProcess(kappa=2.0, mu=20.0, sigma=8.0)
@@ -463,7 +463,7 @@ result = solver.solve()
 ### Pattern 2: Epidemic with Random Policy
 
 ```python
-from mfg_pde.core.stochastic import JumpDiffusionProcess
+from mfgarchon.core.stochastic import JumpDiffusionProcess
 
 # Policy strictness (with sudden changes)
 policy = JumpDiffusionProcess(
@@ -627,4 +627,4 @@ print(f"  Estimated total (K={solver.K}): "
 
 **Document Version**: 1.0
 **Last Updated**: October 2025
-**Feedback**: Report issues at [GitHub Issues](https://github.com/anthropics/mfg_pde/issues)
+**Feedback**: Report issues at [GitHub Issues](https://github.com/anthropics/mfgarchon/issues)

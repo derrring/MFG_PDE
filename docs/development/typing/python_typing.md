@@ -2,11 +2,11 @@
 
 **Date**: 2025-09-20 (Updated: 2025-12-14)
 **Context**: Best practices for type hints in scientific Python projects
-**Target**: Python 3.12+ (MFG_PDE requires Python 3.12+)
+**Target**: Python 3.12+ (MFGarchon requires Python 3.12+)
 
 ## 🎯 **Executive Summary**
 
-This guide synthesizes modern Python typing best practices specifically for scientific computing projects like MFG_PDE. It emphasizes clean, maintainable code using Python 3.9+ built-in collection types and Python 3.10+ union syntax.
+This guide synthesizes modern Python typing best practices specifically for scientific computing projects like MFGarchon. It emphasizes clean, maintainable code using Python 3.9+ built-in collection types and Python 3.10+ union syntax.
 
 ## 📖 **Table of Contents**
 
@@ -170,8 +170,8 @@ Structure your API to reveal complexity progressively. Not every user needs to s
 
 #### **Layer 1: Factory API (95% of users - Researchers)**
 ```python
-# mfg_pde/factory.py - Factory API for researchers
-from mfg_pde import MFGProblem
+# mfgarchon/factory.py - Factory API for researchers
+from mfgarchon import MFGProblem
 
 def create_fast_solver(
     problem: MFGProblem,
@@ -192,7 +192,7 @@ def create_accurate_solver(
 
 #### **Layer 2: Core Classes (5% of users - Developers)**
 ```python
-# mfg_pde/core.py - Typed objects with clean interfaces
+# mfgarchon/core.py - Typed objects with clean interfaces
 class FixedPointSolver:
     def __init__(
         self,
@@ -215,7 +215,7 @@ class MFGSolverConfig:
 
 **Advanced Features (Available to all researchers)**
 ```python
-# mfg_pde/types.py - Full internal type system
+# mfgarchon/types.py - Full internal type system
 class SpatialTemporalState(NamedTuple):
     """Internal solver state with full type annotations."""
     u: ValueFunction  # u(t,x)
@@ -224,7 +224,7 @@ class SpatialTemporalState(NamedTuple):
     residual: float
     metadata: dict[str, Any]
 
-# mfg_pde/hooks.py - Advanced customization for researchers
+# mfgarchon/hooks.py - Advanced customization for researchers
 class SolverHooks(Protocol):
     def on_iteration_start(self, state: SpatialTemporalState) -> None: ...
     def on_iteration_end(self, state: SpatialTemporalState) -> str | None: ...
@@ -357,7 +357,7 @@ def validate_solution(
 
 ```toml
 [project]
-name = "mfg-pde"
+name = "mfgarchon"
 requires-python = ">=3.9"  # Enable modern typing
 
 [tool.mypy]
@@ -463,7 +463,7 @@ ruff check --select UP .
 
 ---
 
-## 🔧 **Practical Example: MFG_PDE Modernization**
+## 🔧 **Practical Example: MFGarchon Modernization**
 
 ### **Before (Legacy Typing)**
 ```python

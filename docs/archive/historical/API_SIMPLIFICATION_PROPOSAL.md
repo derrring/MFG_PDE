@@ -8,7 +8,7 @@
 
 ## Problem Statement
 
-Current MFG_PDE API has **4 layers** of problem construction:
+Current MFGarchon API has **4 layers** of problem construction:
 
 1. **Factory level**: `create_fast_solver()`, `create_accurate_solver()` (in `factory.py`)
 2. **Problem factories**: `create_mfg_problem()` (redundant)
@@ -161,11 +161,11 @@ problem = MFGProblem(xmin=0, xmax=10, Nx=100, T=2.0, Nt=40, components=component
 
 ### Level 1: Factory (Pre-configured Problems)
 
-**Location**: `mfg_pde/factory/problems.py` (new module)
+**Location**: `mfgarchon/factory/problems.py` (new module)
 
 ```python
 # High-level factory functions for common problem types
-from mfg_pde.factory.problems import (
+from mfgarchon.factory.problems import (
     create_lq_problem,
     create_crowd_motion_problem,
     create_traffic_flow_problem,
@@ -202,10 +202,10 @@ problem = create_crowd_motion_problem(
 
 ### Level 2: Expert (Direct Construction)
 
-**Location**: `mfg_pde` (top-level imports)
+**Location**: `mfgarchon` (top-level imports)
 
 ```python
-from mfg_pde import MFGProblem, MFGComponents
+from mfgarchon import MFGProblem, MFGComponents
 
 # Step 1: Define custom functions
 def my_hamiltonian(x_idx, x_position, m_at_x, derivs, **kwargs):
@@ -253,32 +253,32 @@ problem = MFGProblem(
 
 ### Files to Modify
 
-1. **`mfg_pde/core/mfg_problem.py`**
+1. **`mfgarchon/core/mfg_problem.py`**
    - ❌ Remove `MFGProblemBuilder` class (lines ~2007-2146)
    - ❌ Remove `create_mfg_problem()` function (lines ~2161-2175)
    - ✅ Keep `MFGProblem` class
    - ✅ Keep `MFGComponents` dataclass
 
-2. **`mfg_pde/__init__.py`**
+2. **`mfgarchon/__init__.py`**
    - Remove `MFGProblemBuilder` from imports
    - Remove `create_mfg_problem` from imports
    - Remove from `__all__` list
 
-3. **`mfg_pde/core/__init__.py`**
+3. **`mfgarchon/core/__init__.py`**
    - Remove `MFGProblemBuilder` from imports
    - Remove `create_mfg_problem` from imports
 
-4. **Create `mfg_pde/factory/problems.py`** (new file)
+4. **Create `mfgarchon/factory/problems.py`** (new file)
    - Implement `create_lq_problem()`
    - Implement `create_crowd_motion_problem()`
    - Implement `create_traffic_flow_problem()`
-   - Add to `mfg_pde/factory/__init__.py` exports
+   - Add to `mfgarchon/factory/__init__.py` exports
 
 ### Migration Guide
 
 **Old Code** (using Builder):
 ```python
-from mfg_pde import MFGProblemBuilder
+from mfgarchon import MFGProblemBuilder
 
 problem = (MFGProblemBuilder()
     .hamiltonian(my_H, my_dH_dm)
@@ -289,7 +289,7 @@ problem = (MFGProblemBuilder()
 
 **New Code** (Direct):
 ```python
-from mfg_pde import MFGProblem, MFGComponents
+from mfgarchon import MFGProblem, MFGComponents
 
 components = MFGComponents(
     hamiltonian_func=my_H,
@@ -304,14 +304,14 @@ problem = MFGProblem(
 
 **Old Code** (using `create_mfg_problem`):
 ```python
-from mfg_pde import create_mfg_problem
+from mfgarchon import create_mfg_problem
 
 problem = create_mfg_problem(my_H, my_dH_dm, xmin=0, xmax=10, Nx=100, T=2.0, Nt=40)
 ```
 
 **New Code**:
 ```python
-from mfg_pde import MFGProblem, MFGComponents
+from mfgarchon import MFGProblem, MFGComponents
 
 components = MFGComponents(hamiltonian_func=my_H, hamiltonian_dm_func=my_dH_dm)
 problem = MFGProblem(xmin=0, xmax=10, Nx=100, T=2.0, Nt=40, components=components)
@@ -355,7 +355,7 @@ problem = MFGProblem(xmin=0, xmax=10, Nx=100, T=2.0, Nt=40, components=component
 
 ### Phase 1: Add Factory Problem Functions (Week 1)
 
-1. Create `mfg_pde/factory/problems.py`
+1. Create `mfgarchon/factory/problems.py`
 2. Implement problem factories:
    - `create_lq_problem()`
    - `create_crowd_motion_problem()`

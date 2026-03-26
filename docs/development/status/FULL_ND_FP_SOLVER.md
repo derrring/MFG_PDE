@@ -91,7 +91,7 @@ Combined advection + diffusion flux = 0
 ### File Structure
 
 ```
-mfg_pde/alg/numerical/fp_solvers/
+mfgarchon/alg/numerical/fp_solvers/
 ├── fp_fdm.py                 # Unified FDM solver: 1D and full nD implementation
 └── (archived)                # Dimensional splitting methods moved to docs/archived_methods/
 ```
@@ -206,9 +206,9 @@ python -m benchmarks.validation.test_full_nd_solver
 ## Usage Example
 
 ```python
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-from mfg_pde.geometry import TensorProductGrid, BoundaryConditions
-from mfg_pde.factory import create_basic_solver
+from mfgarchon.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfgarchon.geometry import TensorProductGrid, BoundaryConditions
+from mfgarchon.factory import create_basic_solver
 
 # Create 2D grid
 grid = TensorProductGrid(
@@ -267,8 +267,8 @@ print(f"Mass error: {error:.2f}%")  # Expected: ~1-2%
 ### Related Documentation
 
 - `docs/archived_methods/dimensional_splitting/README.md`: Why splitting fails
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`: 1D FP solver (template for discretization)
-- `mfg_pde/geometry/tensor_product_grid.py`: Grid infrastructure
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`: 1D FP solver (template for discretization)
+- `mfgarchon/geometry/tensor_product_grid.py`: Grid infrastructure
 
 ### Literature
 

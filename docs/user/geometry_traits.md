@@ -1,6 +1,6 @@
 # Guide: Geometry Trait Protocols for Solver Developers
 
-**Audience**: Solver developers, advanced users extending MFG_PDE
+**Audience**: Solver developers, advanced users extending MFGarchon
 **Prerequisites**: Python protocols, linear algebra, numerical PDEs
 **Version**: 1.0 (2026-01-18)
 
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-MFG_PDE uses **trait protocols** to decouple solvers from geometry implementations. Solvers request **capabilities** (e.g., "can compute Laplacian"), and geometries provide **operators** (e.g., finite difference Laplacian matrix).
+MFGarchon uses **trait protocols** to decouple solvers from geometry implementations. Solvers request **capabilities** (e.g., "can compute Laplacian"), and geometries provide **operators** (e.g., finite difference Laplacian matrix).
 
 ### What Are Trait Protocols?
 
@@ -76,7 +76,7 @@ def solve_heat_equation(u0, geometry, dt, steps):
 
 **Correct pattern** (Issue #590+):
 ```python
-from mfg_pde.geometry.protocols import SupportsLaplacian
+from mfgarchon.geometry.protocols import SupportsLaplacian
 
 def solve_heat_equation(
     u0: NDArray,
@@ -112,7 +112,7 @@ Trait protocols move **capability checking from runtime to design time**. If a g
 
 ## Core Trait Protocols
 
-MFG_PDE provides the following trait protocols for geometry capabilities:
+MFGarchon provides the following trait protocols for geometry capabilities:
 
 ### 1. SupportsLaplacian
 
@@ -142,8 +142,8 @@ def get_laplacian_operator(
 
 **Example**:
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import neumann_bc
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import neumann_bc
 
 grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx=[51, 51])
 bc = neumann_bc(dimension=2)
@@ -337,8 +337,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import BoundaryConditions
-from mfg_pde.geometry.protocols import SupportsLaplacian
+from mfgarchon.geometry.boundary import BoundaryConditions
+from mfgarchon.geometry.protocols import SupportsLaplacian
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -403,8 +403,8 @@ No runtime `hasattr()` checks needed! The contract is enforced by the type syste
 
 **1D Cartesian Grid**:
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import neumann_bc
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import neumann_bc
 
 # 1D grid
 grid_1d = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx=[101])
@@ -447,7 +447,7 @@ u_final_2d = u_final_2d.reshape(51, 51)  # Back to grid shape
 
 **Graph Geometry** (bonus):
 ```python
-from mfg_pde.geometry.graph import NetworkGeometry
+from mfgarchon.geometry.graph import NetworkGeometry
 
 # Graph (network topology)
 graph = NetworkGeometry(topology="scale_free", n_nodes=100, m=3, seed=42)
@@ -592,7 +592,7 @@ For defensive programming or clear error messages:
 ```python
 def my_solver(geometry):
     """Solver for heat equation."""
-    from mfg_pde.geometry.protocols import SupportsLaplacian
+    from mfgarchon.geometry.protocols import SupportsLaplacian
 
     if not isinstance(geometry, SupportsLaplacian):
         raise TypeError(
@@ -644,7 +644,7 @@ def solve_mfg_system(problem, geometry):
         geometry: Geometry satisfying above traits
     """
     # Check traits (optional, for clarity)
-    from mfg_pde.geometry.protocols import (
+    from mfgarchon.geometry.protocols import (
         SupportsAdvection,
         SupportsGradient,
         SupportsLaplacian,
@@ -688,9 +688,9 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import LinearOperator
 
-from mfg_pde.geometry.boundary import BoundaryConditions
-from mfg_pde.geometry.protocol import GeometryProtocol, GeometryType
-from mfg_pde.geometry.protocols import SupportsGradient, SupportsLaplacian
+from mfgarchon.geometry.boundary import BoundaryConditions
+from mfgarchon.geometry.protocol import GeometryProtocol, GeometryType
+from mfgarchon.geometry.protocols import SupportsGradient, SupportsLaplacian
 
 
 class HexagonalGrid:
@@ -763,7 +763,7 @@ u_final = solve_heat_equation(
 ```python
 from typing import Protocol
 
-from mfg_pde.geometry.protocols import (
+from mfgarchon.geometry.protocols import (
     SupportsAdvection,
     SupportsGradient,
     SupportsLaplacian,
@@ -861,7 +861,7 @@ elif hasattr(geometry, "get_laplacian"):
 **New pattern** (trait protocols):
 ```python
 # After
-from mfg_pde.geometry.protocols import SupportsLaplacian
+from mfgarchon.geometry.protocols import SupportsLaplacian
 
 def my_solver(geometry: SupportsLaplacian):
     L = geometry.get_laplacian_operator()  # Guaranteed to exist
@@ -874,12 +874,12 @@ def my_solver(geometry: SupportsLaplacian):
   - `examples/advanced/stefan_problem_1d.py` (SupportsGradient, SupportsDivergence for curvature)
   - `examples/advanced/capacity_constrained_mfg/` (SupportsLaplacian, SupportsAdvection)
 - **API Reference**:
-  - `mfg_pde/geometry/protocol.py` (GeometryProtocol)
-  - `mfg_pde/geometry/protocols/operators.py` (Operator traits)
+  - `mfgarchon/geometry/protocol.py` (GeometryProtocol)
+  - `mfgarchon/geometry/protocols/operators.py` (Operator traits)
 - **Testing**: `tests/unit/geometry/protocols/` (protocol unit tests)
 
 ---
 
 **Last Updated**: 2026-01-18
-**Author**: MFG_PDE Documentation Team
+**Author**: MFGarchon Documentation Team
 **Related Issues**: #590 (Geometry Traits), #594 (Documentation)

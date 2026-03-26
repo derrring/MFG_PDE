@@ -2,7 +2,7 @@
 
 **Status**: ✅ PRODUCTION REFERENCE
 **Created**: 2025-09-25
-**Context**: MFG_PDE Strategic Typing & CI/CD Success
+**Context**: MFGarchon Strategic Typing & CI/CD Success
 
 ## 🚨 Common CI/CD Failures & Quick Fixes
 
@@ -19,7 +19,7 @@ error: Unused "type: ignore" comment [unused-ignore]
 **Quick Fix:** Make MyPy validation informational in CI/CD:
 ```yaml
 - name: Strategic type checking (Informational)
-  run: mypy mfg_pde --ignore-missing-imports || true
+  run: mypy mfgarchon --ignore-missing-imports || true
 ```
 
 **Why This Works:** Preserves local typing excellence while handling environment differences.
@@ -45,10 +45,10 @@ git commit --no-verify -m "CI/CD formatting alignment"
 **Better Fix:** Keep formatting strict, make linting informational:
 ```yaml
 - name: Ruff Formatting Check
-  run: ruff format --check --diff mfg_pde/  # STRICT
+  run: ruff format --check --diff mfgarchon/  # STRICT
 
 - name: Ruff Linting (Informational)
-  run: ruff check mfg_pde/ || true  # FLEXIBLE
+  run: ruff check mfgarchon/ || true  # FLEXIBLE
 ```
 
 ### Security Scanner False Positives
@@ -65,7 +65,7 @@ git commit --no-verify -m "CI/CD formatting alignment"
 **Quick Fix:** Make security scanning informational for research codebases:
 ```yaml
 - name: Security scan (Informational)
-  run: bandit -r mfg_pde/ || true
+  run: bandit -r mfgarchon/ || true
 ```
 
 **Why Acceptable:** Mathematical DSL, caching, and dynamic function generation are standard in scientific computing.
@@ -75,7 +75,7 @@ git commit --no-verify -m "CI/CD formatting alignment"
 ### Local Environment Verification
 ```bash
 # Verify strategic typing locally
-mypy mfg_pde --ignore-missing-imports --show-error-codes --pretty
+mypy mfgarchon --ignore-missing-imports --show-error-codes --pretty
 
 # Check Ruff version consistency
 ruff --version
@@ -159,11 +159,11 @@ echo "🔍 Strategic Typing Health Check"
 echo "================================"
 
 echo "📊 MyPy Status:"
-if mypy mfg_pde --ignore-missing-imports >/dev/null 2>&1; then
+if mypy mfgarchon --ignore-missing-imports >/dev/null 2>&1; then
     echo "✅ Local MyPy: PASSING"
 else
     echo "❌ Local MyPy: FAILING"
-    mypy mfg_pde --ignore-missing-imports | head -10
+    mypy mfgarchon --ignore-missing-imports | head -10
 fi
 
 echo ""
@@ -173,7 +173,7 @@ echo "Ruff: $(ruff --version)"
 
 echo ""
 echo "📊 Strategic Ignore Count:"
-grep -r "# type: ignore" mfg_pde/ | wc -l
+grep -r "# type: ignore" mfgarchon/ | wc -l
 
 echo ""
 echo "📊 Recent CI Status:"

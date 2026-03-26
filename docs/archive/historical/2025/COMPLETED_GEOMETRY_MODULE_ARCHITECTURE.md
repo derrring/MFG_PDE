@@ -2,7 +2,7 @@
 
 **Date**: 2025-12-02
 **Status**: Reference
-**Location**: `mfg_pde/geometry/`
+**Location**: `mfgarchon/geometry/`
 
 ---
 
@@ -134,7 +134,7 @@ All geometry types implement `GeometryProtocol` (defined in `protocol.py`):
 
 **Usage**:
 ```python
-from mfg_pde.geometry import SimpleGrid2D, TensorProductGrid
+from mfgarchon.geometry import SimpleGrid2D, TensorProductGrid
 
 # 2D grid on [0,10] x [0,10]
 grid = SimpleGrid2D(bounds=(0, 10, 0, 10), resolution=(50, 50))
@@ -172,7 +172,7 @@ grid_nd = TensorProductGrid(
 
 **Usage**:
 ```python
-from mfg_pde.geometry import Hyperrectangle, Hypersphere, DifferenceDomain
+from mfgarchon.geometry import Hyperrectangle, Hypersphere, DifferenceDomain
 
 # Room with circular obstacle
 room = Hyperrectangle([[0, 10], [0, 10]])
@@ -201,7 +201,7 @@ points = domain.sample_interior(1000)
 
 **Usage**:
 ```python
-from mfg_pde.geometry import Mesh2D, MeshPipeline
+from mfgarchon.geometry import Mesh2D, MeshPipeline
 
 # Generate mesh from geometry
 mesh = MeshPipeline.from_rectangle(
@@ -229,7 +229,7 @@ mesh = MeshPipeline.from_rectangle(
 
 **Usage**:
 ```python
-from mfg_pde.geometry import GridNetwork, create_network
+from mfgarchon.geometry import GridNetwork, create_network
 
 # 10x10 grid network
 network = GridNetwork(nx=10, ny=10, bounds=(0, 10, 0, 10))
@@ -345,7 +345,7 @@ class GeometryProjector:
 ### 6.4 Custom Projections
 
 ```python
-from mfg_pde.geometry import ProjectionRegistry
+from mfgarchon.geometry import ProjectionRegistry
 
 @ProjectionRegistry.register(MyGeometry, SimpleGrid2D, "hjb_to_fp")
 def custom_projection(source_geo, target_geo, values, **kwargs):
@@ -360,9 +360,9 @@ def custom_projection(source_geo, target_geo, values, **kwargs):
 ### 7.1 Standard MFG Problem Setup
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
-from mfg_pde.geometry.boundary import dirichlet_bc
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import SimpleGrid2D
+from mfgarchon.geometry.boundary import dirichlet_bc
 
 # Geometry
 grid = SimpleGrid2D(bounds=(0, 10, 0, 10), resolution=(50, 50))
@@ -377,7 +377,7 @@ problem = MFGProblem(geometry=grid, T=2.0, Nt=100, sigma=0.3)
 ### 7.2 Mixed BC on Rectangular Domain
 
 ```python
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     MixedBoundaryConditions, BCSegment, BCType
 )
 
@@ -395,8 +395,8 @@ bc = MixedBoundaryConditions(
 ### 7.3 Complex Domain with Obstacle
 
 ```python
-from mfg_pde.geometry import Hyperrectangle, Hypersphere, DifferenceDomain
-from mfg_pde.geometry.boundary import MeshfreeApplicator
+from mfgarchon.geometry import Hyperrectangle, Hypersphere, DifferenceDomain
+from mfgarchon.geometry.boundary import MeshfreeApplicator
 
 # Room minus obstacle
 room = Hyperrectangle([[0, 10], [0, 10]])
@@ -413,8 +413,8 @@ particles = bc_applicator.apply_particle_bc(particles, "reflecting")
 ### 7.4 Dual Geometry (Multi-Resolution)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import SimpleGrid2D
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import SimpleGrid2D
 
 # Fine grid for HJB (value function needs accuracy)
 hjb_grid = SimpleGrid2D(bounds=(0, 10, 0, 10), resolution=(200, 200))

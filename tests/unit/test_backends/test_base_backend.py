@@ -8,7 +8,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.backends.base_backend import BaseBackend
+from mfgarchon.backends.base_backend import BaseBackend
 
 
 class MinimalBackend(BaseBackend):

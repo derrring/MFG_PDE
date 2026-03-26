@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/alg/numerical/fp_solvers/base_fp.py
+Unit tests for mfgarchon/alg/numerical/fp_solvers/base_fp.py
 
 Tests BaseFPSolver abstract base class including:
 - Abstract base class structure and instantiation
@@ -15,12 +15,12 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.base_fp import BaseFPSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def _default_hamiltonian():
@@ -361,7 +361,7 @@ def test_solver_problem_is_same_instance():
 @pytest.mark.unit
 def test_module_exports_base_fp_solver():
     """Test BaseFPSolver is importable."""
-    from mfg_pde.alg.numerical.fp_solvers import base_fp
+    from mfgarchon.alg.numerical.fp_solvers import base_fp
 
     assert hasattr(base_fp, "BaseFPSolver")
     assert base_fp.BaseFPSolver == BaseFPSolver

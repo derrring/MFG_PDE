@@ -1035,7 +1035,7 @@ m_i = hist / np.sum(hist)  # Normalize
 - `heterogeneous_agents_formulation.md`
 - `multi_population_continuous_control.md`
 
-**Implementation**: `mfg_pde/alg/reinforcement/algorithms/multi_population_{ddpg,td3,sac,q_learning}.py`
+**Implementation**: `mfgarchon/alg/reinforcement/algorithms/multi_population_{ddpg,td3,sac,q_learning}.py`
 **Status**: Ready for implementation (Phase 3.2-3.4)
 **Next**: Implement two-population MFG environment and Q-learning algorithm
 

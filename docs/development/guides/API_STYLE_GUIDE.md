@@ -1,10 +1,10 @@
-# MFG_PDE API Style Guide
+# MFGarchon API Style Guide
 
 **Version**: 1.0
 **Date**: 2025-10-10
 **Status**: Official Reference
 
-This guide establishes the API design standards for MFG_PDE, ensuring consistency, clarity, and usability across the entire codebase.
+This guide establishes the API design standards for MFGarchon, ensuring consistency, clarity, and usability across the entire codebase.
 
 ---
 
@@ -528,7 +528,7 @@ class BadConfig:
 
 **✅ AFTER (Enum-Based):**
 ```python
-from mfg_pde.utils.numerical.autodiff import AutoDiffBackend
+from mfgarchon.utils.numerical.autodiff import AutoDiffBackend
 
 class GoodConfig:
     backend: AutoDiffBackend = AutoDiffBackend.NUMPY
@@ -563,7 +563,7 @@ class BadDeepONetConfig:
 
 **✅ AFTER (Enum-Based):**
 ```python
-from mfg_pde.utils.neural import NormalizationType
+from mfgarchon.utils.neural import NormalizationType
 
 class GoodDeepONetConfig:
     normalization: NormalizationType = NormalizationType.LAYER
@@ -643,6 +643,6 @@ When designing or reviewing API, ask:
 
 ---
 
-**Enforcement**: This guide is the official API design standard for MFG_PDE. All new code must follow these conventions. Existing code should be gradually migrated using the deprecation procedures outlined above.
+**Enforcement**: This guide is the official API design standard for MFGarchon. All new code must follow these conventions. Existing code should be gradually migrated using the deprecation procedures outlined above.
 
 **Exceptions**: Any exceptions to these rules must be documented and justified in code comments and design documents.

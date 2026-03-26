@@ -10,7 +10,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.implicit import (
+from mfgarchon.geometry.implicit import (
     DifferenceDomain,
     Hyperrectangle,
     Hypersphere,

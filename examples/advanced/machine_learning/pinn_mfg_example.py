@@ -29,15 +29,15 @@ import numpy as np
 package_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(package_root))
 
-from mfg_pde.alg.neural.pinn_solvers import (  # noqa: E402
+from mfgarchon.alg.neural.pinn_solvers import (  # noqa: E402
     FPPINNSolver,
     HJBPINNSolver,
     MFGPINNSolver,
     PINNConfig,
 )
-from mfg_pde.core.mfg_problem import MFGProblem  # noqa: E402
-from mfg_pde.geometry import TensorProductGrid  # noqa: E402
-from mfg_pde.geometry.boundary import no_flux_bc  # noqa: E402
+from mfgarchon.core.mfg_problem import MFGProblem  # noqa: E402
+from mfgarchon.geometry import TensorProductGrid  # noqa: E402
+from mfgarchon.geometry.boundary import no_flux_bc  # noqa: E402
 
 try:
     torch_spec = importlib.util.find_spec("torch")

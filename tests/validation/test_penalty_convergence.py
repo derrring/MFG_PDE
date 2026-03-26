@@ -11,7 +11,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import BilateralConstraint, ObstacleConstraint
+from mfgarchon.geometry.boundary import BilateralConstraint, ObstacleConstraint
 
 
 class TestPenaltyConvergenceTheory:

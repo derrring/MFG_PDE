@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-23
 **Status**: [ANALYSIS]
-**Scope**: `mfg_pde/alg/numerical/hjb_solvers/`
+**Scope**: `mfgarchon/alg/numerical/hjb_solvers/`
 **Tracking Issues**: #633 (DRY `_detect_dimension`), #634 (HJB parameter explosion)
 
 ---

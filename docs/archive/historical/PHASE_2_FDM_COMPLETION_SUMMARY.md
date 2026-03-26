@@ -39,7 +39,7 @@ Phase 2 successfully implemented **dimension-agnostic FDM solvers** for Mean Fie
 
 ### 1. nD HJB FDM Solver
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm_multid.py`
 **Commit**: `4d454c6` (2025-10-31)
 
 **Approach**: Dimensional splitting (Strang)
@@ -58,7 +58,7 @@ Phase 2 successfully implemented **dimension-agnostic FDM solvers** for Mean Fie
 
 ### 2. nD FP FDM Solver
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_multid.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_multid.py`
 **Commit**: `753cfd4` (2025-10-31)
 
 **Approach**: Dimensional splitting (Strang) + Positivity enforcement
@@ -78,7 +78,7 @@ Phase 2 successfully implemented **dimension-agnostic FDM solvers** for Mean Fie
 
 ### 3. Dimension-Agnostic MFG Coupling
 
-**File**: `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py`
+**File**: `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py`
 **Commit**: `aaacc2a` (2025-10-31)
 
 **Problem**: FixedPointIterator was hardcoded for old 1D interface
@@ -155,8 +155,8 @@ else:
 **Usage**:
 
 ```python
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-from mfg_pde.factory import create_basic_solver
+from mfgarchon.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfgarchon.factory import create_basic_solver
 
 # Define 2D problem
 problem = CrowdMotion2D(

@@ -4,8 +4,8 @@
 **Date**: November 2025
 **Related Files**:
 - `examples/advanced/arbitrary_nd_geometry_demo.py:156-181`
-- `mfg_pde/alg/numerical/fp_solvers/fp_particle.py`
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
+- `mfgarchon/alg/numerical/fp_solvers/fp_particle.py`
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
 
 ## Mathematical Foundation
 
@@ -322,7 +322,7 @@ H = second_order_hamiltonian(0.0, x, (p, q), 1.0, alpha=0.1)
 The unified signature is essential for particle methods in high dimensions:
 
 ```python
-# From mfg_pde/alg/numerical/fp_solvers/fp_particle.py
+# From mfgarchon/alg/numerical/fp_solvers/fp_particle.py
 
 def solve_mfg_particle(
     hamiltonian: Callable[[float, np.ndarray, tuple[np.ndarray, ...], float], float],
@@ -355,7 +355,7 @@ def solve_mfg_particle(
 Grid-based methods also benefit from the unified signature:
 
 ```python
-# From mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py
+# From mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py
 
 def solve_hjb_semilagrangian(
     hamiltonian: Callable[[float, np.ndarray, tuple[np.ndarray, ...], float], float],

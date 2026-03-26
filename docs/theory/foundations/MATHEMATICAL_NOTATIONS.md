@@ -1,4 +1,4 @@
-# MFG_PDE Theory Documentation: Notation Standards and Consistency Guide
+# MFGarchon Theory Documentation: Notation Standards and Consistency Guide
 
 **Document Type**: Cross-Document Standards
 **Created**: October 8, 2025
@@ -124,7 +124,7 @@ For numerical solvers, derivatives are indexed using **tuple multi-index notatio
 - Mathematical clarity (direct correspondence to multi-index notation)
 
 **References**:
-- Implementation: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1544-1556`
+- Implementation: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:1544-1556`
 - Standard: `docs/gradient_notation_standard.md`
 - Audit: `docs/GRADIENT_NOTATION_AUDIT_REPORT.md`
 

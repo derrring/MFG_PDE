@@ -170,13 +170,13 @@ The following Plan A features are **new** and do not overlap with existing issue
 
 #### 1.1 Protocol Definition (3-5 days)
 **Files to Create**:
-- `mfg_pde/geometry/protocols/operators.py` - Operator protocols
-- `mfg_pde/geometry/protocols/topology.py` - Topological trait protocols
-- `mfg_pde/geometry/protocols/regions.py` - Region marking protocols
+- `mfgarchon/geometry/protocols/operators.py` - Operator protocols
+- `mfgarchon/geometry/protocols/topology.py` - Topological trait protocols
+- `mfgarchon/geometry/protocols/regions.py` - Region marking protocols
 
 **Key Protocols**:
 ```python
-# mfg_pde/geometry/protocols/operators.py
+# mfgarchon/geometry/protocols/operators.py
 
 class SupportsLaplacian(Protocol):
     """Geometry can compute Laplacian operator."""
@@ -241,7 +241,7 @@ class SupportsAdvection(Protocol):
 
 **Example Retrofit** (TensorProductGrid):
 ```python
-# mfg_pde/geometry/domain/tensor_product_grid.py
+# mfgarchon/geometry/domain/tensor_product_grid.py
 
 class TensorProductGrid(
     BaseGeometry,
@@ -261,7 +261,7 @@ class TensorProductGrid(
     ) -> LinearOperator:
         """Laplacian via finite differences."""
         # Delegate to FDM backend
-        from mfg_pde.backends.fdm import build_laplacian_matrix
+        from mfgarchon.backends.fdm import build_laplacian_matrix
         return build_laplacian_matrix(self.grid_shape, self.dx, order, bc)
 
     def get_advection_operator(
@@ -270,7 +270,7 @@ class TensorProductGrid(
         scheme: Literal["upwind", "centered", "weno"] = "upwind",
     ) -> LinearOperator:
         """Build advection operator for given velocity field."""
-        from mfg_pde.backends.fdm import build_advection_matrix
+        from mfgarchon.backends.fdm import build_advection_matrix
         return build_advection_matrix(velocity_field, self.dx, scheme)
 
     def mark_region(
@@ -308,12 +308,12 @@ class TensorProductGrid(
 **Objective**: Unified region marking and query system
 
 **Files to Create**:
-- `mfg_pde/geometry/regions/registry.py` - Region storage and query
-- `mfg_pde/geometry/regions/predicates.py` - Common region predicates
+- `mfgarchon/geometry/regions/registry.py` - Region storage and query
+- `mfgarchon/geometry/regions/predicates.py` - Common region predicates
 
 **Key Components**:
 ```python
-# mfg_pde/geometry/regions/registry.py
+# mfgarchon/geometry/regions/registry.py
 
 @dataclass
 class Region:
@@ -377,7 +377,7 @@ class RegionRegistry:
 
 **Common Predicates**:
 ```python
-# mfg_pde/geometry/regions/predicates.py
+# mfgarchon/geometry/regions/predicates.py
 
 def box_region(
     lower: NDArray,
@@ -436,12 +436,12 @@ bc = mixed_bc([bc_segment], dimension=2, geometry=geometry)
 #### 2.1 Constraint Protocol (1 week)
 
 **Files to Create**:
-- `mfg_pde/geometry/boundary/constraints.py` - Constraint base classes
-- `mfg_pde/geometry/boundary/constraint_protocol.py` - Protocol definitions
+- `mfgarchon/geometry/boundary/constraints.py` - Constraint base classes
+- `mfgarchon/geometry/boundary/constraint_protocol.py` - Protocol definitions
 
 **Key Abstractions**:
 ```python
-# mfg_pde/geometry/boundary/constraint_protocol.py
+# mfgarchon/geometry/boundary/constraint_protocol.py
 
 class ConstraintProtocol(Protocol):
     """Protocol for solution constraints."""
@@ -521,13 +521,13 @@ class BilateralConstraint:
 **Approach**: Penalty-projection methods (least invasive)
 
 **Solvers to Modify**:
-1. **HJB FDM Solver** (`mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`)
-2. **HJB Semi-Lagrangian** (`mfg_pde/alg/numerical/hjb_solvers/hjb_sl.py`)
+1. **HJB FDM Solver** (`mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`)
+2. **HJB Semi-Lagrangian** (`mfgarchon/alg/numerical/hjb_solvers/hjb_sl.py`)
 3. **Poisson Solver** (for testing)
 
 **Implementation Pattern** (Penalty Method):
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py
+# mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py
 
 def solve_hjb_system(
     self,
@@ -690,8 +690,8 @@ Mathematical formulation:
 - FP: ∂m/∂t - div(m∇U + σ²/2 ∇m) = 0, m <= m_max (VI)
 """
 
-from mfg_pde import MFGProblem
-from mfg_pde.geometry.boundary import ObstacleConstraint
+from mfgarchon import MFGProblem
+from mfgarchon.geometry.boundary import ObstacleConstraint
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -757,13 +757,13 @@ plt.show()
 #### 3.1 Level Set Infrastructure (1.5 weeks)
 
 **Files to Create**:
-- `mfg_pde/geometry/level_set/core.py` - Level Set evolution
-- `mfg_pde/geometry/level_set/reinitialization.py` - Redistancing
-- `mfg_pde/geometry/level_set/curvature.py` - Geometric quantities
+- `mfgarchon/geometry/level_set/core.py` - Level Set evolution
+- `mfgarchon/geometry/level_set/reinitialization.py` - Redistancing
+- `mfgarchon/geometry/level_set/curvature.py` - Geometric quantities
 
 **Core Components**:
 ```python
-# mfg_pde/geometry/level_set/core.py
+# mfgarchon/geometry/level_set/core.py
 
 class LevelSetFunction:
     """Container for level set function φ(t,x)."""
@@ -935,8 +935,8 @@ Level set formulation:
 - Evolution: ∂φ/∂t + V|∇φ| = 0, V = -[k ∂T/∂n]
 """
 
-from mfg_pde.geometry.level_set import LevelSetEvolver
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry.level_set import LevelSetEvolver
+from mfgarchon.geometry import TensorProductGrid
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -1062,7 +1062,7 @@ Physics:
 #### 4.1 Nitsche's Method for FEM (1 week)
 
 **Files to Modify**:
-- `mfg_pde/geometry/boundary/applicator_fem.py` - Add Nitsche BC application
+- `mfgarchon/geometry/boundary/applicator_fem.py` - Add Nitsche BC application
 
 **Implementation**:
 ```python
@@ -1133,12 +1133,12 @@ def apply_nitsche_bc(
 **Objective**: Implement GKS condition checker for BC discretizations
 
 **Files to Create**:
-- `mfg_pde/geometry/boundary/validation/gks.py` - GKS condition checker
+- `mfgarchon/geometry/boundary/validation/gks.py` - GKS condition checker
 - `tests/validation/test_gks_conditions.py` - GKS tests for all BC types
 
 **Implementation**:
 ```python
-# mfg_pde/geometry/boundary/validation/gks.py
+# mfgarchon/geometry/boundary/validation/gks.py
 
 def check_gks_condition(
     operator: LinearOperator,
@@ -1288,7 +1288,7 @@ u(x) <= ψ(x)  (upper obstacle)
 
 #### Example: Capacity-Constrained Crowd Motion
 
-from mfg_pde.geometry.boundary import ObstacleConstraint
+from mfgarchon.geometry.boundary import ObstacleConstraint
 
 # Maximum density constraint
 m_max = 0.5
@@ -1629,7 +1629,7 @@ if isinstance(geometry, SupportsLaplacian):
 
 ### Example: Checking Geometry Traits
 ```python
-from mfg_pde.geometry.protocols import (
+from mfgarchon.geometry.protocols import (
     SupportsLaplacian,
     SupportsAdvection,
     SupportsManifold,

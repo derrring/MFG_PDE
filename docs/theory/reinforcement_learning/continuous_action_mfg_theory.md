@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document outlines a comprehensive research and implementation plan for extending MFG_PDE's reinforcement learning paradigm to **continuous action spaces**. Current implementations support discrete actions (|A| ≤ 20 optimal), but many real-world Mean Field Games require continuous control: crowd navigation with velocity control, price formation with continuous prices, resource allocation with continuous quantities.
+This document outlines a comprehensive research and implementation plan for extending MFGarchon's reinforcement learning paradigm to **continuous action spaces**. Current implementations support discrete actions (|A| ≤ 20 optimal), but many real-world Mean Field Games require continuous control: crowd navigation with velocity control, price formation with continuous prices, resource allocation with continuous quantities.
 
 **Strategic Goal**: Develop production-quality continuous action MFG-RL algorithms that maintain the same level of rigor, performance, and usability as our discrete implementations.
 
@@ -176,7 +176,7 @@ class MeanFieldSAC:
 
 ### 2.4 Proximal Policy Optimization (PPO) for Continuous Actions
 
-**Current Status**: MFG_PDE has discrete-action PPO-style Actor-Critic
+**Current Status**: MFGarchon has discrete-action PPO-style Actor-Critic
 
 **Extension to Continuous**:
 - Replace categorical policy with Gaussian: $\pi(a|s,m) = \mathcal{N}(\mu(s,m), \sigma)$
@@ -216,8 +216,8 @@ class MeanFieldSAC:
   - Action space bounds: tanh squashing for $a \in [a_{min}, a_{max}]$
 
 **Files**:
-- `mfg_pde/alg/reinforcement/networks/continuous_q_network.py`
-- `mfg_pde/alg/reinforcement/networks/continuous_actor.py`
+- `mfgarchon/alg/reinforcement/networks/continuous_q_network.py`
+- `mfgarchon/alg/reinforcement/networks/continuous_actor.py`
 
 **Tests**:
 - [ ] Unit tests: forward pass shapes, gradient flow
@@ -243,9 +243,9 @@ class MeanFieldSAC:
   - Population: distribution of resource allocations
 
 **Files**:
-- `mfg_pde/alg/reinforcement/environments/continuous_maze_env.py`
-- `mfg_pde/alg/reinforcement/environments/price_formation_env.py`
-- `mfg_pde/alg/reinforcement/environments/resource_allocation_env.py`
+- `mfgarchon/alg/reinforcement/environments/continuous_maze_env.py`
+- `mfgarchon/alg/reinforcement/environments/price_formation_env.py`
+- `mfgarchon/alg/reinforcement/environments/resource_allocation_env.py`
 
 **Tests**:
 - [ ] Gymnasium API compliance (reset, step, render)
@@ -282,7 +282,7 @@ class MeanFieldSAC:
 - [ ] Add population state to observation: $\text{obs} = (s, m)$
 
 **Files**:
-- `mfg_pde/alg/reinforcement/population/estimators.py`
+- `mfgarchon/alg/reinforcement/population/estimators.py`
 
 ### Phase 2: DDPG for MFG (3-4 weeks)
 
@@ -311,7 +311,7 @@ class MeanFieldSAC:
   - Check convergence: $\|m^{(k+1)} - m^{(k)}\| < \epsilon$
 
 **Files**:
-- `mfg_pde/alg/reinforcement/algorithms/mean_field_ddpg.py`
+- `mfgarchon/alg/reinforcement/algorithms/mean_field_ddpg.py`
 
 **Hyperparameters** (defaults):
 ```python
@@ -337,7 +337,7 @@ config = {
   - Delayed actor updates: update $\mu$ every $d$ critic updates
 
 **Files**:
-- `mfg_pde/alg/reinforcement/algorithms/mean_field_td3.py`
+- `mfgarchon/alg/reinforcement/algorithms/mean_field_td3.py`
 
 #### 3.2.3 Testing and Validation
 
@@ -373,7 +373,7 @@ config = {
   - Temperature update: $\mathcal{L}_\alpha = -\alpha (\mathbb{E}[\log \pi(a|s,m)] + \bar{\mathcal{H}})$
 
 **Files**:
-- `mfg_pde/alg/reinforcement/algorithms/mean_field_sac.py`
+- `mfgarchon/alg/reinforcement/algorithms/mean_field_sac.py`
 
 **Hyperparameters**:
 ```python
@@ -418,7 +418,7 @@ config = {
   - Clipped objective: $\mathcal{L}^{CLIP}(\theta) = \min(r_t A_t, \text{clip}(r_t, 1-\epsilon, 1+\epsilon) A_t)$
 
 **Files**:
-- `mfg_pde/alg/reinforcement/algorithms/mean_field_ppo_continuous.py`
+- `mfgarchon/alg/reinforcement/algorithms/mean_field_ppo_continuous.py`
 
 #### 3.4.2 Comparison with Discrete PPO
 
@@ -1233,7 +1233,7 @@ $$
 
 ### Summary
 
-This roadmap outlines a comprehensive plan to extend MFG_PDE's RL paradigm to **continuous action spaces**, addressing a critical gap between classical MFG theory (which assumes continuous control) and current RL implementations (which use discrete actions).
+This roadmap outlines a comprehensive plan to extend MFGarchon's RL paradigm to **continuous action spaces**, addressing a critical gap between classical MFG theory (which assumes continuous control) and current RL implementations (which use discrete actions).
 
 **Key Deliverables**:
 1. **Algorithms**: DDPG, TD3, SAC, continuous PPO for MFG
@@ -1243,7 +1243,7 @@ This roadmap outlines a comprehensive plan to extend MFG_PDE's RL paradigm to **
 
 **Timeline**: 3-6 months for core implementation (Phase 1-4), additional 2-3 months for applications (Phase 5)
 
-**Impact**: Enable realistic MFG applications requiring continuous control, bringing MFG_PDE closer to practical deployment in robotics, economics, and social systems.
+**Impact**: Enable realistic MFG applications requiring continuous control, bringing MFGarchon closer to practical deployment in robotics, economics, and social systems.
 
 ### Immediate Next Steps
 

@@ -341,8 +341,8 @@ vehicle.execute(action)
 ### Basic Usage
 
 ```python
-from mfg_pde.alg.reinforcement.environments import MultiPopulationMazeEnvironment
-from mfg_pde.alg.reinforcement.algorithms import create_multi_population_q_learning_solvers
+from mfgarchon.alg.reinforcement.environments import MultiPopulationMazeEnvironment
+from mfgarchon.alg.reinforcement.algorithms import create_multi_population_q_learning_solvers
 
 # Create traffic network
 env = create_traffic_environment()

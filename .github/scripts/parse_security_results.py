@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Security results parser for MFG_PDE CI/CD pipeline.
+Security results parser for MFGarchon CI/CD pipeline.
 
 This script parses various security scan results and generates
 unified reports for the security dashboard.

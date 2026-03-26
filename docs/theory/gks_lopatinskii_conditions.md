@@ -3,7 +3,7 @@
 **Date**: 2026-01-18
 **Issue**: #594 Phase 5.1 - Theory Documentation
 **Implementation**: Phase 4.2 (Issue #593) - GKS only (L-S pending Issue #535)
-**Related**: `mfg_pde/geometry/boundary/validation/gks.py`, `docs/theory/bc_stability_verification.md`
+**Related**: `mfgarchon/geometry/boundary/validation/gks.py`, `docs/theory/bc_stability_verification.md`
 
 ---
 
@@ -395,7 +395,7 @@ Apply GKS/L-S to linearized problem.
 ### 5.1 Current Implementation (Issue #593 Phase 4.2)
 
 **GKS Framework** ✅:
-- File: `mfg_pde/geometry/boundary/validation/gks.py`
+- File: `mfgarchon/geometry/boundary/validation/gks.py`
 - Features:
   - `check_gks_stability()`: Single-grid validation
   - `check_gks_convergence()`: Multi-grid validation
@@ -416,7 +416,7 @@ Apply GKS/L-S to linearized problem.
 
 **L-S Framework** 🔜:
 - **Planned**: Symbol-based well-posedness validation
-- **Module**: `mfg_pde/geometry/boundary/validation/lopatinskii_shapiro.py`
+- **Module**: `mfgarchon/geometry/boundary/validation/lopatinskii_shapiro.py`
 - **Functions**:
   - `compute_principal_symbol()`: Extract symbols from differential operators
   - `check_lopatinskii_condition()`: Analytical L-S verification
@@ -433,7 +433,7 @@ Apply GKS/L-S to linearized problem.
 
 **Shared Validation Module**:
 ```
-mfg_pde/geometry/boundary/validation/
+mfgarchon/geometry/boundary/validation/
 ├── __init__.py
 ├── gks.py               ← Complete (Issue #593)
 ├── lopatinskii_shapiro.py  ← Future (Issue #535)

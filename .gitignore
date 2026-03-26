@@ -708,7 +708,7 @@ TSWLatexianTemp*
 #*Notes.bib
 
 #===============================================
-# MFG_PDE Project Specific
+# MFGarchon Project Specific
 #===============================================
 
 # Test and demo output directories
@@ -778,7 +778,7 @@ build/
 dist/
 *.egg-info/
 
-# MFG_PDE specific - prevent accumulation of analysis outputs
+# MFGarchon specific - prevent accumulation of analysis outputs
 # Only ignore output directories, not source code
 *_results/
 *_demo_data/

@@ -470,4 +470,4 @@ $$
 ---
 
 **Status**: ✅ Theory complete, ready for implementation
-**Next**: Implementation in `mfg_pde/alg/reinforcement/algorithms/mean_field_ddpg.py`
+**Next**: Implementation in `mfgarchon/alg/reinforcement/algorithms/mean_field_ddpg.py`

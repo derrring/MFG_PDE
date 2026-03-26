@@ -18,9 +18,9 @@ Demonstrates using FEM unstructured mesh for one solver and regular grid for ano
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import Mesh2D, ProjectionRegistry, TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import Mesh2D, ProjectionRegistry, TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def demonstrate_fem_mesh_projection_basic():

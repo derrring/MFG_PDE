@@ -6,13 +6,13 @@
 
 ## Overview
 
-MFG_PDE provides a complete suite of maze generation algorithms optimized for Mean Field Games reinforcement learning research. This guide covers all implemented algorithms, hybrid composition methods, and recommendations for different MFG scenarios.
+MFGarchon provides a complete suite of maze generation algorithms optimized for Mean Field Games reinforcement learning research. This guide covers all implemented algorithms, hybrid composition methods, and recommendations for different MFG scenarios.
 
 ## Implemented Algorithms
 
 ### 1. Perfect Mazes: Recursive Backtracking & Wilson's Algorithm
 
-**Module**: `mfg_pde/alg/reinforcement/environments/maze_generator.py`
+**Module**: `mfgarchon/alg/reinforcement/environments/maze_generator.py`
 
 #### Mathematical Foundation
 Perfect mazes are minimal spanning trees on grid graphs with two critical properties:
@@ -21,7 +21,7 @@ Perfect mazes are minimal spanning trees on grid graphs with two critical proper
 
 #### Recursive Backtracking (DFS)
 ```python
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     PerfectMazeGenerator,
     MazeAlgorithm,
 )
@@ -68,13 +68,13 @@ maze = generator.generate(seed=42)
 
 ### 2. Recursive Division: Room-Based Environments
 
-**Module**: `mfg_pde/alg/reinforcement/environments/recursive_division.py`
+**Module**: `mfgarchon/alg/reinforcement/environments/recursive_division.py`
 
 #### Algorithm
 Starts with empty space and recursively adds walls with doors, creating structured building-like layouts.
 
 ```python
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     RecursiveDivisionGenerator,
     RecursiveDivisionConfig,
 )
@@ -111,13 +111,13 @@ maze = generator.generate(seed=42)
 
 ### 3. Cellular Automata: Organic Environments
 
-**Module**: `mfg_pde/alg/reinforcement/environments/cellular_automata.py`
+**Module**: `mfgarchon/alg/reinforcement/environments/cellular_automata.py`
 
 #### Algorithm
 Random initialization followed by iterative smoothing rules, producing cave-like structures.
 
 ```python
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     CellularAutomataGenerator,
     CellularAutomataConfig,
 )
@@ -154,13 +154,13 @@ maze = generator.generate(seed=42)
 
 ### 4. Braided Mazes: Loop Addition
 
-**Module**: `mfg_pde/alg/reinforcement/environments/recursive_division.py:269`
+**Module**: `mfgarchon/alg/reinforcement/environments/recursive_division.py:269`
 
 #### Algorithm
 Post-processing function that converts perfect mazes into braided mazes by removing walls to create loops.
 
 ```python
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     PerfectMazeGenerator,
     add_loops,
 )
@@ -201,7 +201,7 @@ Combining algorithms creates sophisticated environments for advanced MFG researc
 **Components**: Perfect Maze + Loop Addition
 
 ```python
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     PerfectMazeGenerator,
     MazeAlgorithm,
     add_loops,
@@ -234,7 +234,7 @@ braided = add_loops(perfect, loop_density=0.20, seed=42)
 **Concept**: Use Recursive Division for macro-level floor plan, then fill specific rooms with dense perfect mazes.
 
 ```python
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     RecursiveDivisionGenerator,
     RecursiveDivisionConfig,
     PerfectMazeGenerator,
@@ -282,7 +282,7 @@ for r_start, r_end, c_start, c_end in room_regions:
 **Concept**: Combine structured buildings with organic natural spaces.
 
 ```python
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     RecursiveDivisionGenerator,
     RecursiveDivisionConfig,
     CellularAutomataGenerator,
@@ -319,7 +319,7 @@ city[17:32, 17:32] = park
 **Concept**: Generate unit-width maze, then erode walls to create wider passages and rooms.
 
 ```python
-from mfg_pde.alg.reinforcement.environments import PerfectMazeGenerator
+from mfgarchon.alg.reinforcement.environments import PerfectMazeGenerator
 import numpy as np
 
 def erode_maze_walls(maze: np.ndarray, erosion_passes: int = 2) -> np.ndarray:
@@ -444,7 +444,7 @@ Voronoi-based mazes offer unique advantages for advanced MFG research:
 
 ```python
 # All imports
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     # Perfect mazes
     PerfectMazeGenerator,
     MazeAlgorithm,

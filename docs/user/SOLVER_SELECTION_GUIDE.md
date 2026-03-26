@@ -6,8 +6,8 @@
 ## Quick Start
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_standard_solver
 
 # For most applications - use the default
 problem = MFGProblem(Nx=50, Nt=20, T=1.0)
@@ -43,7 +43,7 @@ result = solver.solve()
 
 ### Usage
 ```python
-from mfg_pde.factory import create_basic_solver
+from mfgarchon.factory import create_basic_solver
 
 # Tier 1: Basic benchmark
 solver = create_basic_solver(
@@ -78,7 +78,7 @@ result = solver.solve()
 
 ### Usage
 ```python
-from mfg_pde.factory import create_standard_solver
+from mfgarchon.factory import create_standard_solver
 
 # Tier 2: Standard (DEFAULT) - just use this!
 solver = create_standard_solver(problem, "fixed_point")
@@ -104,7 +104,7 @@ result = solver.solve()
 
 #### Semi-Lagrangian
 ```python
-from mfg_pde.factory import create_semi_lagrangian_solver
+from mfgarchon.factory import create_semi_lagrangian_solver
 
 solver = create_semi_lagrangian_solver(
     problem,
@@ -116,7 +116,7 @@ solver = create_semi_lagrangian_solver(
 
 #### WENO (High-Order)
 ```python
-from mfg_pde.factory import create_accurate_solver
+from mfgarchon.factory import create_accurate_solver
 
 solver = create_accurate_solver(
     problem,
@@ -169,8 +169,8 @@ When in doubt → Use Tier 2 (create_standard_solver) ✅
 
 ### Step 1: Start with Standard (Tier 2)
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_standard_solver
 
 problem = MFGProblem(Nx=50, Nt=20, T=1.0)
 
@@ -187,7 +187,7 @@ for t in range(problem.Nt + 1):
 
 ### Step 2: Benchmark (if needed)
 ```python
-from mfg_pde.factory import create_basic_solver
+from mfgarchon.factory import create_basic_solver
 
 # Compare with basic FDM
 solver_basic = create_basic_solver(problem)
@@ -203,7 +203,7 @@ print(f"Standard:   {mass_standard:.10f} (error: {abs(mass_standard-1.0):.10f})"
 
 ### Step 3: Advanced (if specialized)
 ```python
-from mfg_pde.factory import create_accurate_solver
+from mfgarchon.factory import create_accurate_solver
 
 # For high-dimensional or specialized needs
 solver_advanced = create_accurate_solver(
@@ -222,11 +222,11 @@ Each tier has configuration presets:
 solver = create_standard_solver(problem, "fixed_point")
 
 # Accurate preset (more iterations, tighter tolerance)
-from mfg_pde.factory import create_accurate_solver
+from mfgarchon.factory import create_accurate_solver
 solver = create_accurate_solver(problem, solver_type="fixed_point")
 
 # Research preset (maximum accuracy)
-from mfg_pde.factory import create_research_solver
+from mfgarchon.factory import create_research_solver
 solver = create_research_solver(problem, solver_type="fixed_point")
 ```
 
@@ -251,19 +251,19 @@ solver = create_research_solver(problem, solver_type="fixed_point")
 
 **For 90% of users**: Just use Tier 2 (Standard)
 ```python
-from mfg_pde.factory import create_standard_solver
+from mfgarchon.factory import create_standard_solver
 solver = create_standard_solver(problem, "fixed_point")
 ```
 
 **For benchmarking**: Use Tier 1 (Basic) as comparison
 ```python
-from mfg_pde.factory import create_basic_solver
+from mfgarchon.factory import create_basic_solver
 solver_basic = create_basic_solver(problem)
 ```
 
 **For specialized needs**: Explore Tier 3 (Advanced)
 ```python
-from mfg_pde.factory import create_accurate_solver
+from mfgarchon.factory import create_accurate_solver
 solver_advanced = create_accurate_solver(problem, solver_type="weno")
 ```
 

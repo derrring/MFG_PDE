@@ -1,4 +1,4 @@
-# Architecture Analysis: 1D vs nD Solvers in MFG_PDE
+# Architecture Analysis: 1D vs nD Solvers in MFGarchon
 
 **Date**: 2025-11-19
 **Question**: Do we need separate 1D solvers inside FP/HJB solvers?
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-**Current Architecture**: MFG_PDE **already uses** dimension-based routing with specialized 1D and nD solvers.
+**Current Architecture**: MFGarchon **already uses** dimension-based routing with specialized 1D and nD solvers.
 
 **Key Finding**: This is the **correct design pattern** for PDE solvers. Keep and enhance it.
 
@@ -21,7 +21,7 @@
 ### 1.1 FP-FDM Solver Structure
 
 ```python
-# mfg_pde/alg/numerical/fp_solvers/fp_fdm.py
+# mfgarchon/alg/numerical/fp_solvers/fp_fdm.py
 
 class FPFDMSolver(BaseFPSolver):
     def __init__(self, problem, boundary_conditions=None):
@@ -45,7 +45,7 @@ class FPFDMSolver(BaseFPSolver):
 ### 1.2 HJB-FDM Solver Structure
 
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py
+# mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py
 
 class HJBFDMSolver(BaseHJBSolver):
     def __init__(self, problem, ...):
@@ -560,9 +560,9 @@ class FPFDMSolver(BaseFPSolver):
 ## References
 
 1. **Current Implementation**:
-   - `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`: Lines 207-223 (routing), 224-512 (1D), 520-651 (nD)
-   - `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`: Lines 170-202 (routing), 204-250 (nD)
-   - `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py`: Lines 848-972 (1D HJB)
+   - `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`: Lines 207-223 (routing), 224-512 (1D), 520-651 (nD)
+   - `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`: Lines 170-202 (routing), 204-250 (nD)
+   - `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py`: Lines 848-972 (1D HJB)
 
 2. **External Libraries**:
    - SciPy: `scipy.integrate.solve_ivp` (dimension-aware routing)

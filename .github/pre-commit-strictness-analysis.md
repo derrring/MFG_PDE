@@ -80,7 +80,7 @@
   hooks:
     - id: mypy
       args: [--config-file=pyproject.toml, --ignore-missing-imports, --no-strict-optional]
-      files: ^mfg_pde/(core|factory)/.*\.py$  # Only check core modules
+      files: ^mfgarchon/(core|factory)/.*\.py$  # Only check core modules
 ```
 
 #### **5. Flake8 (Linting)** ⚠️ **MODERATELY STRICT**
@@ -110,7 +110,7 @@
         --max-line-length=120, 
         --extend-ignore=E203,W503,F401,E501,F841,F401,E402
       ]
-      files: ^mfg_pde/(?!examples|archive|tests).*\.py$
+      files: ^mfgarchon/(?!examples|archive|tests).*\.py$
 ```
 
 #### **6. Bandit (Security Scanner)** ⚠️ **CONFIGURATION ISSUES**
@@ -130,14 +130,14 @@
   hooks:
     - id: bandit
       args: [-r, --severity-level=medium]
-      files: ^mfg_pde/.*\.py$
+      files: ^mfgarchon/.*\.py$
 
 # RECOMMENDED (science-friendly)
 - repo: https://github.com/PyCQA/bandit
   hooks:
     - id: bandit
       args: [-r, --severity-level=high, --skip=B101,B601,B602]
-      files: ^mfg_pde/(core|factory)/.*\.py$
+      files: ^mfgarchon/(core|factory)/.*\.py$
 ```
 
 ### 🤔 **QUESTIONABLE - Consider removing**
@@ -194,14 +194,14 @@ repos:
     hooks:
       - id: mypy
         args: [--ignore-missing-imports, --no-strict-optional]
-        files: ^mfg_pde/(core|factory)/.*\.py$
+        files: ^mfgarchon/(core|factory)/.*\.py$
         
   - repo: https://github.com/pycqa/flake8
     rev: 7.0.0
     hooks:
       - id: flake8
         args: [--max-line-length=120, --extend-ignore=E203,W503,F401,F841]
-        files: ^mfg_pde/(core|factory)/.*\.py$
+        files: ^mfgarchon/(core|factory)/.*\.py$
 
   # MFG-specific (project standards)
   - repo: local
@@ -211,7 +211,7 @@ repos:
         entry: python
         args: [-c, "import re, sys; [sys.exit(1) if re.search(r'[^\\x00-\\x7F]', open(f).read()) else None for f in sys.argv[1:] if f.endswith('.py')]"]
         language: system
-        files: ^mfg_pde/.*\.py$
+        files: ^mfgarchon/.*\.py$
 ```
 
 **Benefits**:

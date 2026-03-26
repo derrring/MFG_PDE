@@ -25,10 +25,10 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid, no_flux_bc
 
 
 def _default_hamiltonian():
@@ -224,8 +224,8 @@ class TestMMSFokkerPlanck1D:
 
         Expected: 2nd order convergence (error ~ O(h^2))
         """
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.geometry import periodic_bc
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.geometry import periodic_bc
 
         sigma = 0.2
         T = 0.5
@@ -291,8 +291,8 @@ class TestMMSFokkerPlanck1D:
 
         For pure diffusion, Gaussian with s(t)^2 = s0^2 + sigma^2*t is exact.
         """
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.geometry import dirichlet_bc
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.geometry import dirichlet_bc
 
         sigma = 0.1
         s0 = 0.1
@@ -348,8 +348,8 @@ class TestMMSFokkerPlanck1D:
         This directly tests that source_term is threaded through the FP FDM chain.
         Expected: convergence as grid refines (error dominated by spatial discretization).
         """
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.geometry import periodic_bc
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.geometry import periodic_bc
 
         sigma = 0.2
         T = 0.3
@@ -406,8 +406,8 @@ class TestMMSFokkerPlanck1D:
         """
         Test that mass is conserved for manufactured solution with no-flux BC.
         """
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.geometry import no_flux_bc
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.geometry import no_flux_bc
 
         sigma = 0.2
         T = 0.5
@@ -453,8 +453,8 @@ class TestMMSConvergenceRates:
         - no_flux: Gaussian (reflects at boundaries)
         - dirichlet: Gaussian (absorbed at boundaries)
         """
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.geometry import dirichlet_bc, no_flux_bc, periodic_bc
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.geometry import dirichlet_bc, no_flux_bc, periodic_bc
 
         sigma = 0.15
         T = 0.2
@@ -528,8 +528,8 @@ class TestMassConservationStress:
 
         Issue #523 Phase 3e: Conservation stress test
         """
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.geometry import no_flux_bc
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.geometry import no_flux_bc
 
         sigma = 0.3
         T = 10.0  # Long time
@@ -567,8 +567,8 @@ class TestMassConservationStress:
         With no-flux BC, mass should be approximately conserved.
         Upwind schemes may have small conservation errors at boundaries.
         """
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.geometry import no_flux_bc
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.geometry import no_flux_bc
 
         sigma = 0.3  # Stronger diffusion to stabilize
         T = 0.5  # Shorter time
@@ -741,8 +741,8 @@ class TestMMSHJB1D:
         With this source, the solver should recover u_exact and show convergence
         as the grid is refined.
         """
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-        from mfg_pde.geometry import periodic_bc
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.geometry import periodic_bc
 
         sigma = 0.2
         T = 0.3
@@ -804,8 +804,8 @@ class TestMMSHJB1D:
 
         At t=T, the numerical solution should match the terminal condition.
         """
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-        from mfg_pde.geometry import periodic_bc
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.geometry import periodic_bc
 
         sigma = 0.2
         T = 0.5
@@ -854,10 +854,10 @@ class TestCoupledHJBFPValidation:
         2. Density remains non-negative
         3. Value function is bounded
         """
-        from mfg_pde.alg.numerical.coupling import FixedPointIterator
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-        from mfg_pde.geometry import no_flux_bc
+        from mfgarchon.alg.numerical.coupling import FixedPointIterator
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.geometry import no_flux_bc
 
         sigma = 0.3
         T = 0.5
@@ -911,10 +911,10 @@ class TestCoupledHJBFPValidation:
 
         TODO: Investigate root cause and fix in Issue #523 follow-up.
         """
-        from mfg_pde.alg.numerical.coupling import FixedPointIterator
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-        from mfg_pde.geometry import no_flux_bc
+        from mfgarchon.alg.numerical.coupling import FixedPointIterator
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.geometry import no_flux_bc
 
         sigma = 0.3
         T = 0.5

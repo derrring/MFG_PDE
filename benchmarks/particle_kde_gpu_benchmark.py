@@ -15,7 +15,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.numerical.density_estimation import (
+from mfgarchon.alg.numerical.density_estimation import (
     gaussian_kde_gpu,
     gaussian_kde_numpy,
 )
@@ -25,7 +25,7 @@ TORCH_AVAILABLE = False
 SCIPY_AVAILABLE = False
 
 try:
-    from mfg_pde.backends.torch_backend import TorchBackend
+    from mfgarchon.backends.torch_backend import TorchBackend
 
     TORCH_AVAILABLE = True
 except ImportError:

@@ -21,8 +21,8 @@ except ImportError:  # pragma: no cover - optional dependency
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE and GYMNASIUM_AVAILABLE:
-    from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import create_mean_field_q_learning
-    from mfg_pde.alg.reinforcement.environments import (
+    from mfgarchon.alg.reinforcement.algorithms.mean_field_q_learning import create_mean_field_q_learning
+    from mfgarchon.alg.reinforcement.environments import (
         ActionType,
         MFGMazeConfig,
         MFGMazeEnvironment,

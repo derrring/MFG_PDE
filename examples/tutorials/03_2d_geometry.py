@@ -1,7 +1,7 @@
 """
 Tutorial 03: 2D Geometry
 
-Learn how to work with 2D spatial domains in MFG_PDE.
+Learn how to work with 2D spatial domains in MFGarchon.
 
 What you'll learn:
 - How to create 2D problems with TensorProductGrid
@@ -19,11 +19,11 @@ Mathematical Problem:
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.core import MFGComponents
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon import MFGProblem
+from mfgarchon.core import MFGComponents
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 # ==============================================================================
 # Step 1: Create 2D Problem

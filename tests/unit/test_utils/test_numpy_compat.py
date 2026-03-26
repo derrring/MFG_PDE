@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/numpy_compat.py
+Unit tests for mfgarchon/utils/numpy_compat.py
 
 Tests comprehensive NumPy compatibility utilities including:
 - trapezoid() function (NumPy 2.0+ compatibility)
@@ -16,7 +16,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numpy_compat import (
+from mfgarchon.utils.numpy_compat import (
     HAS_SCIPY_TRAPEZOID,
     HAS_TRAPEZOID,
     HAS_TRAPZ,
@@ -413,7 +413,7 @@ def test_trapezoid_nonuniform_spacing():
 @pytest.mark.unit
 def test_module_exports_all():
     """Test all public functions are exported in __all__."""
-    from mfg_pde.utils import numpy_compat
+    from mfgarchon.utils import numpy_compat
 
     assert hasattr(numpy_compat, "__all__")
     assert "trapezoid" in numpy_compat.__all__
@@ -425,7 +425,7 @@ def test_module_exports_all():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has docstring."""
-    from mfg_pde.utils import numpy_compat
+    from mfgarchon.utils import numpy_compat
 
     assert numpy_compat.__doc__ is not None
     assert len(numpy_compat.__doc__) > 0

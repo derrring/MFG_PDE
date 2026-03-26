@@ -16,11 +16,11 @@ Expected behavior:
 IMPORTANT: Boundary conditions must be passed to the geometry object, not to MFGProblem!
 """
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BCSegment, BoundaryConditions
-from mfg_pde.geometry.boundary.types import BCType
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import BCSegment, BoundaryConditions
+from mfgarchon.geometry.boundary.types import BCType
 
 
 def test_neumann_bc():

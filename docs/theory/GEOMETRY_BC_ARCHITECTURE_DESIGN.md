@@ -3,13 +3,13 @@
 **Document Type**: Theoretical Design Specification
 **Status**: Design Phase (v0.17.1 baseline, v1.0.0 vision)
 **Date**: 2026-01-17
-**Authors**: MFG_PDE Core Team, Expert Consultation
+**Authors**: MFGarchon Core Team, Expert Consultation
 
 ---
 
 ## Executive Summary
 
-This document defines the **comprehensive architectural design** for geometry and boundary condition handling in MFG_PDE. The design synthesizes:
+This document defines the **comprehensive architectural design** for geometry and boundary condition handling in MFGarchon. The design synthesizes:
 
 1. **Modern PDE solver practices** (FEniCS, PETSc, Dedalus patterns)
 2. **MFG-specific requirements** (coupled systems, equilibrium consistency)
@@ -64,7 +64,7 @@ This theoretical design document is part of a comprehensive BC/geometry architec
   - Risk analysis, resource requirements, success metrics
 
 ### Current Implementation (v0.17.1)
-- **Code**: `mfg_pde/geometry/boundary/`
+- **Code**: `mfgarchon/geometry/boundary/`
   - `conditions.py`: `BoundaryConditions` unified class (supports uniform and mixed BCs)
   - `types.py`: `BCType` enum, `BCSegment` dataclass
   - `applicator_fdm.py`: FDM ghost cell BC application (1D/2D/3D/nD)
@@ -178,7 +178,7 @@ $$\alpha u + \beta \frac{\partial u}{\partial n} = g(x,t) \quad \text{on } \part
 
 **Implementation**: Standard ghost cell, matrix row modification, or weak form assembly.
 
-**Status in MFG_PDE**: ✅ Production-ready (v0.17.1)
+**Status in MFGarchon**: ✅ Production-ready (v0.17.1)
 
 ---
 
@@ -219,7 +219,7 @@ problem.solve(
 )
 ```
 
-**Status in MFG_PDE**: ❌ Not implemented (planned v0.18.0)
+**Status in MFGarchon**: ❌ Not implemented (planned v0.18.0)
 
 ---
 
@@ -249,7 +249,7 @@ V_{\text{interface}} &= \mathcal{F}(\nabla u, m, ...) \quad \text{on } \partial\
 - Works on fixed grids (no remeshing)
 - Natural for TensorProductGrid
 
-**Status in MFG_PDE**: ❌ Not implemented (research-level, v0.19.0+)
+**Status in MFGarchon**: ❌ Not implemented (research-level, v0.19.0+)
 
 ---
 
@@ -416,7 +416,7 @@ class SupportsBoundary(Protocol):
 
 ### 2.3 Multi-Backend Support: The Geometry Zoo
 
-MFG_PDE supports **four geometry families**, each with different strengths:
+MFGarchon supports **four geometry families**, each with different strengths:
 
 #### Family 1: Structured Grids (TensorProductGrid)
 
@@ -537,7 +537,7 @@ domain.get_boundary_normal(points)  # ∇φ/|∇φ|
 
 ```python
 # User constructs geometry first
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 
 geometry = TensorProductGrid(
     dimension=2,
@@ -1040,7 +1040,7 @@ b_total = b + b_bc
 u = solve(A_total, b_total)
 ```
 
-**Status in MFG_PDE**: ❌ Not implemented (FEM infrastructure incomplete)
+**Status in MFGarchon**: ❌ Not implemented (FEM infrastructure incomplete)
 
 ---
 
@@ -1612,7 +1612,7 @@ Grid-based FP:  DIRICHLET(0) ←→  Particle-based FP: ABSORBING
 - **Sommerfeld BC** (wave radiation):
   - Assumes: ∂u/∂t + c·∂u/∂n = 0 (outgoing wave)
   - Application: Hyperbolic problems
-  - Not yet implemented in MFG_PDE
+  - Not yet implemented in MFGarchon
 
 **Use Case**: MFG on large domains where agents can "leave to infinity".
 
@@ -1664,7 +1664,7 @@ Grid-based FP:  DIRICHLET(0) ←→  Particle-based FP: ABSORBING
 ```python
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from mfg_pde.geometry import GeometryProtocol, SupportsLaplacian
+    from mfgarchon.geometry import GeometryProtocol, SupportsLaplacian
 
 def solve_poisson(geometry: GeometryProtocol):
     """Solve Poisson equation on given geometry."""
@@ -1711,7 +1711,7 @@ class TensorProductGrid(
 
     # SupportsLaplacian methods (trait)
     def get_laplacian_operator(self, order=2, bc=None) -> LinearOperator:
-        from mfg_pde.backends.fdm import build_laplacian_matrix
+        from mfgarchon.backends.fdm import build_laplacian_matrix
         return build_laplacian_matrix(self.grid_shape, self.dx, order, bc)
 
     # ... other trait methods
@@ -1736,7 +1736,7 @@ class TensorProductGrid(
 **MFG-Specific**:
 1. Achdou, Capuzzo-Dolcetta: "Mean Field Games: Numerical Methods" (2010)
 2. Lasry, Lions: "Mean Field Games" (2007)
-3. Issue #574 (MFG_PDE): Adjoint-consistent boundary conditions
+3. Issue #574 (MFGarchon): Adjoint-consistent boundary conditions
 
 ---
 

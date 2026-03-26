@@ -2,7 +2,7 @@
 
 **Date**: July 26, 2025  
 **Status**: DEFERRED - Focus on core MFG functionality first  
-**Context**: Scientific Computing & Mathematical Research (MFG_PDE)  
+**Context**: Scientific Computing & Mathematical Research (MFGarchon)  
 **Purpose**: Compare experiment tracking and visualization tools for research workflows
 
 **Decision**: Advanced monitoring tools evaluation postponed until core MFG and network features are stable.
@@ -30,7 +30,7 @@ wandb login  # One-time setup
 
 # Integration (2 lines)
 import wandb
-wandb.init(project="mfg_pde_experiments")
+wandb.init(project="mfgarchon_experiments")
 
 # Logging
 wandb.log({"convergence_error": error, "iteration": i})
@@ -200,7 +200,7 @@ wandb.init(project="mfg_research")
 
 ### 6. **Scientific Computing Specific Features**
 
-#### **For MFG_PDE Research**
+#### **For MFGarchon Research**
 
 **Weights & Biases Advantages:**
 ```python
@@ -302,29 +302,29 @@ writer.add_hparams(
 - Standard loss curves
 - Minimal collaboration requirements
 
-## 🚀 Specific Recommendation for MFG_PDE
+## 🚀 Specific Recommendation for MFGarchon
 
 ### **Best Fit: Weights & Biases**
 
 **Rationale:**
-1. **Mathematical Research Focus**: MFG_PDE involves complex mathematical experiments that benefit from rich visualization and experiment tracking
+1. **Mathematical Research Focus**: MFGarchon involves complex mathematical experiments that benefit from rich visualization and experiment tracking
 2. **Collaboration Value**: Research often involves sharing results with advisors, colleagues, and the broader community
 3. **Publication Quality**: Mathematical research benefits from high-quality visualizations for papers and presentations
 4. **Experiment Management**: Solver parameter optimization naturally fits wandb's hyperparameter sweep capabilities
 
-### **Implementation Example for MFG_PDE:**
+### **Implementation Example for MFGarchon:**
 
 ```python
 # Enhanced notebook_reporting.py integration
 import wandb
-from mfg_pde.utils.notebook_reporting import create_mfg_research_report
+from mfgarchon.utils.notebook_reporting import create_mfg_research_report
 
 def create_wandb_mfg_experiment(solver_config, problem_config):
     """Enhanced experiment tracking with wandb."""
     
     # Initialize experiment
     wandb.init(
-        project="mfg_pde_research",
+        project="mfgarchon_research",
         config={**solver_config.to_dict(), **problem_config}
     )
     
@@ -402,4 +402,4 @@ def log_metrics(iteration, metrics):
 | **Mathematical Research** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | wandb |
 | **Publication Quality** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | wandb |
 
-**Overall Recommendation for MFG_PDE: Weights & Biases** - The collaboration features, experiment management capabilities, and publication-quality visualizations make it ideal for mathematical research workflows.
+**Overall Recommendation for MFGarchon: Weights & Biases** - The collaboration features, experiment management capabilities, and publication-quality visualizations make it ideal for mathematical research workflows.

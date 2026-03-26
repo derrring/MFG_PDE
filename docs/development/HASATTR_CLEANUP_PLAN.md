@@ -45,7 +45,7 @@ if hasattr(obj, "get_bounds"):
     bounds = obj.get_bounds()
 
 # GOOD
-from mfg_pde.geometry.protocol import GeometryProtocol
+from mfgarchon.geometry.protocol import GeometryProtocol
 if isinstance(obj, GeometryProtocol):
     bounds = obj.get_bounds()
 ```
@@ -82,4 +82,4 @@ The remaining ~341 violations fall into categories not addressed by Issue #543:
 
 ## Verification
 
-Run: `python scripts/check_fail_fast.py --path mfg_pde`
+Run: `python scripts/check_fail_fast.py --path mfgarchon`

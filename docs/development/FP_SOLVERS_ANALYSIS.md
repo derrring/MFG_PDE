@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The `mfg_pde/alg/numerical/fp_solvers/` directory contains 17 files implementing various Fokker-Planck equation solvers:
+The `mfgarchon/alg/numerical/fp_solvers/` directory contains 17 files implementing various Fokker-Planck equation solvers:
 
 | Solver | File | Lines | Status |
 |--------|------|-------|--------|
@@ -286,7 +286,7 @@ Multiple solvers implement their own BC resolution:
 
 All FP solvers have `_scheme_family` trait for duality validation (Issue #580):
 ```python
-from mfg_pde.alg.base_solver import SchemeFamily
+from mfgarchon.alg.base_solver import SchemeFamily
 _scheme_family = SchemeFamily.FDM  # or SL, GFDM
 ```
 
@@ -318,7 +318,7 @@ fp_fdm_alg_divergence_upwind.py   - Conservative divergence upwind
 The `fp_fdm_advection.py` module now uses `AdvectionOperator` internally:
 ```python
 def compute_advection_term_nd(...):
-    from mfg_pde.geometry.operators.advection import AdvectionOperator
+    from mfgarchon.geometry.operators.advection import AdvectionOperator
     adv_op = AdvectionOperator(velocity_field, spacings, shape,
                                scheme=scheme, form="divergence")
     return adv_op(M)

@@ -10,11 +10,11 @@
 >
 > See [quickstart.md](quickstart.md) and [GEOMETRY_FIRST_API_GUIDE.md](../migration/GEOMETRY_FIRST_API_GUIDE.md) for current patterns.
 
-**Smooth transition from old MFG_PDE API to the two-level factory-based API**
+**Smooth transition from old MFGarchon API to the two-level factory-based API**
 
 ## Overview
 
-MFG_PDE now provides a **two-level research-grade API**:
+MFGarchon now provides a **two-level research-grade API**:
 - **Level 1 (Users - 95%)**: Factory API for researchers and practitioners
 - **Level 2 (Developers - 5%)**: Core API for framework contributors
 
@@ -33,9 +33,9 @@ MFG_PDE now provides a **two-level research-grade API**:
 ### Before (Old API)
 ```python
 # Old approach - complex setup required
-from mfg_pde.alg.mfg_solvers.enhanced_particle_collocation_solver import EnhancedParticleCollocationSolver
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
-from mfg_pde.config.solver_config import SolverConfig
+from mfgarchon.alg.mfg_solvers.enhanced_particle_collocation_solver import EnhancedParticleCollocationSolver
+from mfgarchon.core.mfg_problem import ExampleMFGProblem
+from mfgarchon.config.solver_config import SolverConfig
 
 # Create problem
 problem = ExampleMFGProblem(
@@ -64,8 +64,8 @@ m_values = solution.density
 ### After (Factory API)
 ```python
 # New approach - clean factory pattern
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_fast_solver
 
 # Define problem (researchers understand MFG theory)
 class CrowdDynamicsProblem(MFGProblem):
@@ -93,7 +93,7 @@ m_values = result.M  # Density
 ### Crowd Dynamics
 ```python
 # Old: Manual problem definition
-from mfg_pde.core.lagrangian_mfg_problem import LagrangianMFGProblem
+from mfgarchon.core.lagrangian_mfg_problem import LagrangianMFGProblem
 
 class CrowdProblem(LagrangianMFGProblem):
     def __init__(self):
@@ -111,7 +111,7 @@ result = solve_mfg("crowd_dynamics",
 ### Portfolio Optimization
 ```python
 # Old: Complex mathematical setup
-from mfg_pde.core.mfg_problem import MFGProblem
+from mfgarchon.core.mfg_problem import MFGProblem
 import numpy as np
 
 class MertonProblem(MFGProblem):
@@ -148,8 +148,8 @@ result = solve_mfg("custom",
 ### Solver Configuration
 ```python
 # Old: Manual config objects
-from mfg_pde.config.solver_config import SolverConfig
-from mfg_pde.config.pydantic_config import create_enhanced_config
+from mfgarchon.config.solver_config import SolverConfig
+from mfgarchon.config.pydantic_config import create_enhanced_config
 
 config = SolverConfig(
     max_iterations=500,
@@ -177,7 +177,7 @@ result = solve_mfg("crowd_dynamics",
 ### Backend Selection
 ```python
 # Old: Complex backend configuration
-from mfg_pde.backends import get_backend, configure_backend
+from mfgarchon.backends import get_backend, configure_backend
 
 backend = get_backend("torch")
 configure_backend(backend, {
@@ -197,7 +197,7 @@ result = solve_mfg("crowd_dynamics",
 ### Custom Solvers
 ```python
 # Old: Complex solver inheritance
-from mfg_pde.alg.mfg_solvers.base_mfg_solver import BaseMFGSolver
+from mfgarchon.alg.mfg_solvers.base_mfg_solver import BaseMFGSolver
 
 class CustomSolver(BaseMFGSolver):
     def __init__(self, config):
@@ -213,8 +213,8 @@ class CustomSolver(BaseMFGSolver):
         pass
 
 # New: Hook-based customization
-from mfg_pde.hooks import SolverHooks
-from mfg_pde.solvers import FixedPointSolver
+from mfgarchon.hooks import SolverHooks
+from mfgarchon.solvers import FixedPointSolver
 
 class CustomHook(SolverHooks):
     def on_hjb_step(self, state, x_point, current_value):
@@ -233,7 +233,7 @@ result = solver.solve(problem, hooks=CustomHook())
 ```python
 # Old: Manual logging setup
 import logging
-from mfg_pde.utils.mfg_logging import configure_research_logging
+from mfgarchon.utils.mfg_logging import configure_research_logging
 
 configure_research_logging("debug_session", level="DEBUG")
 logger = logging.getLogger(__name__)
@@ -247,7 +247,7 @@ def custom_callback(iteration, residual, state):
 solver.add_callback(custom_callback)
 
 # New: Built-in hooks
-from mfg_pde.hooks import DebugHook, ProgressHook
+from mfgarchon.hooks import DebugHook, ProgressHook
 
 hooks = [
     DebugHook(log_level="INFO", save_intermediate=True),
@@ -376,7 +376,7 @@ plt.colorbar()
 plt.show()
 
 # For interactive plots, use Plotly visualizers
-from mfg_pde.visualization.interactive_plots import create_plotly_visualizer
+from mfgarchon.visualization.interactive_plots import create_plotly_visualizer
 ```
 
 ## Breaking Changes and Compatibility
@@ -385,8 +385,8 @@ from mfg_pde.visualization.interactive_plots import create_plotly_visualizer
 
 ```python
 # Primary API (RECOMMENDED) - Geometry-first approach
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Create geometry
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
@@ -401,7 +401,7 @@ grid = problem.geometry.get_spatial_grid()       # ✅ Modern
 # x_min = problem.xmin                           # ⚠️ DEPRECATED - emits warning
 
 # Factory API for advanced control
-from mfg_pde.factory import create_standard_solver
+from mfgarchon.factory import create_standard_solver
 
 solver = create_standard_solver(problem, "fixed_point")
 result = solver.solve()
@@ -409,13 +409,13 @@ result = solver.solve()
 
 ### Compatibility Layer
 
-The `mfg_pde.compat` module provides utilities for backward compatibility:
+The `mfgarchon.compat` module provides utilities for backward compatibility:
 
 ```python
-from mfg_pde.compat import deprecated, gradient_notation
+from mfgarchon.compat import deprecated, gradient_notation
 
 # Gradient notation conversion utilities
-from mfg_pde.compat.gradient_notation import derivs_to_gradient_array
+from mfgarchon.compat.gradient_notation import derivs_to_gradient_array
 ```
 
 ## Migration Timeline
@@ -440,12 +440,12 @@ from mfg_pde.compat.gradient_notation import derivs_to_gradient_array
 ### Pattern 1: Simple Research Script
 ```python
 # Before: 50 lines of setup
-from mfg_pde.alg.mfg_solvers.enhanced_particle_collocation_solver import EnhancedParticleCollocationSolver
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
+from mfgarchon.alg.mfg_solvers.enhanced_particle_collocation_solver import EnhancedParticleCollocationSolver
+from mfgarchon.core.mfg_problem import ExampleMFGProblem
 # ... many more imports and setup
 
 # After: 3 lines
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 result = solve_mfg("crowd_dynamics", accuracy="research", verbose=True)
 result.plot()
 ```
@@ -461,8 +461,8 @@ for crowd_size in [100, 200, 500]:
     results[crowd_size] = solution
 
 # After: Simple loop with factory API
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_fast_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_fast_solver
 
 results = {}
 for crowd_size in [100, 200, 500]:
@@ -490,10 +490,10 @@ result = FixedPointSolver().solve(problem, hooks=MyCustomHook())
 ## Getting Help
 
 ### Migration Support
-- 📖 **Documentation**: Complete API reference at [docs.mfg-pde.org](https://docs.mfg-pde.org)
-- 💬 **Community**: Ask questions on [GitHub Discussions](https://github.com/derrring/MFG_PDE/discussions)
-- 🐛 **Issues**: Report migration problems on [GitHub Issues](https://github.com/derrring/MFG_PDE/issues)
-- 📧 **Direct Help**: Email migration questions to [support@mfg-pde.org](mailto:support@mfg-pde.org)
+- 📖 **Documentation**: Complete API reference at [docs.mfgarchon.org](https://docs.mfgarchon.org)
+- 💬 **Community**: Ask questions on [GitHub Discussions](https://github.com/derrring/mfgarchon/discussions)
+- 🐛 **Issues**: Report migration problems on [GitHub Issues](https://github.com/derrring/mfgarchon/issues)
+- 📧 **Direct Help**: Email migration questions to [support@mfgarchon.org](mailto:support@mfgarchon.org)
 
 ### Migration Checklist
 

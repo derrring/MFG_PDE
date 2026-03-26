@@ -1,4 +1,4 @@
-# MFG_PDE Tutorials
+# MFGarchon Tutorials
 
 A structured 5-step learning path for getting started with Mean Field Games in Python.
 
@@ -115,7 +115,7 @@ Each tutorial:
 **Required**:
 - Python 3.9+
 - NumPy, SciPy
-- MFG_PDE installed (`pip install -e .`)
+- MFGarchon installed (`pip install -e .`)
 
 **Optional** (for visualizations):
 - Matplotlib
@@ -158,13 +158,13 @@ examples/outputs/tutorials/
 
 ### Join the Community
 
-- GitHub Issues: https://github.com/derrring/MFG_PDE/issues
-- Discussions: https://github.com/derrring/MFG_PDE/discussions
+- GitHub Issues: https://github.com/derrring/mfgarchon/issues
+- Discussions: https://github.com/derrring/mfgarchon/discussions
 
 ## Troubleshooting
 
 **Problem**: ImportError when running tutorials
-**Solution**: Install MFG_PDE: `pip install -e .` from repo root
+**Solution**: Install MFGarchon: `pip install -e .` from repo root
 
 **Problem**: No visualizations generated
 **Solution**: Install matplotlib: `pip install matplotlib`
@@ -181,4 +181,4 @@ Found an issue or have a suggestion? Please open an issue on GitHub!
 
 ## License
 
-Same as MFG_PDE (see repository root LICENSE file)
+Same as MFGarchon (see repository root LICENSE file)

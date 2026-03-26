@@ -57,7 +57,7 @@ Removed all obsolete analysis scripts and outputs that had accumulated in the ro
 ## ✅ **What Remains**
 
 ### **Core Package Structure** (Unchanged)
-- `mfg_pde/` - Complete package implementation
+- `mfgarchon/` - Complete package implementation
 - `tests/` - Comprehensive test suite
 - `docs/` - Organized documentation
 - `examples/` - Clean, categorized examples
@@ -94,7 +94,7 @@ examples/
 Added targeted MFG-specific patterns that prevent accumulation while preserving valuable examples and tests:
 
 ```gitignore
-# MFG_PDE specific - prevent accumulation of analysis outputs
+# MFGarchon specific - prevent accumulation of analysis outputs
 # Only ignore output directories, not source code
 *_results/
 *_demo_data/

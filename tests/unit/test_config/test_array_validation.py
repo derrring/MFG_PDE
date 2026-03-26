@@ -15,13 +15,13 @@ from numpy.typing import NDArray
 
 # Import NDArray into the module's namespace before importing models
 # This allows Pydantic to resolve the NDArray annotation at runtime
-import mfg_pde.config.array_validation as av_module
+import mfgarchon.config.array_validation as av_module
 
 # Make NDArray available in the array_validation module's namespace
 av_module.NDArray = NDArray
 
 # Now import the models - order is important for Pydantic+NumPy validation
-from mfg_pde.config.array_validation import (  # noqa: E402
+from mfgarchon.config.array_validation import (  # noqa: E402
     ArrayValidationConfig,
     CollocationConfig,
     ExperimentConfig,

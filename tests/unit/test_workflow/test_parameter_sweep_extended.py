@@ -17,7 +17,7 @@ pl = pytest.importorskip("polars")
 
 import numpy as np  # noqa: E402
 
-from mfg_pde.workflow.parameter_sweep import (  # noqa: E402
+from mfgarchon.workflow.parameter_sweep import (  # noqa: E402
     ParameterSweep,
     SweepConfiguration,
     create_adaptive_sweep,

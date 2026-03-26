@@ -1,4 +1,4 @@
-# MFG_PDE Benchmarking Framework
+# MFGarchon Benchmarking Framework
 
 This directory contains comprehensive benchmarking suites for evaluating different aspects of MFG solver performance, organized by benchmark category for clarity and extensibility.
 
@@ -122,7 +122,7 @@ mkdir benchmarks/new_category/
 ### Evaluate AMR on Custom Problem
 ```python
 from amr_evaluation.comprehensive_benchmark import ComprehensiveAMRBenchmark
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 # Create problem with sharp features
 def create_sharp_problem():
@@ -163,7 +163,7 @@ validation_results = run_standardized_comparison(new_solver_class)
 
 ### Required
 - `numpy`, `matplotlib`, `psutil` - Scientific computing and system monitoring
-- `mfg_pde` - Core MFG solving capabilities
+- `mfgarchon` - Core MFG solving capabilities
 
 ### Optional (Enhanced Features)
 - `jax` - GPU acceleration and AMR profiling

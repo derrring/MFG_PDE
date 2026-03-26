@@ -25,9 +25,9 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.geometry import TensorProductGrid, no_flux_bc
 
 
 def create_synthetic_value_function(problem: MFGProblem) -> np.ndarray:

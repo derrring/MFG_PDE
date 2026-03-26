@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/experiment_manager.py
+Unit tests for mfgarchon/utils/experiment_manager.py
 
 Tests experiment management utilities including:
 - Mass calculation
@@ -18,7 +18,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.experiment_manager import (
+from mfgarchon.utils.experiment_manager import (
     calculate_total_mass,
     load_experiment_data,
     load_experiments_from_dir,
@@ -457,7 +457,7 @@ def test_plot_comparison_total_mass_no_viz():
     exp_data2 = create_mock_experiment_data()
     exp_data2["solver_name"] = "TestSolver2"
 
-    with patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
+    with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
         plot_comparison_total_mass([exp_data1, exp_data2])
 
 
@@ -470,7 +470,7 @@ def test_plot_comparison_total_mass_with_save():
         save_path = Path(tmpdir) / "total_mass.png"
 
         with (
-            patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False),
+            patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False),
             patch("matplotlib.pyplot.show"),
         ):
             plot_comparison_total_mass([exp_data], save_to_file=str(save_path))
@@ -484,7 +484,7 @@ def test_plot_comparison_final_m_basic():
     """Test final density comparison plot."""
     exp_data = create_mock_experiment_data()
 
-    with patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
+    with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
         plot_comparison_final_m([exp_data])
 
 
@@ -494,7 +494,7 @@ def test_plot_comparison_final_m_invalid_shape():
     exp_data = create_mock_experiment_data()
     exp_data["M_solution"] = np.array([1.0, 2.0, 3.0])  # Wrong shape (1D)
 
-    with patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
+    with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
         # Should handle gracefully and print warning
         plot_comparison_final_m([exp_data])
 
@@ -504,7 +504,7 @@ def test_plot_comparison_initial_U_basic():
     """Test initial value function comparison plot."""
     exp_data = create_mock_experiment_data()
 
-    with patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
+    with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
         plot_comparison_initial_U([exp_data])
 
 
@@ -517,7 +517,7 @@ def test_plot_comparison_initial_U_with_save():
         save_path = Path(tmpdir) / "initial_U.png"
 
         with (
-            patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False),
+            patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False),
             patch("matplotlib.pyplot.show"),
         ):
             plot_comparison_initial_U([exp_data], save_to_file=str(save_path))
@@ -530,7 +530,7 @@ def test_plot_comparison_U_slice_basic():
     """Test U slice comparison plot at specific time."""
     exp_data = create_mock_experiment_data()
 
-    with patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
+    with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
         plot_comparison_U_slice([exp_data], time_index=10)
 
 
@@ -539,7 +539,7 @@ def test_plot_comparison_U_slice_out_of_bounds():
     """Test U slice plot with out-of-bounds time index."""
     exp_data = create_mock_experiment_data()
 
-    with patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
+    with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
         # Should handle gracefully and print warning
         plot_comparison_U_slice([exp_data], time_index=100)
 
@@ -553,7 +553,7 @@ def test_plot_comparison_U_slice_with_save():
         save_path = Path(tmpdir) / "U_slice.png"
 
         with (
-            patch("mfg_pde.utils.experiment_manager.VISUALIZATION_AVAILABLE", False),
+            patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False),
             patch("matplotlib.pyplot.show"),
         ):
             plot_comparison_U_slice([exp_data], time_index=5, save_to_file=str(save_path))

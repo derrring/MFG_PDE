@@ -30,7 +30,7 @@ except ImportError:
     GYMNASIUM_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.reinforcement.algorithms.mean_field_sac import MeanFieldSAC, SACStochasticActor
+    from mfgarchon.alg.reinforcement.algorithms.mean_field_sac import MeanFieldSAC, SACStochasticActor
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
@@ -346,7 +346,7 @@ class TestSACvsTD3:
 
     def test_sac_has_stochastic_policy(self):
         """Verify SAC uses stochastic policy while TD3 is deterministic."""
-        from mfg_pde.alg.reinforcement.algorithms.mean_field_td3 import MeanFieldTD3
+        from mfgarchon.alg.reinforcement.algorithms.mean_field_td3 import MeanFieldTD3
 
         class MockEnv:
             def reset(self):
@@ -380,7 +380,7 @@ class TestSACvsTD3:
 
     def test_sac_has_temperature_tuning(self):
         """Verify SAC has automatic temperature while TD3 doesn't."""
-        from mfg_pde.alg.reinforcement.algorithms.mean_field_td3 import MeanFieldTD3
+        from mfgarchon.alg.reinforcement.algorithms.mean_field_td3 import MeanFieldTD3
 
         class MockEnv:
             def reset(self):

@@ -23,7 +23,7 @@ Phase 3.2 consolidates three competing configuration systems into a single unifi
 
 ```python
 # PROBLEM (mathematical definition) - Python code
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(
     terminal_cost=g,
@@ -33,7 +33,7 @@ problem = MFGProblem(
 )
 
 # CONFIG (algorithmic choices) - YAML or Python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 config = presets.accurate_solver()  # How to solve
 ```
@@ -50,7 +50,7 @@ config = presets.accurate_solver()  # How to solve
 
 **Old Code** (deprecated):
 ```python
-from mfg_pde.config import create_fast_config, create_accurate_config
+from mfgarchon.config import create_fast_config, create_accurate_config
 
 config = create_fast_config()
 # or
@@ -59,7 +59,7 @@ config = create_accurate_config()
 
 **New Code** (recommended):
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 config = presets.fast_solver()
 # or
@@ -79,7 +79,7 @@ config = presets.accurate_solver()
 
 **Old Code** (deprecated):
 ```python
-from mfg_pde.config import (
+from mfgarchon.config import (
     fast_config,
     crowd_dynamics_config,
     traffic_config,
@@ -90,7 +90,7 @@ config = crowd_dynamics_config()
 
 **New Code** (recommended):
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 config = presets.crowd_dynamics_solver(accuracy="medium")
 ```
@@ -114,7 +114,7 @@ config = presets.crowd_dynamics_solver(accuracy="medium")
 
 **Old Code** (deprecated):
 ```python
-from mfg_pde.config import (
+from mfgarchon.config import (
     MFGSolverConfig,
     HJBConfig,
     FPConfig,
@@ -130,13 +130,13 @@ config = MFGSolverConfig(
 
 **New Code** (recommended - use presets or builder):
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 # Option 1: Use preset
 config = presets.fast_solver()
 
 # Option 2: Use builder for custom config
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 
 config = (
     ConfigBuilder()
@@ -149,7 +149,7 @@ config = (
 
 **New Code** (if direct instantiation needed):
 ```python
-from mfg_pde.config import (
+from mfgarchon.config import (
     SolverConfig,  # New unified class
     HJBConfig,
     FPConfig,
@@ -212,7 +212,7 @@ logging:
 
 **Load and use**:
 ```python
-from mfg_pde.config import load_solver_config
+from mfgarchon.config import load_solver_config
 
 config = load_solver_config("experiments/baseline.yaml")
 result = solve_mfg(problem, config=config)
@@ -228,7 +228,7 @@ result = solve_mfg(problem, config=config)
 
 **Fluent, discoverable API**:
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 
 config = (
     ConfigBuilder()
@@ -288,7 +288,7 @@ config = (
 
 **General-Purpose**:
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 # Speed-optimized (prototyping)
 config = presets.fast_solver()
@@ -338,7 +338,7 @@ config = presets.educational_solver()
 
 **Old Code**:
 ```python
-from mfg_pde.config import MFGSolverConfig, HJBConfig, GFDMConfig
+from mfgarchon.config import MFGSolverConfig, HJBConfig, GFDMConfig
 
 config = MFGSolverConfig(
     hjb=HJBConfig(
@@ -351,7 +351,7 @@ config = MFGSolverConfig(
 
 **New Code**:
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 
 config = (
     ConfigBuilder()
@@ -367,7 +367,7 @@ config = (
 
 **Or with direct instantiation**:
 ```python
-from mfg_pde.config import SolverConfig, HJBConfig, GFDMConfig
+from mfgarchon.config import SolverConfig, HJBConfig, GFDMConfig
 
 config = SolverConfig(
     hjb=HJBConfig(
@@ -397,7 +397,7 @@ config = (
 
 **For meshfree density evolution on collocation points**, use `FPGFDMSolver`:
 ```python
-from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
+from mfgarchon.alg.numerical.fp_solvers import FPGFDMSolver
 import numpy as np
 
 # Create collocation points
@@ -417,7 +417,7 @@ config = create_fast_config()
 
 **New Code** (explicit):
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 
 # NumPy backend (CPU only)
 config = (
@@ -440,7 +440,7 @@ config = (
 
 **Validation**: NumPy + GPU raises clear error:
 ```python
-from mfg_pde.config import BackendConfig
+from mfgarchon.config import BackendConfig
 
 try:
     BackendConfig(type="numpy", device="gpu")
@@ -459,11 +459,11 @@ except ValueError as e:
 
 **Example Warning**:
 ```python
-from mfg_pde.config import create_fast_config
+from mfgarchon.config import create_fast_config
 
 config = create_fast_config()
 # DeprecationWarning: create_fast_config() is deprecated and will be removed
-# in v2.0.0. Use 'from mfg_pde.config import presets; config = presets.fast_solver()'
+# in v2.0.0. Use 'from mfgarchon.config import presets; config = presets.fast_solver()'
 ```
 
 ### Phase 2: v1.0.0 (+3 months)
@@ -502,10 +502,10 @@ grep -r "MFGSolverConfig" .
 ### Step 3: Update Imports
 ```python
 # Old
-from mfg_pde.config import create_fast_config, MFGSolverConfig
+from mfgarchon.config import create_fast_config, MFGSolverConfig
 
 # New
-from mfg_pde.config import presets, SolverConfig, ConfigBuilder
+from mfgarchon.config import presets, SolverConfig, ConfigBuilder
 ```
 
 ### Step 4: Update Configuration Creation
@@ -520,7 +520,7 @@ config = presets.fast_solver()
 ### Step 5: Test
 ```python
 # Verify configuration works
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 
 result = solve_mfg(problem, config=config)
 print(result.success)
@@ -530,7 +530,7 @@ print(result.success)
 ```bash
 # Save configuration for reproducibility
 python -c "
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 config = presets.accurate_solver()
 config.to_yaml('experiments/baseline.yaml')
 "
@@ -556,7 +556,7 @@ config.to_yaml('experiments/baseline.yaml')
 **A**: Three options:
 
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 # Option 1: Modify after creation
 config = presets.fast_solver()
@@ -565,11 +565,11 @@ config.picard.max_iterations = 100
 # Option 2: Save to YAML, edit, reload
 config.to_yaml("my_config.yaml")
 # Edit YAML file...
-from mfg_pde.config import load_solver_config
+from mfgarchon.config import load_solver_config
 config = load_solver_config("my_config.yaml")
 
 # Option 3: Use builder for full control
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 config = (
     ConfigBuilder()
     .solver_hjb(method="fdm", accuracy_order=2)  # Custom settings
@@ -592,7 +592,7 @@ config = (
 
 ```python
 # Problem definition unchanged
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(
     terminal_cost=g,
@@ -602,7 +602,7 @@ problem = MFGProblem(
 )
 
 # Only configuration syntax changed
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 config = presets.accurate_solver()  # New
 
 result = solve_mfg(problem, config=config)  # Same
@@ -616,8 +616,8 @@ result = solve_mfg(problem, config=config)  # Same
 
 **Before**:
 ```python
-from mfg_pde.config import create_accurate_config
-from mfg_pde import solve_mfg
+from mfgarchon.config import create_accurate_config
+from mfgarchon import solve_mfg
 
 config = create_accurate_config()
 result = solve_mfg(problem, config=config)
@@ -625,8 +625,8 @@ result = solve_mfg(problem, config=config)
 
 **After**:
 ```python
-from mfg_pde.config import presets
-from mfg_pde import solve_mfg
+from mfgarchon.config import presets
+from mfgarchon import solve_mfg
 
 config = presets.accurate_solver()
 result = solve_mfg(problem, config=config)
@@ -636,8 +636,8 @@ result = solve_mfg(problem, config=config)
 
 **Before**:
 ```python
-from mfg_pde.config import crowd_dynamics_config
-from mfg_pde import solve_mfg
+from mfgarchon.config import crowd_dynamics_config
+from mfgarchon import solve_mfg
 
 config = crowd_dynamics_config()
 result = solve_mfg(problem, config=config)
@@ -669,8 +669,8 @@ backend:
 
 **`experiment.py`**:
 ```python
-from mfg_pde.config import load_solver_config
-from mfg_pde import solve_mfg
+from mfgarchon.config import load_solver_config
+from mfgarchon import solve_mfg
 
 config = load_solver_config("experiment.yaml")
 result = solve_mfg(problem, config=config)
@@ -680,7 +680,7 @@ result = solve_mfg(problem, config=config)
 
 **Before**:
 ```python
-from mfg_pde.config import MFGSolverConfig, HJBConfig, FPConfig
+from mfgarchon.config import MFGSolverConfig, HJBConfig, FPConfig
 
 config = MFGSolverConfig(
     hjb=HJBConfig(method="gfdm", gfdm_delta=0.1),
@@ -690,7 +690,7 @@ config = MFGSolverConfig(
 
 **After**:
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 
 config = (
     ConfigBuilder()
@@ -703,7 +703,7 @@ config = (
 
 **Or use preset**:
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 config = presets.high_dimensional_solver(use_gpu=True)
 ```

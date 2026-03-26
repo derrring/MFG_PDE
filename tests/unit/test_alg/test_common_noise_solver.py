@@ -9,13 +9,13 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGResult, CommonNoiseMFGSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.utils.numerical.particle.sampling import MCConfig
+from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGResult, CommonNoiseMFGSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.utils.numerical.particle.sampling import MCConfig
 
 
 def _default_hamiltonian():
@@ -227,7 +227,7 @@ class TestCommonNoiseSolverInitialization:
 
     def test_raises_error_for_non_stochastic_problem(self):
         """Test that solver raises error for problem without common noise."""
-        from mfg_pde.core import MFGProblem
+        from mfgarchon.core import MFGProblem
 
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0)], Nx_points=[22], boundary_conditions=no_flux_bc(dimension=1)
@@ -313,7 +313,7 @@ class TestCommonNoiseSolverAggregation:
 
     def test_aggregate_solutions_basic(self):
         """Test basic solution aggregation."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
         # Create mock conditional solutions
         u1 = np.ones((12, 21))
@@ -354,7 +354,7 @@ class TestCommonNoiseSolverAggregation:
 
     def test_aggregate_solutions_with_non_convergence(self):
         """Test aggregation when some solvers don't converge."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
         u1 = np.ones((12, 21))
         m1 = np.ones((12, 21))
@@ -381,7 +381,7 @@ class TestCommonNoiseSolverAggregation:
 
     def test_aggregate_solutions_mc_error_estimate(self):
         """Test Monte Carlo error estimation in aggregation."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
         # Create solutions with known variance
         K = 100
@@ -413,7 +413,7 @@ class TestCommonNoiseSolverAggregation:
 
     def test_variance_reduction_factor_standard_mc(self):
         """Test variance reduction factor for standard MC."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
         u = np.ones((12, 21))
         m = np.ones((12, 21))
@@ -439,7 +439,7 @@ class TestCommonNoiseSolverAggregation:
 
     def test_variance_reduction_factor_with_control_variates(self):
         """Test variance reduction factor with control variates enabled."""
-        from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+        from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
         u = np.ones((12, 21))
         m = np.ones((12, 21))

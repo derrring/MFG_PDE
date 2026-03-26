@@ -113,7 +113,7 @@ The new theoretical design (`GEOMETRY_BC_ARCHITECTURE_DESIGN.md`) and implementa
 
 ### 2.3 Geometry Protocol
 
-#### Current Implementation (`mfg_pde/geometry/protocol.py`)
+#### Current Implementation (`mfgarchon/geometry/protocol.py`)
 
 ```python
 @runtime_checkable
@@ -245,7 +245,7 @@ NEUMANN BC (BCType.NEUMANN):
 
 ### 4.2 BCType Enumeration Completeness
 
-**Current Code** (`mfg_pde/geometry/boundary/types.py`):
+**Current Code** (`mfgarchon/geometry/boundary/types.py`):
 ```python
 class BCType(Enum):
     DIRICHLET = "dirichlet"
@@ -335,7 +335,7 @@ Lists: Dirichlet, Neumann, Robin, Periodic, No-flux, Mixed
 
 **Issue**: Terminology confusion between physics (zero total flux J·n=0) and numerics (zero derivative ∂u/∂n=0).
 
-**Current Code** (`mfg_pde/geometry/boundary/applicator_base.py`):
+**Current Code** (`mfgarchon/geometry/boundary/applicator_base.py`):
 - `ZeroFluxCalculator` - For mass-conserving no-flux (J·n = 0)
 - `ZeroGradientCalculator` - For simple Neumann ∂u/∂n = 0
 
@@ -570,7 +570,7 @@ Tracked separately in Issue #XXX (to be created).
   - Example of Tier 1 BC with state-dependent values
 
 ### Current Implementation
-- **Code**: `mfg_pde/geometry/boundary/`
+- **Code**: `mfgarchon/geometry/boundary/`
   - `conditions.py`: BoundaryConditions class
   - `types.py`: BCType enum, BCSegment dataclass
   - `applicator_*.py`: BC applicators (FDM, FEM, Meshfree, Graph, Particle)
@@ -871,11 +871,11 @@ stable = np.all(eigenvalues.real <= 1e-10)
 - GEOMETRY_BC_IMPLEMENTATION_PLANS.md (1,556 lines)
 
 **Code Files Inspected** (6 files):
-- `mfg_pde/geometry/protocol.py`
-- `mfg_pde/geometry/boundary/conditions.py`
-- `mfg_pde/geometry/boundary/types.py`
-- `mfg_pde/geometry/boundary/applicator_*.py` (7 applicators)
-- `mfg_pde/geometry/boundary/__init__.py`
+- `mfgarchon/geometry/protocol.py`
+- `mfgarchon/geometry/boundary/conditions.py`
+- `mfgarchon/geometry/boundary/types.py`
+- `mfgarchon/geometry/boundary/applicator_*.py` (7 applicators)
+- `mfgarchon/geometry/boundary/__init__.py`
 
 **Total Verification Scope**: 4,249 lines of documentation + 4,500+ lines of code
 

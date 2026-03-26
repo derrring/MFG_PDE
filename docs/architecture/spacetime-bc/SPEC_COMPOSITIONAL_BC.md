@@ -14,7 +14,7 @@
 A boundary condition is not an object — it is a **modification** to the
 discrete operator. A complete BC is defined by 4 orthogonal axes.
 
-> **Implementation note**: MFG_PDE already implements 3 of these 4 axes in
+> **Implementation note**: MFGarchon already implements 3 of these 4 axes in
 > `BCSegment`. The 4th axis (Enforcement) is correctly handled as a solver-side
 > concern via the applicator hierarchy. See `CURRENT_STATE_ANALYSIS.md` for mapping.
 
@@ -26,7 +26,7 @@ discrete operator. A complete BC is defined by 4 orthogonal axes.
 
 Defines which part of the geometry boundary the BC applies to.
 
-| Trait | Description | MFG_PDE Mapping |
+| Trait | Description | MFGarchon Mapping |
 |:------|:------------|:----------------|
 | `GlobalBoundary` | Entire boundary | `BCSegment(boundary=None)` (no restriction) |
 | `TaggedRegion(ID)` | Marked boundary segment | `BCSegment(boundary="left")`, `.region_name` |
@@ -37,26 +37,26 @@ SDF region, normal direction, marked region name. Exceeds the spec.
 
 #### 2.2 Mathematical Type (what equation?)
 
-| Trait | Equation | MFG_PDE Mapping |
+| Trait | Equation | MFGarchon Mapping |
 |:------|:---------|:----------------|
 | `Dirichlet` | $u = g$ | `BCType.DIRICHLET` |
 | `Neumann` | $\partial u / \partial n = g$ | `BCType.NEUMANN` |
 | `Robin` | $\alpha u + \beta \partial u / \partial n = g$ | `BCType.ROBIN` |
 | `Cauchy` | Both value and gradient | Not implemented (needed for high-order) |
 
-**Additional types in MFG_PDE**: `PERIODIC`, `REFLECTING`, `NO_FLUX`,
+**Additional types in MFGarchon**: `PERIODIC`, `REFLECTING`, `NO_FLUX`,
 `EXTRAPOLATION_LINEAR`, `EXTRAPOLATION_QUADRATIC`.
 
 #### 2.3 Value Source (equals what?)
 
-| Trait | Description | Optimization | MFG_PDE Mapping |
+| Trait | Description | Optimization | MFGarchon Mapping |
 |:------|:------------|:-------------|:----------------|
 | `Zero` | $g = 0$ (homogeneous) | Eliminate additions | `value=0.0` |
 | `Constant(c)` | $g = c$ | Scalar broadcast | `value=c` |
 | `Functional(func)` | $g = f(x, t)$ | JIT-compilable | `value=callable` |
 | `DataField(array)` | $g$ from discrete data | Direct indexing | `value=np.ndarray` |
 
-**MFG_PDE extension**: `BCValueProvider` protocol for state-dependent values
+**MFGarchon extension**: `BCValueProvider` protocol for state-dependent values
 (e.g., `AdjointConsistentProvider` computes $g = -\sigma^2/2 \cdot \partial \ln(m)/\partial n$
 from current density). More powerful than static `DataField`.
 
@@ -94,7 +94,7 @@ from current density). More powerful than static `DataField`.
 
 - **Geometry side**: `get_boundary_nodes(tag_id)` via `FacetMarkers`.
 - **BC side**: Solver loops over node indices, applies Strong or Weak.
-- **MFG_PDE**: `GeometryProtocol.get_boundary_indices()`, `get_boundary_regions()`.
+- **MFGarchon**: `GeometryProtocol.get_boundary_indices()`, `get_boundary_regions()`.
 
 #### Protocol B: Structured Grid
 
@@ -102,13 +102,13 @@ from current density). More powerful than static `DataField`.
 - **BC side**: JIT-compiled kernel loops on boundary slices
   (`field[0, :, :]`, `field[-1, :, :]`, etc.).
 - **Ghost Cell mode**: Geometry allocates halo layer; BC fills halo data.
-- **MFG_PDE**: `FDMApplicator.apply_2d()` implements exactly this pattern.
+- **MFGarchon**: `FDMApplicator.apply_2d()` implements exactly this pattern.
 
 #### Protocol C: Level Set (Implicit Boundary)
 
 - **Geometry side**: Provides SDF $\phi(x)$.
 - **BC side**: Solver checks `sign(phi)` changes; triggers GhostFluid or penalty.
-- **MFG_PDE**: `ImplicitApplicator` uses SDF but projection-based, not ghost fluid.
+- **MFGarchon**: `ImplicitApplicator` uses SDF but projection-based, not ghost fluid.
 
 ---
 

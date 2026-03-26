@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-The boundary condition (BC) handling in MFG_PDE is **architecturally ambitious but inconsistently executed**. The core data model (`BoundaryConditions`, `BCSegment`) is well-designed, but the application layer suffers from:
+The boundary condition (BC) handling in MFGarchon is **architecturally ambitious but inconsistently executed**. The core data model (`BoundaryConditions`, `BCSegment`) is well-designed, but the application layer suffers from:
 
 - **Parallel implementations** that were never unified
 - **Deprecated code** still in active use
@@ -309,7 +309,7 @@ if hasattr(geometry, "domain_bounds"):
     bounds = geometry.domain_bounds
 
 # GOOD - Protocol-based
-from mfg_pde.geometry.protocols import SupportsStructuredGrid
+from mfgarchon.geometry.protocols import SupportsStructuredGrid
 
 if isinstance(geometry, SupportsStructuredGrid):
     bounds = geometry.domain_bounds
@@ -442,7 +442,7 @@ except AttributeError:
 
 **Usage:**
 ```python
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     BoundaryConditions, BCSegment, BCType, AdjointConsistentProvider
 )
 

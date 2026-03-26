@@ -15,13 +15,13 @@
 **Problem**: Using `hasattr(problem, "Nx")` returns `True` even when `Nx=None`, causing wrong code paths.
 
 **Affected Files** (10 instances):
-- `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py:144` ⚠️ **Caused PR #218 failure**
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py:186`
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:158`
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py:227`
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py:49, 98`
-- `mfg_pde/meta/optimization_meta.py:297, 374, 452`
-- `mfg_pde/utils/performance/monitoring.py:190`
+- `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py:144` ⚠️ **Caused PR #218 failure**
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py:186`
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:158`
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py:227`
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py:49, 98`
+- `mfgarchon/meta/optimization_meta.py:297, 374, 452`
+- `mfgarchon/utils/performance/monitoring.py:190`
 
 **Current Code** (broken):
 ```python
@@ -54,19 +54,19 @@ except (TypeError, AttributeError):
 **Problem**: Two incompatible config systems coexist, causing Pydantic validation errors.
 
 **Old System** (deprecated but still in use):
-- `MFGSolverConfig` (in `mfg_pde/config/solver_config.py`)
+- `MFGSolverConfig` (in `mfgarchon/config/solver_config.py`)
 - Used by: `plugin_system.py`, `modern_config.py`, `solver_config.py` presets
 
 **New System** (Phase 3):
-- `SolverConfig` (in `mfg_pde/config/core.py`)
+- `SolverConfig` (in `mfgarchon/config/core.py`)
 - Used by: Factory functions, preset configs
 
 **Files Still Using Old System** (19 references):
 ```
-mfg_pde/core/plugin_system.py:        config: MFGSolverConfig | None = None (3 instances)
-mfg_pde/config/modern_config.py:      base_config: MFGSolverConfig | None
-mfg_pde/config/solver_config.py:     class MFGSolverConfig (and 6 presets)
-mfg_pde/config/__init__.py:           MFGSolverConfig export
+mfgarchon/core/plugin_system.py:        config: MFGSolverConfig | None = None (3 instances)
+mfgarchon/config/modern_config.py:      base_config: MFGSolverConfig | None
+mfgarchon/config/solver_config.py:     class MFGSolverConfig (and 6 presets)
+mfgarchon/config/__init__.py:           MFGSolverConfig export
 ```
 
 **Symptom**: `solve_mfg.py` was creating `MFGSolverConfig` with values from `SolverConfig` → type mismatch.
@@ -130,10 +130,10 @@ Nx = self.problem.Nx + 1  # TypeError if Nx=None (14 instances!)
 ```
 
 **Files with Unsafe Access**:
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py` (8 instances)
-- `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py`
-- `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py` (4 instances)
-- `mfg_pde/alg/numerical/fp_solvers/fp_particle.py` (4 instances)
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py` (8 instances)
+- `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py`
+- `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py` (4 instances)
+- `mfgarchon/alg/numerical/fp_solvers/fp_particle.py` (4 instances)
 
 **Action Required**: Add defensive checks or use `getattr()` with defaults.
 
@@ -215,7 +215,7 @@ Both PRs revealed incomplete Phase 3 migrations:
 
 3. **Check for Other `hasattr()` Nullability Issues**
    ```bash
-   grep -rn "hasattr.*Nx\|hasattr.*xmin\|hasattr.*geometry" mfg_pde/
+   grep -rn "hasattr.*Nx\|hasattr.*xmin\|hasattr.*geometry" mfgarchon/
    ```
 
 ### Short-term (Next Sprint)
@@ -268,15 +268,15 @@ Both PRs revealed incomplete Phase 3 migrations:
 ## Files Requiring Immediate Attention
 
 ### Priority 1 (Critical - Fix Before Merge):
-1. `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py` - hasattr(Nx) bug
-2. `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py` - hasattr(Nx) bug
-3. `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py` - hasattr(Nx) bug
-4. `mfg_pde/core/plugin_system.py` - MFGSolverConfig usage
-5. `mfg_pde/config/modern_config.py` - MFGSolverConfig usage
+1. `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py` - hasattr(Nx) bug
+2. `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py` - hasattr(Nx) bug
+3. `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py` - hasattr(Nx) bug
+4. `mfgarchon/core/plugin_system.py` - MFGSolverConfig usage
+5. `mfgarchon/config/modern_config.py` - MFGSolverConfig usage
 
 ### Priority 2 (High - Fix Next Sprint):
-1. `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py` - 4x unsafe `Nx + 1`
-2. `mfg_pde/alg/numerical/fp_solvers/fp_particle.py` - 4x unsafe `Nx + 1`
+1. `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py` - 4x unsafe `Nx + 1`
+2. `mfgarchon/alg/numerical/fp_solvers/fp_particle.py` - 4x unsafe `Nx + 1`
 3. All files with `thetaUM`, `Niter_max`, `l2errBound`
 
 ---

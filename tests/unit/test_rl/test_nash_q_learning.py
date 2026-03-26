@@ -17,7 +17,7 @@ except ImportError:
     TORCH_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import (
+    from mfgarchon.alg.reinforcement.algorithms.mean_field_q_learning import (
         MeanFieldQLearning,
         MeanFieldQNetwork,
     )

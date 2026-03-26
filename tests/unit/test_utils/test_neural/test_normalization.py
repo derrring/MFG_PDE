@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/neural/normalization.py
+Unit tests for mfgarchon/utils/neural/normalization.py
 
 Tests NormalizationType enum including:
 - Enum values and string representation
@@ -11,7 +11,7 @@ Tests NormalizationType enum including:
 
 import pytest
 
-from mfg_pde.utils.neural.normalization import NormalizationType
+from mfgarchon.utils.neural.normalization import NormalizationType
 
 # ===================================================================
 # Test NormalizationType Enum Values
@@ -361,7 +361,7 @@ def test_normalization_type_annotation():
 @pytest.mark.unit
 def test_module_exports():
     """Test NormalizationType is importable."""
-    from mfg_pde.utils.neural import normalization
+    from mfgarchon.utils.neural import normalization
 
     assert hasattr(normalization, "NormalizationType")
     assert normalization.NormalizationType == NormalizationType
@@ -370,7 +370,7 @@ def test_module_exports():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has comprehensive docstring."""
-    from mfg_pde.utils.neural import normalization
+    from mfgarchon.utils.neural import normalization
 
     assert normalization.__doc__ is not None
     assert "Normalization Type Selection" in normalization.__doc__

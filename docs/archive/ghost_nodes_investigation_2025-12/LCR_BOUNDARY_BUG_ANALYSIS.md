@@ -3,7 +3,7 @@
 **Date**: 2025-12-20
 **Author**: Claude Code Analysis
 **Status**: Critical Bug Identified
-**Affected File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+**Affected File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 **Function**: `_build_rotation_matrix()` (lines 686-756)
 
 ---
@@ -196,7 +196,7 @@ Consider alternative corner handling strategies:
 
 ## 7. Files to Update
 
-1. **Fix**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py` line 716
+1. **Fix**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py` line 716
 2. **Test**: Add `tests/unit/test_hjb_gfdm_rotation.py`
 3. **Docs**: Update GFDM documentation with LCR limitations
 

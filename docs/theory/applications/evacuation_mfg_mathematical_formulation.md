@@ -373,8 +373,8 @@ When using FDM solvers for both HJB and FP, the advection scheme selection is **
 | `gradient_centered` | `divergence_centered` | Second-order, may oscillate |
 
 ```python
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
 
 hjb_solver = HJBFDMSolver(problem, advection_scheme="gradient_upwind")
 fp_solver = FPFDMSolver(problem, advection_scheme="divergence_upwind")
@@ -481,9 +481,9 @@ $$\Delta t \cdot \frac{\max |\nabla_p H|}{\Delta x} < 1$$
 - `docs/theory/semi_lagrangian_methods_for_hjb.md` - Semi-Lagrangian methods
 
 **Core Solvers**:
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` - HJB FDM solver with `advection_scheme` parameter
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py` - FP FDM solver with `advection_scheme` parameter
-- `mfg_pde/alg/numerical/coupling/` - Coupled MFG iteration (FixedPointIterator)
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` - HJB FDM solver with `advection_scheme` parameter
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py` - FP FDM solver with `advection_scheme` parameter
+- `mfgarchon/alg/numerical/coupling/` - Coupled MFG iteration (FixedPointIterator)
 
 ### Production Recommendations
 

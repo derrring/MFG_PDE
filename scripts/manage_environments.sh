@@ -1,10 +1,10 @@
 #!/bin/bash
-# MFG_PDE Multi-Environment Management Script
+# MFGarchon Multi-Environment Management Script
 # Manages different conda environments for various use cases
 
 set -e  # Exit on error
 
-echo "🐍 MFG_PDE Environment Manager"
+echo "🐍 MFGarchon Environment Manager"
 echo "=============================="
 
 # Colors for output
@@ -49,7 +49,7 @@ create_dev_env() {
         conda env update -f environment.yml -n mfg_dev
     }
 
-    print_status "Activating environment and installing MFG_PDE..."
+    print_status "Activating environment and installing MFGarchon..."
     source $(conda info --base)/etc/profile.d/conda.sh
     conda activate mfg_dev
     pip install -e .
@@ -66,7 +66,7 @@ create_performance_env() {
         conda env update -f conda_performance.yml -n mfg_performance
     }
 
-    print_status "Activating environment and installing MFG_PDE..."
+    print_status "Activating environment and installing MFGarchon..."
     source $(conda info --base)/etc/profile.d/conda.sh
     conda activate mfg_performance
     pip install -e .
@@ -110,7 +110,7 @@ EOF
 
 # Function to verify environments
 verify_environments() {
-    print_info "Verifying MFG_PDE environments..."
+    print_info "Verifying MFGarchon environments..."
 
     local envs=("mfg_dev" "mfg_performance" "mfg_numpy2")
 
@@ -131,14 +131,14 @@ import numpy as np
 print(f'NumPy: {np.__version__}')
 
 try:
-    import mfg_pde
-    print(f'MFG_PDE: {mfg_pde.__version__}')
-    print('✅ MFG_PDE import successful')
+    import mfgarchon
+    print(f'MFGarchon: {mfgarchon.__version__}')
+    print('✅ MFGarchon import successful')
 except Exception as e:
-    print(f'❌ MFG_PDE import failed: {e}')
+    print(f'❌ MFGarchon import failed: {e}')
 
 try:
-    from mfg_pde.utils.numpy_compat import get_numpy_info
+    from mfgarchon.utils.numpy_compat import get_numpy_info
     info = get_numpy_info()
     print(f'Recommended integration: {info[\"recommended_method\"]}')
 except Exception as e:
@@ -153,7 +153,7 @@ except Exception as e:
 
 # Function to clean environments
 clean_environments() {
-    print_warning "This will remove all MFG_PDE environments. Continue? (y/N)"
+    print_warning "This will remove all MFGarchon environments. Continue? (y/N)"
     read -r response
 
     if [[ "$response" =~ ^[Yy]$ ]]; then
@@ -173,11 +173,11 @@ clean_environments() {
 
 # Function to show environment info
 show_env_info() {
-    print_info "MFG_PDE Environment Information"
+    print_info "MFGarchon Environment Information"
     echo
 
     print_info "Available environments:"
-    conda env list | grep mfg || print_warning "No MFG_PDE environments found"
+    conda env list | grep mfg || print_warning "No MFGarchon environments found"
 
     echo
     print_info "Current environment:"
@@ -263,7 +263,7 @@ case "$1" in
         echo "  create-numpy2      Create NumPy 2.0+ testing environment"
         echo "  create-all         Create all environments"
         echo "  verify             Verify all environments"
-        echo "  clean              Remove all MFG_PDE environments"
+        echo "  clean              Remove all MFGarchon environments"
         echo "  info               Show environment information"
         echo "  activate <name>    Activate specific environment"
         echo

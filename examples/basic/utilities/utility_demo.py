@@ -13,7 +13,7 @@ Run:
 
 import numpy as np
 
-from mfg_pde.utils import (
+from mfgarchon.utils import (
     CircleObstacle,
     QPCache,
     QPSolver,
@@ -159,7 +159,7 @@ def demo_qp_solver():
 def main():
     """Run all utility demonstrations."""
     print("\n" + "=" * 60)
-    print("MFG_PDE Utility Module Demonstration")
+    print("MFGarchon Utility Module Demonstration")
     print("Phase 2.2 Improvements")
     print("=" * 60)
 

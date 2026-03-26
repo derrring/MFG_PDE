@@ -2,12 +2,12 @@
 
 import pytest
 
-from mfg_pde.core.component_configs import (
+from mfgarchon.core.component_configs import (
     NeuralMFGConfig,
     RLMFGConfig,
     StandardMFGConfig,
 )
-from mfg_pde.core.mfg_components_nested import MFGComponents
+from mfgarchon.core.mfg_components_nested import MFGComponents
 
 # =============================================================================
 # Test Nested Structure
@@ -239,7 +239,7 @@ def test_neural_mfg_pattern():
 
 def test_composed_stochastic_mfg():
     """Composed MFG with stochasticity."""
-    from mfg_pde.core.component_configs import StochasticMFGConfig
+    from mfgarchon.core.component_configs import StochasticMFGConfig
 
     components = MFGComponents(
         standard=StandardMFGConfig(hamiltonian_func=lambda x, m, p, t: 0.5 * p**2),

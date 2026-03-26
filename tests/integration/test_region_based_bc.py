@@ -20,8 +20,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import (
     BCSegment,
     BCType,
     BoundaryConditions,

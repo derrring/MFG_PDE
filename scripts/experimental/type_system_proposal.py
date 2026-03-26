@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Type System Design Proposal for MFG_PDE
+Type System Design Proposal for MFGarchon
 
 Goal: Balance type safety for developers with simplicity for users
 """
@@ -112,7 +112,7 @@ INTERMEDIATE USER (8% of users):
     result = solver.solve(max_iterations=200)
 
 EXPERT USER/MAINTAINER (2% of users):
-    from mfg_pde.alg.hjb_solvers import HJBSemiLagrangianSolver
+    from mfgarchon.alg.hjb_solvers import HJBSemiLagrangianSolver
     solver = HJBSemiLagrangianSolver(problem, config=advanced_config)
     # Full access to internal complexity when needed
 """

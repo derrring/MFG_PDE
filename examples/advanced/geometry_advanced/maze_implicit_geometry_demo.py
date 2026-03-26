@@ -12,7 +12,7 @@ to create complex hybrid domains for Mean Field Games:
 Key Innovation: Combine discrete maze structures with continuous implicit
 geometry for unprecedented flexibility in domain design.
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: November 2025
 """
 
@@ -23,8 +23,8 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.geometry.graph.maze_generator import generate_maze
-from mfg_pde.geometry.implicit import DifferenceDomain, Hyperrectangle, Hypersphere
+from mfgarchon.geometry.graph.maze_generator import generate_maze
+from mfgarchon.geometry.implicit import DifferenceDomain, Hyperrectangle, Hypersphere
 
 print("=" * 70)
 print("MAZE + IMPLICIT GEOMETRY INTEGRATION")
@@ -439,8 +439,8 @@ print("  → Create 3D visualization with PyVista")
 print()
 
 print("Related Files:")
-print("  - mfg_pde/geometry/mazes/: Maze generation algorithms")
-print("  - mfg_pde/geometry/implicit/: Implicit domain CSG operations")
+print("  - mfgarchon/geometry/mazes/: Maze generation algorithms")
+print("  - mfgarchon/geometry/implicit/: Implicit domain CSG operations")
 print("  - examples/advanced/arbitrary_nd_geometry_demo.py: nD geometry")
 print("  - docs/theory/unified_hamiltonian_signature.md: Dimension-agnostic design")
 print()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/exceptions.py
+Unit tests for mfgarchon/utils/exceptions.py
 
 Tests comprehensive exception handling system including:
 - MFGSolverError (base exception)
@@ -11,7 +11,7 @@ Tests comprehensive exception handling system including:
 - NumericalInstabilityError (numerical problems)
 - Validation utilities
 
-Coverage target: mfg_pde/utils/exceptions.py (158 lines, 16% -> 70%+)
+Coverage target: mfgarchon/utils/exceptions.py (158 lines, 16% -> 70%+)
 """
 
 import contextlib
@@ -20,7 +20,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.exceptions import (
+from mfgarchon.utils.exceptions import (
     ConfigurationError,
     ConvergenceError,
     DimensionMismatchError,

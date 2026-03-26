@@ -8,7 +8,7 @@
 
 ## Overview
 
-Phase 3 (v0.9.0) introduces a **unified architecture** that dramatically simplifies the MFG_PDE API while maintaining full backward compatibility. The key changes:
+Phase 3 (v0.9.0) introduces a **unified architecture** that dramatically simplifies the MFGarchon API while maintaining full backward compatibility. The key changes:
 
 1. **Unified `solve_mfg()` interface** - Single entry point for all MFG problems
 2. **Unified `SolverConfig` system** - Three patterns: YAML, Builder, Presets
@@ -25,10 +25,10 @@ Phase 3 (v0.9.0) introduces a **unified architecture** that dramatically simplif
 
 ### Before (Phase 2)
 ```python
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.config import create_fast_config
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.config import create_fast_config
 
 # Manual setup
 config = create_fast_config()
@@ -40,7 +40,7 @@ result = solver.solve()
 
 ### After (Phase 3)
 ```python
-from mfg_pde import solve_mfg, ExampleMFGProblem
+from mfgarchon import solve_mfg, ExampleMFGProblem
 
 # Unified interface
 problem = ExampleMFGProblem()
@@ -59,8 +59,8 @@ Phase 3 **maintains all Phase 2 APIs** with deprecation warnings. Your existing 
 
 ```python
 # Phase 2 code - still works in Phase 3
-from mfg_pde.config.solver_config import create_fast_config
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.config.solver_config import create_fast_config
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
 
 config = create_fast_config()  # Works, with deprecation warning
 solver = FixedPointIterator(...)  # Works
@@ -81,14 +81,14 @@ Adopt Phase 3 APIs gradually, starting with the highest-impact changes:
 
 **Before**:
 ```python
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
 solver = FixedPointIterator(problem, hjb_solver, fp_solver, picard_config)
 result = solver.solve()
 ```
 
 **After**:
 ```python
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 result = solve_mfg(problem, preset="fast")
 ```
 
@@ -98,13 +98,13 @@ result = solve_mfg(problem, preset="fast")
 
 **Before**:
 ```python
-from mfg_pde.config.solver_config import create_accurate_config
+from mfgarchon.config.solver_config import create_accurate_config
 config = create_accurate_config()
 ```
 
 **After**:
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 config = presets.accurate_solver()
 ```
 
@@ -114,13 +114,13 @@ config = presets.accurate_solver()
 
 **Before**:
 ```python
-from mfg_pde.core import LQMFGProblem, CongestionMFGProblem
+from mfgarchon.core import LQMFGProblem, CongestionMFGProblem
 problem = LQMFGProblem(...)  # Specialized class
 ```
 
 **After**:
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfgarchon import ExampleMFGProblem
 problem = ExampleMFGProblem(...)  # Unified class
 ```
 
@@ -133,8 +133,8 @@ problem = ExampleMFGProblem(...)  # Unified class
 Use Phase 3 APIs exclusively:
 
 ```python
-from mfg_pde import solve_mfg, ExampleMFGProblem
-from mfg_pde.config import presets
+from mfgarchon import solve_mfg, ExampleMFGProblem
+from mfgarchon.config import presets
 
 # Define problem
 problem = ExampleMFGProblem(nx=100, nt=100, T=1.0)
@@ -143,7 +143,7 @@ problem = ExampleMFGProblem(nx=100, nt=100, T=1.0)
 result = solve_mfg(problem, preset="accurate")
 
 # Or use builder for custom config
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 config = (
     ConfigBuilder()
     .solver_hjb(method="fdm", accuracy_order=3)
@@ -164,7 +164,7 @@ result = solve_mfg(problem, config=config)
 #### Before (Phase 2): Multiple Specialized Classes
 
 ```python
-from mfg_pde.core import (
+from mfgarchon.core import (
     LQMFGProblem,           # Linear-quadratic
     CongestionMFGProblem,   # Congestion problems
     PotentialMFGProblem,    # Potential field
@@ -180,7 +180,7 @@ congestion_problem = CongestionMFGProblem(coupling_function=..., ...)
 #### After (Phase 3): Unified MFGProblem
 
 ```python
-from mfg_pde import ExampleMFGProblem
+from mfgarchon import ExampleMFGProblem
 
 # Single unified class - auto-detects problem type
 problem = ExampleMFGProblem(
@@ -205,7 +205,7 @@ problem = ExampleMFGProblem(
 #### Before (Phase 2): Factory Functions
 
 ```python
-from mfg_pde.config.solver_config import (
+from mfgarchon.config.solver_config import (
     create_fast_config,
     create_accurate_config,
     create_research_config,
@@ -216,7 +216,7 @@ config = create_fast_config()
 config = create_accurate_config()
 
 # Or manual construction
-from mfg_pde.config.solver_config import MFGSolverConfig, PicardConfig
+from mfgarchon.config.solver_config import MFGSolverConfig, PicardConfig
 config = MFGSolverConfig(
     picard=PicardConfig(max_iterations=50, tolerance=1e-6),
     # ... many parameters
@@ -227,7 +227,7 @@ config = MFGSolverConfig(
 
 **Option 1: Presets** (Recommended for most cases)
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 config = presets.fast_solver()        # Speed-optimized
 config = presets.accurate_solver()    # Accuracy-optimized
@@ -236,7 +236,7 @@ config = presets.research_solver()    # Comprehensive output
 
 **Option 2: Builder API** (For programmatic configuration)
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 
 config = (
     ConfigBuilder()
@@ -267,7 +267,7 @@ picard:
 ```
 
 ```python
-from mfg_pde.config import load_solver_config
+from mfgarchon.config import load_solver_config
 
 config = load_solver_config("config.yaml")
 ```
@@ -285,9 +285,9 @@ config = load_solver_config("config.yaml")
 #### Before (Phase 2): Manual Instantiation
 
 ```python
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
 
 # Manual component creation
 hjb_solver = HJBFDMSolver(problem, config)
@@ -309,15 +309,15 @@ result = solver.solve()
 
 **Pattern 1: With Preset String** (Simplest)
 ```python
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 
 result = solve_mfg(problem, preset="fast")
 ```
 
 **Pattern 2: With Config Object** (More control)
 ```python
-from mfg_pde import solve_mfg
-from mfg_pde.config import presets
+from mfgarchon import solve_mfg
+from mfgarchon.config import presets
 
 config = presets.accurate_solver()
 result = solve_mfg(problem, config=config)
@@ -325,8 +325,8 @@ result = solve_mfg(problem, config=config)
 
 **Pattern 3: Inline Builder** (Maximum flexibility)
 ```python
-from mfg_pde import solve_mfg
-from mfg_pde.config import ConfigBuilder
+from mfgarchon import solve_mfg
+from mfgarchon.config import ConfigBuilder
 
 result = solve_mfg(
     problem,
@@ -339,7 +339,7 @@ result = solve_mfg(
 
 **Migration**:
 - All manual solver creation → `solve_mfg(problem, ...)`
-- Factory functions still available in `mfg_pde.factory` for advanced use
+- Factory functions still available in `mfgarchon.factory` for advanced use
 
 ---
 
@@ -385,10 +385,10 @@ error_history_M = result.error_history_M
 **Before**:
 ```python
 # research_script.py (Phase 2)
-from mfg_pde.core import LQMFGProblem
-from mfg_pde.config.solver_config import create_research_config
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
-from mfg_pde.visualization import plot_results
+from mfgarchon.core import LQMFGProblem
+from mfgarchon.config.solver_config import create_research_config
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.visualization import plot_results
 
 # Setup
 problem = LQMFGProblem(Nx=100, Nt=100, T=1.0, alpha=1.0, beta=1.0)
@@ -407,8 +407,8 @@ plot_results(result, problem)
 **After**:
 ```python
 # research_script.py (Phase 3)
-from mfg_pde import solve_mfg, ExampleMFGProblem
-from mfg_pde.visualization import plot_results
+from mfgarchon import solve_mfg, ExampleMFGProblem
+from mfgarchon.visualization import plot_results
 
 # Setup
 problem = ExampleMFGProblem(nx=100, nt=100, T=1.0)
@@ -430,9 +430,9 @@ plot_results(result, problem)
 ```python
 # parameter_sweep.py (Phase 2)
 import numpy as np
-from mfg_pde.core import LQMFGProblem
-from mfg_pde.config.solver_config import create_fast_config
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.core import LQMFGProblem
+from mfgarchon.config.solver_config import create_fast_config
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
 
 results = []
 for alpha in np.linspace(0.1, 2.0, 20):
@@ -451,7 +451,7 @@ for alpha in np.linspace(0.1, 2.0, 20):
 ```python
 # parameter_sweep.py (Phase 3)
 import numpy as np
-from mfg_pde import solve_mfg, ExampleMFGProblem
+from mfgarchon import solve_mfg, ExampleMFGProblem
 
 results = []
 for alpha in np.linspace(0.1, 2.0, 20):
@@ -472,8 +472,8 @@ for alpha in np.linspace(0.1, 2.0, 20):
 **Before**:
 ```python
 # custom_hamiltonian.py (Phase 2)
-from mfg_pde.core import CustomMFGProblem
-from mfg_pde.core.base_components import Hamiltonian
+from mfgarchon.core import CustomMFGProblem
+from mfgarchon.core.base_components import Hamiltonian
 
 def custom_H(t, x, p, m):
     """Custom Hamiltonian: H(p, m) = |p|^2 / (2m)"""
@@ -491,8 +491,8 @@ problem = CustomMFGProblem(
 **After**:
 ```python
 # custom_hamiltonian.py (Phase 3)
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.core import Hamiltonian
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.core import Hamiltonian
 
 def custom_H(t, x, p, m, backend_module):
     """Custom Hamiltonian: H(p, m) = |p|^2 / (2m)"""
@@ -518,7 +518,7 @@ problem = ExampleMFGProblem(
 **Before** (Phase 2 - Limited options):
 ```python
 # config.py (Phase 2)
-from mfg_pde.config.solver_config import (
+from mfgarchon.config.solver_config import (
     MFGSolverConfig,
     PicardConfig,
     HJBConfig,
@@ -537,13 +537,13 @@ config = MFGSolverConfig(
 
 **Option 1: Presets** (Quick prototyping)
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 config = presets.fast_solver()
 ```
 
 **Option 2: Builder** (Programmatic)
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 config = (
     ConfigBuilder()
     .solver_hjb(method="fdm", accuracy_order=2)
@@ -567,7 +567,7 @@ picard:
 ```
 
 ```python
-from mfg_pde.config import load_solver_config
+from mfgarchon.config import load_solver_config
 config = load_solver_config("experiments/baseline.yaml")
 ```
 
@@ -581,7 +581,7 @@ config = load_solver_config("experiments/baseline.yaml")
 
 **Symptom**:
 ```python
-ImportError: cannot import name 'LQMFGProblem' from 'mfg_pde.core'
+ImportError: cannot import name 'LQMFGProblem' from 'mfgarchon.core'
 ```
 
 **Cause**: Specialized problem classes have been consolidated into `ExampleMFGProblem`
@@ -589,11 +589,11 @@ ImportError: cannot import name 'LQMFGProblem' from 'mfg_pde.core'
 **Solution**:
 ```python
 # Before
-from mfg_pde.core import LQMFGProblem
+from mfgarchon.core import LQMFGProblem
 problem = LQMFGProblem(...)
 
 # After
-from mfg_pde import ExampleMFGProblem
+from mfgarchon import ExampleMFGProblem
 problem = ExampleMFGProblem(...)
 ```
 
@@ -629,7 +629,7 @@ ValidationError: Unknown configuration parameter 'convergence_tolerance'
 config = MFGSolverConfig(convergence_tolerance=1e-6)
 
 # After (Phase 3)
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 config = ConfigBuilder().picard(tolerance=1e-6).build()
 ```
 
@@ -724,8 +724,8 @@ Based on comprehensive benchmarking (see `docs/development/PHASE_3_PERFORMANCE_V
 - None - Phase 3 is fully backward compatible
 
 ⚠️ **Deprecated** (will be removed in v0.11.0):
-- Factory functions in `mfg_pde.config.solver_config` (use `presets` instead)
-- Specialized problem classes in `mfg_pde.core` (use `ExampleMFGProblem` instead)
+- Factory functions in `mfgarchon.config.solver_config` (use `presets` instead)
+- Specialized problem classes in `mfgarchon.core` (use `ExampleMFGProblem` instead)
 - Manual solver instantiation patterns (use `solve_mfg()` instead)
 
 ### Deprecation Timeline
@@ -753,7 +753,7 @@ Based on comprehensive benchmarking (see `docs/development/PHASE_3_PERFORMANCE_V
 
 ### Issues
 
-- **GitHub Issues**: https://github.com/anthropics/mfg-pde/issues
+- **GitHub Issues**: https://github.com/anthropics/mfgarchon/issues
 - **Migration Questions**: Label with `migration` + `phase-3`
 
 ---
@@ -776,7 +776,7 @@ Use this checklist to track your migration progress:
 
 ### Low Priority (Nice-to-Have)
 
-- [ ] Update imports to use `from mfg_pde import ...` pattern
+- [ ] Update imports to use `from mfgarchon import ...` pattern
 - [ ] Remove deprecation warnings from logs
 - [ ] Adopt Phase 3 naming conventions throughout codebase
 
@@ -784,5 +784,5 @@ Use this checklist to track your migration progress:
 
 **Migration Guide Version**: 1.0
 **Last Updated**: 2025-11-03
-**Applies to**: MFG_PDE v0.9.0
+**Applies to**: MFGarchon v0.9.0
 **Next Review**: v0.10.0 release

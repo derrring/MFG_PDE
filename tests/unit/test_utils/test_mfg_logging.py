@@ -1,5 +1,5 @@
 """
-Unit tests for mfg_pde.utils.mfg_logging module.
+Unit tests for mfgarchon.utils.mfg_logging module.
 
 Tests include:
 - Thread safety of logger creation (Issue #620)
@@ -14,8 +14,8 @@ import logging
 
 import pytest
 
-from mfg_pde.utils.mfg_logging import get_logger
-from mfg_pde.utils.mfg_logging.logger import MFGLogger
+from mfgarchon.utils.mfg_logging import get_logger
+from mfgarchon.utils.mfg_logging.logger import MFGLogger
 
 
 class TestThreadSafety:

@@ -7,8 +7,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.acceleration.torch_utils import HAS_MPS
-from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
+from mfgarchon.utils.acceleration.torch_utils import HAS_MPS
+from mfgarchon.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
 
 pytestmark = [pytest.mark.optional_torch, pytest.mark.benchmark]
 

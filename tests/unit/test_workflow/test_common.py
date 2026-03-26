@@ -1,4 +1,4 @@
-"""Tests for mfg_pde.workflow.common — shared workflow utilities.
+"""Tests for mfgarchon.workflow.common — shared workflow utilities.
 
 Issue #621: Consolidate duplicate patterns in workflow/ module.
 """
@@ -16,7 +16,7 @@ import numpy as np
 if TYPE_CHECKING:
     from pathlib import Path
 
-from mfg_pde.workflow.common import (
+from mfgarchon.workflow.common import (
     ExecutionStatus,
     serialize_value,
     setup_workflow_logging,
@@ -42,8 +42,8 @@ class TestExecutionStatus:
 
     def test_execution_status_backward_compat(self):
         """ExperimentStatus and WorkflowStatus aliases resolve to ExecutionStatus."""
-        from mfg_pde.workflow.experiment_tracker import ExperimentStatus
-        from mfg_pde.workflow.workflow_manager import WorkflowStatus
+        from mfgarchon.workflow.experiment_tracker import ExperimentStatus
+        from mfgarchon.workflow.workflow_manager import WorkflowStatus
 
         assert ExperimentStatus is ExecutionStatus
         assert WorkflowStatus is ExecutionStatus
@@ -127,7 +127,7 @@ class TestSetupWorkflowLogging:
         log_file = tmp_path / "test.log"
         bare = self._bare_logger("test_file_only")
 
-        with patch("mfg_pde.workflow.common.get_logger", return_value=bare):
+        with patch("mfgarchon.workflow.common.get_logger", return_value=bare):
             logger = setup_workflow_logging("test_file_only", log_file)
 
         assert isinstance(logger, logging.Logger)
@@ -148,7 +148,7 @@ class TestSetupWorkflowLogging:
         log_file = tmp_path / "test_console.log"
         bare = self._bare_logger("test_with_console")
 
-        with patch("mfg_pde.workflow.common.get_logger", return_value=bare):
+        with patch("mfgarchon.workflow.common.get_logger", return_value=bare):
             logger = setup_workflow_logging("test_with_console", log_file, console=True)
 
         file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]

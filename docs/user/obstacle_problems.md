@@ -22,7 +22,7 @@
 
 ## Introduction
 
-This tutorial teaches you how to solve **obstacle problems** and **variational inequalities** using MFG_PDE. These problems arise when solutions must satisfy inequality constraints (e.g., $u(t,x) \geq \psi(x)$) rather than just equalities.
+This tutorial teaches you how to solve **obstacle problems** and **variational inequalities** using MFGarchon. These problems arise when solutions must satisfy inequality constraints (e.g., $u(t,x) \geq \psi(x)$) rather than just equalities.
 
 ### What You'll Learn
 
@@ -108,10 +108,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import ObstacleConstraint, neumann_bc
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import ObstacleConstraint, neumann_bc
 
 # Parameters
 x_min, x_max = 0.0, 1.0
@@ -332,7 +332,7 @@ where:
 ### Step 1: Generate Maze and Capacity Field
 
 ```python
-from mfg_pde.geometry.graph import MazeConfig, MazeGeometry
+from mfgarchon.geometry.graph import MazeConfig, MazeGeometry
 from examples.advanced.capacity_constrained_mfg import CapacityField
 
 # Generate maze
@@ -364,7 +364,7 @@ print(f"Mean capacity: {capacity.mean_capacity:.3f}")
 
 ### Step 2: Choose Congestion Model
 
-MFG_PDE provides three congestion models:
+MFGarchon provides three congestion models:
 
 | Model | Formula | Derivative | Best For |
 |:------|:--------|:-----------|:---------|
@@ -421,7 +421,7 @@ print(f"Congestion weight γ: {problem.congestion_weight}")
 # TODO: Full solver integration pending
 # For now, this demonstrates the API pattern
 
-from mfg_pde.factory import create_fast_solver
+from mfgarchon.factory import create_fast_solver
 
 # Create solver (will use problem's Hamiltonian with congestion term)
 solver = create_fast_solver(problem)
@@ -893,5 +893,5 @@ for picard_iter in range(max_picard):
 ---
 
 **Last Updated**: 2026-01-18
-**Author**: MFG_PDE Documentation Team
+**Author**: MFGarchon Documentation Team
 **Related Issues**: #591 (Variational Constraints), #594 (Documentation)

@@ -2,7 +2,7 @@
 
 **Date**: 2025-12-03
 **Context**: Analysis of GFDM+Particle solver performance in 2D crowd evacuation experiment
-**Related Code**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`, `mfg_pde/alg/numerical/fp_solvers/fp_particle.py`
+**Related Code**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`, `mfgarchon/alg/numerical/fp_solvers/fp_particle.py`
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-11
 **Status**: IN PROGRESS
-**Scope**: Eliminate 149 hasattr violations in `mfg_pde/alg/` directory
+**Scope**: Eliminate 149 hasattr violations in `mfgarchon/alg/` directory
 
 ## Background
 
@@ -76,7 +76,7 @@ if hasattr(boundary_conditions, "is_uniform"):
         bc_type = boundary_conditions.type
 
 # NEW: Use modern BoundaryConditions API directly
-from mfg_pde.geometry.boundary import BoundaryConditions
+from mfgarchon.geometry.boundary import BoundaryConditions
 if isinstance(boundary_conditions, BoundaryConditions):
     # Use modern API
     bc_type = boundary_conditions.get_uniform_type()
@@ -94,7 +94,7 @@ else:
 - `hasattr(self.env, "get_population_state")` - 6
 
 **Refactoring Strategy**:
-Define `MFGEnvironmentProtocol` in `mfg_pde/alg/reinforcement/types.py`:
+Define `MFGEnvironmentProtocol` in `mfgarchon/alg/reinforcement/types.py`:
 
 ```python
 from typing import Protocol, runtime_checkable
@@ -172,7 +172,7 @@ else:
 **Exception**: For our own backend abstraction layer, use protocols instead:
 
 ```python
-# mfg_pde/backends/protocol.py
+# mfgarchon/backends/protocol.py
 from typing import Protocol
 
 class BackendProtocol(Protocol):
@@ -193,34 +193,34 @@ if isinstance(backend, BackendProtocol):
 
 **Target**: Coupling and base solver modules (core infrastructure)
 
-1. **mfg_pde/alg/numerical/coupling/** - 30+ violations
+1. **mfgarchon/alg/numerical/coupling/** - 30+ violations
    - `fictitious_play.py` - 15 violations
    - `fixed_point_iterator.py` - 10 violations
    - `hybrid_fp_particle_hjb_fdm.py` - 3 violations
    - `base_mfg.py` - 2 violations
 
-2. **mfg_pde/alg/numerical/fp_solvers/base_fp.py** - 1 violation
+2. **mfgarchon/alg/numerical/fp_solvers/base_fp.py** - 1 violation
 
 ### Medium Priority (Days 4-5)
 
 **Target**: FP and HJB solver implementations
 
-3. **mfg_pde/alg/numerical/fp_solvers/** - 20+ violations
+3. **mfgarchon/alg/numerical/fp_solvers/** - 20+ violations
    - `fp_fdm.py` - 6 violations
    - `fp_fdm_time_stepping.py` - 4 violations
    - Various algorithm files - 10+ violations
 
-4. **mfg_pde/alg/numerical/network_solvers/** - 1 violation
+4. **mfgarchon/alg/numerical/network_solvers/** - 1 violation
    - `fp_network.py`
 
-5. **mfg_pde/alg/numerical/stochastic/** - 1 violation
+5. **mfgarchon/alg/numerical/stochastic/** - 1 violation
    - `common_noise_solver.py`
 
 ### Lower Priority (Day 6+)
 
 **Target**: RL algorithms (separate ecosystem)
 
-6. **mfg_pde/alg/reinforcement/** - 80+ violations
+6. **mfgarchon/alg/reinforcement/** - 80+ violations
    - Define `MFGEnvironmentProtocol` first
    - Then refactor RL algorithms systematically
 
@@ -230,7 +230,7 @@ if isinstance(backend, BackendProtocol):
 
 **Target**: Backend compatibility checks
 
-7. **mfg_pde/alg/numerical/particle_utils.py** - Backend feature detection
+7. **mfgarchon/alg/numerical/particle_utils.py** - Backend feature detection
    - `hasattr(xp, "clip")`, `hasattr(xp, "manual_seed")`, etc.
    - Keep these with explanatory comments
 
@@ -239,12 +239,12 @@ if isinstance(backend, BackendProtocol):
 ### Phase 2A: Coupling Modules (Days 1-2)
 
 **Files**:
-- `mfg_pde/alg/numerical/coupling/fictitious_play.py` (15 violations)
-- `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py` (10 violations)
-- `mfg_pde/alg/numerical/coupling/hybrid_fp_particle_hjb_fdm.py` (3 violations)
+- `mfgarchon/alg/numerical/coupling/fictitious_play.py` (15 violations)
+- `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py` (10 violations)
+- `mfgarchon/alg/numerical/coupling/hybrid_fp_particle_hjb_fdm.py` (3 violations)
 
 **Strategy**:
-1. Create `HJBSolverProtocol` and `FPSolverProtocol` in `mfg_pde/types/protocols.py`
+1. Create `HJBSolverProtocol` and `FPSolverProtocol` in `mfgarchon/types/protocols.py`
 2. Replace solver method checks with try/except
 3. Replace problem API checks with try/except or getattr
 4. Add logging for fallbacks
@@ -255,9 +255,9 @@ if isinstance(backend, BackendProtocol):
 ### Phase 2B: FP Solver Modules (Days 3-4)
 
 **Files**:
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py` (6 violations)
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py` (4 violations)
-- `mfg_pde/alg/numerical/fp_solvers/base_fp.py` (1 violation)
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py` (6 violations)
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py` (4 violations)
+- `mfgarchon/alg/numerical/fp_solvers/base_fp.py` (1 violation)
 - Algorithm files: `fp_fdm_alg_*.py` (10+ violations)
 
 **Strategy**:
@@ -271,7 +271,7 @@ if isinstance(backend, BackendProtocol):
 ### Phase 2C: RL Algorithms (Days 5-6, Optional)
 
 **Files**:
-- `mfg_pde/alg/reinforcement/` (80+ violations)
+- `mfgarchon/alg/reinforcement/` (80+ violations)
 
 **Strategy**:
 1. Define `MFGEnvironmentProtocol`
@@ -324,7 +324,7 @@ if isinstance(backend, BackendProtocol):
   - Initialized U_solution/M_solution to None (eliminated hasattr in get_results())
 
 **Infrastructure Created**:
-- **HJBSolverProtocol** and **FPSolverProtocol** in `mfg_pde/types/protocols.py`
+- **HJBSolverProtocol** and **FPSolverProtocol** in `mfgarchon/types/protocols.py`
 - Reusable `_get_initial_and_terminal_conditions()` pattern
 - Signature caching pattern for solver method detection
 

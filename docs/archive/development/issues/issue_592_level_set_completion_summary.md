@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Successfully implemented production-ready level set method infrastructure for free boundary problems in MFG_PDE. All core functionality complete, validated through smoke tests and 18 unit tests (100% passing).
+Successfully implemented production-ready level set method infrastructure for free boundary problems in MFGarchon. All core functionality complete, validated through smoke tests and 18 unit tests (100% passing).
 
 **Key Achievement**: Dimension-agnostic level set framework leveraging 95% of existing operator infrastructure from Issue #595, with zero breaking changes.
 
@@ -18,7 +18,7 @@ Successfully implemented production-ready level set method infrastructure for fr
 
 ### Phase 3.1: Level Set Infrastructure ✅
 
-**Module**: `mfg_pde/geometry/level_set/`
+**Module**: `mfgarchon/geometry/level_set/`
 
 #### 1. Core Evolution (`core.py` - 510 lines)
 
@@ -217,11 +217,11 @@ for t in timesteps:
 ### New Files (9 files, ~2,850 lines total)
 
 **Infrastructure** (5 files):
-1. `mfg_pde/geometry/level_set/__init__.py` (60 lines)
-2. `mfg_pde/geometry/level_set/core.py` (510 lines)
-3. `mfg_pde/geometry/level_set/reinitialization.py` (330 lines)
-4. `mfg_pde/geometry/level_set/curvature.py` (230 lines)
-5. `mfg_pde/geometry/level_set/time_dependent_domain.py` (400 lines)
+1. `mfgarchon/geometry/level_set/__init__.py` (60 lines)
+2. `mfgarchon/geometry/level_set/core.py` (510 lines)
+3. `mfgarchon/geometry/level_set/reinitialization.py` (330 lines)
+4. `mfgarchon/geometry/level_set/curvature.py` (230 lines)
+5. `mfgarchon/geometry/level_set/time_dependent_domain.py` (400 lines)
 
 **Examples** (2 files):
 6. `examples/advanced/stefan_problem_1d.py` (~450 lines)
@@ -330,7 +330,7 @@ for t in timesteps:
 
 ---
 
-## Integration with MFG_PDE
+## Integration with MFGarchon
 
 ### Dependency Graph
 
@@ -344,7 +344,7 @@ Leverages: GradientOperator, DivergenceOperator, LaplacianOperator
 
 ### API Consistency
 
-Level set methods follow established MFG_PDE patterns:
+Level set methods follow established MFGarchon patterns:
 
 1. **Operator Pattern**
    ```python

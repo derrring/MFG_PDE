@@ -2,11 +2,11 @@
 
 **Status**: ✅ COMPLETED - Production Reference
 **Created**: 2025-09-25
-**Context**: MFG_PDE Strategic Typing Excellence (366 → 0 errors)
+**Context**: MFGarchon Strategic Typing Excellence (366 → 0 errors)
 
 ## 🎯 Overview
 
-This document provides specific code patterns and examples for implementing strategic typing in scientific computing codebases, based on the successful MFG_PDE framework implementation.
+This document provides specific code patterns and examples for implementing strategic typing in scientific computing codebases, based on the successful MFGarchon framework implementation.
 
 ## 🔧 Strategic Ignore Patterns
 
@@ -170,7 +170,7 @@ if TYPE_CHECKING:
     DictConfig = dict[str, Any]
 else:
     # Runtime conditional import
-    from mfg_pde.config.omegaconf_manager import create_config  # type: ignore[attr-defined]
+    from mfgarchon.config.omegaconf_manager import create_config  # type: ignore[attr-defined]
 ```
 
 **Why Strategic**: TYPE_CHECKING vs runtime import contexts require strategic handling for complex configuration systems.
@@ -219,7 +219,7 @@ def compute_metric(edges: list[float]) -> float:
 3. **Is it specific?** Uses specific error code rather than general ignore?
 4. **Is it strategic?** Preserves code clarity while handling type system limitations?
 
-## 📊 Pattern Usage Statistics (MFG_PDE)
+## 📊 Pattern Usage Statistics (MFGarchon)
 
 Based on the successful 366 → 0 error reduction:
 
@@ -241,10 +241,10 @@ Based on the successful 366 → 0 error reduction:
 
 ```bash
 # Find all strategic ignores for review
-grep -r "# type: ignore" mfg_pde/ | grep -E "\[(misc|type-var|operator|arg-type|assignment|return-value|import-untyped)\]"
+grep -r "# type: ignore" mfgarchon/ | grep -E "\[(misc|type-var|operator|arg-type|assignment|return-value|import-untyped)\]"
 
 # Check for unused ignores (varies by environment)
-mypy mfg_pde --ignore-missing-imports --show-error-codes | grep "unused-ignore"
+mypy mfgarchon --ignore-missing-imports --show-error-codes | grep "unused-ignore"
 ```
 
 ### Quarterly Review Process
@@ -273,12 +273,12 @@ max_edge = max(edges)  # type: ignore[type-var]  # TODO: Remove when MyPy 1.x su
 
 Strategic typing patterns enable **100% MyPy compliance** in complex scientific computing codebases while preserving code clarity and development velocity.
 
-The key is **strategic application**: use ignores to handle type system limitations, not to avoid proper typing. This approach delivered unprecedented results in the MFG_PDE framework and provides a blueprint for similar scientific computing projects.
+The key is **strategic application**: use ignores to handle type system limitations, not to avoid proper typing. This approach delivered unprecedented results in the MFGarchon framework and provides a blueprint for similar scientific computing projects.
 
 **Remember**: Strategic ignores are a **bridge to excellence**, not a destination. They enable immediate typing benefits while the ecosystem continues to evolve toward even better type safety.
 
 ---
 
-**Pattern Status**: ✅ Production-tested in MFG_PDE framework
+**Pattern Status**: ✅ Production-tested in MFGarchon framework
 **Maintenance**: Review patterns quarterly for ecosystem evolution
 **Applicability**: Scientific computing, mathematical software, complex array operations

@@ -13,10 +13,10 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary.applicator_base import DiscretizationType
-from mfg_pde.geometry.boundary.applicator_implicit import ImplicitApplicator
-from mfg_pde.geometry.boundary.applicator_meshfree import MeshfreeApplicator
-from mfg_pde.geometry.protocol import GeometryType
+from mfgarchon.geometry.boundary.applicator_base import DiscretizationType
+from mfgarchon.geometry.boundary.applicator_implicit import ImplicitApplicator
+from mfgarchon.geometry.boundary.applicator_meshfree import MeshfreeApplicator
+from mfgarchon.geometry.protocol import GeometryType
 
 # ---------------------------------------------------------------------------
 # Test fixture: lightweight mock geometry implementing GeometryProtocol
@@ -145,7 +145,7 @@ class TestBCApplication:
 
     def test_apply_dirichlet(self, applicator, geometry, grid_points):
         """Dirichlet BC sets boundary values to prescribed value."""
-        from mfg_pde.geometry.boundary import dirichlet_bc
+        from mfgarchon.geometry.boundary import dirichlet_bc
 
         field = np.linalg.norm(grid_points - _CENTER, axis=-1)
         bc = dirichlet_bc(dimension=2, value=0.0)
@@ -157,7 +157,7 @@ class TestBCApplication:
 
     def test_apply_neumann_no_flux(self, applicator, geometry, grid_points):
         """Neumann zero-flux BC uses interpolation along normals."""
-        from mfg_pde.geometry.boundary import neumann_bc
+        from mfgarchon.geometry.boundary import neumann_bc
 
         field = np.linalg.norm(grid_points - _CENTER, axis=-1)
         bc = neumann_bc(dimension=2)
@@ -169,7 +169,7 @@ class TestBCApplication:
 
     def test_apply_time_positional(self, applicator, grid_points):
         """time parameter can be passed positionally (LSP compliance)."""
-        from mfg_pde.geometry.boundary import dirichlet_bc
+        from mfgarchon.geometry.boundary import dirichlet_bc
 
         field = np.ones(len(grid_points))
         bc = dirichlet_bc(dimension=2, value=0.0)
@@ -216,14 +216,14 @@ class TestDispatch:
 
     def test_dispatch_implicit_geometry(self, geometry):
         """get_applicator_for_geometry returns ImplicitApplicator for MESHFREE + IMPLICIT."""
-        from mfg_pde.geometry.boundary.dispatch import get_applicator_for_geometry
+        from mfgarchon.geometry.boundary.dispatch import get_applicator_for_geometry
 
         applicator = get_applicator_for_geometry(geometry, discretization="MESHFREE")
         assert isinstance(applicator, ImplicitApplicator)
 
     def test_dispatch_gfdm_uses_meshfree(self, geometry):
         """get_applicator_for_geometry returns MeshfreeApplicator for GFDM."""
-        from mfg_pde.geometry.boundary.dispatch import get_applicator_for_geometry
+        from mfgarchon.geometry.boundary.dispatch import get_applicator_for_geometry
 
         applicator = get_applicator_for_geometry(geometry, discretization="GFDM")
         assert isinstance(applicator, MeshfreeApplicator)

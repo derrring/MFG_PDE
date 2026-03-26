@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-Phase 3 focuses on **validating dimension-agnostic FDM solvers** and **optimizing performance** for practical 2D/3D MFG applications. This phase establishes MFG_PDE's nD solvers as production-ready through systematic benchmarking, validation, and performance enhancement.
+Phase 3 focuses on **validating dimension-agnostic FDM solvers** and **optimizing performance** for practical 2D/3D MFG applications. This phase establishes MFGarchon's nD solvers as production-ready through systematic benchmarking, validation, and performance enhancement.
 
 **Deliverables**:
 1. Validation suite comparing FDM vs GFDM on canonical problems
@@ -240,7 +240,7 @@ benchmarks/performance/
 **Priority**: LOW (only if Weeks 1-3 finish early)
 
 **File**:
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid_parallel.py`
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm_multid_parallel.py`
 
 **Approach**: Start with Joblib (simplest), defer JAX to future work.
 
@@ -426,7 +426,7 @@ Phase 3 is complete when:
 ### Risk 4: Insufficient Baseline Data (GFDM)
 **Likelihood**: Low
 **Impact**: Medium
-**Mitigation**: GFDM solvers already exist in MFG_PDE. If needed, use published results from literature as baseline.
+**Mitigation**: GFDM solvers already exist in MFGarchon. If needed, use published results from literature as baseline.
 
 ---
 
@@ -436,7 +436,7 @@ Phase 3 is complete when:
 - [ ] `benchmarks/validation/` - Validation test suite
 - [ ] `benchmarks/performance/` - Performance benchmarking harness
 - [ ] `examples/multidimensional/` - Example gallery (5+ examples)
-- [ ] (Optional) `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid_parallel.py`
+- [ ] (Optional) `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm_multid_parallel.py`
 
 ### Documentation
 - [ ] `docs/user/guides/multidimensional_mfg_guide.md` - User guide (2000+ lines)

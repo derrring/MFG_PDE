@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/memory_management.py
+Unit tests for mfgarchon/utils/memory_management.py
 
 Tests comprehensive memory monitoring and management utilities including:
 - MemoryStats dataclass
@@ -9,7 +9,7 @@ Tests comprehensive memory monitoring and management utilities including:
 - MemoryProfiler class
 - Utility functions (estimation, system checks, reporting)
 
-Coverage target: mfg_pde/utils/memory_management.py (379 lines, likely 0% -> 70%+)
+Coverage target: mfgarchon/utils/memory_management.py (379 lines, likely 0% -> 70%+)
 """
 
 import time
@@ -20,7 +20,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.memory_management import (
+from mfgarchon.utils.memory_management import (
     MemoryMonitor,
     MemoryProfiler,
     MemoryStats,

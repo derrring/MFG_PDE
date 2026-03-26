@@ -7,7 +7,7 @@
 
 ## Overview
 
-The geometry-first API is the **recommended way** to construct MFG problems in MFG_PDE. Instead of manually specifying grid parameters in `MFGProblem`, you first create a geometry object and pass it to `MFGProblem`.
+The geometry-first API is the **recommended way** to construct MFG problems in MFGarchon. Instead of manually specifying grid parameters in `MFGProblem`, you first create a geometry object and pass it to `MFGProblem`.
 
 As of v0.16.0, `MFGProblem.geometry` is **always non-None** after initialization, and all spatial information is derived from the geometry object. Legacy attributes (`xmin`, `xmax`, `Nx`, `dx`, etc.) emit `DeprecationWarning` when accessed.
 
@@ -38,8 +38,8 @@ As of v0.16.0, `MFGProblem.geometry` is **always non-None** after initialization
 
 **New API** (recommended):
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.core import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.core import MFGProblem
 
 # Create 2D grid: [0,10] × [0,5]
 geometry = TensorProductGrid(
@@ -67,8 +67,8 @@ problem = MFGProblem(
 
 **New API**:
 ```python
-from mfg_pde.geometry import Domain1D
-from mfg_pde.core import MFGProblem
+from mfgarchon.geometry import Domain1D
+from mfgarchon.core import MFGProblem
 
 # Create 1D periodic domain
 domain = Domain1D(xmin=0.0, xmax=1.0, boundary_conditions="periodic")
@@ -89,8 +89,8 @@ problem = MFGProblem(
 
 **Hyperrectangle** (box domain via signed distance function):
 ```python
-from mfg_pde.geometry.implicit import Hyperrectangle
-from mfg_pde.core import MFGProblem
+from mfgarchon.geometry.implicit import Hyperrectangle
+from mfgarchon.core import MFGProblem
 import numpy as np
 
 # Create [0,1]² box
@@ -101,8 +101,8 @@ problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
 
 **Hypersphere** (sphere via signed distance function):
 ```python
-from mfg_pde.geometry.implicit import Hypersphere
-from mfg_pde.core import MFGProblem
+from mfgarchon.geometry.implicit import Hypersphere
+from mfgarchon.core import MFGProblem
 
 # Create unit sphere centered at origin
 geometry = Hypersphere(center=[0, 0], radius=1.0)
@@ -113,8 +113,8 @@ problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
 ### 4. Maze Geometry
 
 ```python
-from mfg_pde.geometry.graph import PerfectMazeGenerator
-from mfg_pde.core import MFGProblem
+from mfgarchon.geometry.graph import PerfectMazeGenerator
+from mfgarchon.core import MFGProblem
 
 # Generate 10×10 maze
 maze_gen = PerfectMazeGenerator(rows=10, cols=10)
@@ -126,8 +126,8 @@ problem = MFGProblem(geometry=geometry, T=1.0, Nt=100, sigma=0.1)
 ### 5. High-Dimensional Grids
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.core import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.core import MFGProblem
 
 # Create 4D grid (will emit performance warning)
 geometry = TensorProductGrid(
@@ -146,7 +146,7 @@ All geometry objects implement the `GeometryProtocol`:
 ```python
 from typing import Protocol
 from numpy.typing import NDArray
-from mfg_pde.geometry.protocol import GeometryType
+from mfgarchon.geometry.protocol import GeometryType
 
 class GeometryProtocol(Protocol):
     """Protocol for geometry objects usable in MFGProblem."""
@@ -182,8 +182,8 @@ class GeometryProtocol(Protocol):
 **Modern pattern** - Use geometry methods:
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Create problem with geometry-first API
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
@@ -252,8 +252,8 @@ Run this script to test geometry-first API with your geometry type:
 #!/usr/bin/env python
 """Test geometry-first API."""
 import warnings
-from mfg_pde.core import MFGProblem
-from mfg_pde.geometry import TensorProductGrid  # or your geometry
+from mfgarchon.core import MFGProblem
+from mfgarchon.geometry import TensorProductGrid  # or your geometry
 
 # Suppress deprecation warnings (we're using new API)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -284,7 +284,7 @@ You can create custom geometry types by implementing `GeometryProtocol`:
 from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
-from mfg_pde.geometry.protocol import GeometryType
+from mfgarchon.geometry.protocol import GeometryType
 
 @dataclass
 class MyCustomGeometry:

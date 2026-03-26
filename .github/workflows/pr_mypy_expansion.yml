@@ -8,8 +8,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'mfg_pde/factory/solver_factory.py'
-      - 'mfg_pde/geometry/base_geometry.py'
+      - 'mfgarchon/factory/solver_factory.py'
+      - 'mfgarchon/geometry/base_geometry.py'
       - '.pre-commit-config.yaml'
 
 jobs:
@@ -34,19 +34,19 @@ jobs:
     - name: Check changed Python files with Ruff
       run: |
         echo "🔍 Checking only PR-modified files with Ruff..."
-        ruff check mfg_pde/factory/solver_factory.py mfg_pde/geometry/base_geometry.py
+        ruff check mfgarchon/factory/solver_factory.py mfgarchon/geometry/base_geometry.py
         echo "✅ All changed files pass Ruff checks"
 
     - name: Check changed Python files with mypy
       run: |
         echo "🔍 Checking only PR-modified files with mypy..."
-        mypy mfg_pde/factory/solver_factory.py mfg_pde/geometry/base_geometry.py --follow-imports=silent --ignore-missing-imports
+        mypy mfgarchon/factory/solver_factory.py mfgarchon/geometry/base_geometry.py --follow-imports=silent --ignore-missing-imports
         echo "✅ All changed files pass mypy checks"
 
     - name: Verify mypy coverage expansion
       run: |
         echo "🔍 Testing expanded mypy coverage pattern..."
-        mypy mfg_pde/simple.py mfg_pde/core/mfg_problem.py mfg_pde/types/ mfg_pde/geometry/base_geometry.py mfg_pde/factory/solver_factory.py --follow-imports=silent --ignore-missing-imports
+        mypy mfgarchon/simple.py mfgarchon/core/mfg_problem.py mfgarchon/types/ mfgarchon/geometry/base_geometry.py mfgarchon/factory/solver_factory.py --follow-imports=silent --ignore-missing-imports
         echo "✅ All files in expanded mypy coverage pass"
 
     - name: Summary

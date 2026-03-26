@@ -2,12 +2,12 @@
 
 **Status**: Planning Phase
 **Target**: v0.13.0
-**Author**: MFG_PDE Development Team
+**Author**: MFGarchon Development Team
 **Created**: 2025-11-23
 
 ## Executive Summary
 
-MFG_PDE currently only supports **uniform** boundary conditions (periodic, Dirichlet, Neumann) across the entire domain boundary. This document proposes a design for **mixed boundary conditions**, where different BC types apply to different boundary segments.
+MFGarchon currently only supports **uniform** boundary conditions (periodic, Dirichlet, Neumann) across the entire domain boundary. This document proposes a design for **mixed boundary conditions**, where different BC types apply to different boundary segments.
 
 **Critical Use Case**: 2D crowd motion with exit (Dirichlet `u=0`) and reflective walls (Neumann `∂u/∂n=0`).
 
@@ -17,7 +17,7 @@ MFG_PDE currently only supports **uniform** boundary conditions (periodic, Diric
 
 ### 1.1 Existing BC Structure
 
-**File**: `mfg_pde/geometry/boundary/bc_1d.py`
+**File**: `mfgarchon/geometry/boundary/bc_1d.py`
 
 ```python
 @dataclass
@@ -55,7 +55,7 @@ class BoundaryConditions:
 
 ### 2.2 New BC Structure
 
-**File**: `mfg_pde/geometry/boundary/mixed_bc.py`
+**File**: `mfgarchon/geometry/boundary/mixed_bc.py`
 
 ```python
 from dataclasses import dataclass
@@ -183,7 +183,7 @@ class MixedBoundaryConditions:
 **Backward Compatibility Wrapper**:
 
 ```python
-# In mfg_pde/geometry/__init__.py
+# In mfgarchon/geometry/__init__.py
 from .boundary.bc_1d import BoundaryConditions  # Legacy 1D
 from .boundary.mixed_bc import MixedBoundaryConditions, BCSegment, BCType
 
@@ -232,7 +232,7 @@ def create_boundary_conditions(
 
 ### 3.1 HJB FDM Solver Modifications
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 **Required Changes**:
 
@@ -281,7 +281,7 @@ def create_boundary_conditions(
 
 ### 3.2 FP FDM Solver Modifications
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 
 **Similar pattern**: BC enforcement in diffusion operator construction.
 
@@ -292,8 +292,8 @@ def create_boundary_conditions(
 ### 4.1 Protocol v1.4: 2D Crowd Motion
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import MixedBoundaryConditions, BCSegment, BCType
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import MixedBoundaryConditions, BCSegment, BCType
 
 # Define boundary segments
 exit_bc = BCSegment(
@@ -366,7 +366,7 @@ insulated_bc = BCSegment(
 ### 5.1 Phase 1: Core Infrastructure (Week 1)
 
 **Tasks**:
-1. ✅ Create `mfg_pde/geometry/boundary/mixed_bc.py`
+1. ✅ Create `mfgarchon/geometry/boundary/mixed_bc.py`
 2. ✅ Implement `BCSegment`, `BCType`, `MixedBoundaryConditions`
 3. ✅ Add factory function `create_boundary_conditions()`
 4. ✅ Write unit tests for region matching logic
@@ -504,8 +504,8 @@ Compare mixed BC solution against known analytical solutions (if available) or b
 ## 10. References
 
 - Protocol v1.4: `PROTOCOL_2D_CROWD_HJB.md`
-- Current BC implementation: `mfg_pde/geometry/boundary/bc_1d.py`
-- HJB FDM solver: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+- Current BC implementation: `mfgarchon/geometry/boundary/bc_1d.py`
+- HJB FDM solver: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 ---
 

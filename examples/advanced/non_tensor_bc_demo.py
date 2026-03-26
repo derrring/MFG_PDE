@@ -16,10 +16,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Patch
 
-from mfg_pde.geometry.boundary import BCSegment, mixed_bc
-from mfg_pde.geometry.boundary.types import BCType
-from mfg_pde.geometry.implicit import Hypersphere
-from mfg_pde.geometry.protocols import (
+from mfgarchon.geometry.boundary import BCSegment, mixed_bc
+from mfgarchon.geometry.boundary.types import BCType
+from mfgarchon.geometry.implicit import Hypersphere
+from mfgarchon.geometry.protocols import (
     SupportsBoundaryNormal,
     SupportsBoundaryProjection,
     SupportsLipschitz,

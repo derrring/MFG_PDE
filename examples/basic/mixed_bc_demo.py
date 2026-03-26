@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from mfg_pde.geometry import BCSegment, BCType, MixedBoundaryConditions
+from mfgarchon.geometry import BCSegment, BCType, MixedBoundaryConditions
 
 # Constants for the problem
 DOMAIN_SIZE = (10.0, 10.0)  # [0, 10] x [0, 10]

@@ -1,12 +1,12 @@
-# Contributing to MFG_PDE
+# Contributing to MFGarchon
 
-Thank you for your interest in contributing to the Mean Field Games Partial Differential Equations (MFG_PDE) library! This guide will help you understand our development workflow and coding standards.
+Thank you for your interest in contributing to the Mean Field Games Partial Differential Equations (MFGarchon) library! This guide will help you understand our development workflow and coding standards.
 
 ## Repository Structure
 
 Our codebase follows a strict organizational pattern:
 
-- **`mfg_pde/`** - Core package code only
+- **`mfgarchon/`** - Core package code only
 - **`tests/`** - Unit and integration tests (no demos)
 - **`examples/`** - Demonstration code organized by complexity:
   - `basic/` - Simple single-concept examples
@@ -21,11 +21,11 @@ Our codebase follows a strict organizational pattern:
 
 ### Import Conventions
 ```python
-# Preferred imports for MFG_PDE
-from mfg_pde import MFGProblem, BoundaryConditions
-from mfg_pde.factory import create_fast_solver
-from mfg_pde.config import create_fast_config
-from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
+# Preferred imports for MFGarchon
+from mfgarchon import MFGProblem, BoundaryConditions
+from mfgarchon.factory import create_fast_solver
+from mfgarchon.config import create_fast_config
+from mfgarchon.utils.mfg_logging import get_logger, configure_research_logging
 ```
 
 ### Text and Symbol Standards
@@ -41,7 +41,7 @@ from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
 
 ### Logging Standards
 ```python
-from mfg_pde.utils.mfg_logging import get_logger, configure_research_logging
+from mfgarchon.utils.mfg_logging import get_logger, configure_research_logging
 
 configure_research_logging("session_name", level="INFO")
 logger = get_logger(__name__)
@@ -57,7 +57,7 @@ logger = get_logger(__name__)
 # 1. Install pre-commit (one-time setup)
 pip install pre-commit
 
-# 2. Install the MFG_PDE hooks (from project root)
+# 2. Install the MFGarchon hooks (from project root)
 pre-commit install
 
 # 3. Run on all files (optional - hooks run automatically on commit)
@@ -73,7 +73,7 @@ Our `.pre-commit-config.yaml` uses **modern Ruff tooling** (10-100x faster than 
 This configuration is **the only supported approach** - it matches our CI/CD pipeline and provides optimal performance.
 
 ### Adding New Features
-1. **Core functionality**: Add to appropriate `mfg_pde/` subdirectory
+1. **Core functionality**: Add to appropriate `mfgarchon/` subdirectory
 2. **Examples**: Create in `examples/basic/` or `examples/advanced/`
 3. **Tests**: Add to `tests/unit/` or `tests/integration/`
 4. **Documentation**: Update relevant `docs/` category
@@ -146,7 +146,7 @@ This configuration is **the only supported approach** - it matches our CI/CD pip
 
 - Check existing documentation in `docs/`
 - Review examples in `examples/`
-- Look at existing code patterns in `mfg_pde/`
+- Look at existing code patterns in `mfgarchon/`
 - Open an issue for questions or bug reports
 
 ## Mathematical Background
@@ -161,4 +161,4 @@ For mathematical foundations, see `docs/theory/` directory.
 
 ---
 
-By contributing to MFG_PDE, you agree to maintain these standards and help build a high-quality, research-grade mathematical software library.
+By contributing to MFGarchon, you agree to maintain these standards and help build a high-quality, research-grade mathematical software library.

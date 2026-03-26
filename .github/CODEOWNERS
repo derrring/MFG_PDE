@@ -1,4 +1,4 @@
-# MFG_PDE Code Owners
+# MFGarchon Code Owners
 #
 # This file defines code ownership for automatic review assignment.
 # When a PR is created, GitHub will automatically request reviews from relevant owners.
@@ -7,16 +7,16 @@
 * @derrring
 
 # Core mathematical modules - require specialized review
-/mfg_pde/core/ @derrring
-/mfg_pde/alg/ @derrring
-/mfg_pde/geometry/ @derrring
+/mfgarchon/core/ @derrring
+/mfgarchon/alg/ @derrring
+/mfgarchon/geometry/ @derrring
 
 # Configuration and factory systems
-/mfg_pde/config/ @derrring
-/mfg_pde/factory/ @derrring
+/mfgarchon/config/ @derrring
+/mfgarchon/factory/ @derrring
 
 # Type system and infrastructure
-/mfg_pde/types/ @derrring
+/mfgarchon/types/ @derrring
 *.py @derrring
 
 # Documentation - allow broader contribution

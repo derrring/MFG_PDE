@@ -28,7 +28,7 @@
 
 ```python
 class HJBFDMSolver(BaseHJBSolver):
-    from mfg_pde.alg.base_solver import SchemeFamily
+    from mfgarchon.alg.base_solver import SchemeFamily
     _scheme_family = SchemeFamily.FDM
 ```
 

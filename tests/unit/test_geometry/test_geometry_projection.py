@@ -9,8 +9,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry import GeometryProjector, TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.geometry import GeometryProjector, TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 class TestGeometryProjectorBasics:
@@ -365,19 +365,19 @@ class TestProjectionRegistry:
 
     def setup_method(self):
         """Clear registry before each test."""
-        from mfg_pde.geometry import ProjectionRegistry
+        from mfgarchon.geometry import ProjectionRegistry
 
         ProjectionRegistry.clear()
 
     def teardown_method(self):
         """Clear registry after each test."""
-        from mfg_pde.geometry import ProjectionRegistry
+        from mfgarchon.geometry import ProjectionRegistry
 
         ProjectionRegistry.clear()
 
     def test_registry_registration(self):
         """Test basic registration of custom projector."""
-        from mfg_pde.geometry import ProjectionRegistry
+        from mfgarchon.geometry import ProjectionRegistry
 
         # Register a custom projector
         @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
@@ -390,7 +390,7 @@ class TestProjectionRegistry:
 
     def test_registry_lookup_exact_match(self):
         """Test registry lookup with exact type match."""
-        from mfg_pde.geometry import ProjectionRegistry
+        from mfgarchon.geometry import ProjectionRegistry
 
         # Register custom projector
         @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
@@ -412,7 +412,7 @@ class TestProjectionRegistry:
 
     def test_registry_integration_with_projector(self):
         """Test that GeometryProjector uses registered projectors."""
-        from mfg_pde.geometry import GeometryProjector, ProjectionRegistry
+        from mfgarchon.geometry import GeometryProjector, ProjectionRegistry
 
         # Register custom projector that doubles values
         @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
@@ -440,7 +440,7 @@ class TestProjectionRegistry:
 
     def test_registry_fallback_to_builtin(self):
         """Test that projector falls back to built-in methods when no registry match."""
-        from mfg_pde.geometry import GeometryProjector
+        from mfgarchon.geometry import GeometryProjector
 
         # Don't register anything - registry is empty
 
@@ -461,8 +461,8 @@ class TestProjectionRegistry:
 
     def test_registry_category_match(self):
         """Test registry lookup with category (base class) match."""
-        from mfg_pde.geometry import ProjectionRegistry
-        from mfg_pde.geometry.base import CartesianGrid
+        from mfgarchon.geometry import ProjectionRegistry
+        from mfgarchon.geometry.base import CartesianGrid
 
         # Register projector for CartesianGrid base class
         @ProjectionRegistry.register(CartesianGrid, CartesianGrid, "hjb_to_fp")
@@ -484,7 +484,7 @@ class TestProjectionRegistry:
 
     def test_registry_direction_specificity(self):
         """Test that registry distinguishes between hjb_to_fp and fp_to_hjb."""
-        from mfg_pde.geometry import ProjectionRegistry
+        from mfgarchon.geometry import ProjectionRegistry
 
         # Register different functions for each direction
         @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")
@@ -508,7 +508,7 @@ class TestProjectionRegistry:
 
     def test_registry_clear(self):
         """Test clearing the registry."""
-        from mfg_pde.geometry import ProjectionRegistry
+        from mfgarchon.geometry import ProjectionRegistry
 
         # Register something
         @ProjectionRegistry.register(TensorProductGrid, TensorProductGrid, "hjb_to_fp")

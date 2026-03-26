@@ -186,8 +186,8 @@ Dx → dx (replacement)  # Would break all solvers!
 ### Phase 1: Add Missing Properties (1-2 days) ⭐ **DO THIS**
 
 **Files to modify**:
-1. `mfg_pde/core/mfg_problem.py`
-2. `mfg_pde/core/base_problem.py`
+1. `mfgarchon/core/mfg_problem.py`
+2. `mfgarchon/core/base_problem.py`
 
 **Add**:
 ```python

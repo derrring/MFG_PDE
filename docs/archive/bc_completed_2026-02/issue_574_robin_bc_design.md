@@ -82,7 +82,7 @@ The implementation uses the **existing Robin BC framework** (`BCType.ROBIN`) rat
 ### User API
 
 ```python
-from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
 # Standard Neumann BC (default, backward compatible)
 hjb_solver = HJBFDMSolver(problem, bc_mode="standard")
@@ -94,7 +94,7 @@ hjb_solver = HJBFDMSolver(problem, bc_mode="adjoint_consistent")
 
 ### Implementation Components
 
-**1. BC Creation Module** (`mfg_pde/geometry/boundary/bc_coupling.py`):
+**1. BC Creation Module** (`mfgarchon/geometry/boundary/bc_coupling.py`):
 ```python
 def create_adjoint_consistent_bc_1d(
     m_current: NDArray,
@@ -129,7 +129,7 @@ def create_adjoint_consistent_bc_1d(
     return mixed_bc(segments, dimension=1, domain_bounds=domain_bounds)
 ```
 
-**2. Solver Integration** (`mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`):
+**2. Solver Integration** (`mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`):
 ```python
 def solve_hjb_system(self, M_density, ...):
     # Get standard BC
@@ -163,9 +163,9 @@ def solve_hjb_system(self, M_density, ...):
 ### Files Modified
 
 **New/Modified**:
-- `mfg_pde/geometry/boundary/bc_coupling.py` (redesigned using framework)
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` (BC creation, not threading)
-- `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py` (deprecated manual override)
+- `mfgarchon/geometry/boundary/bc_coupling.py` (redesigned using framework)
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` (BC creation, not threading)
+- `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py` (deprecated manual override)
 
 **Deprecated (kept for backward compat)**:
 - `bc_values` parameter (deprecated with warning, will be removed in v0.18.0)
@@ -260,7 +260,7 @@ def compute_boundary_log_density_gradient(
 
 ### 4. Integration Points
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 **Option A: Add parameter to HJBFDMSolver**:
 ```python
@@ -325,9 +325,9 @@ def solve_hjb_system_with_coupled_bc(
 ### User-Facing API
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
 
 # Create problem with reflecting boundaries
 problem = TowelOnBeachMFG(x_stall=0.0, domain=[0, 1])
@@ -434,7 +434,7 @@ This design focuses on 1D FDM. Extensions needed for:
 
 1. **Experimental validation**: mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_interior_stall_test.py
 2. **Protocol**: docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md § BC Consistency
-3. **Issue discussion**: https://github.com/derrring/MFG_PDE/issues/574
+3. **Issue discussion**: https://github.com/derrring/mfgarchon/issues/574
 
 ---
 

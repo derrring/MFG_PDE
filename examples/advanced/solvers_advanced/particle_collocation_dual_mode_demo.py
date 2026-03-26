@@ -33,9 +33,9 @@ from __future__ import annotations
 import numpy as np
 from matplotlib import pyplot as plt
 
-from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver, ParticleMode
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry.implicit import Hyperrectangle
+from mfgarchon.alg.numerical.fp_solvers import FPParticleSolver, ParticleMode
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry.implicit import Hyperrectangle
 
 
 class SimpleLQMFG2D(MFGProblem):

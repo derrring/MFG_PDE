@@ -18,11 +18,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.utils.solver_result import SolverResult
+from mfgarchon.utils.solver_result import SolverResult
 
 # Check HDF5 availability
 try:
-    from mfg_pde.utils.io import HDF5_AVAILABLE
+    from mfgarchon.utils.io import HDF5_AVAILABLE
 except ImportError:
     HDF5_AVAILABLE = False
 
@@ -130,7 +130,7 @@ def main():
 
     # Get HDF5 file info
     print("\n5. HDF5 file information:")
-    from mfg_pde.utils.io.hdf5_utils import get_hdf5_info
+    from mfgarchon.utils.io.hdf5_utils import get_hdf5_info
 
     info = get_hdf5_info(hdf5_file)
     print(f"   Format version: {info.get('format_version', 'unknown')}")
@@ -179,7 +179,7 @@ def main():
     print("\n7. Additional HDF5 features:")
 
     # Option 2: Using low-level functions directly
-    from mfg_pde.utils.io.hdf5_utils import load_solution, save_solution
+    from mfgarchon.utils.io.hdf5_utils import load_solution, save_solution
 
     alt_file = OUTPUT_DIR / "mock_solution_alt.h5"
 
@@ -196,7 +196,7 @@ def main():
     checkpoint_file = OUTPUT_DIR / "solver_checkpoint.h5"
     print("\n8. Checkpoint save/load demonstration:")
 
-    from mfg_pde.utils.io.hdf5_utils import load_checkpoint, save_checkpoint
+    from mfgarchon.utils.io.hdf5_utils import load_checkpoint, save_checkpoint
 
     checkpoint_state = {
         "U": result.U,

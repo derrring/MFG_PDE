@@ -5,7 +5,7 @@ Tests that all HJB and FP solvers are correctly annotated with _scheme_family
 traits for duality validation (Issue #580).
 """
 
-from mfg_pde.alg import SchemeFamily
+from mfgarchon.alg import SchemeFamily
 
 
 class TestHJBSolverTraits:
@@ -13,40 +13,40 @@ class TestHJBSolverTraits:
 
     def test_hjb_fdm_has_fdm_trait(self):
         """Test that HJBFDMSolver has FDM scheme family."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
         assert hasattr(HJBFDMSolver, "_scheme_family")
         assert HJBFDMSolver._scheme_family == SchemeFamily.FDM
 
     def test_hjb_semi_lagrangian_has_sl_trait(self):
         """Test that HJBSemiLagrangianSolver has SL scheme family."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
 
         assert hasattr(HJBSemiLagrangianSolver, "_scheme_family")
         assert HJBSemiLagrangianSolver._scheme_family == SchemeFamily.SL
 
     def test_hjb_gfdm_has_gfdm_trait(self):
         """Test that HJBGFDMSolver has GFDM scheme family."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
         assert hasattr(HJBGFDMSolver, "_scheme_family")
         assert HJBGFDMSolver._scheme_family == SchemeFamily.GFDM
 
     def test_hjb_weno_has_fdm_trait(self):
         """Test that HJBWenoSolver has FDM scheme family (WENO is FDM variant)."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
         assert hasattr(HJBWenoSolver, "_scheme_family")
         assert HJBWenoSolver._scheme_family == SchemeFamily.FDM
 
     def test_all_hjb_solvers_have_trait(self):
         """Test that all HJB solvers have _scheme_family trait."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
             HJBSemiLagrangianSolver,
         )
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
         hjb_solvers = [
             HJBFDMSolver,
@@ -63,8 +63,8 @@ class TestHJBSolverTraits:
 
     def test_hjb_fdm_variants_both_fdm(self):
         """Test that both FDM and WENO solvers have FDM family."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
         # Both should be FDM family (WENO is high-order FDM)
         assert HJBFDMSolver._scheme_family == SchemeFamily.FDM
@@ -72,12 +72,12 @@ class TestHJBSolverTraits:
 
     def test_hjb_trait_types_are_consistent(self):
         """Test that all HJB solver traits are valid SchemeFamily values."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
             HJBSemiLagrangianSolver,
         )
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
         # All should be valid SchemeFamily enum members
         all_families = set(SchemeFamily)
@@ -93,7 +93,7 @@ class TestValidatorPatternWithTraits:
 
     def test_getattr_pattern_with_hjb_fdm(self):
         """Test getattr pattern for retrieving _scheme_family trait."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
         # Direct access
         family = getattr(HJBFDMSolver, "_scheme_family", SchemeFamily.GENERIC)
@@ -111,12 +111,12 @@ class TestValidatorPatternWithTraits:
 
     def test_getattr_pattern_for_all_hjb_solvers(self):
         """Test getattr pattern works for all annotated HJB solvers."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
             HJBSemiLagrangianSolver,
         )
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
         hjb_solvers = [
             (HJBFDMSolver, SchemeFamily.FDM),
@@ -136,7 +136,7 @@ class TestDualityValidationPreparation:
 
     def test_same_family_detection_fdm(self):
         """Test detecting when HJB and FP solvers from same FDM family."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
         # Mock FP solver with FDM trait (will be implemented in Phase 1.4)
         class MockFPFDMSolver:
@@ -151,7 +151,7 @@ class TestDualityValidationPreparation:
 
     def test_mixed_family_detection(self):
         """Test detecting when HJB and FP solvers from different families."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
         # Mock FP solver with different family
         class MockFPSLSolver:
@@ -165,9 +165,9 @@ class TestDualityValidationPreparation:
 
     def test_discrete_vs_continuous_duality_classification(self):
         """Test classifying schemes by duality type based on family."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
             HJBSemiLagrangianSolver,
         )
 
@@ -189,8 +189,8 @@ class TestDualityValidationPreparation:
 
     def test_duality_validation_logic_simulation(self):
         """Simulate the duality validation logic that will be in Phase 2."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
         def simulate_check_duality(hjb_class, fp_class):
             """Simulate check_solver_duality() logic."""
@@ -235,12 +235,12 @@ class TestTraitImportability:
     def test_hjb_solvers_import_cleanly(self):
         """Test that all HJB solvers can be imported without errors."""
         # Should not raise ImportError
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
             HJBSemiLagrangianSolver,
         )
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
         # All should have trait
         assert HJBFDMSolver._scheme_family is not None
@@ -251,10 +251,10 @@ class TestTraitImportability:
     def test_no_circular_import_with_scheme_family(self):
         """Test that importing solvers doesn't cause circular import."""
         # Import SchemeFamily first
-        from mfg_pde.alg import SchemeFamily
+        from mfgarchon.alg import SchemeFamily
 
         # Then import solvers - should not raise
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
         # Verify trait matches imported enum
         assert HJBFDMSolver._scheme_family == SchemeFamily.FDM
@@ -265,46 +265,46 @@ class TestFPSolverTraits:
 
     def test_fp_fdm_has_fdm_trait(self):
         """Test that FPFDMSolver has FDM scheme family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 
         assert hasattr(FPFDMSolver, "_scheme_family")
         assert FPFDMSolver._scheme_family == SchemeFamily.FDM
 
     def test_fp_sl_has_sl_trait(self):
         """Test that FPSLSolver (forward SL) has SL scheme family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
 
         assert hasattr(FPSLSolver, "_scheme_family")
         assert FPSLSolver._scheme_family == SchemeFamily.SL
 
     def test_fp_sl_jacobian_has_sl_trait(self):
         """Test that FPSLJacobianSolver (backward SL, deprecated) has SL scheme family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
 
         assert hasattr(FPSLJacobianSolver, "_scheme_family")
         assert FPSLJacobianSolver._scheme_family == SchemeFamily.SL
 
     def test_fp_gfdm_has_gfdm_trait(self):
         """Test that FPGFDMSolver has GFDM scheme family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
 
         assert hasattr(FPGFDMSolver, "_scheme_family")
         assert FPGFDMSolver._scheme_family == SchemeFamily.GFDM
 
     def test_fp_particle_has_generic_trait(self):
         """Test that FPParticleSolver has GENERIC scheme family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 
         assert hasattr(FPParticleSolver, "_scheme_family")
         assert FPParticleSolver._scheme_family == SchemeFamily.GENERIC
 
     def test_all_fp_solvers_have_trait(self):
         """Test that all FP solvers have _scheme_family trait."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
 
         fp_solvers = [
             FPFDMSolver,
@@ -322,8 +322,8 @@ class TestFPSolverTraits:
 
     def test_fp_sl_variants_both_sl(self):
         """Test that both forward SL and backward SL (Jacobian) solvers have SL family."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_semi_lagrangian import FPSLJacobianSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
 
         # Both should be SL family (forward splatting and backward Jacobian variants)
         assert FPSLSolver._scheme_family == SchemeFamily.SL
@@ -335,16 +335,16 @@ class TestHJBFPPairing:
 
     def test_fdm_hjb_fp_match(self):
         """Test that FDM HJB and FP solvers have matching families."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
         assert HJBFDMSolver._scheme_family == FPFDMSolver._scheme_family
         assert HJBFDMSolver._scheme_family == SchemeFamily.FDM
 
     def test_sl_hjb_fp_match(self):
         """Test that SL HJB and FP solvers have matching families."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
+        from mfgarchon.alg.numerical.fp_solvers.fp_semi_lagrangian_adjoint import FPSLSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian import (
             HJBSemiLagrangianSolver,
         )
 
@@ -353,18 +353,18 @@ class TestHJBFPPairing:
 
     def test_gfdm_hjb_fp_match(self):
         """Test that GFDM HJB and FP solvers have matching families."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
         assert HJBGFDMSolver._scheme_family == FPGFDMSolver._scheme_family
         assert HJBGFDMSolver._scheme_family == SchemeFamily.GFDM
 
     def test_duality_pairing_simulation(self):
         """Simulate the pairing logic that will be in Phase 2 factory."""
-        from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-        from mfg_pde.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers.fp_gfdm import FPGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
 
         # FDM pairing: Same family, discrete duality
         assert HJBFDMSolver._scheme_family == FPFDMSolver._scheme_family
@@ -382,10 +382,10 @@ if __name__ == "__main__":
     # Smoke test - run basic checks
     print("Running solver trait smoke tests...")
 
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+    from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+    from mfgarchon.alg.numerical.hjb_solvers.hjb_gfdm import HJBGFDMSolver
+    from mfgarchon.alg.numerical.hjb_solvers.hjb_semi_lagrangian import HJBSemiLagrangianSolver
+    from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
     # Test all HJB solvers have traits
     solvers = [

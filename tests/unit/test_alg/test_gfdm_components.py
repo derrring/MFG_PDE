@@ -18,7 +18,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.gfdm_components import (
+from mfgarchon.alg.numerical.gfdm_components import (
     BoundaryHandler,
     GridCollocationMapper,
     NeighborhoodBuilder,
@@ -125,7 +125,7 @@ class TestNeighborhoodBuilder:
     @pytest.fixture
     def builder_1d(self):
         """Create 1D neighborhood builder for testing."""
-        from mfg_pde.utils.numerical.gfdm_strategies import TaylorOperator
+        from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator
 
         collocation_points = np.linspace(0, 1, 20).reshape(-1, 1)
         gfdm_operator = TaylorOperator(
@@ -173,7 +173,7 @@ class TestNeighborhoodBuilder:
 
     def test_compute_weights_gaussian(self):
         """Test Gaussian weight function computation."""
-        from mfg_pde.utils.numerical.gfdm_strategies import TaylorOperator
+        from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator
 
         collocation_points = np.linspace(0, 1, 20).reshape(-1, 1)
         gfdm_operator = TaylorOperator(points=collocation_points, delta=0.15, taylor_order=2)
@@ -339,7 +339,7 @@ if __name__ == "__main__":
 
     # Test NeighborhoodBuilder
     print("\n2. Testing NeighborhoodBuilder...")
-    from mfg_pde.utils.numerical.gfdm_strategies import TaylorOperator
+    from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator
 
     points = np.linspace(0, 1, 20).reshape(-1, 1)
     operator = TaylorOperator(points, delta=0.15, taylor_order=2)

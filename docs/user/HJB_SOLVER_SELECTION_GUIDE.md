@@ -9,7 +9,7 @@
 
 ### For 1D Problems
 ```python
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
 # Recommended: Newton solver (fast, robust)
 solver = HJBFDMSolver(problem, solver_type="newton")
@@ -17,7 +17,7 @@ solver = HJBFDMSolver(problem, solver_type="newton")
 
 ### For 2D/3D Problems
 ```python
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
 # Recommended: Fixed-point with damping (much faster)
 solver = HJBFDMSolver(
@@ -250,7 +250,7 @@ solver = HJBFDMSolver(
 For the **outer Picard iteration** (not HJB timestep):
 
 ```python
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
 
 mfg_solver = FixedPointIterator(
     problem, hjb_solver, fp_solver,
@@ -265,7 +265,7 @@ mfg_solver = FixedPointIterator(
 - Still uses damping on **M** (density) to preserve positivity and mass
 - Typically 2-5x speedup on outer Picard iteration
 
-**Implementation**: `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py:260-272`
+**Implementation**: `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py:260-272`
 
 ### Custom Jacobian (Advanced)
 
@@ -368,8 +368,8 @@ Is problem 1D?
 ### Complete 1D Example
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
 # Create problem
 problem = MFGProblem(Nx=100, Nt=50, T=1.0)
@@ -395,8 +395,8 @@ print(f"Solved! Shape: {U_solution.shape}")
 ### Complete 2D Example
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 import numpy as np
 
 # Define 2D problem using modern API
@@ -534,7 +534,7 @@ From `benchmarks/hjb_solver_comparison.py`:
 
 ## Further Reading
 
-- **Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+- **Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`
 - **Theory**: `docs/development/NONLINEAR_SOLVER_ARCHITECTURE.md`
 - **Benchmarks**: `benchmarks/hjb_solver_comparison.py`
 - **Tests**: `tests/integration/test_hjb_fdm_2d_validation.py`
@@ -543,4 +543,4 @@ From `benchmarks/hjb_solver_comparison.py`:
 ---
 
 **Last Updated**: 2025-11-02
-**Version**: MFG_PDE 0.8.1+
+**Version**: MFGarchon 0.8.1+

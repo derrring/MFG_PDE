@@ -184,7 +184,7 @@ hjb_solver = HJBGFDMSolver(
 
 ### Code Changes
 
-**Modified**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+**Modified**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 - Lines 887-948: `_create_ghost_neighbors()` - Ghost point generation via reflection
 - Lines 950-1020: `_apply_ghost_nodes_to_neighborhoods()` - Neighborhood augmentation
 - Lines 1022-1060: `_get_values_with_ghosts()` - Value mapping for ghost indices

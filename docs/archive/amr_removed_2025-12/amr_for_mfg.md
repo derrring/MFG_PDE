@@ -3,7 +3,7 @@
 **Date**: August 1, 2025
 **Status**: Production Ready
 **Architecture**: Enhancement-based (AMR wraps any base solver)
-**Modules**: `mfg_pde.geometry.amr_mesh`, `mfg_pde.alg.amr_enhancement`, `mfg_pde.geometry.one_dimensional_amr`
+**Modules**: `mfgarchon.geometry.amr_mesh`, `mfgarchon.alg.amr_enhancement`, `mfgarchon.geometry.one_dimensional_amr`
 
 ## Table of Contents
 
@@ -572,7 +572,7 @@ def conservative_mass_interpolation_2d(density: jnp.ndarray,
 
 ```python
 # Adaptive Mesh Refinement Architecture
-mfg_pde/
+mfgarchon/
 ├── geometry/
 │   ├── amr_mesh.py              # 2D quadtree AMR mesh
 │   ├── one_dimensional_amr.py   # 1D interval-based AMR
@@ -780,9 +780,9 @@ Speedup ≈ 1/(0.1 + 0.9/4) = 1/0.325 ≈ 3.1×
 ### Basic AMR Usage
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_amr_solver
-from mfg_pde.geometry import Domain1D, periodic_bc
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_amr_solver
+from mfgarchon.geometry import Domain1D, periodic_bc
 
 ### 1D AMR Example ###
 # Create 1D problem
@@ -831,7 +831,7 @@ result_2d = amr_solver_2d.solve(max_iterations=50, verbose=True)
 ### Using Factory with AMR Enhancement Flag
 
 ```python
-from mfg_pde.factory import create_solver
+from mfgarchon.factory import create_solver
 
 # Any solver can be enhanced with AMR
 amr_enhanced_solver = create_solver(
@@ -852,8 +852,8 @@ result = amr_enhanced_solver.solve()
 ### Advanced AMR Enhancement Configuration
 
 ```python
-from mfg_pde.alg.amr_enhancement import create_amr_enhanced_solver
-from mfg_pde.factory import create_solver
+from mfgarchon.alg.amr_enhancement import create_amr_enhanced_solver
+from mfgarchon.factory import create_solver
 
 # Step 1: Create any base solver
 base_solver = create_solver(
@@ -886,7 +886,7 @@ The AMR enhancement works consistently across all problem dimensions:
 
 ```python
 # 1D AMR - interval-based refinement
-from mfg_pde.geometry import Domain1D, periodic_bc
+from mfgarchon.geometry import Domain1D, periodic_bc
 
 domain_1d = Domain1D(0.0, 1.0, periodic_bc())
 problem_1d = MFGProblem(T=1.0, xmin=0.0, xmax=1.0, Nx=50, Nt=20)
@@ -1222,5 +1222,5 @@ amr_solver = create_amr_solver(
 ---
 
 **Last Updated**: August 1, 2025
-**Module Version**: MFG_PDE 2.0+
-**Maintainer**: MFG_PDE Development Team
+**Module Version**: MFGarchon 2.0+
+**Maintainer**: MFGarchon Development Team

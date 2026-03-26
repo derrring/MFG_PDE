@@ -15,7 +15,7 @@ Goal: Refactor FP FDM solver to use geometry trait-based operators instead of ma
 **Objective**: Add `as_scipy_sparse()` to LaplacianOperator
 
 **Result**: ✅ Successfully implemented
-- Added 48 lines to `mfg_pde/geometry/operators/laplacian.py`
+- Added 48 lines to `mfgarchon/geometry/operators/laplacian.py`
 - Returns CSR sparse matrix representation
 - Verified to machine precision (error ~1e-16)
 - Threshold: N < 100k points (uses dense conversion)
@@ -171,12 +171,12 @@ This axiom holds **only for interior points**, NOT for Neumann boundaries.
 
 ### Technical Debt Identified
 
-**File**: `mfg_pde/geometry/operators/laplacian.py:186-233`
+**File**: `mfgarchon/geometry/operators/laplacian.py:186-233`
 - `as_scipy_sparse()` uses dense conversion (simple but incorrect for BC)
 - Should use direct sparse assembly with proper BC handling
 - Current threshold (N=100k) limits applicability
 
-**File**: `mfg_pde/utils/numerical/tensor_calculus.py`
+**File**: `mfgarchon/utils/numerical/tensor_calculus.py`
 - Ghost cell implementation needs review
 - Neumann BC handling inconsistent with matrix assembly expectations
 
@@ -221,7 +221,7 @@ This axiom holds **only for interior points**, NOT for Neumann boundaries.
 - `issue_597_progress_summary.md` (this file)
 
 ### Code
-- `mfg_pde/geometry/operators/laplacian.py` - Added `as_scipy_sparse()` method (48 lines)
+- `mfgarchon/geometry/operators/laplacian.py` - Added `as_scipy_sparse()` method (48 lines)
 
 ### Tests
 - `tests/integration/test_laplacian_bc_equivalence.py` (292 lines)

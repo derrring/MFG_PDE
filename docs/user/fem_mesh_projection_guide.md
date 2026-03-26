@@ -18,8 +18,8 @@
 The projection system automatically handles FEM meshes using nearest neighbor:
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import Mesh2D, TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import Mesh2D, TensorProductGrid
 
 # FEM mesh (unstructured, handles complex domains)
 mesh = Mesh2D(
@@ -57,7 +57,7 @@ For higher accuracy, register specialized Delaunay interpolation:
 ```python
 from scipy.interpolate import LinearNDInterpolator
 from scipy.spatial import KDTree
-from mfg_pde.geometry import ProjectionRegistry, Mesh2D, TensorProductGrid
+from mfgarchon.geometry import ProjectionRegistry, Mesh2D, TensorProductGrid
 import numpy as np
 
 # Register once (e.g., in your project setup script)
@@ -147,7 +147,7 @@ use external libraries directly:
 
 ```python
 # For now, use manually refined meshes:
-from mfg_pde.geometry import Mesh2D, TensorProductGrid
+from mfgarchon.geometry import Mesh2D, TensorProductGrid
 
 # Create a fine mesh near boundaries manually
 mesh = Mesh2D(
@@ -314,7 +314,7 @@ def mesh_to_grid_quadratic(mesh_geo, grid_geo, mesh_values, **kwargs):
 **A**: Yes! `Mesh3D` works the same way with tetrahedral elements.
 
 ```python
-from mfg_pde.geometry import Mesh3D, TensorProductGrid
+from mfgarchon.geometry import Mesh3D, TensorProductGrid
 
 mesh3d = Mesh3D(domain_type="box", bounds=(0,1,0,1,0,1), mesh_size=0.1)
 grid3d = TensorProductGrid(dimension=3, bounds=[(0,1), (0,1), (0,1)], Nx_points=[31, 31, 31])
