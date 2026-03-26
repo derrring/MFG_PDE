@@ -6,9 +6,7 @@
 [![Release](https://img.shields.io/github/v/release/derrring/mfgarchon)](https://github.com/derrring/mfgarchon/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/derrring/mfgarchon/blob/main/LICENSE)
 
-A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
-
-> **v0.16.8** - Documentation audit and cleanup
+A Python framework for solving Mean Field Game systems using modern numerical methods, GPU acceleration, and reinforcement learning.
 
 ---
 
@@ -16,11 +14,6 @@ A Python framework for solving Mean Field Games with modern numerical methods, G
 
 ### Installation
 
-```bash
-pip install mfgarchon
-```
-
-Or install from source:
 ```bash
 git clone https://github.com/derrring/mfgarchon.git
 cd mfgarchon
@@ -32,9 +25,11 @@ pip install -e .
 ```python
 from mfgarchon import MFGProblem
 from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import neumann_bc
 
-# Create geometry (recommended)
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
+# Create geometry with boundary conditions
+domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51],
+                           boundary_conditions=neumann_bc(dimension=1))
 
 # Create and solve
 problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
@@ -60,55 +55,57 @@ result = problem.solve()
 
 ## Documentation
 
-**Getting Started**:
-- [Getting Started Tutorial](docs/tutorials/01_getting_started.md) - 30 minutes to first solve
-- [Configuration Patterns](docs/tutorials/02_configuration_patterns.md) - Three ways to configure
+**Tutorials**:
+- [Getting Started](examples/tutorials/01_getting_started.md) - First solve in 30 minutes
+- [Configuration Patterns](examples/tutorials/02_configuration_patterns.md) - Three ways to configure
 - [Examples](examples/) - Working code examples
 
-**Utilities & Guides**:
+**Guides**:
 - [Configuration System](docs/user/configuration_system.md) - Pydantic + OmegaConf dual architecture
-- [Particle Interpolation](docs/user/particle_interpolation.md) - Grid ↔ Particles
+- [Particle Interpolation](docs/user/particle_interpolation.md) - Grid-particle transfer
 - [SDF Utilities](docs/user/sdf_utilities.md) - Geometry and obstacles
-
-**For Developers**:
 - [Developer Guide](docs/development/) - Extending the framework
-- [API Documentation](docs/) - Complete API reference
 
 ---
 
 ## Examples
 
-### Solve Any MFG Problem
+### Custom Solver Parameters
 
 ```python
-from mfgarchon import MFGProblem
-from mfgarchon.geometry import TensorProductGrid
-
-# Create geometry
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
-
-# Create and solve MFG problem
-problem = MFGProblem(geometry=domain, T=1.0, Nt=50)
-result = problem.solve()
-
-print(f"Converged: {result.converged} in {result.iterations} iterations")
-```
-
-### Configuration Options
-
-```python
-# Default settings
-result = problem.solve()
-
-# Custom parameters
 result = problem.solve(
     max_iterations=200,
     tolerance=1e-8,
     verbose=True
 )
+
+print(f"Converged: {result.converged} in {result.iterations} iterations")
 ```
 
-### Essential Utilities
+### Dual Geometry
+
+```python
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
+
+# Multi-resolution: fine HJB + coarse FP
+hjb_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[101, 101],
+                              boundary_conditions=no_flux_bc(dimension=2))
+fp_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[26, 26],
+                             boundary_conditions=no_flux_bc(dimension=2))
+
+problem = MFGProblem(
+    hjb_geometry=hjb_grid,
+    fp_geometry=fp_grid,
+    T=1.0, Nt=100, diffusion=0.1
+)
+
+# Projections handled automatically
+result = problem.solve()
+```
+
+### Utilities
 
 ```python
 # Particle interpolation
@@ -122,48 +119,9 @@ obstacles = sdf_union(
     sdf_box(points, bounds=[[0.6, 0.8], [0.4, 0.6]])
 )
 
-# QP caching (2-5× speedup for GFDM)
+# QP caching (2-5x speedup for GFDM)
 from mfgarchon.utils import QPSolver, QPCache
 solver = QPSolver(backend="osqp", cache=QPCache(max_size=1000))
-```
-
-### Dual Geometry (v1.0+)
-
-```python
-from mfgarchon import MFGProblem
-from mfgarchon.geometry import TensorProductGrid
-
-# Multi-resolution: fine HJB + coarse FP (4-15× speedup)
-hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])
-fp_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[26, 26])
-
-problem = MFGProblem(
-    hjb_geometry=hjb_grid,  # Fine for accuracy
-    fp_geometry=fp_grid,     # Coarse for speed
-    T=1.0, Nt=100, sigma=0.1
-)
-
-# Projections handled automatically
-result = solve_mfg(problem, config="fast")
-```
-
-```python
-from mfgarchon.geometry import Mesh2D, TensorProductGrid
-
-# Complex domains: FEM mesh + regular grid
-mesh = Mesh2D(
-    domain_type="rectangle",
-    bounds=(0.0, 1.0, 0.0, 1.0),
-    holes=[{"type": "circle", "center": (0.5, 0.5), "radius": 0.2}],
-    mesh_size=0.05
-)
-mesh.generate_mesh()
-
-problem = MFGProblem(
-    hjb_geometry=TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51]),
-    fp_geometry=mesh,  # Handles obstacles naturally
-    T=1.0, Nt=50, sigma=0.1
-)
 ```
 
 ---
@@ -195,17 +153,15 @@ See [Changelog](CHANGELOG.md) for version history.
 
 ---
 
-## Optional Features
+## Optional Dependencies
 
-Install additional capabilities as needed:
+Additional capabilities can be enabled by installing optional packages:
 
-```bash
-pip install mfgarchon[neural]          # PyTorch-based neural operators, PINNs, DGM
-pip install mfgarchon[reinforcement]   # RL algorithms (DDPG, TD3, SAC)
-pip install mfgarchon[gpu]             # CUDA support, JAX GPU
-pip install mfgarchon[performance]     # JAX backend, Numba JIT
-pip install mfgarchon[all]             # Everything
-```
+- **Neural solvers** (PINNs, DGM): PyTorch
+- **Reinforcement learning** (DDPG, TD3, SAC): Stable-Baselines3
+- **GPU acceleration**: JAX with CUDA, PyTorch CUDA
+- **Performance**: JAX backend, Numba JIT
+- **Mesh generation**: Gmsh (for Mesh2D/Mesh3D geometry)
 
 ---
 
@@ -227,8 +183,7 @@ If you use MFGarchon in your research, please cite it. You can use GitHub's
 @software{mfgarchon,
   title={MFGarchon: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jiongyi},
-  year={2026},
-  version={0.17.11},
+  year={2025},
   url={https://github.com/derrring/mfgarchon}
 }
 ```
@@ -247,4 +202,4 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 MIT License - see [LICENSE](LICENSE) for details.
 
-**Copyright** (c) 2025 Jeremy Jiongyi Wang
+**Copyright** (c) 2025-2026 Jeremy Jiongyi Wang
