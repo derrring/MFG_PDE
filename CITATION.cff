@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "MFG_PDE: A Research-Grade Framework for Mean Field Games"
+authors:
+  - family-names: Wang
+    given-names: Jiongyi
+    alias: Jeremy
+    email: jiongyiwang@gmail.com
+version: "0.17.11"
+date-released: "2026-02-15"
+url: "https://github.com/derrring/MFG_PDE"
+repository-code: "https://github.com/derrring/MFG_PDE"
+license: MIT
+keywords:
+  - mean-field-games
+  - partial-differential-equations
+  - numerical-methods
+  - hamilton-jacobi-bellman
+  - fokker-planck
+abstract: >-
+  A comprehensive Python framework for solving Mean Field Game (MFG) systems
+  using advanced numerical methods including Generalized Finite Difference
+  Method (GFDM), Finite Difference Method (FDM), and hybrid
+  Eulerian-Lagrangian schemes.
