@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfgarchon.geometry.meshes.mesh_base import _GmshMeshBase
+from mfgarchon.geometry.meshes.mesh_base import _MeshGeneratorBase
 from mfgarchon.geometry.meshes.mesh_data import MeshData
 from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-class Mesh3D(_GmshMeshBase):
+class Mesh3D(_MeshGeneratorBase):
     """3D unstructured tetrahedral mesh for FEM/FVM methods using Gmsh pipeline."""
 
     def __init__(

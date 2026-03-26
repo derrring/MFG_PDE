@@ -1,4 +1,4 @@
-"""Shared Gmsh mesh base class for 2D and 3D unstructured meshes.
+"""Shared mesh generator base class for 2D and 3D unstructured meshes.
 
 Extracts common constructor, ``set_mesh_parameters``, and ``create_gmsh_geometry``
 from Mesh2D and Mesh3D into a single intermediate base class using the
@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class _GmshMeshBase(UnstructuredMesh):
-    """Shared Gmsh-based mesh generation logic for 2D and 3D meshes.
+class _MeshGeneratorBase(UnstructuredMesh):
+    """Shared mesh generation logic for 2D and 3D meshes.
 
     Uses the Template Method pattern: ``create_gmsh_geometry`` defines the
     Gmsh pipeline (initialise -> create shape -> cut holes -> set options),
