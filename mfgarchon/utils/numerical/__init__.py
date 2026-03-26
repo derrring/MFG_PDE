@@ -5,19 +5,12 @@ This module provides numerical algorithms and helper functions commonly needed
 in MFG research projects, including differential operators, kernel functions,
 GFDM operators, particle interpolation, and signed distance functions.
 
-Primary Submodules:
-- tensor_calculus: Complete discrete tensor calculus for regular grids
-  (gradient, divergence, laplacian, hessian, tensor_diffusion, advection)
+Submodules:
 - gfdm_strategies: Differential operators for scattered points (GFDM/RBF-FD)
 - kernels: Kernel functions (Gaussian, Wendland, B-spline) for GFDM, KDE, SPH
 - nonlinear_solvers: Newton, fixed-point, policy iteration solvers
 - particle: Particle-based methods (Monte Carlo, MCMC, interpolation)
-
-Deprecated Submodules:
-- grid_operators: Use tensor_calculus instead (v0.18.0)
-- tensor_operators: Use tensor_calculus instead (v0.18.0)
-- gfdm_operators: Use gfdm_strategies instead (v0.17.0)
-- differential_utils: Use scipy.optimize or tensor_calculus (v0.18.0)
+- tensor_calculus: Internal — regular grid operators (use mfgarchon.operators instead)
 """
 
 # Flux diagnostics for mass conservation analysis
