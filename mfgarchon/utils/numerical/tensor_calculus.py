@@ -1,39 +1,10 @@
 """
-DEPRECATED: Tensor Calculus Operators for Regular Grids.
+Internal: Tensor Calculus Operators for Regular Grids.
 
-**Status**: DEPRECATED as of v0.18.0 (2026-01-24)
-**Removal**: Scheduled for v0.20.0
+Function-based differential operators (gradient, laplacian, divergence, etc.)
+for structured grids. Used internally by geometry/operators/wrappers.py.
 
-This module has been superseded by the operators framework:
-
-Migration Guide:
-    OLD (deprecated):
-        >>> from mfgarchon.utils.numerical.tensor_calculus import gradient, laplacian
-        >>> grad_u = gradient(u, spacings=[dx, dy])
-
-    NEW (preferred):
-        >>> from mfgarchon.operators import LaplacianOperator, GradientComponentOperator
-        >>> from mfgarchon.operators.stencils import gradient_central, laplacian_stencil_nd
-        >>>
-        >>> # For LinearOperator interface (recommended for solvers):
-        >>> L = LaplacianOperator(spacings=[dx, dy], field_shape=u.shape, bc=bc)
-        >>> lap_u = L(u)
-        >>>
-        >>> # For direct stencil application (no BC handling):
-        >>> grad_u = gradient_central(u, axis=0, h=dx)
-
-Why deprecated:
-    - Operators framework provides LinearOperator interface (scipy compatible)
-    - Better separation: stencils (low-level) vs operators (high-level)
-    - Unified BC handling via BoundaryConditions objects
-    - Composable operators: L1 + L2, alpha * L, L1 @ L2
-
-What to use instead:
-    - mfgarchon.operators.differential: LaplacianOperator, GradientComponentOperator, etc.
-    - mfgarchon.operators.stencils: gradient_central, laplacian_stencil_nd, etc.
-    - mfgarchon.geometry.TensorProductGrid: grid.get_laplacian_operator(), etc.
-
-This module remains functional for backward compatibility but will be removed.
+Public API: Use ``mfgarchon.operators`` (LinearOperator classes) instead.
 
 References:
 -----------
@@ -44,7 +15,6 @@ References:
 from __future__ import annotations
 
 import os
-import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -80,16 +50,9 @@ else:
     USE_NUMBA = False
 
 # =============================================================================
-# Deprecation Warning
+# Note: This module is internal infrastructure. Not re-exported from
+# utils.numerical.__init__. Public API: mfgarchon.operators.
 # =============================================================================
-warnings.warn(
-    "mfgarchon.utils.numerical.tensor_calculus is deprecated since v0.18.0. "
-    "Use mfgarchon.operators (LinearOperator classes) or "
-    "mfgarchon.operators.stencils (low-level stencils) instead. "
-    "This module will be removed in v0.20.0.",
-    DeprecationWarning,
-    stacklevel=2,
-)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

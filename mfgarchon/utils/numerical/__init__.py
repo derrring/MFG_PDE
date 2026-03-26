@@ -106,28 +106,11 @@ from mfgarchon.utils.numerical.sdf_utils import (
     sdf_union,
 )
 
-# Tensor Calculus - Primary differential operators for regular grids
-from mfgarchon.utils.numerical.tensor_calculus import (
-    advection,
-    diffusion,
-    divergence,
-    gradient,
-    gradient_simple,
-    hessian,
-    laplacian,
-    tensor_diffusion,
-)
+# Tensor Calculus functions (gradient, laplacian, etc.) are no longer re-exported here.
+# They are internal infrastructure used by geometry/operators/wrappers.py.
+# Public API: use mfgarchon.operators (LinearOperator classes) instead.
 
 __all__ = [
-    # Tensor Calculus (primary - regular grids)
-    "gradient",
-    "gradient_simple",
-    "divergence",
-    "laplacian",
-    "hessian",
-    "diffusion",
-    "tensor_diffusion",
-    "advection",
     # GFDM operators (legacy, use gfdm_strategies)
     "GFDMOperator",
     # GFDM Strategy Pattern (scattered points)
