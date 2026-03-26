@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.17.12"  # v0.17.12: Package rename cleanup, deprecation fixes, README update
+version = "0.17.13"  # v0.17.13: True adjoint mode (#707), dead module removal
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
