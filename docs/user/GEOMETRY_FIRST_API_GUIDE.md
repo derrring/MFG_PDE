@@ -26,7 +26,7 @@ As of v0.16.0, `MFGProblem.geometry` is **always non-None** after initialization
 |:---------------|:-----|:------------|:-----------|
 | `TensorProductGrid` | CARTESIAN_GRID | Structured regular grid | 1D-nD |
 | `Domain1D` | DOMAIN_1D | 1D domain with BC | 1D |
-| `Domain2D`, `Domain3D` | DOMAIN_2D/3D | Unstructured mesh via Gmsh | 2D, 3D |
+| `Domain2D`, `Domain3D` | UNSTRUCTURED_MESH | Unstructured mesh via Gmsh | 2D, 3D |
 | `Hyperrectangle` | IMPLICIT | Box domain via SDF | nD |
 | `Hypersphere` | IMPLICIT | Sphere/ball via SDF | nD |
 | `Grid` (mazes) | MAZE | Maze-based grid | 2D |

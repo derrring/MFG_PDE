@@ -22,11 +22,9 @@ from mfgarchon.types.arrays import (  # noqa: TC001
     ParticleArray,
     SolutionArray,
     SpatialArray,
-    SpatialCoordinates,
     SpatialGrid,
     StateArray,
     TemporalArray,
-    TemporalCoordinates,
     TimeGrid,
     WeightArray,
 )
@@ -276,12 +274,9 @@ def test_spatial_coordinates_deprecated_alias():
         assert "SpatialCoordinates" in str(deprecation_warnings[-1].message)
         assert "SpatialGrid" in str(deprecation_warnings[-1].message)
 
-    # Test functionality still works
-    arr: SpatialCoordinates = np.linspace(0, 1, 51)
+    # Test functionality still works (use the reloaded module's alias)
+    arr: SpatialGrid = np.linspace(0, 1, 51)
     assert arr.shape == (51,)
-    # Should be same as SpatialGrid
-    arr2: SpatialGrid = arr
-    assert arr is arr2
 
 
 @pytest.mark.unit
@@ -305,12 +300,9 @@ def test_temporal_coordinates_deprecated_alias():
         assert "TemporalCoordinates" in str(deprecation_warnings[-1].message)
         assert "TimeGrid" in str(deprecation_warnings[-1].message)
 
-    # Test functionality still works
-    arr: TemporalCoordinates = np.linspace(0, 2, 31)
+    # Test functionality still works (use the reloaded module's alias)
+    arr: TimeGrid = np.linspace(0, 2, 31)
     assert arr.shape == (31,)
-    # Should be same as TimeGrid
-    arr2: TimeGrid = arr
-    assert arr is arr2
 
 
 # ===================================================================
@@ -477,9 +469,13 @@ def test_module_exports():
     assert hasattr(arrays, "WeightArray")
     assert hasattr(arrays, "DensityArray")
 
-    # Legacy
-    assert hasattr(arrays, "SpatialCoordinates")
-    assert hasattr(arrays, "TemporalCoordinates")
+    # Legacy aliases (suppress expected deprecation warnings)
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        assert hasattr(arrays, "SpatialCoordinates")
+        assert hasattr(arrays, "TemporalCoordinates")
 
 
 @pytest.mark.unit
