@@ -1,9 +1,9 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2026-01-16
-**Current Version**: v0.16.16 (dev)
+**Last Updated**: 2026-03-26
+**Current Version**: v0.17.11
 **Target**: v1.0.0 (deprecated patterns will be removed)
-**Status**: ✅ Migration complete, v0.10-v0.17 deprecations removed, v0.16.16 Phase 2 complete
+**Status**: ✅ Operator framework migration complete, tensor_calculus internalized
 
 ---
 
@@ -274,65 +274,49 @@ u_padded = ghost_buffer.padded  # Access full array
 
 ---
 
-## v0.18.0 Deprecation Summary (Tensor Calculus Unification)
+## v0.18.0 Deprecation Summary (Operator Framework Migration)
 
-### New Deprecations in v0.18.0
+### ✅ COMPLETED: Numerical Utilities → Operators Framework
 
-#### 19. Numerical Utilities Consolidation (tensor_calculus.py)
+#### 19. Differential Operators Migration
 
-The differential operators have been unified into `tensor_calculus.py`:
+The function-based differential operators have been replaced by the `mfgarchon.operators` framework (LinearOperator classes). The old modules are now internal infrastructure, no longer publicly re-exported.
 
 | Old Module | New Module | Status |
 |:-----------|:-----------|:-------|
-| `grid_operators.py` | `tensor_calculus.py` | Deprecated |
-| `tensor_operators.py` | `tensor_calculus.py` | Deprecated |
-| `differential_utils.py` | `scipy.optimize` + `tensor_calculus` | Deprecated |
+| `grid_operators.py` | `mfgarchon.operators` | **Internal** |
+| `tensor_operators.py` | `mfgarchon.operators` | **Internal** |
+| `tensor_calculus.py` | `mfgarchon.operators` | **Internal** |
+| `differential_utils.py` | `scipy.optimize` + `mfgarchon.operators` | **Internal** |
 
-**Why unified**: These modules had overlapping functionality for differential operators on regular grids. The new `tensor_calculus.py` provides a complete, mathematically coherent set of operators.
+**Public API** (`mfgarchon.operators`):
 
-**New Operators Available**:
-
-| Operator | Type | Description |
-|:---------|:-----|:------------|
-| `gradient(u)` | scalar → vector | ∇u with scheme selection |
-| `divergence(F)` | vector → scalar | ∇·F |
-| `laplacian(u)` | scalar → scalar | Δu = ∇·∇u |
-| `hessian(u)` | scalar → tensor | ∇²u = [∂²u/∂xᵢ∂xⱼ] |
-| `diffusion(u, σ)` | scalar → scalar | σ²Δu (isotropic) |
-| `tensor_diffusion(u, Σ)` | scalar → scalar | ∇·(Σ∇u) (anisotropic) |
-| `advection(m, v)` | scalar → scalar | v·∇m or ∇·(vm) |
+| Operator Class | Description |
+|:---------------|:------------|
+| `LaplacianOperator` | Δu = ∇·∇u |
+| `PartialDerivOperator` | ∂u/∂xᵢ |
+| `DivergenceOperator` | ∇·F |
+| `AdvectionOperator` | v·∇m or ∇·(vm) |
 
 **Migration**:
 ```python
-# Old (deprecated)
-from mfgarchon.utils.numerical.grid_operators import gradient, laplacian
-from mfgarchon.utils.numerical.tensor_operators import divergence_tensor_diffusion_2d
-from mfgarchon.utils.numerical.differential_utils import gradient_fd
+# Old (no longer re-exported from utils.numerical)
+from mfgarchon.utils.numerical.tensor_calculus import gradient, laplacian
 
 # New (preferred)
-from mfgarchon.utils.numerical.tensor_calculus import (
-    gradient, laplacian, tensor_diffusion,
-)
-from scipy.optimize import approx_fprime  # For function gradients
+from mfgarchon.operators import LaplacianOperator, PartialDerivOperator
+L = LaplacianOperator(spacings=[dx, dy], field_shape=u.shape, bc=bc)
+lap_u = L(u)
+
+# For low-level stencils:
+from mfgarchon.operators.stencils import gradient_central, laplacian_stencil_nd
 ```
 
-**Module Organization After v0.18.0**:
-```
-mfgarchon/utils/numerical/
-├── tensor_calculus.py      # Regular grids (NEW - primary)
-├── gfdm_strategies.py      # Scattered points (GFDM/RBF-FD)
-├── grid_operators.py       # DEPRECATED → tensor_calculus
-├── tensor_operators.py     # DEPRECATED → tensor_calculus
-├── differential_utils.py   # DEPRECATED → scipy.optimize
-└── ...
-```
-
-**Internal Migration Status** (as of v0.17.0):
-- ✅ All internal usages migrated to `tensor_calculus.diffusion()`
-- ✅ Examples updated: `anisotropic_corridor.py`, `tensor_diffusion_simple.py`
-- ✅ Tests updated: `test_tensor_operators.py` (14 tests pass)
-- ✅ Benchmarks updated: `benchmark_tensor_operators.py`
-- Deprecated shim modules remain for external user compatibility until v0.18.0
+**Migration Status** (as of v0.17.11):
+- ✅ All solver code migrated to `mfgarchon.operators`
+- ✅ `tensor_calculus.py` internalized (no public re-export, no deprecation warning)
+- ✅ Old shim modules (`grid_operators.py`, `tensor_operators.py`) are internal only
+- ✅ Examples and benchmarks updated
 
 #### 20. HJB GFDM Solver Mixin Refactoring
 
@@ -972,35 +956,29 @@ pytest tests/unit/your_test_file.py
 
 ## Tracking Progress
 
-**Current Status** (as of 2026-01-10):
+**Current Status** (as of 2026-03-26):
 - ✅ Modern API fully implemented
-- ✅ Dimension-agnostic boundary handler (PR #305, #306)
-- ✅ Geometry-first unification complete (Issue #435, PRs #436-#443)
-- ✅ Legacy attributes converted to computed properties (PR #443)
-- ✅ Convergence module reorganized with renamed classes (PR #457)
-- ✅ BC Topology/Calculator composition (PR #520, Issue #516)
-- ✅ **Tensor calculus unification** (v0.18.0)
-- ✅ **Comprehensive deprecation audit** (43 patterns documented)
-- ✅ **Test file migration complete** (55 files in MFGarchon)
-- ✅ **Example migration complete** (examples/, benchmarks/, tutorials/)
-- ✅ **mfg-research migration complete** (8 files)
-- ✅ **Progress bars: tqdm eliminated, Rich-only** (v0.16.15)
+- ✅ Geometry-first unification complete
+- ✅ Operator framework migration complete (tensor_calculus internalized)
+- ✅ Progress bars: tqdm eliminated, Rich-only
+- ✅ Package renamed: mfg_pde → mfgarchon (#821)
+- ✅ Zero deprecation warnings on `import mfgarchon`
 - ⏳ v1.0.0 enforcement: Not yet implemented
 
-**Deprecation Counts by Version** (updated 2026-01-15):
+**Deprecation Counts by Version** (updated 2026-03-26):
 | Version | Category | Count | Status |
 |:--------|:---------|:------|:-------|
 | ~~v0.10~~ | ~~Backend~~ | ~~1~~ | **REMOVED in v0.16.12** |
 | ~~v0.15.x~~ | ~~Problem, Factory, Legacy~~ | ~~4~~ | **REMOVED in v0.16.12** |
 | ~~v0.15.x~~ | ~~Utils (logging, bandwidth)~~ | ~~2~~ | **REMOVED in v0.17.0** |
 | ~~v0.16.x~~ | ~~Progress (tqdm)~~ | ~~1~~ | **COMPLETED in v0.16.15** |
+| ~~v0.18.x~~ | ~~Numerical Utils (tensor_calculus)~~ | ~~5~~ | **INTERNALIZED in v0.17.11** |
 | v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | Active |
 | v0.16.11 | BC Calculators | 4 | Active |
 | v0.16.16 | Ghost Cell Functions (Issue #577) | 6 | Active |
 | v0.17.x | Convergence, Gradient Notation | 7 | Active |
-| v0.18.x | Numerical Utils (tensor_calculus) | 5 | Active |
 
-**Total Active**: 42 patterns
+**Total Active**: 37 patterns
 
 **Removed in v0.16.12**:
 - `get_legacy_backend_list()` → Use `get_available_backends()` (v0.10)
