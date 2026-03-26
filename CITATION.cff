@@ -20,6 +20,4 @@ keywords:
   - fokker-planck
 abstract: >-
   A comprehensive Python framework for solving Mean Field Game (MFG) systems
-  using advanced numerical methods including Generalized Finite Difference
-  Method (GFDM), Finite Difference Method (FDM), and hybrid
-  Eulerian-Lagrangian schemes.
+  using modern numerical methods, GPU acceleration, and reinforcement learning.
