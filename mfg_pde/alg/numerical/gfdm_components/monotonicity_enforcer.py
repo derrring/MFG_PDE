@@ -145,6 +145,11 @@ class MonotonicityEnforcer:
             "lbfgsb_solves": 0,
             "points_checked": 0,
             "violations_detected": 0,
+            "violation_point_indices": set(),
+            # Per-criterion violation counters (for diagnostics)
+            "violation_laplacian": 0,
+            "violation_gradient": 0,
+            "violation_higher_order": 0,
         }
 
         # Optional MFG coupling
@@ -415,6 +420,15 @@ class MonotonicityEnforcer:
 
         # Basic violation check
         has_violation = violation_1 or violation_2 or violation_3
+
+        # Track per-criterion stats
+        if has_violation:
+            if violation_1:
+                self.stats["violation_laplacian"] += 1
+            if violation_2:
+                self.stats["violation_gradient"] += 1
+            if violation_3:
+                self.stats["violation_higher_order"] += 1
 
         if not use_adaptive:
             return has_violation

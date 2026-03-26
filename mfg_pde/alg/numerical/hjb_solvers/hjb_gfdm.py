@@ -742,6 +742,10 @@ class HJBGFDMSolver(BaseHJBSolver):
                 "total_qp_solves": 0,
                 "qp_times": [],
                 "violations_detected": 0,
+                "violation_point_indices": set(),
+                "violation_laplacian": 0,
+                "violation_gradient": 0,
+                "violation_higher_order": 0,
                 "points_checked": 0,
                 "qp_successes": 0,
                 "qp_failures": 0,
@@ -1371,6 +1375,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             if needs_constraints:
                 # Apply constrained QP to enforce monotonicity
                 self.qp_stats["violations_detected"] += 1
+                self.qp_stats["violation_point_indices"].add(point_idx)
                 derivative_coeffs = self._monotonicity_enforcer.solve_constrained_qp(taylor_data, b, point_idx)  # type: ignore[union-attr]
             else:
                 # Use faster unconstrained solution
