@@ -11,14 +11,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mfgarchon.geometry.meshes.mesh_base import _GmshMeshBase
+from mfgarchon.geometry.meshes.mesh_base import _MeshGeneratorBase
 from mfgarchon.geometry.meshes.mesh_data import MeshData
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class Mesh2D(_GmshMeshBase):
+class Mesh2D(_MeshGeneratorBase):
     """2D unstructured triangular mesh for FEM/FVM methods using Gmsh pipeline."""
 
     def __init__(
