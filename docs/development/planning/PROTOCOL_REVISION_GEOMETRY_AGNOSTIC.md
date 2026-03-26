@@ -15,7 +15,7 @@
 | **CARTESIAN_GRID** | Tensor product grid | ✅ YES |
 | **NETWORK** | Graph topology | ❌ NO |
 | **MAZE** | Grid with obstacles | ⚠️ PARTIAL |
-| **DOMAIN_2D/3D** | Complex boundary | ❌ NO (mesh-based) |
+| **UNSTRUCTURED_MESH** | Complex boundary | ❌ NO (mesh-based) |
 | **IMPLICIT** | Level set/SDF | ❌ NO |
 | **AMR** | Adaptive mesh | ❌ NO (irregular) |
 

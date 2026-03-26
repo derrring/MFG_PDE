@@ -86,7 +86,7 @@ class Geometry(ABC):
         Type of geometry (enum).
 
         Returns:
-            GeometryType: CARTESIAN_GRID, NETWORK, DOMAIN_2D, etc.
+            GeometryType: CARTESIAN_GRID, NETWORK, UNSTRUCTURED_MESH, etc.
 
         Examples:
             >>> grid = TensorProductGrid(...)

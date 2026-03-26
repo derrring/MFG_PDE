@@ -60,8 +60,7 @@ GeometryType
 ├── IMPLICIT         → Hyperrectangle + SDF (GFDM, meshfree)
 ├── NETWORK          → NetworkGeometry      (graph MFG)
 ├── MAZE             → MazeGeometry         (grid with obstacles)
-├── DOMAIN_2D        → Mesh2D              (future FEM)
-├── DOMAIN_3D        → Mesh3D              (future FEM)
+├── UNSTRUCTURED_MESH → Mesh2D / Mesh3D    (future FEM)
 └── CUSTOM           → user extension
 ```
 
@@ -190,7 +189,7 @@ free boundaries) without structural changes.
 ║  ├── dimension, geometry_type         ├── CARTESIAN_GRID         ║
 ║  ├── get_collocation_points()         ├── IMPLICIT               ║
 ║  ├── get_bounds()                     ├── NETWORK / MAZE         ║
-║  ├── is_on_boundary()                 ├── DOMAIN_2D / 3D         ║
+║  ├── is_on_boundary()                 ├── UNSTRUCTURED_MESH      ║
 ║  └── ...                              └── CUSTOM                 ║
 ║                                                                  ║
 ║  TimeDependentDomain (wrapper)                                   ║
@@ -541,8 +540,8 @@ class DomainSpec:
                                    StructureType.UNSTRUCTURED, BoundaryDef.NONE),
             GeometryType.IMPLICIT: (ConnectivityType.DYNAMIC,
                                     StructureType.UNSTRUCTURED, BoundaryDef.IMPLICIT),
-            GeometryType.DOMAIN_2D: (ConnectivityType.EXPLICIT,
-                                     StructureType.UNSTRUCTURED, BoundaryDef.MESH),
+            GeometryType.UNSTRUCTURED_MESH: (ConnectivityType.EXPLICIT,
+                                           StructureType.UNSTRUCTURED, BoundaryDef.MESH),
         }
         c, s, b = _MAP[geometry.geometry_type]
         return cls(c, s, b)
@@ -564,7 +563,7 @@ Replace `GeometryType` checks one site at a time:
 # Before:
 if geometry.geometry_type == GeometryType.CARTESIAN_GRID:
     ...
-elif geometry.geometry_type in (GeometryType.DOMAIN_2D, GeometryType.DOMAIN_3D):
+elif geometry.geometry_type == GeometryType.UNSTRUCTURED_MESH:
     ...
 
 # After:
@@ -847,7 +846,7 @@ mfgarchon/geometry/
 ├── base.py                      BaseGeometry (convenience properties)
 ├── grids/tensor_grid.py         TensorProductGrid (CARTESIAN_GRID)
 ├── implicit/hyperrectangle.py   Hyperrectangle (IMPLICIT)
-├── meshes/mesh_2d.py            Mesh2D (DOMAIN_2D)
+├── meshes/mesh_2d.py            Mesh2D (UNSTRUCTURED_MESH)
 ├── graph/network_geometry.py    NetworkGeometry (NETWORK, MAZE)
 └── boundary/
     ├── types.py                 BCType, BCSegment
