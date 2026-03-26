@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.13] - 2026-03-26
+
+### Added
+
+- **True adjoint mode** (Issue #707, PR #829)
+  - `HJBFDMSolver.build_linearized_operator(U, M, time)` — builds linearized HJB Jacobian
+  - `adjoint_mode="jacobian_transpose"` in `BlockIterator` for true adjoint FP coupling
+  - `LinearizedOperatorCapable` protocol for type-safe solver integration
+  - 8 unit tests + 4 integration tests validating convergence, mass conservation, analytical correctness
+
+### Removed
+
+- Dead deprecated shim modules: `grid_operators.py`, `tensor_operators.py`, `differential_utils.py` (-484 lines, PR #828)
+
+### Changed
+
+- `tensor_calculus.py` internalized — no longer re-exported from `utils.numerical`, no deprecation warning on import (PR #825)
+
+## [0.17.12] - 2026-03-26
+
+### Changed
+
+- Complete `mfg_pde` → `mfgarchon` rename across archives and docs (follow-up to #821)
+- README updated: fix API examples, remove stale version tag, fix tutorial links (PR #822)
+- CITATION.cff: general description, no specific solver list (PR #822)
+- Deprecation guide updated for v0.17.11 changes (PR #826)
+
+### Fixed
+
+- `SpatialCoordinates`/`TemporalCoordinates` deprecation warnings during test collection (PR #823)
+- Stale `DOMAIN_2D`/`DOMAIN_3D` references in docs (PR #823)
+
+### Removed
+
+- Orphan `test_issue_557_fix.py` from project root
+- 3 stale `.venv` editable install artifacts from old `mfg_pde` package
+
+### Infrastructure
+
+- Rename `_GmshMeshBase` → `_MeshGeneratorBase` for backend-agnostic naming (PR #824)
+- Bump `actions/upload-artifact` 6→7, `actions/download-artifact` 7→8, `docker/setup-buildx-action` 3→4 (#815-817)
+
 ## [0.17.7] - 2026-02-06
 
 ### Fixed
