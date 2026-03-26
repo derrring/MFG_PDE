@@ -52,7 +52,7 @@ For smooth test functions φ:
 ### Module Structure (extends Phase 2.2)
 
 ```
-mfg_pde/
+mfgarchon/
 ├── alg/numerical/stochastic/
 │   ├── common_noise_solver.py          ✅ EXISTS
 │   ├── master_equation_solver.py       ⬜ TO IMPLEMENT
@@ -82,7 +82,7 @@ mfg_pde/
   - `verify_functional_derivative_accuracy`
 
 **From Neural Paradigm (Phase 1)**:
-- ✅ PINN framework (`mfg_pde.alg.neural.nn`)
+- ✅ PINN framework (`mfgarchon.alg.neural.nn`)
 - ✅ PyTorch integration
 - ✅ Automatic differentiation infrastructure
 
@@ -91,7 +91,7 @@ mfg_pde/
 ### **Week 1-2: Foundation**
 
 #### Task 1.1: Enhance Functional Calculus ⬜
-**File**: `mfg_pde/utils/numerical/functional_calculus.py`
+**File**: `mfgarchon/utils/numerical/functional_calculus.py`
 
 **Additions**:
 ```python
@@ -126,7 +126,7 @@ class MasterEquationFunctionalDerivative:
 **Tests**: Extend `test_functional_calculus.py` with Master Equation cases
 
 #### Task 1.2: Master Equation Problem Class ⬜
-**File**: `mfg_pde/core/stochastic/stochastic_problem.py`
+**File**: `mfgarchon/core/stochastic/stochastic_problem.py`
 
 **Additions**:
 ```python
@@ -148,7 +148,7 @@ class MasterEquationProblem(StochasticMFGProblem):
 ### **Week 3-4: Numerical Solver**
 
 #### Task 2.1: Finite Difference Master Equation Solver ⬜
-**File**: `mfg_pde/alg/numerical/stochastic/master_equation_solver.py`
+**File**: `mfgarchon/alg/numerical/stochastic/master_equation_solver.py`
 
 **Core Implementation**:
 ```python
@@ -204,7 +204,7 @@ class MasterEquationSolver(BaseMFGSolver):
 - `_check_convergence()`: Functional norm convergence
 
 #### Task 2.2: Particle Representation Methods ⬜
-**File**: `mfg_pde/alg/numerical/stochastic/particle_methods.py`
+**File**: `mfgarchon/alg/numerical/stochastic/particle_methods.py`
 
 **Implementation**:
 ```python
@@ -239,7 +239,7 @@ class ParticleMeasureRepresentation:
 ### **Week 5-6: Neural Solver (High-Dimensional)**
 
 #### Task 3.1: PINN-Based Master Equation Solver ⬜
-**File**: `mfg_pde/alg/neural/stochastic/master_equation_pinn.py`
+**File**: `mfgarchon/alg/neural/stochastic/master_equation_pinn.py`
 
 **Architecture**:
 ```python
@@ -535,7 +535,7 @@ class MasterEquationConfig(SolverConfig):
 
 - **Phase 2.2 Tracking**: Issue #68
 - **Functional Calculus Tests**: `tests/unit/test_functional_calculus.py`
-- **Common Noise Solver**: `mfg_pde/alg/numerical/stochastic/common_noise_solver.py`
+- **Common Noise Solver**: `mfgarchon/alg/numerical/stochastic/common_noise_solver.py`
 - **Roadmap**: `docs/development/STRATEGIC_DEVELOPMENT_ROADMAP_2026.md`
 
 ---

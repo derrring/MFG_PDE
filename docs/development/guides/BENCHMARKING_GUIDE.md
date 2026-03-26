@@ -1,4 +1,4 @@
-# MFG_PDE Benchmark Design Guide
+# MFGarchon Benchmark Design Guide
 
 **Document Version**: 1.0  
 **Last Updated**: August 1, 2025  
@@ -6,7 +6,7 @@
 
 ## 📋 **Executive Summary**
 
-This document describes the design principles, architecture, and implementation guidelines for the MFG_PDE benchmarking framework. The framework provides comprehensive evaluation capabilities for MFG solvers across multiple performance dimensions with an extensible, category-based organization.
+This document describes the design principles, architecture, and implementation guidelines for the MFGarchon benchmarking framework. The framework provides comprehensive evaluation capabilities for MFG solvers across multiple performance dimensions with an extensible, category-based organization.
 
 ## 🎯 **Design Objectives**
 
@@ -603,7 +603,7 @@ dependencies = {
     'psutil': '>=5.8.0',
     
     # MFG-specific
-    'mfg_pde': '>=1.0.0',
+    'mfgarchon': '>=1.0.0',
     
     # Optional high-performance
     'jax': '>=0.3.0',  # GPU acceleration
@@ -619,7 +619,7 @@ dependencies = {
 
 ## 🎯 **Conclusion**
 
-The MFG_PDE benchmark design provides a **comprehensive, extensible, and scientifically rigorous framework** for evaluating MFG solver performance. Key design achievements:
+The MFGarchon benchmark design provides a **comprehensive, extensible, and scientifically rigorous framework** for evaluating MFG solver performance. Key design achievements:
 
 ### **Technical Excellence**
 - **Modular Architecture**: Clean separation of concerns with standardized interfaces

@@ -29,7 +29,7 @@ result = problem.solve()
 **Recommended upgrade**: Make the scheme selection explicit for better clarity:
 
 ```python
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 
 # Explicit scheme selection (Safe Mode)
 result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
@@ -41,7 +41,7 @@ result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 
 ```python
 # Old pattern (deprecated)
-from mfg_pde.factory import create_solver
+from mfgarchon.factory import create_solver
 solver = create_solver(problem, hjb_solver=hjb, fp_solver=fp)
 result = solver.solve()
 ```
@@ -63,7 +63,7 @@ result = problem.solve(hjb_solver=hjb, fp_solver=fp)
 
 **Before**:
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -78,7 +78,7 @@ result = solver.solve()
 
 **After**:
 ```python
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -97,8 +97,8 @@ result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 
 **Before**:
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
-from mfg_pde.factory import create_solver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.factory import create_solver
 
 hjb = HJBFDMSolver(problem)
 fp = FPFDMSolver(problem, advection_scheme="divergence_upwind")
@@ -109,7 +109,7 @@ result = solver.solve()
 
 **After**:
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 hjb = HJBFDMSolver(problem)
 fp = FPFDMSolver(problem, advection_scheme="divergence_upwind")
@@ -153,8 +153,8 @@ result = problem.solve()  # Uses FDM_UPWIND (safe default)
 
 **Before** (manual, error-prone):
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
-from mfg_pde.factory import create_solver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.factory import create_solver
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -173,7 +173,7 @@ result_sl = solver_sl.solve()
 
 **After** (clean, safe):
 ```python
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -188,8 +188,8 @@ for scheme in schemes:
 
 **Before**:
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
-from mfg_pde.factory import create_solver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.factory import create_solver
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -202,8 +202,8 @@ result = solver.solve()
 
 **After** (Option 1 - Safe Mode with config):
 ```python
-from mfg_pde.factory import create_paired_solvers
-from mfg_pde.types import NumericalScheme
+from mfgarchon.factory import create_paired_solvers
+from mfgarchon.types import NumericalScheme
 
 hjb, fp = create_paired_solvers(
     problem,
@@ -216,7 +216,7 @@ result = problem.solve(hjb_solver=hjb, fp_solver=fp)
 
 **After** (Option 2 - Expert Mode):
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 hjb = HJBFDMSolver(problem)
 fp = FPFDMSolver(problem, advection_scheme="gradient_centered")
@@ -230,8 +230,8 @@ result = problem.solve(hjb_solver=hjb, fp_solver=fp)
 **Before**:
 ```python
 import numpy as np
-from mfg_pde.alg.numerical import HJBGFDMSolver, FPGFDMSolver
-from mfg_pde.factory import create_solver
+from mfgarchon.alg.numerical import HJBGFDMSolver, FPGFDMSolver
+from mfgarchon.factory import create_solver
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 points = np.linspace(0, 1, 30)[:, None]
@@ -246,8 +246,8 @@ result = solver.solve()
 **After** (config threading):
 ```python
 import numpy as np
-from mfg_pde.factory import create_paired_solvers
-from mfg_pde.types import NumericalScheme
+from mfgarchon.factory import create_paired_solvers
+from mfgarchon.types import NumericalScheme
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 points = np.linspace(0, 1, 30)[:, None]
@@ -426,7 +426,7 @@ Use `SL_LINEAR` or `SL_CUBIC` in Safe Mode. The factory automatically pairs with
 - **Documentation**: `docs/development/issue_580_adjoint_pairing_implementation.md`
 - **Examples**: `examples/basic/three_mode_api_demo.py`
 - **Theory**: `docs/theory/adjoint_operators_mfg.md`
-- **Issues**: Report problems at https://github.com/anthropics/mfg_pde/issues
+- **Issues**: Report problems at https://github.com/anthropics/mfgarchon/issues
 
 ---
 

@@ -1,4 +1,4 @@
-# Boundary Condition Flow in MFG_PDE
+# Boundary Condition Flow in MFGarchon
 
 **Status**: Clarification Document
 **Date**: 2025-12-17
@@ -397,7 +397,7 @@ This pattern ensures:
 ### Pattern 1: Simple uniform BC (current)
 
 ```python
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.geometry.boundary import no_flux_bc
 
 problem = MFGProblem(geometry=grid, T=1.0, Nt=50, sigma=0.1)
 
@@ -411,7 +411,7 @@ hjb_solver = HJBFDMSolver(problem)
 ### Pattern 2: Via MFGComponents
 
 ```python
-from mfg_pde.geometry.boundary import mixed_bc, BCSegment, BCType
+from mfgarchon.geometry.boundary import mixed_bc, BCSegment, BCType
 
 # Define mixed BC
 exit_seg = BCSegment(name="exit", bc_type=BCType.DIRICHLET, value=0.0, boundary="x_max")

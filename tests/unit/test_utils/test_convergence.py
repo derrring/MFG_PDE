@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/numerical/convergence.py
+Unit tests for mfgarchon/utils/numerical/convergence.py
 
 Tests comprehensive convergence monitoring system including:
 - DistributionComparator (Wasserstein, KL divergence, moments)
@@ -11,15 +11,15 @@ Tests comprehensive convergence monitoring system including:
 - AdaptiveConvergenceWrapper (decorator/wrapper pattern)
 - Utility functions (factory functions, metrics)
 
-Coverage target: mfg_pde/utils/numerical/convergence.py (411 lines, 14% -> 70%+)
+Coverage target: mfgarchon/utils/numerical/convergence.py (411 lines, 14% -> 70%+)
 """
 
 import pytest
 
 import numpy as np
 
-# Use the new import path (old path mfg_pde.utils.numerical.convergence is deprecated)
-from mfg_pde.utils.convergence import (
+# Use the new import path (old path mfgarchon.utils.numerical.convergence is deprecated)
+from mfgarchon.utils.convergence import (
     # Deprecated aliases (for testing backward compatibility)
     AdaptiveConvergenceWrapper,
     AdvancedConvergenceMonitor,
@@ -953,7 +953,7 @@ def test_adaptive_convergence_wrapper_get_detection_info():
 def test_adaptive_convergence_decorator_usage():
     """Test using adaptive_convergence as decorator."""
 
-    from mfg_pde.utils.convergence import adaptive_convergence
+    from mfgarchon.utils.convergence import adaptive_convergence
 
     @adaptive_convergence(classical_tol=1e-4, verbose=False)
     class TestSolver:
@@ -978,7 +978,7 @@ def test_wrap_solver_with_adaptive_convergence():
     """Test wrap_solver_with_adaptive_convergence function."""
     from unittest.mock import Mock
 
-    from mfg_pde.utils.convergence import (
+    from mfgarchon.utils.convergence import (
         wrap_solver_with_adaptive_convergence,
     )
 
@@ -997,7 +997,7 @@ def test_test_particle_detection_function():
     """Test test_particle_detection utility function."""
     from unittest.mock import Mock
 
-    from mfg_pde.utils.convergence import test_particle_detection
+    from mfgarchon.utils.convergence import test_particle_detection
 
     solver = Mock()
     solver.num_particles = 500
@@ -1014,7 +1014,7 @@ def test_test_particle_detection_function():
 def test_adaptive_convergence_decorator_with_parameters():
     """Test adaptive_convergence decorator with custom parameters."""
 
-    from mfg_pde.utils.convergence import adaptive_convergence
+    from mfgarchon.utils.convergence import adaptive_convergence
 
     @adaptive_convergence(
         classical_tol=1e-5,

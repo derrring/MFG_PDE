@@ -40,13 +40,13 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.core.hamiltonian import (
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.core.hamiltonian import (
     OptimizationSense,
     QuadraticControlCost,
 )
-from mfg_pde.geometry import TensorProductGrid, no_flux_bc
+from mfgarchon.geometry import TensorProductGrid, no_flux_bc
 
 
 def create_value_function(Nt: int, Nx: int, x: np.ndarray, perspective: str) -> np.ndarray:
@@ -372,7 +372,7 @@ def main():
    - Resource seeking (maximize resource collection)
    - Opinion dynamics (maximize social utility)
 
-6. The abstraction in mfg_pde/core/hamiltonian.py provides:
+6. The abstraction in mfgarchon/core/hamiltonian.py provides:
    - QuadraticControlCost: Standard L = ½λ|α|²
    - L1ControlCost: Bang-bang control L = λ|α|
    - BoundedControlCost: Constrained control |α| ≤ α_max

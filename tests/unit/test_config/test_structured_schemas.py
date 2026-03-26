@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/config/structured_schemas.py
+Unit tests for mfgarchon/config/structured_schemas.py
 
 Tests comprehensive structured configuration schemas for OmegaConf including:
 - BoundaryConditionsSchema
@@ -20,7 +20,7 @@ Tests comprehensive structured configuration schemas for OmegaConf including:
 
 import pytest
 
-from mfg_pde.config.structured_schemas import (
+from mfgarchon.config.structured_schemas import (
     BeachProblemSchema,
     BoundaryConditionsSchema,
     DomainSchema,
@@ -628,7 +628,7 @@ def test_complete_configuration_scenario():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has comprehensive docstring."""
-    from mfg_pde.config import structured_schemas
+    from mfgarchon.config import structured_schemas
 
     assert structured_schemas.__doc__ is not None
     assert "OmegaConf" in structured_schemas.__doc__

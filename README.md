@@ -1,10 +1,10 @@
-# MFG_PDE: Mean Field Games Framework
+# MFGarchon: Mean Field Games Framework
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![CI/CD](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/MFG_PDE/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/github/derrring/MFG_PDE/graph/badge.svg?token=HGZFRSF5V6)](https://codecov.io/github/derrring/MFG_PDE)
-[![Release](https://img.shields.io/github/v/release/derrring/MFG_PDE)](https://github.com/derrring/MFG_PDE/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/derrring/MFG_PDE/blob/main/LICENSE)
+[![CI/CD](https://github.com/derrring/mfgarchon/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/mfgarchon/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/github/derrring/mfgarchon/graph/badge.svg?token=HGZFRSF5V6)](https://codecov.io/github/derrring/mfgarchon)
+[![Release](https://img.shields.io/github/v/release/derrring/mfgarchon)](https://github.com/derrring/mfgarchon/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/derrring/mfgarchon/blob/main/LICENSE)
 
 A Python framework for solving Mean Field Games with modern numerical methods, GPU acceleration, and reinforcement learning.
 
@@ -17,21 +17,21 @@ A Python framework for solving Mean Field Games with modern numerical methods, G
 ### Installation
 
 ```bash
-pip install mfg-pde
+pip install mfgarchon
 ```
 
 Or install from source:
 ```bash
-git clone https://github.com/derrring/MFG_PDE.git
-cd MFG_PDE
+git clone https://github.com/derrring/mfgarchon.git
+cd mfgarchon
 pip install -e .
 ```
 
 ### Your First MFG Solution
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Create geometry (recommended)
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
@@ -81,8 +81,8 @@ result = problem.solve()
 ### Solve Any MFG Problem
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Create geometry
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
@@ -112,26 +112,26 @@ result = problem.solve(
 
 ```python
 # Particle interpolation
-from mfg_pde.utils import interpolate_grid_to_particles
+from mfgarchon.utils import interpolate_grid_to_particles
 u_particles = interpolate_grid_to_particles(u_grid, (0, 1), particles)
 
 # Signed distance functions
-from mfg_pde.utils import sdf_sphere, sdf_box, sdf_union
+from mfgarchon.utils import sdf_sphere, sdf_box, sdf_union
 obstacles = sdf_union(
     sdf_sphere(points, center=[0.3, 0.5], radius=0.1),
     sdf_box(points, bounds=[[0.6, 0.8], [0.4, 0.6]])
 )
 
 # QP caching (2-5× speedup for GFDM)
-from mfg_pde.utils import QPSolver, QPCache
+from mfgarchon.utils import QPSolver, QPCache
 solver = QPSolver(backend="osqp", cache=QPCache(max_size=1000))
 ```
 
 ### Dual Geometry (v1.0+)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Multi-resolution: fine HJB + coarse FP (4-15× speedup)
 hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])
@@ -148,7 +148,7 @@ result = solve_mfg(problem, config="fast")
 ```
 
 ```python
-from mfg_pde.geometry import Mesh2D, TensorProductGrid
+from mfgarchon.geometry import Mesh2D, TensorProductGrid
 
 # Complex domains: FEM mesh + regular grid
 mesh = Mesh2D(
@@ -200,11 +200,11 @@ See [Changelog](CHANGELOG.md) for version history.
 Install additional capabilities as needed:
 
 ```bash
-pip install mfg-pde[neural]          # PyTorch-based neural operators, PINNs, DGM
-pip install mfg-pde[reinforcement]   # RL algorithms (DDPG, TD3, SAC)
-pip install mfg-pde[gpu]             # CUDA support, JAX GPU
-pip install mfg-pde[performance]     # JAX backend, Numba JIT
-pip install mfg-pde[all]             # Everything
+pip install mfgarchon[neural]          # PyTorch-based neural operators, PINNs, DGM
+pip install mfgarchon[reinforcement]   # RL algorithms (DDPG, TD3, SAC)
+pip install mfgarchon[gpu]             # CUDA support, JAX GPU
+pip install mfgarchon[performance]     # JAX backend, Numba JIT
+pip install mfgarchon[all]             # Everything
 ```
 
 ---
@@ -220,16 +220,16 @@ Optional: PyTorch, JAX, igraph, plotly (for advanced features)
 
 ## Citation
 
-If you use MFG_PDE in your research, please cite it. You can use GitHub's
+If you use MFGarchon in your research, please cite it. You can use GitHub's
 "Cite this repository" button in the sidebar, or use the following BibTeX:
 
 ```bibtex
-@software{mfg_pde,
-  title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
+@software{mfgarchon,
+  title={MFGarchon: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jiongyi},
   year={2026},
   version={0.17.11},
-  url={https://github.com/derrring/MFG_PDE}
+  url={https://github.com/derrring/mfgarchon}
 }
 ```
 

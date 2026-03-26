@@ -21,11 +21,11 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.numerical.coupling.network_mfg_solver import create_network_mfg_solver
+from mfgarchon.alg.numerical.coupling.network_mfg_solver import create_network_mfg_solver
 
-# MFG_PDE imports
-from mfg_pde.extensions.topology import NetworkMFGComponents, NetworkMFGProblem
-from mfg_pde.geometry.graph.network_geometry import (
+# MFGarchon imports
+from mfgarchon.extensions.topology import NetworkMFGComponents, NetworkMFGProblem
+from mfgarchon.geometry.graph.network_geometry import (
     GridNetwork,
     RandomNetwork,
     ScaleFreeNetwork,

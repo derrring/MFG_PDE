@@ -17,7 +17,7 @@
 4. **Connects** to statistical physics (free energy minimization)
 5. **Extends** to non-potential games via monotonicity conditions
 
-This document provides rigorous mathematical foundations for variational formulations and their computational implementation in MFG_PDE.
+This document provides rigorous mathematical foundations for variational formulations and their computational implementation in MFGarchon.
 
 ---
 
@@ -307,11 +307,11 @@ $$\lim_{\epsilon \to 0} \epsilon W_{2,\epsilon}^2(m_0, m_1) = \text{Schrödinger
 
 ---
 
-## 8. Implementation in MFG_PDE
+## 8. Implementation in MFGarchon
 
 ### 8.1 Core Components
 
-**Location**: `mfg_pde/alg/optimization/`
+**Location**: `mfgarchon/alg/optimization/`
 
 **Key Classes**:
 1. **`WassersteinGradientFlow`**: JKO scheme implementation
@@ -334,8 +334,8 @@ $$\lim_{\epsilon \to 0} \epsilon W_{2,\epsilon}^2(m_0, m_1) = \text{Schrödinger
 **Simple Quadratic Congestion MFG**:
 
 ```python
-from mfg_pde.alg.optimization import WassersteinGradientFlow
-from mfg_pde.core import VariationalMFGProblem
+from mfgarchon.alg.optimization import WassersteinGradientFlow
+from mfgarchon.core import VariationalMFGProblem
 import numpy as np
 
 # Define energy functional
@@ -356,7 +356,7 @@ m_trajectory = jko.solve(m0, T=1.0)
 **Sinkhorn-Based Solver**:
 
 ```python
-from mfg_pde.alg.optimization import SinkhornJKO
+from mfgarchon.alg.optimization import SinkhornJKO
 
 # Entropic JKO with GPU acceleration
 solver = SinkhornJKO(
@@ -494,6 +494,6 @@ $$F[\rho] = \int \rho V dx + kT \int \rho \log \rho dx$$
 
 **Document Status**: Comprehensive mathematical foundation for variational MFG
 **Usage**: Reference for optimization-based MFG solvers and theoretical analysis
-**Related Code**: `mfg_pde/alg/optimization/wasserstein_gradient_flow.py`, `mfg_pde/alg/optimization/sinkhorn_solver.py`
+**Related Code**: `mfgarchon/alg/optimization/wasserstein_gradient_flow.py`, `mfgarchon/alg/optimization/sinkhorn_solver.py`
 **Related Theory**: `information_geometry_mfg.md` (geometric perspective), `mathematical_background.md` (foundations)
 **Last Updated**: October 8, 2025

@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-18
 **Issue**: #593 Phase 4.1 - Advanced Boundary Condition Methods
-**Implementation**: `mfg_pde/geometry/boundary/nitsche_1d.py`
+**Implementation**: `mfgarchon/geometry/boundary/nitsche_1d.py`
 **Tests**: `tests/unit/geometry/boundary/test_nitsche_1d.py`
 
 ---
@@ -247,7 +247,7 @@ This assumes the consistency term contributes -g_L/h, but this may not be exact 
 ## 5. Code Locations
 
 ### 5.1 Implementation
-- **Core solver**: `mfg_pde/geometry/boundary/nitsche_1d.py:44-319`
+- **Core solver**: `mfgarchon/geometry/boundary/nitsche_1d.py:44-319`
   - Key method: `apply_nitsche_bc()` at line 122
   - Consistency terms: lines 171-182 (left), 196-205 (right)
 
@@ -259,7 +259,7 @@ This assumes the consistency term contributes -g_L/h, but this may not be exact 
   - Non-zero BC: line 96
 
 ### 5.3 Smoke Test
-- **Quick validation**: Run `python mfg_pde/geometry/boundary/nitsche_1d.py`
+- **Quick validation**: Run `python mfgarchon/geometry/boundary/nitsche_1d.py`
 - Output: Convergence rates and penalty dependence analysis
 
 ---
@@ -316,7 +316,7 @@ The mild penalty dependence (error ~ γ^(-1/2)) deviates from theoretical expect
 
 4. **Multi-dimensional**:
    - Generalize to 2D Poisson on structured grids
-   - Reuse framework from `mfg_pde/geometry/operators/`
+   - Reuse framework from `mfgarchon/geometry/operators/`
 
 ### 7.3 Low Priority (Advanced)
 

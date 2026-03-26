@@ -1,11 +1,11 @@
 # Boundary Conditions Guide
 
-This guide explains how to specify and apply boundary conditions in MFG_PDE.
+This guide explains how to specify and apply boundary conditions in MFGarchon.
 
 ## Quick Start
 
 ```python
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     dirichlet_bc,
     neumann_bc,
     periodic_bc,
@@ -43,7 +43,7 @@ bc = dirichlet_bc(dimension=2, value=lambda t: np.sin(t))
 For different BC types on different boundaries:
 
 ```python
-from mfg_pde.geometry.boundary import mixed_bc, BCSegment, BCType
+from mfgarchon.geometry.boundary import mixed_bc, BCSegment, BCType
 import numpy as np
 
 # Define domain
@@ -71,8 +71,8 @@ bc = mixed_bc([exit_bc, wall_bc], dimension=2, domain_bounds=bounds)
 For complex geometries, you can define BCs using **regions** marked on the geometry rather than boundary identifiers:
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import mixed_bc_from_regions, BCSegment, BCType
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import mixed_bc_from_regions, BCSegment, BCType
 
 # Create geometry
 geometry = TensorProductGrid(dimension=2, bounds=[(0, 2), (0, 1)], Nx_points=[41, 21])
@@ -94,7 +94,7 @@ bc_config = {
 bc = mixed_bc_from_regions(geometry, bc_config)
 
 # Apply BCs (must pass geometry parameter)
-from mfg_pde.geometry.boundary import FDMApplicator
+from mfgarchon.geometry.boundary import FDMApplicator
 applicator = FDMApplicator(dimension=2)
 padded = applicator.apply(field, bc, domain_bounds=geometry.bounds, geometry=geometry)
 ```
@@ -182,7 +182,7 @@ Both approaches can be mixed in the same BC specification.
 For finite difference methods, BCs are enforced via ghost cells:
 
 ```python
-from mfg_pde.geometry.boundary import apply_boundary_conditions_2d
+from mfgarchon.geometry.boundary import apply_boundary_conditions_2d
 
 # field has shape (Ny, Nx) - interior points only
 padded = apply_boundary_conditions_2d(field, bc, domain_bounds)
@@ -320,6 +320,6 @@ apply_boundary_conditions_2d(field, bc, domain_bounds=bounds)
 
 ## See Also
 
-- `mfg_pde.geometry.boundary` module documentation
+- `mfgarchon.geometry.boundary` module documentation
 - `docs/development/reports/BC_CORNER_LOGIC_AUDIT.md` - Technical details on corner handling
 - `docs/development/reports/BC_UNIFICATION_TECHNICAL_REPORT.md` - Architecture overview

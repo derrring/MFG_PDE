@@ -18,8 +18,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import MFGComponents, MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver, HJBSemiLagrangianSolver
+from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver, HJBSemiLagrangianSolver
 
 
 class Simple2DMFGProblem(MFGProblem):

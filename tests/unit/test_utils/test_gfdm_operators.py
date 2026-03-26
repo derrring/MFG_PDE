@@ -1,7 +1,7 @@
 """
 Unit tests for GFDM (Generalized Finite Difference Method) operators.
 
-Tests the GFDMOperator class in mfg_pde.utils.numerical.gfdm_operators,
+Tests the GFDMOperator class in mfgarchon.utils.numerical.gfdm_operators,
 which provides efficient spatial derivative computation on scattered points.
 """
 
@@ -11,7 +11,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numerical.gfdm_operators import GFDMOperator
+from mfgarchon.utils.numerical.gfdm_operators import GFDMOperator
 
 
 class TestGFDMOperatorInitialization:

@@ -28,7 +28,7 @@ Successfully fixed `LaplacianOperator.as_scipy_sparse()` to use correct one-side
 
 Replaced dense conversion with direct COO sparse matrix construction that applies correct boundary stencils:
 
-**File**: `mfg_pde/geometry/operators/laplacian.py`
+**File**: `mfgarchon/geometry/operators/laplacian.py`
 
 **Changes**:
 1. Modified `as_scipy_sparse()` to call `_build_sparse_laplacian_direct()`
@@ -140,7 +140,7 @@ Status: ✅ WORKING AS INTENDED
 ## Code Changes Summary
 
 **Files Modified**: 1
-- `mfg_pde/geometry/operators/laplacian.py` (+190 lines net)
+- `mfgarchon/geometry/operators/laplacian.py` (+190 lines net)
 
 **Files Created**: 3 (test + documentation)
 - `tests/integration/test_laplacian_bc_equivalence.py` (305 lines)
@@ -201,7 +201,7 @@ Status: ✅ WORKING AS INTENDED
 
 ### Task 1: Refactor FP Solver (3-4 days)
 
-File: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`
+File: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`
 
 **Changes**:
 ```python
@@ -217,7 +217,7 @@ A_diffusion, b_bc = _build_diffusion_matrix_with_bc(
 )
 
 # NEW: Operator-based (10-15 lines)
-from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+from mfgarchon.geometry.operators.laplacian import LaplacianOperator
 
 L_op = LaplacianOperator(spacings=spacing, field_shape=shape, bc=boundary_conditions)
 L_matrix = L_op.as_scipy_sparse()  # BC handled automatically

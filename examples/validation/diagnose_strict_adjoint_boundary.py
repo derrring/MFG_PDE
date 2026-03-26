@@ -12,9 +12,9 @@ Issue #625: Strict Adjoint Mode boundary consistency investigation
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 
 
 def diagnose_boundary_behavior(Nx: int = 21, x_stall: float = 0.3):

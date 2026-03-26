@@ -1,4 +1,4 @@
-# Getting Started with MFG_PDE
+# Getting Started with MFGarchon
 
 **Tutorial Level**: Beginner
 **Estimated Time**: 30 minutes
@@ -9,7 +9,7 @@
 ## What You'll Learn
 
 In this tutorial, you'll learn:
-1. How to install MFG_PDE
+1. How to install MFGarchon
 2. How to solve your first Mean Field Game
 3. How to visualize the results
 4. The three core concepts: Problems, Configs, and Results
@@ -23,22 +23,22 @@ By the end, you'll have solved a complete MFG problem in just a few lines of cod
 ### Via pip (Recommended)
 
 ```bash
-pip install mfg-pde
+pip install mfgarchon
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/anthropics/mfg-pde.git
-cd mfg-pde
+git clone https://github.com/anthropics/mfgarchon.git
+cd mfgarchon
 pip install -e .
 ```
 
 ### Verify Installation
 
 ```python
-import mfg_pde
-print(mfg_pde.__version__)  # Should print: 0.9.0 (or later)
+import mfgarchon
+print(mfgarchon.__version__)  # Should print: 0.9.0 (or later)
 ```
 
 ---
@@ -48,7 +48,7 @@ print(mfg_pde.__version__)  # Should print: 0.9.0 (or later)
 Let's solve a simple Mean Field Game in just 3 lines of code:
 
 ```python
-from mfg_pde import solve_mfg, MFGProblem
+from mfgarchon import solve_mfg, MFGProblem
 
 problem = MFGProblem()
 result = solve_mfg(problem, preset="fast")
@@ -95,10 +95,10 @@ print(f"Solve time: {result.execution_time:.3f}s")
 
 ## Visualizing the Results
 
-MFG_PDE includes built-in visualization tools:
+MFGarchon includes built-in visualization tools:
 
 ```python
-from mfg_pde.visualization import plot_results
+from mfgarchon.visualization import plot_results
 
 # Create interactive plots
 plot_results(result, problem)
@@ -119,7 +119,7 @@ This creates 4 plots:
 A **Problem** defines the Mean Field Game mathematically:
 
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(
     nx=100,        # Spatial grid points
@@ -145,7 +145,7 @@ The `MFGProblem` provides reasonable defaults for all of these, so you can start
 A **Config** specifies the solver algorithms and parameters:
 
 ```python
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 
 # Option 1: Use a preset (simplest)
 result = solve_mfg(problem, preset="fast")      # Speed over accuracy
@@ -153,12 +153,12 @@ result = solve_mfg(problem, preset="balanced")  # Good balance (default)
 result = solve_mfg(problem, preset="accurate")  # High accuracy
 
 # Option 2: Use a config object (more control)
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 config = presets.accurate_solver()
 result = solve_mfg(problem, config=config)
 
 # Option 3: Build custom config (maximum control)
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 config = (
     ConfigBuilder()
     .solver_hjb(method="fdm", accuracy_order=3)
@@ -218,8 +218,8 @@ Solves a Linear-Quadratic Mean Field Game where agents:
 - Interact through mean-field coupling
 """
 
-from mfg_pde import solve_mfg, MFGProblem
-from mfg_pde.visualization import plot_results
+from mfgarchon import solve_mfg, MFGProblem
+from mfgarchon.visualization import plot_results
 import matplotlib.pyplot as plt
 
 # Step 1: Define the problem
@@ -306,7 +306,7 @@ result = solve_mfg(problem, preset="accurate")
 ### 2D Problems
 
 ```python
-from mfg_pde.geometry import Domain2D
+from mfgarchon.geometry import Domain2D
 
 # Create 2D domain
 domain = Domain2D(xmin=-1, xmax=1, ymin=-1, ymax=1, nx=50, ny=50, nt=50)
@@ -326,7 +326,7 @@ result = solve_mfg(problem, preset="fast")
 **Solutions**:
 1. Increase max iterations:
    ```python
-   from mfg_pde.config import ConfigBuilder
+   from mfgarchon.config import ConfigBuilder
    config = ConfigBuilder().picard(max_iterations=200).build()
    result = solve_mfg(problem, config=config)
    ```
@@ -361,7 +361,7 @@ result = solve_mfg(problem, preset="fast")
 
 3. Use GPU backend (if available):
    ```python
-   from mfg_pde.config import ConfigBuilder
+   from mfgarchon.config import ConfigBuilder
    config = ConfigBuilder().backend(backend_type="pytorch", device="cuda").build()
    result = solve_mfg(problem, config=config)
    ```
@@ -417,20 +417,20 @@ Now that you've solved your first MFG problem, here's what to explore next:
 
 - **API Reference**: `docs/api/` - Complete API documentation
 - **Research Guide**: `docs/development/AI_INTERACTION_DESIGN.md` - Research-grade usage
-- **Contributing**: `CONTRIBUTING.md` - Contribute to MFG_PDE
+- **Contributing**: `CONTRIBUTING.md` - Contribute to MFGarchon
 
 ---
 
 ## Summary
 
 **You've learned**:
-- ✅ How to install MFG_PDE
+- ✅ How to install MFGarchon
 - ✅ How to solve an MFG problem in 3 lines: `problem = MFGProblem()` → `result = solve_mfg(problem, preset="fast")`
 - ✅ How to access and visualize results
 - ✅ The three core concepts: Problems (what), Configs (how), Results (output)
 - ✅ Common troubleshooting techniques
 
-**Key takeaway**: MFG_PDE makes solving Mean Field Games **simple**. The unified `solve_mfg()` interface handles all the complexity for you.
+**Key takeaway**: MFGarchon makes solving Mean Field Games **simple**. The unified `solve_mfg()` interface handles all the complexity for you.
 
 ---
 
@@ -438,7 +438,7 @@ Now that you've solved your first MFG problem, here's what to explore next:
 
 ```python
 # Minimal example
-from mfg_pde import solve_mfg, MFGProblem
+from mfgarchon import solve_mfg, MFGProblem
 result = solve_mfg(MFGProblem(), preset="fast")
 
 # Custom grid size
@@ -451,11 +451,11 @@ print(f"Iterations: {result.iterations}")
 U, M = result.U, result.M  # Solutions
 
 # Visualize
-from mfg_pde.visualization import plot_results
+from mfgarchon.visualization import plot_results
 plot_results(result, problem)
 
 # Custom config
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 config = ConfigBuilder().picard(max_iterations=100).build()
 result = solve_mfg(problem, config=config)
 ```
@@ -464,5 +464,5 @@ result = solve_mfg(problem, config=config)
 
 **Tutorial Version**: 1.0
 **Last Updated**: 2025-11-03
-**MFG_PDE Version**: v0.9.0+
+**MFGarchon Version**: v0.9.0+
 **Next Tutorial**: [02_configuration_patterns.md](02_configuration_patterns.md)

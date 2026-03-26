@@ -13,9 +13,9 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.geometry.level_set import (
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.geometry.level_set import (
     LevelSetEvolver,
     LevelSetFunction,
     TimeDependentDomain,
@@ -422,7 +422,7 @@ class TestWENO5DerivativeND:
     @pytest.mark.unit
     def test_weno5_2d_smooth_function(self):
         """Verify d/dx of sin(2pi*x)*cos(2pi*y) matches analytical."""
-        from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_nd
+        from mfgarchon.operators.reconstruction.weno import compute_weno5_derivative_nd
 
         Nx, Ny = 60, 60
         x = np.linspace(0, 1, Nx)
@@ -442,7 +442,7 @@ class TestWENO5DerivativeND:
     @pytest.mark.unit
     def test_weno5_nd_axis_validation(self):
         """Test that invalid axis raises ValueError."""
-        from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_nd
+        from mfgarchon.operators.reconstruction.weno import compute_weno5_derivative_nd
 
         u = np.zeros((10, 10))
         with pytest.raises(ValueError, match="axis=2 out of range"):
@@ -451,7 +451,7 @@ class TestWENO5DerivativeND:
     @pytest.mark.unit
     def test_weno5_nd_spacings_length_validation(self):
         """Test that mismatched spacings length raises ValueError."""
-        from mfg_pde.operators.reconstruction.weno import compute_weno5_derivative_nd
+        from mfgarchon.operators.reconstruction.weno import compute_weno5_derivative_nd
 
         u = np.zeros((10, 10))
         with pytest.raises(ValueError, match="len\\(spacings\\)=1 must match array ndim=2"):

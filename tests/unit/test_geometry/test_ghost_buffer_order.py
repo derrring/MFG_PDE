@@ -8,8 +8,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import neumann_bc
-from mfg_pde.geometry.boundary.applicator_fdm import PreallocatedGhostBuffer
+from mfgarchon.geometry.boundary import neumann_bc
+from mfgarchon.geometry.boundary.applicator_fdm import PreallocatedGhostBuffer
 
 
 def test_default_order():

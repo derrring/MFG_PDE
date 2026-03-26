@@ -1,10 +1,10 @@
-# MFG_PDE Examples
+# MFGarchon Examples
 
 Comprehensive examples and demonstrations organized by complexity and learning path.
 
 ## Quick Start
 
-**New to MFG_PDE?** Start here:
+**New to MFGarchon?** Start here:
 
 ```bash
 # Complete the 5-tutorial learning path (90 minutes total)
@@ -42,7 +42,7 @@ python examples/tutorials/05_config_system.py
 Focused examples demonstrating one concept at a time.
 
 #### [core_infrastructure/](basic/core_infrastructure/)
-Core MFG_PDE API usage:
+Core MFGarchon API usage:
 - `solve_mfg_demo.py` - Basic `solve_mfg()` usage
 - `lq_mfg_demo.py` - Linear-Quadratic MFG problems
 - `custom_hamiltonian_derivs_demo.py` - Custom Hamiltonian derivatives
@@ -152,7 +152,7 @@ Generated outputs and visualizations (gitignored, auto-regenerated).
 
 | I want to... | Go to... |
 |--------------|----------|
-| **Learn MFG_PDE from scratch** | [tutorials/](tutorials/) (start with 01) |
+| **Learn MFGarchon from scratch** | [tutorials/](tutorials/) (start with 01) |
 | **See a basic LQ problem** | [basic/core_infrastructure/lq_mfg_demo.py](basic/core_infrastructure/lq_mfg_demo.py) |
 | **Work with 2D problems** | [tutorials/03_2d_geometry.py](tutorials/03_2d_geometry.py) or [basic/geometry/2d_crowd_motion_fdm.py](basic/geometry/2d_crowd_motion_fdm.py) |
 | **Use particle methods** | [tutorials/04_particle_methods.py](tutorials/04_particle_methods.py) |
@@ -180,8 +180,8 @@ pip install torch       # Optional: Neural network solvers
 
 **From source**:
 ```bash
-git clone https://github.com/derrring/MFG_PDE.git
-cd MFG_PDE
+git clone https://github.com/derrring/mfgarchon.git
+cd MFGarchon
 pip install -e .
 ```
 
@@ -233,7 +233,7 @@ ls examples/outputs/tutorials/
 ## Contributing
 
 Found an issue or want to add an example?
-1. Check if it belongs in MFG_PDE (infrastructure) or mfg-research (experiments)
+1. Check if it belongs in MFGarchon (infrastructure) or mfg-research (experiments)
 2. Place it in the appropriate category
 3. Follow naming conventions: `{topic}_{variant}_demo.py`
 4. Include docstrings with mathematical background
@@ -262,8 +262,8 @@ Found an issue or want to add an example?
 ## Support
 
 - **Documentation**: [../docs/](../docs/)
-- **GitHub Issues**: https://github.com/derrring/MFG_PDE/issues
-- **Discussions**: https://github.com/derrring/MFG_PDE/discussions
+- **GitHub Issues**: https://github.com/derrring/mfgarchon/issues
+- **Discussions**: https://github.com/derrring/mfgarchon/discussions
 
 ---
 

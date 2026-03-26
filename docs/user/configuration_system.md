@@ -7,7 +7,7 @@
 
 ## Overview
 
-MFG_PDE uses a **Dual-System Configuration Architecture** that balances runtime safety with experimental flexibility. This guide explains how to use the configuration system effectively.
+MFGarchon uses a **Dual-System Configuration Architecture** that balances runtime safety with experimental flexibility. This guide explains how to use the configuration system effectively.
 
 ---
 
@@ -143,7 +143,7 @@ graph LR
 Best for: Unit tests, simple scripts, programmatic configuration.
 
 ```python
-from mfg_pde.config import MFGSolverConfig, HJBConfig, FPConfig
+from mfgarchon.config import MFGSolverConfig, HJBConfig, FPConfig
 
 # Create configuration directly in Python
 config = MFGSolverConfig(
@@ -187,7 +187,7 @@ experiment:
 
 **Python code:**
 ```python
-from mfg_pde.config.omegaconf_manager import load_structured_mfg_config
+from mfgarchon.config.omegaconf_manager import load_structured_mfg_config
 
 # Load from YAML
 config = load_structured_mfg_config("experiment.yaml")
@@ -202,8 +202,8 @@ print(config.solver.tolerance) # 1e-8
 Best for: Production runs where both flexibility and validation matter.
 
 ```python
-from mfg_pde.config import MFGSolverConfig
-from mfg_pde.config.omegaconf_manager import (
+from mfgarchon.config import MFGSolverConfig
+from mfgarchon.config.omegaconf_manager import (
     create_omega_manager,
     load_structured_mfg_config,
 )
@@ -227,7 +227,7 @@ manager.save_effective_config(pydantic_config, output_dir="results/run_001")
 Best for: Running multiple experiments with varying parameters.
 
 ```python
-from mfg_pde.config.omegaconf_manager import create_omega_manager
+from mfgarchon.config.omegaconf_manager import create_omega_manager
 
 manager = create_omega_manager()
 base_config = manager.load_config("experiment.yaml")
@@ -259,10 +259,10 @@ for tol in tolerances:
 
 ## Configuration Classes Reference
 
-### Pydantic Classes (`mfg_pde.config`)
+### Pydantic Classes (`mfgarchon.config`)
 
 ```python
-from mfg_pde.config import (
+from mfgarchon.config import (
     MFGSolverConfig,  # Root solver configuration
     HJBConfig,        # HJB equation solver settings
     FPConfig,         # Fokker-Planck solver settings
@@ -270,10 +270,10 @@ from mfg_pde.config import (
 )
 ```
 
-### OmegaConf Schemas (`mfg_pde.config.structured_schemas`)
+### OmegaConf Schemas (`mfgarchon.config.structured_schemas`)
 
 ```python
-from mfg_pde.config.structured_schemas import (
+from mfgarchon.config.structured_schemas import (
     MFGSchema,              # Complete MFG configuration
     ProblemSchema,          # Problem definition
     SolverSchema,           # Solver settings
@@ -402,6 +402,6 @@ print(OmegaConf.to_yaml(config))  # See all values including defaults
 ## See Also
 
 - `docs/development/PYDANTIC_OMEGACONF_COOPERATION.md` - Architecture details
-- `mfg_pde/config/core.py` - Pydantic class definitions
-- `mfg_pde/config/structured_schemas.py` - OmegaConf schema definitions
-- `mfg_pde/config/omegaconf_manager.py` - Manager utilities
+- `mfgarchon/config/core.py` - Pydantic class definitions
+- `mfgarchon/config/structured_schemas.py` - OmegaConf schema definitions
+- `mfgarchon/config/omegaconf_manager.py` - Manager utilities

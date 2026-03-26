@@ -279,8 +279,8 @@ def simple_function(x: float) -> float:  # Public API gets typing
 ## 🔧 **Implementation Checklist**
 
 ### **Before Starting**
-- [ ] Establish baseline error count: `mypy mfg_pde/ | grep "Found.*errors"`
-- [ ] Identify error categories: `mypy mfg_pde/ | grep "error:" | cut -d: -f4 | sort | uniq -c`
+- [ ] Establish baseline error count: `mypy mfgarchon/ | grep "Found.*errors"`
+- [ ] Identify error categories: `mypy mfgarchon/ | grep "error:" | cut -d: -f4 | sort | uniq -c`
 - [ ] Plan 2-3 specific targets based on highest error counts
 
 ### **During Implementation**
@@ -290,7 +290,7 @@ def simple_function(x: float) -> float:  # Public API gets typing
 - [ ] Document working patterns for team knowledge
 
 ### **After Each Improvement**
-- [ ] Run full mypy check: `mypy mfg_pde/`
+- [ ] Run full mypy check: `mypy mfgarchon/`
 - [ ] Test pre-commit hooks: `pre-commit run --files target_file.py`
 - [ ] Update progress documentation
 - [ ] Clean up any newly-unused type ignores
@@ -308,7 +308,7 @@ def simple_function(x: float) -> float:  # Public API gets typing
 ```bash
 # Measurement commands
 echo "Baseline: 414 errors"
-mypy mfg_pde/ --show-error-codes | grep "Found.*errors"
+mypy mfgarchon/ --show-error-codes | grep "Found.*errors"
 echo "Reduction: $((414 - current_count)) errors"
 echo "Improvement: $(echo "scale=1; (414-current_count)*100/414" | bc)%"
 ```
@@ -364,4 +364,4 @@ Based on remaining error distribution:
 ---
 
 *Document created from Phase 1 implementation results*
-*All patterns tested in production environment with MFG_PDE codebase*
+*All patterns tested in production environment with MFGarchon codebase*

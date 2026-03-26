@@ -30,7 +30,7 @@ except ImportError:
     GYMNASIUM_AVAILABLE = False
 
 if TORCH_AVAILABLE:
-    from mfg_pde.alg.reinforcement.algorithms.mean_field_td3 import MeanFieldTD3, TD3Critic
+    from mfgarchon.alg.reinforcement.algorithms.mean_field_td3 import MeanFieldTD3, TD3Critic
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available")
@@ -291,7 +291,7 @@ class TestTD3vsDDPG:
 
     def test_td3_has_twin_critics(self):
         """Verify TD3 has two critics while DDPG has one."""
-        from mfg_pde.alg.reinforcement.algorithms.mean_field_ddpg import MeanFieldDDPG
+        from mfgarchon.alg.reinforcement.algorithms.mean_field_ddpg import MeanFieldDDPG
 
         class MockEnv:
             def reset(self):
@@ -328,7 +328,7 @@ class TestTD3vsDDPG:
 
     def test_td3_has_policy_delay(self):
         """Verify TD3 has delayed policy updates."""
-        from mfg_pde.alg.reinforcement.algorithms.mean_field_ddpg import MeanFieldDDPG
+        from mfgarchon.alg.reinforcement.algorithms.mean_field_ddpg import MeanFieldDDPG
 
         class MockEnv:
             def reset(self):

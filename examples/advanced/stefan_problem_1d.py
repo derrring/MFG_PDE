@@ -52,11 +52,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import erf
 
-from mfg_pde.alg.numerical.pde_solvers import ImplicitHeatSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import dirichlet_bc
-from mfg_pde.geometry.level_set import LevelSetFunction, TimeDependentDomain
-from mfg_pde.operators import InterfaceJumpOperator
+from mfgarchon.alg.numerical.pde_solvers import ImplicitHeatSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import dirichlet_bc
+from mfgarchon.geometry.level_set import LevelSetFunction, TimeDependentDomain
+from mfgarchon.operators import InterfaceJumpOperator
 
 # ========================================
 # Problem Parameters

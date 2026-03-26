@@ -9,13 +9,13 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
+from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions
 
 
 def _default_hamiltonian():
@@ -40,7 +40,7 @@ pytestmark = pytest.mark.optional_torch
 
 # Check if PyTorch is available for GPU tests
 try:
-    from mfg_pde.backends.torch_backend import TorchBackend
+    from mfgarchon.backends.torch_backend import TorchBackend
 
     # Test if torch backend actually works by creating a simple instance
     _test_backend = TorchBackend(device="cpu")

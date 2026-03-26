@@ -9,7 +9,7 @@ Tests comprehensive parameter control including:
 
 import pytest
 
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     MazeConfig,
     MazeGeometry,
     PhysicalDimensions,
@@ -108,7 +108,7 @@ class TestPositionPlacement:
 
     def setup_method(self):
         """Setup test maze."""
-        from mfg_pde.alg.reinforcement.environments import MazeAlgorithm
+        from mfgarchon.alg.reinforcement.environments import MazeAlgorithm
 
         generator = MazeGeometry(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
         generator.generate(seed=42)
@@ -183,7 +183,7 @@ class TestPositionMetrics:
 
     def setup_method(self):
         """Setup test maze."""
-        from mfg_pde.alg.reinforcement.environments import MazeAlgorithm
+        from mfgarchon.alg.reinforcement.environments import MazeAlgorithm
 
         generator = MazeGeometry(10, 10, MazeAlgorithm.RECURSIVE_BACKTRACKING)
         generator.generate(seed=42)
@@ -236,7 +236,7 @@ class TestIntegration:
 
     def test_multi_goal_with_farthest_strategy(self):
         """Test multi-goal configuration with farthest placement."""
-        from mfg_pde.alg.reinforcement.environments import MazeAlgorithm
+        from mfgarchon.alg.reinforcement.environments import MazeAlgorithm
 
         config = create_multi_goal_config(20, 20, num_goals=5, goal_strategy="farthest")
 

@@ -26,11 +26,11 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfg_pde import MFGComponents, MFGProblem
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("semi_lagrangian_2d", level="INFO")

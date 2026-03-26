@@ -1,12 +1,12 @@
-# MFG_PDE Quickstart
+# MFGarchon Quickstart
 
-**Get started with MFG_PDE in 5 minutes**
+**Get started with MFGarchon in 5 minutes**
 
 ---
 
 ## Prerequisites
 
-MFG_PDE assumes you understand:
+MFGarchon assumes you understand:
 - **Mean Field Games**: HJB-FP coupled systems, Nash equilibria
 - **Numerical PDEs**: Finite difference methods, stability
 - **Python**: NumPy and basic scientific computing
@@ -18,7 +18,7 @@ If you need background, see the [Theory Guide](../theory/) and [Notebooks](../..
 ## Installation
 
 ```bash
-pip install mfg-pde
+pip install mfgarchon
 ```
 
 ---
@@ -26,8 +26,8 @@ pip install mfg-pde
 ## Simplest Example (30 seconds)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Create geometry (recommended approach)
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
@@ -70,9 +70,9 @@ result = problem.solve(
 ### Step 1: Import and Create Problem
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.factory import create_standard_solver
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.factory import create_standard_solver
 
 # Create geometry
 domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
@@ -114,7 +114,7 @@ print(f"Mass error: {result.mass_conservation_error:.2e}")
 
 ## Three Solver Tiers
 
-MFG_PDE provides three solver tiers based on **quality**:
+MFGarchon provides three solver tiers based on **quality**:
 
 | Tier | Name | Mass Error | Convergence | Use Case |
 |:-----|:-----|:-----------|:------------|:---------|
@@ -125,7 +125,7 @@ MFG_PDE provides three solver tiers based on **quality**:
 ### Tier 1: Basic FDM (Benchmark)
 
 ```python
-from mfg_pde.factory import create_basic_solver
+from mfgarchon.factory import create_basic_solver
 
 # Basic FDM - for benchmarking only (poor mass conservation)
 solver = create_basic_solver(problem, damping=0.6)
@@ -137,7 +137,7 @@ result = solver.solve()
 ### Tier 2: Hybrid (DEFAULT)
 
 ```python
-from mfg_pde.factory import create_standard_solver
+from mfgarchon.factory import create_standard_solver
 
 # Hybrid (HJB-FDM + FP-Particle) - RECOMMENDED
 solver = create_standard_solver(problem, "fixed_point")
@@ -149,14 +149,14 @@ result = solver.solve()
 ### Tier 3: Advanced Methods
 
 ```python
-from mfg_pde.factory import create_accurate_solver
+from mfgarchon.factory import create_accurate_solver
 
 # Accurate configuration (higher iterations, tighter tolerance)
 solver = create_accurate_solver(problem, "fixed_point", max_iterations=200)
 result = solver.solve()
 
 # Direct access to specialized HJB solvers (advanced usage)
-from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver, HJBSemiLagrangianSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBWenoSolver, HJBSemiLagrangianSolver
 # These require manual configuration - see advanced examples
 ```
 
@@ -169,9 +169,9 @@ Use for specialized requirements (high-order accuracy, research applications).
 ### Workflow 1: Standard Research Problem
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.factory import create_standard_solver
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.factory import create_standard_solver
 import numpy as np
 
 # Create geometry
@@ -194,7 +194,7 @@ for t in range(problem.Nt + 1):
 ### Workflow 2: Method Comparison
 
 ```python
-from mfg_pde.factory import create_basic_solver, create_standard_solver, create_accurate_solver
+from mfgarchon.factory import create_basic_solver, create_standard_solver, create_accurate_solver
 
 # Compare three solver tiers
 solvers = {
@@ -214,7 +214,7 @@ for name, solver in solvers.items():
 ### Workflow 3: Custom Configuration
 
 ```python
-from mfg_pde.factory import create_standard_solver
+from mfgarchon.factory import create_standard_solver
 
 # Fine-tune solver parameters
 solver = create_standard_solver(
@@ -250,8 +250,8 @@ Browse working examples:
 Define your own Hamiltonian:
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 import numpy as np
 
 class MyMFGProblem(MFGProblem):
@@ -374,5 +374,5 @@ plt.show()
 ---
 
 **Need help?**
-- **[GitHub Discussions](https://github.com/derrring/MFG_PDE/discussions)** - Ask questions
-- **[GitHub Issues](https://github.com/derrring/MFG_PDE/issues)** - Report bugs
+- **[GitHub Discussions](https://github.com/derrring/mfgarchon/discussions)** - Ask questions
+- **[GitHub Issues](https://github.com/derrring/mfgarchon/issues)** - Report bugs

@@ -14,7 +14,7 @@ import warnings
 
 import pytest
 
-from mfg_pde.utils.deprecation import (
+from mfgarchon.utils.deprecation import (
     check_removal_readiness,
     deprecated,
     deprecated_parameter,

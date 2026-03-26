@@ -1,4 +1,4 @@
-# Docker ignore file for MFG_PDE
+# Docker ignore file for MFGarchon
 # Exclude unnecessary files from Docker build context
 
 # Git and version control

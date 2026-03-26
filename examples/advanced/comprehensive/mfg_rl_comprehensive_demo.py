@@ -17,7 +17,7 @@ Usage:
     python mfg_rl_comprehensive_demo.py --scenario linear_quadratic --episodes 1500
     python mfg_rl_comprehensive_demo.py --scenario finite_state --episodes 1000
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -33,11 +33,11 @@ import numpy as np
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-# MFG_PDE imports
+# MFGarchon imports
 from examples.advanced.mfg_rl_experiment_suite import ExperimentConfig, MFGRLExperimentSuite
 
-from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import create_mean_field_q_learning
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.alg.reinforcement.algorithms.mean_field_q_learning import create_mean_field_q_learning
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 logger = get_logger(__name__)
 

@@ -1,13 +1,13 @@
 # Architecture Refactoring Issue Created
 
 **Date**: 2025-10-30
-**GitHub Issue**: [#200](https://github.com/derrring/MFG_PDE/issues/200)
+**GitHub Issue**: [#200](https://github.com/derrring/mfgarchon/issues/200)
 
 ---
 
 ## Summary
 
-Comprehensive architecture refactoring issue created in MFG_PDE repository based on 3 weeks of intensive research usage (2025-10-06 to 2025-10-30).
+Comprehensive architecture refactoring issue created in MFGarchon repository based on 3 weeks of intensive research usage (2025-10-06 to 2025-10-30).
 
 ---
 
@@ -15,7 +15,7 @@ Comprehensive architecture refactoring issue created in MFG_PDE repository based
 
 **Title**: Architecture Refactoring: Unified Problem Classes and Multi-Dimensional Solver Support
 
-**URL**: https://github.com/derrring/MFG_PDE/issues/200
+**URL**: https://github.com/derrring/mfgarchon/issues/200
 
 **Labels**:
 - `priority: high`
@@ -42,7 +42,7 @@ Comprehensive architecture refactoring issue created in MFG_PDE repository based
 
 ## Repository State Verified
 
-**MFG_PDE Branches**:
+**MFGarchon Branches**:
 - `main` (current)
 - `feature/osqp-and-adaptive-neighborhoods` (remote)
 - `refactor/remove-use-monotone-constraints` (remote)
@@ -64,7 +64,7 @@ Comprehensive architecture refactoring issue created in MFG_PDE repository based
 
 ## Documentation Organized
 
-All comprehensive documentation is in `MFG_PDE/docs/architecture/`:
+All comprehensive documentation is in `MFGarchon/docs/architecture/`:
 
 ```
 docs/architecture/
@@ -72,10 +72,10 @@ docs/architecture/
 ├── audit/
 │   ├── AUDIT_ENRICHMENT_SUMMARY.md        # Executive summary (371 lines)
 │   ├── ARCHITECTURE_AUDIT_ENRICHMENT.md   # Full audit (1,799 lines)
-│   ├── MFG_PDE_ARCHITECTURE_AUDIT.md      # Original audit
+│   ├── MFGarchon_ARCHITECTURE_AUDIT.md      # Original audit
 │   └── ARCHITECTURE_AUDIT_SUMMARY.md      # Original summary
 ├── proposals/
-│   └── MFG_PDE_ARCHITECTURE_REFACTOR_PROPOSAL.md
+│   └── MFGarchon_ARCHITECTURE_REFACTOR_PROPOSAL.md
 ├── evidence/
 │   └── FDM_SOLVER_LIMITATION_ANALYSIS.md
 └── navigation/
@@ -99,7 +99,7 @@ docs/architecture/
 - 1,080 lines of custom problem code required
 
 ### 3. Bug #15: QP Sigma Type Error (HIGH PRIORITY)
-- NOT YET FIXED in MFG_PDE
+- NOT YET FIXED in MFGarchon
 - Workaround exists (`SmartSigma`)
 - 5-line fix proposed in issue
 
@@ -166,7 +166,7 @@ docs/architecture/
 **Documentation Trail**:
 - 181 markdown files analyzed
 - 94 Python test/experiment files
-- 251 Python files in MFG_PDE (100% coverage)
+- 251 Python files in MFGarchon (100% coverage)
 - 15 documents for Bug #13
 - 10 documents for Bug #14
 - 7 documents for Bug #15
@@ -180,7 +180,7 @@ docs/architecture/
 
 ---
 
-## Related Issues in MFG_PDE
+## Related Issues in MFGarchon
 
 **This Issue Consolidates**:
 - Bug #15: QP sigma type error (NEW)
@@ -223,7 +223,7 @@ docs/architecture/
 ## Ideal Future API Documented
 
 ```python
-from mfg_pde import MFGProblem, solve_mfg
+from mfgarchon import MFGProblem, solve_mfg
 
 # Single problem class for all dimensions
 problem = MFGProblem(
@@ -251,7 +251,7 @@ U, M, info = solution
 - ✅ Repository state verified (branches, issues, PRs)
 - ✅ Comprehensive issue created (#200)
 - ✅ Appropriate labels added
-- ✅ All documentation organized in `MFG_PDE/docs/architecture/`
+- ✅ All documentation organized in `MFGarchon/docs/architecture/`
 - ✅ Related issues and PRs cross-referenced
 - ✅ Evidence and quantification included
 - ✅ Clear action plan with timeline
@@ -265,9 +265,9 @@ U, M, info = solution
 ## Contact
 
 **For Questions**:
-- GitHub Issue: https://github.com/derrring/MFG_PDE/issues/200
-- Full documentation: `MFG_PDE/docs/architecture/README.md`
-- Quick navigation: `MFG_PDE/docs/architecture/navigation/ARCHITECTURE_DOCUMENTATION_INDEX.md`
+- GitHub Issue: https://github.com/derrring/mfgarchon/issues/200
+- Full documentation: `MFGarchon/docs/architecture/README.md`
+- Quick navigation: `MFGarchon/docs/architecture/navigation/ARCHITECTURE_DOCUMENTATION_INDEX.md`
 
 ---
 

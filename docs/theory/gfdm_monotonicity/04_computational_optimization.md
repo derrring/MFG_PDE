@@ -304,15 +304,15 @@ test_configs = [
 
 ## 8. Code References
 
-- **Base GFDM**: `mfg_pde/utils/numerical/gfdm_operators.py`
+- **Base GFDM**: `mfgarchon/utils/numerical/gfdm_operators.py`
   - `GFDMOperator` class: neighborhoods, Taylor matrices, derivatives
   - Reusable for FP solvers, general meshfree computation
 
-- **HJB Solver**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+- **HJB Solver**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
   - `HJBGFDMSolver` class: composes GFDMOperator
   - Adds: ghost particles, adaptive delta, QP constraints
 
-- **Weight kernels**: `mfg_pde/utils/numerical/kernels.py`
+- **Weight kernels**: `mfgarchon/utils/numerical/kernels.py`
   - Wendland, Gaussian implementations (general numerical kernels)
 
 ---

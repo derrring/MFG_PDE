@@ -1,12 +1,12 @@
-# Unit Testing Strategy Guide for MFG_PDE
+# Unit Testing Strategy Guide for MFGarchon
 
 **Date:** July 27, 2025  
 **Purpose:** Comprehensive guide for implementing effective unit testing in scientific computing packages  
-**Target Audience:** Developers and researchers working on MFG_PDE  
+**Target Audience:** Developers and researchers working on MFGarchon  
 
 ## Executive Summary
 
-Unit testing in scientific computing requires a balanced approach that validates both computational correctness and software engineering principles. This guide provides a comprehensive strategy for implementing effective testing throughout the MFG_PDE package.
+Unit testing in scientific computing requires a balanced approach that validates both computational correctness and software engineering principles. This guide provides a comprehensive strategy for implementing effective testing throughout the MFGarchon package.
 
 **Key Principle:** *Test strategically, not everywhere* - Focus on critical functionality, edge cases, and public APIs while maintaining computational efficiency.
 
@@ -31,8 +31,8 @@ Unit testing in scientific computing requires a balanced approach that validates
 
 ### Recommended Directory Layout:
 ```
-MFG_PDE/
-├── mfg_pde/                    # Source code
+MFGarchon/
+├── mfgarchon/                    # Source code
 ├── tests/                      # Test suite (separate from source)
 │   ├── unit/                   # Fast, isolated tests
 │   │   ├── test_config/        # Configuration testing
@@ -74,7 +74,7 @@ MFG_PDE/
 # tests/unit/test_config/test_pydantic_config.py
 import pytest
 from pydantic import ValidationError
-from mfg_pde.config.pydantic_config import NewtonConfig, MFGSolverConfig
+from mfgarchon.config.pydantic_config import NewtonConfig, MFGSolverConfig
 
 class TestNewtonConfig:
     """Test Newton solver configuration validation."""
@@ -134,8 +134,8 @@ class TestNewtonConfig:
 # tests/unit/test_solvers/test_hjb_fdm.py
 import pytest
 import numpy as np
-from mfg_pde.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfg_pde.core.mfg_problem import ExampleMFGProblem
+from mfgarchon.alg.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfgarchon.core.mfg_problem import ExampleMFGProblem
 
 class TestHJBFDMSolver:
     """Test HJB FDM solver functionality."""
@@ -209,7 +209,7 @@ class TestHJBFDMSolver:
 # tests/mathematical/test_mass_conservation.py
 import pytest
 import numpy as np
-from mfg_pde import ExampleMFGProblem, create_fast_solver
+from mfgarchon import ExampleMFGProblem, create_fast_solver
 
 class TestMassConservation:
     """Test mass conservation properties of MFG solvers."""
@@ -285,7 +285,7 @@ class TestMassConservation:
 # tests/performance/test_execution_time.py
 import pytest
 import time
-from mfg_pde import ExampleMFGProblem, create_fast_solver
+from mfgarchon import ExampleMFGProblem, create_fast_solver
 
 class TestPerformance:
     """Test performance characteristics and regressions."""
@@ -332,8 +332,8 @@ class TestPerformance:
 ```python
 # tests/integration/test_end_to_end.py
 import pytest
-from mfg_pde import ExampleMFGProblem, create_research_solver
-from mfg_pde.config.pydantic_config import create_research_config
+from mfgarchon import ExampleMFGProblem, create_research_solver
+from mfgarchon.config.pydantic_config import create_research_config
 
 class TestEndToEndWorkflow:
     """Test complete workflows from problem setup to solution."""
@@ -395,7 +395,7 @@ addopts =
     --strict-config
     --verbose
     --tb=short
-    --cov=mfg_pde
+    --cov=mfgarchon
     --cov-report=term-missing
     --cov-report=html:htmlcov
     --cov-fail-under=80
@@ -406,7 +406,7 @@ markers =
     mathematical: Mathematical property validation
     slow: Slow tests (may take >10 seconds)
 filterwarnings =
-    ignore::DeprecationWarning:mfg_pde.*
+    ignore::DeprecationWarning:mfgarchon.*
     ignore::PendingDeprecationWarning
 ```
 
@@ -415,8 +415,8 @@ filterwarnings =
 ```python
 import pytest
 import numpy as np
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.config.pydantic_config import create_fast_config
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.config.pydantic_config import create_fast_config
 
 @pytest.fixture
 def small_problem():
@@ -467,7 +467,7 @@ pytest
 pytest tests/unit/
 
 # Run tests with coverage
-pytest --cov=mfg_pde --cov-report=html
+pytest --cov=mfgarchon --cov-report=html
 
 # Run specific test categories
 pytest -m "unit"                    # Only unit tests
@@ -607,7 +607,7 @@ def test_large_problem_performance(self):
 
 ### **Before Commits:**
 - Run full test suite (`pytest`)
-- Check coverage (`pytest --cov=mfg_pde`)
+- Check coverage (`pytest --cov=mfgarchon`)
 - Run mathematical validation tests
 
 ### **In CI/CD:**

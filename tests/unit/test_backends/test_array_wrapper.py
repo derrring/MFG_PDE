@@ -9,13 +9,13 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.backends.array_wrapper import (
+from mfgarchon.backends.array_wrapper import (
     BackendArray,
     BackendArrayWrapper,
     create_array_wrapper,
     patch_numpy_for_backend,
 )
-from mfg_pde.backends.numpy_backend import NumPyBackend
+from mfgarchon.backends.numpy_backend import NumPyBackend
 
 
 @pytest.fixture

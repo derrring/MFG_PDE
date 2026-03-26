@@ -11,9 +11,9 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.pde_solvers import ImplicitHeatSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import neumann_bc, periodic_bc
+from mfgarchon.alg.numerical.pde_solvers import ImplicitHeatSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import neumann_bc, periodic_bc
 
 
 class TestImplicitHeatSolver1D:

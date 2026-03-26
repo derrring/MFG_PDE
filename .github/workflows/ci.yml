@@ -9,7 +9,7 @@ on:
   # Lightweight checks on PRs
   pull_request:
     paths:
-      - 'mfg_pde/**/*.py'
+      - 'mfgarchon/**/*.py'
       - 'tests/**/*.py'
       - 'pyproject.toml'
       - '.github/workflows/ci.yml'
@@ -18,7 +18,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'mfg_pde/**/*.py'
+      - 'mfgarchon/**/*.py'
       - 'tests/**/*.py'
       - 'pyproject.toml'
       - '.github/workflows/ci.yml'
@@ -72,21 +72,21 @@ jobs:
       timeout-minutes: 1
       run: |
         echo "Checking Python syntax..."
-        find mfg_pde -name "*.py" -exec python -m py_compile {} +
+        find mfgarchon -name "*.py" -exec python -m py_compile {} +
         echo "✅ Syntax valid"
 
     - name: Ruff format check (instant fail)
       timeout-minutes: 1
       run: |
         echo "Checking code formatting..."
-        ruff format --check mfg_pde/
+        ruff format --check mfgarchon/
         echo "✅ Formatting valid"
 
     - name: Ruff lint (critical errors only)
       timeout-minutes: 1
       run: |
         echo "Checking for critical lint errors (syntax & undefined names)..."
-        ruff check --select F mfg_pde/
+        ruff check --select F mfgarchon/
         echo "✅ No critical errors"
 
   # === PHASE 1: Import Validation ===
@@ -117,7 +117,7 @@ jobs:
       timeout-minutes: 1
       run: |
         echo "Testing package imports..."
-        python -c "import mfg_pde; print('✅ Package imports successfully')"
+        python -c "import mfgarchon; print('✅ Package imports successfully')"
 
     - name: Documentation completeness check
       run: |
@@ -139,7 +139,7 @@ jobs:
             return missing
 
         all_missing = []
-        for py_file in Path('mfg_pde').rglob('*.py'):
+        for py_file in Path('mfgarchon').rglob('*.py'):
             if '__pycache__' not in str(py_file):
                 missing = check_docstrings(py_file)
                 all_missing.extend(missing)
@@ -184,7 +184,7 @@ jobs:
       timeout-minutes: 1
       run: |
         echo "Testing package imports..."
-        python -c "import mfg_pde; print('✅ Package imports successfully')"
+        python -c "import mfgarchon; print('✅ Package imports successfully')"
 
     - name: Run tests with coverage (skip slow tests on PRs)
       if: github.event_name != 'release'
@@ -196,14 +196,14 @@ jobs:
           --ignore=tests/unit/test_backends/ \
           --ignore=tests/unit/test_visualization/ \
           -m "not slow and not optional_torch and not benchmark and not experimental and not environment" \
-          --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=50 \
+          --cov=mfgarchon --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=50 \
           --durations=20
 
     - name: Run all tests with coverage (including slow tests on releases)
       if: github.event_name == 'release'
       timeout-minutes: 35
       run: |
-        pytest tests/ -v --cov=mfg_pde --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=50 --durations=20
+        pytest tests/ -v --cov=mfgarchon --cov-report=xml --cov-report=term --junitxml=junit.xml -o junit_family=legacy --maxfail=50 --durations=20
 
     - name: Upload coverage reports to Codecov
       if: ${{ !cancelled() }}
@@ -252,15 +252,15 @@ jobs:
         echo "🧠 Testing memory usage with controlled problem size..."
         python -c "
         import numpy as np
-        from mfg_pde import MFGProblem
-        from mfg_pde.core.mfg_components import MFGComponents
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import no_flux_bc
-        from mfg_pde.config import MFGSolverConfig
-        from mfg_pde.alg.numerical.coupling import FixedPointIterator
-        from mfg_pde.alg.numerical.fp_solvers import FPParticleSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
-        from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+        from mfgarchon import MFGProblem
+        from mfgarchon.core.mfg_components import MFGComponents
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import no_flux_bc
+        from mfgarchon.config import MFGSolverConfig
+        from mfgarchon.alg.numerical.coupling import FixedPointIterator
+        from mfgarchon.alg.numerical.fp_solvers import FPParticleSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBGFDMSolver
+        from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
         import psutil
         import os
 
@@ -304,7 +304,7 @@ jobs:
       run: |
         echo "🔍 Validating parameter migration system..."
         python -c "
-        from mfg_pde.utils.parameter_migration import global_parameter_migrator
+        from mfgarchon.utils.parameter_migration import global_parameter_migrator
         print(f'✅ Parameter migration system loaded with {len(global_parameter_migrator.mappings)} mappings')
         print('📋 Migration system operational for runtime parameter conversion')
         " || true
@@ -336,8 +336,8 @@ jobs:
     - name: Bandit security scan
       run: |
         echo "🔒 Running Bandit security analysis..."
-        bandit -r mfg_pde/ -f json -o bandit-report.json || true
-        bandit -r mfg_pde/ --severity-level medium --confidence-level medium
+        bandit -r mfgarchon/ -f json -o bandit-report.json || true
+        bandit -r mfgarchon/ --severity-level medium --confidence-level medium
       continue-on-error: true
 
     - name: Dependency vulnerability check
@@ -397,11 +397,11 @@ jobs:
         echo "🧪 Running integration tests for Python ${{ matrix.python-version }}..."
         python -c "
         import numpy as np
-        from mfg_pde import MFGProblem
-        from mfg_pde.core.mfg_components import MFGComponents
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import no_flux_bc
-        from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+        from mfgarchon import MFGProblem
+        from mfgarchon.core.mfg_components import MFGComponents
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import no_flux_bc
+        from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
         import time
 
         # Default Hamiltonian for tests (Issue #673)
@@ -465,15 +465,15 @@ jobs:
         pip install dist/*.whl
         python -c "
         import numpy as np
-        import mfg_pde
-        print(f'✅ Successfully imported mfg_pde version {mfg_pde.__version__}')
+        import mfgarchon
+        print(f'✅ Successfully imported mfgarchon version {mfgarchon.__version__}')
 
         # Quick smoke test with modern API (TensorProductGrid + explicit components)
-        from mfg_pde import MFGProblem
-        from mfg_pde.core.mfg_components import MFGComponents
-        from mfg_pde.geometry import TensorProductGrid
-        from mfg_pde.geometry.boundary import no_flux_bc
-        from mfg_pde.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+        from mfgarchon import MFGProblem
+        from mfgarchon.core.mfg_components import MFGComponents
+        from mfgarchon.geometry import TensorProductGrid
+        from mfgarchon.geometry.boundary import no_flux_bc
+        from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
         H = SeparableHamiltonian(
             control_cost=QuadraticControlCost(control_cost=1.0),
             coupling=lambda m: m,
@@ -503,7 +503,7 @@ jobs:
     steps:
     - name: Generate CI summary
       run: |
-        echo "# 🚀 MFG_PDE CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "# 🚀 MFGarchon CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Build Information" >> $GITHUB_STEP_SUMMARY
         echo "- **Event**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY

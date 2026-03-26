@@ -11,7 +11,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary.providers import (
+from mfgarchon.geometry.boundary.providers import (
     AdjointConsistentProvider,
     BCValueProvider,
     ConstantProvider,

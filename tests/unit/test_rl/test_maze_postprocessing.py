@@ -8,7 +8,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     CellularAutomataConfig,
     CellularAutomataGenerator,
 )
@@ -23,7 +23,7 @@ except ImportError:
     scipy_available = False
 
 if scipy_available:
-    from mfg_pde.alg.reinforcement.environments import (
+    from mfgarchon.alg.reinforcement.environments import (
         adaptive_door_carving,
         enhance_organic_maze,
         normalize_wall_thickness,
@@ -353,7 +353,7 @@ class TestIntegration:
     def test_voronoi_enhancement_available(self):
         """Test that Voronoi mazes can be enhanced."""
         try:
-            from mfg_pde.alg.reinforcement.environments import VoronoiMazeConfig, VoronoiMazeGenerator
+            from mfgarchon.alg.reinforcement.environments import VoronoiMazeConfig, VoronoiMazeGenerator
 
             config = VoronoiMazeConfig(rows=40, cols=40, num_points=10, seed=42)
             generator = VoronoiMazeGenerator(config)

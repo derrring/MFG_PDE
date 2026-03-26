@@ -92,12 +92,12 @@ Benefits:
 
 ## 2. Time-Varying Spatial Boundaries
 
-### 2.1 Current MFG_PDE Design
+### 2.1 Current MFGarchon Design
 
-MFG_PDE **already supports** time-dependent BCs via `Callable(point, time)`:
+MFGarchon **already supports** time-dependent BCs via `Callable(point, time)`:
 
 ```python
-from mfg_pde.geometry.boundary import dirichlet_bc
+from mfgarchon.geometry.boundary import dirichlet_bc
 
 # Time-varying Dirichlet BC: u(t, x_boundary) = g(t, x)
 def time_varying_value(point, time):
@@ -117,7 +117,7 @@ def time_varying_value(point, time):
 bc = dirichlet_bc(value=time_varying_value, dimension=1)
 ```
 
-**Interface** (`mfg_pde/geometry/boundary/types.py`):
+**Interface** (`mfgarchon/geometry/boundary/types.py`):
 
 ```python
 @dataclass
@@ -135,7 +135,7 @@ class BCSegment:
     value: float | Callable[[np.ndarray, float], float]  # ← Key feature!
 ```
 
-**Application in Time-Stepping** (`mfg_pde/geometry/boundary/applicator_fdm.py`):
+**Application in Time-Stepping** (`mfgarchon/geometry/boundary/applicator_fdm.py`):
 
 ```python
 def apply_boundary_conditions_nd(
@@ -675,15 +675,15 @@ u_solution = stefan_solver.solve()
 
 **Research Relevance**: MFG with **congestion** (crowds avoiding overcrowded regions) can be formulated as free boundary problems. This design enables future support for such models.
 
-**Status**: Conceptual design only - not currently planned for MFG_PDE v1.0
+**Status**: Conceptual design only - not currently planned for MFGarchon v1.0
 
 ---
 
-## 6. Connection to Current MFG_PDE Architecture
+## 6. Connection to Current MFGarchon Architecture
 
 ### 6.1 What Already Exists
 
-MFG_PDE **already has** the foundation for space-time BCs:
+MFGarchon **already has** the foundation for space-time BCs:
 
 1. ✅ **Time-varying spatial BCs**: `value=callable(x, t)` in `BCSegment`
 2. ✅ **Initial/terminal conditions**: Passed separately to solvers
@@ -700,7 +700,7 @@ MFG_PDE **already has** the foundation for space-time BCs:
 **Add Space-Time BC Unification** (optional, for global solvers):
 
 ```python
-# mfg_pde/geometry/boundary/spacetime.py
+# mfgarchon/geometry/boundary/spacetime.py
 
 from dataclasses import dataclass
 from typing import Callable
@@ -1027,7 +1027,7 @@ Can use Lagrange multipliers or penalty methods to enforce BCs weakly:
 
 ### Implementation Status
 
-**MFG_PDE Current**:
+**MFGarchon Current**:
 - ✅ Supports time-varying BCs via `callable(x, t)`
 - ✅ Evaluates at each timestep
 - ⏸️ No unified space-time BC class

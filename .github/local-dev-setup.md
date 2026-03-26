@@ -84,7 +84,7 @@ repos:
     rev: 1.7.5
     hooks:
       - id: bandit
-        args: ["-r", "mfg_pde/", "-f", "json"]
+        args: ["-r", "mfgarchon/", "-f", "json"]
         exclude: tests/
 
   # Dependency security (replaces security.yml)
@@ -126,9 +126,9 @@ pre-commit run --all-files
 # Run specific tools individually
 black .                        # Code formatting
 isort .                        # Import sorting  
-mypy mfg_pde/                 # Type checking
-flake8 mfg_pde/               # Linting
-bandit -r mfg_pde/            # Security scanning
+mypy mfgarchon/                 # Type checking
+flake8 mfgarchon/               # Linting
+bandit -r mfgarchon/            # Security scanning
 safety check                   # Dependency security
 pytest tests/ -v              # Run tests
 
@@ -148,11 +148,11 @@ python -m pytest tests/integration/ -v
 
 ### Advanced Pre-Commit Configuration
 
-#### Custom Hooks for MFG_PDE
+#### Custom Hooks for MFGarchon
 Add MFG-specific checks to `.pre-commit-config.yaml`:
 
 ```yaml
-  # MFG_PDE specific checks
+  # MFGarchon specific checks
   - repo: local
     hooks:
       # Ensure no emojis in Python files (per CLAUDE.md standards)
@@ -209,8 +209,8 @@ pip install safety bandit semgrep
 
 # Run complete security analysis
 safety check                           # Dependency vulnerabilities
-bandit -r mfg_pde/ -f json            # Code security issues  
-semgrep --config=auto mfg_pde/        # Pattern-based security scan
+bandit -r mfgarchon/ -f json            # Code security issues  
+semgrep --config=auto mfgarchon/        # Pattern-based security scan
 
 # Quick security check (pre-commit does this automatically)
 pre-commit run bandit python-safety-dependencies-check
@@ -292,7 +292,7 @@ pre-commit run --all-files
 ### 2. Daily Development (100% Local, $0 Cost)
 ```bash
 # Make changes
-vim mfg_pde/core/new_feature.py
+vim mfgarchon/core/new_feature.py
 
 # Commit with automatic quality assurance
 git add .
@@ -312,7 +312,7 @@ git push origin main                 # ← Free, no CI/CD triggered
 # Comprehensive local check
 pre-commit run --all-files          # All formatting/linting/security
 pytest tests/ -v                    # All tests
-python -c "from mfg_pde import *"   # Import validation
+python -c "from mfgarchon import *"   # Import validation
 
 # Optional: Manual GitHub Actions trigger for final validation
 # GitHub UI: Actions → "Code Quality and Formatting" → Run workflow

@@ -21,7 +21,7 @@ initial_func = self.components.m_initial
 self.m_initial[i] = initial_func(x_i)  # Crashes if NDArray!
 ```
 
-**Location**: `mfg_pde/core/mfg_components.py:841-854`
+**Location**: `mfgarchon/core/mfg_components.py:841-854`
 
 ### 2. No Dimension Compatibility Validation
 
@@ -132,5 +132,5 @@ def _initialize_functions(self, **kwargs: Any) -> None:
 
 - Issue #672: m_initial validation (negativity, zero mass) - **COMPLETED**
 - Issue #674: Fail Fast initiative
-- `mfg_pde/core/mfg_components.py`: ConditionsMixin
-- `mfg_pde/core/mfg_problem.py`: _initialize_functions()
+- `mfgarchon/core/mfg_components.py`: ConditionsMixin
+- `mfgarchon/core/mfg_problem.py`: _initialize_functions()

@@ -40,7 +40,7 @@ Aggressive refactoring to replace ALL legacy naming conventions with modern MFGP
 ### Phase 1: Core Infrastructure (Week 1)
 
 #### 1.1 Update `MFGProblem` Class
-**File**: `mfg_pde/core/mfg_problem.py`
+**File**: `mfgarchon/core/mfg_problem.py`
 
 **Changes**:
 ```python
@@ -75,12 +75,12 @@ def tSpace(self) -> np.ndarray:
 ```
 
 #### 1.2 Update `BaseProblem` Class
-**File**: `mfg_pde/core/base_problem.py`
+**File**: `mfgarchon/core/base_problem.py`
 
 Propagate changes to base class.
 
 #### 1.3 Update `MFGProblemProtocol`
-**File**: `mfg_pde/types/problem_protocols.py`
+**File**: `mfgarchon/types/problem_protocols.py`
 
 Ensure protocol specifies only NEW names (no legacy attributes).
 
@@ -89,7 +89,7 @@ Ensure protocol specifies only NEW names (no legacy attributes).
 ### Phase 2: Solver Infrastructure (Week 1)
 
 #### 2.1 HJB Solvers
-**Files**: `mfg_pde/alg/numerical/hjb_solvers/*.py`
+**Files**: `mfgarchon/alg/numerical/hjb_solvers/*.py`
 
 **Changes**:
 ```python
@@ -111,19 +111,19 @@ dx = problem.grid_spacing[0]  # For 1D
 - Others...
 
 #### 2.2 FP Solvers
-**Files**: `mfg_pde/alg/numerical/fp_solvers/*.py`
+**Files**: `mfgarchon/alg/numerical/fp_solvers/*.py`
 
 Similar pattern to HJB solvers.
 
 **High impact file**: `fp_particle.py` (11 occurrences of `xSpace`)
 
 #### 2.3 Coupling Methods
-**Files**: `mfg_pde/alg/numerical/coupling/*.py`
+**Files**: `mfgarchon/alg/numerical/coupling/*.py`
 
 Update `fixed_point_iterator.py` (2 `Dt` occurrences).
 
 #### 2.4 Optimization Solvers
-**Files**: `mfg_pde/alg/optimization/variational_solvers/*.py`
+**Files**: `mfgarchon/alg/optimization/variational_solvers/*.py`
 
 Update `base_variational.py`.
 
@@ -185,14 +185,14 @@ Verify all new attributes exist and work correctly.
 
 #### 5.1 Utilities
 **Files**:
-- `mfg_pde/utils/experiment_manager.py` (7 `xSpace`, 7 `Dx`, 2 `tSpace`)
-- `mfg_pde/utils/numerical/convergence.py` (5 `Dx`)
-- `mfg_pde/utils/numerical/hjb_policy_iteration.py`
-- `mfg_pde/utils/aux_func.py` (2 `Dx`)
+- `mfgarchon/utils/experiment_manager.py` (7 `xSpace`, 7 `Dx`, 2 `tSpace`)
+- `mfgarchon/utils/numerical/convergence.py` (5 `Dx`)
+- `mfgarchon/utils/numerical/hjb_policy_iteration.py`
+- `mfgarchon/utils/aux_func.py` (2 `Dx`)
 
 #### 5.2 Visualization
 **Files**:
-- `mfg_pde/visualization/legacy_plotting.py` (2 `tSpace`, 2 `xSpace`)
+- `mfgarchon/visualization/legacy_plotting.py` (2 `tSpace`, 2 `xSpace`)
 
 ---
 
@@ -297,7 +297,7 @@ grid = problem.spatial_grid              # Unified interface
 
 **Geometry mode** (new in v0.11.0):
 ```python
-from mfg_pde.geometry import SimpleGrid2D
+from mfgarchon.geometry import SimpleGrid2D
 
 grid = SimpleGrid2D(bounds=(0, 1, 0, 1), resolution=(50, 50))
 problem = MFGProblem(geometry=grid, T=1.0, Nt=50, sigma=0.1)

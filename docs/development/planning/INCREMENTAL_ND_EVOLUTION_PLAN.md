@@ -21,13 +21,13 @@ The `feature/unified-nd-mfg-problem` branch created excellent dimension-agnostic
 
 ### ✅ Completed
 
-1. **Created `mfg_pde/core/base_problem.py`**
+1. **Created `mfgarchon/core/base_problem.py`**
    - `MFGProblemProtocol` defining solver interface
    - Runtime checkable with `isinstance(problem, MFGProblemProtocol)`
    - Documents required attributes and methods
 
-2. **Exported from `mfg_pde/core/__init__.py`**
-   - Available as `from mfg_pde.core import MFGProblemProtocol`
+2. **Exported from `mfgarchon/core/__init__.py`**
+   - Available as `from mfgarchon.core import MFGProblemProtocol`
 
 ### 🔄 Next Steps (Phase 1 Completion)
 

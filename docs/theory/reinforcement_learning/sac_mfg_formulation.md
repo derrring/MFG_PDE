@@ -502,4 +502,4 @@ $$
 ---
 
 **Status**: ✅ Theory complete, ready for implementation
-**Next**: Implementation in `mfg_pde/alg/reinforcement/algorithms/mean_field_sac.py`
+**Next**: Implementation in `mfgarchon/alg/reinforcement/algorithms/mean_field_sac.py`

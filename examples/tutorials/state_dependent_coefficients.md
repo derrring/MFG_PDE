@@ -1,4 +1,4 @@
-# State-Dependent Coefficients in MFG_PDE
+# State-Dependent Coefficients in MFGarchon
 
 **Tutorial**: Using flexible drift and diffusion fields in Mean Field Games
 
@@ -10,7 +10,7 @@
 
 ## Overview
 
-MFG_PDE provides a **unified, flexible API** for specifying drift and diffusion coefficients in Fokker-Planck equations. This tutorial shows how to use:
+MFGarchon provides a **unified, flexible API** for specifying drift and diffusion coefficients in Fokker-Planck equations. This tutorial shows how to use:
 
 1. **Constant coefficients** (classical MFG)
 2. **Spatially varying coefficients**
@@ -50,8 +50,8 @@ diffusion_field: None | float | np.ndarray | Callable = None
 **Use Case**: Passive agent dispersion, heat equation
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 
 # Setup problem
 problem = MFGProblem(Nx=100, xmin=0, xmax=1, Nt=50, T=1.0, sigma=0.1)
@@ -239,7 +239,7 @@ M = solver.solve_fp_system(
 **Use Case**: Mean Field Game with optimal control
 
 ```python
-from mfg_pde.factory import create_standard_solver
+from mfgarchon.factory import create_standard_solver
 
 # Full MFG problem
 problem = MFGProblem(Nx=100, xmin=0, xmax=1, Nt=50, T=1.0, sigma=0.1)
@@ -260,7 +260,7 @@ grad_U = np.gradient(U, dx, axis=1)  # Gradient along spatial axis
 optimal_drift = -grad_U / sigma_sq
 
 # Use in standalone FP solve (for testing/validation)
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 fp_solver = FPFDMSolver(problem)
 
 M_test = fp_solver.solve_fp_system(
@@ -320,8 +320,8 @@ M = solver.solve_fp_system(
 **Use Case**: Directional diffusion (e.g., flow in channels, geological formations)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 
 # 2D problem
 problem = MFGProblem(
@@ -372,8 +372,8 @@ M = solver.solve_fp_system(
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 
 # Setup: 1D road from x=0 to x=1
 problem = MFGProblem(
@@ -478,7 +478,7 @@ If you want **named patterns without class overhead**:
 
 ```python
 # Future enhancement (not yet implemented):
-from mfg_pde.utils.drift import optimal_control_drift, zero_drift, composite_drift
+from mfgarchon.utils.drift import optimal_control_drift, zero_drift, composite_drift
 
 # Pure diffusion
 M = solver.solve_fp_system(m0, drift_field=zero_drift())
@@ -561,7 +561,7 @@ M = solver.solve_fp_system(
 **New in v0.13.3+**: Type protocols for better IDE support
 
 ```python
-from mfg_pde.types import DriftFieldCallable, DiffusionFieldCallable
+from mfgarchon.types import DriftFieldCallable, DiffusionFieldCallable
 import numpy as np
 
 def my_drift(
@@ -617,7 +617,7 @@ M = solver.solve_fp_system(m0, drift_field=state_dependent_drift)
 
 ## Summary
 
-MFG_PDE's coefficient API supports:
+MFGarchon's coefficient API supports:
 
 | Feature | Type | Example |
 |:--------|:-----|:--------|
@@ -637,7 +637,7 @@ MFG_PDE's coefficient API supports:
 
 - **API Evaluation**: Issue #335 analysis
 - **Examples**: `examples/basic/state_dependent_diffusion_simple.py`
-- **Type Protocols**: `mfg_pde/types/callable_protocols.py`
+- **Type Protocols**: `mfgarchon/types/callable_protocols.py`
 - **Theory**: Fokker-Planck equations with state-dependent coefficients
 
 **Next Tutorial**: Tensor diffusion and anisotropic PDEs

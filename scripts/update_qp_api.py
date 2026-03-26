@@ -10,7 +10,7 @@ This script:
 import re
 from pathlib import Path
 
-# Files to update (remaining Python files in MFG_PDE)
+# Files to update (remaining Python files in MFGarchon)
 files_to_update = [
     "benchmarks/solver_comparisons/fixed_method_comparison.py",
     "benchmarks/solver_comparisons/comprehensive_final_evaluation.py",
@@ -55,7 +55,7 @@ def update_file(file_path):
 
 
 if __name__ == "__main__":
-    print("Updating QP API usage in MFG_PDE repository...")
+    print("Updating QP API usage in MFGarchon repository...")
     print("=" * 60)
 
     updated_count = 0

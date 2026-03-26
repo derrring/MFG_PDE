@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-17
 **Status**: 70% COMPLETE
-**Scope**: Eliminate hasattr violations in `mfg_pde/alg/` directory
+**Scope**: Eliminate hasattr violations in `mfgarchon/alg/` directory
 
 ## Executive Summary
 

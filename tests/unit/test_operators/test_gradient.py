@@ -13,8 +13,8 @@ import pytest
 import numpy as np
 from scipy.sparse.linalg import LinearOperator
 
-from mfg_pde.geometry.boundary import neumann_bc, no_flux_bc
-from mfg_pde.operators.differential.gradient import (
+from mfgarchon.geometry.boundary import neumann_bc, no_flux_bc
+from mfgarchon.operators.differential.gradient import (
     GradientOperator,
     PartialDerivOperator,
 )

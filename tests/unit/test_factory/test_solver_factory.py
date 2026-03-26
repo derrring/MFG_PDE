@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/factory/solver_factory.py
+Unit tests for mfgarchon/factory/solver_factory.py
 
 Tests solver factory patterns including:
 - SolverFactoryConfig dataclass
@@ -13,8 +13,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from mfg_pde.config import MFGSolverConfig
-from mfg_pde.factory.solver_factory import (
+from mfgarchon.config import MFGSolverConfig
+from mfgarchon.factory.solver_factory import (
     SolverFactory,
     SolverFactoryConfig,
     create_accurate_solver,
@@ -206,7 +206,7 @@ def test_create_solver_fixed_point_with_solvers():
     mock_hjb = Mock()
     mock_fp = Mock()
 
-    with patch("mfg_pde.factory.solver_factory.FixedPointIterator") as MockIterator:
+    with patch("mfgarchon.factory.solver_factory.FixedPointIterator") as MockIterator:
         MockIterator.return_value = Mock()
 
         solver = SolverFactory.create_solver(
@@ -232,7 +232,7 @@ def test_create_solver_custom_config():
     mock_fp = Mock()
     custom_config = MFGSolverConfig(convergence_tolerance=1e-8)
 
-    with patch("mfg_pde.factory.solver_factory.FixedPointIterator") as MockIterator:
+    with patch("mfgarchon.factory.solver_factory.FixedPointIterator") as MockIterator:
         MockIterator.return_value = Mock()
 
         solver = SolverFactory.create_solver(
@@ -260,7 +260,7 @@ def test_convenience_create_solver():
     mock_hjb = Mock()
     mock_fp = Mock()
 
-    with patch("mfg_pde.factory.solver_factory.SolverFactory.create_solver") as mock_create:
+    with patch("mfgarchon.factory.solver_factory.SolverFactory.create_solver") as mock_create:
         mock_create.return_value = Mock()
 
         solver = create_solver(
@@ -353,7 +353,7 @@ def test_create_amr_solver():
 @pytest.mark.unit
 def test_module_exports_solver_factory_class():
     """Test module exports SolverFactory class."""
-    from mfg_pde.factory import solver_factory
+    from mfgarchon.factory import solver_factory
 
     assert hasattr(solver_factory, "SolverFactory")
     assert isinstance(solver_factory.SolverFactory, type)
@@ -362,7 +362,7 @@ def test_module_exports_solver_factory_class():
 @pytest.mark.unit
 def test_module_exports_convenience_functions():
     """Test module exports all convenience functions."""
-    from mfg_pde.factory import solver_factory
+    from mfgarchon.factory import solver_factory
 
     expected_functions = [
         "create_solver",

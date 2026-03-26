@@ -51,9 +51,9 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.utils.numerical import create_lq_policy_problem
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.utils.numerical import create_lq_policy_problem
 
 
 def demonstrate_policy_iteration_concept():

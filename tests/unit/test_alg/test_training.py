@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/alg/neural/core/training.py
+Unit tests for mfgarchon/alg/neural/core/training.py
 
 Tests training strategies and components including:
 - PyTorch dependency checking (TORCH_AVAILABLE flag)
@@ -26,7 +26,7 @@ pytestmark = pytest.mark.optional_torch
 @pytest.mark.unit
 def test_torch_available_flag_exists():
     """Test TORCH_AVAILABLE flag exists in module."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     assert hasattr(training, "TORCH_AVAILABLE")
     assert isinstance(training.TORCH_AVAILABLE, bool)
@@ -35,7 +35,7 @@ def test_torch_available_flag_exists():
 @pytest.mark.unit
 def test_torch_available_reflects_actual_availability():
     """Test TORCH_AVAILABLE flag reflects actual PyTorch availability."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     try:
         import torch  # noqa: F401
@@ -59,7 +59,7 @@ def test_torch_available_reflects_actual_availability():
 @pytest.mark.unit
 def test_training_manager_class_exists():
     """Test TrainingManager class is defined."""
-    from mfg_pde.alg.neural.core.training import TrainingManager
+    from mfgarchon.alg.neural.core.training import TrainingManager
 
     assert TrainingManager is not None
     assert isinstance(TrainingManager, type)
@@ -68,10 +68,10 @@ def test_training_manager_class_exists():
 @pytest.mark.unit
 def test_training_manager_init_with_pytorch():
     """Test TrainingManager initialization when PyTorch is available."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     if training.TORCH_AVAILABLE:
-        from mfg_pde.alg.neural.core.training import TrainingManager
+        from mfgarchon.alg.neural.core.training import TrainingManager
 
         manager = TrainingManager()
         assert manager is not None
@@ -84,8 +84,8 @@ def test_training_manager_init_with_pytorch():
 def test_training_manager_requires_pytorch():
     """Test TrainingManager raises error when PyTorch unavailable."""
     # Mock PyTorch as unavailable
-    with patch("mfg_pde.alg.neural.core.training.TORCH_AVAILABLE", False):
-        from mfg_pde.alg.neural.core.training import TrainingManager
+    with patch("mfgarchon.alg.neural.core.training.TORCH_AVAILABLE", False):
+        from mfgarchon.alg.neural.core.training import TrainingManager
 
         with pytest.raises(ImportError) as exc_info:
             TrainingManager()
@@ -96,7 +96,7 @@ def test_training_manager_requires_pytorch():
 @pytest.mark.unit
 def test_training_manager_has_docstring():
     """Test TrainingManager has docstring."""
-    from mfg_pde.alg.neural.core.training import TrainingManager
+    from mfgarchon.alg.neural.core.training import TrainingManager
 
     assert TrainingManager.__doc__ is not None
     assert "training manager" in TrainingManager.__doc__.lower()
@@ -110,7 +110,7 @@ def test_training_manager_has_docstring():
 @pytest.mark.unit
 def test_adaptive_sampling_class_exists():
     """Test AdaptiveSampling class is defined."""
-    from mfg_pde.alg.neural.core.training import AdaptiveSampling
+    from mfgarchon.alg.neural.core.training import AdaptiveSampling
 
     assert AdaptiveSampling is not None
     assert isinstance(AdaptiveSampling, type)
@@ -119,7 +119,7 @@ def test_adaptive_sampling_class_exists():
 @pytest.mark.unit
 def test_adaptive_sampling_instantiation():
     """Test AdaptiveSampling can be instantiated."""
-    from mfg_pde.alg.neural.core.training import AdaptiveSampling
+    from mfgarchon.alg.neural.core.training import AdaptiveSampling
 
     sampler = AdaptiveSampling()
     assert sampler is not None
@@ -129,7 +129,7 @@ def test_adaptive_sampling_instantiation():
 @pytest.mark.unit
 def test_adaptive_sampling_has_docstring():
     """Test AdaptiveSampling has docstring."""
-    from mfg_pde.alg.neural.core.training import AdaptiveSampling
+    from mfgarchon.alg.neural.core.training import AdaptiveSampling
 
     assert AdaptiveSampling.__doc__ is not None
     assert "adaptive" in AdaptiveSampling.__doc__.lower()
@@ -144,7 +144,7 @@ def test_adaptive_sampling_has_docstring():
 @pytest.mark.unit
 def test_curriculum_learning_class_exists():
     """Test CurriculumLearning class is defined."""
-    from mfg_pde.alg.neural.core.training import CurriculumLearning
+    from mfgarchon.alg.neural.core.training import CurriculumLearning
 
     assert CurriculumLearning is not None
     assert isinstance(CurriculumLearning, type)
@@ -153,7 +153,7 @@ def test_curriculum_learning_class_exists():
 @pytest.mark.unit
 def test_curriculum_learning_instantiation():
     """Test CurriculumLearning can be instantiated."""
-    from mfg_pde.alg.neural.core.training import CurriculumLearning
+    from mfgarchon.alg.neural.core.training import CurriculumLearning
 
     curriculum = CurriculumLearning()
     assert curriculum is not None
@@ -163,7 +163,7 @@ def test_curriculum_learning_instantiation():
 @pytest.mark.unit
 def test_curriculum_learning_has_docstring():
     """Test CurriculumLearning has docstring."""
-    from mfg_pde.alg.neural.core.training import CurriculumLearning
+    from mfgarchon.alg.neural.core.training import CurriculumLearning
 
     assert CurriculumLearning.__doc__ is not None
     assert "curriculum" in CurriculumLearning.__doc__.lower()
@@ -178,7 +178,7 @@ def test_curriculum_learning_has_docstring():
 @pytest.mark.unit
 def test_optimization_scheduler_class_exists():
     """Test OptimizationScheduler class is defined."""
-    from mfg_pde.alg.neural.core.training import OptimizationScheduler
+    from mfgarchon.alg.neural.core.training import OptimizationScheduler
 
     assert OptimizationScheduler is not None
     assert isinstance(OptimizationScheduler, type)
@@ -187,7 +187,7 @@ def test_optimization_scheduler_class_exists():
 @pytest.mark.unit
 def test_optimization_scheduler_instantiation():
     """Test OptimizationScheduler can be instantiated."""
-    from mfg_pde.alg.neural.core.training import OptimizationScheduler
+    from mfgarchon.alg.neural.core.training import OptimizationScheduler
 
     scheduler = OptimizationScheduler()
     assert scheduler is not None
@@ -197,7 +197,7 @@ def test_optimization_scheduler_instantiation():
 @pytest.mark.unit
 def test_optimization_scheduler_has_docstring():
     """Test OptimizationScheduler has docstring."""
-    from mfg_pde.alg.neural.core.training import OptimizationScheduler
+    from mfgarchon.alg.neural.core.training import OptimizationScheduler
 
     assert OptimizationScheduler.__doc__ is not None
     assert "optimization" in OptimizationScheduler.__doc__.lower()
@@ -212,7 +212,7 @@ def test_optimization_scheduler_has_docstring():
 @pytest.mark.unit
 def test_module_exports_all_classes():
     """Test module exports all expected classes."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     assert hasattr(training, "TrainingManager")
     assert hasattr(training, "AdaptiveSampling")
@@ -223,7 +223,7 @@ def test_module_exports_all_classes():
 @pytest.mark.unit
 def test_module_has_all_attribute():
     """Test module has __all__ attribute."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     assert hasattr(training, "__all__")
     assert isinstance(training.__all__, list)
@@ -233,7 +233,7 @@ def test_module_has_all_attribute():
 @pytest.mark.unit
 def test_module_all_contains_expected_names():
     """Test __all__ contains expected class names."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     expected_names = [
         "AdaptiveSampling",
@@ -249,7 +249,7 @@ def test_module_all_contains_expected_names():
 @pytest.mark.unit
 def test_all_exported_names_are_importable():
     """Test all names in __all__ can be imported."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     for name in training.__all__:
         assert hasattr(training, name)
@@ -265,7 +265,7 @@ def test_all_exported_names_are_importable():
 @pytest.mark.unit
 def test_module_has_docstring():
     """Test module has comprehensive docstring."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     assert training.__doc__ is not None
     assert "Training strategies" in training.__doc__
@@ -275,7 +275,7 @@ def test_module_has_docstring():
 @pytest.mark.unit
 def test_module_docstring_describes_features():
     """Test module docstring describes key features."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     doc = training.__doc__
     assert "adaptive sampling" in doc.lower()
@@ -291,7 +291,7 @@ def test_module_docstring_describes_features():
 @pytest.mark.unit
 def test_direct_class_imports():
     """Test classes can be imported directly."""
-    from mfg_pde.alg.neural.core.training import (
+    from mfgarchon.alg.neural.core.training import (
         AdaptiveSampling,
         CurriculumLearning,
         OptimizationScheduler,
@@ -307,7 +307,7 @@ def test_direct_class_imports():
 @pytest.mark.unit
 def test_module_import():
     """Test module can be imported as a whole."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     assert training is not None
     assert hasattr(training, "TrainingManager")
@@ -321,7 +321,7 @@ def test_module_import():
 @pytest.mark.unit
 def test_torch_import_fallback():
     """Test torch import fallback mechanism."""
-    from mfg_pde.alg.neural.core import training
+    from mfgarchon.alg.neural.core import training
 
     # If PyTorch available, both torch and optim should be imported
     # If not available, both should be None
@@ -336,7 +336,7 @@ def test_torch_import_fallback():
 @pytest.mark.unit
 def test_torch_unavailable_only_affects_training_manager():
     """Test PyTorch unavailability only affects TrainingManager."""
-    from mfg_pde.alg.neural.core.training import (
+    from mfgarchon.alg.neural.core.training import (
         AdaptiveSampling,
         CurriculumLearning,
         OptimizationScheduler,
@@ -360,7 +360,7 @@ def test_torch_unavailable_only_affects_training_manager():
 @pytest.mark.unit
 def test_classes_are_independent():
     """Test classes are independent and not related by inheritance."""
-    from mfg_pde.alg.neural.core.training import (
+    from mfgarchon.alg.neural.core.training import (
         AdaptiveSampling,
         CurriculumLearning,
         OptimizationScheduler,
@@ -376,7 +376,7 @@ def test_classes_are_independent():
 @pytest.mark.unit
 def test_classes_have_distinct_purposes():
     """Test each class has distinct purpose via docstrings."""
-    from mfg_pde.alg.neural.core.training import (
+    from mfgarchon.alg.neural.core.training import (
         AdaptiveSampling,
         CurriculumLearning,
         OptimizationScheduler,
@@ -398,7 +398,7 @@ def test_classes_have_distinct_purposes():
 @pytest.mark.unit
 def test_adaptive_sampling_is_placeholder():
     """Test AdaptiveSampling is currently a placeholder."""
-    from mfg_pde.alg.neural.core.training import AdaptiveSampling
+    from mfgarchon.alg.neural.core.training import AdaptiveSampling
 
     sampler = AdaptiveSampling()
 
@@ -411,7 +411,7 @@ def test_adaptive_sampling_is_placeholder():
 @pytest.mark.unit
 def test_curriculum_learning_is_placeholder():
     """Test CurriculumLearning is currently a placeholder."""
-    from mfg_pde.alg.neural.core.training import CurriculumLearning
+    from mfgarchon.alg.neural.core.training import CurriculumLearning
 
     curriculum = CurriculumLearning()
 
@@ -424,7 +424,7 @@ def test_curriculum_learning_is_placeholder():
 @pytest.mark.unit
 def test_optimization_scheduler_is_placeholder():
     """Test OptimizationScheduler is currently a placeholder."""
-    from mfg_pde.alg.neural.core.training import OptimizationScheduler
+    from mfgarchon.alg.neural.core.training import OptimizationScheduler
 
     scheduler = OptimizationScheduler()
 
@@ -442,8 +442,8 @@ def test_optimization_scheduler_is_placeholder():
 @pytest.mark.unit
 def test_training_manager_error_message_helpful():
     """Test TrainingManager error message is helpful."""
-    with patch("mfg_pde.alg.neural.core.training.TORCH_AVAILABLE", False):
-        from mfg_pde.alg.neural.core.training import TrainingManager
+    with patch("mfgarchon.alg.neural.core.training.TORCH_AVAILABLE", False):
+        from mfgarchon.alg.neural.core.training import TrainingManager
 
         with pytest.raises(ImportError) as exc_info:
             TrainingManager()
@@ -461,7 +461,7 @@ def test_training_manager_error_message_helpful():
 @pytest.mark.unit
 def test_multiple_adaptive_sampling_instances():
     """Test multiple AdaptiveSampling instances can coexist."""
-    from mfg_pde.alg.neural.core.training import AdaptiveSampling
+    from mfgarchon.alg.neural.core.training import AdaptiveSampling
 
     sampler1 = AdaptiveSampling()
     sampler2 = AdaptiveSampling()
@@ -474,7 +474,7 @@ def test_multiple_adaptive_sampling_instances():
 @pytest.mark.unit
 def test_multiple_curriculum_learning_instances():
     """Test multiple CurriculumLearning instances can coexist."""
-    from mfg_pde.alg.neural.core.training import CurriculumLearning
+    from mfgarchon.alg.neural.core.training import CurriculumLearning
 
     curriculum1 = CurriculumLearning()
     curriculum2 = CurriculumLearning()
@@ -487,7 +487,7 @@ def test_multiple_curriculum_learning_instances():
 @pytest.mark.unit
 def test_multiple_optimization_scheduler_instances():
     """Test multiple OptimizationScheduler instances can coexist."""
-    from mfg_pde.alg.neural.core.training import OptimizationScheduler
+    from mfgarchon.alg.neural.core.training import OptimizationScheduler
 
     scheduler1 = OptimizationScheduler()
     scheduler2 = OptimizationScheduler()

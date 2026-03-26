@@ -201,7 +201,7 @@ Working PyTorch implementations:
 ### Related Documentation
 
 **Implementation Guides**:
-- Main codebase: [mfg_pde/alg/reinforcement/](../../../mfg_pde/alg/reinforcement/)
+- Main codebase: [mfgarchon/alg/reinforcement/](../../../mfgarchon/alg/reinforcement/)
 - Example usage: [examples/advanced/](../../../examples/advanced/)
 
 **Mathematical Foundations**:
@@ -244,7 +244,7 @@ Choose MFG-RL Algorithm
 **For discrete action implementation**:
 1. [nash_q_learning_formulation.md](nash_q_learning_formulation.md) - Theory
 2. [nash_q_learning_architecture.md](nash_q_learning_architecture.md) - Implementation design
-3. Code: `mfg_pde/alg/reinforcement/algorithms/mean_field_q_learning.py`
+3. Code: `mfgarchon/alg/reinforcement/algorithms/mean_field_q_learning.py`
 
 **For continuous action development**:
 1. [continuous_action_mfg_theory.md](continuous_action_mfg_theory.md) - Complete roadmap
@@ -298,12 +298,12 @@ Based on [continuous_action_mfg_theory.md](continuous_action_mfg_theory.md), pro
 When using these theoretical frameworks, please cite:
 
 ```bibtex
-@software{mfg_pde_rl_theory,
+@software{mfgarchon_rl_theory,
   title = {Reinforcement Learning Theory for Mean Field Games},
   author = {MFG\_PDE Development Team},
   year = {2025},
   note = {Part of MFG\_PDE package},
-  url = {https://github.com/derrring/MFG_PDE}
+  url = {https://github.com/derrring/mfgarchon}
 }
 ```
 
@@ -311,5 +311,5 @@ When using these theoretical frameworks, please cite:
 
 **Target Audience**: Researchers, algorithm developers, theoretical MFG practitioners
 **Prerequisites**: Familiarity with RL, MFG theory, and numerical methods
-**Maintained by**: MFG_PDE Development Team
+**Maintained by**: MFGarchon Development Team
 **Last Updated**: 2025-10-12

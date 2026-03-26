@@ -12,7 +12,7 @@
 - **5** Medium-risk backend/feature detection
 - **4** Low-risk (already have warnings/logging)
 
-**Custom Exception Utilities Available**: ✅ `mfg_pde/utils/exceptions.py`
+**Custom Exception Utilities Available**: ✅ `mfgarchon/utils/exceptions.py`
 - Custom exception hierarchy: `MFGSolverError`, `LibraryError`, etc.
 - Helper functions: `check_numerical_stability()`, `validate_*()`
 - Will use these instead of standard exceptions where appropriate
@@ -21,7 +21,7 @@
 
 ### Category 1: HIGH RISK - Silent Failures That Mask Bugs
 
-#### 1. `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py:990`
+#### 1. `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py:990`
 
 **Context**: Newton iteration error handling
 ```python
@@ -38,9 +38,9 @@ except Exception:
 - Masks numerical errors, convergence failures, shape mismatches
 - Code continues with potentially corrupted state
 
-**Fix**: Use `check_numerical_stability()` from `mfg_pde/utils/exceptions`
+**Fix**: Use `check_numerical_stability()` from `mfgarchon/utils/exceptions`
 ```python
-from mfg_pde.utils.exceptions import check_numerical_stability
+from mfgarchon.utils.exceptions import check_numerical_stability
 
 # Instead of catching, check proactively
 try:
@@ -62,7 +62,7 @@ except (ValueError, LinAlgError) as e:
 
 ---
 
-#### 2. `mfg_pde/geometry/graph/network_geometry.py:1257`
+#### 2. `mfgarchon/geometry/graph/network_geometry.py:1257`
 
 **Context**: Spectral analysis of graph Laplacian
 ```python
@@ -100,7 +100,7 @@ except (LinAlgError, ValueError) as e:
 
 ### Category 2: MEDIUM RISK - Backend/Feature Detection
 
-#### 3. `mfg_pde/backends/torch_backend.py:41`
+#### 3. `mfgarchon/backends/torch_backend.py:41`
 
 **Context**: MPS (Apple Silicon) device detection
 ```python
@@ -132,7 +132,7 @@ except (RuntimeError, TypeError) as e:
 
 ---
 
-#### 4. `mfg_pde/backends/torch_backend.py:481`
+#### 4. `mfgarchon/backends/torch_backend.py:481`
 
 **Context**: torch.vmap availability check
 ```python
@@ -167,7 +167,7 @@ return func
 
 ---
 
-#### 5-6. `mfg_pde/backends/__init__.py:194, 208`
+#### 5-6. `mfgarchon/backends/__init__.py:194, 208`
 
 **Context**: Backend info retrieval for PyTorch and JAX
 ```python
@@ -195,7 +195,7 @@ except (ImportError, AttributeError, RuntimeError) as e:
 
 ---
 
-#### 7. `mfg_pde/backends/jax_backend.py:338`
+#### 7. `mfgarchon/backends/jax_backend.py:338`
 
 **Context**: GPU memory monitoring
 ```python
@@ -224,7 +224,7 @@ except (RuntimeError, AttributeError) as e:
 
 ### Category 3: LOW RISK - Already Have Warnings
 
-#### 8. `mfg_pde/visualization/mathematical_plots.py:85`
+#### 8. `mfgarchon/visualization/mathematical_plots.py:85`
 
 **Context**: LaTeX setup for matplotlib
 ```python
@@ -256,7 +256,7 @@ except (OSError, RuntimeError) as e:
 
 ---
 
-#### 9. `mfg_pde/alg/neural/dgm/sampling.py:200`
+#### 9. `mfgarchon/alg/neural/dgm/sampling.py:200`
 
 **Context**: Quasi-MC sampling fallback
 ```python
@@ -290,7 +290,7 @@ except (ImportError, ValueError, NotImplementedError) as e:
 
 ### Category 4: RE-RAISES (Not True Fallbacks)
 
-#### 10. `mfg_pde/utils/cli.py:470`
+#### 10. `mfgarchon/utils/cli.py:470`
 
 **Context**: CLI exception handling
 ```python
@@ -318,7 +318,7 @@ except Exception:
 
 ---
 
-#### 11. `mfg_pde/utils/performance/monitoring.py:250`
+#### 11. `mfgarchon/utils/performance/monitoring.py:250`
 
 **Context**: Performance tracking
 ```python
@@ -351,7 +351,7 @@ except Exception as e:
 
 ### Category 5: Serialization Fallbacks
 
-#### 12. `mfg_pde/workflow/workflow_manager.py:124`
+#### 12. `mfgarchon/workflow/workflow_manager.py:124`
 
 **Context**: JSON serialization fallback
 ```python
@@ -385,7 +385,7 @@ except (TypeError, ValueError):
 
 ---
 
-#### 13. `mfg_pde/geometry/implicit/implicit_domain.py:86`
+#### 13. `mfgarchon/geometry/implicit/implicit_domain.py:86`
 
 **Context**: Volume computation fallback
 ```python

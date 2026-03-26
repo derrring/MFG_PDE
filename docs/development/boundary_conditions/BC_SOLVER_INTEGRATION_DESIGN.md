@@ -47,7 +47,7 @@ All solvers already have access to BC via `self.problem.geometry.boundary_condit
 **Existing infrastructure**: `dispatch.apply_bc()`
 
 ```python
-from mfg_pde.geometry.boundary.dispatch import apply_bc
+from mfgarchon.geometry.boundary.dispatch import apply_bc
 
 class BaseNumericalSolver(BaseMFGSolver):
     def apply_boundary_conditions(self, field: np.ndarray, time: float = 0.0) -> np.ndarray:
@@ -72,7 +72,7 @@ class BaseNumericalSolver(BaseMFGSolver):
 **New helper**: `compute_boundary_loss()`
 
 ```python
-from mfg_pde.geometry.boundary import BCType
+from mfgarchon.geometry.boundary import BCType
 
 class BaseNeuralSolver(BaseMFGSolver):
     def sample_boundary_points(self, n_points: int) -> np.ndarray:
@@ -111,7 +111,7 @@ class BaseNeuralSolver(BaseMFGSolver):
 **Environment BC configuration**:
 
 ```python
-from mfg_pde.geometry.boundary import BCType
+from mfgarchon.geometry.boundary import BCType
 
 class BaseRLSolver(BaseMFGSolver):
     def _configure_environment_boundaries(self, env_config: dict) -> dict:

@@ -8,7 +8,7 @@
 
 ## Overview
 
-This guide introduces **advanced boundary condition methods** implemented in MFG_PDE v0.18.0+, covering:
+This guide introduces **advanced boundary condition methods** implemented in MFGarchon v0.18.0+, covering:
 
 - **Tier 2 BCs**: Variational inequalities and constraint-based boundary conditions
 - **Tier 3 BCs**: Time-dependent boundaries and free boundary problems
@@ -85,11 +85,11 @@ $$
 - You know the active set a priori (use strong BC on that region)
 - The constraint is nonlinear or non-convex (obstacle methods require convex constraints)
 
-### 1.4 Implementation in MFG_PDE
+### 1.4 Implementation in MFGarchon
 
 **Step 1**: Define the obstacle constraint
 ```python
-from mfg_pde.geometry.boundary import ObstacleConstraint
+from mfgarchon.geometry.boundary import ObstacleConstraint
 
 # Example: Density cannot exceed m_max
 obstacle = ObstacleConstraint(
@@ -128,8 +128,8 @@ for k in range(max_iterations):
 ```python
 # See: examples/advanced/capacity_constrained_mfg_1d.py
 
-from mfg_pde import MFGProblem, TensorProductGrid
-from mfg_pde.geometry.boundary import ObstacleConstraint
+from mfgarchon import MFGProblem, TensorProductGrid
+from mfgarchon.geometry.boundary import ObstacleConstraint
 
 # Setup
 grid = TensorProductGrid(dimension=1, bounds=[(0, 1)], Nx_points=[101])
@@ -214,12 +214,12 @@ where $V_n$ is the **normal velocity** of the interface.
 - Boundary motion is simple and known (use time-dependent coordinate transform)
 - You need **exact** mass conservation (Level Set can drift; use Volume-of-Fluid instead)
 
-### 2.4 Implementation in MFG_PDE
+### 2.4 Implementation in MFGarchon
 
 **Step 1**: Set up time-dependent domain
 ```python
-from mfg_pde.geometry.level_set import TimeDependentDomain
-from mfg_pde.geometry import ImplicitDomain
+from mfgarchon.geometry.level_set import TimeDependentDomain
+from mfgarchon.geometry import ImplicitDomain
 
 # Initial interface (e.g., circle at origin with radius 0.5)
 def phi_initial(X):
@@ -268,7 +268,7 @@ $$
 ```python
 # See: examples/advanced/stefan_problem_1d.py
 
-from mfg_pde.geometry.level_set import TimeDependentDomain
+from mfgarchon.geometry.level_set import TimeDependentDomain
 
 # Initial interface at x = 0.5
 phi_init = X[0] - 0.5  # 1D: phi(x) = x - 0.5
@@ -452,7 +452,7 @@ print(f"CFL = {cfl:.3f}")  # Should be < 0.5 for stability
 
 ### 6.1 Obstacle Constraints
 
-**Class**: `mfg_pde.geometry.boundary.ObstacleConstraint`
+**Class**: `mfgarchon.geometry.boundary.ObstacleConstraint`
 
 **Constructor**:
 ```python
@@ -476,7 +476,7 @@ active = constraint.is_active(u_projected)  # Boolean array
 
 ### 6.2 Time-Dependent Domains
 
-**Class**: `mfg_pde.geometry.level_set.TimeDependentDomain`
+**Class**: `mfgarchon.geometry.level_set.TimeDependentDomain`
 
 **Constructor**:
 ```python
@@ -501,7 +501,7 @@ geometry_t = td_domain.get_geometry_at_time(t=0.5)
 
 ### 6.3 Level Set Evolver
 
-**Class**: `mfg_pde.geometry.level_set.LevelSetEvolver`
+**Class**: `mfgarchon.geometry.level_set.LevelSetEvolver`
 
 **Constructor**:
 ```python

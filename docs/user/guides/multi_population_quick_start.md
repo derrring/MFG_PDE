@@ -11,7 +11,7 @@
 ### 1. Import Algorithms
 
 ```python
-from mfg_pde.alg.reinforcement.algorithms import (
+from mfgarchon.alg.reinforcement.algorithms import (
     MultiPopulationDDPG,  # Deterministic policies
     MultiPopulationTD3,   # Twin critics + delayed updates
     MultiPopulationSAC,   # Stochastic + entropy regularization
@@ -21,7 +21,7 @@ from mfg_pde.alg.reinforcement.algorithms import (
 ### 2. Create Multi-Population Environment
 
 ```python
-from mfg_pde.alg.reinforcement.environments.multi_population_env import (
+from mfgarchon.alg.reinforcement.environments.multi_population_env import (
     MultiPopulationMFGEnv,
 )
 
@@ -336,10 +336,10 @@ if "alphas" in stats:
 ## 🎯 Example: 2-Population Competing Agents
 
 ```python
-from mfg_pde.alg.reinforcement.environments.multi_population_env import (
+from mfgarchon.alg.reinforcement.environments.multi_population_env import (
     MultiPopulationMFGEnv,
 )
-from mfg_pde.alg.reinforcement.algorithms import MultiPopulationSAC
+from mfgarchon.alg.reinforcement.algorithms import MultiPopulationSAC
 import numpy as np
 
 class CompetingAgentsEnv(MultiPopulationMFGEnv):
@@ -412,10 +412,10 @@ print(f"Final rewards - Pop 1: {np.mean(stats['episode_rewards'][1][-100:]):.2f}
 ## 📚 References
 
 **Implementation Files**:
-- Environment: `mfg_pde/alg/reinforcement/environments/multi_population_env.py`
-- DDPG: `mfg_pde/alg/reinforcement/algorithms/multi_population_ddpg.py`
-- TD3: `mfg_pde/alg/reinforcement/algorithms/multi_population_td3.py`
-- SAC: `mfg_pde/alg/reinforcement/algorithms/multi_population_sac.py`
+- Environment: `mfgarchon/alg/reinforcement/environments/multi_population_env.py`
+- DDPG: `mfgarchon/alg/reinforcement/algorithms/multi_population_ddpg.py`
+- TD3: `mfgarchon/alg/reinforcement/algorithms/multi_population_td3.py`
+- SAC: `mfgarchon/alg/reinforcement/algorithms/multi_population_sac.py`
 
 **Tests**:
 - `tests/unit/test_multi_population_env.py`

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/core/mfg_problem.py
+Unit tests for mfgarchon/core/mfg_problem.py
 
 Tests MFG problem base class including:
 - MFGComponents dataclass
@@ -16,14 +16,14 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.mfg_problem import MFGComponents, MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.core.mfg_problem import MFGComponents, MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Unified BC from conditions.py (current API)
-from mfg_pde.geometry.boundary.conditions import BoundaryConditions, no_flux_bc
+from mfgarchon.geometry.boundary.conditions import BoundaryConditions, no_flux_bc
 
 # Legacy 1D BC: testing compatibility with 1D MFG problems (deprecated in v0.14, remove in v1.0)
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions as LegacyBoundaryConditions
+from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions as LegacyBoundaryConditions
 
 # ===========================================================================
 # Test Helpers - Issue #670: m_initial/u_final now required in MFGComponents
@@ -51,7 +51,7 @@ def default_hamiltonian():
     Returns:
         SeparableHamiltonian: H = ½|p|²/λ - m²
     """
-    from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+    from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 
     return SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=1.0),
@@ -491,7 +491,7 @@ def test_hamiltonian_dh_dm_default():
 @pytest.mark.unit
 def test_mfg_problem_custom_hamiltonian():
     """Test MFGProblem with custom Hamiltonian (class-based API)."""
-    from mfg_pde.core.hamiltonian import HamiltonianBase
+    from mfgarchon.core.hamiltonian import HamiltonianBase
 
     # Issue #673: Use class-based Hamiltonian (function-based no longer supported)
     class CustomHamiltonian(HamiltonianBase):
@@ -666,7 +666,7 @@ def test_mfg_problem_zero_nt():
 @pytest.mark.unit
 def test_module_exports_classes():
     """Test module exports main classes."""
-    from mfg_pde.core import mfg_problem
+    from mfgarchon.core import mfg_problem
 
     assert hasattr(mfg_problem, "MFGComponents")
     assert hasattr(mfg_problem, "MFGProblem")
@@ -1041,7 +1041,7 @@ def test_get_diffusion_coefficient_field():
     coeff_field = problem.get_diffusion_coefficient_field()
 
     # Should return a CoefficientField instance
-    from mfg_pde.utils.pde_coefficients import CoefficientField
+    from mfgarchon.utils.pde_coefficients import CoefficientField
 
     assert isinstance(coeff_field, CoefficientField)
     assert coeff_field.name == "diffusion"
@@ -1057,7 +1057,7 @@ def test_get_drift_coefficient_field():
     coeff_field = problem.get_drift_coefficient_field()
 
     # Should return a CoefficientField instance
-    from mfg_pde.utils.pde_coefficients import CoefficientField
+    from mfgarchon.utils.pde_coefficients import CoefficientField
 
     assert isinstance(coeff_field, CoefficientField)
     assert coeff_field.name == "drift"

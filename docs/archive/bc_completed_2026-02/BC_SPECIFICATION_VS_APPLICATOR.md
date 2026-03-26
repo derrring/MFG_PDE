@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-The MFG_PDE boundary condition system has two distinct layers:
+The MFGarchon boundary condition system has two distinct layers:
 
 | Layer | Purpose | Question Answered | Key Classes |
 |-------|---------|-------------------|-------------|
@@ -392,7 +392,7 @@ class TensorProductGrid:
 ## 7. File Reference
 
 ```
-mfg_pde/geometry/boundary/
+mfgarchon/geometry/boundary/
 │
 ├── conditions.py           # BoundaryConditions (SPEC) ← SSOT
 ├── types.py                # BCType, BCSegment

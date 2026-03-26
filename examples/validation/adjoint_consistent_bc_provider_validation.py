@@ -36,18 +36,18 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.core.mfg_problem import MFGComponents
+from mfgarchon import MFGProblem
+from mfgarchon.core.mfg_problem import MFGComponents
 
 # Note: Using problem.solve() API (v0.17.0+) instead of deprecated create_solver()
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     AdjointConsistentProvider,
     BCSegment,
     BCType,
     BoundaryConditions,
     neumann_bc,
 )
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("ac_bc_validation", level="INFO")
@@ -98,7 +98,7 @@ def create_towel_problem_standard_bc(
     Nt: int = 41,
 ) -> MFGProblem:
     """Create towel-on-beach problem with STANDARD Neumann BC."""
-    from mfg_pde.geometry import TensorProductGrid
+    from mfgarchon.geometry import TensorProductGrid
 
     # Custom Hamiltonian using MFGComponents API (advanced signature with derivs)
     def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
@@ -169,7 +169,7 @@ def create_towel_problem_adjoint_bc(
     Nt: int = 41,
 ) -> MFGProblem:
     """Create towel-on-beach problem with ADJOINT-CONSISTENT BC via provider."""
-    from mfg_pde.geometry import TensorProductGrid
+    from mfgarchon.geometry import TensorProductGrid
 
     # Custom Hamiltonian using MFGComponents API (advanced signature with derivs)
     def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):

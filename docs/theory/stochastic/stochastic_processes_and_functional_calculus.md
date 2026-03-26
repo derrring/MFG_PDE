@@ -10,11 +10,11 @@
 
 This document describes two foundational modules for stochastic Mean Field Games:
 
-1. **Noise Processes** (`mfg_pde/core/stochastic/noise_processes.py`)
+1. **Noise Processes** (`mfgarchon/core/stochastic/noise_processes.py`)
    - Common noise processes for stochastic MFG
    - Used to model external uncertainty affecting all agents
 
-2. **Functional Calculus** (`mfg_pde/utils/functional_calculus.py`)
+2. **Functional Calculus** (`mfgarchon/utils/functional_calculus.py`)
    - Functional derivative computation for Master Equation
    - Numerical methods for infinite-dimensional calculus
 
@@ -47,7 +47,7 @@ dθ_t = κ(μ - θ_t) dt + σ dW_t
 **Applications**: Interest rates, commodity prices, temperature
 
 ```python
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess
 
 ou_process = OrnsteinUhlenbeckProcess(kappa=2.0, mu=0.5, sigma=0.3)
 noise_path = ou_process.sample_path(
@@ -74,7 +74,7 @@ dθ_t = κ(μ - θ_t) dt + σ√θ_t dW_t
 **Applications**: Interest rates, variance processes (Heston model)
 
 ```python
-from mfg_pde.core.stochastic import CoxIngersollRossProcess
+from mfgarchon.core.stochastic import CoxIngersollRossProcess
 
 cir_process = CoxIngersollRossProcess(kappa=1.5, mu=0.04, sigma=0.2)
 noise_path = cir_process.sample_path(
@@ -103,7 +103,7 @@ dθ_t = μθ_t dt + σθ_t dW_t
 **Applications**: Stock prices, asset returns, multiplicative noise
 
 ```python
-from mfg_pde.core.stochastic import GeometricBrownianMotion
+from mfgarchon.core.stochastic import GeometricBrownianMotion
 
 gbm_process = GeometricBrownianMotion(mu=0.05, sigma=0.2)
 noise_path = gbm_process.sample_path(
@@ -135,7 +135,7 @@ where:
 **Applications**: Stock crashes, epidemic outbreaks, rare events
 
 ```python
-from mfg_pde.core.stochastic import JumpDiffusionProcess
+from mfgarchon.core.stochastic import JumpDiffusionProcess
 
 jump_process = JumpDiffusionProcess(
     mu=0.1,           # Drift
@@ -223,7 +223,7 @@ where δ_y is the Dirac measure at y.
 **Method**: Approximate functional derivative using finite differences on measure perturbations
 
 ```python
-from mfg_pde.utils.functional_calculus import FiniteDifferenceFunctionalDerivative
+from mfgarchon.utils.functional_calculus import FiniteDifferenceFunctionalDerivative
 
 # Define functional U[m]
 def my_functional(measure):
@@ -252,7 +252,7 @@ derivative = deriv_op(my_functional, measure, y_index=1)
 **Method**: Represent measure as particle system and compute derivative
 
 ```python
-from mfg_pde.utils.functional_calculus import (
+from mfgarchon.utils.functional_calculus import (
     ParticleApproximationFunctionalDerivative,
     create_particle_measure
 )
@@ -284,7 +284,7 @@ derivative = deriv_op(my_functional, weights, y_index=50)
 #### Verify Accuracy
 
 ```python
-from mfg_pde.utils.functional_calculus import verify_functional_derivative_accuracy
+from mfgarchon.utils.functional_calculus import verify_functional_derivative_accuracy
 
 def functional(m):
     return np.sum(m**2)
@@ -329,8 +329,8 @@ Noise: θ_t ~ NoiseProcess
 
 **Usage** (future Common Noise MFG Solver):
 ```python
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
 
 # Define problem with common noise
 noise_process = OrnsteinUhlenbeckProcess(kappa=2.0, mu=0.0, sigma=0.3)
@@ -358,8 +358,8 @@ Master Equation: ∂U/∂t + H(x, ∇_x U, δU/δm, m) = 0
 
 **Usage** (future Master Equation Solver):
 ```python
-from mfg_pde.utils.functional_calculus import FiniteDifferenceFunctionalDerivative
-from mfg_pde.alg.numerical.stochastic import MasterEquationSolver
+from mfgarchon.utils.functional_calculus import FiniteDifferenceFunctionalDerivative
+from mfgarchon.alg.numerical.stochastic import MasterEquationSolver
 
 # Solve Master Equation
 solver = MasterEquationSolver(
@@ -392,7 +392,7 @@ result = solver.solve()
 ## File Locations
 
 ```
-mfg_pde/
+mfgarchon/
 ├── core/
 │   └── stochastic/
 │       ├── __init__.py

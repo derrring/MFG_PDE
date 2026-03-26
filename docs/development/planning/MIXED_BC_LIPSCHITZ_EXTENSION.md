@@ -242,8 +242,8 @@ def get_mollified_sdf(
 ### 5.1 Circular Domain with Exit
 
 ```python
-from mfg_pde.geometry import BCSegment, BCType, MixedBoundaryConditions
-from mfg_pde.utils.numerical import sdf_sphere
+from mfgarchon.geometry import BCSegment, BCType, MixedBoundaryConditions
+from mfgarchon.utils.numerical import sdf_sphere
 
 # Define circular domain
 def circle_sdf(x):
@@ -277,7 +277,7 @@ mixed_bc = MixedBoundaryConditions(
 ### 5.2 L-Shaped Domain (Lipschitz)
 
 ```python
-from mfg_pde.utils.numerical import sdf_box, sdf_difference
+from mfgarchon.utils.numerical import sdf_box, sdf_difference
 
 # L-shaped domain: large box minus small box at corner
 def l_shape_sdf(x):
@@ -377,8 +377,8 @@ wall_bc = BCSegment(
 
 ### 6.3 Dependencies
 
-- `sdf_gradient` from `mfg_pde.utils.numerical.sdf_utils`
-- `ImplicitDomain` from `mfg_pde.geometry.implicit`
+- `sdf_gradient` from `mfgarchon.utils.numerical.sdf_utils`
+- `ImplicitDomain` from `mfgarchon.geometry.implicit`
 
 ---
 
@@ -453,7 +453,7 @@ For an exact SDF phi:
 
 ## 10. References
 
-- `mfg_pde/utils/numerical/sdf_utils.py` - SDF primitives and gradient
-- `mfg_pde/geometry/implicit/implicit_domain.py` - ImplicitDomain base class
-- `mfg_pde/geometry/boundary/mixed_bc.py` - Current implementation
+- `mfgarchon/utils/numerical/sdf_utils.py` - SDF primitives and gradient
+- `mfgarchon/geometry/implicit/implicit_domain.py` - ImplicitDomain base class
+- `mfgarchon/geometry/boundary/mixed_bc.py` - Current implementation
 - `docs/development/MIXED_BC_DESIGN.md` - Phase 1 design

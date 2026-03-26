@@ -19,14 +19,14 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.coupling import FixedPointIterator
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.core import MFGComponents
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.coupling import FixedPointIterator
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.core import MFGComponents
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def create_lq_components(coupling_strength: float = 1.0):

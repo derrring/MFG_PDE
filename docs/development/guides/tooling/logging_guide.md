@@ -1,13 +1,13 @@
-# MFG_PDE Logging System Guide
+# MFGarchon Logging System Guide
 
 **Date**: August 15, 2025
 **Updated**: January 24, 2026 - Added thread safety documentation (Issue #620)  
 **Quality Score**: 8.7/10 - Excellent scientific computing logging infrastructure  
-**Purpose**: Complete guide for using the professional logging system in MFG_PDE
+**Purpose**: Complete guide for using the professional logging system in MFGarchon
 
 ## Overview
 
-The MFG_PDE logging system provides a **sophisticated, multi-layered logging infrastructure** specifically designed for scientific computing and mathematical research workflows. The system demonstrates professional-grade engineering with extensive configurability, performance monitoring integration, and analytical capabilities.
+The MFGarchon logging system provides a **sophisticated, multi-layered logging infrastructure** specifically designed for scientific computing and mathematical research workflows. The system demonstrates professional-grade engineering with extensive configurability, performance monitoring integration, and analytical capabilities.
 
 **Key Features**:
 - **Multi-destination logging**: Console and file output with independent formatting
@@ -23,7 +23,7 @@ The MFG_PDE logging system provides a **sophisticated, multi-layered logging inf
 ### Basic Setup
 
 ```python
-from mfg_pde.utils import configure_logging, get_logger
+from mfgarchon.utils import configure_logging, get_logger
 
 # Configure global logging
 configure_logging(
@@ -49,7 +49,7 @@ logger.error("Error occurred")
 configure_logging(
     level="DEBUG",
     log_to_file=True,
-    log_file_path="logs/mfg_pde.log",
+    log_file_path="logs/mfgarchon.log",
     use_colors=True
 )
 ```
@@ -67,7 +67,7 @@ configure_logging(
 
 #### 1. Research Configuration (Recommended for Scientific Work)
 ```python
-from mfg_pde.utils.mfg_logging import configure_research_logging
+from mfgarchon.utils.mfg_logging import configure_research_logging
 
 # Optimized for research sessions with experiment tracking
 log_file = configure_research_logging(
@@ -80,7 +80,7 @@ log_file = configure_research_logging(
 
 #### 2. Development Configuration (Full Debugging)
 ```python
-from mfg_pde.utils.mfg_logging import configure_development_logging
+from mfgarchon.utils.mfg_logging import configure_development_logging
 
 # Full debugging with file:line information
 configure_development_logging(include_location=True)
@@ -88,15 +88,15 @@ configure_development_logging(include_location=True)
 
 #### 3. Production Configuration (Minimal Logging)
 ```python
-from mfg_pde.utils.mfg_logging import configure_production_logging
+from mfgarchon.utils.mfg_logging import configure_production_logging
 
 # WARNING level and above only, clean output
-configure_production_logging(log_file="/var/log/mfg_pde.log")
+configure_production_logging(log_file="/var/log/mfgarchon.log")
 ```
 
 #### 4. Performance Configuration (Performance Analysis)
 ```python
-from mfg_pde.utils.mfg_logging import configure_performance_logging
+from mfgarchon.utils.mfg_logging import configure_performance_logging
 
 # Focus on timing and performance metrics
 log_file = configure_performance_logging()
@@ -120,7 +120,7 @@ configure_logging(
 ### Method 1: Structured Logging Functions
 
 ```python
-from mfg_pde.utils import (
+from mfgarchon.utils import (
     get_logger, log_solver_start, log_solver_progress, 
     log_solver_completion, LoggedOperation
 )
@@ -155,7 +155,7 @@ class MySolver:
 ### Method 2: Logging Decorators
 
 ```python
-from mfg_pde.utils import logged_solver_method, LoggingMixin
+from mfgarchon.utils import logged_solver_method, LoggingMixin
 
 class MySolver(LoggingMixin):
     def __init__(self, max_iterations=50):
@@ -172,7 +172,7 @@ class MySolver(LoggingMixin):
 ### Method 3: Retrofit Existing Solvers
 
 ```python
-from mfg_pde.utils import add_logging_to_class
+from mfgarchon.utils import add_logging_to_class
 
 # Enhance existing solver class
 LoggedSolver = add_logging_to_class(OriginalSolver, "mfg_solver")
@@ -189,7 +189,7 @@ with solver.log_operation("Complex calculation"):
 ### Enhanced Mathematical Analysis Logging
 
 ```python
-from mfg_pde.utils.mfg_logging import (
+from mfgarchon.utils.mfg_logging import (
     log_solver_configuration, log_convergence_analysis, 
     log_mass_conservation, log_performance_metric
 )
@@ -225,14 +225,14 @@ log_performance_metric(
 )
 
 # Memory usage tracking (requires psutil)
-from mfg_pde.utils.mfg_logging import log_memory_usage
+from mfgarchon.utils.mfg_logging import log_memory_usage
 log_memory_usage(logger, "Large array allocation", peak_memory_mb=512.3)
 ```
 
 ### Validation Logging
 
 ```python
-from mfg_pde.utils import log_validation_error, logged_validation
+from mfgarchon.utils import log_validation_error, logged_validation
 
 # Manual validation logging
 try:
@@ -252,7 +252,7 @@ def validate_solver_input(problem, config):
 ### Context Manager Logging
 
 ```python
-from mfg_pde.utils import LoggedOperation
+from mfgarchon.utils import LoggedOperation
 
 logger = get_logger(__name__)
 
@@ -307,7 +307,7 @@ class MFGLogger:
 
 ```python
 import concurrent.futures
-from mfg_pde.utils.mfg_logging import get_logger
+from mfgarchon.utils.mfg_logging import get_logger
 
 def worker(thread_id: int):
     # Safe: get_logger is thread-safe
@@ -328,8 +328,8 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
 logger = get_logger(__name__)
 
 # Or component-based naming
-solver_logger = get_logger("mfg_pde.solvers.particle_collocation")
-config_logger = get_logger("mfg_pde.config")
+solver_logger = get_logger("mfgarchon.solvers.particle_collocation")
+config_logger = get_logger("mfgarchon.config")
 ```
 
 ### 2. Appropriate Log Levels
@@ -395,7 +395,7 @@ configure_logging(
     level="INFO",
     use_colors=False,
     log_to_file=True,
-    log_file_path="/var/log/mfg_pde/application.log",
+    log_file_path="/var/log/mfgarchon/application.log",
     suppress_external=True
 )
 ```
@@ -453,7 +453,7 @@ class ExistingSolver:
 ### Method 2: Decorator-Based Integration
 
 ```python
-from mfg_pde.utils.mfg_logging_decorators import logged_solver_method, LoggingMixin
+from mfgarchon.utils.mfg_logging_decorators import logged_solver_method, LoggingMixin
 
 # Easy integration with decorators
 class EnhancedSolver(LoggingMixin):
@@ -466,7 +466,7 @@ class EnhancedSolver(LoggingMixin):
 ### Method 3: Retrofit Existing Classes
 
 ```python
-from mfg_pde.utils.mfg_logging_decorators import add_logging_to_class
+from mfgarchon.utils.mfg_logging_decorators import add_logging_to_class
 
 # Dynamically add logging to existing solver class
 LoggedSolver = add_logging_to_class(OriginalSolver, "enhanced_solver")
@@ -482,7 +482,7 @@ with solver.log_operation("Complex calculation"):
 
 ```python
 # Comprehensive logging integration
-from mfg_pde.utils import LoggingMixin, logged_solver_method
+from mfgarchon.utils import LoggingMixin, logged_solver_method
 
 class EnhancedSolver(LoggingMixin):
     def __init__(self, **kwargs):
@@ -508,7 +508,7 @@ class EnhancedSolver(LoggingMixin):
 ### Built-in Log Analysis Tools
 
 ```python
-from mfg_pde.utils.log_analysis import LogAnalyzer
+from mfgarchon.utils.log_analysis import LogAnalyzer
 
 # Comprehensive log file analysis
 analyzer = LogAnalyzer("research_logs/experiment_20250815.log")
@@ -531,7 +531,7 @@ print(f"Average convergence rate: {convergence_stats['avg_rate']:.4f}")
 ### Performance Monitoring and Regression Detection
 
 ```python
-from mfg_pde.utils.performance_monitoring import PerformanceMonitor
+from mfgarchon.utils.performance_monitoring import PerformanceMonitor
 
 # Automatic performance baseline tracking
 @performance_tracked("matrix_solve", baseline_file="baselines.json")
@@ -554,7 +554,7 @@ monitor.check_regression(
 
 ```python
 # Complete research session setup
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Start research session
 log_file = configure_research_logging("semi_lagrangian_analysis")
@@ -573,7 +573,7 @@ logger.info("Research session completed successfully")
 
 ```python
 # Production-ready logging setup
-configure_production_logging("/var/log/mfg_pde/production.log")
+configure_production_logging("/var/log/mfgarchon/production.log")
 
 # Minimal logging overhead with critical information only
 logger = get_logger("production")
@@ -592,7 +592,7 @@ except Exception as e:
 1. **No colored output**: 
    ```bash
    pip install colorlog
-   # Or check: COLORLOG_AVAILABLE in mfg_pde.utils.mfg_logging
+   # Or check: COLORLOG_AVAILABLE in mfgarchon.utils.mfg_logging
    ```
 
 2. **Log file not created**: 
@@ -625,7 +625,7 @@ except Exception as e:
 
 ```python
 # Comprehensive logging system diagnostics
-from mfg_pde.utils.mfg_logging import MFGLogger
+from mfgarchon.utils.mfg_logging import MFGLogger
 
 # Test logging configuration
 logger = get_logger("debug_test")
@@ -636,14 +636,14 @@ logger.error("Error level test")
 
 # Inspect active loggers
 import logging
-print("Active MFG_PDE loggers:")
+print("Active MFGarchon loggers:")
 for name in sorted(logging.Logger.manager.loggerDict.keys()):
-    if name.startswith('mfg_pde'):
+    if name.startswith('mfgarchon'):
         logger_obj = logging.getLogger(name)
         print(f"  {name}: level={logger_obj.level}, handlers={len(logger_obj.handlers)}")
 
 # Check color support
-from mfg_pde.utils.mfg_logging import COLORLOG_AVAILABLE
+from mfgarchon.utils.mfg_logging import COLORLOG_AVAILABLE
 print(f"Color support available: {COLORLOG_AVAILABLE}")
 ```
 
@@ -712,8 +712,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# New MFG_PDE logging
-from mfg_pde.utils import configure_logging, get_logger
+# New MFGarchon logging
+from mfgarchon.utils import configure_logging, get_logger
 configure_logging(level="INFO", use_colors=True)
 logger = get_logger(__name__)
 ```
@@ -732,7 +732,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # After (preferred)
-from mfg_pde.utils.mfg_logging import get_logger
+from mfgarchon.utils.mfg_logging import get_logger
 logger = get_logger(__name__)
 ```
 
@@ -740,4 +740,4 @@ logger = get_logger(__name__)
 
 ---
 
-This logging system provides professional debugging and monitoring capabilities while maintaining the clean, text-based formatting preferences established for the MFG_PDE project.
+This logging system provides professional debugging and monitoring capabilities while maintaining the clean, text-based formatting preferences established for the MFGarchon project.

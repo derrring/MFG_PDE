@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from mfg_pde.alg.numerical.coupling.fixed_point_utils import adapt_damping, compute_scheduled_damping
+from mfgarchon.alg.numerical.coupling.fixed_point_utils import adapt_damping, compute_scheduled_damping
 
 
 @pytest.mark.unit

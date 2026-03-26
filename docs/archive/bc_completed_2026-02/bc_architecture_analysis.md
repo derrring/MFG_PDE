@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document analyzes the boundary condition (BC) architecture in MFG_PDE, synthesizing lessons learned from implementing FP solver BC integration. The key insight is that **boundary conditions involve three distinct concerns that are often conflated**:
+This document analyzes the boundary condition (BC) architecture in MFGarchon, synthesizing lessons learned from implementing FP solver BC integration. The key insight is that **boundary conditions involve three distinct concerns that are often conflated**:
 
 1. **Topology**: How space connects (periodic vs bounded)
 2. **Discretization**: Where values are stored (cell-centered vs vertex-centered)
@@ -171,7 +171,7 @@ Physics determines **numerical values** at boundaries. Only activated when topol
 ### What We Have
 
 ```
-mfg_pde/geometry/boundary/
+mfgarchon/geometry/boundary/
 ├── types.py              # BCType enum (mixes topology + physics)
 ├── conditions.py         # BoundaryConditions class
 ├── applicator_base.py    # Base classes + ghost cell helpers
@@ -300,7 +300,7 @@ def compute_ghost(u_inner, dx, *, context: dict = None):
 The `LinearConstraint` dataclass and `calculator_to_constraint()` function in `applicator_base.py` bridge the explicit/implicit worlds:
 
 ```python
-from mfg_pde.geometry.boundary.applicator_base import LinearConstraint, calculator_to_constraint
+from mfgarchon.geometry.boundary.applicator_base import LinearConstraint, calculator_to_constraint
 
 # Each Tier maps to a LinearConstraint pattern:
 # Tier 1 (State):    LinearConstraint(weights={}, bias=g)           # Move to RHS

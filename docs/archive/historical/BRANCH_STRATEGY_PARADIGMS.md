@@ -1,4 +1,4 @@
-# MFG_PDE Paradigm Development Branch Strategy
+# MFGarchon Paradigm Development Branch Strategy
 
 ## Overview
 
@@ -147,4 +147,4 @@ git push origin feature/algorithm-reorganization
 ## References
 - [Algorithm Reorganization Plan](ALGORITHM_REORGANIZATION_PLAN.md)
 - [RL Development Roadmap](REINFORCEMENT_LEARNING_ROADMAP.md)
-- [GitHub Issue #54: RL Paradigm Development](https://github.com/derrring/MFG_PDE/issues/54)
+- [GitHub Issue #54: RL Paradigm Development](https://github.com/derrring/mfgarchon/issues/54)

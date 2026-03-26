@@ -965,20 +965,20 @@ $$\theta^{k+1} = \theta^k - \alpha (\hat{F}(\theta^k) + \lambda I)^{-1} \nabla_\
 
 ### Phase 4.6.1: Core Information Geometry Tools (3-4 weeks)
 **Deliverables**:
-- `mfg_pde/information_geometry/metrics.py`: Fisher-Rao and Wasserstein metrics
-- `mfg_pde/information_geometry/divergences.py`: KL, Wasserstein, $\alpha$-divergences
+- `mfgarchon/information_geometry/metrics.py`: Fisher-Rao and Wasserstein metrics
+- `mfgarchon/information_geometry/divergences.py`: KL, Wasserstein, $\alpha$-divergences
 - Unit tests with analytical benchmarks
 
 ### Phase 4.6.2: Optimization Methods (3-4 weeks)
 **Deliverables**:
-- `mfg_pde/information_geometry/optimization.py`: Natural gradient descent, mirror descent
-- `mfg_pde/information_geometry/flows.py`: JKO scheme, Wasserstein gradient flows
+- `mfgarchon/information_geometry/optimization.py`: Natural gradient descent, mirror descent
+- `mfgarchon/information_geometry/flows.py`: JKO scheme, Wasserstein gradient flows
 - Particle-based implementations
 
 ### Phase 4.6.3: MFG Integration (4-5 weeks)
 **Deliverables**:
-- `mfg_pde/information_geometry/solvers/kl_regularized_mfg.py`: KL-regularized MFG solver
-- `mfg_pde/information_geometry/solvers/natural_gradient_mfg.py`: Natural gradient MFG
+- `mfgarchon/information_geometry/solvers/kl_regularized_mfg.py`: KL-regularized MFG solver
+- `mfgarchon/information_geometry/solvers/natural_gradient_mfg.py`: Natural gradient MFG
 - Examples: Robust control, safe learning
 
 ### Phase 4.6.4: Advanced Topics (Optional, 3-4 weeks)

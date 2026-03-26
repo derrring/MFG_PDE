@@ -1,9 +1,9 @@
-# MFG_PDE Development Documentation
+# MFGarchon Development Documentation
 
 **Last Updated**: 2026-02-13
 **Status**: Production-Ready Framework v0.17.8
 
-This directory contains comprehensive development documentation for MFG_PDE contributors and maintainers.
+This directory contains comprehensive development documentation for MFGarchon contributors and maintainers.
 
 ---
 

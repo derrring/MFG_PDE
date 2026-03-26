@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-The reinforcement learning (RL) paradigm in MFG_PDE provides **agent-based, data-driven approaches** for solving Mean Field Games through multi-agent reinforcement learning (MARL). This paradigm bridges classical MFG theory with modern deep RL, enabling:
+The reinforcement learning (RL) paradigm in MFGarchon provides **agent-based, data-driven approaches** for solving Mean Field Games through multi-agent reinforcement learning (MARL). This paradigm bridges classical MFG theory with modern deep RL, enabling:
 
 - **Agent-based learning** without solving PDEs explicitly
 - **Model-free methods** learning from environment interactions
@@ -30,7 +30,7 @@ The reinforcement learning (RL) paradigm in MFG_PDE provides **agent-based, data
 ### Package Structure
 
 ```
-mfg_pde/alg/reinforcement/
+mfgarchon/alg/reinforcement/
 ├── __init__.py                          # Main RL paradigm exports
 ├── core/                                # Base RL infrastructure
 │   ├── base_mfrl.py                     # Base Mean Field RL solver
@@ -133,7 +133,7 @@ where φ(m) is learned population encoding.
 
 ### Implementation: `MeanFieldQLearning`
 
-**File**: `mfg_pde/alg/reinforcement/algorithms/mean_field_q_learning.py`
+**File**: `mfgarchon/alg/reinforcement/algorithms/mean_field_q_learning.py`
 
 **Key Features**:
 - Deep Q-Network (DQN) with population state embedding
@@ -144,8 +144,8 @@ where φ(m) is learned population encoding.
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.reinforcement import MeanFieldQLearning, RLSolverConfig
-from mfg_pde.alg.reinforcement.environments import MFGMazeEnv
+from mfgarchon.alg.reinforcement import MeanFieldQLearning, RLSolverConfig
+from mfgarchon.alg.reinforcement.environments import MFGMazeEnv
 
 # Create MFG maze environment
 env = MFGMazeEnv(
@@ -232,7 +232,7 @@ Actor update:   ∇_θ J = E[∇_a Q_ψ(s, a, m) |_{a=μ_θ(s,m)} ∇_θ μ_θ(s
 
 ### Implementation: `MeanFieldDDPG`
 
-**File**: `mfg_pde/alg/reinforcement/algorithms/mean_field_ddpg.py`
+**File**: `mfgarchon/alg/reinforcement/algorithms/mean_field_ddpg.py`
 
 **Key Features**:
 - Deterministic actor for continuous control
@@ -243,8 +243,8 @@ Actor update:   ∇_θ J = E[∇_a Q_ψ(s, a, m) |_{a=μ_θ(s,m)} ∇_θ μ_θ(s
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.reinforcement import MeanFieldDDPG
-from mfg_pde.alg.reinforcement.environments import ContinuousActionMazeEnv
+from mfgarchon.alg.reinforcement import MeanFieldDDPG
+from mfgarchon.alg.reinforcement.environments import ContinuousActionMazeEnv
 
 # Continuous action maze (velocity control)
 env = ContinuousActionMazeEnv(
@@ -288,7 +288,7 @@ where H is entropy, α is temperature parameter.
 
 ### Implementation: `MeanFieldSAC`
 
-**File**: `mfg_pde/alg/reinforcement/algorithms/mean_field_sac.py`
+**File**: `mfgarchon/alg/reinforcement/algorithms/mean_field_sac.py`
 
 **Key Features**:
 - Automatic temperature tuning
@@ -298,7 +298,7 @@ where H is entropy, α is temperature parameter.
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.reinforcement import MeanFieldSAC
+from mfgarchon.alg.reinforcement import MeanFieldSAC
 
 # SAC for robust crowd navigation
 env = CrowdNavigationEnv(num_agents=500, obstacles=obstacle_list)
@@ -324,7 +324,7 @@ result = solver.train(num_episodes=3000)
 
 ### Implementation: `MeanFieldTD3`
 
-**File**: `mfg_pde/alg/reinforcement/algorithms/mean_field_td3.py`
+**File**: `mfgarchon/alg/reinforcement/algorithms/mean_field_td3.py`
 
 ---
 
@@ -347,7 +347,7 @@ Actor:  μ_i(s_i, m_i)     (decentralized, uses local mean field)
 
 ### Implementation: Multi-Population MADDPG
 
-**File**: `mfg_pde/alg/reinforcement/algorithms/multi_population_ddpg.py`
+**File**: `mfgarchon/alg/reinforcement/algorithms/multi_population_ddpg.py`
 
 **Key Features**:
 - Multiple populations with distinct objectives
@@ -357,8 +357,8 @@ Actor:  μ_i(s_i, m_i)     (decentralized, uses local mean field)
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.reinforcement import MultiPopulationDDPG
-from mfg_pde.alg.reinforcement.environments import MultiPopulationMazeEnv
+from mfgarchon.alg.reinforcement import MultiPopulationDDPG
+from mfgarchon.alg.reinforcement.environments import MultiPopulationMazeEnv
 
 # Two populations: fast movers vs slow movers
 env = MultiPopulationMazeEnv(
@@ -383,7 +383,7 @@ solver.plot_population_trajectories()
 
 ### Base MFG Environment
 
-**File**: `mfg_pde/alg/reinforcement/environments/continuous_mfg_env_base.py`
+**File**: `mfgarchon/alg/reinforcement/environments/continuous_mfg_env_base.py`
 
 **Interface** (OpenAI Gymnasium):
 ```python
@@ -412,7 +412,7 @@ class ContinuousMFGEnv(gym.Env):
 
 ### Linear-Quadratic MFG Environment
 
-**File**: `mfg_pde/alg/reinforcement/environments/lq_mfg_env.py`
+**File**: `mfgarchon/alg/reinforcement/environments/lq_mfg_env.py`
 
 **Dynamics**:
 ```
@@ -426,7 +426,7 @@ where x̄ = ∫ x m(x) dx is population mean.
 
 **Usage**:
 ```python
-from mfg_pde.alg.reinforcement.environments import LQMFGEnv
+from mfgarchon.alg.reinforcement.environments import LQMFGEnv
 
 env = LQMFGEnv(
     num_agents=1000,
@@ -461,7 +461,7 @@ result = solver.train_and_validate()
 
 ### Crowd Navigation Environment
 
-**File**: `mfg_pde/alg/reinforcement/environments/crowd_navigation_env.py`
+**File**: `mfgarchon/alg/reinforcement/environments/crowd_navigation_env.py`
 
 **Features**:
 - Anisotropic dynamics (direction-dependent speed)
@@ -473,7 +473,7 @@ result = solver.train_and_validate()
 
 ### Procedural Maze Generation
 
-**File**: `mfg_pde/alg/reinforcement/environments/maze_generator.py`
+**File**: `mfgarchon/alg/reinforcement/environments/maze_generator.py`
 
 **Algorithms**:
 1. **Depth-First Search**: Generates perfect mazes (single solution)
@@ -483,7 +483,7 @@ result = solver.train_and_validate()
 
 **Configuration**:
 ```python
-from mfg_pde.alg.reinforcement.environments import MazeGenerator, MazeConfig
+from mfgarchon.alg.reinforcement.environments import MazeGenerator, MazeConfig
 
 config = MazeConfig(
     size=(20, 20),
@@ -502,7 +502,7 @@ env = MFGMazeEnv(maze=maze, num_agents=500)
 
 ### Heterogeneous Agents
 
-**File**: `mfg_pde/alg/reinforcement/multi_population/heterogeneous_agents.py`
+**File**: `mfgarchon/alg/reinforcement/multi_population/heterogeneous_agents.py`
 
 **Agent Types**:
 ```python
@@ -542,7 +542,7 @@ Reward: r_k(s_i, a_i, m_k, {m_j})
 
 ### Coordination Mechanisms
 
-**File**: `mfg_pde/alg/reinforcement/multi_population/coordination.py`
+**File**: `mfgarchon/alg/reinforcement/multi_population/coordination.py`
 
 **Types**:
 1. **Competitive**: Populations minimize own cost (traffic routing)
@@ -687,9 +687,9 @@ Reward: r_k(s_i, a_i, m_k, {m_j})
 ### Implementation References
 
 **Code Files**:
-- `mfg_pde/alg/reinforcement/algorithms/` - RL algorithms (10+ files)
-- `mfg_pde/alg/reinforcement/environments/` - MFG environments (20+ files)
-- `mfg_pde/alg/reinforcement/multi_population/` - Multi-population infrastructure
+- `mfgarchon/alg/reinforcement/algorithms/` - RL algorithms (10+ files)
+- `mfgarchon/alg/reinforcement/environments/` - MFG environments (20+ files)
+- `mfgarchon/alg/reinforcement/multi_population/` - Multi-population infrastructure
 
 **Theory Documentation**:
 - `docs/theory/reinforcement_learning/` - 14 RL formulation documents
@@ -712,18 +712,18 @@ Reward: r_k(s_i, a_i, m_k, {m_j})
 
 ```bash
 # Install with RL support
-pip install mfg_pde[rl]
+pip install mfgarchon[rl]
 
 # Or install dependencies separately
-pip install mfg_pde
+pip install mfgarchon
 pip install gymnasium stable-baselines3
 ```
 
 ### Minimal RL Example (Discrete Actions)
 
 ```python
-from mfg_pde.alg.reinforcement import MeanFieldQLearning, RLSolverConfig
-from mfg_pde.alg.reinforcement.environments import MFGMazeEnv
+from mfgarchon.alg.reinforcement import MeanFieldQLearning, RLSolverConfig
+from mfgarchon.alg.reinforcement.environments import MFGMazeEnv
 
 # 1. Create MFG maze environment
 env = MFGMazeEnv(maze_size=(10, 10), num_agents=100)
@@ -742,8 +742,8 @@ solver.evaluate_and_visualize()
 ### Minimal RL Example (Continuous Actions)
 
 ```python
-from mfg_pde.alg.reinforcement import MeanFieldSAC
-from mfg_pde.alg.reinforcement.environments import ContinuousActionMazeEnv
+from mfgarchon.alg.reinforcement import MeanFieldSAC
+from mfgarchon.alg.reinforcement.environments import ContinuousActionMazeEnv
 
 # 1. Create continuous control environment
 env = ContinuousActionMazeEnv(maze_size=(15, 15), num_agents=200)
@@ -763,7 +763,7 @@ solver.visualize_trajectories(num_agents=50)
 
 ## ✅ Summary
 
-The reinforcement learning paradigm in MFG_PDE provides **state-of-the-art multi-agent RL approaches** for solving Mean Field Games:
+The reinforcement learning paradigm in MFGarchon provides **state-of-the-art multi-agent RL approaches** for solving Mean Field Games:
 
 **✅ Production-Ready**: 16,472 lines of code, comprehensive implementation
 **✅ 10+ RL Algorithms**: Q-learning, DDPG, SAC, TD3, MADDPG, PPO

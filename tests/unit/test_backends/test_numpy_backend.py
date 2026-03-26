@@ -11,7 +11,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.backends.numpy_backend import NumPyBackend
+from mfgarchon.backends.numpy_backend import NumPyBackend
 
 
 @pytest.fixture

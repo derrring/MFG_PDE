@@ -15,13 +15,13 @@ import pytest
 try:
     import omegaconf  # Check for omegaconf package directly
 
-    from mfg_pde.config.omegaconf_manager import (
+    from mfgarchon.config.omegaconf_manager import (
         create_default_structured_config,
         create_omega_manager,
         load_structured_beach_config,
         load_structured_mfg_config,
     )
-    from mfg_pde.config.structured_schemas import BeachProblemSchema, MFGSchema
+    from mfgarchon.config.structured_schemas import BeachProblemSchema, MFGSchema
 
     OMEGACONF_AVAILABLE = True
 except ImportError:

@@ -2,7 +2,7 @@
 """
 Unit Tests for QP Utilities
 
-Tests for QPCache and QPSolver classes in mfg_pde.utils.numerical.qp_utils.
+Tests for QPCache and QPSolver classes in mfgarchon.utils.numerical.qp_utils.
 
 Coverage:
 - QPCache: Hash computation, get/put operations, LRU eviction, statistics
@@ -14,7 +14,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils import QPCache, QPSolver
+from mfgarchon.utils import QPCache, QPSolver
 
 # =============================================================================
 # QPCache Tests

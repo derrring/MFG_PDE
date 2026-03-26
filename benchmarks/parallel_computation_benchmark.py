@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Parallel Computation Benchmark for MFG_PDE
+Parallel Computation Benchmark for MFGarchon
 
 Tests the practical effectiveness of parallel execution across different use cases:
 1. Common Noise MFG Monte Carlo sampling
@@ -23,10 +23,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
-from mfg_pde.workflow.parameter_sweep import ParameterSweep, SweepConfiguration
+from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.workflow.parameter_sweep import ParameterSweep, SweepConfiguration
 
 # Configure logging
 configure_research_logging("parallel_benchmark", level="INFO")
@@ -40,8 +40,8 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # Simple test function for parameter sweeps (not a pytest test)
 def mfg_solve_function(Nx, Nt, sigma):
     """Simple MFG solve for benchmarking."""
-    from mfg_pde.core.mfg_problem import MFGProblem
-    from mfg_pde.factory import create_fast_solver
+    from mfgarchon.core.mfg_problem import MFGProblem
+    from mfgarchon.factory import create_fast_solver
 
     problem = MFGProblem(Nx=Nx, Nt=Nt, sigma=sigma)
     solver = create_fast_solver(problem)
@@ -197,7 +197,7 @@ def benchmark_monte_carlo_parallel():
     logger.info("BENCHMARK 3: Monte Carlo Integration Parallel")
     logger.info("=" * 80)
 
-    from mfg_pde.utils.numerical.monte_carlo import MCConfig, monte_carlo_integrate
+    from mfgarchon.utils.numerical.monte_carlo import MCConfig, monte_carlo_integrate
 
     # Define test integrand: multi-dimensional Gaussian
     def gaussian_integrand(x):
@@ -294,7 +294,7 @@ def create_benchmark_report(bench1, bench2, bench3, bench4):
     fig = plt.figure(figsize=(16, 12))
     gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
 
-    fig.suptitle("MFG_PDE Parallel Computation Benchmark Analysis", fontsize=16, fontweight="bold")
+    fig.suptitle("MFGarchon Parallel Computation Benchmark Analysis", fontsize=16, fontweight="bold")
 
     # 1. Common Noise Speedup
     ax1 = fig.add_subplot(gs[0, 0])
@@ -436,7 +436,7 @@ def generate_text_report(bench1, bench2, bench3, bench4):
     report_path = OUTPUT_DIR / "parallel_computation_analysis.md"
 
     with open(report_path, "w") as f:
-        f.write("# MFG_PDE Parallel Computation Analysis\n\n")
+        f.write("# MFGarchon Parallel Computation Analysis\n\n")
         f.write(f"**Date**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"**CPU Count**: {mp.cpu_count()}\n\n")
 
@@ -553,7 +553,7 @@ def generate_text_report(bench1, bench2, bench3, bench4):
 def main():
     """Run all benchmarks and generate reports."""
     logger.info("\n" + "=" * 80)
-    logger.info("MFG_PDE PARALLEL COMPUTATION COMPREHENSIVE BENCHMARK")
+    logger.info("MFGarchon PARALLEL COMPUTATION COMPREHENSIVE BENCHMARK")
     logger.info("=" * 80)
     logger.info(f"CPU Count: {mp.cpu_count()}")
     logger.info(f"Output Directory: {OUTPUT_DIR}")

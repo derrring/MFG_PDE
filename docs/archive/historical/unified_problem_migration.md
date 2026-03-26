@@ -1,6 +1,6 @@
 # Migration Guide: Unified MFGProblem Interface
 
-**Version**: MFG_PDE v0.10.x - v0.11.x
+**Version**: MFGarchon v0.10.x - v0.11.x
 **Status**: Stable API (v0.10.x+), Dual Geometry Added (v0.11.x)
 **Deprecation Timeline**: v0.9.0 (warnings) → v2.0.0 (removal)
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-MFG_PDE v0.9.0 introduces a unified `MFGProblem` class that supports all problem types through a single interface. The old `GridBasedMFGProblem` class has been converted to a factory function with deprecation warnings.
+MFGarchon v0.9.0 introduces a unified `MFGProblem` class that supports all problem types through a single interface. The old `GridBasedMFGProblem` class has been converted to a factory function with deprecation warnings.
 
 **v0.11.0 Update**: The unified API now includes complete dual geometry support, enabling HJB and FP solvers to use different discretizations.
 
@@ -39,7 +39,7 @@ MFG_PDE v0.9.0 introduces a unified `MFGProblem` class that supports all problem
 
 **Old API (deprecated)**:
 ```python
-from mfg_pde import GridBasedMFGProblem
+from mfgarchon import GridBasedMFGProblem
 
 problem = GridBasedMFGProblem(
     domain_bounds=(0, 1, 0, 1),  # (xmin, xmax, ymin, ymax)
@@ -51,7 +51,7 @@ problem = GridBasedMFGProblem(
 
 **New API (recommended)**:
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(
     spatial_bounds=[(0, 1), (0, 1)],  # List of (min, max) per dimension
@@ -229,8 +229,8 @@ except ValueError as e:
 #### Unified Geometry (Standard)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Single geometry for both solvers (standard approach)
 grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[51, 51])
@@ -250,8 +250,8 @@ assert problem.geometry_projector is None  # No projection needed
 #### Dual Geometry (Multi-Resolution)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Fine grid for HJB (needs accuracy for value function)
 hjb_grid = TensorProductGrid(dimension=2, bounds=[(0, 1), (0, 1)], Nx_points=[101, 101])
@@ -280,8 +280,8 @@ print(f"FP→HJB: {projector.fp_to_hjb_method}")  # "grid_restriction"
 #### Dual Geometry (FEM Mesh + Grid)
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import Mesh2D, TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import Mesh2D, TensorProductGrid
 
 # FEM mesh for complex domain with obstacles
 mesh = Mesh2D(
@@ -412,7 +412,7 @@ Create a temporary wrapper during migration:
 ```python
 # utils/migration_helpers.py
 import warnings
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 def create_grid_problem_legacy(
     domain_bounds: tuple,
@@ -475,7 +475,7 @@ assert problem_old.sigma == problem_new.sigma
 
 ```python
 # Test solver creation
-from mfg_pde.factory import create_fast_solver
+from mfgarchon.factory import create_fast_solver
 
 solver = create_fast_solver(problem_new, solver_type='fdm')
 result = solver.solve()
@@ -503,11 +503,11 @@ assert np.allclose(result_old.U, result_new.U, atol=1e-12)
 
 ### Issue 1: Import Errors
 
-**Problem**: `AttributeError: module 'mfg_pde' has no attribute 'GridBasedMFGProblem'`
+**Problem**: `AttributeError: module 'mfgarchon' has no attribute 'GridBasedMFGProblem'`
 
-**Solution**: Update MFG_PDE to v0.9.0+:
+**Solution**: Update MFGarchon to v0.9.0+:
 ```bash
-pip install --upgrade mfg_pde>=0.9.0
+pip install --upgrade mfgarchon>=0.9.0
 ```
 
 ### Issue 2: Solver Not Found
@@ -544,7 +544,7 @@ domain_bounds = tuple(x for bounds in problem.spatial_bounds for x in bounds)
 
 For migration assistance:
 - **Documentation**: `docs/architecture/unified_problem_design.md`
-- **Issues**: https://github.com/derrring/MFG_PDE/issues
+- **Issues**: https://github.com/derrring/mfgarchon/issues
 - **Examples**: See `examples/basic/` for updated examples
 
 ---

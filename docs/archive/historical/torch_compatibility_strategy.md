@@ -24,13 +24,13 @@
 **Components that MUST work with PyTorch tensors:**
 
 1. **Neural Paradigm Solvers** (Already PyTorch-native):
-   - `mfg_pde/alg/neural/pinn/` - Physics-Informed Neural Networks
-   - `mfg_pde/alg/neural/dgm/` - Deep Galerkin Method
-   - `mfg_pde/alg/neural/fno/` - Fourier Neural Operator (future)
+   - `mfgarchon/alg/neural/pinn/` - Physics-Informed Neural Networks
+   - `mfgarchon/alg/neural/dgm/` - Deep Galerkin Method
+   - `mfgarchon/alg/neural/fno/` - Fourier Neural Operator (future)
    - ✅ **Status**: Already PyTorch-native
 
 2. **RL Paradigm Infrastructure** (Critical for RL):
-   - `mfg_pde/alg/rl/` - Reinforcement Learning solvers
+   - `mfgarchon/alg/rl/` - Reinforcement Learning solvers
    - Actor-Critic, DDPG, Nash Q-Learning implementations
    - Gymnasium environment integration
    - ✅ **Status**: Already PyTorch-native (Stable-Baselines3 dependency)
@@ -46,9 +46,9 @@
 **Components that should support multiple backends via abstraction:**
 
 1. **Classical Numerical Solvers** (Keep backend-agnostic):
-   - `mfg_pde/alg/numerical/hjb_solvers/` - HJB solvers (FDM, WENO, Semi-Lagrangian)
-   - `mfg_pde/alg/numerical/fp_solvers/` - FP solvers (Particle, FDM)
-   - `mfg_pde/alg/numerical/mfg_solvers/` - Coupled MFG solvers
+   - `mfgarchon/alg/numerical/hjb_solvers/` - HJB solvers (FDM, WENO, Semi-Lagrangian)
+   - `mfgarchon/alg/numerical/fp_solvers/` - FP solvers (Particle, FDM)
+   - `mfgarchon/alg/numerical/mfg_solvers/` - Coupled MFG solvers
 
    **Strategy**: Use backend abstraction layer
    ```python
@@ -60,9 +60,9 @@
    ```
 
 2. **Backend Abstraction Layer** (Already exists):
-   - `mfg_pde/backends/numpy_backend.py` ✅
-   - `mfg_pde/backends/torch_backend.py` ✅
-   - `mfg_pde/backends/jax_backend.py` ✅
+   - `mfgarchon/backends/numpy_backend.py` ✅
+   - `mfgarchon/backends/torch_backend.py` ✅
+   - `mfgarchon/backends/jax_backend.py` ✅
    - **Principle**: Solvers call backend methods, backends handle tensor types
 
 ### Tier 3: NumPy-Only (Legacy/Special Cases)
@@ -163,7 +163,7 @@ class HybridSolver:
 
 #### Location 1: `FixedPointIterator` (MFG Solver Core)
 
-**File**: `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py`
+**File**: `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py`
 
 **Current Problem**:
 ```python
@@ -299,10 +299,10 @@ def test_mps_acceleration():
 
 ## References
 
-1. **Backend Abstraction**: `mfg_pde/backends/`
-2. **FixedPointIterator**: `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py`
-3. **RL Infrastructure**: `mfg_pde/alg/rl/`
-4. **Neural Solvers**: `mfg_pde/alg/neural/`
+1. **Backend Abstraction**: `mfgarchon/backends/`
+2. **FixedPointIterator**: `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py`
+3. **RL Infrastructure**: `mfgarchon/alg/rl/`
+4. **Neural Solvers**: `mfgarchon/alg/neural/`
 5. **PyTorch MPS Docs**: https://pytorch.org/docs/stable/notes/mps.html
 
 ---

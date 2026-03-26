@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Phase 2 extends MFG_PDE to support **state-dependent (nonlinear) PDEs** by enabling:
+Phase 2 extends MFGarchon to support **state-dependent (nonlinear) PDEs** by enabling:
 1. Array diffusion in FP solvers (spatially varying)
 2. Callable coefficients evaluated at runtime (state-dependent)
 3. Seamless integration with MFG fixed-point coupling
@@ -37,7 +37,7 @@ This unlocks applications like porous medium equations, crowd dynamics with avoi
 
 **Type Hierarchy**:
 ```python
-# Type aliases (mfg_pde/types/pde_coefficients.py)
+# Type aliases (mfgarchon/types/pde_coefficients.py)
 DriftField = NDArray[np.floating] | DriftCallable | None
 DiffusionField = float | NDArray[np.floating] | DiffusionCallable | None
 ```
@@ -120,7 +120,7 @@ M = solver.solve_fp_system(m0, diffusion_field=porous_diffusion)
 
 **Priority**: High
 **Effort**: 1 day
-**Files**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+**Files**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 
 ### 2.1.1 Technical Specification
 
@@ -318,8 +318,8 @@ else:
 **Priority**: High
 **Effort**: 2-3 days
 **Files**:
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
-- `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py`
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
+- `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py`
 
 ### 3.1 Design Philosophy
 
@@ -561,7 +561,7 @@ def _solve_fp_1d_with_callable(
     # Progress bar
     timestep_range = range(Nt - 1)
     if show_progress:
-        from mfg_pde.utils.progress import tqdm
+        from mfgarchon.utils.progress import tqdm
         timestep_range = tqdm(timestep_range, desc="FP (callable σ)", unit="step")
 
     for k in timestep_range:
@@ -736,7 +736,7 @@ def solve_hjb_system_backward(
 
 **Priority**: High
 **Effort**: 1 day
-**Files**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
+**Files**: `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`
 
 ### 4.1 Current Coupling Architecture
 
@@ -880,8 +880,8 @@ def _get_spatial_grid(self) -> np.ndarray:
 ### 4.4 Usage Example
 
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_mfg_solver
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.factory import create_mfg_solver
 
 # Define state-dependent diffusion
 def crowd_diffusion(t, x, m):
@@ -1099,7 +1099,7 @@ M = solver.solve_fp_system(m0, U, diffusion_field=my_func)
 
 **Use protocols for runtime validation**:
 ```python
-from mfg_pde.types import DiffusionCallable
+from mfgarchon.types import DiffusionCallable
 
 def my_diffusion(t, x, m):
     return 0.1 * m
@@ -1246,8 +1246,8 @@ Use upwind: α⁺ = max(α, 0), α⁻ = min(α, 0)
 ### B.1 Porous Medium Equation
 
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.factory import create_mfg_solver
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.factory import create_mfg_solver
 
 def porous_medium_diffusion(t, x, m, exponent=2):
     """

@@ -1,19 +1,19 @@
-# Plugin Development Guide for MFG_PDE
+# Plugin Development Guide for MFGarchon
 
 **Date:** July 27, 2025  
 **Version:** 1.0  
-**Purpose:** Comprehensive guide for developing plugins for the MFG_PDE framework  
+**Purpose:** Comprehensive guide for developing plugins for the MFGarchon framework  
 **Target Audience:** Plugin developers, researchers, and third-party contributors  
 
 ## Overview
 
-The MFG_PDE plugin system enables researchers and developers to extend the framework with custom solvers, analysis tools, and algorithms without modifying the core codebase. This guide provides everything needed to create, test, and distribute MFG_PDE plugins.
+The MFGarchon plugin system enables researchers and developers to extend the framework with custom solvers, analysis tools, and algorithms without modifying the core codebase. This guide provides everything needed to create, test, and distribute MFGarchon plugins.
 
 ## Plugin Architecture
 
 ### Plugin Types
 
-MFG_PDE supports two main types of plugins:
+MFGarchon supports two main types of plugins:
 
 1. **Solver Plugins** (`SolverPlugin`): Provide new solver algorithms
 2. **Analysis Plugins** (`AnalysisPlugin`): Provide post-processing and analysis tools
@@ -31,8 +31,8 @@ MFG_PDE supports two main types of plugins:
 ### Basic Structure
 
 ```python
-from mfg_pde.core.plugin_system import SolverPlugin, PluginMetadata
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfgarchon.core.plugin_system import SolverPlugin, PluginMetadata
+from mfgarchon.config.pydantic_config import MFGSolverConfig
 from typing import List, Optional, Dict, Any
 
 class YourSolverPlugin(SolverPlugin):
@@ -104,9 +104,9 @@ import numpy as np
 import time
 from typing import List, Optional, Dict, Any
 
-from mfg_pde.core.plugin_system import SolverPlugin, PluginMetadata
-from mfg_pde.core.solver_result import SolverResult
-from mfg_pde.config.pydantic_config import MFGSolverConfig
+from mfgarchon.core.plugin_system import SolverPlugin, PluginMetadata
+from mfgarchon.core.solver_result import SolverResult
+from mfgarchon.config.pydantic_config import MFGSolverConfig
 
 class GradientDescentSolver:
     """Custom gradient descent MFG solver."""
@@ -224,7 +224,7 @@ class CustomSolverPlugin(SolverPlugin):
 Analysis plugins provide post-processing capabilities for solver results:
 
 ```python
-from mfg_pde.core.plugin_system import AnalysisPlugin, PluginMetadata
+from mfgarchon.core.plugin_system import AnalysisPlugin, PluginMetadata
 import numpy as np
 
 class CustomAnalysisPlugin(AnalysisPlugin):
@@ -281,17 +281,17 @@ from setuptools import setup, find_packages
 setup(
     name="mfg-custom-solver-plugin",
     version="1.0.0",
-    description="Custom solver plugin for MFG_PDE",
+    description="Custom solver plugin for MFGarchon",
     author="Your Name",
     author_email="your.email@example.com",
     packages=find_packages(),
     install_requires=[
-        "mfg-pde>=1.0.0",
+        "mfgarchon>=1.0.0",
         "numpy",
         "scipy"
     ],
     entry_points={
-        'mfg_pde.plugins': [
+        'mfgarchon.plugins': [
             'custom_solver = your_plugin_package:CustomSolverPlugin',
         ]
     },
@@ -336,8 +336,8 @@ Create comprehensive tests:
 
 ```python
 import pytest
-from mfg_pde import MFGProblem
-from mfg_pde.core.plugin_system import get_plugin_manager
+from mfgarchon import MFGProblem
+from mfgarchon.core.plugin_system import get_plugin_manager
 from your_plugin_package import CustomSolverPlugin
 
 class TestCustomSolverPlugin:
@@ -383,8 +383,8 @@ class TestCustomSolverPlugin:
 ### Loading Plugins Automatically
 
 ```python
-from mfg_pde.core.plugin_system import discover_and_load_plugins
-from mfg_pde import MFGProblem, create_solver_with_plugins
+from mfgarchon.core.plugin_system import discover_and_load_plugins
+from mfgarchon import MFGProblem, create_solver_with_plugins
 
 # Discover and load all available plugins
 plugin_results = discover_and_load_plugins()
@@ -408,7 +408,7 @@ print(f"Plugin solver converged: {result.converged}")
 ### Manual Plugin Loading
 
 ```python
-from mfg_pde.core.plugin_system import get_plugin_manager
+from mfgarchon.core.plugin_system import get_plugin_manager
 from your_plugin_package import CustomSolverPlugin
 
 # Get plugin manager
@@ -637,7 +637,7 @@ class ParallelSolver:
 2. **Version Compatibility**
    - Update min_mfg_version in metadata
    - Check dependency versions
-   - Test with target MFG_PDE version
+   - Test with target MFGarchon version
 
 3. **Import Errors**
    - Verify all dependencies are installed
@@ -654,7 +654,7 @@ class ParallelSolver:
 ```python
 # Enable plugin system logging
 import logging
-logging.getLogger('mfg_pde.core.plugin_system').setLevel(logging.DEBUG)
+logging.getLogger('mfgarchon.core.plugin_system').setLevel(logging.DEBUG)
 
 # Test plugin manually
 plugin = YourPlugin()
@@ -662,7 +662,7 @@ solver = plugin.create_solver(problem, "your_solver")
 result = solver.solve()
 
 # Validate result format
-from mfg_pde.core.solver_result import validate_solver_result
+from mfgarchon.core.solver_result import validate_solver_result
 validate_solver_result(result, problem)
 ```
 
@@ -692,4 +692,4 @@ validate_solver_result(result, problem)
 - Provide example notebooks
 - Include citation information for academic use
 
-This guide provides the foundation for creating powerful, extensible plugins for MFG_PDE. The plugin system enables the community to collaborate and extend the framework while maintaining code quality and user experience standards.
+This guide provides the foundation for creating powerful, extensible plugins for MFGarchon. The plugin system enables the community to collaborate and extend the framework while maintaining code quality and user experience standards.

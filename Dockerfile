@@ -1,4 +1,4 @@
-# Dockerfile for MFG_PDE computational framework
+# Dockerfile for MFGarchon computational framework
 # Multi-stage build for security and size optimization
 
 FROM python:3.10-slim as builder
@@ -23,7 +23,7 @@ WORKDIR /build
 
 # Copy requirements and setup files
 COPY pyproject.toml README.md ./
-COPY mfg_pde/ ./mfg_pde/
+COPY mfgarchon/ ./mfgarchon/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
@@ -34,7 +34,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
 FROM python:3.10-slim as production
 
 # Set security-focused labels
-LABEL maintainer="MFG_PDE Team" \
+LABEL maintainer="MFGarchon Team" \
       description="Mean Field Games PDE solver framework" \
       version="0.1.0" \
       security.scan="enabled"
@@ -64,7 +64,7 @@ COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
-COPY --chown=mfguser:mfguser mfg_pde/ ./mfg_pde/
+COPY --chown=mfguser:mfguser mfgarchon/ ./mfgarchon/
 COPY --chown=mfguser:mfguser examples/ ./examples/
 COPY --chown=mfguser:mfguser pyproject.toml README.md ./
 
@@ -80,13 +80,13 @@ USER mfguser
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import mfg_pde; print('MFG_PDE package imported successfully')" || exit 1
+    CMD python -c "import mfgarchon; print('MFGarchon package imported successfully')" || exit 1
 
 # Set working directory for user
 WORKDIR /app
 
 # Default command - run basic example
-CMD ["python", "-c", "from mfg_pde import MFGProblem, create_fast_solver; print('MFG_PDE container ready')"]
+CMD ["python", "-c", "from mfgarchon import MFGProblem, create_fast_solver; print('MFGarchon container ready')"]
 
 # Expose port for potential web interface (if added later)
 EXPOSE 8080

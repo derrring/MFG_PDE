@@ -1,8 +1,8 @@
-# UV for Scientific Computing - MFG_PDE Guide
+# UV for Scientific Computing - MFGarchon Guide
 
 ## Overview
 
-UV is an optional, high-performance package manager that provides significant benefits for MFG research and scientific computing workflows. While MFG_PDE works perfectly with standard pip, UV offers enhanced performance and reproducibility features.
+UV is an optional, high-performance package manager that provides significant benefits for MFG research and scientific computing workflows. While MFGarchon works perfectly with standard pip, UV offers enhanced performance and reproducibility features.
 
 ## When to Use UV
 
@@ -39,7 +39,7 @@ export NUMEXPR_MAX_THREADS="4"    # NumPy expression evaluator
 - **Dependency conflict resolution** for complex scientific packages
 
 ### 3. **Performance Characteristics**
-Based on MFG_PDE testing:
+Based on MFGarchon testing:
 - **10-100x faster** dependency resolution vs pip
 - **Parallel downloads** of packages during installation
 - **Efficient caching** reduces repeated download times
@@ -68,7 +68,7 @@ uv add --dev jupyter-lab
 
 # Run MFG computations with optimized backends
 uv run python -c "
-from mfg_pde import ExampleMFGProblem, create_fast_solver
+from mfgarchon import ExampleMFGProblem, create_fast_solver
 import time
 
 problem = ExampleMFGProblem(Nx=100, Nt=50)
@@ -88,7 +88,7 @@ cd ~/research/mfg_finance && uv sync   # Financial MFG environment
 cd ~/research/mfg_control && uv sync   # Control theory environment
 ```
 
-## Integration with MFG_PDE
+## Integration with MFGarchon
 
 ### Pre-commit Hooks
 Our modern `.pre-commit-config.yaml` uses standard Ruff tooling, not UV:
@@ -127,7 +127,7 @@ pre-commit install  # Uses same hooks regardless of package manager
 
 ### Package Resolution Speed
 ```bash
-# Benchmark on MFG_PDE dependencies (294 packages)
+# Benchmark on MFGarchon dependencies (294 packages)
 pip install -e ".[dev]"  # ~180-300 seconds
 uv sync --extra dev      # ~5-15 seconds (10-20x faster)
 ```
@@ -181,17 +181,17 @@ pip install -r requirements.txt            # Standard pip installation
 
 ### Getting Help
 - **UV Documentation**: https://docs.astral.sh/uv/
-- **MFG_PDE Issues**: Standard GitHub issue tracker
+- **MFGarchon Issues**: Standard GitHub issue tracker
 - **Scientific computing setup**: Check `.uvrc` configuration
 
 ## Conclusion
 
-UV provides significant benefits for research-intensive MFG workflows, but MFG_PDE's pip-first approach ensures accessibility for all users. Choose based on your specific needs:
+UV provides significant benefits for research-intensive MFG workflows, but MFGarchon's pip-first approach ensures accessibility for all users. Choose based on your specific needs:
 
 - **Use pip** for simplicity and standard Python workflows
 - **Use UV** for performance, reproducibility, and intensive research development
 
-Both approaches are fully supported and tested in the MFG_PDE ecosystem.
+Both approaches are fully supported and tested in the MFGarchon ecosystem.
 
 ---
 

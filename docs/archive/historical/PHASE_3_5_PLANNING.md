@@ -3,7 +3,7 @@
 **Date**: October 3, 2025
 **Status**: Planning & Design
 **Branch**: `feature/continuous-environments-library`
-**Issue**: [#64](https://github.com/derrring/MFG_PDE/issues/64)
+**Issue**: [#64](https://github.com/derrring/mfgarchon/issues/64)
 **Estimated Effort**: 2-3 weeks
 
 ---
@@ -29,7 +29,7 @@ Create a comprehensive benchmark suite of continuous control environments for de
 ### Phase 1: Foundation (Days 1-2)
 
 #### 1.1 Base Environment Class
-**File**: `mfg_pde/alg/reinforcement/environments/continuous_mfg_env_base.py`
+**File**: `mfgarchon/alg/reinforcement/environments/continuous_mfg_env_base.py`
 
 **Features**:
 - Gymnasium-compatible API
@@ -84,7 +84,7 @@ class ContinuousMFGEnvBase(gym.Env):
 ### Phase 2: Core Environments (Days 3-12)
 
 #### 2.1 LQ-MFG Environment (Linear-Quadratic) ⭐ NEW
-**File**: `mfg_pde/alg/reinforcement/environments/lq_mfg_env.py`
+**File**: `mfgarchon/alg/reinforcement/environments/lq_mfg_env.py`
 
 **Purpose**: Simple validation environment to test base class and algorithms
 
@@ -123,7 +123,7 @@ mean_field_term = ∫(x - y)² * m(y) dy  # Quadratic repulsion
 ---
 
 #### 2.2 Crowd Navigation Environment
-**File**: `mfg_pde/alg/reinforcement/environments/crowd_navigation_env.py`
+**File**: `mfgarchon/alg/reinforcement/environments/crowd_navigation_env.py`
 
 **State Space** (dim=6):
 - Position: `(x, y)` ∈ [0, L]²
@@ -156,7 +156,7 @@ r = -c_dist * ||x - x_goal||²
 ---
 
 #### 2.2 Price Formation Environment
-**File**: `mfg_pde/alg/reinforcement/environments/price_formation_env.py`
+**File**: `mfgarchon/alg/reinforcement/environments/price_formation_env.py`
 
 **State Space** (dim=4):
 - Inventory: `q` ∈ [-Q_max, Q_max]
@@ -188,7 +188,7 @@ r = pnl - γ * q² - κ * inventory_risk - spread_cost
 ---
 
 #### 2.3 Resource Allocation Environment
-**File**: `mfg_pde/alg/reinforcement/environments/resource_allocation_env.py`
+**File**: `mfgarchon/alg/reinforcement/environments/resource_allocation_env.py`
 
 **State Space** (dim=2n):
 - Current allocation: `w = (w₁, ..., wₙ)` with `∑wᵢ = 1`
@@ -219,7 +219,7 @@ r = w^T * returns
 ---
 
 #### 2.4 Traffic Flow Environment
-**File**: `mfg_pde/alg/reinforcement/environments/traffic_flow_env.py`
+**File**: `mfgarchon/alg/reinforcement/environments/traffic_flow_env.py`
 
 **State Space** (dim=5):
 - Position on network: `(x, y)`

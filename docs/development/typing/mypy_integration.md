@@ -1,4 +1,4 @@
-# MyPy Integration for MFG_PDE
+# MyPy Integration for MFGarchon
 
 **Date**: July 26, 2025  
 **Status**: ✅ **IMPLEMENTED**  
@@ -6,7 +6,7 @@
 
 ## Overview
 
-MyPy integration has been successfully implemented in MFG_PDE to provide static type checking, catching errors before runtime and improving development experience with better IDE support.
+MyPy integration has been successfully implemented in MFGarchon to provide static type checking, catching errors before runtime and improving development experience with better IDE support.
 
 ## Configuration
 
@@ -31,9 +31,9 @@ check_untyped_defs = True
 ### Key Configuration Features:
 
 #### **Strict Type Checking for Core Modules:**
-- `mfg_pde.factory.*` - Factory patterns and solver creation
-- `mfg_pde.config.*` - Configuration system
-- `mfg_pde.utils.validation.*` - Validation utilities
+- `mfgarchon.factory.*` - Factory patterns and solver creation
+- `mfgarchon.config.*` - Configuration system
+- `mfgarchon.utils.validation.*` - Validation utilities
 
 #### **Scientific Computing Dependencies:**
 - Proper handling of numpy, scipy, matplotlib, plotly
@@ -71,29 +71,29 @@ python -m mypy --install-types --non-interactive
 
 **Check entire package:**
 ```bash
-python -m mypy mfg_pde/
+python -m mypy mfgarchon/
 ```
 
 **Check specific module:**
 ```bash
-python -m mypy mfg_pde/factory/solver_factory.py
+python -m mypy mfgarchon/factory/solver_factory.py
 ```
 
 **Check with specific configuration:**
 ```bash
-python -m mypy --config-file mypy.ini mfg_pde/
+python -m mypy --config-file mypy.ini mfgarchon/
 ```
 
 ### Advanced Usage
 
 **Ignore specific error types:**
 ```bash
-python -m mypy mfg_pde/ --disable-error-code=import-untyped
+python -m mypy mfgarchon/ --disable-error-code=import-untyped
 ```
 
 **Generate type coverage report:**
 ```bash
-python -m mypy mfg_pde/ --html-report mypy-report/
+python -m mypy mfgarchon/ --html-report mypy-report/
 ```
 
 **Check only modified files:**
@@ -138,7 +138,7 @@ repos:
 - name: Type checking with MyPy
   run: |
     pip install mypy types-tqdm types-setuptools types-psutil
-    python -m mypy mfg_pde/
+    python -m mypy mfgarchon/
 ```
 
 ## Type Annotation Standards
@@ -300,7 +300,7 @@ def setup_logging() -> None:  # or appropriate return type
 
 - **MyPy Documentation**: https://mypy.readthedocs.io/
 - **Type Hints Guide**: https://docs.python.org/3/library/typing.html
-- **MFG_PDE Issues**: Use GitHub issues for package-specific problems
+- **MFGarchon Issues**: Use GitHub issues for package-specific problems
 
 ---
 

@@ -13,7 +13,7 @@ Mathematical Framework:
 - Dynamics: v' = v + a*dt, x' = x + v*dt with density-dependent drag
 - Coupling: Speed depends on densities of all vehicle types
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -21,16 +21,16 @@ from __future__ import annotations
 
 import numpy as np
 
-from mfg_pde.alg.reinforcement.multi_population.base_environment import (
+from mfgarchon.alg.reinforcement.multi_population.base_environment import (
     MultiPopulationMFGEnvironment,
 )
-from mfg_pde.alg.reinforcement.multi_population.multi_ddpg import MultiPopulationDDPG
-from mfg_pde.alg.reinforcement.multi_population.multi_sac import MultiPopulationSAC
-from mfg_pde.alg.reinforcement.multi_population.multi_td3 import MultiPopulationTD3
-from mfg_pde.alg.reinforcement.multi_population.population_config import (
+from mfgarchon.alg.reinforcement.multi_population.multi_ddpg import MultiPopulationDDPG
+from mfgarchon.alg.reinforcement.multi_population.multi_sac import MultiPopulationSAC
+from mfgarchon.alg.reinforcement.multi_population.multi_td3 import MultiPopulationTD3
+from mfgarchon.alg.reinforcement.multi_population.population_config import (
     PopulationConfig,
 )
-from mfg_pde.alg.reinforcement.multi_population.trainer import MultiPopulationTrainer
+from mfgarchon.alg.reinforcement.multi_population.trainer import MultiPopulationTrainer
 
 
 class HeterogeneousTrafficEnv(MultiPopulationMFGEnvironment):

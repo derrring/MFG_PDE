@@ -10,12 +10,12 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def _default_hamiltonian():

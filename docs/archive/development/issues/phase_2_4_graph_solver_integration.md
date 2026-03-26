@@ -155,7 +155,7 @@ def compute_all_pairs_distance(
 
 ### 1. NetworkGeometry Implementation
 
-**File**: `mfg_pde/geometry/graph/network_geometry.py`
+**File**: `mfgarchon/geometry/graph/network_geometry.py`
 
 **Changes Made**:
 1. **Added `get_graph_laplacian_operator()`** (lines 426-472)
@@ -185,7 +185,7 @@ def compute_all_pairs_distance(
 
 ### 2. Network Solver Documentation
 
-**File**: `mfg_pde/alg/numerical/network_solvers/hjb_network.py`
+**File**: `mfgarchon/alg/numerical/network_solvers/hjb_network.py`
 
 **Changes Made**:
 - Updated `NetworkHJBSolver` docstring (lines 37-58)
@@ -204,7 +204,7 @@ Compatible Geometries:
     - Any graph geometry implementing required traits
 ```
 
-**File**: `mfg_pde/alg/numerical/network_solvers/fp_network.py`
+**File**: `mfgarchon/alg/numerical/network_solvers/fp_network.py`
 
 **Changes Made**:
 - Updated `FPNetworkSolver` docstring (lines 40-62)

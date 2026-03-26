@@ -21,17 +21,17 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.core.mfg_problem import MFGComponents
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import (
+from mfgarchon import MFGProblem
+from mfgarchon.core.mfg_problem import MFGComponents
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import (
     AdjointConsistentProvider,
     BCSegment,
     BCType,
     BoundaryConditions,
     neumann_bc,
 )
-from mfg_pde.geometry.boundary.bc_coupling import compute_boundary_log_density_gradient_1d
+from mfgarchon.geometry.boundary.bc_coupling import compute_boundary_log_density_gradient_1d
 
 # Output directory
 OUTPUT_DIR = Path(__file__).parent.parent / "outputs" / "validation"

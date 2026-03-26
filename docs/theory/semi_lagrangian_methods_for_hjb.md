@@ -3,7 +3,7 @@
 **Date**: 2025-11-12
 **Status**: Technical Reference
 **Related Issues**: #298
-**Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
+**Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
 
 ## Table of Contents
 
@@ -521,7 +521,7 @@ where $p$ is the interpolation order (1 for linear, 3 for cubic).
 
 ## Recommendations
 
-### For MFG_PDE Library
+### For MFGarchon Library
 
 **Current Implementation** (Explicit + Clipping):
 - **Use Case**: General MFG problems with moderate gradients

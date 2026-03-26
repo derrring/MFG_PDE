@@ -1,5 +1,5 @@
 """
-Benchmark Runner for MFG_PDE
+Benchmark Runner for MFGarchon
 
 Executes standard benchmark problems and tracks performance metrics
 using PerformanceTracker. Supports selective execution by category,
@@ -192,7 +192,7 @@ class BenchmarkRunner:
             Dictionary with solver results (U, M, convergence info)
         """
         # PLACEHOLDER: Simulate solver execution
-        # In production, this would use actual solvers from mfg_pde
+        # In production, this would use actual solvers from mfgarchon
         np.random.seed(42)  # Reproducible results
 
         # Simulate solver iterations
@@ -351,7 +351,7 @@ class BenchmarkRunner:
 def main():
     """Main entry point for benchmark runner."""
     parser = argparse.ArgumentParser(
-        description="Run MFG_PDE benchmark suite",
+        description="Run MFGarchon benchmark suite",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 

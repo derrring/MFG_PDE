@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MFG_PDE Package Health Check
+MFGarchon Package Health Check
 
 Analyzes package organization and identifies potential issues.
 """
@@ -98,11 +98,11 @@ def check_import_health():
     section("3. Import Health Check")
 
     imports_to_check = [
-        ("Core package", "import mfg_pde"),
-        ("DDPG", "from mfg_pde.alg.reinforcement.algorithms import MeanFieldDDPG"),
-        ("TD3", "from mfg_pde.alg.reinforcement.algorithms import MeanFieldTD3"),
-        ("SAC", "from mfg_pde.alg.reinforcement.algorithms import MeanFieldSAC"),
-        ("Q-Learning", "from mfg_pde.alg.reinforcement.algorithms import MeanFieldQLearning"),
+        ("Core package", "import mfgarchon"),
+        ("DDPG", "from mfgarchon.alg.reinforcement.algorithms import MeanFieldDDPG"),
+        ("TD3", "from mfgarchon.alg.reinforcement.algorithms import MeanFieldTD3"),
+        ("SAC", "from mfgarchon.alg.reinforcement.algorithms import MeanFieldSAC"),
+        ("Q-Learning", "from mfgarchon.alg.reinforcement.algorithms import MeanFieldQLearning"),
     ]
 
     failures = []
@@ -161,9 +161,9 @@ def check_code_organization():
     """Check code organization."""
     section("5. Code Organization")
 
-    alg_dir = Path("mfg_pde/alg")
+    alg_dir = Path("mfgarchon/alg")
     if not alg_dir.exists():
-        print("❌ mfg_pde/alg/ directory not found")
+        print("❌ mfgarchon/alg/ directory not found")
         return
 
     # Check paradigms
@@ -177,7 +177,7 @@ def check_code_organization():
     # Check for duplicate or misplaced files
     print("\nChecking for organization issues...")
 
-    # Check if there are algorithms in mfg_pde/alg/ root
+    # Check if there are algorithms in mfgarchon/alg/ root
     root_algs = list(alg_dir.glob("*.py"))
     root_algs = [f for f in root_algs if f.name != "__init__.py"]
     if root_algs:
@@ -221,7 +221,7 @@ def main():
     """Run health check."""
     print("""
 ╔══════════════════════════════════════════════════════════════════════╗
-║                   MFG_PDE Package Health Check                       ║
+║                   MFGarchon Package Health Check                       ║
 ║                         Version 1.4.0                                ║
 ╚══════════════════════════════════════════════════════════════════════╝
     """)

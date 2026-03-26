@@ -3,11 +3,11 @@
 **Date:** July 26, 2025  
 **Author:** Framework Design Team  
 **Status:** Conceptual Design  
-**Based on:** MFG_PDE Success Patterns  
+**Based on:** MFGarchon Success Patterns  
 
 ## Executive Summary
 
-This document outlines the design for a next-generation abstract scientific computing framework, building on the successful patterns demonstrated in MFG_PDE. The framework aims to provide a unified, production-ready platform for multi-domain scientific computation with professional tooling, type safety, and scalable architecture.
+This document outlines the design for a next-generation abstract scientific computing framework, building on the successful patterns demonstrated in MFGarchon. The framework aims to provide a unified, production-ready platform for multi-domain scientific computation with professional tooling, type safety, and scalable architecture.
 
 ## Vision Statement
 
@@ -24,17 +24,17 @@ This document outlines the design for a next-generation abstract scientific comp
 5. **Reproducible by Default** - Complete environment and experiment tracking
 6. **Scalable Architecture** - From laptop to HPC clusters
 
-### Proven Patterns from MFG_PDE
+### Proven Patterns from MFGarchon
 
-Based on our successful MFG_PDE implementation, these patterns should be generalized:
+Based on our successful MFGarchon implementation, these patterns should be generalized:
 
 ✅ **Pydantic Configuration Management**
 ```python
-# Successful pattern from MFG_PDE
+# Successful pattern from MFGarchon
 from typing import Dict, Any
-from mfg_pde.config.pydantic_config import ScientificConfig
-from mfg_pde.solvers.base import ScientificSolver
-from mfg_pde.problems.base import ScientificProblem
+from mfgarchon.config.pydantic_config import ScientificConfig
+from mfgarchon.solvers.base import ScientificSolver
+from mfgarchon.problems.base import ScientificProblem
 
 config: ScientificConfig = create_research_config()  # Type-safe, validated
 solver: ScientificSolver = create_validated_solver(
@@ -64,7 +64,7 @@ log_convergence_analysis(
 # Automatic validation of solutions
 from typing import Dict, Any
 import numpy as np
-from mfg_pde.config.array_validation import MFGArrays, MFGGridConfig
+from mfgarchon.config.array_validation import MFGArrays, MFGGridConfig
 
 arrays: MFGArrays = MFGArrays(
     U_solution: np.ndarray = U, 
@@ -383,7 +383,7 @@ class GPUBackend(ComputeBackend):
 
 ### 1. Universal Validation Framework
 
-Building on MFG_PDE's successful Pydantic validation:
+Building on MFGarchon's successful Pydantic validation:
 
 ```python
 class PhysicalConstraints(BaseModel):
@@ -474,11 +474,11 @@ class ResourceManager:
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Months 1-3)
-- [ ] Extract and generalize MFG_PDE patterns
+- [ ] Extract and generalize MFGarchon patterns
 - [ ] Implement core abstractions (Problem, Solver, Config, Result)
 - [ ] Create plugin system architecture
 - [ ] Build universal validation framework
-- [ ] Migrate MFG_PDE as first domain plugin
+- [ ] Migrate MFGarchon as first domain plugin
 
 ### Phase 2: Multi-Domain Demonstration (Months 4-6)
 - [ ] Implement 2nd domain plugin (e.g., Optimization)
@@ -523,7 +523,7 @@ class ResourceManager:
 
 ### Performance Targets
 
-Based on MFG_PDE benchmarks:
+Based on MFGarchon benchmarks:
 - **Startup Overhead:** <5 seconds for framework initialization
 - **Memory Overhead:** <100MB framework overhead
 - **Scaling:** Linear scaling to 1000+ cores
@@ -740,7 +740,7 @@ new_config = migrator.migrate_config(
 
 ## Conclusion
 
-The abstract scientific computing framework represents a natural evolution from the successful patterns demonstrated in MFG_PDE. By generalizing the type safety, professional tooling, and domain expertise that made MFG_PDE successful, we can create a platform that accelerates scientific discovery across multiple domains.
+The abstract scientific computing framework represents a natural evolution from the successful patterns demonstrated in MFGarchon. By generalizing the type safety, professional tooling, and domain expertise that made MFGarchon successful, we can create a platform that accelerates scientific discovery across multiple domains.
 
 The framework's success will be measured not just by technical metrics, but by its ability to democratize access to advanced computational methods and accelerate the pace of scientific discovery.
 

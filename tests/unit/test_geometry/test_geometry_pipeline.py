@@ -12,10 +12,10 @@ import pytest
 
 import numpy as np
 
-# Add MFG_PDE to path
+# Add MFGarchon to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mfg_pde.geometry import BoundaryManager, Mesh2D, MeshData
+from mfgarchon.geometry import BoundaryManager, Mesh2D, MeshData
 
 
 class TestMeshData:
@@ -252,7 +252,7 @@ class TestBoundaryManager:
 
 def test_geometry_package_import():
     """Test that the geometry package imports correctly."""
-    from mfg_pde.geometry import BoundaryManager, Mesh2D, MeshData
+    from mfgarchon.geometry import BoundaryManager, Mesh2D, MeshData
 
     # Test that classes are available
     assert MeshData is not None
@@ -262,14 +262,14 @@ def test_geometry_package_import():
 
 def test_main_package_geometry_import():
     """Test that geometry system is available from main package."""
-    import mfg_pde
+    import mfgarchon
 
     # Check that the flag is set correctly
-    if hasattr(mfg_pde, "GEOMETRY_SYSTEM_AVAILABLE"):
+    if hasattr(mfgarchon, "GEOMETRY_SYSTEM_AVAILABLE"):
         # If geometry system is available, test imports
-        if mfg_pde.GEOMETRY_SYSTEM_AVAILABLE:
-            assert hasattr(mfg_pde, "Mesh2D")
-            assert hasattr(mfg_pde, "MeshData")
+        if mfgarchon.GEOMETRY_SYSTEM_AVAILABLE:
+            assert hasattr(mfgarchon, "Mesh2D")
+            assert hasattr(mfgarchon, "MeshData")
         else:
             # If not available, that's okay too (missing optional dependencies)
             pass

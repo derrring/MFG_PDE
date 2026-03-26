@@ -230,7 +230,7 @@ def Dt(self) -> float:
 ## 🎯 What We Actually Accomplished
 
 ### Code Changes
-**File**: `mfg_pde/core/mfg_problem.py`
+**File**: `mfgarchon/core/mfg_problem.py`
 - 74 insertions, 29 deletions
 - 18 locations changed `Dt` → `dt`
 - 13 locations changed `Dx` → `dx`
@@ -265,18 +265,18 @@ def Dt(self) -> float:
 ### Next Steps (In Priority Order)
 
 **Phase 1: Core Infrastructure** (Continue)
-- [ ] Update `mfg_pde/core/base_problem.py` if needed
-- [ ] Update `mfg_pde/types/problem_protocols.py`
+- [ ] Update `mfgarchon/core/base_problem.py` if needed
+- [ ] Update `mfgarchon/types/problem_protocols.py`
 
 **Phase 2: Solvers** (~20 files)
-- [ ] Update `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py` (10 Dt occurrences)
+- [ ] Update `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py` (10 Dt occurrences)
 - [ ] Update other HJB solvers
 - [ ] Update FP solvers
 - [ ] Update coupling methods
 
 **Phase 3: Utilities** (~5 files)
-- [ ] `mfg_pde/utils/experiment_manager.py` (7 Dx)
-- [ ] `mfg_pde/utils/numerical/convergence.py` (5 Dx)
+- [ ] `mfgarchon/utils/experiment_manager.py` (7 Dx)
+- [ ] `mfgarchon/utils/numerical/convergence.py` (5 Dx)
 - [ ] Others...
 
 **Phase 4: Tests, Examples, Benchmarks** (~40+ files)
@@ -314,8 +314,8 @@ pytest tests/ -xvs
 ```
 
 ### Files to Check Before Continuing
-1. `mfg_pde/core/base_problem.py` - May inherit from MFGProblem
-2. `mfg_pde/types/problem_protocols.py` - Protocol definitions
+1. `mfgarchon/core/base_problem.py` - May inherit from MFGProblem
+2. `mfgarchon/types/problem_protocols.py` - Protocol definitions
 3. Geometry classes - May return "Dx" in legacy_1d_attrs dict
 
 ---
@@ -372,12 +372,12 @@ self.dx = legacy.get("dx") or legacy.get("Dx")  # Handles both
 ### Files Read
 - `NAMING_CONVENTIONS.md` (~350 lines read)
 - `problem_protocols.py` (~273 lines)
-- `mfg_pde/core/mfg_problem.py` (~2065 lines, multiple sections)
-- `mfg_pde/geometry/base.py` (~340 lines)
+- `mfgarchon/core/mfg_problem.py` (~2065 lines, multiple sections)
+- `mfgarchon/geometry/base.py` (~340 lines)
 - Various other files for context
 
 ### Files Modified
-- `mfg_pde/core/mfg_problem.py` (1 file, 103 changes)
+- `mfgarchon/core/mfg_problem.py` (1 file, 103 changes)
 
 ### Commits
 - 1 clean commit with comprehensive message

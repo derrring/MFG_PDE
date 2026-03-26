@@ -400,7 +400,7 @@ u_corrected = u_split + (Δt²/12) * [L_x, L_y]u
 - Flow strongly misaligned with axes → unsplit better
 - Very complex boundary geometry → unsplit or body-fitted coordinates
 
-### Current MFG_PDE Implementation
+### Current MFGarchon Implementation
 
 **Verdict**: ✅ **Appropriate and well-designed**
 

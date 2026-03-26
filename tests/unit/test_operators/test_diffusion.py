@@ -14,8 +14,8 @@ import pytest
 import numpy as np
 from scipy.sparse.linalg import LinearOperator
 
-from mfg_pde.geometry.boundary import neumann_bc, periodic_bc
-from mfg_pde.operators.differential.diffusion import (
+from mfgarchon.geometry.boundary import neumann_bc, periodic_bc
+from mfgarchon.operators.differential.diffusion import (
     DiffusionOperator,
     apply_diffusion,
 )

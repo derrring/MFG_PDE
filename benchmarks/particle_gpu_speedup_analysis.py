@@ -9,10 +9,10 @@ import time
 
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-from mfg_pde.backends.torch_backend import TorchBackend
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry.boundary import periodic_bc
+from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+from mfgarchon.backends.torch_backend import TorchBackend
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry.boundary import periodic_bc
 
 print("=" * 80)
 print("Track B Phase 2.1: GPU Speedup Analysis")

@@ -21,10 +21,10 @@ import numpy as np
 import scipy.sparse as sparse
 
 # Import the manual matrix builder from FP solver
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm_time_stepping import _build_diffusion_matrix_with_bc
-from mfg_pde.geometry.boundary import dirichlet_bc, neumann_bc, no_flux_bc
-from mfg_pde.geometry.boundary.applicator_base import LinearConstraint
-from mfg_pde.operators.differential.laplacian import LaplacianOperator
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm_time_stepping import _build_diffusion_matrix_with_bc
+from mfgarchon.geometry.boundary import dirichlet_bc, neumann_bc, no_flux_bc
+from mfgarchon.geometry.boundary.applicator_base import LinearConstraint
+from mfgarchon.operators.differential.laplacian import LaplacianOperator
 
 
 def test_laplacian_1d_neumann_equivalence():

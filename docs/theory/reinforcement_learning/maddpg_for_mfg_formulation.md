@@ -564,5 +564,5 @@ Encourage exploration in under-explored regions of population state.
 ---
 
 **Status**: ✅ Theoretical foundation complete
-**Next**: Design MF-MADDPG architecture for MFG_PDE
+**Next**: Design MF-MADDPG architecture for MFGarchon
 **Key Insight**: MADDPG's centralized critic + mean field = scalable continuous control for MFG

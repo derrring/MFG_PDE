@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/geometry/boundary_manager.py
+Unit tests for mfgarchon/geometry/boundary_manager.py
 
 Tests boundary condition management for complex geometry domains including:
 - GeometricBoundaryCondition initialization and validation
@@ -16,9 +16,9 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary.applicator_fem import BoundaryManager, GeometricBoundaryCondition
-from mfg_pde.geometry.boundary.fdm_bc_1d import BoundaryConditions
-from mfg_pde.geometry.meshes.mesh_data import MeshData
+from mfgarchon.geometry.boundary.applicator_fem import BoundaryManager, GeometricBoundaryCondition
+from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions
+from mfgarchon.geometry.meshes.mesh_data import MeshData
 
 # ===================================================================
 # Test GeometricBoundaryCondition Initialization and Validation

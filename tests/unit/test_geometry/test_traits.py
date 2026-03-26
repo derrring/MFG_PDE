@@ -12,7 +12,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.traits import (
+from mfgarchon.geometry.traits import (
     BoundaryAware,
     BoundaryDef,
     ConnectivityAware,
@@ -124,16 +124,16 @@ class TestProtocolIsinstance:
 
 def _make_tensor_grid():
     """Create a minimal TensorProductGrid for testing."""
-    from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary import neumann_bc
+    from mfgarchon.geometry import TensorProductGrid
+    from mfgarchon.geometry.boundary import neumann_bc
 
     return TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[11], boundary_conditions=neumann_bc(dimension=1))
 
 
 def _make_tensor_grid_2d():
     """Create a 2D TensorProductGrid for testing."""
-    from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary import neumann_bc
+    from mfgarchon.geometry import TensorProductGrid
+    from mfgarchon.geometry.boundary import neumann_bc
 
     return TensorProductGrid(
         bounds=[(0.0, 1.0), (0.0, 1.0)],
@@ -174,7 +174,7 @@ class TestTensorProductGridTraits:
 @pytest.mark.unit
 class TestImplicitDomainTraits:
     def test_hyperrectangle_traits(self):
-        from mfg_pde.geometry import Hyperrectangle
+        from mfgarchon.geometry import Hyperrectangle
 
         domain = Hyperrectangle(bounds=np.array([[0.0, 1.0], [0.0, 1.0]]))
         assert isinstance(domain, TraitAwareGeometry)
@@ -183,7 +183,7 @@ class TestImplicitDomainTraits:
         assert domain.boundary_def == BoundaryDef.IMPLICIT
 
     def test_hypersphere_traits(self):
-        from mfg_pde.geometry import Hypersphere
+        from mfgarchon.geometry import Hypersphere
 
         sphere = Hypersphere(center=np.array([0.0, 0.0]), radius=1.0)
         assert isinstance(sphere, TraitAwareGeometry)
@@ -197,7 +197,7 @@ class TestGraphGeometryTraits:
     def test_grid_network_traits(self):
         """GridNetwork should have Explicit/Unstructured/None traits."""
         try:
-            from mfg_pde.geometry import GridNetwork
+            from mfgarchon.geometry import GridNetwork
 
             net = GridNetwork(grid_shape=(3, 3))
         except Exception:
@@ -231,7 +231,7 @@ class TestTraitDispatch:
 
     def test_trait_first_with_fallback(self):
         """Trait check first, then GeometryType fallback."""
-        from mfg_pde.geometry.protocol import GeometryType
+        from mfgarchon.geometry.protocol import GeometryType
 
         grid = _make_tensor_grid()
 

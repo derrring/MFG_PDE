@@ -389,7 +389,7 @@ def solve_hjb_timestep_newton(
 ### Phase 1: Add Protocol and Default Implementation (v0.17.0)
 
 **Changes**:
-1. Define `BoundaryEnforcer` protocol in `mfg_pde/geometry/boundary/enforcement.py`
+1. Define `BoundaryEnforcer` protocol in `mfgarchon/geometry/boundary/enforcement.py`
 2. Extract current logic into `FixedBoundaryEnforcer`
 3. Add `bc_enforcer` parameter to solvers (default = `FixedBoundaryEnforcer()`)
 4. Add `map_boundary_to_indices()` to `TensorProductGrid`
@@ -429,8 +429,8 @@ def solve_hjb_timestep_newton(
 ### Current API (v0.16.16)
 
 ```python
-from mfg_pde.geometry.boundary import BCSegment, BoundaryConditions
-from mfg_pde.geometry.boundary.types import BCType
+from mfgarchon.geometry.boundary import BCSegment, BoundaryConditions
+from mfgarchon.geometry.boundary.types import BCType
 
 bc = BoundaryConditions(segments=[
     BCSegment(name="left", bc_type=BCType.DIRICHLET, value=1.0, boundary="x_min"),
@@ -464,8 +464,8 @@ U = solver.solve()  # Still uses FixedBoundaryEnforcer
 ### Future API - Free Boundary (v0.19.0+)
 
 ```python
-from mfg_pde.geometry.boundary.enforcement import FreeBoundaryEnforcer
-from mfg_pde.geometry.boundary.frontier import LevelSetTracker
+from mfgarchon.geometry.boundary.enforcement import FreeBoundaryEnforcer
+from mfgarchon.geometry.boundary.frontier import LevelSetTracker
 
 # Define BC on free boundary
 bc = BoundaryConditions(segments=[
@@ -490,8 +490,8 @@ final_frontier = frontier_tracker.get_location(t=1.0)
 ### Future API - Mesh-Based (v0.18.0+)
 
 ```python
-from mfg_pde.geometry import TriangularMesh
-from mfg_pde.geometry.boundary.enforcement import MeshBoundaryEnforcer
+from mfgarchon.geometry import TriangularMesh
+from mfgarchon.geometry.boundary.enforcement import MeshBoundaryEnforcer
 
 # Load mesh with boundary markers
 mesh = TriangularMesh.from_gmsh("domain.msh")

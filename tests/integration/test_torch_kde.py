@@ -9,8 +9,8 @@ pytestmark = pytest.mark.optional_torch
 
 # Check if PyTorch is available - import HAS_TORCH flag from torch_utils
 try:
-    from mfg_pde.utils.acceleration.torch_utils import HAS_TORCH
-    from mfg_pde.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
+    from mfgarchon.utils.acceleration.torch_utils import HAS_TORCH
+    from mfgarchon.utils.acceleration.torch_utils import GaussianKDE as TorchKDE
 
     TORCH_AVAILABLE = HAS_TORCH  # Use the actual torch availability flag
 except ImportError:
@@ -158,7 +158,7 @@ def test_device_compatibility():
     print("DEVICE COMPATIBILITY TEST")
     print("=" * 80)
 
-    from mfg_pde.utils.acceleration.torch_utils import HAS_CUDA, HAS_MPS
+    from mfgarchon.utils.acceleration.torch_utils import HAS_CUDA, HAS_MPS
 
     particles = np.random.normal(loc=0.5, scale=0.1, size=100)
     x_eval = np.linspace(0, 1, 50)

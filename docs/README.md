@@ -1,10 +1,10 @@
-# MFG_PDE Documentation
+# MFGarchon Documentation
 
 **Last Updated**: December 14, 2025
 **Version**: v0.16.8 - Current Release
 **Status**: Production-Ready Framework with Validated Examples
 
-Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
+Welcome to the comprehensive documentation for MFGarchon - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
 
 ---
 
@@ -36,7 +36,7 @@ Welcome to the comprehensive documentation for MFG_PDE - a state-of-the-art comp
 - **[Typing Documentation](development/typing/)** - Type checking and typing guides
   - **[Python Typing](development/typing/python_typing.md)** - Modern typing guide
   - **[MyPy Usage](development/typing/mypy_usage.md)** - Type checking strategies
-- **[Source Reference](../mfg_pde/)** - Complete function and class documentation in source
+- **[Source Reference](../mfgarchon/)** - Complete function and class documentation in source
 
 ---
 
@@ -79,7 +79,7 @@ docs/
 ├── user/                              # 👥 USER-FACING DOCUMENTATION
 │   ├── README.md                      # User documentation index
 │   ├── quickstart.md                  # Quick start guide
-│   ├── core_objects.md                # Core MFG_PDE objects
+│   ├── core_objects.md                # Core MFGarchon objects
 │   ├── guides/                        # Feature usage guides
 │   │   ├── multi_population_quick_start.md  # Multi-population guide
 │   │   ├── backend_usage.md           # Computational backends
@@ -160,29 +160,29 @@ docs/
 ### **High-Performance Computing**
 ```python
 # Automatic optimal backend selection
-from mfg_pde.factory import create_backend_for_problem
+from mfgarchon.factory import create_backend_for_problem
 backend = create_backend_for_problem(problem, backend="auto")  # Chooses JAX+GPU when beneficial
 
 # Explicit GPU acceleration
-from mfg_pde.backends import create_backend
+from mfgarchon.backends import create_backend
 jax_backend = create_backend("jax", device="gpu", jit_compile=True)
 ```
 
 ### **Professional Research Workflow**
 ```python
 # One-line solver creation with intelligent defaults
-from mfg_pde.factory import create_fast_solver
+from mfgarchon.factory import create_fast_solver
 solver = create_fast_solver(problem, backend="auto")  # GPU-accelerated when available
 
 # Interactive research notebooks with automated reporting
-from mfg_pde.utils.notebook_reporting import create_research_notebook
+from mfgarchon.utils.notebook_reporting import create_research_notebook
 notebook = create_research_notebook("my_research", auto_export=True)
 ```
 
 ### **Enterprise-Grade Configuration**
 ```python
 # Professional configuration management
-from mfg_pde.config import create_fast_config
+from mfgarchon.config import create_fast_config
 config = create_fast_config(
     max_iterations=1000,
     tolerance=1e-8,
@@ -198,7 +198,7 @@ config = create_fast_config(
 ### 🎓 **Learning Materials**
 
 #### **[Getting Started](user/README.md)**
-- Quick installation guide (pip install mfg_pde)
+- Quick installation guide (pip install mfgarchon)
 - Your first MFG problem in 5 minutes
 - Backend selection and GPU setup
 - Common patterns and best practices
@@ -333,7 +333,7 @@ Complete framework documentation for achieving 100% type safety in scientific co
 
 ---
 
-## 🎉 **Welcome to MFG_PDE**
+## 🎉 **Welcome to MFGarchon**
 
 **The premier platform for Mean Field Games computational research - now with enterprise-grade performance, professional research tools, GPU acceleration capabilities, and user-centric documentation.**
 

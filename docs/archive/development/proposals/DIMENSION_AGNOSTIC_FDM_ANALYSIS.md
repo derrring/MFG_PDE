@@ -11,7 +11,7 @@
 
 ## Executive Summary
 
-MFG_PDE already has substantial dimension-agnostic infrastructure (`HighDimMFGProblem`, `GridBasedMFGProblem`, `TensorProductGrid`). The task is to extend the FDM solvers to work with this infrastructure, not to build dimension-agnostic support from scratch.
+MFGarchon already has substantial dimension-agnostic infrastructure (`HighDimMFGProblem`, `GridBasedMFGProblem`, `TensorProductGrid`). The task is to extend the FDM solvers to work with this infrastructure, not to build dimension-agnostic support from scratch.
 
 **Current State**:
 - ✅ Dimension-agnostic problem classes exist (`GridBasedMFGProblem`)
@@ -29,7 +29,7 @@ MFG_PDE already has substantial dimension-agnostic infrastructure (`HighDimMFGPr
 
 #### `HighDimMFGProblem` (Abstract Base)
 
-**File**: `mfg_pde/core/highdim_mfg_problem.py`
+**File**: `mfgarchon/core/highdim_mfg_problem.py`
 
 **Purpose**: Abstract base for 2D, 3D, and nD MFG problems
 
@@ -58,7 +58,7 @@ class HighDimMFGProblem(ABC):
 
 #### `GridBasedMFGProblem` (Concrete Implementation)
 
-**File**: `mfg_pde/core/highdim_mfg_problem.py`
+**File**: `mfgarchon/core/highdim_mfg_problem.py`
 
 **Purpose**: MFG on regular grids (dimension-agnostic)
 
@@ -93,7 +93,7 @@ problem = GridBasedMFGProblem(
 
 #### `TensorProductGrid`
 
-**File**: `mfg_pde/geometry/tensor_product_grid.py`
+**File**: `mfgarchon/geometry/tensor_product_grid.py`
 
 **Purpose**: Dimension-agnostic structured grid
 
@@ -143,7 +143,7 @@ point = grid.get_point(10, 20)      # Point at (x[10], y[20])
 
 #### `_TensorGridGeometry`
 
-**File**: `mfg_pde/core/highdim_mfg_problem.py`
+**File**: `mfgarchon/core/highdim_mfg_problem.py`
 
 **Purpose**: Internal helper to make `TensorProductGrid` compatible with `BaseGeometry` interface
 
@@ -155,7 +155,7 @@ point = grid.get_point(10, 20)      # Point at (x[10], y[20])
 
 ### HJBFDMSolver (1D Only)
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` (106 lines)
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` (106 lines)
 
 **Architecture**:
 ```python
@@ -184,7 +184,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
 ### `base_hjb.solve_hjb_system_backward()` (1D Implementation)
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py:657` (767 lines total)
+**File**: `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py:657` (767 lines total)
 
 **Core Algorithm**:
 ```python
@@ -369,7 +369,7 @@ Strang splitting (2nd order):
 
 ### Phase 2: Implement nD Dimensional Splitting (Dimension-Agnostic)
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid.py` (new module)
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm_multid.py` (new module)
 
 **Design Principle**: Generic implementation that works for any dimension (2D, 3D, 4D, ...)
 
@@ -794,7 +794,7 @@ def test_2d_fp_mass_conservation():
 
 ### Architecture Consistency
 
-**MFG_PDE Design Principle**: Dimension is a parameter, not a constraint
+**MFGarchon Design Principle**: Dimension is a parameter, not a constraint
 
 ```
 Component                    Dimensions Supported
@@ -875,13 +875,13 @@ U, M, info = solver.solve()     # Just works
 **Question**: Does `GridBasedMFGProblem.hamiltonian()` accept tuple multi-index or flat index?
 
 **Investigation Results**:
-- **Abstract Interface** (`mfg_pde/core/highdim_mfg_problem.py:120`):
+- **Abstract Interface** (`mfgarchon/core/highdim_mfg_problem.py:120`):
   ```python
   def hamiltonian(self, x: np.ndarray, m: np.ndarray, p: np.ndarray, t: float) -> np.ndarray:
       """Uses continuous coordinate arrays, not discrete indices."""
   ```
 
-- **1D Interface** (`mfg_pde/core/mfg_problem.py:618`):
+- **1D Interface** (`mfgarchon/core/mfg_problem.py:618`):
   ```python
   def H(self, x_idx: int, m_at_x: float, derivs: dict[tuple, float] | None = None, ...) -> float:
       """Uses scalar discrete index x_idx."""
@@ -908,7 +908,7 @@ U, M, info = solver.solve()     # Just works
 **Question**: How are BCs handled in `GridBasedMFGProblem`? Are they compatible with dimensional splitting?
 
 **Investigation Results**:
-- **Comprehensive 2D/3D Infrastructure** (`mfg_pde/geometry/boundary/bc_2d.py`):
+- **Comprehensive 2D/3D Infrastructure** (`mfgarchon/geometry/boundary/bc_2d.py`):
   - `DirichletBC2D`: Apply value constraints to system matrices
   - `NeumannBC2D`: Apply flux constraints to system matrices
   - `RobinBC2D`: Mixed boundary conditions
@@ -1007,7 +1007,7 @@ U, M, info = solver.solve()     # Just works
 - ✅ Leverages existing dimension-agnostic problem classes
 - ✅ Well-established numerical method (proven accuracy)
 - ✅ Single implementation works for 2D, 3D, 4D, ... (automatic 3D support)
-- ✅ Matches MFG_PDE architecture principle: dimension is a parameter, not a constraint
+- ✅ Matches MFGarchon architecture principle: dimension is a parameter, not a constraint
 - ✅ Provides classical FDM baseline for nD research
 
 **Design Choice**: Generic `_sweep_dimension(U, M, problem, dt, dim)` function
@@ -1041,7 +1041,7 @@ The dimensional splitting approach described in this document was **implemented 
 
 **For FP Equation** (✅ COMPLETED):
 - **Method**: Full coupled sparse linear system
-- **File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py:383` (`_solve_fp_nd_full_system`)
+- **File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py:383` (`_solve_fp_nd_full_system`)
 - **Performance**: ~1-2% mass error (acceptable)
 - **Dimensions**: 2D, 3D, 4D+ supported
 - **PR**: #204 (merged 2025-11-01)

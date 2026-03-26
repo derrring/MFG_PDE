@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick type checking and verification script for MFG_PDE development.
+Quick type checking and verification script for MFGarchon development.
 Provides rapid feedback on type safety improvements.
 """
 
@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 
-def run_quick_mypy(target_dir: str = "mfg_pde") -> tuple[bool, int, str]:
+def run_quick_mypy(target_dir: str = "mfgarchon") -> tuple[bool, int, str]:
     """Run focused mypy check with minimal output."""
     print(f"🔍 Running mypy on {target_dir}...")
 
@@ -34,7 +34,7 @@ def run_quick_mypy(target_dir: str = "mfg_pde") -> tuple[bool, int, str]:
     return success, error_count, output
 
 
-def run_ruff_check(target_dir: str = "mfg_pde") -> bool:
+def run_ruff_check(target_dir: str = "mfgarchon") -> bool:
     """Run Ruff linting check."""
     print(f"🔍 Running Ruff check on {target_dir}...")
 
@@ -53,12 +53,12 @@ def run_ruff_check(target_dir: str = "mfg_pde") -> bool:
 
 def main():
     """Run quick type checking suite."""
-    print("🚀 MFG_PDE Quick Type Check")
+    print("🚀 MFGarchon Quick Type Check")
     print("=" * 40)
 
     # Check if we're in the right directory
-    if not Path("mfg_pde").exists():
-        print("❌ Error: Run from MFG_PDE root directory")
+    if not Path("mfgarchon").exists():
+        print("❌ Error: Run from MFGarchon root directory")
         return 1
 
     start_total = time.time()

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from mfg_pde.workflow.workflow_manager import (
+from mfgarchon.workflow.workflow_manager import (
     StepStatus,
     Workflow,
     WorkflowStatus,

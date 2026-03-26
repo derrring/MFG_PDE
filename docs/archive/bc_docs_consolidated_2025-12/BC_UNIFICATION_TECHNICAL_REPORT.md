@@ -4,14 +4,14 @@
 **Date**: 2025-12-16
 **Revision**: 1.2 (Performance & Scalability Review)
 **Status**: Proposed
-**Author**: MFG_PDE Development Team
+**Author**: MFGarchon Development Team
 **Reviewer**: External Technical Expert
 
 ---
 
 ## Executive Summary
 
-This report documents the current state of boundary condition (BC) handling across the MFG_PDE solver ecosystem, identifies architectural inconsistencies, and proposes a unified approach. The goal is to enable all solvers to leverage the existing BC infrastructure in `geometry/boundary/` rather than using ad-hoc implementations.
+This report documents the current state of boundary condition (BC) handling across the MFGarchon solver ecosystem, identifies architectural inconsistencies, and proposes a unified approach. The goal is to enable all solvers to leverage the existing BC infrastructure in `geometry/boundary/` rather than using ad-hoc implementations.
 
 ---
 
@@ -43,7 +43,7 @@ The solver ecosystem has grown organically, resulting in:
 The BC specification infrastructure is well-designed and complete:
 
 ```
-mfg_pde/geometry/boundary/
+mfgarchon/geometry/boundary/
 ├── conditions.py      # BoundaryConditions class (uniform + mixed)
 ├── types.py           # BCType enum, BCSegment dataclass
 ├── applicator_fdm.py  # Ghost cell computation for FDM
@@ -193,7 +193,7 @@ This means FP solvers crash when users specify evacuation scenarios with exits (
 u_xx[0] = u_xx[1]  # Hardcoded
 
 # After
-from mfg_pde.geometry.boundary import apply_boundary_conditions_1d
+from mfgarchon.geometry.boundary import apply_boundary_conditions_1d
 
 def _compute_derivatives_with_bc(self, u: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Compute derivatives using BC-aware ghost cells."""
@@ -707,14 +707,14 @@ def test_coupled_evacuation():
 2. **MFG Boundary Conditions**: Achdou, Y. et al. "Mean Field Games: Numerical Methods" (2020), Section 4.3
 3. **Method of Manufactured Solutions**: Roache, P.J. "Code Verification by the Method of Manufactured Solutions" (2002), Journal of Fluids Engineering
 4. **WENO Schemes**: Shu, C.W. "High Order Weighted Essentially Non-oscillatory Schemes" (1998), ICASE Report
-5. **Existing Infrastructure**: `mfg_pde/geometry/boundary/applicator_fdm.py` (internal documentation)
+5. **Existing Infrastructure**: `mfgarchon/geometry/boundary/applicator_fdm.py` (internal documentation)
 
 ---
 
 ## Appendix A: File Locations (Updated)
 
 ```
-mfg_pde/
+mfgarchon/
 ├── geometry/boundary/
 │   ├── conditions.py          # BC specification (complete)
 │   ├── applicator_fdm.py      # Ghost cells (complete)

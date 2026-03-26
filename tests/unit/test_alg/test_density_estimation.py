@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.density_estimation import (
+from mfgarchon.alg.numerical.density_estimation import (
     adaptive_bandwidth_selection,
     gaussian_kde_gpu,
     gaussian_kde_numpy,
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.optional_torch
 try:
     import torch  # Check for PyTorch package directly
 
-    from mfg_pde.backends.torch_backend import TorchBackend
+    from mfgarchon.backends.torch_backend import TorchBackend
 
     TORCH_AVAILABLE = True
 except ImportError:

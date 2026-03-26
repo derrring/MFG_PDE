@@ -8,7 +8,7 @@
 
 ## 1. Vision
 
-This project explores a paradigm shift for MFG_PDE's PDE substrate:
+This project explores a paradigm shift for MFGarchon's PDE substrate:
 
 - **The Cylinder Manifold**: Treat time $t$ as a dimension parallel to space $x$.
   The computational domain becomes $\mathcal{Q} = [0,T] \times \Omega$.
@@ -20,7 +20,7 @@ This project explores a paradigm shift for MFG_PDE's PDE substrate:
 
 ## 2. Scope Guard
 
-> **MFG_PDE is production-ready infrastructure for Mean Field Games.**
+> **MFGarchon is production-ready infrastructure for Mean Field Games.**
 > It is NOT a general-purpose PDE framework.
 
 These specs contain ideas that serve MFG directly and ideas that belong

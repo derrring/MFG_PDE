@@ -156,9 +156,9 @@ def fix_boundary_no_flux(A_T, Nx):
 
 ## Files Affected
 
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`: Add boundary post-processing
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`: (Long-term) Divergence form option
-- `mfg_pde/alg/iteration/fixed_point.py`: Document strict adjoint limitations
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`: Add boundary post-processing
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`: (Long-term) Divergence form option
+- `mfgarchon/alg/iteration/fixed_point.py`: Document strict adjoint limitations
 
 ## Validation Tests
 

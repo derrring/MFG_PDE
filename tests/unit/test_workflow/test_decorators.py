@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from mfg_pde.workflow.decorators import (
+from mfgarchon.workflow.decorators import (
     cached,
     experiment,
     log_execution,
@@ -20,7 +20,7 @@ from mfg_pde.workflow.decorators import (
     validate_inputs,
     workflow_step,
 )
-from mfg_pde.workflow.workflow_manager import Workflow
+from mfgarchon.workflow.workflow_manager import Workflow
 
 # ============================================================================
 # Test: @workflow_step Decorator

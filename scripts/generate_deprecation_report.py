@@ -33,7 +33,7 @@ from typing import ClassVar
 script_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(script_dir.parent))
 
-from mfg_pde.utils.deprecation import check_removal_readiness  # noqa: E402
+from mfgarchon.utils.deprecation import check_removal_readiness  # noqa: E402
 from scripts.check_internal_deprecation import discover_deprecated_symbols  # noqa: E402
 
 
@@ -305,7 +305,7 @@ def main() -> int:
 
     # Discover deprecated symbols
     repo_root = script_dir.parent
-    src_path = repo_root / "mfg_pde"
+    src_path = repo_root / "mfgarchon"
 
     if not src_path.exists():
         print(f"❌ ERROR: Source directory not found: {src_path}", file=sys.stderr)

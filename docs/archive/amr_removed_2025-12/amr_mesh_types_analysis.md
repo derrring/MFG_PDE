@@ -8,7 +8,7 @@
 
 ### What We Have: Structured Quadtree AMR
 ```python
-# Current implementation (mfg_pde/geometry/amr_mesh.py)
+# Current implementation (mfgarchon/geometry/amr_mesh.py)
 class QuadTreeNode:
     # 2D rectangular cells with 4-way subdivision
     def subdivide(self) -> List['QuadTreeNode']:
@@ -47,7 +47,7 @@ For triangular FEM meshes, we need:
 ### Implementation Architecture
 
 ```python
-# mfg_pde/geometry/triangular_amr.py
+# mfgarchon/geometry/triangular_amr.py
 """Adaptive Mesh Refinement for Triangular FEM Meshes."""
 
 import numpy as np
@@ -437,7 +437,7 @@ class TriangularFEMErrorEstimator(BaseErrorEstimator):
 ### Integration with MFG Solvers
 
 ```python
-# mfg_pde/alg/mfg_solvers/triangular_amr_solver.py
+# mfgarchon/alg/mfg_solvers/triangular_amr_solver.py
 """MFG solver with triangular AMR mesh."""
 
 from typing import Dict, Optional, Tuple
@@ -603,7 +603,7 @@ Where:
 ### Implementation Architecture
 
 ```python
-# mfg_pde/geometry/wavelet_amr.py
+# mfgarchon/geometry/wavelet_amr.py
 """Wavelet-based adaptive refinement for MFG problems."""
 
 import numpy as np

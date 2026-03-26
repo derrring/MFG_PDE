@@ -2,13 +2,13 @@
 
 **Date**: August 1, 2025  
 **Difficulty**: Intermediate to Advanced  
-**Prerequisites**: Basic MFG_PDE usage, understanding of numerical methods  
+**Prerequisites**: Basic MFGarchon usage, understanding of numerical methods  
 **Estimated Time**: 45-60 minutes  
 **Architecture**: AMR as solver enhancement (not standalone solver)
 
 ## Tutorial Overview
 
-This tutorial covers the practical use of Adaptive Mesh Refinement (AMR) in MFG_PDE, from basic concepts to advanced optimization techniques. You'll learn when to use AMR, how to configure it effectively, and how to interpret the results.
+This tutorial covers the practical use of Adaptive Mesh Refinement (AMR) in MFGarchon, from basic concepts to advanced optimization techniques. You'll learn when to use AMR, how to configure it effectively, and how to interpret the results.
 
 **Important Architectural Note**: AMR is implemented as an **enhancement wrapper** that can be applied to any base MFG solver (FDM, particle, spectral, etc.). AMR is a mesh adaptation technique, not a solution method itself. This tutorial reflects this correct understanding.
 
@@ -77,9 +77,9 @@ Let's start with a simple example that demonstrates AMR capabilities:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_amr_solver, create_solver
-from mfg_pde.geometry import Domain1D, periodic_bc
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_amr_solver, create_solver
+from mfgarchon.geometry import Domain1D, periodic_bc
 
 def basic_amr_example():
     """Compare AMR enhancement vs uniform grid solving."""
@@ -526,8 +526,8 @@ def amr_vs_uniform_comparison():
 ### Custom Refinement Criteria
 
 ```python
-from mfg_pde.geometry.amr_mesh import AMRRefinementCriteria, create_amr_mesh
-from mfg_pde.alg.mfg_solvers.amr_mfg_solver import AMRMFGSolver
+from mfgarchon.geometry.amr_mesh import AMRRefinementCriteria, create_amr_mesh
+from mfgarchon.alg.mfg_solvers.amr_mfg_solver import AMRMFGSolver
 
 def advanced_amr_configuration():
     """Demonstrate advanced AMR configuration options."""
@@ -834,7 +834,7 @@ amr_solver = create_amr_solver(problem, max_levels=3)  # Restrict depth
 amr_solver = create_amr_solver(problem, amr_frequency=10)  # Less frequent
 
 # Solution 4: Set minimum cell size
-from mfg_pde.geometry.amr_mesh import AMRRefinementCriteria
+from mfgarchon.geometry.amr_mesh import AMRRefinementCriteria
 criteria = AMRRefinementCriteria(min_cell_size=1e-5)  # Prevent tiny cells
 ```
 
@@ -1155,4 +1155,4 @@ def epidemic_spread_amr_example():
 
 ---
 
-This completes the comprehensive AMR tutorial. The adaptive mesh refinement system in MFG_PDE provides powerful capabilities for efficiently solving Mean Field Games with complex solution features, offering both automatic adaptation and fine-grained control for advanced users.
+This completes the comprehensive AMR tutorial. The adaptive mesh refinement system in MFGarchon provides powerful capabilities for efficiently solving Mean Field Games with complex solution features, offering both automatic adaptation and fine-grained control for advanced users.

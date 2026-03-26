@@ -19,12 +19,12 @@ def test_plotly_availability_flag():
     try:
         import plotly  # noqa: F401
 
-        from mfg_pde.visualization.network_plots import PLOTLY_AVAILABLE
+        from mfgarchon.visualization.network_plots import PLOTLY_AVAILABLE
 
         assert PLOTLY_AVAILABLE is True
     except ImportError:
         # If plotly not installed, PLOTLY_AVAILABLE should be False
-        from mfg_pde.visualization.network_plots import PLOTLY_AVAILABLE
+        from mfgarchon.visualization.network_plots import PLOTLY_AVAILABLE
 
         assert PLOTLY_AVAILABLE is False
 
@@ -35,7 +35,7 @@ def test_plotly_import_error_handling():
     """Test graceful handling when plotly import fails."""
     # Test that module can be imported even if plotly unavailable
     try:
-        from mfg_pde.visualization import network_plots
+        from mfgarchon.visualization import network_plots
 
         # Module should import successfully
         assert network_plots is not None
@@ -55,12 +55,12 @@ def test_bokeh_availability_flag():
     try:
         import bokeh  # noqa: F401
 
-        from mfg_pde.visualization.interactive_plots import BOKEH_AVAILABLE
+        from mfgarchon.visualization.interactive_plots import BOKEH_AVAILABLE
 
         assert BOKEH_AVAILABLE is True
     except ImportError:
         # If bokeh not installed, BOKEH_AVAILABLE should be False
-        from mfg_pde.visualization.interactive_plots import BOKEH_AVAILABLE
+        from mfgarchon.visualization.interactive_plots import BOKEH_AVAILABLE
 
         assert BOKEH_AVAILABLE is False
 
@@ -77,12 +77,12 @@ def test_networkx_availability_flag():
     try:
         import networkx  # noqa: F401
 
-        from mfg_pde.visualization.network_plots import NETWORKX_AVAILABLE
+        from mfgarchon.visualization.network_plots import NETWORKX_AVAILABLE
 
         assert NETWORKX_AVAILABLE is True
     except ImportError:
         # If networkx not installed, NETWORKX_AVAILABLE should be False
-        from mfg_pde.visualization.network_plots import NETWORKX_AVAILABLE
+        from mfgarchon.visualization.network_plots import NETWORKX_AVAILABLE
 
         assert NETWORKX_AVAILABLE is False
 
@@ -111,7 +111,7 @@ def test_matplotlib_always_available():
 @pytest.mark.fast
 def test_backend_fallback_chain():
     """Test backend selection follows plotly -> matplotlib fallback chain."""
-    from mfg_pde.visualization.mathematical_plots import MathematicalPlotter
+    from mfgarchon.visualization.mathematical_plots import MathematicalPlotter
 
     # Create plotter with auto backend
     plotter = MathematicalPlotter(backend="auto")
@@ -141,7 +141,7 @@ def test_backend_fallback_chain():
 def test_polars_optional_dependency():
     """Test that mfg_analytics module handles missing Polars gracefully."""
     try:
-        from mfg_pde.visualization.mfg_analytics import POLARS_AVAILABLE
+        from mfgarchon.visualization.mfg_analytics import POLARS_AVAILABLE
 
         # Flag should exist and be boolean
         assert isinstance(POLARS_AVAILABLE, bool)
@@ -167,7 +167,7 @@ def test_visualization_module_base_imports():
     """Test that base visualization module imports successfully."""
     # These imports should always work regardless of optional deps
     try:
-        from mfg_pde.visualization.mathematical_plots import (
+        from mfgarchon.visualization.mathematical_plots import (
             MathematicalPlotter,
             create_mathematical_visualizer,
         )
@@ -182,7 +182,7 @@ def test_visualization_module_base_imports():
 @pytest.mark.fast
 def test_network_visualization_with_missing_networkx():
     """Test network visualization can handle missing NetworkX."""
-    from mfg_pde.visualization.network_plots import NETWORKX_AVAILABLE
+    from mfgarchon.visualization.network_plots import NETWORKX_AVAILABLE
 
     if not NETWORKX_AVAILABLE:
         # Verify that NETWORKX_AVAILABLE is correctly False
@@ -190,7 +190,7 @@ def test_network_visualization_with_missing_networkx():
 
         # Module should still be importable
         try:
-            from mfg_pde.visualization import network_plots
+            from mfgarchon.visualization import network_plots
 
             assert network_plots is not None
         except ImportError as e:
@@ -206,7 +206,7 @@ def test_network_visualization_with_missing_networkx():
 @pytest.mark.fast
 def test_interactive_features_detection():
     """Test detection of interactive visualization capabilities."""
-    from mfg_pde.visualization.interactive_plots import (
+    from mfgarchon.visualization.interactive_plots import (
         BOKEH_AVAILABLE,
         PLOTLY_AVAILABLE,
     )
@@ -222,7 +222,7 @@ def test_interactive_features_detection():
 @pytest.mark.fast
 def test_visualization_capability_flags():
     """Test that capability flags are properly set."""
-    from mfg_pde.visualization.network_plots import (
+    from mfgarchon.visualization.network_plots import (
         NETWORKX_AVAILABLE,
         PLOTLY_AVAILABLE,
     )

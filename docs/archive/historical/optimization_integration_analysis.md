@@ -1,4 +1,4 @@
-# [DEFERRED] Optimization Integration Analysis for MFG_PDE
+# [DEFERRED] Optimization Integration Analysis for MFGarchon
 
 **Date**: July 31, 2025  
 **Status**: DEFERRED - Lower priority after core MFG functionality  
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Analysis of optimization integration options for MFG_PDE concluded that a **minimal integration layer** is preferred over custom optimization implementations. The focus should remain on leveraging mature optimization libraries (scipy, optax, cvxpy) with MFG-specific convenience functions rather than reimplementing optimization algorithms.
+Analysis of optimization integration options for MFGarchon concluded that a **minimal integration layer** is preferred over custom optimization implementations. The focus should remain on leveraging mature optimization libraries (scipy, optax, cvxpy) with MFG-specific convenience functions rather than reimplementing optimization algorithms.
 
 ## Optimization Library Comparison
 
@@ -42,7 +42,7 @@ Analysis of optimization integration options for MFG_PDE concluded that a **mini
 
 **Proposed Structure:**
 ```
-mfg_pde/optimization/
+mfgarchon/optimization/
 ├── __init__.py           # Simple imports and factory (~50 lines)
 ├── convenience.py        # MFG-specific wrapper functions (~150 lines)
 ├── progress.py          # tqdm integration (~80 lines)

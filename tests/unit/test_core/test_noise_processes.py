@@ -8,7 +8,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.stochastic import (
+from mfgarchon.core.stochastic import (
     CoxIngersollRossProcess,
     GeometricBrownianMotion,
     JumpDiffusionProcess,

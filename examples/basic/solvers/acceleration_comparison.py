@@ -22,9 +22,9 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_standard_solver
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_standard_solver
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("acceleration_comparison", level="INFO")
@@ -76,7 +76,7 @@ def benchmark_backend(backend_name: str, problem):
         # Override backend if supported
         if hasattr(solver, "backend") and backend_name != "numpy":
             try:
-                from mfg_pde.backends import create_backend
+                from mfgarchon.backends import create_backend
 
                 solver.backend = create_backend(backend_name)
                 if hasattr(solver.hjb_solver, "backend"):
@@ -215,7 +215,7 @@ def main():
     # Test PyTorch with explicit MPS device (Apple Silicon acceleration)
     logger.info("\n  Testing backend: torch-mps")
     try:
-        from mfg_pde.backends import create_backend
+        from mfgarchon.backends import create_backend
 
         solver = create_standard_solver(problem)
         solver.backend = create_backend("torch", device="mps")

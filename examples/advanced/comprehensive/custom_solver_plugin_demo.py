@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Custom Solver Plugin Example for MFG_PDE
+Custom Solver Plugin Example for MFGarchon
 
-Demonstrates how to create custom solver plugins that extend the MFG_PDE
+Demonstrates how to create custom solver plugins that extend the MFGarchon
 framework with new solver capabilities.
 
 Modern API (Phase 3.3):
@@ -26,12 +26,12 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfg_pde.core.plugin_system import PluginMetadata, SolverPlugin
-from mfg_pde.utils.solver_result import SolverResult
+from mfgarchon.core.plugin_system import PluginMetadata, SolverPlugin
+from mfgarchon.utils.solver_result import SolverResult
 
 if TYPE_CHECKING:
-    from mfg_pde.config import SolverConfig
-    from mfg_pde.core.mfg_problem import MFGProblem
+    from mfgarchon.config import SolverConfig
+    from mfgarchon.core.mfg_problem import MFGProblem
 
 
 class GradientDescentMFGSolver:
@@ -251,7 +251,7 @@ class WrapperSolver:
         self.tolerance = tolerance
 
         # Use fast solver factory for actual computation
-        from mfg_pde.factory import create_fast_solver
+        from mfgarchon.factory import create_fast_solver
 
         self.reference_solver = create_fast_solver(problem, method="fixed_point")
 
@@ -307,10 +307,10 @@ class ExampleSolverPlugin(SolverPlugin):
             name="example_solver_plugin",
             version="2.0.0",
             description="Example plugin providing custom MFG solvers (Phase 3.3 compatible)",
-            author="MFG_PDE Development Team",
-            email="dev@mfg-pde.org",
+            author="MFGarchon Development Team",
+            email="dev@mfgarchon.org",
             license="MIT",
-            homepage="https://github.com/mfg-pde/mfg-pde",
+            homepage="https://github.com/mfgarchon/mfgarchon",
             min_mfg_version="0.9.0",
             dependencies=["numpy>=1.20"],
             tags=["educational", "gradient_descent", "wrapper", "example"],
@@ -482,7 +482,7 @@ class ExampleSolverPlugin(SolverPlugin):
 # Plugin registration function (called automatically by plugin system)
 def register():
     """
-    Register this plugin with the MFG_PDE plugin system.
+    Register this plugin with the MFGarchon plugin system.
 
     Returns:
         Plugin class (not instance) for lazy instantiation
@@ -497,8 +497,8 @@ if __name__ == "__main__":
     print("=" * 70)
 
     # Create test problem using modern API
-    from mfg_pde import MFGProblem
-    from mfg_pde.core.plugin_system import get_plugin_manager
+    from mfgarchon import MFGProblem
+    from mfgarchon.core.plugin_system import get_plugin_manager
 
     problem = MFGProblem()  # Uses default 1D problem
     grid_shape = problem.geometry.get_grid_shape()

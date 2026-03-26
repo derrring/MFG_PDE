@@ -30,7 +30,7 @@ These tests are skipped when optional dependencies aren't installed:
 
 | Issue | Tests | Root Cause | Tracking |
 |:------|:------|:-----------|:---------|
-| Semi-Lagrangian overflow | 17 | CFL condition violations causing instability | [#369](https://github.com/derrring/MFG_PDE/issues/369) |
+| Semi-Lagrangian overflow | 17 | CFL condition violations causing instability | [#369](https://github.com/derrring/mfgarchon/issues/369) |
 | Shape mismatch (solve_mfg) | 16 | FP solver returns (Nt+1,) vs (Nt,) expected | #365 |
 | GFDM slow tests | 2 | Tests take 5+ minutes each | #365 |
 

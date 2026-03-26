@@ -100,7 +100,7 @@ class BaseGeometry(ABC):
 ### Unified Geometry ABC
 
 ```python
-# mfg_pde/geometry/base.py
+# mfgarchon/geometry/base.py
 
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable
@@ -349,7 +349,7 @@ Geometry (ABC)
 
 ### Phase 1: Create Unified Base (Week 1)
 
-**Step 1.1**: Create new `mfg_pde/geometry/base.py` with `Geometry` ABC
+**Step 1.1**: Create new `mfgarchon/geometry/base.py` with `Geometry` ABC
 - Copy `GeometryProtocol` interface
 - Add solver operation abstract methods
 - Add grid/mesh utility methods with default `None` returns
@@ -359,7 +359,7 @@ Geometry (ABC)
 - `UnstructuredMesh(Geometry)` - for FEM meshes
 - `NetworkGraph(Geometry)` - for graph geometries
 
-**Step 1.3**: Update imports in `mfg_pde/geometry/__init__.py`
+**Step 1.3**: Update imports in `mfgarchon/geometry/__init__.py`
 ```python
 # Old
 from .geometry_protocol import GeometryProtocol, GeometryType
@@ -415,7 +415,7 @@ class TensorProductGrid(CartesianGrid):
 
 **Step 3.1**: Refactor `BaseGeometry` → `UnstructuredMesh(Geometry)`
 ```python
-# mfg_pde/geometry/base.py
+# mfgarchon/geometry/base.py
 
 class UnstructuredMesh(Geometry):
     """ABC for unstructured FEM-style meshes."""
@@ -498,7 +498,7 @@ class HJBFDMSolver:
         ...
 
 # After
-from mfg_pde.geometry import CartesianGrid
+from mfgarchon.geometry import CartesianGrid
 
 class HJBFDMSolver:
     def __init__(self, problem: MFGProblemProtocol):
@@ -527,7 +527,7 @@ class HJBFDMSolver:
 
 **Step 6.1**: Add deprecation warnings
 ```python
-# mfg_pde/geometry/geometry_protocol.py
+# mfgarchon/geometry/geometry_protocol.py
 
 import warnings
 
@@ -537,14 +537,14 @@ class GeometryProtocol(Protocol):
     def __init_subclass__(cls):
         warnings.warn(
             f"{cls.__name__} implements deprecated GeometryProtocol. "
-            f"Inherit from mfg_pde.geometry.Geometry instead. "
+            f"Inherit from mfgarchon.geometry.Geometry instead. "
             f"GeometryProtocol will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2
         )
     ...
 
-# mfg_pde/geometry/base_geometry.py
+# mfgarchon/geometry/base_geometry.py
 
 class BaseGeometry(UnstructuredMesh):
     """DEPRECATED: Use UnstructuredMesh instead."""
@@ -575,7 +575,7 @@ class BaseGeometry(UnstructuredMesh):
 ### Import Aliases (Temporary)
 
 ```python
-# mfg_pde/geometry/__init__.py
+# mfgarchon/geometry/__init__.py
 
 from .base import Geometry, CartesianGrid, UnstructuredMesh, NetworkGraph
 
@@ -613,7 +613,7 @@ __all__ = [
 **Test 1**: Verify all geometry classes satisfy `Geometry` ABC
 ```python
 def test_geometry_protocol_compliance():
-    from mfg_pde.geometry import (
+    from mfgarchon.geometry import (
         Domain1D, TensorProductGrid, Domain2D, NetworkGeometry, Geometry
     )
 
@@ -649,7 +649,7 @@ def test_solver_operations():
 **Test 3**: Verify backward compatibility
 ```python
 def test_backward_compatibility():
-    from mfg_pde.geometry import GeometryProtocol, BaseGeometry
+    from mfgarchon.geometry import GeometryProtocol, BaseGeometry
 
     # Should work but emit deprecation warning
     with pytest.warns(DeprecationWarning):
@@ -662,9 +662,9 @@ def test_backward_compatibility():
 **Test 4**: Verify solver-geometry integration
 ```python
 def test_fdm_solver_with_cartesian_grid():
-    from mfg_pde import MFGProblem
-    from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.solvers import HJBFDMSolver
+    from mfgarchon import MFGProblem
+    from mfgarchon.geometry import TensorProductGrid
+    from mfgarchon.solvers import HJBFDMSolver
 
     grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], num_points=[50, 50])
     problem = MFGProblem(geometry=grid, T=1.0, Nt=100)
@@ -677,9 +677,9 @@ def test_fdm_solver_with_cartesian_grid():
 **Test 5**: Verify type checking catches incompatible geometries
 ```python
 def test_fdm_rejects_network():
-    from mfg_pde import MFGProblem
-    from mfg_pde.geometry import NetworkGeometry
-    from mfg_pde.solvers import HJBFDMSolver
+    from mfgarchon import MFGProblem
+    from mfgarchon.geometry import NetworkGeometry
+    from mfgarchon.solvers import HJBFDMSolver
 
     network = NetworkGeometry(topology="random", n_nodes=100)
     problem = MFGProblem(geometry=network, T=1.0, Nt=100)
@@ -693,7 +693,7 @@ def test_fdm_rejects_network():
 ## File Structure After Migration
 
 ```
-mfg_pde/geometry/
+mfgarchon/geometry/
 ├── __init__.py                  # Exports Geometry, intermediate ABCs
 ├── base.py                      # NEW: Geometry ABC + intermediate ABCs
 │                                # (replaces geometry_protocol.py + base_geometry.py)

@@ -1,12 +1,12 @@
-# MFG_PDE Backend Usage Guide
+# MFGarchon Backend Usage Guide
 
 ## 🚀 **Quick Start: Choose Your Backend**
 
-MFG_PDE automatically selects the best available backend, but you can also manually choose based on your hardware and problem type.
+MFGarchon automatically selects the best available backend, but you can also manually choose based on your hardware and problem type.
 
 ### **One-Line Backend Selection**
 ```python
-from mfg_pde.backends import create_backend
+from mfgarchon.backends import create_backend
 
 # Automatic optimal selection
 backend = create_backend("auto")
@@ -22,8 +22,8 @@ backend = create_backend("numba")      # CPU optimization
 ### **🧠 Neural Methods (PINN, Neural Operators)**
 ```python
 # BEST: PyTorch with automatic device selection
-from mfg_pde.backends import create_backend
-from mfg_pde.alg.neural_solvers import PINNSolver
+from mfgarchon.backends import create_backend
+from mfgarchon.alg.neural_solvers import PINNSolver
 
 backend = create_backend("torch")  # Auto-selects CUDA/MPS/CPU
 solver = PINNSolver(problem, backend=backend)
@@ -34,8 +34,8 @@ result = solver.solve()
 ### **📊 Mathematical Kernels (Pure Computation)**
 ```python
 # BEST: JAX for mathematical operations
-from mfg_pde.utils.acceleration.jax_utils import compute_hamiltonian
-from mfg_pde.alg.mfg_solvers import JAXMFGSolver
+from mfgarchon.utils.acceleration.jax_utils import compute_hamiltonian
+from mfgarchon.alg.mfg_solvers import JAXMFGSolver
 
 solver = JAXMFGSolver(problem, use_gpu=True, jit_compile=True)
 result = solver.solve()  # Automatic XLA compilation
@@ -46,8 +46,8 @@ result = solver.solve()  # Automatic XLA compilation
 ```python
 # AMR is planned for future integration with external libraries
 # Recommended: pyAMReX, Clawpack/AMRClaw, pyAMG, p4est
-# See mfg_pde.geometry.amr module for API stub
-from mfg_pde.geometry.amr import create_amr_grid, AMRNotImplementedError
+# See mfgarchon.geometry.amr module for API stub
+from mfgarchon.geometry.amr import create_amr_grid, AMRNotImplementedError
 
 # Will raise AMRNotImplementedError with library recommendations
 # try:
@@ -60,7 +60,7 @@ from mfg_pde.geometry.amr import create_amr_grid, AMRNotImplementedError
 ### **💾 Large-Scale Problems (Memory Constrained)**
 ```python
 # BEST: Sparse operations with Numba parallelization
-from mfg_pde.utils.performance_optimization import SparseMatrixOptimizer
+from mfgarchon.utils.performance_optimization import SparseMatrixOptimizer
 
 optimizer = SparseMatrixOptimizer()
 # Automatically uses Numba if available for parallel operations
@@ -72,7 +72,7 @@ solution = optimizer.solve_sparse_system(laplacian, rhs, method="cg")
 
 ### **PyTorch Backend Configuration**
 ```python
-from mfg_pde.backends import TorchBackend
+from mfgarchon.backends import TorchBackend
 
 # Apple Silicon (M1/M2/M3)
 backend = TorchBackend(
@@ -98,7 +98,7 @@ backend = TorchBackend(
 
 ### **JAX Backend Configuration**
 ```python
-from mfg_pde.alg.mfg_solvers import JAXMFGSolver
+from mfgarchon.alg.mfg_solvers import JAXMFGSolver
 
 # GPU configuration
 solver = JAXMFGSolver(
@@ -121,7 +121,7 @@ solver = JAXMFGSolver(
 
 ### **Numba Optimization Setup**
 ```python
-from mfg_pde.utils.performance_optimization import AccelerationBackend
+from mfgarchon.utils.performance_optimization import AccelerationBackend
 
 backend = AccelerationBackend()
 backend.set_backend("numba")
@@ -141,10 +141,10 @@ def custom_finite_difference(u, dx):
 ### **Apple Silicon (M1/M2/M3) Setup**
 ```python
 # Optimal configuration for Mac
-import mfg_pde
+import mfgarchon
 
 # Check what's available
-from mfg_pde.backends import get_available_backends
+from mfgarchon.backends import get_available_backends
 available = get_available_backends()
 print("Available backends:", available)
 # Expected: {'torch_mps': True, 'jax': True, 'numba': True}
@@ -174,7 +174,7 @@ kernel_solver = JAXMFGSolver(problem, use_gpu=True)
 ### **CPU-Only Optimization**
 ```python
 # Optimal for CPU-only systems
-from mfg_pde.utils.performance_optimization import ParallelizationHelper
+from mfgarchon.utils.performance_optimization import ParallelizationHelper
 
 # Use all available CPU cores
 parallelization = ParallelizationHelper()
@@ -192,7 +192,7 @@ backend = create_backend("numba")
 
 ### **Built-in Performance Analysis**
 ```python
-from mfg_pde.utils.performance_optimization import PerformanceMonitor
+from mfgarchon.utils.performance_optimization import PerformanceMonitor
 
 monitor = PerformanceMonitor()
 
@@ -208,7 +208,7 @@ print(f"Peak memory: {summary['peak_memory']:.1f}MB")
 ### **Backend Benchmarking**
 ```python
 # Compare all available backends
-from mfg_pde.utils.performance_optimization import optimize_mfg_problem_performance
+from mfgarchon.utils.performance_optimization import optimize_mfg_problem_performance
 
 performance_analysis = optimize_mfg_problem_performance({
     "spatial_points": 10000,
@@ -225,15 +225,15 @@ for rec in performance_analysis["recommendations"]:
 
 ### **Current Structure (Phase 3+)**
 
-The acceleration utilities are organized under `mfg_pde.utils.acceleration`:
+The acceleration utilities are organized under `mfgarchon.utils.acceleration`:
 
 ```python
 # Correct imports
-from mfg_pde.alg.mfg_solvers import JAXMFGSolver
-from mfg_pde.utils.acceleration.jax_utils import compute_hamiltonian, tridiagonal_solve
+from mfgarchon.alg.mfg_solvers import JAXMFGSolver
+from mfgarchon.utils.acceleration.jax_utils import compute_hamiltonian, tridiagonal_solve
 
 # Backend factory
-from mfg_pde.backends import create_backend
+from mfgarchon.backends import create_backend
 
 # Auto-select best backend (torch > jax > numpy)
 backend = create_backend()
@@ -246,15 +246,15 @@ backend = create_backend("numpy")  # NumPy baseline
 
 ### **Note on Old Imports**
 
-The old `mfg_pde.accelerated` module has been removed. If you have legacy code:
+The old `mfgarchon.accelerated` module has been removed. If you have legacy code:
 
 ```python
 # REMOVED (no longer available)
-# from mfg_pde.accelerated import JAXMFGSolver
+# from mfgarchon.accelerated import JAXMFGSolver
 
 # Use this instead:
-from mfg_pde.alg.mfg_solvers import JAXMFGSolver
-from mfg_pde.utils.acceleration.jax_utils import compute_hamiltonian
+from mfgarchon.alg.mfg_solvers import JAXMFGSolver
+from mfgarchon.utils.acceleration.jax_utils import compute_hamiltonian
 ```
 
 ## 🔧 **Backend Selection Guide**
@@ -291,7 +291,7 @@ backend = create_backend("numba")
 **1. Adaptive Mesh Refinement (AMR)**
 ```python
 # Dynamic grid refinement with irregular patterns
-from mfg_pde.backends import create_backend
+from mfgarchon.backends import create_backend
 
 backend = create_backend("numba")
 
@@ -355,9 +355,9 @@ backend = create_backend("numba")
 
 ### **Automatic Backend Selection (Recommended)**
 ```python
-# Let MFG_PDE choose the best backend
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_solver
+# Let MFGarchon choose the best backend
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_solver
 
 problem = MFGProblem(Nx=100, Nt=50)
 solver = create_solver(problem, method="auto", backend="auto")
@@ -397,7 +397,7 @@ else:
 
 ### **Backend Detection Problems**
 ```python
-from mfg_pde.backends import get_available_backends
+from mfgarchon.backends import get_available_backends
 
 available = get_available_backends()
 print("Backend availability:")
@@ -423,7 +423,7 @@ if backend.name.endswith("gpu"):
     print(f"GPU memory: {backend.get_memory_usage()}")
 
 # Profile specific operations
-from mfg_pde.utils.performance_optimization import profile_jax_function
+from mfgarchon.utils.performance_optimization import profile_jax_function
 
 if backend.name.startswith("jax"):
     metrics = profile_jax_function(compute_hamiltonian, u_grad, density)
@@ -435,8 +435,8 @@ if backend.name.startswith("jax"):
 
 ### **Backend-Specific Documentation**
 - **PyTorch**: See `docs/development/PYTORCH_PINN_INTEGRATION_ANALYSIS.md`
-- **JAX**: See `mfg_pde/utils/acceleration/jax_utils.py` docstrings
-- **Numba**: See `mfg_pde/utils/performance_optimization.py` examples
+- **JAX**: See `mfgarchon/utils/acceleration/jax_utils.py` docstrings
+- **Numba**: See `mfgarchon/utils/performance_optimization.py` examples
 
 ### **Hardware Setup Guides**
 - **Apple Silicon**: Ensure Metal Performance Shaders enabled
@@ -446,7 +446,7 @@ if backend.name.startswith("jax"):
 ### **Performance Benchmarks**
 ```python
 # Run comprehensive benchmarks
-python -m mfg_pde.benchmarks.backend_comparison --all-backends --problem-sizes large
+python -m mfgarchon.benchmarks.backend_comparison --all-backends --problem-sizes large
 ```
 
 ---

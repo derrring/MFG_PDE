@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     dirichlet_bc,
     no_flux_bc,
     periodic_bc,
 )
-from mfg_pde.utils.numerical.tensor_calculus import diffusion
+from mfgarchon.utils.numerical.tensor_calculus import diffusion
 
 
 class TestDiagonalTensorEqualsScalar:

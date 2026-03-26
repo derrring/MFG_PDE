@@ -11,16 +11,16 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary.conditions import (
+from mfgarchon.geometry.boundary.conditions import (
     BoundaryConditions,
     dirichlet_bc,
     neumann_bc,
     no_flux_bc,
     periodic_bc,
 )
-from mfg_pde.geometry.boundary.types import BCSegment, BCType
-from mfg_pde.geometry.protocol import GeometryType
-from mfg_pde.utils.validation.components import validate_boundary_conditions
+from mfgarchon.geometry.boundary.types import BCSegment, BCType
+from mfgarchon.geometry.protocol import GeometryType
+from mfgarchon.utils.validation.components import validate_boundary_conditions
 
 # ===========================================================================
 # Mock geometries
@@ -321,7 +321,7 @@ def test_validate_components_catches_bc_dimension_mismatch():
     """validate_components() surfaces BC dimension mismatch."""
     from unittest.mock import MagicMock
 
-    from mfg_pde.utils.validation.components import validate_components
+    from mfgarchon.utils.validation.components import validate_components
 
     geom = _MockCartesianGrid(dim=1)
 

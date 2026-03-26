@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Security report generation script for MFG_PDE security pipeline.
+Security report generation script for MFGarchon security pipeline.
 Aggregates all security scan results into comprehensive reports.
 """
 
@@ -275,7 +275,7 @@ class SecurityReportGenerator:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MFG_PDE Security Dashboard</title>
+    <title>MFGarchon Security Dashboard</title>
     <style>
         body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
         .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }}
@@ -295,7 +295,7 @@ class SecurityReportGenerator:
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔒 MFG_PDE Security Dashboard</h1>
+            <h1>🔒 MFGarchon Security Dashboard</h1>
             <span class="status-badge status-{self.summary["overall_status"].lower()}">{
             self.summary["overall_status"]
         }</span>
@@ -350,7 +350,7 @@ class SecurityReportGenerator:
     def generate_markdown_summary(self) -> str:
         """Generate markdown security summary."""
         lines = []
-        lines.append("# MFG_PDE Security Summary")
+        lines.append("# MFGarchon Security Summary")
         lines.append("")
         lines.append(f"**Generated**: {self.summary['timestamp']}")
         lines.append(f"**Overall Status**: {self.summary['overall_status']}")

@@ -16,7 +16,7 @@ A comprehensive comparison of discretization approaches for advection-diffusion 
    - [Method Selection Guide](#method-selection-guide)
 5. [Part III: MFG Context](#part-iii-mfg-context)
    - [Why Method Diversity Matters](#why-method-diversity-matters)
-   - [MFG_PDE Solver Portfolio](#mfg_pde-solver-portfolio)
+   - [MFGarchon Solver Portfolio](#mfgarchon-solver-portfolio)
 6. [Implementation Notes](#implementation-notes)
 7. [References](#references)
 
@@ -367,7 +367,7 @@ For high-dimensional MFG (multi-agent systems), **only particle/Monte Carlo meth
 
 ---
 
-## MFG_PDE Solver Portfolio
+## MFGarchon Solver Portfolio
 
 Our solver ecosystem reflects these trade-offs:
 
@@ -391,7 +391,7 @@ Coupled MFG:
 
 # Implementation Notes
 
-## Current State in MFG_PDE (v0.17.3+)
+## Current State in MFGarchon (v0.17.3+)
 
 - `FPFDMSolver` uses **divergence_upwind** (conservative flux form) by default
 - Four advection schemes available via `advection_scheme` parameter:
@@ -462,4 +462,4 @@ For no-flux BC at left boundary with Flux FDM:
   - #382 (FDM mass conservation investigation - Dec 2025)
   - #490 (4 FDM advection schemes - Dec 2025)
   - #615 (Mass conservation fix - Jan 2026)
-- **Author**: MFG_PDE Development Team
+- **Author**: MFGarchon Development Team

@@ -12,9 +12,9 @@ import pytest
 import numpy as np
 from scipy.sparse.linalg import LinearOperator
 
-from mfg_pde.geometry.boundary import neumann_bc
-from mfg_pde.operators.differential.advection import AdvectionOperator
-from mfg_pde.operators.differential.divergence import DivergenceOperator
+from mfgarchon.geometry.boundary import neumann_bc
+from mfgarchon.operators.differential.advection import AdvectionOperator
+from mfgarchon.operators.differential.divergence import DivergenceOperator
 
 # =============================================================================
 # Fixtures

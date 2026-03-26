@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/types/arrays.py
+Unit tests for mfgarchon/types/arrays.py
 
-Tests type alias definitions for array types used throughout MFG_PDE including:
+Tests type alias definitions for array types used throughout MFGarchon including:
 - Core solution arrays (SolutionArray, SpatialGrid, TimeGrid)
 - Advanced array types (SpatialArray, TemporalArray)
 - Multi-dimensional array types (Array1D, Array2D, Array3D)
@@ -14,7 +14,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.types.arrays import (  # noqa: TC001
+from mfgarchon.types.arrays import (  # noqa: TC001
     Array1D,
     Array2D,
     Array3D,
@@ -265,7 +265,7 @@ def test_spatial_coordinates_deprecated_alias():
         # Import locally to trigger warning
         import importlib
 
-        import mfg_pde.types.arrays as arrays_module
+        import mfgarchon.types.arrays as arrays_module
 
         importlib.reload(arrays_module)
         _ = arrays_module.SpatialCoordinates
@@ -294,7 +294,7 @@ def test_temporal_coordinates_deprecated_alias():
         warnings.simplefilter("always")
         import importlib
 
-        import mfg_pde.types.arrays as arrays_module
+        import mfgarchon.types.arrays as arrays_module
 
         importlib.reload(arrays_module)
         _ = arrays_module.TemporalCoordinates
@@ -455,7 +455,7 @@ def test_array_broadcasting():
 @pytest.mark.unit
 def test_module_exports():
     """Test all type aliases are importable."""
-    from mfg_pde.types import arrays
+    from mfgarchon.types import arrays
 
     # Core types
     assert hasattr(arrays, "SolutionArray")
@@ -485,7 +485,7 @@ def test_module_exports():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has comprehensive docstring."""
-    from mfg_pde.types import arrays
+    from mfgarchon.types import arrays
 
     assert arrays.__doc__ is not None
     assert "Array Type Definitions" in arrays.__doc__

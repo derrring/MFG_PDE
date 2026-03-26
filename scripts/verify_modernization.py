@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Verification script for MFG_PDE package modernization
+Verification script for MFGarchon package modernization
 Tests all modernized components for compatibility and correctness
 """
 
@@ -86,7 +86,7 @@ def check_package_imports() -> bool:
 
     try:
         # Test core imports
-        from mfg_pde.utils.parameter_migration import global_parameter_migrator
+        from mfgarchon.utils.parameter_migration import global_parameter_migrator
 
         print("✅ Core imports - SUCCESS")
 
@@ -111,7 +111,7 @@ def check_typing_modernization() -> bool:
     print("🔍 Checking typing modernization...")
 
     # Count files with modern vs legacy typing
-    python_files = list(Path("mfg_pde").rglob("*.py"))
+    python_files = list(Path("mfgarchon").rglob("*.py"))
 
     legacy_patterns = [
         "from typing import List",
@@ -174,24 +174,26 @@ def check_development_tools() -> bool:
         print("✅ Ruff is available - testing modern tooling")
 
         # Test Ruff formatting
-        if not run_command("ruff format --check --diff mfg_pde/ 2>/dev/null || true", "Ruff formatting check"):
+        if not run_command("ruff format --check --diff mfgarchon/ 2>/dev/null || true", "Ruff formatting check"):
             print("   Note: Ruff formatting issues are non-critical")
 
         # Test Ruff linting
-        if not run_command("ruff check mfg_pde/ 2>/dev/null || true", "Ruff linting check"):
+        if not run_command("ruff check mfgarchon/ 2>/dev/null || true", "Ruff linting check"):
             print("   Note: Ruff linting issues are non-critical")
     else:
         print("⚠️ Ruff not available - falling back to legacy tool testing")
 
         # Fallback to legacy tools for testing
-        if not run_command("black --check --diff mfg_pde/ 2>/dev/null || true", "Black formatting check (fallback)"):
+        if not run_command("black --check --diff mfgarchon/ 2>/dev/null || true", "Black formatting check (fallback)"):
             print("   Note: Black formatting issues are non-critical")
 
-        if not run_command("isort --check-only mfg_pde/ 2>/dev/null || true", "isort import sorting check (fallback)"):
+        if not run_command(
+            "isort --check-only mfgarchon/ 2>/dev/null || true", "isort import sorting check (fallback)"
+        ):
             print("   Note: isort issues are non-critical")
 
     # Test Mypy (always available)
-    if not run_command("mypy mfg_pde/ 2>/dev/null || true", "Mypy type checking"):
+    if not run_command("mypy mfgarchon/ 2>/dev/null || true", "Mypy type checking"):
         print("   Note: Mypy issues are expected during modernization")
 
     return True  # Always pass for development tools
@@ -199,7 +201,7 @@ def check_development_tools() -> bool:
 
 def main():
     """Run all verification checks."""
-    print("🚀 MFG_PDE Package Modernization Verification")
+    print("🚀 MFGarchon Package Modernization Verification")
     print("=" * 50)
 
     checks = [

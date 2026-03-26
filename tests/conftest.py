@@ -1,5 +1,5 @@
 """
-Pytest configuration and shared fixtures for MFG_PDE test suite.
+Pytest configuration and shared fixtures for MFGarchon test suite.
 
 This module provides common fixtures, test configuration, and utilities
 used across the entire test suite.
@@ -14,13 +14,13 @@ import pytest
 import numpy as np
 
 # Import main package components
-from mfg_pde import MFGProblem
-from mfg_pde.config import MFGSolverConfig
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.factory import lq_mfg_initial_density, lq_mfg_terminal_cost
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon import MFGProblem
+from mfgarchon.config import MFGSolverConfig
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.factory import lq_mfg_initial_density, lq_mfg_terminal_cost
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 # =============================================================================
 # Default Components for Testing (Issue #670, #673: explicit specification required)
@@ -291,7 +291,7 @@ def solver_factory():
     """Factory function for creating solvers."""
 
     def _create_solver(problem, config=None):
-        from mfg_pde.factory import create_solver
+        from mfgarchon.factory import create_solver
 
         return create_solver(problem, config=config)
 
@@ -487,7 +487,7 @@ def suppress_warnings():
     import warnings
 
     # Suppress specific warnings that are expected during testing
-    warnings.filterwarnings("ignore", category=DeprecationWarning, module="mfg_pde.*")
+    warnings.filterwarnings("ignore", category=DeprecationWarning, module="mfgarchon.*")
     warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
 
     yield

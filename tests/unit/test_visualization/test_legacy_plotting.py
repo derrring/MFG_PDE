@@ -1,4 +1,4 @@
-"""Tests for mfg_pde.visualization.legacy_plotting module."""
+"""Tests for mfgarchon.visualization.legacy_plotting module."""
 
 from __future__ import annotations
 
@@ -42,10 +42,10 @@ def mock_problem():
 class TestLegacyMyplot3d:
     """Test legacy myplot3d function."""
 
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_myplot3d_basic(self, mock_plt):
         """Test basic 3D surface plot creation."""
-        from mfg_pde.visualization.legacy_plotting import myplot3d
+        from mfgarchon.visualization.legacy_plotting import myplot3d
 
         # Setup mocks
         mock_fig = Mock()
@@ -71,10 +71,10 @@ class TestLegacyMyplot3d:
         mock_ax.view_init.assert_called_once_with(40, -135)
         mock_plt.show.assert_called_once()
 
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_myplot3d_default_title(self, mock_plt):
         """Test myplot3d with default title."""
-        from mfg_pde.visualization.legacy_plotting import myplot3d
+        from mfgarchon.visualization.legacy_plotting import myplot3d
 
         mock_fig = Mock()
         mock_ax = Mock()
@@ -89,10 +89,10 @@ class TestLegacyMyplot3d:
 
         mock_ax.set_title.assert_called_once_with("Surface Plot")
 
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_myplot3d_formatting(self, mock_plt):
         """Test myplot3d applies proper formatting."""
-        from mfg_pde.visualization.legacy_plotting import myplot3d
+        from mfgarchon.visualization.legacy_plotting import myplot3d
 
         mock_fig = Mock()
         mock_ax = Mock()
@@ -115,10 +115,10 @@ class TestLegacyMyplot3d:
 class TestLegacyPlotConvergence:
     """Test legacy plot_convergence function."""
 
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_plot_convergence_basic(self, mock_plt):
         """Test convergence plotting for U and M."""
-        from mfg_pde.visualization.legacy_plotting import plot_convergence
+        from mfgarchon.visualization.legacy_plotting import plot_convergence
 
         # Create convergence data
         iterations = 5
@@ -142,10 +142,10 @@ class TestLegacyPlotConvergence:
         assert len(xlabel_calls) == 2
         assert all(call[0][0] == "Iteration" for call in xlabel_calls)
 
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_plot_convergence_default_solver_name(self, mock_plt):
         """Test plot_convergence with default solver name."""
-        from mfg_pde.visualization.legacy_plotting import plot_convergence
+        from mfgarchon.visualization.legacy_plotting import plot_convergence
 
         iterations = 3
         errors_u = np.array([1e-1, 1e-2, 1e-3])
@@ -157,10 +157,10 @@ class TestLegacyPlotConvergence:
         title_calls = [call[0][0] for call in mock_plt.title.call_args_list]
         assert any("Solver" in title for title in title_calls)
 
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_plot_convergence_grid_enabled(self, mock_plt):
         """Test that grid is enabled in convergence plots."""
-        from mfg_pde.visualization.legacy_plotting import plot_convergence
+        from mfgarchon.visualization.legacy_plotting import plot_convergence
 
         iterations = 2
         errors_u = np.array([1e-1, 1e-2])
@@ -176,11 +176,11 @@ class TestLegacyPlotConvergence:
 class TestLegacyPlotResults:
     """Test legacy plot_results function."""
 
-    @patch("mfg_pde.visualization.legacy_plotting.myplot3d")
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.myplot3d")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_plot_results_basic(self, mock_plt, mock_myplot3d, mock_problem):
         """Test comprehensive results plotting."""
-        from mfg_pde.visualization.legacy_plotting import plot_results
+        from mfgarchon.visualization.legacy_plotting import plot_results
 
         # Create solution data
         u = np.random.rand(6, 11)
@@ -199,11 +199,11 @@ class TestLegacyPlotResults:
         # Should show 2 plots
         assert mock_plt.show.call_count == 2
 
-    @patch("mfg_pde.visualization.legacy_plotting.myplot3d")
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.myplot3d")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_plot_results_mass_conservation(self, mock_plt, mock_myplot3d, mock_problem):
         """Test mass conservation plot creation."""
-        from mfg_pde.visualization.legacy_plotting import plot_results
+        from mfgarchon.visualization.legacy_plotting import plot_results
 
         u = np.random.rand(6, 11)
         m = np.random.rand(6, 11)
@@ -218,11 +218,11 @@ class TestLegacyPlotResults:
         # Verify ylim is called for mass conservation plot
         mock_plt.ylim.assert_called_once()
 
-    @patch("mfg_pde.visualization.legacy_plotting.myplot3d")
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.myplot3d")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_plot_results_final_density(self, mock_plt, mock_myplot3d, mock_problem):
         """Test final density plot creation."""
-        from mfg_pde.visualization.legacy_plotting import plot_results
+        from mfgarchon.visualization.legacy_plotting import plot_results
 
         u = np.random.rand(6, 11)
         m = np.random.rand(6, 11)
@@ -237,11 +237,11 @@ class TestLegacyPlotResults:
         plot_calls = list(mock_plt.plot.call_args_list)
         assert len(plot_calls) >= 2  # At least final density and mass conservation
 
-    @patch("mfg_pde.visualization.legacy_plotting.myplot3d")
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.myplot3d")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_plot_results_subsampling(self, mock_plt, mock_myplot3d, mock_problem):
         """Test that results are subsampled for plotting."""
-        from mfg_pde.visualization.legacy_plotting import plot_results
+        from mfgarchon.visualization.legacy_plotting import plot_results
 
         u = np.random.rand(6, 11)
         m = np.random.rand(6, 11)
@@ -260,10 +260,10 @@ class TestLegacyPlotResults:
 class TestModernPlotMFGSolution:
     """Test modern_plot_mfg_solution wrapper function."""
 
-    @patch("mfg_pde.visualization.interactive_plots.create_visualization_manager")
+    @patch("mfgarchon.visualization.interactive_plots.create_visualization_manager")
     def test_modern_plot_mfg_solution_success(self, mock_create_viz, sample_grid_data):
         """Test successful modern MFG solution plotting."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_mfg_solution
+        from mfgarchon.visualization.legacy_plotting import modern_plot_mfg_solution
 
         x_grid, t_grid, U, M = sample_grid_data
 
@@ -284,10 +284,10 @@ class TestModernPlotMFGSolution:
         # Result should be the density plot
         assert result is not None
 
-    @patch("mfg_pde.visualization.interactive_plots.create_visualization_manager")
+    @patch("mfgarchon.visualization.interactive_plots.create_visualization_manager")
     def test_modern_plot_mfg_solution_with_3d(self, mock_create_viz, sample_grid_data):
         """Test modern plotting with 3D surface support."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_mfg_solution
+        from mfgarchon.visualization.legacy_plotting import modern_plot_mfg_solution
 
         x_grid, t_grid, U, M = sample_grid_data
 
@@ -302,12 +302,12 @@ class TestModernPlotMFGSolution:
         # Should call 3D surface plot if available
         mock_viz_manager.create_3d_surface_plot.assert_called_once()
 
-    @patch("mfg_pde.visualization.legacy_plotting.warnings.warn")
-    @patch("mfg_pde.visualization.legacy_plotting.myplot3d")
-    @patch("mfg_pde.visualization.interactive_plots.create_visualization_manager")
+    @patch("mfgarchon.visualization.legacy_plotting.warnings.warn")
+    @patch("mfgarchon.visualization.legacy_plotting.myplot3d")
+    @patch("mfgarchon.visualization.interactive_plots.create_visualization_manager")
     def test_modern_plot_mfg_solution_fallback(self, mock_create_viz, mock_myplot3d, mock_warn, sample_grid_data):
         """Test fallback to legacy plotting on ImportError."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_mfg_solution
+        from mfgarchon.visualization.legacy_plotting import modern_plot_mfg_solution
 
         x_grid, t_grid, U, M = sample_grid_data
 
@@ -327,13 +327,13 @@ class TestModernPlotMFGSolution:
 class TestModernPlotConvergence:
     """Test modern_plot_convergence wrapper function."""
 
-    @patch("mfg_pde.visualization.legacy_plotting.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.legacy_plotting.go")
-    @patch("mfg_pde.visualization.legacy_plotting.px")
-    @patch("mfg_pde.visualization.interactive_plots.create_visualization_manager")
+    @patch("mfgarchon.visualization.legacy_plotting.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.legacy_plotting.go")
+    @patch("mfgarchon.visualization.legacy_plotting.px")
+    @patch("mfgarchon.visualization.interactive_plots.create_visualization_manager")
     def test_modern_plot_convergence_plotly(self, mock_create_viz, mock_px, mock_go):
         """Test modern convergence plotting with Plotly backend."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_convergence
+        from mfgarchon.visualization.legacy_plotting import modern_plot_convergence
 
         # Setup convergence data
         convergence_data = {
@@ -364,13 +364,13 @@ class TestModernPlotConvergence:
 
         assert result is mock_fig
 
-    @patch("mfg_pde.visualization.legacy_plotting.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.legacy_plotting.go")
-    @patch("mfg_pde.visualization.legacy_plotting.px")
-    @patch("mfg_pde.visualization.interactive_plots.create_visualization_manager")
+    @patch("mfgarchon.visualization.legacy_plotting.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.legacy_plotting.go")
+    @patch("mfgarchon.visualization.legacy_plotting.px")
+    @patch("mfgarchon.visualization.interactive_plots.create_visualization_manager")
     def test_modern_plot_convergence_with_tolerances(self, mock_create_viz, mock_px, mock_go):
         """Test convergence plotting with tolerance lines."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_convergence
+        from mfgarchon.visualization.legacy_plotting import modern_plot_convergence
 
         convergence_data = {"error": [1e-1, 1e-2, 1e-3]}
         tolerances = {"error": 1e-4}
@@ -388,13 +388,13 @@ class TestModernPlotConvergence:
         # Should add horizontal line for tolerance
         mock_fig.add_hline.assert_called_once()
 
-    @patch("mfg_pde.visualization.legacy_plotting.PLOTLY_AVAILABLE", True)
-    @patch("mfg_pde.visualization.legacy_plotting.go")
-    @patch("mfg_pde.visualization.legacy_plotting.px")
-    @patch("mfg_pde.visualization.interactive_plots.create_visualization_manager")
+    @patch("mfgarchon.visualization.legacy_plotting.PLOTLY_AVAILABLE", True)
+    @patch("mfgarchon.visualization.legacy_plotting.go")
+    @patch("mfgarchon.visualization.legacy_plotting.px")
+    @patch("mfgarchon.visualization.interactive_plots.create_visualization_manager")
     def test_modern_plot_convergence_save_plotly(self, mock_create_viz, mock_px, mock_go, tmp_path):
         """Test saving Plotly convergence plot."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_convergence
+        from mfgarchon.visualization.legacy_plotting import modern_plot_convergence
 
         convergence_data = {"error": [1e-1, 1e-2]}
 
@@ -415,7 +415,7 @@ class TestModernPlotConvergence:
     @patch("matplotlib.pyplot")
     def test_modern_plot_convergence_matplotlib_fallback(self, mock_plt):
         """Test matplotlib fallback for convergence plotting."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_convergence
+        from mfgarchon.visualization.legacy_plotting import modern_plot_convergence
 
         convergence_data = {
             "U_error": [1e-1, 1e-2, 1e-3],
@@ -445,7 +445,7 @@ class TestModernPlotConvergence:
     @patch("matplotlib.pyplot")
     def test_modern_plot_convergence_matplotlib_with_tolerances(self, mock_plt):
         """Test matplotlib convergence plotting with tolerance lines."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_convergence
+        from mfgarchon.visualization.legacy_plotting import modern_plot_convergence
 
         convergence_data = {"error": [1e-1, 1e-2]}
         tolerances = {"error": 1e-3}
@@ -462,7 +462,7 @@ class TestModernPlotConvergence:
     @patch("matplotlib.pyplot")
     def test_modern_plot_convergence_matplotlib_save(self, mock_plt, tmp_path):
         """Test saving matplotlib convergence plot."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_convergence
+        from mfgarchon.visualization.legacy_plotting import modern_plot_convergence
 
         convergence_data = {"error": [1e-1, 1e-2]}
 
@@ -477,12 +477,12 @@ class TestModernPlotConvergence:
         mock_plt.savefig.assert_called_once()
         assert save_path in mock_plt.savefig.call_args[0]
 
-    @patch("mfg_pde.visualization.legacy_plotting.warnings.warn")
+    @patch("mfgarchon.visualization.legacy_plotting.warnings.warn")
     @patch("matplotlib.pyplot")
-    @patch("mfg_pde.visualization.interactive_plots.create_visualization_manager")
+    @patch("mfgarchon.visualization.interactive_plots.create_visualization_manager")
     def test_modern_plot_convergence_exception_fallback(self, mock_create_viz, mock_plt, mock_warn):
         """Test fallback to matplotlib on exception."""
-        from mfg_pde.visualization.legacy_plotting import modern_plot_convergence
+        from mfgarchon.visualization.legacy_plotting import modern_plot_convergence
 
         convergence_data = {"error": [1e-1, 1e-2]}
 
@@ -509,19 +509,19 @@ class TestBackwardCompatibilityAliases:
 
     def test_legacy_myplot3d_alias(self):
         """Test that legacy_myplot3d is an alias for myplot3d."""
-        from mfg_pde.visualization.legacy_plotting import legacy_myplot3d, myplot3d
+        from mfgarchon.visualization.legacy_plotting import legacy_myplot3d, myplot3d
 
         assert legacy_myplot3d is myplot3d
 
     def test_legacy_plot_convergence_alias(self):
         """Test that legacy_plot_convergence is an alias."""
-        from mfg_pde.visualization.legacy_plotting import legacy_plot_convergence, plot_convergence
+        from mfgarchon.visualization.legacy_plotting import legacy_plot_convergence, plot_convergence
 
         assert legacy_plot_convergence is plot_convergence
 
     def test_legacy_plot_results_alias(self):
         """Test that legacy_plot_results is an alias."""
-        from mfg_pde.visualization.legacy_plotting import legacy_plot_results, plot_results
+        from mfgarchon.visualization.legacy_plotting import legacy_plot_results, plot_results
 
         assert legacy_plot_results is plot_results
 
@@ -548,10 +548,10 @@ class TestMatplotlibConfiguration:
 class TestIntegration:
     """Integration tests for legacy plotting module."""
 
-    @patch("mfg_pde.visualization.legacy_plotting.plt")
+    @patch("mfgarchon.visualization.legacy_plotting.plt")
     def test_full_workflow_legacy_functions(self, mock_plt, mock_problem):
         """Test complete workflow using legacy plotting functions."""
-        from mfg_pde.visualization.legacy_plotting import plot_convergence, plot_results
+        from mfgarchon.visualization.legacy_plotting import plot_convergence, plot_results
 
         # Create solution data
         u = np.random.rand(6, 11)
@@ -564,7 +564,7 @@ class TestIntegration:
         errors_m = np.array([2e-1, 2e-2, 2e-3, 2e-4, 2e-5])
 
         # Mock myplot3d to avoid actual plotting
-        with patch("mfg_pde.visualization.legacy_plotting.myplot3d"):
+        with patch("mfgarchon.visualization.legacy_plotting.myplot3d"):
             # Plot results
             plot_results(mock_problem, u, m, solver_name="IntegrationTest")
 

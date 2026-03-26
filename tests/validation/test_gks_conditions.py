@@ -14,7 +14,7 @@ import pytest
 import numpy as np
 from scipy.sparse import csr_matrix, diags
 
-from mfg_pde.geometry.boundary.validation.gks import (
+from mfgarchon.geometry.boundary.validation.gks import (
     GKSResult,
     check_gks_convergence,
     check_gks_stability,

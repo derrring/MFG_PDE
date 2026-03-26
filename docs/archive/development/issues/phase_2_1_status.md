@@ -10,7 +10,7 @@ Successfully refactored HJB FDM solver to use trait-based geometry operators, el
 ## Completed Work
 
 ### 1. Trait Validation
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:180-189`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:180-189`
 
 Added `isinstance(geometry, SupportsGradient)` check in `__init__()`:
 ```python
@@ -22,7 +22,7 @@ if not isinstance(problem.geometry, SupportsGradient):
 ```
 
 ### 2. Operator Retrieval
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:233-236`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:233-236`
 
 Retrieve gradient operators during initialization:
 ```python
@@ -31,7 +31,7 @@ self._gradient_operators = problem.geometry.get_gradient_operator(scheme=scheme)
 ```
 
 ### 3. Gradient Computation Refactoring
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:631-672`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:631-672`
 
 **Before**: ~132 lines of manual gradient computation with ghost values
 **After**: ~40 lines using trait-based operators
@@ -57,7 +57,7 @@ def _compute_gradients_nd(self, U: NDArray, time: float = 0.0) -> dict[int, NDAr
 ```
 
 ### 4. Time Parameter Support
-**File**: `mfg_pde/geometry/grids/tensor_grid.py:1518-1556`
+**File**: `mfgarchon/geometry/grids/tensor_grid.py:1518-1556`
 
 Added `time` parameter to `get_gradient_operator()` to support time-dependent BCs:
 ```python

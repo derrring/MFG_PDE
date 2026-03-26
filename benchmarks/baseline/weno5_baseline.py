@@ -19,8 +19,8 @@ import numpy as np
 
 def benchmark_smoothness_indicators():
     """Benchmark WENO5 smoothness indicators."""
-    from mfg_pde import MFGProblem
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+    from mfgarchon import MFGProblem
+    from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
     # Create solver
     problem = MFGProblem(Nx=100, Nt=50, T=1.0)

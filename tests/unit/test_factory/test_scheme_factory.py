@@ -8,13 +8,13 @@ Issue #673: Updated to class-based Hamiltonian API.
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg import SchemeFamily
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.factory import create_paired_solvers, get_recommended_scheme
-from mfg_pde.types import NumericalScheme
-from mfg_pde.utils import DualityStatus, check_solver_duality
+from mfgarchon import MFGProblem
+from mfgarchon.alg import SchemeFamily
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.factory import create_paired_solvers, get_recommended_scheme
+from mfgarchon.types import NumericalScheme
+from mfgarchon.utils import DualityStatus, check_solver_duality
 
 
 def _default_hamiltonian():
@@ -45,8 +45,8 @@ class TestCreatePairedSolversFDM:
         hjb, fp = create_paired_solvers(problem, NumericalScheme.FDM_UPWIND)
 
         # Check solver types
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         assert isinstance(hjb, HJBFDMSolver)
         assert isinstance(fp, FPFDMSolver)
@@ -78,8 +78,8 @@ class TestCreatePairedSolversFDM:
         hjb, fp = create_paired_solvers(problem, NumericalScheme.FDM_CENTERED)
 
         # Check solver types
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
 
         assert isinstance(hjb, HJBFDMSolver)
         assert isinstance(fp, FPFDMSolver)
@@ -112,8 +112,8 @@ class TestCreatePairedSolversSL:
         hjb, fp = create_paired_solvers(problem, NumericalScheme.SL_LINEAR)
 
         # Check solver types
-        from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPSLSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 
         assert isinstance(hjb, HJBSemiLagrangianSolver)
         assert isinstance(fp, FPSLSolver)  # Forward SL, not backward
@@ -140,8 +140,8 @@ class TestCreatePairedSolversSL:
         hjb, fp = create_paired_solvers(problem, NumericalScheme.SL_CUBIC)
 
         # Check solver types
-        from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPSLSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 
         assert isinstance(hjb, HJBSemiLagrangianSolver)
         assert isinstance(fp, FPSLSolver)
@@ -156,7 +156,7 @@ class TestCreatePairedSolversSL:
         _, fp = create_paired_solvers(problem, NumericalScheme.SL_LINEAR)
 
         # Must be FPSLSolver (forward splatting), not FPSLJacobianSolver (backward interpolation)
-        from mfg_pde.alg.numerical.fp_solvers import FPSLSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPSLSolver
 
         assert isinstance(fp, FPSLSolver)
         assert fp.fp_method_name == "Adjoint Semi-Lagrangian"
@@ -180,8 +180,8 @@ class TestCreatePairedSolversGFDM:
         )
 
         # Check solver types
-        from mfg_pde.alg.numerical.fp_solvers import FPGFDMSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+        from mfgarchon.alg.numerical.fp_solvers import FPGFDMSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBGFDMSolver
 
         assert isinstance(hjb, HJBGFDMSolver)
         assert isinstance(fp, FPGFDMSolver)

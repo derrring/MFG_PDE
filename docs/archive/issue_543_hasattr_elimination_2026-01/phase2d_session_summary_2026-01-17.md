@@ -5,7 +5,7 @@
 
 ## Summary
 
-**Starting Point**: 90 hasattr violations in `mfg_pde/alg/`
+**Starting Point**: 90 hasattr violations in `mfgarchon/alg/`
 **Violations Addressed**: 33/90 (37%)
 - **Fixed (replaced with better patterns)**: 8 violations (9%)
 - **Documented as acceptable**: 25 violations (28%)
@@ -199,16 +199,16 @@ After all work: **~4/149 actual violations** (97% cleanup rate)
 
 ## Files Modified (4 total)
 
-1. **`mfg_pde/alg/numerical/density_estimation.py`**
+1. **`mfgarchon/alg/numerical/density_estimation.py`**
    - 12 backend compatibility checks documented
    
-2. **`mfg_pde/alg/numerical/hjb_solvers/base_hjb.py`**
+2. **`mfgarchon/alg/numerical/hjb_solvers/base_hjb.py`**
    - 6 backend compatibility checks documented
    
-3. **`mfg_pde/alg/neural/pinn_solvers/base_pinn.py`**
+3. **`mfgarchon/alg/neural/pinn_solvers/base_pinn.py`**
    - 4 Problem API violations fixed
    
-4. **`mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`**
+4. **`mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`**
    - 3 Problem API violations fixed
    - 6 internal cache patterns documented
    - 1 interface check fixed

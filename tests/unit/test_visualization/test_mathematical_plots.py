@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.visualization.mathematical_plots import (
+from mfgarchon.visualization.mathematical_plots import (
     MathematicalPlotter,
     MFGMathematicalVisualizer,
     create_mathematical_visualizer,

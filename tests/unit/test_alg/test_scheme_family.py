@@ -6,7 +6,7 @@ Tests the internal scheme family enum used for duality validation in Issue #580.
 
 import pytest
 
-from mfg_pde.alg import SchemeFamily
+from mfgarchon.alg import SchemeFamily
 
 
 class TestSchemeFamilyEnum:
@@ -87,20 +87,20 @@ class TestImportability:
     """Test that enum is properly exported and importable."""
 
     def test_import_from_alg(self):
-        """Test import from mfg_pde.alg."""
-        from mfg_pde.alg import SchemeFamily
+        """Test import from mfgarchon.alg."""
+        from mfgarchon.alg import SchemeFamily
 
         assert SchemeFamily.FDM.value == "fdm"
 
     def test_import_from_base_solver(self):
         """Test import from base_solver module."""
-        from mfg_pde.alg.base_solver import SchemeFamily
+        from mfgarchon.alg.base_solver import SchemeFamily
 
         assert SchemeFamily.GFDM.value == "gfdm"
 
     def test_no_circular_imports(self):
         """Test that importing doesn't cause circular import errors."""
-        from mfg_pde.alg.base_solver import SchemeFamily
+        from mfgarchon.alg.base_solver import SchemeFamily
 
         assert SchemeFamily is not None
 
@@ -260,9 +260,9 @@ if __name__ == "__main__":
     print(f"✓ Total families: {len(list(SchemeFamily))}")
 
     # Test importability
-    from mfg_pde.alg import SchemeFamily as FamilyEnum
+    from mfgarchon.alg import SchemeFamily as FamilyEnum
 
-    print(f"✓ Import from mfg_pde.alg: {FamilyEnum.FDM.value}")
+    print(f"✓ Import from mfgarchon.alg: {FamilyEnum.FDM.value}")
 
     # Test validator pattern
     class MockSolver:

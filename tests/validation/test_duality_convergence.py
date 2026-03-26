@@ -30,10 +30,10 @@ import pytest
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.types import NumericalScheme
+from mfgarchon import MFGProblem
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.types import NumericalScheme
 
 
 def _default_hamiltonian():
@@ -149,8 +149,8 @@ class TestDualityConvergence:
 
     def test_safe_mode_guarantees_duality(self):
         """Test that Safe Mode automatically creates dual pairs."""
-        from mfg_pde.factory import create_paired_solvers
-        from mfg_pde.utils import check_solver_duality
+        from mfgarchon.factory import create_paired_solvers
+        from mfgarchon.utils import check_solver_duality
 
         problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
 
@@ -168,9 +168,9 @@ class TestDualityConvergence:
 
     def test_expert_mode_detects_mismatch(self):
         """Test that Expert Mode detects non-dual pairs."""
-        from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver, FPSLSolver
-        from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-        from mfg_pde.utils import check_solver_duality
+        from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver, FPSLSolver
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.utils import check_solver_duality
 
         problem = MFGProblem(Nx=[20], Nt=10, T=1.0, components=_default_components())
 
@@ -283,8 +283,8 @@ if __name__ == "__main__":
     # Smoke test - run quick validation
     print("Running duality convergence validation...\n")
 
-    from mfg_pde.factory import create_paired_solvers
-    from mfg_pde.utils import check_solver_duality
+    from mfgarchon.factory import create_paired_solvers
+    from mfgarchon.utils import check_solver_duality
 
     # Test 1: Verify dual pairing
     print("Test 1: Safe Mode duality guarantee")

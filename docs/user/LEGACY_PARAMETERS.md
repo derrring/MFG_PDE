@@ -42,15 +42,15 @@ The legacy API creates:
 
 **Before (Deprecated)**:
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, T=1.0, Nt=50, diffusion=0.1)
 ```
 
 **After (Modern)**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, diffusion=0.1)
@@ -74,7 +74,7 @@ problem = MFGProblem(
 
 **After**:
 ```python
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 
 geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 2.0)], Nx_points=[51])
 problem = MFGProblem(
@@ -149,7 +149,7 @@ geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 
 ❌ **Wrong**:
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 # Missing import!
 
 geometry = TensorProductGrid(...)  # ← NameError
@@ -157,8 +157,8 @@ geometry = TensorProductGrid(...)  # ← NameError
 
 ✅ **Correct**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid  # ← Add this
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid  # ← Add this
 
 geometry = TensorProductGrid(...)
 ```
@@ -202,4 +202,4 @@ geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 ---
 
 **Last Updated**: 2026-01-18
-**Author**: MFG_PDE Development Team
+**Author**: MFGarchon Development Team

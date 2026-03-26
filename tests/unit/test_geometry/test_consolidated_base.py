@@ -9,10 +9,10 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.base import CartesianGrid, Geometry
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.geometry.protocol import AdaptiveGeometry, is_adaptive
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.base import CartesianGrid, Geometry
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.geometry.protocol import AdaptiveGeometry, is_adaptive
 
 
 class TestGeometryProtocolCompliance:
@@ -487,7 +487,7 @@ class TestAdaptiveGeometryProtocol:
 
             @property
             def geometry_type(self):
-                from mfg_pde.geometry.protocol import GeometryType
+                from mfgarchon.geometry.protocol import GeometryType
 
                 return GeometryType.CARTESIAN_GRID
 

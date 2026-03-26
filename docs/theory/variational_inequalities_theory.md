@@ -3,7 +3,7 @@
 **Date**: 2026-01-18
 **Issue**: #594 Phase 5.1 - Theory Documentation
 **Implementation**: Phase 2 (Issue #591)
-**Related**: `mfg_pde/geometry/boundary/constraints.py`, `examples/advanced/capacity_constrained_mfg_1d.py`
+**Related**: `mfgarchon/geometry/boundary/constraints.py`, `examples/advanced/capacity_constrained_mfg_1d.py`
 
 ---
 
@@ -596,8 +596,8 @@ $$
 ### 10.2 Implementation (Phase 2 - Issue #591)
 
 **Files**:
-- `mfg_pde/geometry/boundary/constraints.py` - `ObstacleConstraint` protocol
-- `mfg_pde/alg/numerical/projections.py` - Projection operators
+- `mfgarchon/geometry/boundary/constraints.py` - `ObstacleConstraint` protocol
+- `mfgarchon/alg/numerical/projections.py` - Projection operators
 - `examples/advanced/capacity_constrained_mfg_1d.py` - Full MFG with capacity
 - `examples/advanced/obstacle_problem_1d.py` - 1D obstacle validation
 

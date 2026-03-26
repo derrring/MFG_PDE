@@ -245,7 +245,7 @@ def initial_density(self, x):
 - [ ] Investigate FP solver mass conservation during time-stepping
 - [ ] Check if issue exists in other FDM tests
 - [ ] Identify root cause of 99.87% mass loss
-- [ ] Fix FP solver (mfg_pde/alg/numerical/fp_solvers/)
+- [ ] Fix FP solver (mfgarchon/alg/numerical/fp_solvers/)
 - [ ] Re-run full validation test suite after fix
 
 ---

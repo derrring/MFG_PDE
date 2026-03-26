@@ -29,7 +29,7 @@
 ### **Core Components**
 
 #### 1. **LagrangianMFGProblem**
-- **Location**: `mfg_pde/core/lagrangian_mfg_problem.py`
+- **Location**: `mfgarchon/core/lagrangian_mfg_problem.py`
 - **Purpose**: Problem specification using cost functionals
 - **Key Features**:
   - Lagrangian function L(t,x,v,m)
@@ -38,7 +38,7 @@
   - Automatic Hamiltonian conversion
 
 ```python
-from mfg_pde.core.lagrangian_mfg_problem import create_quadratic_lagrangian_mfg
+from mfgarchon.core.lagrangian_mfg_problem import create_quadratic_lagrangian_mfg
 
 # Create standard quadratic MFG
 problem = create_quadratic_lagrangian_mfg(
@@ -52,12 +52,12 @@ cost = problem.evaluate_lagrangian(t=0.5, x=0.3, v=0.2, m=1.5)
 ```
 
 #### 2. **VariationalMFGSolver**
-- **Location**: `mfg_pde/alg/variational_solvers/variational_mfg_solver.py`
+- **Location**: `mfgarchon/alg/variational_solvers/variational_mfg_solver.py`
 - **Purpose**: Direct optimization of action functional
 - **Method**: Minimizes J[m] = ∫∫ L(t,x,v,m) m dxdt + ∫ g(x)m(T,x) dx
 
 ```python
-from mfg_pde.alg.variational_solvers.variational_mfg_solver import VariationalMFGSolver
+from mfgarchon.alg.variational_solvers.variational_mfg_solver import VariationalMFGSolver
 
 solver = VariationalMFGSolver(
     problem,
@@ -106,8 +106,8 @@ hjb_fp_result = solve_with_hjb_fp(hamiltonian_problem)
 
 ### **1. Basic Quadratic Problem**
 ```python
-from mfg_pde.core.lagrangian_mfg_problem import create_quadratic_lagrangian_mfg
-from mfg_pde.alg.variational_solvers.variational_mfg_solver import VariationalMFGSolver
+from mfgarchon.core.lagrangian_mfg_problem import create_quadratic_lagrangian_mfg
+from mfgarchon.alg.variational_solvers.variational_mfg_solver import VariationalMFGSolver
 
 # Create problem: L(t,x,v,m) = |v|²/2 + β*m
 problem = create_quadratic_lagrangian_mfg(
@@ -126,7 +126,7 @@ print(f"Final cost: {result.final_cost}")
 
 ### **2. Obstacle Avoidance**
 ```python
-from mfg_pde.core.lagrangian_mfg_problem import create_obstacle_lagrangian_mfg
+from mfgarchon.core.lagrangian_mfg_problem import create_obstacle_lagrangian_mfg
 
 # Create problem with circular obstacle
 problem = create_obstacle_lagrangian_mfg(
@@ -315,7 +315,7 @@ def plot_lagrangian_solution(result, problem):
 
 ## Conclusion
 
-The Lagrangian formulation provides essential capabilities that significantly enhance the MFG_PDE framework:
+The Lagrangian formulation provides essential capabilities that significantly enhance the MFGarchon framework:
 
 1. **Mathematical Completeness**: Dual perspective to Hamiltonian methods
 2. **Constraint Handling**: Natural framework for complex constraints  
@@ -329,5 +329,5 @@ The Lagrangian formulation provides essential capabilities that significantly en
 
 **Implementation Status**: Complete core system with examples and validation  
 **Documentation**: Comprehensive system documentation  
-**Integration**: Full compatibility with existing MFG_PDE framework  
+**Integration**: Full compatibility with existing MFGarchon framework  
 **Examples**: Basic usage, constraints, comparisons with Hamiltonian methods

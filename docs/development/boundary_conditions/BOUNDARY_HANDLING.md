@@ -6,7 +6,7 @@
 
 ## Purpose
 
-This document defines the **unified workflow** for boundary condition handling across all MFG_PDE solvers. It eliminates duplicate BC detection logic and mixin hell by standardizing how solvers use the existing geometry and BC infrastructure.
+This document defines the **unified workflow** for boundary condition handling across all MFGarchon solvers. It eliminates duplicate BC detection logic and mixin hell by standardizing how solvers use the existing geometry and BC infrastructure.
 
 ## Problem: Mixin Hell
 
@@ -42,7 +42,7 @@ class HJBGFDMSolver(
 
 ## Infrastructure Overview
 
-### 1. GeometryProtocol (`mfg_pde/geometry/protocol.py`)
+### 1. GeometryProtocol (`mfgarchon/geometry/protocol.py`)
 
 **Core Boundary Methods** (mandatory for all geometries):
 ```python
@@ -114,9 +114,9 @@ class GeometryProtocol(Protocol):
         return boundary_indices, normals
 ```
 
-**Default Implementation**: Available in `Geometry` base class (`mfg_pde/geometry/base.py`) - all geometries inherit these for free.
+**Default Implementation**: Available in `Geometry` base class (`mfgarchon/geometry/base.py`) - all geometries inherit these for free.
 
-### 2. BC Applicator Infrastructure (`mfg_pde/geometry/boundary/`)
+### 2. BC Applicator Infrastructure (`mfgarchon/geometry/boundary/`)
 
 **BCApplicatorProtocol**:
 ```python
@@ -225,7 +225,7 @@ class HJBGFDMSolver:
         self._detect_boundary_points()
 
         # Create BC applicator (composition, not mixin)
-        from mfg_pde.geometry.boundary import create_applicator
+        from mfgarchon.geometry.boundary import create_applicator
         self.bc_applicator = create_applicator(
             bc=self.bc,
             geometry=self.geometry,
@@ -303,7 +303,7 @@ class HJBFDMSolver:
         """
         FDM uses centralized ghost cell method (GOOD PATTERN - keep it).
         """
-        from mfg_pde.geometry.boundary import get_ghost_values_nd
+        from mfgarchon.geometry.boundary import get_ghost_values_nd
 
         # Apply ghost cells
         U_with_ghost = get_ghost_values_nd(
@@ -574,13 +574,13 @@ def test_get_boundary_info():
 
 ### BoundaryHandler Protocol
 
-Common interface for solver boundary condition handling, defined in `mfg_pde/geometry/boundary/handler_protocol.py`.
+Common interface for solver boundary condition handling, defined in `mfgarchon/geometry/boundary/handler_protocol.py`.
 
 ```python
 from typing import Protocol
 import numpy as np
 from numpy.typing import NDArray
-from mfg_pde.geometry.boundary import BoundaryConditions
+from mfgarchon.geometry.boundary import BoundaryConditions
 
 class BoundaryHandler(Protocol):
     """Common interface for solver boundary condition handling."""
@@ -727,7 +727,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
     def apply_boundary_conditions(self, values, bc, time=0.0):
         """Apply BC using ghost cells (FDM method)."""
-        from mfg_pde.geometry.boundary import get_ghost_values_nd
+        from mfgarchon.geometry.boundary import get_ghost_values_nd
 
         ghost_values = get_ghost_values_nd(
             values.reshape(self.shape),
@@ -780,7 +780,7 @@ For migrating existing solvers to BoundaryHandler protocol:
 ### Runtime Validation
 
 ```python
-from mfg_pde.geometry.boundary import validate_boundary_handler
+from mfgarchon.geometry.boundary import validate_boundary_handler
 
 # Check if solver implements protocol
 if validate_boundary_handler(solver):
@@ -826,7 +826,7 @@ else:
 ```python
 def test_solver_implements_protocol(solver):
     """Test that solver implements BoundaryHandler protocol."""
-    from mfg_pde.geometry.boundary import validate_boundary_handler
+    from mfgarchon.geometry.boundary import validate_boundary_handler
 
     assert validate_boundary_handler(solver)
 
@@ -860,7 +860,7 @@ def test_apply_boundary_conditions(solver, bc):
 
 ### References
 
-- **Protocol Definition**: `mfg_pde/geometry/boundary/handler_protocol.py`
+- **Protocol Definition**: `mfgarchon/geometry/boundary/handler_protocol.py`
 - **Issue #545**: Refactor solver BC handling (Mixin Hell → Composition)
 - **Issue #542**: GFDM BC fixes (motivation)
 - **Issue #543**: hasattr elimination (Particle solver)

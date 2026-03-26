@@ -11,7 +11,7 @@
 ### Core Solvers
 
 - [x] **HJB nD FDM Solver**
-  - File: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm_multid.py`
+  - File: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm_multid.py`
   - Commit: `4d454c6`
   - Status: ✅ Created and committed
   - Features:
@@ -22,7 +22,7 @@
     - [x] Newton iteration for nonlinear HJB
 
 - [x] **FP nD FDM Solver**
-  - File: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_multid.py`
+  - File: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_multid.py`
   - Commit: `753cfd4`
   - Status: ✅ Created and committed
   - Features:
@@ -33,7 +33,7 @@
     - [x] Compatible with nD HJB
 
 - [x] **Dimension-Agnostic MFG Coupling**
-  - File: `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py`
+  - File: `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py`
   - Commit: `aaacc2a`
   - Status: ✅ Modified and committed
   - Features:
@@ -158,7 +158,7 @@
 
 - [x] **Issue #200: Architecture Refactoring**
   - Status: ✅ Updated with comprehensive comment
-  - Comment URL: https://github.com/derrring/MFG_PDE/issues/200#issuecomment-3469722505
+  - Comment URL: https://github.com/derrring/mfgarchon/issues/200#issuecomment-3469722505
   - Changes:
     - [x] Critical Finding #1 → RESOLVED
     - [x] All 5 Phase 2 deliverables documented
@@ -168,7 +168,7 @@
 
 - [x] **Issue #199: Anderson Multi-Dimensional**
   - Status: ✅ Closed with resolution comment
-  - Comment URL: https://github.com/derrring/MFG_PDE/issues/199#issuecomment-3471325043
+  - Comment URL: https://github.com/derrring/mfgarchon/issues/199#issuecomment-3471325043
   - Changes:
     - [x] Resolution documented (fixed in PR #201)
     - [x] Usage examples provided

@@ -6,7 +6,7 @@
 
 ## Overview
 
-The `mfg_pde/operators/` module provides reusable mathematical operators for PDE solving. This document defines what belongs in `operators/` vs other locations.
+The `mfgarchon/operators/` module provides reusable mathematical operators for PDE solving. This document defines what belongs in `operators/` vs other locations.
 
 ## Definition: What is an "Operator"?
 
@@ -24,7 +24,7 @@ An **algorithm** (does NOT belong in `operators/`):
 ## Module Structure
 
 ```
-mfg_pde/operators/
+mfgarchon/operators/
 ├── differential/          # Grid-based differential operators
 │   ├── gradient.py        # PartialDerivOperator
 │   ├── laplacian.py       # LaplacianOperator
@@ -100,8 +100,8 @@ Solvers (combine operators with iteration/timestepping)
 ## Migration Notes
 
 ### Deprecated Locations
-- `mfg_pde.geometry.operators` → use `mfg_pde.operators`
-- `mfg_pde.utils.numerical.tensor_calculus` → use `mfg_pde.operators.stencils`
+- `mfgarchon.geometry.operators` → use `mfgarchon.operators`
+- `mfgarchon.utils.numerical.tensor_calculus` → use `mfgarchon.operators.stencils`
 
 ### Backward Compatibility
 Old imports work with deprecation warnings until v0.20.0.

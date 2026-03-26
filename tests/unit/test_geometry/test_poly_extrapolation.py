@@ -6,8 +6,8 @@ Tests the Vandermonde-based polynomial extrapolation for order > 2.
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import dirichlet_bc, neumann_bc
-from mfg_pde.geometry.boundary.applicator_fdm import PreallocatedGhostBuffer
+from mfgarchon.geometry.boundary import dirichlet_bc, neumann_bc
+from mfgarchon.geometry.boundary.applicator_fdm import PreallocatedGhostBuffer
 
 
 def test_order_3_neumann_1d():

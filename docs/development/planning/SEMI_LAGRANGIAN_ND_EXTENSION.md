@@ -2,7 +2,7 @@
 
 **Date**: 2025-11-01
 **Status**: Core implementation complete, testing pending
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`
 
 ---
 
@@ -76,7 +76,7 @@ H = |P|²/2 + C·m + V(x)        (scalar output, vector input)
 ### File Structure
 
 ```
-mfg_pde/alg/numerical/hjb_solvers/
+mfgarchon/alg/numerical/hjb_solvers/
 └── hjb_semi_lagrangian.py    # Unified 1D + nD implementation (~800 lines)
 ```
 
@@ -273,9 +273,9 @@ for multi_idx in np.ndindex(tuple(self.grid.num_points)):
 ### 2D Crowd Motion Problem
 
 ```python
-from mfg_pde.core.highdim_mfg_problem import GridBasedMFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.geometry import TensorProductGrid, BoundaryConditions
+from mfgarchon.core.highdim_mfg_problem import GridBasedMFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+from mfgarchon.geometry import TensorProductGrid, BoundaryConditions
 
 # Create 2D tensor product grid
 grid = TensorProductGrid(
@@ -308,7 +308,7 @@ hjb_solver = HJBSemiLagrangianSolver(
 )
 
 # Use in MFG solver
-from mfg_pde.factory import create_basic_solver
+from mfgarchon.factory import create_basic_solver
 solver = create_basic_solver(problem, hjb_solver=hjb_solver)
 result = solver.solve()
 ```
@@ -474,8 +474,8 @@ result = solver.solve()
 ### Related Documentation
 
 - `docs/implementation/FULL_ND_FP_SOLVER.md`: FP solver nD extension
-- `mfg_pde/geometry/tensor_product_grid.py`: Grid infrastructure
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`: FP solver (template)
+- `mfgarchon/geometry/tensor_product_grid.py`: Grid infrastructure
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`: FP solver (template)
 
 ### Literature
 

@@ -16,7 +16,7 @@ pytestmark = pytest.mark.optional_torch
 
 torch = pytest.importorskip("torch")
 
-from mfg_pde.alg.reinforcement.algorithms import (  # noqa: E402
+from mfgarchon.alg.reinforcement.algorithms import (  # noqa: E402
     ActorNetwork,
     CriticNetwork,
     MeanFieldActorCritic,

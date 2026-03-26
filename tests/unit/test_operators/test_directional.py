@@ -14,11 +14,11 @@ import pytest
 import numpy as np
 from scipy.sparse.linalg import LinearOperator
 
-from mfg_pde.operators.differential.directional import (
+from mfgarchon.operators.differential.directional import (
     DirectDerivOperator,
     NormalDerivOperator,
 )
-from mfg_pde.operators.differential.function_gradient import (
+from mfgarchon.operators.differential.function_gradient import (
     HasAnalyticalGradient,
     function_gradient,
     outward_normal_from_sdf,

@@ -18,7 +18,7 @@ Successfully integrated `LaplacianOperator` into FP FDM solver, replacing manual
 
 ### 1. Function Signature Update
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:266-274`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:266-274`
 
 **Before**:
 ```python
@@ -51,7 +51,7 @@ def solve_timestep_explicit_with_drift(
 
 ### 2. Implementation Refactoring
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:328-351`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:328-351`
 
 **Before** (18 lines):
 ```python
@@ -77,11 +77,11 @@ M_star = sparse.linalg.spsolve(A_diffusion, b_rhs).reshape(shape)
 ```python
 # Set default boundary conditions
 if boundary_conditions is None:
-    from mfg_pde.geometry.boundary import no_flux_bc
+    from mfgarchon.geometry.boundary import no_flux_bc
     boundary_conditions = no_flux_bc(dimension=ndim)
 
 # Step 1: Implicit diffusion using LaplacianOperator (Issue #597 Milestone 2B)
-from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+from mfgarchon.geometry.operators.laplacian import LaplacianOperator
 
 L_op = LaplacianOperator(spacings=list(spacing), field_shape=shape, bc=boundary_conditions)
 L_matrix = L_op.as_scipy_sparse()
@@ -109,7 +109,7 @@ M_star = sparse.linalg.spsolve(A_diffusion, b_rhs).reshape(shape)
 
 ### 3. Call Site Update
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:591-599`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:591-599`
 
 **Before**:
 ```python
@@ -138,7 +138,7 @@ M_next = solve_timestep_explicit_with_drift(
 
 ### 4. Deprecation Notice
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:138-167`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py:138-167`
 
 Added comprehensive deprecation notice to `_build_diffusion_matrix_with_bc()`:
 - Marked as deprecated since v0.17.0
@@ -280,7 +280,7 @@ Milestone 2 is **COMPLETE** when:
 
 ## Related Files Modified
 
-1. **`mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`**
+1. **`mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`**
    - Updated `solve_timestep_explicit_with_drift()` signature and implementation
    - Added deprecation notice to `_build_diffusion_matrix_with_bc()`
    - Updated call site to pass `boundary_conditions`

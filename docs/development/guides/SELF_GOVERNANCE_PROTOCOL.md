@@ -2,7 +2,7 @@
 
 ## Overview
 
-As the primary maintainer of MFG_PDE, this protocol ensures disciplined, high-quality changes through structured decision-making and comprehensive quality gates.
+As the primary maintainer of MFGarchon, this protocol ensures disciplined, high-quality changes through structured decision-making and comprehensive quality gates.
 
 ## Protocol Workflow
 
@@ -79,7 +79,7 @@ git commit -m "Add AMR solver with error estimation"
 
 ## Next Steps
 
-This protocol is now operational and should be used for all significant changes to MFG_PDE. The next implementation task is to complete the remaining type modernization work using this structured approach.
+This protocol is now operational and should be used for all significant changes to MFGarchon. The next implementation task is to complete the remaining type modernization work using this structured approach.
 
 ---
 

@@ -14,7 +14,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.solver_result import (
+from mfgarchon.utils.solver_result import (
     ComparisonReport,
     ConvergenceAnalysis,
     SolverResult,
@@ -685,7 +685,7 @@ class TestResearchReportCreation:
         def mock_import(name, *args, **kwargs):
             if name == "plotly" or name.startswith("plotly."):
                 raise ImportError("plotly not available")
-            if name == "mfg_pde.utils.notebooks.reporting":
+            if name == "mfgarchon.utils.notebooks.reporting":
                 # This will also fail because it imports plotly
                 raise ImportError("notebook support")
             return original_import(name, *args, **kwargs)

@@ -1,7 +1,7 @@
 import importlib
 import pkgutil
 
-import mfg_pde
+import mfgarchon
 
 
 def check_imports(package):
@@ -39,9 +39,9 @@ def check_imports(package):
 
 
 if __name__ == "__main__":
-    print("Checking for circular imports in mfg_pde...")
+    print("Checking for circular imports in mfgarchon...")
     try:
-        check_imports(mfg_pde)
+        check_imports(mfgarchon)
     except Exception as e:
         print(f"Critical error during check: {e}")
     print("Import check complete.")

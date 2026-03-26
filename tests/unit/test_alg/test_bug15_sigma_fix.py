@@ -9,7 +9,7 @@ Bug Description:
     when using QP constraints with particle-based methods.
 
 Fix Location:
-    mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1573-1583
+    mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:1573-1583
 
 Test Strategy:
     1. Test with callable sigma (standard case)

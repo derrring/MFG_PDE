@@ -42,7 +42,7 @@ Refactor Fokker-Planck (FP) solvers to use trait-based geometry interfaces for d
 
 **Diffusion Term**: `(σ²/2) Δm`
 ```python
-from mfg_pde.utils.numerical.tensor_calculus import diffusion as tensor_diffusion_op
+from mfgarchon.utils.numerical.tensor_calculus import diffusion as tensor_diffusion_op
 
 # Current usage
 m_new = tensor_diffusion_op(m, spacings, sigma_squared, bc=bc)
@@ -102,7 +102,7 @@ def __init__(self, problem, ...):
     super().__init__(problem)
 
     # Validate geometry capabilities (Issue #596 Phase 2.2)
-    from mfg_pde.geometry.protocols import SupportsLaplacian
+    from mfgarchon.geometry.protocols import SupportsLaplacian
 
     if not isinstance(problem.geometry, SupportsLaplacian):
         raise TypeError(
@@ -117,7 +117,7 @@ def __init__(self, problem, ...):
 
 **Current**:
 ```python
-from mfg_pde.utils.numerical.tensor_calculus import diffusion as tensor_diffusion_op
+from mfgarchon.utils.numerical.tensor_calculus import diffusion as tensor_diffusion_op
 
 # In time-stepping loop
 m_new = tensor_diffusion_op(m_current, spacings, sigma_squared, bc=bc)
@@ -146,7 +146,7 @@ A = sparse.eye(N) - (dt * sigma_squared / 2) * L_matrix
 
 ### Step 3: Update LaplacianOperator for Sparse Matrix
 
-**File**: `mfg_pde/geometry/operators/laplacian.py`
+**File**: `mfgarchon/geometry/operators/laplacian.py`
 
 Add method to export as scipy sparse matrix:
 
@@ -162,7 +162,7 @@ class LaplacianOperator(LinearOperator):
         Returns:
             Sparse CSR matrix representation of Laplacian
         """
-        from mfg_pde.utils.numerical.tensor_calculus import build_laplacian_matrix
+        from mfgarchon.utils.numerical.tensor_calculus import build_laplacian_matrix
 
         # Delegate to tensor_calculus matrix builder
         return build_laplacian_matrix(

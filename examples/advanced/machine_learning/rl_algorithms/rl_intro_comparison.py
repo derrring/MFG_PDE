@@ -7,7 +7,7 @@ This example compares the three Phase 2 RL algorithms on a simple maze:
 2. Mean Field Actor-Critic (PPO / Population PPO)
 3. Nash Q-Learning (same as Q-Learning for symmetric MFG)
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -36,9 +36,9 @@ except ImportError:
     print("Gymnasium not available. Please install: pip install gymnasium")
     sys.exit(1)
 
-from mfg_pde.alg.reinforcement.algorithms import MeanFieldActorCritic
-from mfg_pde.alg.reinforcement.algorithms.mean_field_q_learning import create_mean_field_q_learning
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.algorithms import MeanFieldActorCritic
+from mfgarchon.alg.reinforcement.algorithms.mean_field_q_learning import create_mean_field_q_learning
+from mfgarchon.alg.reinforcement.environments import (
     ActionType,
     MFGMazeConfig,
     MFGMazeEnvironment,

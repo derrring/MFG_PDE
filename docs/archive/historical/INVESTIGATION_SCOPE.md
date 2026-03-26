@@ -1,6 +1,6 @@
 # Architecture Audit Investigation: Scope and Scale
 
-**Comprehensive investigation of mfg-research to enrich MFG_PDE architecture audit**
+**Comprehensive investigation of mfg-research to enrich MFGarchon architecture audit**
 
 ---
 
@@ -318,7 +318,7 @@ Bug #15: QP Sigma Type Error
 ├── Discovered: Week 2
 ├── Impact: Cannot use QP without workaround
 ├── Fix: SmartSigma class (workaround)
-└── Status: NOT FIXED in MFG_PDE
+└── Status: NOT FIXED in MFGarchon
 ```
 
 ### Performance Issues
@@ -394,7 +394,7 @@ Solver Return Formats:
 ```
 ⚠️ Research Code Focus:
 ├── mfg-research repository only
-├── Did not analyze MFG_PDE source deeply
+├── Did not analyze MFGarchon source deeply
 └── Relied on documented experiences
 
 ⚠️ Time Constraint:
@@ -541,7 +541,7 @@ ROI Calculation:
 - [x] Found ALL theory.md files
 - [x] Cataloged ALL *BUG*, *ISSUE* documents
 - [x] Counted total problem instances (48)
-- [x] Cross-referenced with MFG_PDE_ARCHITECTURE_AUDIT.md
+- [x] Cross-referenced with MFGarchon_ARCHITECTURE_AUDIT.md
 - [x] Provided specific file:line evidence for each claim
 - [x] Estimated impact (time/complexity) quantitatively
 
@@ -596,7 +596,7 @@ DELIVERABLES:
 
 **Investigation Status**: COMPLETE
 **Quality Level**: Production-grade with full traceability
-**Next Step**: Review by MFG_PDE maintainers
+**Next Step**: Review by MFGarchon maintainers
 **Contact**: Research team (mfg-research repository)
 
 ---

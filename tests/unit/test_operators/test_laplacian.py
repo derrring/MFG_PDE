@@ -12,8 +12,8 @@ import pytest
 import numpy as np
 from scipy.sparse.linalg import LinearOperator
 
-from mfg_pde.geometry.boundary import neumann_bc, no_flux_bc, periodic_bc
-from mfg_pde.operators.differential.laplacian import LaplacianOperator
+from mfgarchon.geometry.boundary import neumann_bc, no_flux_bc, periodic_bc
+from mfgarchon.operators.differential.laplacian import LaplacianOperator
 
 # =============================================================================
 # Fixtures

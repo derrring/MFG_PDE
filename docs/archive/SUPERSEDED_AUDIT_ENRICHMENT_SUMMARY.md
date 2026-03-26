@@ -57,13 +57,13 @@
 - **Root Cause**: Line 453: `b = u_center - u_neighbors` (should be reversed)
 - **Impact**: Agents move away from goals, MFG doesn't converge
 - **Status**: FIXED, merged, GitHub issue filed
-- **Evidence**: `experiments/maze_navigation/archives/bugs/bug14_gfdm_sign/BUG_14_MFG_PDE_REPORT.md`
+- **Evidence**: `experiments/maze_navigation/archives/bugs/bug14_gfdm_sign/BUG_14_MFGarchon_REPORT.md`
 
 #### Bug #15: QP Sigma Type Error
 - **Symptom**: `TypeError: 'method' and 'int'` in QP monotonicity check
 - **Root Cause**: Code expects numeric `sigma`, particle methods use callable `sigma(x)`
 - **Impact**: Cannot use QP constraints without workaround
-- **Status**: Workaround exists (`SmartSigma`), NOT FIXED in MFG_PDE
+- **Status**: Workaround exists (`SmartSigma`), NOT FIXED in MFGarchon
 - **Evidence**: `experiments/maze_navigation/archives/bugs/bug15_qp_sigma/BUG_15_QP_SIGMA_METHOD.md`
 
 ---
@@ -92,7 +92,7 @@
 | Component | Lines | Reason |
 |-----------|-------|--------|
 | Custom problem classes | 1,080 | Standard classes don't fit 2D+obstacles |
-| Utility functions | 1,655 | Missing from MFG_PDE (interpolation, SDF, QP caching) |
+| Utility functions | 1,655 | Missing from MFGarchon (interpolation, SDF, QP caching) |
 | Adapter/wrapper code | 150 | Type incompatibilities |
 | Test workarounds | 400 | Broken solver combinations |
 
@@ -208,7 +208,7 @@
 
 1. **Fix Bug #15** (QP sigma API)
    ```python
-   # mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:818
+   # mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:818
    if hasattr(self.problem, "nu"):
        sigma_val = self.problem.nu
    elif callable(getattr(self.problem, "sigma", None)):
@@ -219,7 +219,7 @@
 
 2. **Fix Anderson multi-dimensional**
    ```python
-   # mfg_pde/utils/numerical/anderson_acceleration.py
+   # mfgarchon/utils/numerical/anderson_acceleration.py
    def update(self, x_current, f_current, method="type1"):
        original_shape = x_current.shape
        if len(original_shape) > 1:
@@ -248,7 +248,7 @@
 
 **Ideal User Code**:
 ```python
-from mfg_pde import MFGProblem, solve_mfg
+from mfgarchon import MFGProblem, solve_mfg
 
 # Single problem class for all dimensions
 problem = MFGProblem(
@@ -359,13 +359,13 @@ U, M, info = solution
 
 **Quick Links**:
 - Bug #13 Index: `docs/archived_bug_investigations/BUG_13_INDEX.md`
-- Bug #14 Report: `experiments/maze_navigation/archives/bugs/bug14_gfdm_sign/BUG_14_MFG_PDE_REPORT.md`
+- Bug #14 Report: `experiments/maze_navigation/archives/bugs/bug14_gfdm_sign/BUG_14_MFGarchon_REPORT.md`
 - Bug #15 Analysis: `experiments/maze_navigation/archives/bugs/bug15_qp_sigma/BUG_15_QP_SIGMA_METHOD.md`
 - FDM Limitation: `experiments/maze_navigation/FDM_SOLVER_LIMITATION_ANALYSIS.md`
 - Anderson Issue: `experiments/maze_navigation/ANDERSON_ISSUE_POSTED.md`
-- Original Audit: `experiments/maze_navigation/MFG_PDE_ARCHITECTURE_AUDIT.md`
+- Original Audit: `experiments/maze_navigation/MFGarchon_ARCHITECTURE_AUDIT.md`
 
 ---
 
-**Status**: Complete and ready for MFG_PDE maintainers
+**Status**: Complete and ready for MFGarchon maintainers
 **Last Updated**: 2025-10-30

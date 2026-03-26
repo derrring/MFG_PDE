@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-MFG_PDE has a **partial Parquet implementation** with 543 lines of well-tested Polars integration code but missing the PyArrow dependency required for Parquet I/O. This document justifies the decision to **complete the integration** by adding `pyarrow>=10.0` to optional dependencies, making MFG_PDE ready for Phase 3 HPC workflows.
+MFGarchon has a **partial Parquet implementation** with 543 lines of well-tested Polars integration code but missing the PyArrow dependency required for Parquet I/O. This document justifies the decision to **complete the integration** by adding `pyarrow>=10.0` to optional dependencies, making MFGarchon ready for Phase 3 HPC workflows.
 
 **Key Decision**: Add PyArrow to the `performance` optional dependency group in `pyproject.toml`.
 
@@ -20,7 +20,7 @@ MFG_PDE has a **partial Parquet implementation** with 543 lines of well-tested P
 ### Current Implementation Status
 
 **What Exists** ✅:
-- **Polars integration**: Fully implemented (`mfg_pde/utils/data/polars_integration.py`, 543 lines)
+- **Polars integration**: Fully implemented (`mfgarchon/utils/data/polars_integration.py`, 543 lines)
 - **Data structures**: `MFGDataFrame`, `MFGParameterSweepAnalyzer`, `MFGTimeSeriesAnalyzer`
 - **Export/Import methods**:
   - `export_to_parquet()` (line 459)
@@ -106,7 +106,7 @@ During pre-Phase 3 repository health check, user initiated discussion: "need us 
 #### Use Case 1: MPI Solver Outputs
 ```python
 # Each MPI rank exports local solution (parallel I/O)
-from mfg_pde.utils.data import create_data_exporter
+from mfgarchon.utils.data import create_data_exporter
 
 exporter = create_data_exporter()
 local_solution_df = create_local_solution_dataframe(rank, u, m)
@@ -128,7 +128,7 @@ global_solution = all_solutions.sort("rank", "x")
 ```python
 # SLURM array job: Each task exports Parquet
 # Job array: --array=0-999 (1000 parameter combinations)
-from mfg_pde.utils.data import MFGParameterSweepAnalyzer
+from mfgarchon.utils.data import MFGParameterSweepAnalyzer
 
 analyzer = MFGParameterSweepAnalyzer()
 sweep_df = analyzer.create_sweep_dataframe([result])
@@ -147,7 +147,7 @@ optimal = all_results.filter(pl.col("convergence_error") < 1e-6).sort("runtime")
 #### Use Case 3: Neural Operator Training Datasets
 ```python
 # Store training dataset (10,000 MFG problem instances)
-from mfg_pde.utils.data import create_data_exporter
+from mfgarchon.utils.data import create_data_exporter
 
 training_data = []
 for params in parameter_grid:
@@ -190,7 +190,7 @@ class MFGParquetDataset(Dataset):
 - **Big Data**: Apache Spark, Apache Flink
 - **HPC**: Distributed computing workflows
 
-**MFG_PDE Future Compatibility**:
+**MFGarchon Future Compatibility**:
 - Neural operator training pipelines
 - Cloud deployment (Docker/Kubernetes)
 - Large-scale parameter optimization
@@ -228,7 +228,7 @@ performance = [
 
 **For users wanting Parquet support**:
 ```bash
-pip install mfg_pde[performance]
+pip install mfgarchon[performance]
 ```
 
 **For developers**:
@@ -241,7 +241,7 @@ pip install -e ".[performance]"
 **Manual verification**:
 ```python
 # Test Parquet export/import
-from mfg_pde.utils.data import MFGDataFrame, create_data_exporter
+from mfgarchon.utils.data import MFGDataFrame, create_data_exporter
 import numpy as np
 
 # Create test data
@@ -279,12 +279,12 @@ print("✅ Parquet integration working")
 ```markdown
 ### Data Export Formats
 
-MFG_PDE supports multiple export formats for parameter sweeps and solutions:
+MFGarchon supports multiple export formats for parameter sweeps and solutions:
 
 - **CSV**: Human-readable, universal compatibility (default)
 - **JSON**: Structured data, web-friendly
 - **Parquet**: High-performance columnar format for large-scale data
-  - Requires: `pip install mfg_pde[performance]`
+  - Requires: `pip install mfgarchon[performance]`
   - Benefits: 5-10× faster queries, 50-80% smaller files
   - Use cases: Parameter sweeps, neural training data, HPC workflows
 ```
@@ -341,7 +341,7 @@ def export_to_parquet(self, df: MFGDataFrame, filepath: str | Path) -> None:
 
 ### User Impact
 **Positive**:
-- Users installing `mfg_pde[performance]` get Parquet support automatically
+- Users installing `mfgarchon[performance]` get Parquet support automatically
 - Parameter sweep exports become 5-10× faster for large datasets
 - Phase 3 HPC examples will use Parquet format
 
@@ -404,9 +404,9 @@ def export_to_parquet(self, df: MFGDataFrame, filepath: str | Path) -> None:
 - Apache Parquet Format: https://parquet.apache.org/docs/
 - PyArrow Documentation: https://arrow.apache.org/docs/python/
 
-### MFG_PDE Code References
-- Polars integration: `mfg_pde/utils/data/polars_integration.py:459-526`
-- Usage in analytics: `mfg_pde/visualization/mfg_analytics.py:230,446`
+### MFGarchon Code References
+- Polars integration: `mfgarchon/utils/data/polars_integration.py:459-526`
+- Usage in analytics: `mfgarchon/visualization/mfg_analytics.py:230,446`
 - Phase 3 preparation: `docs/development/PHASE_3_PREPARATION_2025.md`
 
 ### Related Issues

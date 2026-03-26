@@ -1,12 +1,12 @@
 # Continuous MFG Environments User Guide
 
-Comprehensive guide to the continuous action space environments in MFG_PDE's reinforcement learning framework.
+Comprehensive guide to the continuous action space environments in MFGarchon's reinforcement learning framework.
 
 ## Overview
 
 The continuous environments library provides **5 production-ready environments** for benchmarking RL algorithms (DDPG, TD3, SAC) on diverse Mean Field Game problems. Each environment demonstrates different aspects of MFG theory and provides distinct algorithmic challenges.
 
-**Package**: `mfg_pde.alg.reinforcement.environments`
+**Package**: `mfgarchon.alg.reinforcement.environments`
 **Base Class**: `ContinuousMFGEnvBase`
 **API Standard**: Gymnasium (OpenAI Gym)
 
@@ -46,8 +46,8 @@ r = -state_cost * (x^2 + v^2)           # State penalty
 
 **Example**:
 ```python
-from mfg_pde.alg.reinforcement.environments import LQMFGEnv
-from mfg_pde.alg.reinforcement.algorithms import MeanFieldSAC
+from mfgarchon.alg.reinforcement.environments import LQMFGEnv
+from mfgarchon.alg.reinforcement.algorithms import MeanFieldSAC
 
 # Create environment
 env = LQMFGEnv(
@@ -105,7 +105,7 @@ r = -distance_cost * ||pos - goal||^2        # Distance to goal
 
 **Example**:
 ```python
-from mfg_pde.alg.reinforcement.environments import CrowdNavigationEnv
+from mfgarchon.alg.reinforcement.environments import CrowdNavigationEnv
 
 env = CrowdNavigationEnv(
     num_agents=100,
@@ -165,7 +165,7 @@ r = pnl(spread, fills)                       # Profit from market making
 
 **Example**:
 ```python
-from mfg_pde.alg.reinforcement.environments import PriceFormationEnv
+from mfgarchon.alg.reinforcement.environments import PriceFormationEnv
 
 env = PriceFormationEnv(
     q_max=10.0,
@@ -232,7 +232,7 @@ r = portfolio_return(w, asset_returns)       # w^T · returns
 
 **Example**:
 ```python
-from mfg_pde.alg.reinforcement.environments import ResourceAllocationEnv
+from mfgarchon.alg.reinforcement.environments import ResourceAllocationEnv
 
 env = ResourceAllocationEnv(
     num_assets=3,
@@ -307,7 +307,7 @@ r = progress(x_new - x_old)                  # Forward movement
 
 **Example**:
 ```python
-from mfg_pde.alg.reinforcement.environments import TrafficFlowEnv
+from mfgarchon.alg.reinforcement.environments import TrafficFlowEnv
 
 env = TrafficFlowEnv(
     corridor_length=10.0,
@@ -346,7 +346,7 @@ if terminated:
 ### Basic Environment Usage
 
 ```python
-from mfg_pde.alg.reinforcement.environments import CrowdNavigationEnv
+from mfgarchon.alg.reinforcement.environments import CrowdNavigationEnv
 
 # 1. Create environment
 env = CrowdNavigationEnv(num_agents=100)
@@ -375,8 +375,8 @@ env.close()
 ### Training with SAC
 
 ```python
-from mfg_pde.alg.reinforcement.algorithms import MeanFieldSAC
-from mfg_pde.alg.reinforcement.environments import PriceFormationEnv
+from mfgarchon.alg.reinforcement.algorithms import MeanFieldSAC
+from mfgarchon.alg.reinforcement.environments import PriceFormationEnv
 
 # Create environment
 env = PriceFormationEnv(num_agents=100)
@@ -410,8 +410,8 @@ plt.show()
 ### Benchmarking Multiple Algorithms
 
 ```python
-from mfg_pde.alg.reinforcement.algorithms import MeanFieldDDPG, MeanFieldTD3, MeanFieldSAC
-from mfg_pde.alg.reinforcement.environments import TrafficFlowEnv
+from mfgarchon.alg.reinforcement.algorithms import MeanFieldDDPG, MeanFieldTD3, MeanFieldSAC
+from mfgarchon.alg.reinforcement.environments import TrafficFlowEnv
 
 env = TrafficFlowEnv(num_agents=100)
 
@@ -439,7 +439,7 @@ for name, rewards in results.items():
 To create a custom continuous MFG environment, inherit from `ContinuousMFGEnvBase`:
 
 ```python
-from mfg_pde.alg.reinforcement.environments import ContinuousMFGEnvBase
+from mfgarchon.alg.reinforcement.environments import ContinuousMFGEnvBase
 import numpy as np
 
 class MyCustomEnv(ContinuousMFGEnvBase):
@@ -575,7 +575,7 @@ pip install gymnasium
 
 ## Related Documentation
 
-- [Quickstart Guide](quickstart.md) - Getting started with MFG_PDE
+- [Quickstart Guide](quickstart.md) - Getting started with MFGarchon
 - [Advanced Examples](../../examples/advanced/) - More complex examples
 
 ---

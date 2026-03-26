@@ -1,8 +1,8 @@
-# MFG_PDE Comprehensive Consistency Guide
+# MFGarchon Comprehensive Consistency Guide
 
 **Version:** 1.0  
 **Date:** July 26, 2025  
-**Purpose:** Master guide for maintaining consistency across all aspects of the MFG_PDE repository  
+**Purpose:** Master guide for maintaining consistency across all aspects of the MFGarchon repository  
 
 This document consolidates all consistency standards into a single authoritative reference, covering code, documentation, mathematical notation, naming conventions, testing patterns, and architectural decisions.
 
@@ -137,7 +137,7 @@ def __init__(self,
 **✅ STRUCTURED RESULTS (MODERN):**
 ```python
 # New solvers should return structured results
-from mfg_pde.utils.solver_result import SolverResult
+from mfgarchon.utils.solver_result import SolverResult
 
 result = SolverResult(
     solution=U,
@@ -164,15 +164,15 @@ return U, M, info  # Where info is a dict with convergence data
 **✅ MANDATORY PATTERNS:**
 ```python
 # 1. Always show modern factory pattern first
-from mfg_pde.factory import create_standard_solver
-from mfg_pde.config import create_fast_config
+from mfgarchon.factory import create_standard_solver
+from mfgarchon.config import create_fast_config
 
 config = create_fast_config()
 solver = create_standard_solver(problem, "solver_type", config=config)
 result = solver.solve()
 
 # 2. Then show direct class usage as alternative
-from mfg_pde.alg import SolverClassName
+from mfgarchon.alg import SolverClassName
 
 solver = SolverClassName(
     problem=problem,
@@ -185,7 +185,7 @@ U, M, info = solver.solve()
 **❌ PROHIBITED PATTERNS:**
 ```python
 # DON'T use old class names in examples
-from mfg_pde.alg import HJBGFDMSmartQPSolver  # OLD
+from mfgarchon.alg import HJBGFDMSmartQPSolver  # OLD
 
 # DON'T use old parameter names
 solver.solve(NiterNewton=30)  # OLD
@@ -438,7 +438,7 @@ def validate_performance_regression(timing_data, baseline_time, tolerance=1.5):
 
 **✅ PACKAGE STRUCTURE:**
 ```
-mfg_pde/
+mfgarchon/
 ├── __init__.py              # Main exports
 ├── core/                    # Core problem definitions
 ├── alg/                     # Algorithm implementations
@@ -488,8 +488,8 @@ except ImportError:
     PLOTLY_AVAILABLE = False
 
 # 3. Internal package imports (absolute preferred)
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.utils.validation import validate_solution_array
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.utils.validation import validate_solution_array
 from .logging import get_logger  # Relative only within same package
 ```
 
@@ -564,9 +564,9 @@ def create_solver(problem, solver_type, config=None, **kwargs):
 
 **✅ STANDARD EXCEPTION CLASSES:**
 ```python
-# Base exception for MFG_PDE
+# Base exception for MFGarchon
 class MFGPDEError(Exception):
-    """Base exception for MFG_PDE package"""
+    """Base exception for MFGarchon package"""
     pass
 
 # Specific exception categories
@@ -638,8 +638,8 @@ def __init__(self, problem, NiterNewton=None, max_newton_iterations=None, **kwar
 
 **✅ __init__.py EXPORT STANDARDS:**
 ```python
-# mfg_pde/__init__.py
-"""MFG_PDE: Numerical Solvers for Mean Field Games"""
+# mfgarchon/__init__.py
+"""MFGarchon: Numerical Solvers for Mean Field Games"""
 
 # Core exports (most commonly used)
 from .core.mfg_problem import MFGProblem, MFGProblem
@@ -655,7 +655,7 @@ from .config import MFGSolverConfig, create_fast_config, create_accurate_config
 
 # Version info
 __version__ = "1.4.0"
-__author__ = "MFG_PDE Development Team"
+__author__ = "MFGarchon Development Team"
 
 # All exports for * imports (discouraged but needed)
 __all__ = [
@@ -868,12 +868,12 @@ echo "Consistency checks passed!"
 solver = HJBGFDMQPSolver(problem, NiterNewton=30, newton_tolerance=1e-6)
 
 # Wrong: Deprecated class names
-from mfg_pde.alg import HJBGFDMSmartQPSolver
+from mfgarchon.alg import HJBGFDMSmartQPSolver
 
 # Wrong: Inconsistent import organization
-from mfg_pde.core.boundaries import BoundaryConditions
-import numpy as np  # Should be before mfg_pde imports
-from mfg_pde.core.mfg_problem import MFGProblem
+from mfgarchon.core.boundaries import BoundaryConditions
+import numpy as np  # Should be before mfgarchon imports
+from mfgarchon.core.mfg_problem import MFGProblem
 ```
 
 **Documentation Inconsistencies:**

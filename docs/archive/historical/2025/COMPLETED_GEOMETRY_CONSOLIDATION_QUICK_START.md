@@ -21,7 +21,7 @@
 - ❌ NO if: Need to ship other features urgently
 
 **Q2: What's the minimal viable first step?**
-- Create `Geometry` ABC in new file `mfg_pde/geometry/base.py`
+- Create `Geometry` ABC in new file `mfgarchon/geometry/base.py`
 - Migrate ONE class (`TensorProductGrid`) as proof of concept
 - Update ONE solver (`HJBFDMSolver`) to use new pattern
 - **Estimated time**: 4-8 hours
@@ -36,7 +36,7 @@
 
 ### Step 1: Create `Geometry` ABC (30 min)
 
-Create `mfg_pde/geometry/base.py`:
+Create `mfgarchon/geometry/base.py`:
 
 ```python
 from abc import ABC, abstractmethod
@@ -113,7 +113,7 @@ class CartesianGrid(Geometry):
 
 ### Step 2: Migrate `TensorProductGrid` (1-2 hours)
 
-Edit `mfg_pde/geometry/tensor_product_grid.py`:
+Edit `mfgarchon/geometry/tensor_product_grid.py`:
 
 ```python
 # Add import
@@ -219,7 +219,7 @@ class TensorProductGrid(CartesianGrid):  # Was: no inheritance
     def get_boundary_handler(self):
         """Return boundary condition handler."""
         # Placeholder - implement based on BC type
-        from mfg_pde.geometry.boundary.bc_1d import BoundaryConditions
+        from mfgarchon.geometry.boundary.bc_1d import BoundaryConditions
         return BoundaryConditions(bc_type="periodic")  # Default
 
     def get_bounds(self) -> tuple[NDArray, NDArray]:
@@ -238,11 +238,11 @@ class TensorProductGrid(CartesianGrid):  # Was: no inheritance
 
 ### Step 3: Update ONE Solver (1-2 hours)
 
-Edit `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`:
+Edit `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`:
 
 ```python
 # Add imports
-from mfg_pde.geometry.base import CartesianGrid
+from mfgarchon.geometry.base import CartesianGrid
 
 class HJBFDMSolver:
     def __init__(self, problem: MFGProblemProtocol):
@@ -286,8 +286,8 @@ Create `tests/unit/test_geometry/test_consolidated_base.py`:
 ```python
 import numpy as np
 import pytest
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.base import Geometry, CartesianGrid
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.base import Geometry, CartesianGrid
 
 
 def test_tensorproductgrid_is_geometry():
@@ -386,7 +386,7 @@ pytest tests/unit/test_geometry/test_consolidated_base.py -v
 
 ### Step 5: Add Backward Compatibility (15 min)
 
-Edit `mfg_pde/geometry/__init__.py`:
+Edit `mfgarchon/geometry/__init__.py`:
 
 ```python
 # New imports
@@ -404,7 +404,7 @@ class GeometryProtocol(_GeometryProtocol):
     def __init_subclass__(cls):
         warnings.warn(
             f"{cls.__name__} uses deprecated GeometryProtocol. "
-            f"Use mfg_pde.geometry.Geometry instead. "
+            f"Use mfgarchon.geometry.Geometry instead. "
             f"Will be removed in v1.0.0.",
             DeprecationWarning,
             stacklevel=2

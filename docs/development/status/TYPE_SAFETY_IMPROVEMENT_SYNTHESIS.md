@@ -1,4 +1,4 @@
-# MFG_PDE Type Safety Improvement: Complete Journey ✅
+# MFGarchon Type Safety Improvement: Complete Journey ✅
 
 **Document Status**: Synthesis of Phases 4-13.1 (October 2025)
 **Supersedes**: Individual phase documents (`type_safety_phase*.md`)
@@ -434,7 +434,7 @@ def select_action(self) -> tuple[int, float]:
 
 ### Recommendations 🎯
 
-**For MFG_PDE Project**:
+**For MFGarchon Project**:
 1. ✅ **Accept 50% milestone as completion point**
    - Substantial improvement achieved
    - Diminishing returns make further work inefficient

@@ -68,7 +68,7 @@ This is **standard CFD practice** (e.g., SIMPLE algorithm, inexact Newton method
 
 ### 1. Refactored Explicit Advection Functions
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_advection.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_advection.py`
 
 **Before** (~120 lines manual upwind):
 ```python
@@ -84,7 +84,7 @@ def _compute_upwind_advection(M, drift_per_dim, spacing, ndim):
 ```python
 def compute_advection_term_nd(M, U, coupling_coefficient, spacing, ...):
     """Compute advection using AdvectionOperator (Issue #597 M3)."""
-    from mfg_pde.geometry.operators.advection import AdvectionOperator
+    from mfgarchon.geometry.operators.advection import AdvectionOperator
 
     # Compute drift velocity
     drift_per_dim = [-coupling_coefficient * np.gradient(U, dx, axis=d)
@@ -156,18 +156,18 @@ Issue #597 Milestone 3 - Hybrid Operator Strategy:
 
 ### Modified Files
 
-1. **`mfg_pde/alg/numerical/fp_solvers/fp_fdm_advection.py`**
+1. **`mfgarchon/alg/numerical/fp_solvers/fp_fdm_advection.py`**
    - Refactored `compute_advection_term_nd()` to use AdvectionOperator
    - Refactored `compute_advection_from_drift_nd()` to use AdvectionOperator
    - Deprecated `_compute_upwind_advection()` with warning
    - Added Issue #597 documentation
 
-2. **`mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`**
+2. **`mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`**
    - Added comprehensive module docstring explaining hybrid strategy
    - Documented Defect Correction framework
    - No functional changes (implicit solver unchanged)
 
-3. **`mfg_pde/geometry/operators/advection.py`**
+3. **`mfgarchon/geometry/operators/advection.py`**
    - Added `as_scipy_sparse()` method (unit-vector probing approach)
    - Documented Godunov upwind limitations
    - Note: Method works for periodic BC but not general use (documented)

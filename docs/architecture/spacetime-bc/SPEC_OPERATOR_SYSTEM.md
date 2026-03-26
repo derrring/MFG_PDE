@@ -9,7 +9,7 @@
 
 ## 1. Motivation
 
-MFG_PDE has a mature operator library (`mfg_pde/operators/differential/`)
+MFGarchon has a mature operator library (`mfgarchon/operators/differential/`)
 with 8+ concrete operators inheriting from `scipy.sparse.linalg.LinearOperator`.
 Geometries advertise operator support via 4 protocol traits. This system works
 but has structural gaps:
@@ -31,7 +31,7 @@ This spec proposes a trait system that formalizes these patterns.
 
 ### 2.1 Operator Protocols (Geometry Traits)
 
-**Location**: `mfg_pde/geometry/protocols/operators.py`
+**Location**: `mfgarchon/geometry/protocols/operators.py`
 
 | Protocol | Method | Returns |
 |:---------|:-------|:--------|
@@ -49,7 +49,7 @@ if isinstance(geometry, SupportsLaplacian):
 
 ### 2.2 Concrete Operators
 
-**Location**: `mfg_pde/operators/differential/`
+**Location**: `mfgarchon/operators/differential/`
 
 | Operator | File | Shape | scipy LO | Key Feature |
 |:---------|:-----|:------|:---------|:------------|
@@ -64,7 +64,7 @@ if isinstance(geometry, SupportsLaplacian):
 
 ### 2.3 Stencil Layer
 
-**Location**: `mfg_pde/operators/stencils/finite_difference.py`
+**Location**: `mfgarchon/operators/stencils/finite_difference.py`
 
 Low-level functions providing the computational kernels:
 
@@ -161,7 +161,7 @@ class OperatorTraits:
 
 ```python
 class PDEOperator(LinearOperator):
-    """Base class for all MFG_PDE differential operators.
+    """Base class for all MFGarchon differential operators.
 
     Extends scipy.sparse.linalg.LinearOperator with:
     - Operator traits (metadata)

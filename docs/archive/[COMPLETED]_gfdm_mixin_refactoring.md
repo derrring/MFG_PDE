@@ -33,7 +33,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 ## Components Created
 
 ### 1. GridCollocationMapper (Phase 1)
-**Location**: `mfg_pde/alg/numerical/gfdm_components/grid_collocation_mapper.py`
+**Location**: `mfgarchon/alg/numerical/gfdm_components/grid_collocation_mapper.py`
 **Lines**: 324
 **Extracted from**: `GFDMInterpolationMixin`
 
@@ -49,7 +49,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 - `_build_interpolation_matrix()` - Pre-compute sparse interpolation
 
 ### 2. MonotonicityEnforcer (Phase 2)
-**Location**: `mfg_pde/alg/numerical/gfdm_components/monotonicity_enforcer.py`
+**Location**: `mfgarchon/alg/numerical/gfdm_components/monotonicity_enforcer.py`
 **Lines**: 248
 **Extracted from**: `HJBGFDMMonotonicityMixin`
 
@@ -65,7 +65,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 - `_solve_qp(qp_problem)` - Optimize weights
 
 ### 3. BoundaryHandler (Phase 3)
-**Location**: `mfg_pde/alg/numerical/gfdm_components/boundary_handler.py`
+**Location**: `mfgarchon/alg/numerical/gfdm_components/boundary_handler.py`
 **Lines**: 780
 **Extracted from**: `GFDMBoundaryMixin`
 
@@ -82,7 +82,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 - `build_neumann_bc_weights()` - GFDM weights for ∂u/∂n
 
 ### 4. NeighborhoodBuilder (Phase 4)
-**Location**: `mfg_pde/alg/numerical/gfdm_components/neighborhood_builder.py`
+**Location**: `mfgarchon/alg/numerical/gfdm_components/neighborhood_builder.py`
 **Lines**: 865
 **Extracted from**: `GFDMStencilMixin`
 

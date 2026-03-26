@@ -1,14 +1,14 @@
 # AMR Quick Reference Guide
 
 **Date**: August 1, 2025  
-**Module**: `mfg_pde.geometry.amr_mesh`, `mfg_pde.alg.mfg_solvers.amr_mfg_solver`
+**Module**: `mfgarchon.geometry.amr_mesh`, `mfgarchon.alg.mfg_solvers.amr_mfg_solver`
 
 ## Quick Start
 
 ### Basic Usage
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_amr_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_amr_solver
 
 # Create problem
 problem = MFGProblem(Nx=32, Nt=50, T=1.0)
@@ -83,8 +83,8 @@ amr_solver = create_amr_solver(
 
 ### Custom Refinement Criteria
 ```python
-from mfg_pde.geometry.amr_mesh import AMRRefinementCriteria, create_amr_mesh
-from mfg_pde.alg.mfg_solvers.amr_mfg_solver import AMRMFGSolver
+from mfgarchon.geometry.amr_mesh import AMRRefinementCriteria, create_amr_mesh
+from mfgarchon.alg.mfg_solvers.amr_mfg_solver import AMRMFGSolver
 
 # Custom criteria
 criteria = AMRRefinementCriteria(
@@ -264,7 +264,7 @@ amr_solver = create_amr_solver(problem, error_threshold=1e-3)
 amr_solver = create_amr_solver(problem, max_levels=3)
 
 # Solution: Set minimum cell size
-from mfg_pde.geometry.amr_mesh import AMRRefinementCriteria
+from mfgarchon.geometry.amr_mesh import AMRRefinementCriteria
 criteria = AMRRefinementCriteria(min_cell_size=1e-6)
 ```
 
@@ -296,7 +296,7 @@ amr_solver = create_amr_solver(problem, backend="numpy")
 
 ### JAX-Specific Functions
 ```python
-from mfg_pde.alg.mfg_solvers.amr_mfg_solver import JAXAcceleratedAMR
+from mfgarchon.alg.mfg_solvers.amr_mfg_solver import JAXAcceleratedAMR
 
 # GPU-accelerated error computation
 error_indicators = JAXAcceleratedAMR.compute_error_indicators(U, M, dx, dy)
@@ -312,26 +312,26 @@ values_new = JAXAcceleratedAMR.gradient_preserving_interpolation_2d(
 )
 ```
 
-## Integration with MFG_PDE
+## Integration with MFGarchon
 
 ### Factory Integration
 ```python
 # Available through main factory
-from mfg_pde.factory import create_amr_solver
+from mfgarchon.factory import create_amr_solver
 
 # Also available as solver type
-from mfg_pde.factory import create_solver
+from mfgarchon.factory import create_solver
 amr_solver = create_solver(problem, solver_type="amr", error_threshold=1e-4)
 
 # Integration with other factory functions
-from mfg_pde.factory import create_accurate_solver
+from mfgarchon.factory import create_accurate_solver
 amr_solver = create_accurate_solver(problem, solver_type="amr")
 ```
 
 ### Backend Integration
 ```python
 # Works with existing backend system
-from mfg_pde.backends import create_backend
+from mfgarchon.backends import create_backend
 
 backend = create_backend("jax")
 amr_solver = create_amr_solver(problem, backend=backend)
@@ -376,4 +376,4 @@ Mass conservation enforced:
 ---
 
 **Last Updated**: August 1, 2025  
-**Version**: MFG_PDE 2.0+
+**Version**: MFGarchon 2.0+

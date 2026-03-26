@@ -434,12 +434,12 @@ See `git log --oneline feature/drift-strategy-pattern` for full history.
 
 **Priority**: High | **Effort**: 1 day
 
-- **File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+- **File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 + **Detailed Design**: See `PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md` Section 2
 
 - #### Implementation Plan
 -
-- **File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+- **File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 -
 - Update `_solve_fp_1d()` to handle spatially/temporally varying diffusion:
 -

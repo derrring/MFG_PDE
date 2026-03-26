@@ -20,7 +20,7 @@ p_x = derivs.get((1, 0), 0.0)
 
 ### New Format (STANDARD)
 ```python
-from mfg_pde.core import DerivativeTensors
+from mfgarchon.core import DerivativeTensors
 import numpy as np
 
 derivs = DerivativeTensors.from_arrays(
@@ -34,9 +34,9 @@ grad_norm_sq = derivs.grad_norm_squared  # |∇u|²
 ## Migration Phases
 
 ### Phase 1: Add DerivativeTensors (v0.17.0) ✅ COMPLETED
-- [x] Create `mfg_pde/core/derivatives.py` with `DerivativeTensors` class
+- [x] Create `mfgarchon/core/derivatives.py` with `DerivativeTensors` class
 - [x] Add conversion utilities: `from_multi_index_dict()`, `to_multi_index_dict()`
-- [x] Export from `mfg_pde.core`
+- [x] Export from `mfgarchon.core`
 - [x] Update `NAMING_CONVENTIONS.md`
 
 ### Phase 2: Update Solvers (v0.17.0) ✅ COMPLETED
@@ -46,7 +46,7 @@ grad_norm_sq = derivs.grad_norm_squared  # |∇u|²
 - [x] Update `MFGProblem.H()` to accept `DerivativeTensors`
 
 ### Phase 3: Deprecate Legacy Format (v0.17.0 - v0.19.0) 🔄 IN PROGRESS
-- [x] Add deprecation warning to `mfg_pde.compat.gradient_notation` module
+- [x] Add deprecation warning to `mfgarchon.compat.gradient_notation` module
 - [x] Apply `@deprecated` decorator to gradient_notation.py functions (v0.17.3)
   - `derivs_to_p_values_1d()`, `p_values_to_derivs_1d()`
   - `gradient_tuple_to_derivs()`, `derivs_to_gradient_tuple()`
@@ -57,23 +57,23 @@ grad_norm_sq = derivs.grad_norm_squared  # |∇u|²
 
 ### Phase 4: Remove Legacy Support (v1.0.0)
 - [ ] Remove `to_multi_index_dict()` conversion in `MFGProblem.H()`
-- [ ] Remove `mfg_pde.compat.gradient_notation` module entirely
+- [ ] Remove `mfgarchon.compat.gradient_notation` module entirely
 - [ ] Update `MFGProblem.H()` signature to require `DerivativeTensors`
 - [ ] Final cleanup of any remaining dict-based code
 
 ## Files to Update
 
 ### High Priority (Phase 3)
-1. `mfg_pde/core/mfg_components.py` - Add deprecation warning for dict input
+1. `mfgarchon/core/mfg_components.py` - Add deprecation warning for dict input
 2. `examples/` - Update all example Hamiltonians
 3. `tests/` - Update test fixtures
 
 ### Medium Priority
-4. `mfg_pde/core/mfg_problem.py` - Update docstrings
+4. `mfgarchon/core/mfg_problem.py` - Update docstrings
 5. GFDM solver if applicable
 
 ### Low Priority (Phase 4)
-6. Remove `mfg_pde/compat/gradient_notation.py`
+6. Remove `mfgarchon/compat/gradient_notation.py`
 7. Remove conversion code from `MFGProblem.H()`
 
 ## Code Changes Required

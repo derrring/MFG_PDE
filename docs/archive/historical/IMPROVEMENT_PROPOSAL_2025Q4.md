@@ -1,4 +1,4 @@
-# MFG_PDE Improvement Proposal - Q4 2025
+# MFGarchon Improvement Proposal - Q4 2025
 
 **Date**: October 8, 2025
 **Author**: Claude (AI Assistant)
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document proposes **three strategic improvement tracks** for MFG_PDE, prioritized by impact on research capability and user experience. All proposals leverage existing infrastructure and require minimal disruption to current codebase.
+This document proposes **three strategic improvement tracks** for MFGarchon, prioritized by impact on research capability and user experience. All proposals leverage existing infrastructure and require minimal disruption to current codebase.
 
 ### Proposed Tracks
 
@@ -54,7 +54,7 @@ class FixedPointIterator:
 
 **Phase 1: Core Boundary Fixes (Week 1-2)**
 
-**File**: `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py`
+**File**: `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py`
 
 ```python
 class FixedPointIterator:
@@ -92,10 +92,10 @@ class FixedPointIterator:
 ```
 
 **Files to Modify** (~10 files):
-1. ✅ `mfg_pde/alg/numerical/mfg_solvers/fixed_point_iterator.py` - Core coupling
-2. ✅ `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` - HJB base
-3. ✅ `mfg_pde/alg/numerical/fp_solvers/fp_particle.py` - FP base
-4. ✅ `mfg_pde/factory.py` - Factory functions
+1. ✅ `mfgarchon/alg/numerical/mfg_solvers/fixed_point_iterator.py` - Core coupling
+2. ✅ `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` - HJB base
+3. ✅ `mfgarchon/alg/numerical/fp_solvers/fp_particle.py` - FP base
+4. ✅ `mfgarchon/factory.py` - Factory functions
 5. ✅ Backend initialization in solver constructors
 
 **Phase 2: RL Environment Conversions (Week 3)**
@@ -128,7 +128,7 @@ class MFGEnvironment(gym.Env):
 ```
 
 **Locations**:
-- `mfg_pde/alg/rl/environments/` - RL environment wrappers
+- `mfgarchon/alg/rl/environments/` - RL environment wrappers
 - `examples/basic/rl_*.py` - RL examples
 
 **Phase 3: Testing & Validation (Week 4)**
@@ -417,7 +417,7 @@ print(result.diagnostics)
 **Add utility for convergence analysis**:
 
 ```python
-# New file: mfg_pde/utils/convergence_plots.py
+# New file: mfgarchon/utils/convergence_plots.py
 
 def plot_convergence_analysis(result, save_path=None):
     """Generate comprehensive convergence diagnostic plots."""
@@ -613,9 +613,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import ExampleMFGProblem  # Or relevant imports
-from mfg_pde.factory import create_standard_solver
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon import ExampleMFGProblem  # Or relevant imports
+from mfgarchon.factory import create_standard_solver
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("example_name", level="INFO")
@@ -707,7 +707,7 @@ def main():
 
 ```python
 """
-Quickstart: 5-Minute Introduction to MFG_PDE.
+Quickstart: 5-Minute Introduction to MFGarchon.
 
 Solves the simplest possible MFG problem in ~10 seconds:
 - Linear-Quadratic Hamiltonian

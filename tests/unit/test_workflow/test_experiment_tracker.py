@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from mfg_pde.workflow.experiment_tracker import (
+from mfgarchon.workflow.experiment_tracker import (
     Experiment,
     ExperimentMetadata,
     ExperimentResult,

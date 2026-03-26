@@ -21,7 +21,7 @@ try:
 except ImportError:
     GYMNASIUM_AVAILABLE = False
 
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     MazeAlgorithm,
     MazeGeometry,
     RecursiveDivisionGenerator,
@@ -29,7 +29,7 @@ from mfg_pde.alg.reinforcement.environments import (
 )
 
 if GYMNASIUM_AVAILABLE:
-    from mfg_pde.alg.reinforcement.environments import (
+    from mfgarchon.alg.reinforcement.environments import (
         ActionType,
         MFGMazeConfig,
         MFGMazeEnvironment,

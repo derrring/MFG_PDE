@@ -324,7 +324,7 @@ needs_constraints = self._check_monotonicity_violation(unconstrained_coeffs, poi
 ### Basic Mode (Strict Enforcement)
 
 ```python
-from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBGFDMSolver
 
 solver = HJBGFDMSolver(
     problem,
@@ -382,14 +382,14 @@ solver = HJBGFDMSolver(
 1. **M-matrix theory**: Varga, R. S. (2009). *Matrix Iterative Analysis*.
 2. **Monotone schemes**: Barles, G., & Souganidis, P. E. (1991). "Convergence of approximation schemes for fully nonlinear second order equations." *Asymptotic Analysis*.
 3. **GFDM monotonicity**: `docs/development/analysis/GFDM_MONOTONICITY_ANALYSIS.md`
-4. **Implementation**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+4. **Implementation**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
 
 ---
 
 ## 8. Implementation Summary
 
 **Modified Files**:
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`
   - Added: `_init_enhanced_qp_features()` (lines 166-194)
   - Added: `_check_monotonicity_violation()` (lines 799-925)
   - Updated: Calling code (line 491)
@@ -401,4 +401,4 @@ solver = HJBGFDMSolver(
 ---
 
 **Last Updated**: 2025-10-15
-**Implemented by**: Claude Code following MFG_PDE production standards
+**Implemented by**: Claude Code following MFGarchon production standards

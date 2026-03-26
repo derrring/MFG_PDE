@@ -9,7 +9,7 @@
 
 ## 1. Motivation
 
-MFG_PDE's time integration is currently embedded inside individual solvers.
+MFGarchon's time integration is currently embedded inside individual solvers.
 Each solver owns its time loop, scheme selection, and step-size logic. This
 works for the current solver count (7 HJB + 4 FP) but creates issues:
 
@@ -28,7 +28,7 @@ decouple time stepping from spatial discretization.
 
 ### 2.1 HJB Time Integration
 
-**Location**: `mfg_pde/alg/numerical/hjb_solvers/base_hjb.py`
+**Location**: `mfgarchon/alg/numerical/hjb_solvers/base_hjb.py`
 
 | Aspect | Implementation |
 |:-------|:---------------|
@@ -47,7 +47,7 @@ Newton solves the nonlinear system $F(U^n) = 0$ at each time step.
 
 ### 2.2 FP Time Integration
 
-**Location**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`
+**Location**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`
 
 Three variants coexist, selected by problem characteristics:
 
@@ -67,7 +67,7 @@ $$m^{k+1} = m^k + \Delta t \bigl(\nabla\cdot(\Sigma\nabla m^k) - \nabla\cdot(\al
 
 ### 2.3 Coupling Layer
 
-**Location**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
+**Location**: `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`
 
 The Picard iteration drives both time loops:
 1. HJB solves backward: $U^{(k)}(t)$ given $M^{(k-1)}(t)$

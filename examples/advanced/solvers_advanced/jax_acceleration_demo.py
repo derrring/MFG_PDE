@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JAX Acceleration Demo for MFG_PDE
+JAX Acceleration Demo for MFGarchon
 
 Demonstrates the performance benefits of JAX backend for GPU-accelerated
 Mean Field Games solving with automatic differentiation capabilities.
@@ -12,14 +12,14 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-# MFG_PDE imports
-from mfg_pde.backends import create_backend
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.factory import print_backend_info
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
-from mfg_pde.utils.numpy_compat import trapezoid
+# MFGarchon imports
+from mfgarchon.backends import create_backend
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.factory import print_backend_info
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon.utils.numpy_compat import trapezoid
 
 # Configure logging
 configure_research_logging("jax_acceleration_demo", level="INFO")
@@ -372,7 +372,7 @@ def main():
         print("   Recommendation: Check JAX installation and GPU availability")
 
     print("\n Next Steps:")
-    print("   • Install JAX with GPU support: pip install 'mfg_pde[jax-cuda]'")
+    print("   • Install JAX with GPU support: pip install 'mfgarchon[jax-cuda]'")
     print("   • Use create_backend('auto') for automatic backend selection")
     print("   • Enable JIT compilation for maximum performance")
 

@@ -43,14 +43,14 @@ existing code and identifies the real gaps.
 ### 2.3 What's Already Better Than the Spec
 
 1. **BCValueProvider pattern** (Issue #625): The spec's `DataField(array)` is static.
-   MFG_PDE has *dynamic* providers that compute BC values from solver state each
+   MFGarchon has *dynamic* providers that compute BC values from solver state each
    iteration. This is more powerful.
 
 2. **5 matching modes**: The spec has 3 region types. BCSegment has 5 matching modes
    (boundary name, axis ranges, SDF region, normal direction, marked region name)
    with validated non-mixing rules.
 
-3. **Corner handling**: The spec mentions corner consistency briefly. MFG_PDE has a
+3. **Corner handling**: The spec mentions corner consistency briefly. MFGarchon has a
    full corner handling subsystem (`boundary/corner/`) with strategies (priority,
    average, mollify) and particle reflection algorithms.
 
@@ -82,14 +82,14 @@ existing code and identifies the real gaps.
 
 **HJB (backward)**:
 ```
-Location: mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py
+Location: mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py
 Method: Newton iteration at each time step (implicit)
 Loop: for n in range(Nt, 0, -1): U[n-1] = newton_step(U[n], M[n])
 ```
 
 **FP (forward)**:
 ```
-Location: mfg_pde/alg/numerical/fp_solvers/fp_fdm.py
+Location: mfgarchon/alg/numerical/fp_solvers/fp_fdm.py
 Method: Forward Euler or implicit step (explicit/implicit)
 Loop: for n in range(Nt): M[n+1] = step(M[n], drift[n])
 ```
@@ -122,7 +122,7 @@ The gap: HJB and FP solvers return full trajectories but don't expose `StepOpera
 ### 4.1 Geometry Traits (well-developed)
 
 ```
-mfg_pde/geometry/protocols/
+mfgarchon/geometry/protocols/
 ├── operators.py    → SupportsLaplacian, SupportsGradient, SupportsDivergence, ...
 ├── regions.py      → SupportsBoundaryNormal, SupportsBoundaryProjection, SupportsRegionMarking
 ├── topology.py     → SupportsPeriodic, SupportsManifold, SupportsLipschitz
@@ -142,7 +142,7 @@ All are `@runtime_checkable` Protocol classes. 12+ protocols total.
 
 ### 4.3 Type System
 
-The `mfg_pde/meta/type_system.py` already has `MathematicalSpace`, `NumericalMethod`
+The `mfgarchon/meta/type_system.py` already has `MathematicalSpace`, `NumericalMethod`
 enums and a `MFGType` descriptor. This is the natural home for additional trait
 enumerations if/when they're needed.
 

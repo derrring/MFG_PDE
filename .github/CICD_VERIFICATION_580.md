@@ -137,10 +137,10 @@
 ### Line Coverage (Estimated): ~98%
 
 **Per Component**:
-- `mfg_pde/types/schemes.py`: **100%**
-- `mfg_pde/utils/adjoint_validation.py`: **100%**
-- `mfg_pde/factory/scheme_factory.py`: **~95%**
-- `mfg_pde/core/mfg_problem.py` (solve method): **100%**
+- `mfgarchon/types/schemes.py`: **100%**
+- `mfgarchon/utils/adjoint_validation.py`: **100%**
+- `mfgarchon/factory/scheme_factory.py`: **~95%**
+- `mfgarchon/core/mfg_problem.py` (solve method): **100%**
 - Solver traits (12 files): **100%**
 
 ---

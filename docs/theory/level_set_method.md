@@ -3,7 +3,7 @@
 **Date**: 2026-01-18
 **Issue**: #594 Phase 5.1 - Theory Documentation
 **Implementation**: Phase 3 (Issue #592)
-**Related**: `mfg_pde/geometry/level_set/`, `examples/advanced/stefan_problem_*.py`
+**Related**: `mfgarchon/geometry/level_set/`, `examples/advanced/stefan_problem_*.py`
 
 ---
 
@@ -529,10 +529,10 @@ for t in time_steps:
 ### 8.1 Core Infrastructure
 
 **Files**:
-- `mfg_pde/geometry/level_set/core.py` - `LevelSetFunction`, `LevelSetEvolver`
-- `mfg_pde/geometry/level_set/reinitialization.py` - Pseudo-time evolution
-- `mfg_pde/geometry/level_set/curvature.py` - Divergence of normal field
-- `mfg_pde/geometry/level_set/time_dependent_domain.py` - Time-dependent wrapper
+- `mfgarchon/geometry/level_set/core.py` - `LevelSetFunction`, `LevelSetEvolver`
+- `mfgarchon/geometry/level_set/reinitialization.py` - Pseudo-time evolution
+- `mfgarchon/geometry/level_set/curvature.py` - Divergence of normal field
+- `mfgarchon/geometry/level_set/time_dependent_domain.py` - Time-dependent wrapper
 
 **Operator Reuse**:
 - Curvature uses `geometry.get_divergence_operator()` (Issue #595)

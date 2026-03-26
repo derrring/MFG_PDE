@@ -28,14 +28,14 @@ DONE
 
 ### Task 1.1: Identify Actual Bottleneck
 ```bash
-cd /Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE
+cd /Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFGarchon
 
 # Profile WENO5 solver
 python -m cProfile -o weno_profile.prof -s cumtime << 'EOF'
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBWenoSolver
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.alg.numerical.mfg_solvers import FixedPointIterator
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBWenoSolver
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.mfg_solvers import FixedPointIterator
 
 problem = ExampleMFGProblem(Nx=100, Nt=50, T=1.0)
 hjb_solver = HJBWenoSolver(problem, weno_variant="weno5")
@@ -69,11 +69,11 @@ p.print_stats(20)
 import numpy as np
 import timeit
 
-from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
 def benchmark_smoothness_indicators():
     # Create dummy solver to access method
-    from mfg_pde import ExampleMFGProblem
+    from mfgarchon import ExampleMFGProblem
     problem = ExampleMFGProblem(Nx=100, Nt=50)
     solver = HJBWenoSolver(problem)
 
@@ -127,7 +127,7 @@ python benchmarks/baseline/weno5_smoothness_baseline.py
 
 ### Task 2.1: Implement Numba Version
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/hjb_weno_numba.py
+# mfgarchon/alg/numerical/hjb_solvers/hjb_weno_numba.py
 """Numba-accelerated WENO5 kernels."""
 
 try:
@@ -195,7 +195,7 @@ def compute_weno_weights_numba(beta, d, epsilon=1e-6):
 
 ### Task 2.2: Integrate with HJBWenoSolver
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/hjb_weno.py
+# mfgarchon/alg/numerical/hjb_solvers/hjb_weno.py
 
 # Add at top of file
 try:
@@ -242,8 +242,8 @@ class HJBWenoSolver(BaseHJBSolver):
 # benchmarks/numba/weno5_numba_benchmark.py
 import numpy as np
 import timeit
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
 def benchmark_numba_speedup():
     problem = ExampleMFGProblem(Nx=100, Nt=50)
@@ -312,7 +312,7 @@ Sometimes pure NumPy can be faster than expected with:
 
 ### Task 3.1: Vectorized NumPy Implementation
 ```python
-# mfg_pde/alg/numerical/hjb_solvers/hjb_weno_vectorized.py
+# mfgarchon/alg/numerical/hjb_solvers/hjb_weno_vectorized.py
 """Vectorized NumPy WENO5 kernels."""
 
 def compute_smoothness_indicators_vectorized(U: np.ndarray, axis: int = -1) -> np.ndarray:
@@ -369,7 +369,7 @@ import numpy as np
 import timeit
 
 def benchmark_vectorized_numpy():
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_weno_vectorized import (
+    from mfgarchon.alg.numerical.hjb_solvers.hjb_weno_vectorized import (
         compute_smoothness_indicators_vectorized
     )
 
@@ -430,19 +430,19 @@ python benchmarks/numpy/weno5_vectorized_benchmark.py
 ### Task 4.1: Create Rust Extension Skeleton
 ```bash
 # Create Rust crate
-cd /Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFG_PDE
-cargo new --lib mfg_pde_rust
-cd mfg_pde_rust
+cd /Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFGarchon
+cargo new --lib mfgarchon_rust
+cd mfgarchon_rust
 
 # Configure Cargo.toml
 cat > Cargo.toml << 'EOF'
 [package]
-name = "mfg_pde_rust"
+name = "mfgarchon_rust"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "mfg_pde_rust"
+name = "mfgarchon_rust"
 crate-type = ["cdylib"]
 
 [dependencies]
@@ -456,7 +456,7 @@ EOF
 
 ### Task 4.2: Implement WENO5 Kernels in Rust
 ```rust
-// mfg_pde_rust/src/lib.rs
+// mfgarchon_rust/src/lib.rs
 use pyo3::prelude::*;
 use numpy::{PyArray1, PyReadonlyArray1};
 
@@ -482,7 +482,7 @@ fn compute_smoothness_indicators(u: PyReadonlyArray1<f64>) -> Py<PyArray1<f64>> 
 }
 
 #[pymodule]
-fn mfg_pde_rust(_py: Python, m: &PyModule) -> PyResult<()> {
+fn mfgarchon_rust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compute_smoothness_indicators, m)?)?;
     Ok(())
 }
@@ -498,11 +498,11 @@ maturin develop --release
 
 # Test from Python
 python -c "
-import mfg_pde_rust
+import mfgarchon_rust
 import numpy as np
 
 u = np.array([1.0, 2.0, 3.0, 2.0, 1.0])
-beta = mfg_pde_rust.compute_smoothness_indicators(u)
+beta = mfgarchon_rust.compute_smoothness_indicators(u)
 print(f'Rust result: {beta}')
 "
 ```
@@ -515,12 +515,12 @@ import timeit
 
 def comprehensive_benchmark():
     try:
-        import mfg_pde_rust
+        import mfgarchon_rust
         RUST_AVAILABLE = True
     except ImportError:
         RUST_AVAILABLE = False
 
-    from mfg_pde.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
+    from mfgarchon.alg.numerical.hjb_solvers.hjb_weno import HJBWenoSolver
 
     problem = ExampleMFGProblem(Nx=100, Nt=50)
     u = np.random.randn(5)
@@ -552,7 +552,7 @@ def comprehensive_benchmark():
     # 3. Rust
     if RUST_AVAILABLE:
         time_rust = timeit.timeit(
-            lambda: mfg_pde_rust.compute_smoothness_indicators(u),
+            lambda: mfgarchon_rust.compute_smoothness_indicators(u),
             number=10000
         )
         results['Rust'] = time_rust / 10000 * 1e6

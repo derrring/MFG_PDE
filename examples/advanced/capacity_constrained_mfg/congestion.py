@@ -31,7 +31,7 @@ References:
       (2011). "On the Hughes' model for pedestrian flow."
 
 Created: 2025-11-12
-Author: MFG_PDE Team
+Author: MFGarchon Team
 """
 
 from __future__ import annotations

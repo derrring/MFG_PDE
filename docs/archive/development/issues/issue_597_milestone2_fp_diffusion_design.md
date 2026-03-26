@@ -17,11 +17,11 @@ Refactor FP FDM solver to use `LaplacianOperator.as_scipy_sparse()` (from Milest
 - Returns CSR sparse matrix representation of Laplacian
 - BC handling via ghost cells (inherited from `tensor_calculus.laplacian`)
 - Verified to machine precision (error ~1e-16)
-- File: `mfg_pde/geometry/operators/laplacian.py:186-233`
+- File: `mfgarchon/geometry/operators/laplacian.py:186-233`
 
 ### Current FP Solver Architecture
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`
 
 **Function**: `_build_diffusion_matrix_with_bc()` (lines 129-263)
 - 134 lines of manual sparse matrix construction
@@ -101,7 +101,7 @@ A_diffusion, b_bc = _build_diffusion_matrix_with_bc(
 b_rhs = M_current.ravel() / dt + b_bc
 
 # Proposed approach (using LaplacianOperator)
-from mfg_pde.geometry.operators.laplacian import LaplacianOperator
+from mfgarchon.geometry.operators.laplacian import LaplacianOperator
 
 L_op = LaplacianOperator(spacings=spacing, field_shape=shape, bc=boundary_conditions)
 L_matrix = L_op.as_scipy_sparse()  # BC already baked in via ghost cells
@@ -343,5 +343,5 @@ Milestone 2 is **COMPLETE** when:
 **Date**: 2026-01-17
 **Related Issues**: #597 (FP Operator Refactoring), #596 (Trait Integration)
 **Related Files**:
-- `mfg_pde/geometry/operators/laplacian.py`
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`
+- `mfgarchon/geometry/operators/laplacian.py`
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm_time_stepping.py`

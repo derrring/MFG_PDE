@@ -1,4 +1,4 @@
-# UV Configuration for MFG_PDE
+# UV Configuration for MFGarchon
 # This file can be used by IDE integrations to automatically detect UV environment
 
 export UV_PROJECT_ENVIRONMENT=".venv"

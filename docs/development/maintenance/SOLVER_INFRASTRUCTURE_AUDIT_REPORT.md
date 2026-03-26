@@ -4,13 +4,13 @@
 **Date**: 2025-12-16
 **Revision**: 1.0
 **Status**: Assessment Complete
-**Author**: MFG_PDE Development Team
+**Author**: MFGarchon Development Team
 
 ---
 
 ## Executive Summary
 
-This report documents a comprehensive audit of the MFG_PDE solver infrastructure, identifying critical gaps, incomplete implementations, and architectural defects that limit solver capabilities. The audit covers HJB solvers (FDM, WENO, GFDM, Semi-Lagrangian), FP solvers (FDM, Particle, GFDM), and supporting utilities.
+This report documents a comprehensive audit of the MFGarchon solver infrastructure, identifying critical gaps, incomplete implementations, and architectural defects that limit solver capabilities. The audit covers HJB solvers (FDM, WENO, GFDM, Semi-Lagrangian), FP solvers (FDM, Particle, GFDM), and supporting utilities.
 
 **Key Findings**:
 - 3 critical blockers preventing 3D+ support
@@ -25,10 +25,10 @@ This report documents a comprehensive audit of the MFG_PDE solver infrastructure
 ### 1.1 Scope
 
 The audit examined:
-- All HJB solvers in `mfg_pde/alg/numerical/hjb_solvers/`
-- All FP solvers in `mfg_pde/alg/numerical/fp_solvers/`
-- Supporting utilities in `mfg_pde/utils/numerical/`
-- Geometry and boundary modules in `mfg_pde/geometry/`
+- All HJB solvers in `mfgarchon/alg/numerical/hjb_solvers/`
+- All FP solvers in `mfgarchon/alg/numerical/fp_solvers/`
+- Supporting utilities in `mfgarchon/utils/numerical/`
+- Geometry and boundary modules in `mfgarchon/geometry/`
 
 ### 1.2 Criteria
 
@@ -504,18 +504,18 @@ diffusion = CoefficientField(sigma_tensor_callable, default=np.eye(2))
 ## Appendix A: File Index
 
 ### Critical Files (Blockers)
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1172` - 3D Hessian
-- `mfg_pde/utils/numerical/tensor_operators.py:660` - nD tensor
-- `mfg_pde/utils/numerical/flux_diagnostics.py:193` - 3D flux
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:1172` - 3D Hessian
+- `mfgarchon/utils/numerical/tensor_operators.py:660` - nD tensor
+- `mfgarchon/utils/numerical/flux_diagnostics.py:193` - 3D flux
 
 ### Phase 2 Files
-- `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py:306` - Callable drift
-- `mfg_pde/alg/numerical/fp_solvers/fp_particle.py:789, 806` - Callable drift/σ
-- `mfg_pde/alg/numerical/fp_solvers/fp_gfdm.py:169` - Tensor diffusion
+- `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py:306` - Callable drift
+- `mfgarchon/alg/numerical/fp_solvers/fp_particle.py:789, 806` - Callable drift/σ
+- `mfgarchon/alg/numerical/fp_solvers/fp_gfdm.py:169` - Tensor diffusion
 
 ### Architecture Files
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:150-185` - BC integration
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:580-630` - Tensor silent loss
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:150-185` - BC integration
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:580-630` - Tensor silent loss
 
 ---
 

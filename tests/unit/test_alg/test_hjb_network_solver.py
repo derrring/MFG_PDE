@@ -10,9 +10,9 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.network_solvers.hjb_network import NetworkHJBSolver
-from mfg_pde.extensions.topology import NetworkMFGProblem
-from mfg_pde.geometry.graph.network_geometry import GridNetwork
+from mfgarchon.alg.numerical.network_solvers.hjb_network import NetworkHJBSolver
+from mfgarchon.extensions.topology import NetworkMFGProblem
+from mfgarchon.geometry.graph.network_geometry import GridNetwork
 
 # Skip all tests if igraph is not available (network backend dependency)
 igraph = pytest.importorskip("igraph")

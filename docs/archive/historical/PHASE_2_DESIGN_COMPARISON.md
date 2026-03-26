@@ -53,7 +53,7 @@ Both documents agree on:
 - **Goal**: Support spatially/temporally varying diffusion in FP-FDM
 - **Priority**: High
 - **Effort**: 1 day
-- **File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+- **File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 - **Approach**: Index into diffusion array per point `sigma[k,i]`
 - **Key change**: Remove `NotImplementedError` for array `diffusion_field`
 
@@ -377,7 +377,7 @@ PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md  (Tactical)
 
 #### Implementation Plan
 
-- **File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+- **File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 
 - Add callable evaluation in `_solve_fp_1d()`:
 + **Strategy**: Bootstrap evaluation (evaluate callable per timestep using m[k] to compute m[k+1])

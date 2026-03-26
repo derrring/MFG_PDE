@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-The neural paradigm in MFG_PDE provides **data-driven and physics-informed approaches** for solving Mean Field Games using deep learning. This paradigm complements traditional numerical methods by enabling:
+The neural paradigm in MFGarchon provides **data-driven and physics-informed approaches** for solving Mean Field Games using deep learning. This paradigm complements traditional numerical methods by enabling:
 
 - **High-dimensional problems** (d > 15) through neural network parameterization
 - **Mesh-free solving** without explicit spatial discretization
@@ -26,7 +26,7 @@ The neural paradigm in MFG_PDE provides **data-driven and physics-informed appro
 ### Package Structure
 
 ```
-mfg_pde/alg/neural/
+mfgarchon/alg/neural/
 ├── __init__.py           # Main neural paradigm exports
 ├── core/                 # Shared neural infrastructure
 │   ├── auto_diff.py      # Automatic differentiation utilities
@@ -112,7 +112,7 @@ L_mass = ||∫m dx - 1||²  # Mass conservation constraint
 
 ### Implementation: `MFGPINNSolver`
 
-**File**: `mfg_pde/alg/neural/pinn_solvers/mfg_pinn_solver.py` (582 lines)
+**File**: `mfgarchon/alg/neural/pinn_solvers/mfg_pinn_solver.py` (582 lines)
 
 **Key Features**:
 - Simultaneous training of u(t,x) and m(t,x) networks
@@ -123,8 +123,8 @@ L_mass = ||∫m dx - 1||²  # Mass conservation constraint
 
 **Usage Example**:
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.neural import MFGPINNSolver, PINNConfig
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.alg.neural import MFGPINNSolver, PINNConfig
 
 # Create problem
 problem = ExampleMFGProblem(T=1.0, xmin=0, xmax=1, Nx=50, Nt=40)
@@ -183,7 +183,7 @@ where R is the PDE residual.
 
 ### Implementation: `MFGDGMSolver`
 
-**File**: `mfg_pde/alg/neural/dgm/mfg_dgm_solver.py` (428 lines)
+**File**: `mfgarchon/alg/neural/dgm/mfg_dgm_solver.py` (428 lines)
 
 **Key Features**:
 - Variational formulation for stability
@@ -193,7 +193,7 @@ where R is the PDE residual.
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.neural.dgm import MFGDGMSolver, DGMConfig
+from mfgarchon.alg.neural.dgm import MFGDGMSolver, DGMConfig
 
 # Configure DGM
 config = DGMConfig(
@@ -245,11 +245,11 @@ u_{l+1} = σ(W u_l + K(u_l))
 
 where K is a Fourier integral kernel.
 
-**File**: `mfg_pde/alg/neural/operator_learning/fourier_neural_operator.py` (451 lines)
+**File**: `mfgarchon/alg/neural/operator_learning/fourier_neural_operator.py` (451 lines)
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.neural import FourierNeuralOperator, FNOConfig
+from mfgarchon.alg.neural import FourierNeuralOperator, FNOConfig
 
 # Train FNO on multiple problem instances
 fno_config = FNOConfig(
@@ -287,11 +287,11 @@ u(x) = ∑_k b_k(θ) t_k(x)
 - **Branch network**: Encodes parameter dependence b_k(θ)
 - **Trunk network**: Encodes spatial structure t_k(x)
 
-**File**: `mfg_pde/alg/neural/operator_learning/deeponet.py` (470 lines)
+**File**: `mfgarchon/alg/neural/operator_learning/deeponet.py` (470 lines)
 
 **Usage Example**:
 ```python
-from mfg_pde.alg.neural import DeepONet, DeepONetConfig
+from mfgarchon.alg.neural import DeepONet, DeepONetConfig
 
 config = DeepONetConfig(
     branch_layers=[100, 100],  # Parameter encoding
@@ -310,7 +310,7 @@ solution = deeponet.predict(new_params)
 
 **Training Data Generation**:
 ```python
-from mfg_pde.alg.neural.operator_learning import OperatorTrainingManager
+from mfgarchon.alg.neural.operator_learning import OperatorTrainingManager
 
 # Generate training dataset
 manager = OperatorTrainingManager()
@@ -330,7 +330,7 @@ manager.train_operator(dataset, operator_type='fno', epochs=200)
 
 ### Neural Network Architectures
 
-**File**: `mfg_pde/alg/neural/nn/architectures.py`
+**File**: `mfgarchon/alg/neural/nn/architectures.py`
 
 **Available Architectures**:
 
@@ -351,7 +351,7 @@ manager.train_operator(dataset, operator_type='fno', epochs=200)
 
 ### Loss Functions
 
-**File**: `mfg_pde/alg/neural/core/loss_functions.py`
+**File**: `mfgarchon/alg/neural/core/loss_functions.py`
 
 **Physics Loss**:
 ```python
@@ -386,7 +386,7 @@ class MassConservationLoss:
 
 ### Training Strategies
 
-**File**: `mfg_pde/alg/neural/core/training.py`
+**File**: `mfgarchon/alg/neural/core/training.py`
 
 **Standard Training**:
 ```python
@@ -434,7 +434,7 @@ class PhysicsGuidedSampler:
 
 ### Bayesian PINN (Uncertainty Quantification)
 
-**File**: `mfg_pde/alg/neural/stochastic/bayesian_pinn.py`
+**File**: `mfgarchon/alg/neural/stochastic/bayesian_pinn.py`
 
 **Purpose**: Quantify uncertainty in neural network predictions
 
@@ -442,7 +442,7 @@ class PhysicsGuidedSampler:
 
 **Usage**:
 ```python
-from mfg_pde.alg.neural.stochastic import BayesianPINNSolver
+from mfgarchon.alg.neural.stochastic import BayesianPINNSolver
 
 solver = BayesianPINNSolver(problem, config, num_samples=100)
 u_mean, u_std = solver.solve_with_uncertainty()
@@ -619,10 +619,10 @@ fine_solution = coarse_solution + corrections
 ### Implementation References
 
 **Code Files**:
-- `mfg_pde/alg/neural/pinn_solvers/` - PINN implementations (2,130 lines)
-- `mfg_pde/alg/neural/dgm/` - DGM implementations (428 lines)
-- `mfg_pde/alg/neural/operator_learning/` - Neural operators (1,535 lines)
-- `mfg_pde/alg/neural/core/` - Shared infrastructure (2,460 lines)
+- `mfgarchon/alg/neural/pinn_solvers/` - PINN implementations (2,130 lines)
+- `mfgarchon/alg/neural/dgm/` - DGM implementations (428 lines)
+- `mfgarchon/alg/neural/operator_learning/` - Neural operators (1,535 lines)
+- `mfgarchon/alg/neural/core/` - Shared infrastructure (2,460 lines)
 
 **Examples**:
 - `examples/basic/adaptive_pinn_demo.py`
@@ -639,18 +639,18 @@ fine_solution = coarse_solution + corrections
 
 ```bash
 # Install with neural solver support
-pip install mfg_pde[neural]
+pip install mfgarchon[neural]
 
 # Or install PyTorch separately
-pip install mfg_pde
+pip install mfgarchon
 pip install torch
 ```
 
 ### Minimal PINN Example
 
 ```python
-from mfg_pde import ExampleMFGProblem
-from mfg_pde.alg.neural import MFGPINNSolver, PINNConfig
+from mfgarchon import ExampleMFGProblem
+from mfgarchon.alg.neural import MFGPINNSolver, PINNConfig
 
 # 1. Create problem
 problem = ExampleMFGProblem(T=1.0, xmin=0, xmax=1, Nx=50, Nt=40)
@@ -669,7 +669,7 @@ solver.plot_solution()
 ### Minimal Neural Operator Example
 
 ```python
-from mfg_pde.alg.neural import create_mfg_operator, FNOConfig
+from mfgarchon.alg.neural import create_mfg_operator, FNOConfig
 
 # 1. Generate training data
 training_data = generate_training_samples(num_samples=500)
@@ -687,7 +687,7 @@ solution = operator.predict(new_params)  # Milliseconds!
 
 ## ✅ Summary
 
-The neural paradigm in MFG_PDE provides **state-of-the-art deep learning approaches** for solving Mean Field Games:
+The neural paradigm in MFGarchon provides **state-of-the-art deep learning approaches** for solving Mean Field Games:
 
 **✅ Production-Ready**: 7,553 lines of code, comprehensive testing
 **✅ Three Solver Families**: PINN, DGM, Neural Operators

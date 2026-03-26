@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 # Optional: If you want to use PEP 517/518, you can specify the backend requirements here.
 
 [project]
-name = "mfg_pde"
+name = "mfgarchon"
 version = "0.17.11"  # v0.17.11: Geometry trait dispatch, BC infrastructure, boundary test coverage (#732, #794)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
@@ -194,23 +194,23 @@ all = [
 
 # Optional: URLs for your project
 [project.urls]
-Homepage = "https://github.com/derrring/MFG_PDE"
-Repository = "https://github.com/derrring/MFG_PDE"
-# Bug-Tracker = "https://github.com/derrring/MFG_PDE/issues"
+Homepage = "https://github.com/derrring/mfgarchon"
+Repository = "https://github.com/derrring/mfgarchon"
+# Bug-Tracker = "https://github.com/derrring/mfgarchon/issues"
 
 # --- Setuptools specific configuration ---
 # This tells setuptools to automatically find packages in the current directory.
-# If your package `mfg_pde` is directly in the root of your project (alongside pyproject.toml),
+# If your package `mfgarchon` is directly in the root of your project (alongside pyproject.toml),
 # this is usually sufficient.
-# If `mfg_pde` is inside a `src` directory (e.g., `src/mfg_pde`), you would adjust `where`.
+# If `mfgarchon` is inside a `src` directory (e.g., `src/mfgarchon`), you would adjust `where`.
 [tool.setuptools.packages.find]
 where = ["."]  # Look for packages in the current directory.
-include = ["mfg_pde*"]  # Include the mfg_pde package and its subpackages
+include = ["mfgarchon*"]  # Include the mfgarchon package and its subpackages
 exclude = ["examples*", "tests*", "benchmarks*", "docs*", "archive*"] # Exclude non-package directories from installation
 
 # Optional: If you have data files to include with your package
 # [tool.setuptools.package-data]
-# "mfg_pde.some_submodule" = ["*.dat"]
+# "mfgarchon.some_submodule" = ["*.dat"]
 
 # =============================================================================
 # Code Quality and Development Tools Configuration
@@ -248,10 +248,10 @@ exclude = [
     "dist/",
     ".venv/",
     "examples/experimental/",
-    "mfg_pde/utils/",
-    "mfg_pde/workflow/",
-    "mfg_pde/visualization/",
-    "mfg_pde/backends/",
+    "mfgarchon/utils/",
+    "mfgarchon/workflow/",
+    "mfgarchon/visualization/",
+    "mfgarchon/backends/",
     "scripts/",
     ".github/",
 ]
@@ -287,12 +287,12 @@ module = [
 ]
 ignore_missing_imports = true
 
-# Core MFG_PDE modules - stricter checking
+# Core MFGarchon modules - stricter checking
 [[tool.mypy.overrides]]
 module = [
-    "mfg_pde.factory.*",
-    "mfg_pde.config.*",
-    "mfg_pde.utils.validation.*",
+    "mfgarchon.factory.*",
+    "mfgarchon.config.*",
+    "mfgarchon.utils.validation.*",
 ]
 disallow_untyped_defs = true
 check_untyped_defs = true
@@ -301,8 +301,8 @@ strict_optional = true
 # Gradual strictness for other core modules
 [[tool.mypy.overrides]]
 module = [
-    "mfg_pde.core.*",
-    "mfg_pde.alg.*",
+    "mfgarchon.core.*",
+    "mfgarchon.alg.*",
 ]
 disallow_incomplete_defs = true
 check_untyped_defs = true
@@ -317,7 +317,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
     "--verbose",
-    "--cov=mfg_pde",
+    "--cov=mfgarchon",
     "--cov-report=term-missing",
     "--cov-report=html",
     "-x",  # Stop on first failure for faster debugging
@@ -325,7 +325,7 @@ addopts = [
 ]
 
 [tool.coverage.run]
-source = ["mfg_pde"]
+source = ["mfgarchon"]
 omit = [
     "*/tests/*",
     "*/archive/*",
@@ -352,7 +352,7 @@ exclude_lines = [
 # Ruff Configuration (Unified Linting and Formatting)
 # =============================================================================
 # Modern unified tooling - 10-100x faster than legacy tools
-# Install with: pip install mfg_pde[dev]
+# Install with: pip install mfgarchon[dev]
 
 [tool.ruff]
 line-length = 120
@@ -437,23 +437,23 @@ ignore = [
     "T20",                   # Allow print statements in benchmarks
     "E402",                  # Module imports after warnings.filterwarnings (intentional)
 ]
-"mfg_pde/alg/**/*.py" = [
+"mfgarchon/alg/**/*.py" = [
     "N803", "N806", "N816",  # Mathematical notation in algorithms
     "C901",                  # Complex functions allowed in algorithms
 ]
-"mfg_pde/utils/mfg_logging/logger.py" = [
+"mfgarchon/utils/mfg_logging/logger.py" = [
     "TID251",                # Logging infrastructure uses logging.getLogger directly
 ]
-"mfg_pde/core/**/*.py" = [
+"mfgarchon/core/**/*.py" = [
     "N803", "N806", "N816",  # Mathematical notation in core modules
 ]
 
 # Ban direct logging.getLogger - use mfg_logging.get_logger instead (Issue #620)
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-"logging.getLogger".msg = "Use `from mfg_pde.utils.mfg_logging import get_logger` instead"
+"logging.getLogger".msg = "Use `from mfgarchon.utils.mfg_logging import get_logger` instead"
 
 [tool.ruff.lint.isort]
-known-first-party = ["mfg_pde"]
+known-first-party = ["mfgarchon"]
 section-order = ["future", "standard-library", "third-party", "scientific", "first-party", "local-folder"]
 
 [tool.ruff.lint.isort.sections]

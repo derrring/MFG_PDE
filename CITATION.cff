@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "MFG_PDE: A Research-Grade Framework for Mean Field Games"
+title: "MFGarchon: A Research-Grade Framework for Mean Field Games"
 authors:
   - family-names: Wang
     given-names: Jiongyi
@@ -9,8 +9,8 @@ authors:
     email: jiongyiwang@gmail.com
 version: "0.17.11"
 date-released: "2026-02-15"
-url: "https://github.com/derrring/MFG_PDE"
-repository-code: "https://github.com/derrring/MFG_PDE"
+url: "https://github.com/derrring/mfgarchon"
+repository-code: "https://github.com/derrring/mfgarchon"
 license: MIT
 keywords:
   - mean-field-games

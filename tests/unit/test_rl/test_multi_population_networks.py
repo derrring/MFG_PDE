@@ -4,7 +4,7 @@ Unit tests for multi-population neural networks.
 Tests JointPopulationEncoder, MultiPopulationActor, MultiPopulationCritic,
 and MultiPopulationStochasticActor.
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -17,13 +17,13 @@ pytestmark = pytest.mark.optional_torch
 # Skip tests if PyTorch not available
 torch = pytest.importorskip("torch")
 
-from mfg_pde.alg.reinforcement.multi_population.networks import (  # noqa: E402
+from mfgarchon.alg.reinforcement.multi_population.networks import (  # noqa: E402
     JointPopulationEncoder,
     MultiPopulationActor,
     MultiPopulationCritic,
     MultiPopulationStochasticActor,
 )
-from mfg_pde.alg.reinforcement.multi_population.population_config import (  # noqa: E402
+from mfgarchon.alg.reinforcement.multi_population.population_config import (  # noqa: E402
     PopulationConfig,
 )
 

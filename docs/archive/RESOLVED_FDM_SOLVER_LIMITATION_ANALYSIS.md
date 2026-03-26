@@ -20,13 +20,13 @@ User requested results from two MFG solver configurations:
 1. **Pure FDM**: HJB-FDM + FP-FDM (baseline comparison)
 2. **Hybrid**: HJB-FDM + FP-Particle
 
-The maze navigation problem is 2D (6×6 maze on regular grid), but FDM solvers in MFG_PDE only work with 1D problems.
+The maze navigation problem is 2D (6×6 maze on regular grid), but FDM solvers in MFGarchon only work with 1D problems.
 
 ---
 
 ## Architecture Analysis
 
-### What Exists in MFG_PDE
+### What Exists in MFGarchon
 
 **1D Grid-Based**: `MFGProblem` (mfg_problem.py:70)
 ```python
@@ -81,7 +81,7 @@ def create_1d_adapter_problem(self) -> MFGProblem:
     Create a 1D adapter MFG problem for use with existing solvers.
 
     This method maps the high-dimensional problem to a 1D representation
-    that can be used with the existing MFG_PDE solver infrastructure.
+    that can be used with the existing MFGarchon solver infrastructure.
     """
     # Create 1D problem using linearized indexing of spatial points
     adapter_problem = MFGProblem(
@@ -128,7 +128,7 @@ FDM 1D neighbors: 3, 5 (only left/right)
 The FDM solver will compute `∂u/∂x` using indices `3, 4, 5`, which in the original 2D grid are `(0,1), (1,1), (2,1)` — a horizontal line, not a proper 2D derivative.
 
 ### 4. **Confirmed by Audit**
-The architecture audit (MFG_PDE_ARCHITECTURE_AUDIT.md) identified this exact issue:
+The architecture audit (MFGarchon_ARCHITECTURE_AUDIT.md) identified this exact issue:
 - **Finding #2**: "Five problem classes with incompatible APIs"
 - **Finding #3**: "Solver-problem incompatibilities require workarounds"
 - **Finding #5**: "1D adapter pattern breaks semantics"
@@ -144,13 +144,13 @@ User asked for:
 
 **Fundamental Issue**:
 - Pure FDM (HJB-FDM + FP-FDM) requires both solvers to work with a regular 2D grid
-- MFG_PDE's FDM solvers are 1D-only by design
+- MFGarchon's FDM solvers are 1D-only by design
 - The 1D adapter would produce mathematically incorrect results (wrong derivatives)
 
 **User's Insight Was Correct**:
 > "maze can still have grids under coordinate system ,right?"
 
-Yes, mazes can have regular grids! The problem is not mathematical — it's architectural. MFG_PDE artificially separates:
+Yes, mazes can have regular grids! The problem is not mathematical — it's architectural. MFGarchon artificially separates:
 - Problem definition (`GridBasedMFGProblem` for 2D grids)
 - Solver implementation (`HJBFDMSolver` for 1D only)
 
@@ -218,13 +218,13 @@ Skip pure FDM comparison and note the architectural limitation. Focus on:
 ## Session Log
 
 **File**: test_solver_comparison.py
-**Error**: `ModuleNotFoundError: No module named 'mfg_pde.alg.numerical.hjb_solvers.hjb_fd'`
+**Error**: `ModuleNotFoundError: No module named 'mfgarchon.alg.numerical.hjb_solvers.hjb_fd'`
 **Corrected Import**: `hjb_fdm` (not `hjb_fd`)
 **Result**: Discovered that even with correct import, solver architecture blocks 2D usage
 
 **Verification**:
 ```bash
-$ ls -la /path/to/MFG_PDE/mfg_pde/alg/numerical/hjb_solvers/ | grep hjb_fd
+$ ls -la /path/to/MFGarchon/mfgarchon/alg/numerical/hjb_solvers/ | grep hjb_fd
 -rw-r--r-- hjb_fdm.py  # Correct module name
 -rw-r--r-- hjb_gfdm.py  # Meshfree alternative (works for 2D)
 ```
@@ -238,7 +238,7 @@ This is honored in MFGProblem (Nx intervals → Nx+1 grid points), but the 1D-on
 
 ## Conclusion
 
-**Pure FDM comparison cannot be completed** due to MFG_PDE's architectural limitation: FDM solvers are 1D-only, while the maze problem is inherently 2D.
+**Pure FDM comparison cannot be completed** due to MFGarchon's architectural limitation: FDM solvers are 1D-only, while the maze problem is inherently 2D.
 
 **User's request confirmed the architecture audit findings**: The fragmented design prevents natural use of grid-based solvers on 2D regular grids.
 

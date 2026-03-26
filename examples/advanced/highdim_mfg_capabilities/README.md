@@ -2,7 +2,7 @@
 
 > **⚠️ DEPRECATED (v0.14.0)**: `GridBasedMFGProblem`, `HighDimMFGProblem`, and `HybridMFGSolver` have been removed. Use `MFGProblem` with `spatial_bounds` and `spatial_discretization` parameters for nD problems on tensor product grids.
 
-This directory demonstrates the extended high-dimensional capabilities of the MFG_PDE package, including 2D, 3D, and nD Mean Field Games.
+This directory demonstrates the extended high-dimensional capabilities of the MFGarchon package, including 2D, 3D, and nD Mean Field Games.
 
 ## 🎯 **Key Features Implemented**
 
@@ -36,8 +36,8 @@ highdim_mfg_capabilities/
 
 ### **2D Grid-Based MFG (Modern API)**
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_basic_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_basic_solver
 
 # 2D problem on tensor product grid
 problem = MFGProblem(
@@ -55,8 +55,8 @@ result = solver.solve()
 
 ### **3D Grid-Based MFG (Modern API)**
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.factory import create_basic_solver
+from mfgarchon import MFGProblem
+from mfgarchon.factory import create_basic_solver
 
 # 3D box domain with regular grid
 problem = MFGProblem(
@@ -74,7 +74,7 @@ result = solver.solve()
 
 ### **High-Performance nD Problems**
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 # Any-dimensional problem via spatial_bounds
 # Example: 4D problem
@@ -233,4 +233,4 @@ m(x,0) = m₀(x)                         in Ω
 
 ---
 
-**Package Integration**: These capabilities are fully integrated with the existing MFG_PDE infrastructure, maintaining backward compatibility while providing powerful extensions for high-dimensional applications.
+**Package Integration**: These capabilities are fully integrated with the existing MFGarchon infrastructure, maintaining backward compatibility while providing powerful extensions for high-dimensional applications.

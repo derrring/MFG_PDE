@@ -6,9 +6,9 @@ This test determines if mass loss occurs in the pure FP solver or in the MFG ite
 
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 class Simple2DFPProblem(MFGProblem):
@@ -44,7 +44,7 @@ class Simple2DFPProblem(MFGProblem):
 
     def setup_components(self):
         """Stub implementation - not needed for FP isolation test."""
-        from mfg_pde import MFGComponents
+        from mfgarchon import MFGComponents
 
         return MFGComponents(
             hamiltonian_func=lambda *args, **kwargs: 0.0,

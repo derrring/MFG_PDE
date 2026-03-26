@@ -17,7 +17,7 @@ import pytest
 @pytest.mark.fast
 def test_adaptive_training_mode_enum_exists():
     """Test AdaptiveTrainingMode enum is properly defined."""
-    from mfg_pde.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingMode
+    from mfgarchon.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingMode
 
     # Verify enum members exist
     assert hasattr(AdaptiveTrainingMode, "BASIC")
@@ -30,7 +30,7 @@ def test_adaptive_training_mode_enum_exists():
 @pytest.mark.fast
 def test_adaptive_training_mode_new_api():
     """Test new AdaptiveTrainingMode API works correctly."""
-    from mfg_pde.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingConfig, AdaptiveTrainingMode
+    from mfgarchon.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingConfig, AdaptiveTrainingMode
 
     # Test creating config with new enum API
     config = AdaptiveTrainingConfig(training_mode=AdaptiveTrainingMode.CURRICULUM)
@@ -45,7 +45,7 @@ def test_adaptive_training_mode_new_api():
 @pytest.mark.fast
 def test_adaptive_training_mode_deprecated_booleans():
     """Test deprecated boolean parameters emit warnings."""
-    from mfg_pde.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingConfig
+    from mfgarchon.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingConfig
 
     # Test deprecated API triggers warning
     with pytest.warns(DeprecationWarning, match="'enable_curriculum'.*deprecated"):
@@ -56,7 +56,7 @@ def test_adaptive_training_mode_deprecated_booleans():
         )
 
     # Verify correct mapping to enum
-    from mfg_pde.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingMode
+    from mfgarchon.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingMode
 
     assert config.training_mode == AdaptiveTrainingMode.CURRICULUM
 
@@ -65,7 +65,7 @@ def test_adaptive_training_mode_deprecated_booleans():
 @pytest.mark.fast
 def test_adaptive_training_mode_boolean_mapping():
     """Test deprecated booleans map correctly to enum values."""
-    from mfg_pde.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingConfig, AdaptiveTrainingMode
+    from mfgarchon.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingConfig, AdaptiveTrainingMode
 
     # Test all False → BASIC
     with pytest.warns(DeprecationWarning, match="deprecated"):
@@ -114,7 +114,7 @@ def test_adaptive_training_mode_boolean_mapping():
 @pytest.mark.skipif("not torch_available()")
 def test_normalization_type_enum_exists():
     """Test NormalizationType enum is properly defined."""
-    from mfg_pde.alg.neural.pinn_solvers.base_pinn import NormalizationType
+    from mfgarchon.alg.neural.pinn_solvers.base_pinn import NormalizationType
 
     # Verify enum members exist
     assert hasattr(NormalizationType, "NONE")
@@ -127,7 +127,7 @@ def test_normalization_type_enum_exists():
 @pytest.mark.skipif("not torch_available()")
 def test_normalization_type_new_api():
     """Test new NormalizationType API works correctly."""
-    from mfg_pde.alg.neural.pinn_solvers.base_pinn import NormalizationType, PINNConfig
+    from mfgarchon.alg.neural.pinn_solvers.base_pinn import NormalizationType, PINNConfig
 
     # Test creating config with new enum API
     config = PINNConfig(normalization=NormalizationType.BATCH)
@@ -140,14 +140,14 @@ def test_normalization_type_new_api():
 @pytest.mark.skipif("not torch_available()")
 def test_normalization_type_deprecated_booleans():
     """Test deprecated boolean parameters emit warnings."""
-    from mfg_pde.alg.neural.pinn_solvers.base_pinn import PINNConfig
+    from mfgarchon.alg.neural.pinn_solvers.base_pinn import PINNConfig
 
     # Test deprecated API triggers warning
     with pytest.warns(DeprecationWarning, match="'use_batch_norm'.*deprecated"):
         config = PINNConfig(use_batch_norm=True)
 
     # Verify correct mapping to enum
-    from mfg_pde.alg.neural.pinn_solvers.base_pinn import NormalizationType
+    from mfgarchon.alg.neural.pinn_solvers.base_pinn import NormalizationType
 
     assert config.normalization == NormalizationType.BATCH
 
@@ -157,7 +157,7 @@ def test_normalization_type_deprecated_booleans():
 @pytest.mark.skipif("not torch_available()")
 def test_normalization_type_boolean_mapping():
     """Test deprecated booleans map correctly to enum values."""
-    from mfg_pde.alg.neural.pinn_solvers.base_pinn import NormalizationType, PINNConfig
+    from mfgarchon.alg.neural.pinn_solvers.base_pinn import NormalizationType, PINNConfig
 
     # Test batch norm → BATCH
     with pytest.warns(DeprecationWarning, match="deprecated"):
@@ -184,7 +184,7 @@ def test_normalization_type_boolean_mapping():
 @pytest.mark.fast
 def test_variance_reduction_method_enum_exists():
     """Test VarianceReductionMethod enum is properly defined."""
-    from mfg_pde.alg.neural.dgm.base_dgm import VarianceReductionMethod
+    from mfgarchon.alg.neural.dgm.base_dgm import VarianceReductionMethod
 
     # Verify enum members exist
     assert hasattr(VarianceReductionMethod, "NONE")
@@ -197,7 +197,7 @@ def test_variance_reduction_method_enum_exists():
 @pytest.mark.fast
 def test_variance_reduction_method_new_api():
     """Test new VarianceReductionMethod API works correctly."""
-    from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig, VarianceReductionMethod
+    from mfgarchon.alg.neural.dgm.base_dgm import DGMConfig, VarianceReductionMethod
 
     # Test creating config with new enum API
     config = DGMConfig(variance_reduction=VarianceReductionMethod.IMPORTANCE_SAMPLING)
@@ -209,14 +209,14 @@ def test_variance_reduction_method_new_api():
 @pytest.mark.fast
 def test_variance_reduction_method_deprecated_booleans():
     """Test deprecated boolean parameters emit warnings."""
-    from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig
+    from mfgarchon.alg.neural.dgm.base_dgm import DGMConfig
 
     # Test deprecated API triggers warning
     with pytest.warns(DeprecationWarning, match="'use_control_variates'.*deprecated"):
         config = DGMConfig(use_control_variates=True, use_importance_sampling=False)
 
     # Verify correct mapping to enum
-    from mfg_pde.alg.neural.dgm.base_dgm import VarianceReductionMethod
+    from mfgarchon.alg.neural.dgm.base_dgm import VarianceReductionMethod
 
     assert config.variance_reduction == VarianceReductionMethod.CONTROL_VARIATES
 
@@ -225,7 +225,7 @@ def test_variance_reduction_method_deprecated_booleans():
 @pytest.mark.fast
 def test_variance_reduction_method_boolean_mapping():
     """Test deprecated booleans map correctly to enum values."""
-    from mfg_pde.alg.neural.dgm.base_dgm import DGMConfig, VarianceReductionMethod
+    from mfgarchon.alg.neural.dgm.base_dgm import DGMConfig, VarianceReductionMethod
 
     # Test both False → NONE
     with pytest.warns(DeprecationWarning, match="deprecated"):

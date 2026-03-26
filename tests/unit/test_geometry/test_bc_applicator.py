@@ -8,7 +8,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     BCSegment,
     BCType,
     MixedBoundaryConditions,
@@ -21,12 +21,12 @@ from mfg_pde.geometry.boundary import (
 
 # Import deprecated functions from _compat for legacy testing
 # These are no longer publicly exported (Issue #577 Phase 3)
-from mfg_pde.geometry.boundary._compat import (
+from mfgarchon.geometry.boundary._compat import (
     apply_boundary_conditions_2d,
     apply_boundary_conditions_nd,
     create_boundary_mask_2d,
 )
-from mfg_pde.geometry.boundary.applicator_fdm import GhostCellConfig
+from mfgarchon.geometry.boundary.applicator_fdm import GhostCellConfig
 
 
 class TestUniformBC2D:
@@ -309,7 +309,7 @@ class TestEdgeCases:
     def test_unsupported_bc_type_error(self):
         """Test that invalid BC type raises error during creation."""
         # With the new unified class, invalid types raise error during creation
-        from mfg_pde.geometry.boundary import uniform_bc
+        from mfgarchon.geometry.boundary import uniform_bc
 
         with pytest.raises(ValueError):
             uniform_bc(bc_type="unknown_type")
@@ -531,7 +531,7 @@ class TestGridTypeConfiguration:
 
     def test_grid_type_enum(self):
         """Test using GridType enum directly (not string)."""
-        from mfg_pde.geometry.boundary import GridType
+        from mfgarchon.geometry.boundary import GridType
 
         field = np.ones((5, 5))
         bc = dirichlet_bc(value=0.0, dimension=2)
@@ -568,7 +568,7 @@ class TestExtrapolationBC:
 
     def test_linear_extrapolation_function(self):
         """Test ghost_cell_linear_extrapolation function directly."""
-        from mfg_pde.geometry.boundary import ghost_cell_linear_extrapolation
+        from mfgarchon.geometry.boundary import ghost_cell_linear_extrapolation
 
         # Linear function: f(x) = 2x + 1
         # At x=0: f(0)=1, at x=1: f(1)=3
@@ -580,7 +580,7 @@ class TestExtrapolationBC:
 
     def test_quadratic_extrapolation_function(self):
         """Test ghost_cell_quadratic_extrapolation function directly."""
-        from mfg_pde.geometry.boundary import ghost_cell_quadratic_extrapolation
+        from mfgarchon.geometry.boundary import ghost_cell_quadratic_extrapolation
 
         # Quadratic function: f(x) = x^2
         # At x=0: f(0)=0, x=1: f(1)=1, x=2: f(2)=4
@@ -592,8 +592,8 @@ class TestExtrapolationBC:
 
     def test_linear_extrapolation_1d(self):
         """Test linear extrapolation BC in 1D via apply_boundary_conditions_1d."""
-        from mfg_pde.geometry.boundary import BCSegment, BCType, BoundaryConditions
-        from mfg_pde.geometry.boundary._compat import apply_boundary_conditions_1d
+        from mfgarchon.geometry.boundary import BCSegment, BCType, BoundaryConditions
+        from mfgarchon.geometry.boundary._compat import apply_boundary_conditions_1d
 
         # Create a linear field: f(x) = x, on [0, 1] with 5 points
         # x = [0, 0.25, 0.5, 0.75, 1.0]
@@ -619,8 +619,8 @@ class TestExtrapolationBC:
 
     def test_quadratic_extrapolation_1d(self):
         """Test quadratic extrapolation BC in 1D."""
-        from mfg_pde.geometry.boundary import BCSegment, BCType, BoundaryConditions
-        from mfg_pde.geometry.boundary._compat import apply_boundary_conditions_1d
+        from mfgarchon.geometry.boundary import BCSegment, BCType, BoundaryConditions
+        from mfgarchon.geometry.boundary._compat import apply_boundary_conditions_1d
 
         # Create a quadratic field: f(x) = x^2, on [0, 1] with 5 points
         # x = [0, 0.25, 0.5, 0.75, 1.0]
@@ -750,7 +750,7 @@ class TestLazyDimensionBinding:
 
     def test_grid_binds_dimension_automatically(self):
         """Test that TensorProductGrid automatically binds dimension."""
-        from mfg_pde.geometry import TensorProductGrid
+        from mfgarchon.geometry import TensorProductGrid
 
         # Create BC without dimension
         bc = dirichlet_bc(value=0.0)
@@ -815,8 +815,8 @@ class TestSDFParticleBCHandler:
 
     def test_sdf_handler_creation(self):
         """Test creating an SDF particle BC handler."""
-        from mfg_pde.geometry.boundary import SDFParticleBCHandler
-        from mfg_pde.utils.numerical import sdf_sphere
+        from mfgarchon.geometry.boundary import SDFParticleBCHandler
+        from mfgarchon.utils.numerical import sdf_sphere
 
         def circle_sdf(points):
             return sdf_sphere(points, center=[0, 0], radius=1.0)
@@ -827,8 +827,8 @@ class TestSDFParticleBCHandler:
 
     def test_particles_inside_unchanged(self):
         """Test that particles inside domain are unchanged."""
-        from mfg_pde.geometry.boundary import SDFParticleBCHandler
-        from mfg_pde.utils.numerical import sdf_sphere
+        from mfgarchon.geometry.boundary import SDFParticleBCHandler
+        from mfgarchon.utils.numerical import sdf_sphere
 
         def circle_sdf(points):
             return sdf_sphere(points, center=[0, 0], radius=1.0)
@@ -846,8 +846,8 @@ class TestSDFParticleBCHandler:
 
     def test_particle_crossing_reflected(self):
         """Test that particles crossing boundary are reflected."""
-        from mfg_pde.geometry.boundary import SDFParticleBCHandler
-        from mfg_pde.utils.numerical import sdf_sphere
+        from mfgarchon.geometry.boundary import SDFParticleBCHandler
+        from mfgarchon.utils.numerical import sdf_sphere
 
         def circle_sdf(points):
             return sdf_sphere(points, center=[0, 0], radius=1.0)
@@ -865,8 +865,8 @@ class TestSDFParticleBCHandler:
 
     def test_velocity_reflection(self):
         """Test that velocity is reflected at boundary."""
-        from mfg_pde.geometry.boundary import SDFParticleBCHandler
-        from mfg_pde.utils.numerical import sdf_sphere
+        from mfgarchon.geometry.boundary import SDFParticleBCHandler
+        from mfgarchon.utils.numerical import sdf_sphere
 
         def circle_sdf(points):
             return sdf_sphere(points, center=[0, 0], radius=1.0)
@@ -886,8 +886,8 @@ class TestSDFParticleBCHandler:
 
     def test_contains_method(self):
         """Test the contains() method."""
-        from mfg_pde.geometry.boundary import SDFParticleBCHandler
-        from mfg_pde.utils.numerical import sdf_sphere
+        from mfgarchon.geometry.boundary import SDFParticleBCHandler
+        from mfgarchon.utils.numerical import sdf_sphere
 
         def circle_sdf(points):
             return sdf_sphere(points, center=[0, 0], radius=1.0)
@@ -903,8 +903,8 @@ class TestSDFParticleBCHandler:
 
     def test_multiple_particles_mixed(self):
         """Test handling multiple particles with mixed inside/crossing."""
-        from mfg_pde.geometry.boundary import SDFParticleBCHandler
-        from mfg_pde.utils.numerical import sdf_sphere
+        from mfgarchon.geometry.boundary import SDFParticleBCHandler
+        from mfgarchon.utils.numerical import sdf_sphere
 
         def circle_sdf(points):
             return sdf_sphere(points, center=[0, 0], radius=1.0)
@@ -939,8 +939,8 @@ class TestSDFParticleBCHandler:
 
     def test_box_sdf(self):
         """Test with box/rectangular SDF."""
-        from mfg_pde.geometry.boundary import SDFParticleBCHandler
-        from mfg_pde.utils.numerical import sdf_box
+        from mfgarchon.geometry.boundary import SDFParticleBCHandler
+        from mfgarchon.utils.numerical import sdf_box
 
         def box_sdf(points):
             return sdf_box(points, bounds=[[0, 1], [0, 1]])
@@ -968,7 +968,7 @@ class TestTopologyClasses:
 
     def test_periodic_topology_creation(self):
         """Test PeriodicTopology initialization."""
-        from mfg_pde.geometry.boundary import PeriodicTopology
+        from mfgarchon.geometry.boundary import PeriodicTopology
 
         topo = PeriodicTopology(dimension=2, shape=(10, 15))
         assert topo.is_periodic is True
@@ -977,7 +977,7 @@ class TestTopologyClasses:
 
     def test_bounded_topology_creation(self):
         """Test BoundedTopology initialization."""
-        from mfg_pde.geometry.boundary import BoundedTopology
+        from mfgarchon.geometry.boundary import BoundedTopology
 
         topo = BoundedTopology(dimension=3, shape=(5, 6, 7))
         assert topo.is_periodic is False
@@ -986,14 +986,14 @@ class TestTopologyClasses:
 
     def test_topology_dimension_shape_mismatch_error(self):
         """Test that mismatched dimension and shape raises error."""
-        from mfg_pde.geometry.boundary import PeriodicTopology
+        from mfgarchon.geometry.boundary import PeriodicTopology
 
         with pytest.raises(ValueError, match="Shape length"):
             PeriodicTopology(dimension=2, shape=(10, 15, 20))
 
     def test_topology_repr(self):
         """Test topology string representation."""
-        from mfg_pde.geometry.boundary import BoundedTopology, PeriodicTopology
+        from mfgarchon.geometry.boundary import BoundedTopology, PeriodicTopology
 
         periodic = PeriodicTopology(dimension=2, shape=(10, 10))
         assert "PeriodicTopology" in repr(periodic)
@@ -1008,7 +1008,7 @@ class TestCalculatorClasses:
 
     def test_dirichlet_calculator(self):
         """Test DirichletCalculator computes correct ghost values."""
-        from mfg_pde.geometry.boundary import DirichletCalculator
+        from mfgarchon.geometry.boundary import DirichletCalculator
 
         calc = DirichletCalculator(boundary_value=5.0)
         # Cell-centered: u_ghost = 2*g - u_interior = 2*5 - 3 = 7
@@ -1017,7 +1017,7 @@ class TestCalculatorClasses:
 
     def test_neumann_calculator_zero_flux(self):
         """Test NeumannCalculator with zero flux (edge extension)."""
-        from mfg_pde.geometry.boundary import NeumannCalculator
+        from mfgarchon.geometry.boundary import NeumannCalculator
 
         calc = NeumannCalculator(flux_value=0.0)
         ghost = calc.compute(interior_value=3.0, dx=0.1, side="min")
@@ -1026,7 +1026,7 @@ class TestCalculatorClasses:
 
     def test_neumann_calculator_nonzero_flux(self):
         """Test NeumannCalculator with non-zero flux."""
-        from mfg_pde.geometry.boundary import NeumannCalculator
+        from mfgarchon.geometry.boundary import NeumannCalculator
 
         calc = NeumannCalculator(flux_value=1.0)
         dx = 0.1
@@ -1043,7 +1043,7 @@ class TestCalculatorClasses:
 
     def test_robin_calculator(self):
         """Test RobinCalculator for mixed boundary conditions."""
-        from mfg_pde.geometry.boundary import RobinCalculator
+        from mfgarchon.geometry.boundary import RobinCalculator
 
         # Robin: alpha*u + beta*du/dn = g
         # With alpha=1, beta=0, it reduces to Dirichlet: u = g
@@ -1054,7 +1054,7 @@ class TestCalculatorClasses:
 
     def test_no_flux_calculator(self):
         """Test NoFluxCalculator (edge extension)."""
-        from mfg_pde.geometry.boundary import NoFluxCalculator
+        from mfgarchon.geometry.boundary import NoFluxCalculator
 
         calc = NoFluxCalculator()
         ghost = calc.compute(interior_value=7.5, dx=0.1, side="max")
@@ -1062,7 +1062,7 @@ class TestCalculatorClasses:
 
     def test_linear_extrapolation_calculator(self):
         """Test LinearExtrapolationCalculator (zero second derivative)."""
-        from mfg_pde.geometry.boundary import LinearExtrapolationCalculator
+        from mfgarchon.geometry.boundary import LinearExtrapolationCalculator
 
         calc = LinearExtrapolationCalculator()
         # ghost = 2*u_0 - u_1 = 2*5 - 3 = 7
@@ -1071,7 +1071,7 @@ class TestCalculatorClasses:
 
     def test_quadratic_extrapolation_calculator(self):
         """Test QuadraticExtrapolationCalculator (zero third derivative)."""
-        from mfg_pde.geometry.boundary import QuadraticExtrapolationCalculator
+        from mfgarchon.geometry.boundary import QuadraticExtrapolationCalculator
 
         calc = QuadraticExtrapolationCalculator()
         # ghost = 3*u_0 - 3*u_1 + u_2 = 3*5 - 3*3 + 1 = 7
@@ -1086,7 +1086,7 @@ class TestCalculatorClasses:
 
     def test_fp_no_flux_calculator(self):
         """Test FPNoFluxCalculator (physics-aware zero total flux)."""
-        from mfg_pde.geometry.boundary import FPNoFluxCalculator
+        from mfgarchon.geometry.boundary import FPNoFluxCalculator
 
         # Zero drift: reduces to Neumann (ghost = interior)
         calc = FPNoFluxCalculator(drift_velocity=0.0, diffusion_coeff=1.0)
@@ -1099,7 +1099,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_periodic_2d(self):
         """Test GhostBuffer with periodic topology in 2D."""
-        from mfg_pde.geometry.boundary import GhostBuffer, PeriodicTopology
+        from mfgarchon.geometry.boundary import GhostBuffer, PeriodicTopology
 
         topo = PeriodicTopology(dimension=2, shape=(5, 5))
         buffer = GhostBuffer(topo)
@@ -1116,7 +1116,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_bounded_dirichlet_2d(self):
         """Test GhostBuffer with bounded topology and Dirichlet BC."""
-        from mfg_pde.geometry.boundary import (
+        from mfgarchon.geometry.boundary import (
             BoundedTopology,
             DirichletCalculator,
             GhostBuffer,
@@ -1137,7 +1137,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_bounded_neumann_2d(self):
         """Test GhostBuffer with bounded topology and Neumann BC (zero flux)."""
-        from mfg_pde.geometry.boundary import (
+        from mfgarchon.geometry.boundary import (
             BoundedTopology,
             GhostBuffer,
             NeumannCalculator,
@@ -1155,7 +1155,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_bounded_requires_calculator(self):
         """Test that bounded topology requires calculator."""
-        from mfg_pde.geometry.boundary import BoundedTopology, GhostBuffer
+        from mfgarchon.geometry.boundary import BoundedTopology, GhostBuffer
 
         topo = BoundedTopology(dimension=2, shape=(5, 5))
         with pytest.raises(ValueError, match="requires a BoundaryCalculator"):
@@ -1163,7 +1163,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_periodic_ignores_calculator(self):
         """Test that periodic topology ignores calculator (uses wrap-around)."""
-        from mfg_pde.geometry.boundary import (
+        from mfgarchon.geometry.boundary import (
             DirichletCalculator,
             GhostBuffer,
             PeriodicTopology,
@@ -1183,7 +1183,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_properties(self):
         """Test GhostBuffer property accessors."""
-        from mfg_pde.geometry.boundary import (
+        from mfgarchon.geometry.boundary import (
             BoundedTopology,
             DirichletCalculator,
             GhostBuffer,
@@ -1202,7 +1202,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_reset(self):
         """Test GhostBuffer reset method."""
-        from mfg_pde.geometry.boundary import GhostBuffer, PeriodicTopology
+        from mfgarchon.geometry.boundary import GhostBuffer, PeriodicTopology
 
         topo = PeriodicTopology(dimension=1, shape=(10,))
         buffer = GhostBuffer(topo)
@@ -1214,7 +1214,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_copy_to_interior(self):
         """Test GhostBuffer copy_to_interior method."""
-        from mfg_pde.geometry.boundary import GhostBuffer, PeriodicTopology
+        from mfgarchon.geometry.boundary import GhostBuffer, PeriodicTopology
 
         topo = PeriodicTopology(dimension=2, shape=(3, 3))
         buffer = GhostBuffer(topo)
@@ -1226,7 +1226,7 @@ class TestGhostBuffer:
 
     def test_ghost_buffer_3d_periodic(self):
         """Test GhostBuffer with 3D periodic topology."""
-        from mfg_pde.geometry.boundary import GhostBuffer, PeriodicTopology
+        from mfgarchon.geometry.boundary import GhostBuffer, PeriodicTopology
 
         topo = PeriodicTopology(dimension=3, shape=(4, 4, 4))
         buffer = GhostBuffer(topo)

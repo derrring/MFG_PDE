@@ -499,7 +499,7 @@ Taking the transpose, the first **column** of $A_{\text{FP}}$ has:
 
 > **Do not manually specify FP boundary conditions when using the transpose approach.** Trust that the linearized HJB matrix, with correctly implemented BCs, will produce the correct FP operator via transpose.
 
-This is why the `divergence_upwind` scheme in `mfg_pde` (which implements the Jacobian transpose structure) handles boundary conditions correctly without separate BC specification for FP.
+This is why the `divergence_upwind` scheme in `mfgarchon` (which implements the Jacobian transpose structure) handles boundary conditions correctly without separate BC specification for FP.
 
 **Warning:** If you manually override FP boundary conditions when using the transpose-based approach, you may:
 1. Break mass conservation
@@ -679,7 +679,7 @@ You do not actually "choose" two separate schemes. You make **one** choice based
 
 These are **mathematically necessary** pairings, not "compatible options".
 
-## 8. Available Schemes in `mfg_pde`
+## 8. Available Schemes in `mfgarchon`
 
 **HJB Solver** (`HJBFDMSolver`):
 - `advection_scheme="gradient_upwind"` (default) - Godunov upwind, monotone
@@ -906,7 +906,7 @@ The only way to detect this error is:
 
 ## 10. Current Implementation Status
 
-The current `mfg_pde` implementation uses **independent FP schemes**, which:
+The current `mfgarchon` implementation uses **independent FP schemes**, which:
 - Is simpler to implement and understand
 - Works well for weakly coupled problems
 - May require smaller time steps for strongly coupled problems
@@ -1057,4 +1057,4 @@ The adjoint relationship $A_{\text{FP}} = A_{\text{HJB}}^\top$ must hold **at ea
 - **Last Updated:** 2026-01
 - **Related Files:** `fp_fdm.py`, `hjb_fdm.py`, `advection_discretization_methods.md`
 - **Related Issues:** Issue #706 (Deprecation), Issue #707 (True Adjoint Implementation)
-- **Author:** MFG_PDE Development Team
+- **Author:** MFGarchon Development Team

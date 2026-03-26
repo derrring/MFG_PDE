@@ -429,13 +429,13 @@ for some constant $\lambda$ (average cost)[^20].
 - `docs/theory/convergence_criteria.md` - Convergence analysis for MFG iteration
 
 **Core Solvers**:
-- `mfg_pde/alg/numerical/hjb_solvers/` - HJB equation solvers (semi-Lagrangian, upwind)
-- `mfg_pde/alg/numerical/fp_solvers/` - Fokker-Planck solvers (finite difference, particle methods)
-- `mfg_pde/alg/mfg_solvers/` - Coupled MFG fixed-point iteration
+- `mfgarchon/alg/numerical/hjb_solvers/` - HJB equation solvers (semi-Lagrangian, upwind)
+- `mfgarchon/alg/numerical/fp_solvers/` - Fokker-Planck solvers (finite difference, particle methods)
+- `mfgarchon/alg/mfg_solvers/` - Coupled MFG fixed-point iteration
 
 **Geometry**:
-- `mfg_pde/geometry/meshes/mesh_2d.py` - 2D domain representation with barriers
-- `mfg_pde/geometry/boundary/bc_2d.py` - No-flux, Dirichlet, and obstacle conditions
+- `mfgarchon/geometry/meshes/mesh_2d.py` - 2D domain representation with barriers
+- `mfgarchon/geometry/boundary/bc_2d.py` - No-flux, Dirichlet, and obstacle conditions
 
 ### Validation
 

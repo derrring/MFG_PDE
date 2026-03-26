@@ -1,6 +1,6 @@
 # Multi-Dimensional Mean Field Games: User Guide
 
-Complete guide for setting up and solving 2D and 3D Mean Field Game problems using MFG_PDE's multi-dimensional infrastructure.
+Complete guide for setting up and solving 2D and 3D Mean Field Game problems using MFGarchon's multi-dimensional infrastructure.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ Complete guide for setting up and solving 2D and 3D Mean Field Game problems usi
 
 ## Overview
 
-MFG_PDE's multi-dimensional framework enables efficient solution of Mean Field Games on 2D and 3D spatial domains with memory-efficient data structures, sparse linear algebra, and interactive visualizations.
+MFGarchon's multi-dimensional framework enables efficient solution of Mean Field Games on 2D and 3D spatial domains with memory-efficient data structures, sparse linear algebra, and interactive visualizations.
 
 ### Key Features
 
@@ -46,9 +46,9 @@ MFG_PDE's multi-dimensional framework enables efficient solution of Mean Field G
 ### Minimal 2D Example
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.utils import SparseMatrixBuilder, SparseSolver
-from mfg_pde.visualization import MultiDimVisualizer
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.utils import SparseMatrixBuilder, SparseSolver
+from mfgarchon.visualization import MultiDimVisualizer
 
 # 1. Create 2D grid
 grid = TensorProductGrid(
@@ -84,7 +84,7 @@ Efficient structured grids for multi-dimensional problems.
 ### Creating Grids
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 
 # 2D Grid
 grid_2d = TensorProductGrid(
@@ -168,7 +168,7 @@ Efficient sparse linear algebra for large-scale systems.
 ### Building Sparse Operators
 
 ```python
-from mfg_pde.utils import SparseMatrixBuilder
+from mfgarchon.utils import SparseMatrixBuilder
 
 builder = SparseMatrixBuilder(grid, matrix_format='csr')
 ```
@@ -207,7 +207,7 @@ du_dy = (Gy @ u_flat).reshape(grid.Nx_points)
 ### Solving Linear Systems
 
 ```python
-from mfg_pde.utils import SparseSolver
+from mfgarchon.utils import SparseSolver
 
 # Direct solver (best for small-medium problems)
 solver_direct = SparseSolver(method='direct')
@@ -240,7 +240,7 @@ Create publication-quality and interactive visualizations.
 ### Creating Visualizer
 
 ```python
-from mfg_pde.visualization import MultiDimVisualizer
+from mfgarchon.visualization import MultiDimVisualizer
 
 # Plotly backend (interactive HTML)
 viz = MultiDimVisualizer(grid, backend='plotly', colorscale='Viridis')
@@ -332,9 +332,9 @@ viz.save(fig, 'animation.html')
 
 ```python
 import numpy as np
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.utils import SparseMatrixBuilder, SparseSolver
-from mfg_pde.visualization import MultiDimVisualizer
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.utils import SparseMatrixBuilder, SparseSolver
+from mfgarchon.visualization import MultiDimVisualizer
 
 # === PROBLEM SETUP ===
 L = 10.0  # Domain size
@@ -551,4 +551,4 @@ u = SparseSolver(method='cg').solve(L, b)  # Direct sparse solve
 ---
 
 *Last Updated: 2025-10-06*
-*MFG_PDE Version: 1.4.0+*
+*MFGarchon Version: 1.4.0+*

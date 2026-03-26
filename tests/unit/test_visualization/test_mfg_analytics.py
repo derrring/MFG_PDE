@@ -12,7 +12,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.visualization.mfg_analytics import MFGAnalyticsEngine
+from mfgarchon.visualization.mfg_analytics import MFGAnalyticsEngine
 
 # ============================================================================
 # Test: Analytics Engine Initialization

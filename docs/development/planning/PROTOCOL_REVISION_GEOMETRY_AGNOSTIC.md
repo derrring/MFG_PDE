@@ -8,7 +8,7 @@
 
 ## Problem: Not All Geometries Are Grid-Based
 
-### Geometry Types in MFG_PDE
+### Geometry Types in MFGarchon
 
 | Geometry Type | Structure | Has Regular Grid? |
 |:--------------|:----------|:------------------|

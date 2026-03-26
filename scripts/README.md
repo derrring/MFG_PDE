@@ -1,4 +1,4 @@
-# MFG_PDE Scripts Directory
+# MFGarchon Scripts Directory
 
 **Status**: ✅ Audited and Current (2025-10-04)
 
@@ -116,7 +116,7 @@ For new developers:
 ```bash
 # 1. Clone repository
 git clone <repository-url>
-cd MFG_PDE
+cd MFGarchon
 
 # 2. Run modern setup (handles everything)
 ./scripts/setup_development.sh

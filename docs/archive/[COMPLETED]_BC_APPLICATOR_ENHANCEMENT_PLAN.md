@@ -154,17 +154,17 @@ Each phase adds corresponding tests:
 
 ### Files Modified
 
-1. `mfg_pde/geometry/boundary/mixed_bc.py`
+1. `mfgarchon/geometry/boundary/mixed_bc.py`
    - Added `alpha`, `beta` attributes to `BCSegment` for Robin BC
 
-2. `mfg_pde/geometry/boundary/bc_applicator.py`
+2. `mfgarchon/geometry/boundary/bc_applicator.py`
    - `GhostCellConfig`: Grid type configuration (cell/vertex-centered)
    - `apply_boundary_conditions_2d()`: Main BC application function
    - `_compute_ghost_value_enhanced()`: Correct ghost cell formulas
    - `_evaluate_bc_value()`: Time-dependent BC evaluation
    - `_validate_field_2d()`, `_validate_domain_bounds_2d()`: Input validation
 
-3. `mfg_pde/utils/numerical/tensor_operators.py`
+3. `mfgarchon/utils/numerical/tensor_operators.py`
    - Updated `_apply_bc_2d()` to use new BC applicator
    - Added `domain_bounds` and `time` parameters to public API
 
@@ -177,7 +177,7 @@ Each phase adds corresponding tests:
 ### Usage Example
 
 ```python
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     BCSegment, BCType, MixedBoundaryConditions,
     apply_boundary_conditions_2d,
 )

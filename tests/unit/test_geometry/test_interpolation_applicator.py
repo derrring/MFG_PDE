@@ -9,7 +9,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     InterpolationApplicator,
     create_interpolation_applicator,
     dirichlet_bc,

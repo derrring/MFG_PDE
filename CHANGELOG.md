@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to MFG_PDE will be documented in this file.
+All notable changes to MFGarchon will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -105,7 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Callable signature detection and adaptation** (Issue #684, PR #738)
-  - New `adapt_ic_callable()` in `mfg_pde/utils/callable_adapter.py`
+  - New `adapt_ic_callable()` in `mfgarchon/utils/callable_adapter.py`
   - Auto-detects and wraps IC/BC callables: `f(x)` scalar, `f(x)` array, `f(x,t)`, `f(t,x)`, `f(x,y)`, `f(x,y,z)`
   - Zero-overhead passthrough for the common `f(x_scalar)` case
   - Detailed error messages listing all attempted calling conventions on failure
@@ -418,7 +418,7 @@ This release completes the geometry-first API unification for `MFGProblem`. The 
 
 ### Deprecated
 
-- **`fdm_bc_1d` module**: Migrated examples to unified BC API (`periodic_bc()` from `mfg_pde.geometry.boundary`)
+- **`fdm_bc_1d` module**: Migrated examples to unified BC API (`periodic_bc()` from `mfgarchon.geometry.boundary`)
 
 ## [0.14.0] - 2025-12-01
 
@@ -570,7 +570,7 @@ This release adds advanced particle-to-grid projection methods (GPU KDE, multigr
 ### Changed
 
 - **Primary time step attribute**: Changed from `Dt` to `dt` throughout codebase (46 files, ~102 references) following official naming conventions (`docs/NAMING_CONVENTIONS.md` lines 24, 262)
-  - Core: `mfg_pde/core/mfg_problem.py`, `mfg_pde/types/problem_protocols.py`
+  - Core: `mfgarchon/core/mfg_problem.py`, `mfgarchon/types/problem_protocols.py`
   - Solvers: All HJB, FP, and coupling solvers updated
   - Utilities: `experiment_manager.py`, `hjb_policy_iteration.py`
   - Tests: 15 test files (59 references)
@@ -618,7 +618,7 @@ config = AdaptiveTrainingConfig(
 )
 
 # NEW (recommended)
-from mfg_pde.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingMode
+from mfgarchon.alg.neural.pinn_solvers.adaptive_training import AdaptiveTrainingMode
 config = AdaptiveTrainingConfig(
     training_mode=AdaptiveTrainingMode.FULL_ADAPTIVE
 )
@@ -636,7 +636,7 @@ This release introduces complete dual geometry support, enabling HJB and FP solv
 
 **Dual Geometry Infrastructure (PR #258, Issues #257 & #245 Phase 4)**
 
-- **GeometryProjector** class (`mfg_pde/geometry/projection.py`, 706 lines)
+- **GeometryProjector** class (`mfgarchon/geometry/projection.py`, 706 lines)
   - Automatic projection method selection based on geometry types
   - `project_hjb_to_fp()`: Maps HJB solution values to FP geometry
   - `project_fp_to_hjb()`: Maps FP density values to HJB geometry
@@ -649,7 +649,7 @@ This release introduces complete dual geometry support, enabling HJB and FP solv
   - O(N) custom projectors (not O(N²))
   - User-extensible for custom geometry types
 
-- **MFGProblem Dual Geometry Integration** (`mfg_pde/core/mfg_problem.py`)
+- **MFGProblem Dual Geometry Integration** (`mfgarchon/core/mfg_problem.py`)
   - New parameters: `hjb_geometry` and `fp_geometry`
   - Automatic `GeometryProjector` creation when geometries differ
   - Unified attribute access: `problem.hjb_geometry`, `problem.fp_geometry`
@@ -788,7 +788,7 @@ This release introduces the geometry-first API, a new recommended pattern for co
 - Migration path for Phase 3 (v1.0.0): Remove deprecated scalar API
 
 **PR #247: GeometryProtocol Foundation**
-- Created `GeometryProtocol` runtime-checkable Protocol (`mfg_pde/geometry/geometry_protocol.py`)
+- Created `GeometryProtocol` runtime-checkable Protocol (`mfgarchon/geometry/geometry_protocol.py`)
   - Minimal interface for all geometry objects
   - Four required properties: `dimension`, `geometry_type`, `num_spatial_points`, `get_spatial_grid()`
 - Created `GeometryType` enum with 7 types:
@@ -895,13 +895,13 @@ This release introduces the geometry-first API, a new recommended pattern for co
 ### Added
 
 **PR #242: GFDM Operators with Unified Smoothing Kernels**
-- `mfg_pde/utils/numerical/smoothing_kernels.py` (807 lines)
+- `mfgarchon/utils/numerical/smoothing_kernels.py` (807 lines)
   - Unified kernel implementations: Gaussian, Wendland, Cubic Spline, Quintic Spline, Cubic, Quartic
   - Parameterized Wendland kernels: `WendlandKernel(k=0,1,2,3)` for C^0, C^2, C^4, C^6 smoothness
   - Arbitrary dimension support with proper normalization
   - Factory pattern: `create_kernel(kernel_type, dimension)`
   - Derivative support for gradient-based methods
-- `mfg_pde/utils/numerical/gfdm_operators.py` (1050 lines)
+- `mfgarchon/utils/numerical/gfdm_operators.py` (1050 lines)
   - Weighted least squares gradient/Hessian reconstruction
   - Support for structured and unstructured grids
   - Boundary condition handling (Dirichlet, Neumann)
@@ -1039,9 +1039,9 @@ Major architecture refactoring completing Phase 3.1 (MFGProblem), Phase 3.2 (Sol
 
 **Old API**:
 ```python
-from mfg_pde.problems import LQMFGProblem
-from mfg_pde.config import create_accurate_config
-from mfg_pde import solve_mfg
+from mfgarchon.problems import LQMFGProblem
+from mfgarchon.config import create_accurate_config
+from mfgarchon import solve_mfg
 
 problem = LQMFGProblem(...)
 result = solve_mfg(problem, method="accurate")
@@ -1049,8 +1049,8 @@ result = solve_mfg(problem, method="accurate")
 
 **New API** (Recommended):
 ```python
-from mfg_pde.factory import create_lq_problem
-from mfg_pde import solve_mfg
+from mfgarchon.factory import create_lq_problem
+from mfgarchon import solve_mfg
 
 problem = create_lq_problem(...)
 result = solve_mfg(problem, config="accurate")

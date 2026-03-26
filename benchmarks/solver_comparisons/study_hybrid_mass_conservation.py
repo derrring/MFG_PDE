@@ -9,11 +9,11 @@ framework. Analyzes mass conservation properties and convergence behavior.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
-from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry.boundary import neumann_bc
-from mfg_pde.utils.convergence import create_stochastic_monitor
+from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
+from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry.boundary import neumann_bc
+from mfgarchon.utils.convergence import create_stochastic_monitor
 
 
 def setup_problem():

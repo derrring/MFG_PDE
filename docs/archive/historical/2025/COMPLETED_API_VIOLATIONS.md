@@ -29,7 +29,7 @@ dx = [0.04, 0.025]
 
 ## Category 1: Nx/dx Array Naming Violations
 
-### 1.1 SimpleGrid2D (mfg_pde/geometry/simple_grid.py)
+### 1.1 SimpleGrid2D (mfgarchon/geometry/simple_grid.py)
 
 **Violation** (lines 39, 44-45):
 ```python
@@ -49,7 +49,7 @@ self.dx = [(self.xmax - self.xmin) / self.Nx[0],
 
 **Impact**: 45+ references to `self.ny`, `self.dy` throughout file
 
-### 1.2 SimpleGrid3D (mfg_pde/geometry/simple_grid.py)
+### 1.2 SimpleGrid3D (mfgarchon/geometry/simple_grid.py)
 
 **Violation** (lines 369, 374-375):
 ```python
@@ -68,7 +68,7 @@ self.dx = [dx1, dx2, dx3]  # Array
 
 **Impact**: 60+ references to `self.ny`, `self.nz` in 3D mesh generation
 
-### 1.3 TensorProductGrid (mfg_pde/geometry/tensor_product_grid.py)
+### 1.3 TensorProductGrid (mfgarchon/geometry/tensor_product_grid.py)
 
 **Violation** (lines 75, 110+):
 ```python
@@ -96,7 +96,7 @@ def __init__(self, dimension: int, bounds: Sequence[tuple[float, float]],
 
 ### 2.1 PINN Training Strategy
 
-**Location**: `mfg_pde/alg/neural/pinn_solvers/adaptive_training.py:64-82`
+**Location**: `mfgarchon/alg/neural/pinn_solvers/adaptive_training.py:64-82`
 
 **Violation**:
 ```python
@@ -109,7 +109,7 @@ enable_refinement: bool = True
 
 ### 2.2 Normalization Type
 
-**Location**: `mfg_pde/alg/neural/pinn_solvers/base_pinn.py:83-84`
+**Location**: `mfgarchon/alg/neural/pinn_solvers/base_pinn.py:83-84`
 
 **Violation**:
 ```python
@@ -121,7 +121,7 @@ use_layer_norm: bool = False
 
 ### 2.3 DGM Variance Reduction
 
-**Location**: `mfg_pde/alg/neural/dgm/base_dgm.py:64-65`
+**Location**: `mfgarchon/alg/neural/dgm/base_dgm.py:64-65`
 
 **Violation**:
 ```python

@@ -16,8 +16,8 @@ Related:
 
 import numpy as np
 
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def main():

@@ -148,23 +148,23 @@
 **Day 1: Audit Phase**
 - [ ] Run comprehensive search for broad exception patterns:
   ```bash
-  grep -r "except Exception:" mfg_pde/
-  grep -r "except:" mfg_pde/ | grep -v "except.*Error"
+  grep -r "except Exception:" mfgarchon/
+  grep -r "except:" mfgarchon/ | grep -v "except.*Error"
   ```
 - [ ] Categorize violations by type (import fallbacks, optional features, error recovery)
 - [ ] Create audit document with locations and patterns
 - [ ] Identify high-risk areas (where silent failures mask bugs)
 
 **Day 2: Refactor Core Modules**
-- [ ] Replace broad exceptions in `mfg_pde/core/`
-- [ ] Replace broad exceptions in `mfg_pde/config/`
+- [ ] Replace broad exceptions in `mfgarchon/core/`
+- [ ] Replace broad exceptions in `mfgarchon/config/`
 - [ ] Add logging for all fallbacks
 - [ ] Add docstring documentation for fallback behavior
 - [ ] Run tests after each module
 
 **Day 3: Refactor Algorithms & Finalize**
-- [ ] Replace broad exceptions in `mfg_pde/alg/`
-- [ ] Replace broad exceptions in `mfg_pde/geometry/`
+- [ ] Replace broad exceptions in `mfgarchon/alg/`
+- [ ] Replace broad exceptions in `mfgarchon/geometry/`
 - [ ] Add unit tests for error handling paths
 - [ ] Document patterns in `docs/development/ERROR_HANDLING_GUIDE.md`
 - [ ] (Optional) Implement `--strict` mode flag

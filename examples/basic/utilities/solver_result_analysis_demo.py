@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from mfg_pde.utils.solver_result import SolverResult
+from mfgarchon.utils.solver_result import SolverResult
 
 # Output directory
 OUTPUT_DIR = Path(__file__).parent.parent / "outputs" / "basic"

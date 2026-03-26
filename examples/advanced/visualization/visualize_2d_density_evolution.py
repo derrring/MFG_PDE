@@ -25,11 +25,11 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfg_pde import MFGComponents, MFGProblem
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.geometry.boundary.conditions import no_flux_bc
+from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
 
 class SimpleCoupledMFGProblem(MFGProblem):

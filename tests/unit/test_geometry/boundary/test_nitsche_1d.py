@@ -10,7 +10,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.boundary.nitsche_1d import Nitsche1DPoissonSolver
+from mfgarchon.geometry.boundary.nitsche_1d import Nitsche1DPoissonSolver
 
 
 class TestNitsche1DPoissonSolver:

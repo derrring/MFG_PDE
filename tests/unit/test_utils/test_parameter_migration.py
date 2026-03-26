@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/parameter_migration.py
+Unit tests for mfgarchon/utils/parameter_migration.py
 
 Tests comprehensive parameter migration system including:
 - ParameterMapping dataclass
@@ -14,7 +14,7 @@ import warnings
 
 import pytest
 
-from mfg_pde.utils.parameter_migration import (
+from mfgarchon.utils.parameter_migration import (
     MigrationStats,
     ParameterMapping,
     ParameterMigrator,
@@ -617,7 +617,7 @@ def test_migration_report_truncates_log():
 @pytest.mark.unit
 def test_module_exports():
     """Test all public functions are importable."""
-    from mfg_pde.utils import parameter_migration
+    from mfgarchon.utils import parameter_migration
 
     assert hasattr(parameter_migration, "ParameterMapping")
     assert hasattr(parameter_migration, "MigrationStats")

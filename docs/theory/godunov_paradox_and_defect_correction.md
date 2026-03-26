@@ -1,4 +1,4 @@
-# The Godunov Paradox and Defect Correction in MFG_PDE
+# The Godunov Paradox and Defect Correction in MFGarchon
 
 **Document Type**: Theory & Implementation Note
 **Related Issue**: #597 Milestone 3
@@ -13,7 +13,7 @@
 
 **The Solution**: Defect Correction framework - use linear velocity-based Jacobian (LHS) with Godunov residual evaluation (RHS). This is standard CFD practice for nonlinear conservation laws.
 
-**Impact on MFG_PDE**: Explicit solvers use AdvectionOperator (Godunov), implicit solvers use manual sparse matrix construction (velocity-based linear upwind). Both are mathematically correct for their respective roles.
+**Impact on MFGarchon**: Explicit solvers use AdvectionOperator (Godunov), implicit solvers use manual sparse matrix construction (velocity-based linear upwind). Both are mathematically correct for their respective roles.
 
 ---
 
@@ -178,7 +178,7 @@ Method:
 - Point in a descent direction
 - Be "close enough" to F'(m) for convergence
 
-### Applied to MFG_PDE
+### Applied to MFGarchon
 
 **Residual** (RHS):
 ```
@@ -232,7 +232,7 @@ Then Defect Correction converges linearly to the solution of `F(m) = 0`.
 
 ---
 
-## Part IV: Implementation in MFG_PDE
+## Part IV: Implementation in MFGarchon
 
 ### Architecture
 
@@ -253,10 +253,10 @@ Implicit Solver (solve_timestep_full_nd):
 
 **Explicit path** (Godunov accurate):
 ```python
-# mfg_pde/alg/numerical/fp_solvers/fp_fdm_advection.py
+# mfgarchon/alg/numerical/fp_solvers/fp_fdm_advection.py
 def compute_advection_term_nd(M, U, coupling_coefficient, spacing, ...):
     """Uses AdvectionOperator internally (Issue #597 M3)."""
-    from mfg_pde.geometry.operators.advection import AdvectionOperator
+    from mfgarchon.geometry.operators.advection import AdvectionOperator
 
     drift = [-coupling_coefficient * np.gradient(U, dx, axis=d)
              for d in range(ndim)]
@@ -269,10 +269,10 @@ def compute_advection_term_nd(M, U, coupling_coefficient, spacing, ...):
 
 **Implicit path** (Velocity-based Jacobian):
 ```python
-# mfg_pde/alg/numerical/fp_solvers/fp_fdm_alg_gradient_upwind.py
+# mfgarchon/alg/numerical/fp_solvers/fp_fdm_alg_gradient_upwind.py
 def add_interior_entries_gradient_upwind(...):
     """Builds velocity-based upwind matrix."""
-    from mfg_pde.utils.aux_func import ppart, npart
+    from mfgarchon.utils.aux_func import ppart, npart
 
     # Upwind based on velocity (field-independent!)
     u_plus = u_flat[flat_idx_plus]
@@ -328,7 +328,7 @@ def add_interior_entries_gradient_upwind(...):
 **Picard Iteration**:
 - Linearize nonlinear terms using previous iterate
 - Iterate until residual vanishes
-- MFG_PDE implicit solver is essentially Picard with one iteration per timestep
+- MFGarchon implicit solver is essentially Picard with one iteration per timestep
 
 ---
 

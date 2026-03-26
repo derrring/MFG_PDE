@@ -21,7 +21,7 @@
 
 ## ✅ Completed Work: Issue #590 (Geometry Trait System)
 
-**Issue**: [#590](https://github.com/derrring/MFG_PDE/issues/590) - Phase 1: Geometry Trait System & Region Registry
+**Issue**: [#590](https://github.com/derrring/mfgarchon/issues/590) - Phase 1: Geometry Trait System & Region Registry
 **Part of**: #589 (Geometry & BC Architecture Master Tracking)
 **Priority**: HIGH
 **Size**: Medium
@@ -40,10 +40,10 @@ Successfully formalized trait protocols for geometry capabilities, enabling:
 #### Phase 1.1: Protocol Definition ✅
 
 **Files Created** (2026-01-17):
-- ✅ `mfg_pde/geometry/protocols/__init__.py`
-- ✅ `mfg_pde/geometry/protocols/operators.py` - 5 operator trait protocols
-- ✅ `mfg_pde/geometry/protocols/topology.py` - 3 topological trait protocols
-- ✅ `mfg_pde/geometry/protocols/regions.py` - 4 region trait protocols
+- ✅ `mfgarchon/geometry/protocols/__init__.py`
+- ✅ `mfgarchon/geometry/protocols/operators.py` - 5 operator trait protocols
+- ✅ `mfgarchon/geometry/protocols/topology.py` - 3 topological trait protocols
+- ✅ `mfgarchon/geometry/protocols/regions.py` - 4 region trait protocols
 
 **Protocols Defined** (12 total):
 ```python
@@ -120,7 +120,7 @@ class TensorProductGrid(BaseGeometry):
         boundary_conditions: BoundaryConditions | None = None
     ) -> LinearOperator:
         """Get Laplacian operator (Protocol: SupportsLaplacian)."""
-        from mfg_pde.geometry.operators import LaplacianOperator
+        from mfgarchon.geometry.operators import LaplacianOperator
         return LaplacianOperator(
             self,
             order=order,
@@ -133,7 +133,7 @@ class TensorProductGrid(BaseGeometry):
         order: int = 2
     ) -> LinearOperator:
         """Get gradient operator (Protocol: SupportsGradient)."""
-        from mfg_pde.geometry.operators import GradientOperator
+        from mfgarchon.geometry.operators import GradientOperator
         return GradientOperator(self, direction=direction, order=order)
 
     # ... similar for divergence, advection
@@ -153,7 +153,7 @@ class TensorProductGrid(BaseGeometry):
 **Implementation Added**:
 - ✅ Added `SupportsRegionMarking` to TensorProductGrid inheritance
 - ✅ Internal storage: `self._regions: dict[str, NDArray[np.bool_]] = {}`
-- ✅ Implemented 5 protocol methods in `mfg_pde/geometry/grids/tensor_grid.py`:
+- ✅ Implemented 5 protocol methods in `mfgarchon/geometry/grids/tensor_grid.py`:
   - `mark_region()` (lines 1598-1709)
   - `_get_boundary_mask()` helper (lines 1711-1746)
   - `get_region_mask()` (lines 1748-1774)
@@ -213,7 +213,7 @@ grid.mark_region("dim3_front", boundary="dim3_min")  # High-dimensional
 
 ## ✅ Issue #596: Solver Integration with Traits - Phases 2.1-2.3 COMPLETE
 
-**Issue**: [#596](https://github.com/derrring/MFG_PDE/issues/596) - Phase 2: Solver Integration with Geometry Trait System
+**Issue**: [#596](https://github.com/derrring/mfgarchon/issues/596) - Phase 2: Solver Integration with Geometry Trait System
 **Part of**: #589 (Geometry & BC Architecture Master Tracking)
 **Dependencies**: #590 complete ✅
 **Priority**: HIGH
@@ -372,7 +372,7 @@ grad_u = grad_ops[0](u_values)  # BCs automatically enforced via ghost cells
 
 ## ✅ Issue #600: Pre-existing Test Failures - COMPLETE
 
-**Issue**: [#600](https://github.com/derrring/MFG_PDE/issues/600) - Fix Pre-existing Test Failures
+**Issue**: [#600](https://github.com/derrring/mfgarchon/issues/600) - Fix Pre-existing Test Failures
 **Priority**: HIGH
 **Size**: Small
 **Status**: ✅ **COMPLETED** (2026-01-18)

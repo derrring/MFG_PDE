@@ -13,15 +13,15 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.solver_result import SolverResult
+from mfgarchon.utils.solver_result import SolverResult
 
 try:
-    from mfg_pde.utils.io import HDF5_AVAILABLE
+    from mfgarchon.utils.io import HDF5_AVAILABLE
 except ImportError:
     HDF5_AVAILABLE = False
 
 if HDF5_AVAILABLE:
-    from mfg_pde.utils.io.hdf5_utils import (
+    from mfgarchon.utils.io.hdf5_utils import (
         get_hdf5_info,
         load_checkpoint,
         load_solution,
@@ -412,7 +412,7 @@ def test_hdf5_unavailable_error_message():
     if HDF5_AVAILABLE:
         pytest.skip("h5py is available, cannot test unavailable case")
 
-    from mfg_pde.utils.io import save_solution
+    from mfgarchon.utils.io import save_solution
 
     with pytest.raises(ImportError, match="h5py is required"):
         save_solution(np.array([]), np.array([]), {}, "test.h5")

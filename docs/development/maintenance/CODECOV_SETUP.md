@@ -98,7 +98,7 @@ The test coverage job runs on every push and PR:
 
 ```yaml
 - Run tests with coverage:
-    pytest tests/ --cov=mfg_pde --cov-report=xml
+    pytest tests/ --cov=mfgarchon --cov-report=xml
 
 - Upload to Codecov:
     uses: codecov/codecov-action@v4
@@ -111,7 +111,7 @@ Coverage reports are generated in XML format and uploaded automatically.
 The dynamic badge in README.md:
 
 ```markdown
-[![codecov](https://codecov.io/gh/derrring/MFG_PDE/branch/main/graph/badge.svg)](https://codecov.io/gh/derrring/MFG_PDE)
+[![codecov](https://codecov.io/gh/derrring/mfgarchon/branch/main/graph/badge.svg)](https://codecov.io/gh/derrring/mfgarchon)
 ```
 
 Features:

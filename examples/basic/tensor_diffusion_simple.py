@@ -17,8 +17,8 @@ before full MFG solver integration (Phase 3.0).
 import numpy as np
 from matplotlib import pyplot as plt
 
-from mfg_pde.geometry.boundary.conditions import BoundaryConditions, no_flux_bc
-from mfg_pde.utils.numerical.tensor_calculus import diffusion
+from mfgarchon.geometry.boundary.conditions import BoundaryConditions, no_flux_bc
+from mfgarchon.utils.numerical.tensor_calculus import diffusion
 
 
 def create_gaussian_initial_condition(

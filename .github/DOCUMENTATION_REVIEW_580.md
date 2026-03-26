@@ -103,7 +103,7 @@ result = problem.solve()
 
 **Objective**: Create utilities to validate HJB-FP duality relationships.
 
-**Implementation**: `mfg_pde/utils/adjoint_validation.py`
+**Implementation**: `mfgarchon/utils/adjoint_validation.py`
 
 **Key Components**:
 1. `DualityStatus` enum (discrete_dual, continuous_dual, not_dual)

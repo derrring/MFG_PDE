@@ -43,16 +43,16 @@
 
 ## The Dimensional Problem
 
-### MFG_PDE's Explicit Dimensional Limits
+### MFGarchon's Explicit Dimensional Limits
 
-MFG_PDE has **hard-coded dimension checks** that prevent 4D+ usage:
+MFGarchon has **hard-coded dimension checks** that prevent 4D+ usage:
 
 ```python
-# From mfg_pde/geometry/tensor_product_grid.py (line 80-81)
+# From mfgarchon/geometry/tensor_product_grid.py (line 80-81)
 if dimension not in [1, 2, 3]:
     raise ValueError(f"Dimension must be 1, 2, or 3, got {dimension}")
 
-# From mfg_pde/geometry/base_geometry.py (line 60-61)
+# From mfgarchon/geometry/base_geometry.py (line 60-61)
 if self.dimension not in [2, 3]:
     raise ValueError(f"Dimension must be 2 or 3, got {self.dimension}")
 ```
@@ -97,7 +97,7 @@ Typical solve times (assuming N=100 points/dimension, 500 timesteps):
 #### Hard-Coded 1D Assumptions
 
 ```python
-# mfg_pde/core/mfg_problem.py (simplified)
+# mfgarchon/core/mfg_problem.py (simplified)
 class MFGProblem:
     def __init__(self, Nx, xmin, xmax, ...):
         self.Nx: int = Nx           # ❌ Single dimension only
@@ -634,7 +634,7 @@ assert domain.contains(np.array([0.1]*4))
 
 ### Why Refactor for All Methods?
 
-**Question:** Should MFG_PDE be dimension-agnostic even for mesh methods that can't scale to d>3?
+**Question:** Should MFGarchon be dimension-agnostic even for mesh methods that can't scale to d>3?
 
 **Answer:** **YES** - Benefits both mesh-based AND meshfree methods.
 
@@ -665,7 +665,7 @@ class MFGProblem:     # Works for any d!
 
 ```python
 # Same API structure for all dimensions
-from mfg_pde.geometry import Hyperrectangle
+from mfgarchon.geometry import Hyperrectangle
 
 # 1D
 domain_1d = Hyperrectangle(np.array([[0, 1]]))

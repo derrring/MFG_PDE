@@ -511,8 +511,8 @@ since $A$ has $A^{-1} \geq 0$, which implies $Aw \geq 0$ whenever $w \geq 0$ (M-
 ### Connections to Implementation
 
 **Code references**:
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:799-925`: M-matrix constraint enforcement
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py:1399-1460`: Monotonicity checks
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:799-925`: M-matrix constraint enforcement
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py:1399-1460`: Monotonicity checks
 
 ---
 

@@ -3,7 +3,7 @@
 Check for internal usage of deprecated APIs in production code.
 
 This script:
-1. Scans mfg_pde/ for @deprecated decorators to build symbol registry
+1. Scans mfgarchon/ for @deprecated decorators to build symbol registry
 2. Scans production code for calls to deprecated symbols
 3. Reports violations and exits with error code
 
@@ -168,7 +168,7 @@ def discover_deprecated_symbols(src_path: Path) -> dict[str, DeprecatedSymbol]:
     Scan codebase for @deprecated decorators.
 
     Args:
-        src_path: Root directory to scan (e.g., mfg_pde/)
+        src_path: Root directory to scan (e.g., mfgarchon/)
 
     Returns:
         Dict mapping symbol name to DeprecatedSymbol metadata
@@ -272,7 +272,7 @@ def main() -> int:
     # Determine source directory
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent
-    src_path = repo_root / "mfg_pde"
+    src_path = repo_root / "mfgarchon"
 
     if not src_path.exists():
         print(f"❌ ERROR: Source directory not found: {src_path}", file=sys.stderr)

@@ -22,10 +22,10 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.stochastic import CommonNoiseMFGSolver
-from mfg_pde.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
+from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 @pytest.mark.slow

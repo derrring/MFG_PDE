@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from benchmarks.validation.test_2d_crowd_motion import CrowdMotion2D
-from mfg_pde.factory import create_basic_solver
+from mfgarchon.factory import create_basic_solver
 
 
 def compute_total_mass_2d(M: np.ndarray, dx: float, dy: float) -> float:

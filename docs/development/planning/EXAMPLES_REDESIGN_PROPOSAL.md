@@ -2,7 +2,7 @@
 
 **Date**: 2025-11-11
 **Status**: PROPOSAL
-**Purpose**: Comprehensive cleanup and reorganization of MFG_PDE examples
+**Purpose**: Comprehensive cleanup and reorganization of MFGarchon examples
 
 ---
 
@@ -93,7 +93,7 @@ examples/archive/
 
 ### Philosophy
 
-**MFG_PDE Examples** (Public Infrastructure):
+**MFGarchon Examples** (Public Infrastructure):
 - ✅ Demonstrate core infrastructure features
 - ✅ Educational progression (beginner → advanced)
 - ✅ Single-concept focused examples
@@ -295,7 +295,7 @@ examples/archive/  → mfg-research/archives/legacy_examples/
    git rm -r examples/archive
    ```
 
-### Phase 4: Reorganize MFG_PDE Examples
+### Phase 4: Reorganize MFGarchon Examples
 1. Create new structure:
    ```bash
    mkdir -p examples/tutorials
@@ -338,13 +338,13 @@ examples/archive/  → mfg-research/archives/legacy_examples/
 
 3. Commit changes in both repositories:
    ```bash
-   # In MFG_PDE
+   # In MFGarchon
    git add examples/
    git commit -m "refactor: Reorganize examples into clear infrastructure demos"
 
    # In mfg-research
    git add experiments/particle_methods_comparison_2d/ experiments/anisotropic_crowd_dynamics_2d/
-   git commit -m "feat: Add particle methods and anisotropic research from MFG_PDE"
+   git commit -m "feat: Add particle methods and anisotropic research from MFGarchon"
    ```
 
 ---
@@ -356,7 +356,7 @@ examples/archive/  → mfg-research/archives/legacy_examples/
 
 **Option A**: Move to mfg-research/archives/legacy_examples
 **Option B**: Delete entirely
-**Option C**: Keep in MFG_PDE but document as "Historical API demos"
+**Option C**: Keep in MFGarchon but document as "Historical API demos"
 
 **Recommendation**: Option A (move to research)
 
@@ -430,7 +430,7 @@ examples/archive/  → mfg-research/archives/legacy_examples/
 1. ✅ All examples execute successfully after reorganization
 2. ✅ Clear README in each subdirectory explains purpose
 3. ✅ Tutorials provide learning path for new users
-4. ✅ No research experiments remain in MFG_PDE examples/
+4. ✅ No research experiments remain in MFGarchon examples/
 5. ✅ examples/outputs/ contains only regenerable outputs
 6. ✅ Git history preserved for all moved files
 7. ✅ Both repositories pass CI after changes
@@ -496,7 +496,7 @@ examples/archive/ (9 files, optional)
 
 **Total**: ~15-24 files (depending on archive decision)
 
-### Files Staying in MFG_PDE (Reorganized)
+### Files Staying in MFGarchon (Reorganized)
 ```
 examples/basic/ (10 files) - All retained, reorganized into subdirectories
 examples/advanced/ (32 files) - Retained after removing anisotropic package

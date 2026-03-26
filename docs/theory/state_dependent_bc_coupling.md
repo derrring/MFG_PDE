@@ -78,7 +78,7 @@ with:
 ### Code Usage (v0.18.0+ Provider Pattern)
 
 ```python
-from mfg_pde.geometry.boundary import (
+from mfgarchon.geometry.boundary import (
     AdjointConsistentProvider, BCSegment, BCType, BoundaryConditions
 )
 
@@ -121,7 +121,7 @@ The replacement is the **BCValueProvider pattern** (Issue #625):
 
 ```python
 # v0.18.0+: Provider pattern — BC intent stored in problem, resolved by iterator
-from mfg_pde.geometry.boundary import AdjointConsistentProvider, BCSegment, BCType, BoundaryConditions
+from mfgarchon.geometry.boundary import AdjointConsistentProvider, BCSegment, BCType, BoundaryConditions
 
 bc = BoundaryConditions(segments=[
     BCSegment(name="left_ac", bc_type=BCType.ROBIN,
@@ -161,7 +161,7 @@ See: `mfg-research/experiments/crowd_evacuation_2d/runners/exp14b_fdm_bc_fix_val
 
 - Issue #574: Adjoint-consistent BC implementation
 - Issue #703: Deprecation of `bc_mode` parameter
-- `mfg_pde/geometry/boundary/bc_coupling.py`: Implementation
+- `mfgarchon/geometry/boundary/bc_coupling.py`: Implementation
 - `docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md`: Validation protocol
 
 ## Structural Adjoint: A Closer Look

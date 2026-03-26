@@ -13,20 +13,20 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.coupling import (
+from mfgarchon.alg.numerical.coupling import (
     BlockGaussSeidelIterator,
     BlockIterator,
     BlockJacobiIterator,
     BlockMethod,
     FixedPointIterator,
 )
-from mfg_pde.alg.numerical.fp_solvers import FPFDMSolver
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def _default_hamiltonian():

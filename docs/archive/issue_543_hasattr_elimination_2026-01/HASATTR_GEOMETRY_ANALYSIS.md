@@ -1,4 +1,4 @@
-# hasattr() Analysis: mfg_pde/geometry Module
+# hasattr() Analysis: mfgarchon/geometry Module
 
 **Issue**: #543 - Eliminate hasattr() duck typing
 **Scope**: Geometry module
@@ -50,7 +50,7 @@ elif hasattr(self.geometry, "get_bounds"):
 
 **Proper Solution** (after #544):
 ```python
-# Define in mfg_pde/geometry/protocol.py
+# Define in mfgarchon/geometry/protocol.py
 from typing import Protocol, runtime_checkable
 
 @runtime_checkable
@@ -406,7 +406,7 @@ pytest tests/unit/test_geometry/ -v
 pytest tests/integration/test_geometry_integration.py -v
 
 # Validate reduction
-python scripts/check_fail_fast.py --path mfg_pde/geometry --all
+python scripts/check_fail_fast.py --path mfgarchon/geometry --all
 # Should show: 47 → 37 violations (-10)
 ```
 

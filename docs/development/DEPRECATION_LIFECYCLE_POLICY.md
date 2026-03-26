@@ -277,7 +277,7 @@ When deprecating a parameter (e.g., `conservative`):
   ```
 - [ ] Update factory functions:
   ```python
-  # mfg_pde/factory/scheme_factory.py
+  # mfgarchon/factory/scheme_factory.py
   def _create_fdm_pair(problem, scheme):
       if scheme == NumericalScheme.FDM_UPWIND:
           # ✅ MUST match deprecated default
@@ -298,7 +298,7 @@ def check_factory_uses_new_api():
     """Ensure factory functions don't use deprecated parameters."""
     deprecated_params = load_deprecated_params()  # From config
 
-    for factory_file in glob("mfg_pde/factory/**/*.py"):
+    for factory_file in glob("mfgarchon/factory/**/*.py"):
         for param in deprecated_params:
             if param in read_file(factory_file):
                 raise ValueError(
@@ -483,10 +483,10 @@ def test_conservative_true_matches_default():
 
 ### 1. @deprecated Decorator (Code as Source of Truth)
 
-**Module**: `mfg_pde/utils/deprecation.py`
+**Module**: `mfgarchon/utils/deprecation.py`
 
 ```python
-from mfg_pde.utils.deprecation import deprecated
+from mfgarchon.utils.deprecation import deprecated
 
 @deprecated(
     since="v0.17.0",
@@ -532,7 +532,7 @@ python scripts/check_internal_deprecation.py
 ```
 
 **How it works**:
-1. Phase 1: Scan `mfg_pde/` for `@deprecated` decorators → build registry
+1. Phase 1: Scan `mfgarchon/` for `@deprecated` decorators → build registry
 2. Phase 2: Scan production code for calls to deprecated symbols
 3. Report violations with file:line locations
 
@@ -543,7 +543,7 @@ python scripts/check_internal_deprecation.py
    Total deprecated symbols: 1
 
 🔍 Checking production code for deprecated symbol usage...
-   mfg_pde/factory/solver_factory.py:123 calls deprecated 'create_default_monitor()'
+   mfgarchon/factory/solver_factory.py:123 calls deprecated 'create_default_monitor()'
 
 ❌ FAILURE: Production code calls deprecated functions.
 ```
@@ -576,7 +576,7 @@ jobs:
 5. **Clear timeline**: 3 versions OR 6 months minimum before removal
 
 **Implementation** (2026-01-20):
-- ✅ `mfg_pde/utils/deprecation.py` - @deprecated decorator (code as source of truth)
+- ✅ `mfgarchon/utils/deprecation.py` - @deprecated decorator (code as source of truth)
 - ✅ `scripts/check_internal_deprecation.py` - AST-based checker (auto-discovers decorators)
 - ✅ `scripts/pre-commit-deprecation-check.sh` - Git hook (blocks commits with violations)
 - ✅ `.github/workflows/deprecation-check.yml` - CI enforcement

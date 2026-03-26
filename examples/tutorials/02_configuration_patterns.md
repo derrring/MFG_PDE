@@ -1,4 +1,4 @@
-# Configuration Patterns in MFG_PDE
+# Configuration Patterns in MFGarchon
 
 **Tutorial Level**: Beginner-Intermediate
 **Estimated Time**: 20 minutes
@@ -8,7 +8,7 @@
 
 ## Three Ways to Configure Solvers
 
-MFG_PDE offers three configuration patterns, each suited to different use cases:
+MFGarchon offers three configuration patterns, each suited to different use cases:
 
 1. **Presets** - Quick start with sensible defaults
 2. **Builder API** - Programmatic configuration
@@ -23,7 +23,7 @@ All three patterns create the same `SolverConfig` object and have **identical pe
 ### Available Presets
 
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 # Fast: Speed-optimized (prototyping, testing)
 config = presets.fast_solver()
@@ -47,13 +47,13 @@ config = presets.accurate_solver()
 ### Inline Usage
 
 ```python
-from mfg_pde import solve_mfg, MFGProblem
+from mfgarchon import solve_mfg, MFGProblem
 
 # Simplest: Use preset string
 result = solve_mfg(MFGProblem(), preset="fast")
 
 # Or: Use preset object
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 result = solve_mfg(MFGProblem(), config=presets.accurate_solver())
 ```
 
@@ -66,7 +66,7 @@ result = solve_mfg(MFGProblem(), config=presets.accurate_solver())
 ### Basic Builder Usage
 
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 
 config = (
     ConfigBuilder()
@@ -115,7 +115,7 @@ config = builder.build()
 ### Domain-Specific Presets
 
 ```python
-from mfg_pde.config import presets
+from mfgarchon.config import presets
 
 # Crowd dynamics (high spatial resolution)
 config = presets.crowd_dynamics_solver()
@@ -155,7 +155,7 @@ backend:
 ### Loading YAML Configs
 
 ```python
-from mfg_pde.config import load_solver_config
+from mfgarchon.config import load_solver_config
 
 config = load_solver_config("experiments/baseline.yaml")
 result = solve_mfg(problem, config=config)
@@ -199,7 +199,7 @@ logging:
 ### Saving Configs
 
 ```python
-from mfg_pde.config import save_solver_config, presets
+from mfgarchon.config import save_solver_config, presets
 
 config = presets.accurate_solver()
 save_solver_config(config, "experiments/saved_config.yaml")
@@ -226,7 +226,7 @@ save_solver_config(config, "experiments/saved_config.yaml")
 ### Parameter Sweep
 
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 import numpy as np
 
 results = []
@@ -255,7 +255,7 @@ for name, config_file in experiments.items():
 ### Conditional Configuration
 
 ```python
-from mfg_pde.config import ConfigBuilder
+from mfgarchon.config import ConfigBuilder
 
 builder = ConfigBuilder()
 

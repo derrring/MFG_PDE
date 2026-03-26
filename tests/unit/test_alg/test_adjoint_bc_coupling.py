@@ -1,5 +1,5 @@
 """
-Unit tests for adjoint BC coupling (mfg_pde/alg/numerical/adjoint/bc_coupling.py).
+Unit tests for adjoint BC coupling (mfgarchon/alg/numerical/adjoint/bc_coupling.py).
 
 Tests the core functions used by AdjointConsistentProvider to compute
 boundary log-density gradients and create coupled Robin BC objects.
@@ -13,13 +13,13 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.adjoint.bc_coupling import (
+from mfgarchon.alg.numerical.adjoint.bc_coupling import (
     compute_adjoint_consistent_bc_values,
     compute_boundary_log_density_gradient_1d,
     compute_coupled_hjb_bc_values,
     create_adjoint_consistent_bc_1d,
 )
-from mfg_pde.geometry.boundary.types import BCType
+from mfgarchon.geometry.boundary.types import BCType
 
 # =============================================================================
 # Mock Geometry

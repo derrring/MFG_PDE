@@ -12,7 +12,7 @@ python examples/basic/geometry/2d_crowd_motion_fdm.py
 # Outputs saved to examples/outputs/basic/
 ```
 
-**New to MFG_PDE?** Start with [tutorials/](../tutorials/) for structured learning path.
+**New to MFGarchon?** Start with [tutorials/](../tutorials/) for structured learning path.
 
 ---
 

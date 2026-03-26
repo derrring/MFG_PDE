@@ -7,7 +7,7 @@
 ## Implementation Accomplished
 
 ### 1. **OptimizedGFDMHJBSolver Implementation** ✅
-- **File**: `/mfg_pde/alg/hjb_solvers/optimized_gfdm_hjb_v2.py`
+- **File**: `/mfgarchon/alg/hjb_solvers/optimized_gfdm_hjb_v2.py`
 - **Key Features**:
   - Adaptive QP activation with 90% target skip rate
   - CVXPY/OSQP specialized QP solver integration

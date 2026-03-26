@@ -6,7 +6,7 @@
 
 ## Overview
 
-Extend MFG_PDE to support anisotropic diffusion via diffusion tensors **D(t, x, m)**, enabling direction-dependent diffusion coefficients. This generalizes scalar diffusion σ²(t, x, m) to full tensors supporting cross-diffusion and preferential directions.
+Extend MFGarchon to support anisotropic diffusion via diffusion tensors **D(t, x, m)**, enabling direction-dependent diffusion coefficients. This generalizes scalar diffusion σ²(t, x, m) to full tensors supporting cross-diffusion and preferential directions.
 
 ### Mathematical Formulation
 
@@ -158,7 +158,7 @@ def diffusion_tensor(t: float, x: NDArray, m: NDArray) -> NDArray:
 
 ### 3. Type Protocol Extension
 
-Update `mfg_pde/types/pde_coefficients.py`:
+Update `mfgarchon/types/pde_coefficients.py`:
 
 ```python
 from typing import Protocol, Union
@@ -199,7 +199,7 @@ DiffusionField = Union[
 
 ### Task 1: Extend Finite Difference Operators
 
-**File**: `mfg_pde/alg/numerical/operators.py` (or create new `tensor_operators.py`)
+**File**: `mfgarchon/alg/numerical/operators.py` (or create new `tensor_operators.py`)
 
 **New Functions**:
 
@@ -260,7 +260,7 @@ def divergence_tensor_diffusion_nd(
 
 ### Task 2: Update CoefficientField Abstraction
 
-**File**: `mfg_pde/utils/pde_coefficients.py`
+**File**: `mfgarchon/utils/pde_coefficients.py`
 
 **Changes**:
 
@@ -380,7 +380,7 @@ class CoefficientField:
 
 ### Task 3: Update FP Solvers
 
-**File**: `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+**File**: `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 
 **Changes to `_solve_fp_nd_full_system()`**:
 
@@ -436,7 +436,7 @@ def _solve_fp_nd_full_system(
 
 ### Task 4: Update HJB Solvers
 
-**File**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+**File**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`
 
 **Challenges**:
 - HJB with tensor diffusion: H(x, p, Σ) = -½ pᵀ Σ p + ...
@@ -607,7 +607,7 @@ def corridor_tensor_diffusion(t, x, m):
 
 | Component | Status | Files | Commit |
 |:----------|:-------|:------|:-------|
-| Tensor operators (2D) | ✅ | `mfg_pde/utils/numerical/tensor_operators.py` | `361cd65` |
+| Tensor operators (2D) | ✅ | `mfgarchon/utils/numerical/tensor_operators.py` | `361cd65` |
 | Diagonal optimization | ✅ | `divergence_diagonal_diffusion_2d()` | `361cd65` |
 | nD dispatcher | ✅ | `divergence_tensor_diffusion_nd()` | `361cd65` |
 | 1D fallback | ✅ | `_divergence_tensor_1d()` | `361cd65` |

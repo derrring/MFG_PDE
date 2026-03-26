@@ -7,9 +7,9 @@ This file now tests the unified FPFDMSolver instead.
 
 import numpy as np
 
-from mfg_pde import MFGComponents, MFGProblem
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 class Simple2DProblem(MFGProblem):

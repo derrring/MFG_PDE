@@ -1,4 +1,4 @@
-"""Tests for mfg_pde.utils.solver_decorators module."""
+"""Tests for mfgarchon.utils.solver_decorators module."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from mfg_pde.utils.solver_decorators import (
+from mfgarchon.utils.solver_decorators import (
     SolverMonitoringOptions,
     SolverProgressMixin,
     enhanced_solver_method,
@@ -460,7 +460,7 @@ class TestUpdateSolverProgress:
 
     def test_update_with_valid_tracker(self):
         """Test updating progress with valid tracker."""
-        from mfg_pde.utils.progress import IterationProgress
+        from mfgarchon.utils.progress import IterationProgress
 
         with IterationProgress(10, "Test", disable=True) as tracker:
             update_solver_progress(tracker, iteration=5, error=1e-5)
@@ -473,7 +473,7 @@ class TestUpdateSolverProgress:
 
     def test_update_with_additional_info(self):
         """Test updating progress with additional metrics."""
-        from mfg_pde.utils.progress import IterationProgress
+        from mfgarchon.utils.progress import IterationProgress
 
         with IterationProgress(10, "Test", disable=True) as tracker:
             update_solver_progress(tracker, iteration=5, error=1e-5, residual=0.001, step_size=0.1)
@@ -481,7 +481,7 @@ class TestUpdateSolverProgress:
 
     def test_update_without_error(self):
         """Test updating progress without error value."""
-        from mfg_pde.utils.progress import IterationProgress
+        from mfgarchon.utils.progress import IterationProgress
 
         with IterationProgress(10, "Test", disable=True) as tracker:
             update_solver_progress(tracker, iteration=5)

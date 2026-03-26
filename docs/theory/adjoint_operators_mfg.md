@@ -1,6 +1,6 @@
 # Adjoint Operators and Discrete Duality in Mean Field Games
 
-**Author**: MFG_PDE Development Team
+**Author**: MFGarchon Development Team
 **Date**: 2026-01-16
 **Status**: Active Theory Reference
 **Related**: Issue #580 (Adjoint-aware solver pairing), Issue #578 (FP SL adjoint solver)
@@ -131,7 +131,7 @@ L_FP  = L_HJB^T                      ✅ Exact transpose
 
 **Why it works**: On uniform Cartesian grids, the discrete gradient and divergence stencils are naturally transposes.
 
-**Code reference**: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`, `mfg_pde/alg/numerical/fp_solvers/fp_fdm.py`
+**Code reference**: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`, `mfgarchon/alg/numerical/fp_solvers/fp_fdm.py`
 
 #### 4.1.2 Semi-Lagrangian with Interpolation-Splatting Duality
 
@@ -149,7 +149,7 @@ This is the discrete analogue of $\nabla^T = -\text{div}$.
 - Splatting: $m_i^{new} = \sum_j w_i(x_j) m_j$ using **same** weights $w_i$
 - Matrix transpose relationship is exact by construction
 
-**Code reference**: `mfg_pde/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`, `mfg_pde/alg/numerical/fp_solvers/fp_semi_lagrangian_adjoint.py`
+**Code reference**: `mfgarchon/alg/numerical/hjb_solvers/hjb_semi_lagrangian.py`, `mfgarchon/alg/numerical/fp_solvers/fp_semi_lagrangian_adjoint.py`
 
 **Important**: The backward SL solver `fp_semi_lagrangian.py` using interpolation is **NOT** the adjoint - only forward splatting (`fp_semi_lagrangian_adjoint.py`) provides true duality.
 
@@ -163,13 +163,13 @@ This is the discrete analogue of $\nabla^T = -\text{div}$.
 
 **Examples**: Lax-Friedrichs, Godunov, Engquist-Osher schemes.
 
-**Status in MFG_PDE**: Not yet implemented (future extension).
+**Status in MFGarchon**: Not yet implemented (future extension).
 
 ### 4.2 Schemes with Continuous Duality Only (Approximate)
 
 #### 4.2.1 Generalized Finite Difference Method (GFDM)
 
-**Current usage in MFG_PDE**:
+**Current usage in MFGarchon**:
 - HJB: `HJBGFDMSolver` using weighted least-squares on collocation points
 - FP: `FPGFDMSolver` using same framework
 
@@ -184,7 +184,7 @@ M[t+1] = M[t] + dt * L_FP @ M[t]
 M[t+1] = M[t+1] / np.sum(M[t+1])  # Renormalize
 ```
 
-**Code reference**: `mfg_pde/alg/numerical/hjb_solvers/hjb_gfdm.py`, `mfg_pde/alg/numerical/fp_solvers/fp_gfdm.py`
+**Code reference**: `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`, `mfgarchon/alg/numerical/fp_solvers/fp_gfdm.py`
 
 ---
 
@@ -242,7 +242,7 @@ $$(\mathbf{L}_{\text{GFDM}})_{ij} \neq (\mathbf{L}_{\text{GFDM}})_{ji}$$
 
 **Consequence**: Numerical artifacts (artificial aggregation, texturing) even in smooth regions.
 
-#### Approach B: Primal-Primal (Current MFG_PDE)
+#### Approach B: Primal-Primal (Current MFGarchon)
 
 **Method**: Independently discretize both HJB and FP using GFDM.
 
@@ -406,7 +406,7 @@ assert fp.is_asymptotically_dual(hjb)  # True in limit h→0
 
 ### 6.5 The Value Proposition of Type B Schemes
 
-**GFDM in MFG_PDE represents this tradeoff**:
+**GFDM in MFGarchon represents this tradeoff**:
 
 ✅ **What you gain**:
 - Irregular domains (no mesh generation)
@@ -476,7 +476,7 @@ fp = FPFDMSolver(problem)                # Uses finite differences
 
 **Correct pattern** (Issue #580):
 ```python
-from mfg_pde.factory import create_paired_solvers, NumericalScheme
+from mfgarchon.factory import create_paired_solvers, NumericalScheme
 
 hjb, fp = create_paired_solvers(NumericalScheme.SL_LINEAR, problem)
 # ✅ Guaranteed discrete duality
@@ -529,15 +529,15 @@ assert np.allclose(L_fp, L_hjb.T)  # Should be exact transpose
 ### 6.4 Code References
 
 **Discrete duality implementations**:
-- FDM: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py:250-280`
-- SL adjoint: `mfg_pde/alg/numerical/fp_solvers/fp_semi_lagrangian_adjoint.py:150-200`
+- FDM: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py:250-280`
+- SL adjoint: `mfgarchon/alg/numerical/fp_solvers/fp_semi_lagrangian_adjoint.py:150-200`
 
 **Continuous duality (with renormalization)**:
-- GFDM FP: `mfg_pde/alg/numerical/fp_solvers/fp_gfdm.py:180-220`
+- GFDM FP: `mfgarchon/alg/numerical/fp_solvers/fp_gfdm.py:180-220`
 
 **Factory pattern** (in development):
 - Solver pairing: Issue #580
-- Draft: `mfg_pde/factory/solver_factory.py` (not yet committed)
+- Draft: `mfgarchon/factory/solver_factory.py` (not yet committed)
 
 ---
 
@@ -592,4 +592,4 @@ assert np.allclose(L_fp, L_hjb.T)  # Should be exact transpose
 
 **End of Document**
 
-For questions or corrections, please open an issue on the MFG_PDE GitHub repository.
+For questions or corrections, please open an issue on the MFGarchon GitHub repository.

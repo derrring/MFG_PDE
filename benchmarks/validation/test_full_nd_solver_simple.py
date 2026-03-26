@@ -20,9 +20,9 @@ def test_fp_2d_pure_diffusion():
     print()
 
     # Import after printing header (cleaner output)
-    from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-    from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary.conditions import no_flux_bc
+    from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+    from mfgarchon.geometry import TensorProductGrid
+    from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
     # Create 2D grid
     grid = TensorProductGrid(
@@ -109,9 +109,9 @@ def test_fp_2d_with_advection():
     print()
 
     # Import after printing header
-    from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-    from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary.conditions import no_flux_bc
+    from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+    from mfgarchon.geometry import TensorProductGrid
+    from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
     # Create 2D grid
     grid = TensorProductGrid(

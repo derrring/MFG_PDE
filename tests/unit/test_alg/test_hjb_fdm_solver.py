@@ -10,12 +10,12 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfg_pde.core.mfg_components import MFGComponents
-from mfg_pde.core.mfg_problem import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import no_flux_bc
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
+from mfgarchon.core.mfg_problem import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
 def _default_hamiltonian():
@@ -553,7 +553,7 @@ class TestHJBFDMSolverDiagonalTensor:
 
     def test_diagonal_tensor_is_diagonal_helper(self):
         """Test is_diagonal_tensor helper function."""
-        from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import is_diagonal_tensor
+        from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import is_diagonal_tensor
 
         # Test diagonal tensor
         Sigma_diag = np.diag([0.15, 0.05])
@@ -693,7 +693,7 @@ class TestHJBFDMSolverGhostValueBC:
 
     def test_get_ghost_values_nd_dirichlet(self):
         """Test get_ghost_values_nd for Dirichlet BC."""
-        from mfg_pde.geometry.boundary import dirichlet_bc, get_ghost_values_nd
+        from mfgarchon.geometry.boundary import dirichlet_bc, get_ghost_values_nd
 
         # Create 2D field
         field = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -716,7 +716,7 @@ class TestHJBFDMSolverGhostValueBC:
 
     def test_get_ghost_values_nd_neumann(self):
         """Test get_ghost_values_nd for Neumann/no-flux BC."""
-        from mfg_pde.geometry.boundary import get_ghost_values_nd, no_flux_bc
+        from mfgarchon.geometry.boundary import get_ghost_values_nd, no_flux_bc
 
         # Create 2D field
         field = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -734,7 +734,7 @@ class TestHJBFDMSolverGhostValueBC:
 
     def test_get_ghost_values_nd_periodic(self):
         """Test get_ghost_values_nd for periodic BC."""
-        from mfg_pde.geometry.boundary import get_ghost_values_nd, periodic_bc
+        from mfgarchon.geometry.boundary import get_ghost_values_nd, periodic_bc
 
         # Create 2D field
         field = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -751,7 +751,7 @@ class TestHJBFDMSolverGhostValueBC:
 
     def test_hjb_solver_uses_ghost_values_with_geometry(self):
         """Test that HJB solver uses ghost values when geometry has BCs."""
-        from mfg_pde.geometry.boundary import no_flux_bc
+        from mfgarchon.geometry.boundary import no_flux_bc
 
         # Create problem with geometry that has BC
         domain = TensorProductGrid(
@@ -779,7 +779,7 @@ class TestHJBFDMSolverGhostValueBC:
 
     def test_hjb_gradient_computation_with_ghost_values(self):
         """Test that _get_ghost_values integrates correctly in gradient computation."""
-        from mfg_pde.geometry.boundary import dirichlet_bc
+        from mfgarchon.geometry.boundary import dirichlet_bc
 
         # Create 2D problem with Dirichlet BC
         domain = TensorProductGrid(
@@ -811,7 +811,7 @@ class TestHJBFDMSolverGhostValueBC:
 
     def test_hjb_solver_centered_scheme_with_ghost_values(self):
         """Test centered scheme gradient computation with ghost values."""
-        from mfg_pde.geometry.boundary import no_flux_bc
+        from mfgarchon.geometry.boundary import no_flux_bc
 
         # Create 2D problem
         domain = TensorProductGrid(
@@ -837,7 +837,7 @@ class TestHJBFDMSolverGhostValueBC:
 
     def test_time_varying_dirichlet_bc(self):
         """Test that time-varying Dirichlet BC receives correct time (Issue #496)."""
-        from mfg_pde.geometry.boundary import dirichlet_bc, get_ghost_values_nd
+        from mfgarchon.geometry.boundary import dirichlet_bc, get_ghost_values_nd
 
         # Track times when BC is called
         call_times = []
@@ -866,7 +866,7 @@ class TestHJBFDMSolverGhostValueBC:
 
     def test_hjb_solver_time_varying_bc(self):
         """Test HJB solver with time-varying Dirichlet BC (Issue #496)."""
-        from mfg_pde.geometry.boundary import dirichlet_bc
+        from mfgarchon.geometry.boundary import dirichlet_bc
 
         # Track times when BC is called
         call_times = []
@@ -927,8 +927,8 @@ class TestHJBFDMSolverNewtonFallback:
         """Test that ConvergenceError is raised when Newton diverges with on_newton_failure='raise'."""
         from unittest.mock import patch
 
-        from mfg_pde.alg.numerical.hjb_solvers import ConvergenceError
-        from mfg_pde.utils.numerical import SolverInfo
+        from mfgarchon.alg.numerical.hjb_solvers import ConvergenceError
+        from mfgarchon.utils.numerical import SolverInfo
 
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8], boundary_conditions=no_flux_bc(dimension=2)
@@ -954,7 +954,7 @@ class TestHJBFDMSolverNewtonFallback:
         """Test that ConvergenceError wraps LinAlgError when on_newton_failure='raise'."""
         from unittest.mock import patch
 
-        from mfg_pde.alg.numerical.hjb_solvers import ConvergenceError
+        from mfgarchon.alg.numerical.hjb_solvers import ConvergenceError
 
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8], boundary_conditions=no_flux_bc(dimension=2)
@@ -980,7 +980,7 @@ class TestHJBFDMSolverNewtonFallback:
         import warnings
         from unittest.mock import patch
 
-        from mfg_pde.utils.numerical import SolverInfo
+        from mfgarchon.utils.numerical import SolverInfo
 
         geometry = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 1.0)], Nx_points=[8, 8], boundary_conditions=no_flux_bc(dimension=2)
@@ -1003,7 +1003,7 @@ class TestHJBFDMSolverNewtonFallback:
 
         with (
             patch.object(solver.nonlinear_solver, "solve", return_value=(np.zeros((8, 8)), failed_info)),
-            patch("mfg_pde.alg.numerical.hjb_solvers.hjb_fdm.FixedPointSolver") as MockFPSolver,
+            patch("mfgarchon.alg.numerical.hjb_solvers.hjb_fdm.FixedPointSolver") as MockFPSolver,
             warnings.catch_warnings(record=True) as w,
         ):
             warnings.simplefilter("always")
@@ -1045,7 +1045,7 @@ class TestHJBFDMSolverNewtonFallback:
 
     def test_convergence_error_attributes(self):
         """Test ConvergenceError exception has correct attributes."""
-        from mfg_pde.alg.numerical.hjb_solvers import ConvergenceError
+        from mfgarchon.alg.numerical.hjb_solvers import ConvergenceError
 
         err = ConvergenceError("newton", iterations=42, residual=3.14)
         assert err.solver_type == "newton"
@@ -1057,7 +1057,7 @@ class TestHJBFDMSolverNewtonFallback:
 
     def test_convergence_error_custom_message(self):
         """Test ConvergenceError with custom message."""
-        from mfg_pde.alg.numerical.hjb_solvers import ConvergenceError
+        from mfgarchon.alg.numerical.hjb_solvers import ConvergenceError
 
         err = ConvergenceError("newton", 10, 1e-2, message="Custom failure message")
         assert str(err) == "Custom failure message"

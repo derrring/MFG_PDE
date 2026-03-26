@@ -6,19 +6,19 @@ Tests backend registration, discovery, creation, and auto-selection logic.
 
 import pytest
 
-from mfg_pde.backends import (
+from mfgarchon.backends import (
     create_backend,
     get_available_backends,
     get_backend_info,
     register_backend,
 )
-from mfg_pde.backends.numpy_backend import NumPyBackend
+from mfgarchon.backends.numpy_backend import NumPyBackend
 
 
 @pytest.fixture
 def clean_backend_registry():
     """Clean backend registry before and after tests."""
-    import mfg_pde.backends as backends_module
+    import mfgarchon.backends as backends_module
 
     original_backends = backends_module._BACKENDS.copy()
     yield
@@ -31,7 +31,7 @@ class TestBackendRegistration:
 
     def test_register_backend(self, clean_backend_registry):
         """Test registering a new backend."""
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         class CustomBackend(NumPyBackend):
             @property
@@ -44,7 +44,7 @@ class TestBackendRegistration:
 
     def test_register_backend_overwrites(self, clean_backend_registry):
         """Test that re-registering overwrites previous backend."""
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         class Backend1(NumPyBackend):
             pass
@@ -60,7 +60,7 @@ class TestBackendRegistration:
 
     def test_numpy_backend_always_registered(self):
         """Test that NumPy backend is always registered."""
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         assert "numpy" in backends_module._BACKENDS
         assert backends_module._BACKENDS["numpy"] is NumPyBackend
@@ -156,7 +156,7 @@ class TestCreateBackend:
             pytest.skip("PyTorch is available, cannot test unavailable scenario")
 
         # Mock torch as unavailable by removing from registry
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         original = backends_module._BACKENDS.copy()
         backends_module._BACKENDS.pop("torch", None)
@@ -173,7 +173,7 @@ class TestCreateBackend:
         if available["jax"]:
             pytest.skip("JAX is available, cannot test unavailable scenario")
 
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         original = backends_module._BACKENDS.copy()
         backends_module._BACKENDS.pop("jax", None)
@@ -190,7 +190,7 @@ class TestCreateBackend:
         if available["numba"]:
             pytest.skip("Numba is available, cannot test unavailable scenario")
 
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         original = backends_module._BACKENDS.copy()
         backends_module._BACKENDS.pop("numba", None)
@@ -327,19 +327,19 @@ class TestEnsureNumpyBackend:
 
     def test_ensure_numpy_backend_succeeds(self):
         """Test that ensure_numpy_backend completes without error."""
-        from mfg_pde.backends import ensure_numpy_backend
+        from mfgarchon.backends import ensure_numpy_backend
 
         # Should not raise any errors
         ensure_numpy_backend()
 
         # NumPy should be registered
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         assert "numpy" in backends_module._BACKENDS
 
     def test_numpy_available_after_import(self):
         """Test that numpy backend is always available after module import."""
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         assert "numpy" in backends_module._BACKENDS
         backend = create_backend("numpy")
@@ -351,7 +351,7 @@ class TestModuleExports:
 
     def test_all_exports_defined(self):
         """Test that __all__ is defined and contains expected functions."""
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         assert hasattr(backends_module, "__all__")
         expected = {
@@ -364,7 +364,7 @@ class TestModuleExports:
 
     def test_all_exports_callable(self):
         """Test that all exported items are callable."""
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         for name in backends_module.__all__:
             item = getattr(backends_module, name)
@@ -376,13 +376,13 @@ class TestBackendInitialization:
 
     def test_numpy_auto_initialized(self):
         """Test that NumPy backend is auto-initialized on import."""
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         assert "numpy" in backends_module._BACKENDS
 
     def test_optional_backends_registered_if_available(self):
         """Test that optional backends are registered when available."""
-        import mfg_pde.backends as backends_module
+        import mfgarchon.backends as backends_module
 
         available = get_available_backends()
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unit tests for mfg_pde/utils/numerical/integration.py
+Unit tests for mfgarchon/utils/numerical/integration.py
 
 Tests integration utilities wrapper including:
 - get_integration_info() function
@@ -12,7 +12,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.numerical.integration import get_integration_info, trapezoid
+from mfgarchon.utils.numerical.integration import get_integration_info, trapezoid
 
 # ===================================================================
 # Test get_integration_info() Function
@@ -108,7 +108,7 @@ def test_trapezoid_2d_integration():
 @pytest.mark.unit
 def test_module_exports_all():
     """Test module exports expected functions."""
-    from mfg_pde.utils.numerical import integration
+    from mfgarchon.utils.numerical import integration
 
     assert hasattr(integration, "get_integration_info")
     assert hasattr(integration, "trapezoid")
@@ -119,7 +119,7 @@ def test_module_exports_all():
 @pytest.mark.unit
 def test_module_has_all_attribute():
     """Test module has __all__ attribute."""
-    from mfg_pde.utils.numerical import integration
+    from mfgarchon.utils.numerical import integration
 
     assert hasattr(integration, "__all__")
     assert "get_integration_info" in integration.__all__
@@ -129,7 +129,7 @@ def test_module_has_all_attribute():
 @pytest.mark.unit
 def test_module_docstring():
     """Test module has docstring."""
-    from mfg_pde.utils.numerical import integration
+    from mfgarchon.utils.numerical import integration
 
     assert integration.__doc__ is not None
     assert "Integration utilities" in integration.__doc__
@@ -143,7 +143,7 @@ def test_module_docstring():
 @pytest.mark.unit
 def test_backward_compatibility_import_style_1():
     """Test backward compatibility - direct import."""
-    from mfg_pde.utils.numerical.integration import get_integration_info, trapezoid
+    from mfgarchon.utils.numerical.integration import get_integration_info, trapezoid
 
     info = get_integration_info()
     assert isinstance(info, dict)
@@ -153,7 +153,7 @@ def test_backward_compatibility_import_style_1():
 @pytest.mark.unit
 def test_backward_compatibility_import_style_2():
     """Test backward compatibility - module import."""
-    from mfg_pde.utils.numerical import integration
+    from mfgarchon.utils.numerical import integration
 
     info = integration.get_integration_info()
     assert isinstance(info, dict)
@@ -170,7 +170,7 @@ def test_backward_compatibility_import_style_2():
 def test_integration_uses_numpy_compat():
     """Test that integration module uses numpy_compat."""
     # get_integration_info should return same info as get_numpy_info
-    from mfg_pde.utils.numpy_compat import get_numpy_info
+    from mfgarchon.utils.numpy_compat import get_numpy_info
 
     integration_info = get_integration_info()
     numpy_info = get_numpy_info()
@@ -182,7 +182,7 @@ def test_integration_uses_numpy_compat():
 @pytest.mark.unit
 def test_trapezoid_matches_numpy_compat():
     """Test that trapezoid matches numpy_compat version."""
-    from mfg_pde.utils.numpy_compat import trapezoid as numpy_trapezoid
+    from mfgarchon.utils.numpy_compat import trapezoid as numpy_trapezoid
 
     x = np.linspace(0, 1, 100)
     y = x**2

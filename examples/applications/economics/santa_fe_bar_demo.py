@@ -38,9 +38,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde import MFGProblem
-from mfg_pde.core.mfg_problem import MFGComponents
-from mfg_pde.utils.mfg_logging import configure_research_logging, get_logger
+from mfgarchon import MFGProblem
+from mfgarchon.core.mfg_problem import MFGComponents
+from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
 configure_research_logging("santa_fe_bar_demo", level="INFO")

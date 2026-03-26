@@ -441,13 +441,13 @@ $$L(x, u, m, m_{\text{hist}}) = |x - x_{\text{stall}}| + \lambda \ln(m) + \beta 
 
 ---
 
-## 9. Implementation in MFG_PDE
+## 9. Implementation in MFGarchon
 
 ### 9.1 Core Components
 
 **Problem Definition**:
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 # Define towel-on-beach problem
 problem = MFGProblem(
@@ -462,7 +462,7 @@ problem = MFGProblem(
 
 **Solver Execution**:
 ```python
-from mfg_pde.factory import create_fast_solver
+from mfgarchon.factory import create_fast_solver
 
 solver = create_fast_solver(problem)
 result = solver.solve()
@@ -550,5 +550,5 @@ plt.show()
 **Document Status**: Comprehensive formulation with mathematical rigor and references
 **Usage**: Reference for spatial competition MFG, pedagogical benchmark, application guide
 **Related Code**: `examples/basic/` (towel beach demonstrations)
-**Implementation**: `mfg_pde/core/mfg_problem.py`, standard solvers
+**Implementation**: `mfgarchon/core/mfg_problem.py`, standard solvers
 **Last Updated**: October 8, 2025

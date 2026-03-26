@@ -1,4 +1,4 @@
-# MFG_PDE Naming Conventions
+# MFGarchon Naming Conventions
 
 **Last Updated**: 2026-02-16
 **Status**: Current reference document (v0.17.11+)
@@ -8,7 +8,7 @@
 
 ## Purpose
 
-This document defines Python code naming conventions for MFG_PDE based on actual codebase standards, not aspirational goals. Use this as the authoritative reference for parameter and variable naming.
+This document defines Python code naming conventions for MFGarchon based on actual codebase standards, not aspirational goals. Use this as the authoritative reference for parameter and variable naming.
 
 ---
 
@@ -100,7 +100,7 @@ This document defines Python code naming conventions for MFG_PDE based on actual
 When you pass scalar values, you'll see:
 
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 # This works but warns:
 problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, T=1.0)
@@ -271,7 +271,7 @@ dx = (xmax[0] - xmin[0]) / Nx[0]
 
 **TensorProductGrid API (v0.16.0+)**:
 ```python
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 
 # Option 1: Specify intervals (like Nt)
 grid = TensorProductGrid(dimension=2, bounds=[(0,1), (0,1)], Nx=[50, 30])
@@ -311,7 +311,7 @@ Nx_points = Nx + 1  # 51 points
 - **Clarity**: `Nx_points` explicitly means grid points
 - **Grid spacing**: `dx = L / Nx` (NOT `L / (Nx-1)`)
 - **Arrays**: Solution arrays have shape `(Nt_points, Nx_points[0], Nx_points[1], ...)`
-- **Interoperability**: All MFG_PDE solvers assume this convention
+- **Interoperability**: All MFGarchon solvers assume this convention
 
 ### Spatial Discretization
 
@@ -389,7 +389,7 @@ problem.tSpace     # np.linspace(0, 1.0, 101) - 101 time points
 
 **Example**:
 ```python
-from mfg_pde.solvers import FixedPointIterator
+from mfgarchon.solvers import FixedPointIterator
 
 solver = FixedPointIterator(
     problem, hjb_solver, fp_solver,
@@ -751,12 +751,12 @@ def solve(self) -> tuple[np.ndarray, np.ndarray]:
 
 ### ⚠️ CRITICAL: Unified Derivative Representation (v0.17.0+)
 
-MFG_PDE uses **tensor-based derivative representation** as the canonical standard. Derivatives of order p in dimension d are stored as tensors of shape `(d,) * p`.
+MFGarchon uses **tensor-based derivative representation** as the canonical standard. Derivatives of order p in dimension d are stored as tensors of shape `(d,) * p`.
 
 ### DerivativeTensors Class
 
 ```python
-from mfg_pde.core import DerivativeTensors
+from mfgarchon.core import DerivativeTensors
 
 # Create from arrays
 grad = np.array([0.5, 0.3])                        # shape (2,)
@@ -848,7 +848,7 @@ derivs.laplacian    # u_xx + u_yy + u_zz
 **Standard signature (v0.17.0+)**:
 
 ```python
-from mfg_pde.core import DerivativeTensors
+from mfgarchon.core import DerivativeTensors
 
 def hamiltonian(
     x_idx: int | tuple[int, ...],
@@ -922,7 +922,7 @@ derivs = DerivativeTensors.zeros(dimension=2, max_order=2)
 **One-time conversion** from legacy `dict[tuple[int,...], float]`:
 
 ```python
-from mfg_pde.core import from_multi_index_dict, to_multi_index_dict
+from mfgarchon.core import from_multi_index_dict, to_multi_index_dict
 
 # Legacy format
 old_format = {(1, 0): 0.5, (0, 1): 0.3, (2, 0): 0.1, (1, 1): 0.05, (0, 2): 0.2}
@@ -938,7 +938,7 @@ old = to_multi_index_dict(derivs)
 
 ### Reference Implementation
 
-See `mfg_pde/core/derivatives.py` for full implementation.
+See `mfgarchon/core/derivatives.py` for full implementation.
 
 ---
 
@@ -968,8 +968,8 @@ TensorProductGrid provides additional properties:
 
 **Example**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
 
 # Geometry-first API with Nx_points (v0.16.0+)
 geometry = TensorProductGrid(
@@ -1197,14 +1197,14 @@ When adding new parameters:
 
 ## References
 
-- **DerivativeTensors**: `mfg_pde/core/derivatives.py` (DerivativeTensors, from_multi_index_dict, to_multi_index_dict)
-- **GeometryProtocol**: `mfg_pde/geometry/protocol.py`
-- **Tensor Grids**: `mfg_pde/geometry/grids/tensor_grid.py`
-- **Config Classes**: `mfg_pde/config/solver_config.py` (NewtonConfig, PicardConfig)
-- **Fixed Point Iterator**: `mfg_pde/alg/numerical/coupling/fixed_point_iterator.py`
-- **HJB Solvers**: `mfg_pde/alg/numerical/hjb_solvers/` (hjb_fdm.py, hjb_semi_lagrangian.py, hjb_weno.py, hjb_gfdm.py, hjb_network.py)
-- **FP Solvers**: `mfg_pde/alg/numerical/fp_solvers/` (fp_fdm.py, fp_particle.py, fp_network.py)
-- **Legacy Gradient Notation** (deprecated): `mfg_pde/compat/gradient_notation.py`
+- **DerivativeTensors**: `mfgarchon/core/derivatives.py` (DerivativeTensors, from_multi_index_dict, to_multi_index_dict)
+- **GeometryProtocol**: `mfgarchon/geometry/protocol.py`
+- **Tensor Grids**: `mfgarchon/geometry/grids/tensor_grid.py`
+- **Config Classes**: `mfgarchon/config/solver_config.py` (NewtonConfig, PicardConfig)
+- **Fixed Point Iterator**: `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`
+- **HJB Solvers**: `mfgarchon/alg/numerical/hjb_solvers/` (hjb_fdm.py, hjb_semi_lagrangian.py, hjb_weno.py, hjb_gfdm.py, hjb_network.py)
+- **FP Solvers**: `mfgarchon/alg/numerical/fp_solvers/` (fp_fdm.py, fp_particle.py, fp_network.py)
+- **Legacy Gradient Notation** (deprecated): `mfgarchon/compat/gradient_notation.py`
 
 ---
 

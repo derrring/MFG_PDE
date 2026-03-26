@@ -6,7 +6,7 @@
 
 ## Overview
 
-Successfully implemented comprehensive dual geometry support for MFG_PDE, enabling HJB and FP solvers to use different discretizations. This enables hybrid methods (particle FP + grid HJB), multi-resolution (fine HJB + coarse FP), and network-based agents.
+Successfully implemented comprehensive dual geometry support for MFGarchon, enabling HJB and FP solvers to use different discretizations. This enables hybrid methods (particle FP + grid HJB), multi-resolution (fine HJB + coarse FP), and network-based agents.
 
 ## Implementation Phases
 
@@ -14,7 +14,7 @@ Successfully implemented comprehensive dual geometry support for MFG_PDE, enabli
 **Commits**: 0cf765b
 
 **Implemented**:
-- `GeometryProjector` class in `mfg_pde/geometry/projection.py`
+- `GeometryProjector` class in `mfgarchon/geometry/projection.py`
 - Grid→Grid interpolation (multi-resolution)
 - Grid→Points interpolation (grid HJB + particle FP)
 - Particles→Grid KDE projection (density reconstruction)
@@ -27,13 +27,13 @@ Successfully implemented comprehensive dual geometry support for MFG_PDE, enabli
 - All tests passing
 
 **Files Created**:
-- `mfg_pde/geometry/projection.py` (500+ lines)
+- `mfgarchon/geometry/projection.py` (500+ lines)
 - `tests/unit/geometry/test_geometry_projection.py` (440+ lines)
 
 **Files Modified**:
-- `mfg_pde/geometry/simple_grid_1d.py` (vectorized interpolator)
-- `mfg_pde/geometry/simple_grid.py` (vectorized 2D/3D interpolators)
-- `mfg_pde/geometry/__init__.py` (exports)
+- `mfgarchon/geometry/simple_grid_1d.py` (vectorized interpolator)
+- `mfgarchon/geometry/simple_grid.py` (vectorized 2D/3D interpolators)
+- `mfgarchon/geometry/__init__.py` (exports)
 
 ### Phase 2: Registry Pattern (✅ Complete)
 **Commits**: e11ab7d
@@ -80,7 +80,7 @@ problem = MFGProblem(hjb_geometry=fine_grid, fp_geometry=coarse_grid, ...)
 ```
 
 **Files Modified**:
-- `mfg_pde/core/mfg_problem.py:89-120, 685-689` (dual geometry handling)
+- `mfgarchon/core/mfg_problem.py:89-120, 685-689` (dual geometry handling)
 - `tests/unit/test_core/test_mfg_problem.py` (7 new tests, 140+ lines)
 
 ### Phase 4: Documentation & Examples (✅ Complete)
@@ -184,7 +184,7 @@ else:
 ### Factory Functions
 All factory functions support dual geometries through `**kwargs`:
 ```python
-from mfg_pde.factory import create_standard_problem
+from mfgarchon.factory import create_standard_problem
 
 problem = create_standard_problem(
     hamiltonian=H,
@@ -202,7 +202,7 @@ problem = create_standard_problem(
 ### High-Level Solver
 `solve_mfg()` works with dual geometries automatically:
 ```python
-from mfg_pde import solve_mfg
+from mfgarchon import solve_mfg
 
 problem = MFGProblem(hjb_geometry=fine, fp_geometry=coarse, ...)
 result = solve_mfg(problem, method="accurate")
@@ -291,16 +291,16 @@ result = solve_mfg(problem, method="accurate")
 ## File Summary
 
 ### Core Implementation (520+ lines)
-- `mfg_pde/geometry/projection.py`: Main implementation
+- `mfgarchon/geometry/projection.py`: Main implementation
   - `ProjectionRegistry` class (50 lines)
   - `GeometryProjector` class (300+ lines)
   - Helper functions (50 lines)
 
 ### Modified Files (100+ lines changed)
-- `mfg_pde/geometry/simple_grid_1d.py`: Vectorized 1D interpolator
-- `mfg_pde/geometry/simple_grid.py`: Vectorized 2D/3D interpolators
-- `mfg_pde/core/mfg_problem.py`: Dual geometry integration
-- `mfg_pde/geometry/__init__.py`: Public API exports
+- `mfgarchon/geometry/simple_grid_1d.py`: Vectorized 1D interpolator
+- `mfgarchon/geometry/simple_grid.py`: Vectorized 2D/3D interpolators
+- `mfgarchon/core/mfg_problem.py`: Dual geometry integration
+- `mfgarchon/geometry/__init__.py`: Public API exports
 
 ### Tests (580+ lines)
 - `tests/unit/geometry/test_geometry_projection.py`: 20 projection tests

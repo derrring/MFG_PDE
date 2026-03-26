@@ -11,7 +11,7 @@ Created: 2025-11-12
 
 import numpy as np
 
-from mfg_pde.geometry import GeometryProjector, PointCloudGeometry
+from mfgarchon.geometry import GeometryProjector, PointCloudGeometry
 
 
 class TestPointCloudGeometry:
@@ -46,7 +46,7 @@ class TestPointCloudGeometry:
 
     def test_geometry_protocol_compliance(self):
         """Test that PointCloudGeometry implements GeometryProtocol."""
-        from mfg_pde.geometry.protocol import GeometryProtocol
+        from mfgarchon.geometry.protocol import GeometryProtocol
 
         positions = np.random.uniform(0, 1, (100, 2))
         geom = PointCloudGeometry(positions)

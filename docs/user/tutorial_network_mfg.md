@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides comprehensive documentation for the Network MFG implementation in MFG_PDE, which extends Mean Field Games from continuous domains to discrete network/graph structures.
+This guide provides comprehensive documentation for the Network MFG implementation in MFGarchon, which extends Mean Field Games from continuous domains to discrete network/graph structures.
 
 ## Table of Contents
 
@@ -54,7 +54,7 @@ where:
 ## Architecture Overview
 
 ```
-mfg_pde/
+mfgarchon/
 ├── geometry/network_geometry.py      # Network structures and topologies
 ├── core/network_mfg_problem.py       # Network MFG problem formulation
 ├── alg/hjb_solvers/hjb_network.py    # HJB solvers for networks
@@ -106,7 +106,7 @@ class NetworkData:
 ### Creating Networks
 
 ```python
-from mfg_pde.geometry.graph.network import create_network
+from mfgarchon.geometry.graph.network import create_network
 
 # Grid network
 grid_network = create_network("grid", num_nodes=25, width=5, height=5)
@@ -184,7 +184,7 @@ problem = create_random_mfg_problem(
 **NetworkHJBSolver** supports multiple time discretization schemes:
 
 ```python
-from mfg_pde.alg.hjb_solvers.hjb_network import create_network_hjb_solver
+from mfgarchon.alg.hjb_solvers.hjb_network import create_network_hjb_solver
 
 # Explicit scheme
 hjb_solver = create_network_hjb_solver(problem, "explicit", cfl_factor=0.5)
@@ -207,7 +207,7 @@ hjb_solver = create_network_hjb_solver(problem, "policy_iteration")
 **NetworkFPSolver** handles density evolution on networks:
 
 ```python
-from mfg_pde.alg.fp_solvers.fp_network import create_network_fp_solver
+from mfgarchon.alg.fp_solvers.fp_network import create_network_fp_solver
 
 # Explicit scheme
 fp_solver = create_network_fp_solver(problem, "explicit")
@@ -230,7 +230,7 @@ fp_solver = create_network_fp_solver(problem, "upwind")
 **NetworkFixedPointIterator** combines HJB and FP solvers:
 
 ```python
-from mfg_pde.alg.mfg_solvers.network_mfg_solver import create_network_mfg_solver
+from mfgarchon.alg.mfg_solvers.network_mfg_solver import create_network_mfg_solver
 
 # Standard fixed point iteration
 solver = create_network_mfg_solver(
@@ -264,7 +264,7 @@ U, M, convergence_info = solver.solve(
 Comprehensive visualization for network MFG:
 
 ```python
-from mfg_pde.visualization.network_plots import create_network_visualizer
+from mfgarchon.visualization.network_plots import create_network_visualizer
 
 # Create visualizer
 visualizer = create_network_visualizer(problem=problem)
@@ -301,8 +301,8 @@ dashboard = visualizer.plot_network_statistics_dashboard(convergence_info)
 
 ```python
 import numpy as np
-from mfg_pde import create_grid_mfg_problem
-from mfg_pde.alg.mfg_solvers.network_mfg_solver import create_network_mfg_solver
+from mfgarchon import create_grid_mfg_problem
+from mfgarchon.alg.mfg_solvers.network_mfg_solver import create_network_mfg_solver
 
 # Create 5x5 grid problem
 def terminal_reward(node):
@@ -332,8 +332,8 @@ print(f"Final error: {info['final_error']:.2e}")
 ### Network Comparison Study
 
 ```python
-from mfg_pde.geometry.graph.network import create_network
-from mfg_pde.core.network_mfg_problem import NetworkMFGProblem
+from mfgarchon.geometry.graph.network import create_network
+from mfgarchon.core.network_mfg_problem import NetworkMFGProblem
 
 # Compare different network topologies
 networks = {

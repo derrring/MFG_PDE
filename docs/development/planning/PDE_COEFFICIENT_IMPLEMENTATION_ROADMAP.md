@@ -6,7 +6,7 @@
 
 ## Purpose
 
-This document provides **status tracking and task checklists** for implementing flexible drift and diffusion coefficients in MFG_PDE.
+This document provides **status tracking and task checklists** for implementing flexible drift and diffusion coefficients in MFGarchon.
 
 **For detailed technical specifications, algorithms, and implementation guides**, see:
 - **`PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md`** - Complete implementation spec (1,380 lines)
@@ -159,7 +159,7 @@ This document provides **status tracking and task checklists** for implementing 
 - [x] Example: `anisotropic_corridor.py` demonstrating tensor diffusion evolution
 
 **Deliverables**:
-- ✅ `mfg_pde/utils/numerical/tensor_operators.py` (340 lines)
+- ✅ `mfgarchon/utils/numerical/tensor_operators.py` (340 lines)
 - ✅ `tests/unit/test_tensor_operators.py` (328 lines, 14 tests)
 - ✅ `CoefficientField.validate_tensor_psd()` (137 lines)
 - ✅ `examples/basic/anisotropic_corridor.py` (302 lines)
@@ -186,7 +186,7 @@ After Phase 2 completion, code review identified ~100 lines of duplicated coeffi
 
 ### Solution: CoefficientField Abstraction
 
-Created `mfg_pde/utils/pde_coefficients.py` with two utilities:
+Created `mfgarchon/utils/pde_coefficients.py` with two utilities:
 
 1. **`CoefficientField` class** (245 lines):
    - Unified interface for scalar/array/callable coefficients
@@ -479,7 +479,7 @@ result = coupling.solve()
 
 ### Type Protocols
 
-See `mfg_pde/types/pde_coefficients.py`:
+See `mfgarchon/types/pde_coefficients.py`:
 - `DriftCallable`: α(t, x, m) -> drift vector
 - `DiffusionCallable`: D(t, x, m) -> diffusion coefficient/tensor
 

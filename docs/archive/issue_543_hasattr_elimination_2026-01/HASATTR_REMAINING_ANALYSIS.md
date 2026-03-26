@@ -94,7 +94,7 @@ except AttributeError:
     dimension = 1  # default
 
 # After - Option 2: Use Protocol with isinstance
-from mfg_pde.geometry.protocol import GeometryProtocol
+from mfgarchon.geometry.protocol import GeometryProtocol
 if isinstance(self.geometry, GeometryProtocol):
     ...
 ```
@@ -263,7 +263,7 @@ if self.conditional_terminal_cost is None:
 
 ### Step 3a: Fix MFGComponents Self-Checks (Low Risk) ✅
 
-**File**: `mfg_pde/core/mfg_components.py`
+**File**: `mfgarchon/core/mfg_components.py`
 **Lines**: 265, 365, 366, 429, 532, 533, 822, 857, 858, 861 (11 violations → 0)
 
 **Changes**:
@@ -283,7 +283,7 @@ if self.conditional_terminal_cost is None:
 
 ### Step 3b: Fix Lazy Initialization (Low Risk) ✅
 
-**File**: `mfg_pde/core/mfg_problem.py`
+**File**: `mfgarchon/core/mfg_problem.py`
 **Lines**: 1566, 1659 (2 violations → 0)
 
 **Changes**:
@@ -301,7 +301,7 @@ if self.conditional_terminal_cost is None:
 
 ### Step 3c: Fix Legacy Fallback (Low Risk) ✅
 
-**File**: `mfg_pde/core/stochastic/stochastic_problem.py`
+**File**: `mfgarchon/core/stochastic/stochastic_problem.py`
 **Lines**: 232, 234 (2 violations → 0)
 
 **Changes**:
@@ -318,7 +318,7 @@ if self.conditional_terminal_cost is None:
 
 ### Step 3d: Evaluate Protocol Duck Typing (Medium Risk) ⏸️
 
-**File**: `mfg_pde/core/mfg_problem.py`
+**File**: `mfgarchon/core/mfg_problem.py`
 **Lines**: 1990, 1993 (2 violations → ? depends on decision)
 
 **Decision Required**: Choose Option 1, 2, or 3 (see Category 4)
@@ -382,11 +382,11 @@ if self.conditional_terminal_cost is None:
 ### Validation
 ```bash
 # Before Step 3
-python scripts/check_fail_fast.py --path mfg_pde/core --all
+python scripts/check_fail_fast.py --path mfgarchon/core --all
 # Should show: 20 violations
 
 # After Step 3a+b+c
-python scripts/check_fail_fast.py --path mfg_pde/core --all
+python scripts/check_fail_fast.py --path mfgarchon/core --all
 # Should show: 5 violations (3 docstring + 2 protocol)
 ```
 

@@ -114,7 +114,7 @@ Solve linearized system iteratively without forming full Jacobian:
 ### 3.1 Existing Components
 
 ```
-mfg_pde/
+mfgarchon/
 ├── utils/numerical/
 │   ├── nonlinear_solvers.py      # FixedPointSolver, NewtonSolver, PolicyIterationSolver
 │   ├── anderson_acceleration.py   # AndersonAccelerator
@@ -159,7 +159,7 @@ mfg_pde/
 ### 4.1 Directory Structure
 
 ```
-mfg_pde/alg/numerical/coupling/
+mfgarchon/alg/numerical/coupling/
 ├── __init__.py
 ├── base_mfg.py                     # BaseMFGSolver [EXISTS]
 │
@@ -202,7 +202,7 @@ BaseMFGSolver (abstract)
 #### 4.3.1 MFG Residual Interface
 
 ```python
-# mfg_pde/alg/numerical/coupling/mfg_residual.py
+# mfgarchon/alg/numerical/coupling/mfg_residual.py
 
 class MFGResidual:
     """Compute MFG system residual F(U, M) = 0."""
@@ -249,7 +249,7 @@ class MFGResidual:
 #### 4.3.2 Newton MFG Solver Interface
 
 ```python
-# mfg_pde/alg/numerical/coupling/newton_mfg_solver.py
+# mfgarchon/alg/numerical/coupling/newton_mfg_solver.py
 
 class NewtonMFGSolver(BaseMFGSolver):
     """
@@ -289,7 +289,7 @@ class NewtonMFGSolver(BaseMFGSolver):
         self.residual = MFGResidual(problem, hjb_solver, fp_solver)
 
         # Configure Newton solver from utilities
-        from mfg_pde.utils.numerical.nonlinear_solvers import NewtonSolver
+        from mfgarchon.utils.numerical.nonlinear_solvers import NewtonSolver
         self.newton = NewtonSolver(
             sparse=use_sparse,
             line_search=line_search,
@@ -342,7 +342,7 @@ class NewtonMFGSolver(BaseMFGSolver):
 #### 4.3.3 Solver Selection Factory
 
 ```python
-# mfg_pde/alg/numerical/coupling/__init__.py
+# mfgarchon/alg/numerical/coupling/__init__.py
 
 def create_mfg_coupling_solver(
     problem: MFGProblem,

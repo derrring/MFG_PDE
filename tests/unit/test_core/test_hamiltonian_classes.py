@@ -12,7 +12,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.core.hamiltonian import (
+from mfgarchon.core.hamiltonian import (
     # Control cost classes
     BoundedControlCost,
     CongestionHamiltonian,

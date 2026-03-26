@@ -7,14 +7,14 @@ with fine-tuned parameters for detailed comparison.
 
 Saves all visualizations to PNG files (no interactive display).
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfg_pde.alg.reinforcement.environments import (
+from mfgarchon.alg.reinforcement.environments import (
     CellularAutomataConfig,
     CellularAutomataGenerator,
     MazeAlgorithm,

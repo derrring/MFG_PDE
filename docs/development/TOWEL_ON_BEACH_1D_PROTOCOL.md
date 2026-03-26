@@ -129,11 +129,11 @@ $$\frac{\partial U}{\partial n} = -\frac{\sigma^2}{2} \frac{\partial \ln(m)}{\pa
 
 **Usage**:
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfg_pde.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
-from mfg_pde.alg.numerical.coupling import FixedPointIterator
-from mfg_pde.geometry.boundary import neumann_bc
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
+from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
+from mfgarchon.alg.numerical.coupling import FixedPointIterator
+from mfgarchon.geometry.boundary import neumann_bc
 
 # Create problem with reflecting boundaries
 problem = MFGProblem(
@@ -170,10 +170,10 @@ result = iterator.solve(max_iterations=30, tolerance=1e-6)
 - The dramatic improvement demonstrates the importance of BC consistency for equilibrium problems
 
 **Implementation Details**:
-- Core utilities: `mfg_pde/geometry/boundary/bc_coupling.py`
+- Core utilities: `mfgarchon/geometry/boundary/bc_coupling.py`
   - `create_adjoint_consistent_bc_1d()`: Creates Robin BC from density
   - `compute_boundary_log_density_gradient_1d()`: Computes ∂ln(m)/∂n
-- Solver integration: `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`
+- Solver integration: `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`
   - Automatically creates BC when `bc_mode="adjoint_consistent"`
 - Design document: `docs/archive/bc_completed_2026-02/issue_574_robin_bc_design.md` (archived, implemented v0.17.1)
 - GitHub Issue: #574
@@ -544,7 +544,7 @@ def towel_running_cost(
 ### Boundary Condition Setup
 
 ```python
-from mfg_pde.geometry.boundary import BCSegment, BCType, mixed_bc
+from mfgarchon.geometry.boundary import BCSegment, BCType, mixed_bc
 import numpy as np
 
 L = 1.0

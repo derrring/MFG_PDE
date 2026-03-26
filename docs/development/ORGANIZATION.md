@@ -1,9 +1,9 @@
-# MFG_PDE Repository Organization
+# MFGarchon Repository Organization
 
 ## Directory Structure
 
 ```
-MFG_PDE/
+MFGarchon/
 ├── README.md                    # Project overview and quick start
 ├── CONTRIBUTING.md             # Development guidelines
 ├── CLAUDE.md                   # AI interaction preferences
@@ -21,7 +21,7 @@ MFG_PDE/
 │   ├── manage_environments.sh # Multi-environment management
 │   └── setup_env_vars.sh     # Environment variable setup
 │
-├── mfg_pde/                  # Core package
+├── mfgarchon/                  # Core package
 │   ├── __init__.py           # Package initialization
 │   ├── core/                 # Core problem definitions
 │   ├── alg/                  # Numerical algorithms
@@ -75,7 +75,7 @@ MFG_PDE/
 ## Key Principles
 
 ### 1. Separation of Concerns
-- **Core (`mfg_pde/`)**: Production code only
+- **Core (`mfgarchon/`)**: Production code only
 - **Examples (`examples/`)**: Demonstration and educational code
 - **Tests (`tests/`)**: Verification and validation
 - **Benchmarks (`benchmarks/`)**: Performance analysis
@@ -109,7 +109,7 @@ MFG_PDE/
 
 ### For Developers
 1. **Setup**: `CONTRIBUTING.md` → environment files → `scripts/`
-2. **Architecture**: `docs/development/` → `mfg_pde/` source
+2. **Architecture**: `docs/development/` → `mfgarchon/` source
 3. **Testing**: `tests/README.md` → test categories
 4. **Performance**: `benchmarks/` → optimization guides
 
@@ -117,7 +117,7 @@ MFG_PDE/
 1. **Theory**: `docs/theory/` → mathematical background
 2. **Examples**: `examples/notebooks/` → research demonstrations
 3. **Extensions**: `examples/plugins/` → custom development
-4. **Meta-Programming**: `mfg_pde/meta/` → automatic code generation
+4. **Meta-Programming**: `mfgarchon/meta/` → automatic code generation
 
 ## File Naming Conventions
 
@@ -157,4 +157,4 @@ MFG_PDE/
 - Performance benchmarks for critical paths
 - Documentation updated with code changes
 
-This organizational structure supports both rapid development and long-term maintainability while providing clear pathways for users, developers, and researchers to engage with the MFG_PDE framework.
+This organizational structure supports both rapid development and long-term maintainability while providing clear pathways for users, developers, and researchers to engage with the MFGarchon framework.

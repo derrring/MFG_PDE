@@ -7,7 +7,7 @@
 set -e
 
 echo "============================================"
-echo "   MFG_PDE Branch Health Report"
+echo "   MFGarchon Branch Health Report"
 echo "============================================"
 echo ""
 

@@ -4,7 +4,7 @@
 **Created**: July 31, 2025
 **Enhanced**: October 8, 2025
 **Status**: Production implementation with rigorous mathematical foundation
-**Associated Implementation**: `mfg_pde/core/network_mfg_problem.py`, `mfg_pde/alg/mfg_solvers/network_mfg_solver.py`
+**Associated Implementation**: `mfgarchon/core/network_mfg_problem.py`, `mfgarchon/alg/mfg_solvers/network_mfg_solver.py`
 **Related**: `mathematical_background.md`, `convergence_criteria.md`, `stochastic_differential_games_theory.md`
 
 ---
@@ -145,7 +145,7 @@ $$L_i(α, m, t) = \sup_p \{-α \cdot p - H_i(p, m, t)\}$$
 $$α_{ij}^* = -w_{ij}(u_j - u_i), \quad j \in N(i)$$
 Agents move toward neighbors with lower value (steepest descent).
 
-**Implementation**: `mfg_pde/core/network_mfg_problem.py:174-200`
+**Implementation**: `mfgarchon/core/network_mfg_problem.py:174-200`
 
 ---
 
@@ -196,7 +196,7 @@ $$\mathcal{J}[ν] = \int_{\mathcal{T}} \left[\int_0^T L(γ(t), \dot{γ}(t), m_t^
 3. Prokhorov's theorem gives weakly convergent subsequence
 4. Lower semicontinuity yields $\mathcal{J}[μ^*] \leq \liminf \mathcal{J}[μ_k]$
 
-**Implementation**: `mfg_pde/alg/mfg_solvers/lagrangian_network_solver.py:213-307`
+**Implementation**: `mfgarchon/alg/mfg_solvers/lagrangian_network_solver.py:213-307`
 
 ---
 
@@ -268,7 +268,7 @@ $$F_{ij}^G = \begin{cases}
 
 **Optimality**: Godunov scheme has **minimal numerical viscosity** among monotone schemes.[^20]
 
-**Implementation**: `mfg_pde/alg/hjb_solvers/high_order_network_hjb.py:154-335`
+**Implementation**: `mfgarchon/alg/hjb_solvers/high_order_network_hjb.py:154-335`
 
 ---
 
@@ -298,7 +298,7 @@ where $\epsilon_{ij}(t)$ is a prescribed jump (crossing cost).
 
 **Example (Toll Gate)**: $\epsilon_{ij}(t) = c_{\text{toll}}$ constant toll.
 
-**Implementation**: `mfg_pde/alg/hjb_solvers/high_order_network_hjb.py:396-418`
+**Implementation**: `mfgarchon/alg/hjb_solvers/high_order_network_hjb.py:396-418`
 
 ### 5.2 Conservation Laws at Boundaries
 
@@ -384,24 +384,24 @@ where $μ_i$ is the uniform distribution on $N(i)$ and $d(i,j)$ is graph distanc
 
 ---
 
-## 8. Implementation in MFG_PDE
+## 8. Implementation in MFGarchon
 
 ### 8.1 Core Files
 
-**Problem Definition**: `mfg_pde/core/network_mfg_problem.py:77-583`
+**Problem Definition**: `mfgarchon/core/network_mfg_problem.py:77-583`
 - Graph structure definition
 - Hamiltonian and Lagrangian formulation
 - Network operators ($∇_G$, $div_G$, $Δ_G$)
 
-**Standard Solver**: `mfg_pde/alg/mfg_solvers/network_mfg_solver.py:30-400`
+**Standard Solver**: `mfgarchon/alg/mfg_solvers/network_mfg_solver.py:30-400`
 - Fixed-point iteration for coupled HJB-FPK
 - Convergence monitoring with Wasserstein distance
 
-**Lagrangian Solver**: `mfg_pde/alg/mfg_solvers/lagrangian_network_solver.py:30-423`
+**Lagrangian Solver**: `mfgarchon/alg/mfg_solvers/lagrangian_network_solver.py:30-423`
 - Trajectory-based formulation
 - Relaxed equilibrium computation
 
-**High-Order HJB Solver**: `mfg_pde/alg/hjb_solvers/high_order_network_hjb.py:27-454`
+**High-Order HJB Solver**: `mfgarchon/alg/hjb_solvers/high_order_network_hjb.py:27-454`
 - Upwind, MUSCL, Lax-Friedrichs, Godunov schemes
 - TVD property enforcement
 
@@ -523,5 +523,5 @@ def hamiltonian(self, p: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
 **Document Status**: Enhanced with mathematical rigor, precise definitions, and comprehensive references
 **Mathematical Review**: Formulations verified against published network MFG literature
 **Implementation Verification**: All formulations tested in `examples/advanced/network_mfg_comparison.py`
-**Related Code**: `mfg_pde/core/network_mfg_problem.py`, `mfg_pde/alg/mfg_solvers/`, `mfg_pde/alg/hjb_solvers/high_order_network_hjb.py`
+**Related Code**: `mfgarchon/core/network_mfg_problem.py`, `mfgarchon/alg/mfg_solvers/`, `mfgarchon/alg/hjb_solvers/high_order_network_hjb.py`
 **Last Updated**: October 8, 2025

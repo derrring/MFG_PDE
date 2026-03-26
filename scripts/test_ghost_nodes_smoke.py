@@ -11,11 +11,11 @@ Tests that the ghost nodes method:
 
 import numpy as np
 
-from mfg_pde import BoundaryConditions, MFGProblem
-from mfg_pde.alg.numerical.hjb_solvers import HJBGFDMSolver
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import BCType
-from mfg_pde.geometry.collocation import CollocationSampler
+from mfgarchon import BoundaryConditions, MFGProblem
+from mfgarchon.alg.numerical.hjb_solvers import HJBGFDMSolver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import BCType
+from mfgarchon.geometry.collocation import CollocationSampler
 
 
 def test_ghost_nodes_initialization():

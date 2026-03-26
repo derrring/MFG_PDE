@@ -489,4 +489,4 @@ TD3 is deterministic. For stochastic policies:
 ---
 
 **Status**: ✅ Theory complete, ready for implementation
-**Next**: Implementation in `mfg_pde/alg/reinforcement/algorithms/mean_field_td3.py`
+**Next**: Implementation in `mfgarchon/alg/reinforcement/algorithms/mean_field_td3.py`

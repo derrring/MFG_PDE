@@ -10,8 +10,8 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.geometry.protocol import GeometryType
-from mfg_pde.utils.validation.components import validate_mass_normalization
+from mfgarchon.geometry.protocol import GeometryType
+from mfgarchon.utils.validation.components import validate_mass_normalization
 
 # ===========================================================================
 # Mock geometries for mass computation testing
@@ -381,8 +381,8 @@ def test_mass_loose_tolerance():
 @pytest.mark.unit
 def test_mass_real_tensor_grid():
     """Mass computation works with actual TensorProductGrid."""
-    from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary.conditions import no_flux_bc
+    from mfgarchon.geometry import TensorProductGrid
+    from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
     n = 51
     geom = TensorProductGrid(
@@ -401,8 +401,8 @@ def test_mass_real_tensor_grid():
 @pytest.mark.unit
 def test_mass_real_tensor_grid_callable():
     """Mass computation with callable on actual TensorProductGrid."""
-    from mfg_pde.geometry import TensorProductGrid
-    from mfg_pde.geometry.boundary.conditions import no_flux_bc
+    from mfgarchon.geometry import TensorProductGrid
+    from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
     n = 51
     geom = TensorProductGrid(

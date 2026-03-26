@@ -17,7 +17,7 @@ import pytest
 
 import numpy as np
 
-from mfg_pde.utils.validation.components import (
+from mfgarchon.utils.validation.components import (
     _get_expected_ic_shape,
     _get_validation_points,
     validate_m_initial,

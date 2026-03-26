@@ -56,9 +56,9 @@ from pathlib import Path
 import numpy as np
 
 # Multi-dimensional infrastructure
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.utils import SparseMatrixBuilder, SparseSolver
-from mfg_pde.visualization import MultiDimVisualizer
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.utils import SparseMatrixBuilder, SparseSolver
+from mfgarchon.visualization import MultiDimVisualizer
 
 
 def create_epidemic_problem():

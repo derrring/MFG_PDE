@@ -16,7 +16,7 @@ Mathematical Framework:
 - Predator reward: r_pred(s, a, m) includes +bonus near high m_prey
 - Prey reward: r_prey(s, a, m) includes -penalty near high m_pred
 
-Author: MFG_PDE Team
+Author: MFGarchon Team
 Date: October 2025
 """
 
@@ -45,10 +45,10 @@ except ImportError:
     print("Gymnasium not available. Please install: pip install gymnasium")
     sys.exit(1)
 
-from mfg_pde.alg.reinforcement.algorithms.multi_population_q_learning import (
+from mfgarchon.alg.reinforcement.algorithms.multi_population_q_learning import (
     create_multi_population_q_learning_solvers,
 )
-from mfg_pde.alg.reinforcement.environments.multi_population_maze_env import (
+from mfgarchon.alg.reinforcement.environments.multi_population_maze_env import (
     ActionType,
     AgentTypeConfig,
     MultiPopulationMazeConfig,

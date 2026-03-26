@@ -16,7 +16,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-from mfg_pde.alg.reinforcement.environments.multi_population_env import (
+from mfgarchon.alg.reinforcement.environments.multi_population_env import (
     MultiPopulationMFGEnv,
 )
 

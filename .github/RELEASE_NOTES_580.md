@@ -11,7 +11,7 @@
 
 ### Three-Mode Solving API
 
-MFG_PDE now provides **guaranteed adjoint duality** between HJB and FP solvers through a new three-mode solving API. This prevents a subtle but critical numerical error that can break Nash equilibrium convergence.
+MFGarchon now provides **guaranteed adjoint duality** between HJB and FP solvers through a new three-mode solving API. This prevents a subtle but critical numerical error that can break Nash equilibrium convergence.
 
 **Key Benefit**: You can now safely experiment with different numerical schemes knowing that duality is guaranteed by construction.
 
@@ -26,8 +26,8 @@ MFG_PDE now provides **guaranteed adjoint duality** between HJB and FP solvers t
 Specify the numerical scheme and let the factory create a validated dual pair:
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.types import NumericalScheme
+from mfgarchon import MFGProblem
+from mfgarchon.types import NumericalScheme
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0, diffusion=0.1)
 
@@ -51,8 +51,8 @@ result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 Create solvers manually and get automatic duality validation:
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon import MFGProblem
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -78,7 +78,7 @@ result = problem.solve(hjb_solver=hjb, fp_solver=fp)
 Zero configuration - just call `solve()`:
 
 ```python
-from mfg_pde import MFGProblem
+from mfgarchon import MFGProblem
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -125,7 +125,7 @@ The three-mode API ensures duality through:
 result = problem.solve()
 
 # After (explicit)
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 ```
 
@@ -138,8 +138,8 @@ result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 **Migration**:
 ```python
 # Before (deprecated)
-from mfg_pde.factory import create_solver
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.factory import create_solver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 hjb = HJBFDMSolver(problem)
 fp = FPFDMSolver(problem)
@@ -161,7 +161,7 @@ result = problem.solve(hjb_solver=hjb, fp_solver=fp)  # Direct, no factory
 ### 1. Scheme Comparison Made Easy
 
 ```python
-from mfg_pde.types import NumericalScheme
+from mfgarchon.types import NumericalScheme
 
 schemes = [NumericalScheme.FDM_UPWIND, NumericalScheme.SL_LINEAR, NumericalScheme.GFDM]
 results = {}
@@ -201,8 +201,8 @@ Recommendation:
 For GFDM schemes, common parameters are automatically threaded:
 
 ```python
-from mfg_pde.factory import create_paired_solvers
-from mfg_pde.types import NumericalScheme
+from mfgarchon.factory import create_paired_solvers
+from mfgarchon.types import NumericalScheme
 import numpy as np
 
 points = np.linspace(0, 1, 30)[:, None]
@@ -356,7 +356,7 @@ One test (`test_safe_mode_sl_linear`) is skipped due to a pre-existing SL solver
 - **Migration Guide**: `docs/user/three_mode_api_migration_guide.md`
 - **Implementation Guide**: `docs/development/issue_580_adjoint_pairing_implementation.md`
 - **Demo Example**: `examples/basic/three_mode_api_demo.py`
-- **Issues**: https://github.com/anthropics/mfg_pde/issues
+- **Issues**: https://github.com/anthropics/mfgarchon/issues
 
 ### FAQ
 
@@ -376,7 +376,7 @@ A: Safe Mode guarantees duality. Expert Mode validates automatically and emits w
 
 ## Summary
 
-The three-mode solving API represents a major improvement in MFG_PDE's usability and scientific correctness. By making it **impossible** to accidentally break adjoint duality, this release ensures your MFG simulations converge correctly while maintaining complete backward compatibility.
+The three-mode solving API represents a major improvement in MFGarchon's usability and scientific correctness. By making it **impossible** to accidentally break adjoint duality, this release ensures your MFG simulations converge correctly while maintaining complete backward compatibility.
 
 **Key Takeaway**: Better defaults, stronger guarantees, zero breaking changes.
 
