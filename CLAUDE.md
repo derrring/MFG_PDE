@@ -877,5 +877,5 @@ Before marking an issue as complete or creating a PR:
 ---
 
 **Last Updated**: 2026-02-15
-**Repository Version**: v0.17.12 (Pre-1.0.0)
+**Repository Version**: v0.17.13 (Pre-1.0.0)
 **Claude Code**: Always reference this file for MFGarchon conventions
