@@ -220,17 +220,20 @@ Optional: PyTorch, JAX, igraph, plotly (for advanced features)
 
 ## Citation
 
-If you use MFG_PDE in your research:
+If you use MFG_PDE in your research, please cite it. You can use GitHub's
+"Cite this repository" button in the sidebar, or use the following BibTeX:
 
 ```bibtex
-@software{mfg_pde2025,
+@software{mfg_pde,
   title={MFG\_PDE: A Research-Grade Framework for Mean Field Games},
-  author={Wang, Jeremy Jiongyi},
-  year={2025},
-  version={0.16.8},
+  author={Wang, Jiongyi},
+  year={2026},
+  version={0.17.11},
   url={https://github.com/derrring/MFG_PDE}
 }
 ```
+
+See [CITATION.cff](CITATION.cff) for the machine-readable citation metadata.
 
 ---
 
