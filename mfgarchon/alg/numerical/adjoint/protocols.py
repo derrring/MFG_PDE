@@ -1,14 +1,20 @@
 """
 Protocols for adjoint-capable solvers.
 
-DEPRECATED (Issue #706): The "adjoint mode" approach using matrix transpose
-(A_fp = A_hjb.T) is mathematically incorrect. The correct approach is to use
-properly paired schemes:
-- HJB: gradient_upwind or gradient_centered
-- FP: divergence_upwind or divergence_centered (respectively)
+Two approaches for adjoint consistency in MFG coupling:
 
-The divergence_upwind scheme already implements the correct Jacobian transpose
-structure from Achdou's structure-preserving discretization.
+1. **Scheme pairing** (Issue #706): Use matched HJB/FP schemes
+   (gradient_upwind + divergence_upwind). Default and simplest approach.
+
+2. **True adjoint via Jacobian transpose** (Issue #707): Build the linearized
+   HJB operator (Jacobian) and transpose it to get the FP operator.
+   Correct for arbitrary Hamiltonians, not just quadratic H = (c/2)|p|^2.
+   Requires class-based Hamiltonian with dp() method.
+
+Note: The old "transpose" mode (Issue #622, deprecated in #706) naively
+transposed the velocity-based advection matrix. This is incorrect for
+non-symmetric upwind stencils. The "jacobian_transpose" mode (#707) is
+the correct implementation.
 
 See docs/theory/adjoint_discretization_mfg.md for mathematical foundations.
 """
@@ -72,6 +78,31 @@ class AdjointCapableFPSolver(Protocol):
 
         This method is deprecated because using A_hjb.T is mathematically incorrect.
         Use standard solve_fp_step with divergence_upwind scheme instead.
+        """
+        ...
+
+
+@runtime_checkable
+class LinearizedOperatorCapable(Protocol):
+    """
+    Protocol for HJB solvers that support true adjoint mode (Issue #707).
+
+    Solvers implementing this protocol can build the linearized HJB operator
+    (Jacobian) whose transpose gives the correct FP advection operator for
+    arbitrary Hamiltonians.
+    """
+
+    def build_linearized_operator(
+        self,
+        U: NDArray[np.floating],
+        M: NDArray[np.floating],
+        time: float = 0.0,
+    ) -> sparse.csr_matrix:
+        """
+        Build the linearized HJB advection operator.
+
+        Returns A_adv[i,j] = (dH/dp)_i * (dp_i/dU_j).
+        Transpose A_adv^T is the correct FP advection operator.
         """
         ...
 
