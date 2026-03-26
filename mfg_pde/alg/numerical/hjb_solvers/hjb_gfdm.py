@@ -257,6 +257,10 @@ class HJBGFDMSolver(BaseHJBSolver):
         congestion_mode: str = "additive",
         # Collocation geometry for periodic domains (Issue #711)
         collocation_geometry: object | None = None,
+        # Obstacle-aware visibility filtering for stencil neighbors
+        obstacle_sdf: object | None = None,
+        visibility_samples: int = 10,
+        visibility_margin: float = 0.0,
     ):
         """
         Initialize the GFDM HJB solver.
@@ -627,6 +631,9 @@ class HJBGFDMSolver(BaseHJBSolver):
                 gfdm_operator=self._gfdm_operator,
                 use_local_coordinate_rotation=self._use_local_coordinate_rotation,
                 boundary_handler=self._boundary_handler,
+                obstacle_sdf=obstacle_sdf,
+                visibility_samples=visibility_samples,
+                visibility_margin=visibility_margin,
             )
         else:
             # Legacy: GFDMOperator (deprecated, for backward compatibility)

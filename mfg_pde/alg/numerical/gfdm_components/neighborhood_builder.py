@@ -21,6 +21,10 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
+
     from mfg_pde.alg.numerical.gfdm_components.boundary_handler import BoundaryHandler
 
 
@@ -164,8 +168,23 @@ class NeighborhoodBuilder:
         gfdm_operator: Any,
         use_local_coordinate_rotation: bool,
         boundary_handler: BoundaryHandler | None = None,
+        obstacle_sdf: Callable[[NDArray[np.float64]], NDArray[np.float64]] | None = None,
+        visibility_samples: int = 10,
+        visibility_margin: float = 0.0,
     ):
-        """Initialize neighborhood builder."""
+        """Initialize neighborhood builder.
+
+        Args:
+            obstacle_sdf: Signed distance function of obstacle regions. When provided,
+                neighbors whose line of sight to the center point passes through the
+                obstacle (SDF < 0) are excluded. This prevents cross-wall stencils in
+                narrow channels between obstacles.
+            visibility_samples: Number of interior samples along each segment for
+                obstacle intersection testing. Default 10.
+            visibility_margin: Safety margin for obstacle proximity. Neighbors with
+                line-of-sight passing within this distance of an obstacle are excluded.
+                Default 0.0.
+        """
         self.collocation_points = np.asarray(collocation_points)
         self.n_points = len(collocation_points)
         self.dimension = dimension
@@ -182,6 +201,9 @@ class NeighborhoodBuilder:
         self._gfdm_operator = gfdm_operator
         self._use_local_coordinate_rotation = use_local_coordinate_rotation
         self._boundary_handler = boundary_handler
+        self._obstacle_sdf = obstacle_sdf
+        self._visibility_samples = visibility_samples
+        self._visibility_margin = visibility_margin
 
         # Initialize adaptive stats
         self.adaptive_stats: dict[str, Any] = {
@@ -223,9 +245,20 @@ class NeighborhoodBuilder:
         # Pre-compute boundary set for fast lookup
         boundary_set = set(self.boundary_indices) if len(self.boundary_indices) > 0 else set()
 
+        # Visibility filtering stats
+        visibility_stats = {"n_filtered": 0, "total_removed": 0}
+
         for i in range(self.n_points):
             # Start with GFDMOperator's neighborhood (pure one-sided stencils, no ghost particles)
             base_neighborhood = self._gfdm_operator.get_neighborhood(i)
+
+            # Visibility filtering: remove neighbors whose line of sight crosses an obstacle
+            if self._obstacle_sdf is not None:
+                base_neighborhood = self._apply_visibility_filter(i, base_neighborhood)
+                if base_neighborhood.get("visibility_removed", 0) > 0:
+                    visibility_stats["n_filtered"] += 1
+                    visibility_stats["total_removed"] += base_neighborhood["visibility_removed"]
+
             n_neighbors = base_neighborhood["size"]
 
             # Check if this is a boundary point
@@ -285,6 +318,21 @@ class NeighborhoodBuilder:
                     # Recompute neighborhood with enlarged delta
                     neighbor_mask = distances[i, :] < delta_current
                     neighbor_indices = np.where(neighbor_mask)[0]
+
+                    # Apply visibility filter to expanded neighbors
+                    if self._obstacle_sdf is not None and len(neighbor_indices) > 0:
+                        from mfg_pde.geometry.visibility import filter_visible_neighbors
+
+                        expanded_points = self.collocation_points[neighbor_indices]
+                        vis_mask = filter_visible_neighbors(
+                            self.collocation_points[i],
+                            expanded_points,
+                            self._obstacle_sdf,
+                            n_samples=self._visibility_samples,
+                            margin=self._visibility_margin,
+                        )
+                        neighbor_indices = neighbor_indices[vis_mask]
+
                     real_neighbor_count = len(neighbor_indices)
                     was_adapted = True
 
@@ -402,6 +450,88 @@ class NeighborhoodBuilder:
                     stacklevel=2,
                 )
 
+        # Store visibility stats for external access
+        self.visibility_stats = visibility_stats
+
+        # Report visibility filtering statistics
+        if self._obstacle_sdf is not None and visibility_stats["n_filtered"] > 0:
+            pct = 100.0 * visibility_stats["n_filtered"] / self.n_points
+            avg_removed = visibility_stats["total_removed"] / visibility_stats["n_filtered"]
+            from mfg_pde.utils.mfg_logging import get_logger
+
+            logger = get_logger(__name__)
+            logger.info(
+                "Visibility filtering: %d/%d points (%.1f%%) had neighbors removed. "
+                "Total removed: %d, avg %.1f per affected point.",
+                visibility_stats["n_filtered"],
+                self.n_points,
+                pct,
+                visibility_stats["total_removed"],
+                avg_removed,
+            )
+
+    def _apply_visibility_filter(self, point_idx: int, neighborhood: dict) -> dict:
+        """Filter out neighbors whose line of sight to point_idx crosses an obstacle.
+
+        Uses SDF sampling along line segments to detect obstacle crossings.
+        Ghost neighbors (negative indices) are preserved unconditionally.
+
+        Args:
+            point_idx: Index of the center point.
+            neighborhood: Base neighborhood dict from TaylorOperator.
+
+        Returns:
+            Filtered neighborhood dict with same structure. Adds 'visibility_removed'
+            key tracking how many neighbors were removed.
+        """
+        from mfg_pde.geometry.visibility import filter_visible_neighbors
+
+        indices = neighborhood["indices"]
+        points = neighborhood["points"]
+        distances = neighborhood["distances"]
+
+        if len(indices) == 0:
+            return {**neighborhood, "visibility_removed": 0}
+
+        # Separate ghost neighbors (negative indices) from real ones
+        ghost_mask = indices < 0
+        real_mask = ~ghost_mask
+
+        if not np.any(real_mask):
+            return {**neighborhood, "visibility_removed": 0}
+
+        center = self.collocation_points[point_idx]
+        real_points = points[real_mask]
+
+        # Check visibility for real neighbors only
+        visible_mask = filter_visible_neighbors(
+            center,
+            real_points,
+            self._obstacle_sdf,
+            n_samples=self._visibility_samples,
+            margin=self._visibility_margin,
+        )
+
+        n_removed = int(np.sum(~visible_mask))
+        if n_removed == 0:
+            return {**neighborhood, "visibility_removed": 0}
+
+        # Reconstruct: keep visible real neighbors + all ghost neighbors
+        keep_real = np.where(real_mask)[0][visible_mask]
+        keep_ghost = np.where(ghost_mask)[0]
+        keep = np.concatenate([keep_real, keep_ghost])
+        keep.sort()  # Preserve original ordering
+
+        return {
+            "indices": indices[keep],
+            "points": points[keep],
+            "distances": distances[keep],
+            "size": len(keep),
+            "has_ghost": neighborhood.get("has_ghost", False),
+            "ghost_count": neighborhood.get("ghost_count", 0),
+            "visibility_removed": n_removed,
+        }
+
     def build_reverse_neighborhoods(self) -> None:
         """
         Build reverse neighborhood map: for each point j, find all points i that have j in their neighborhood.
@@ -470,11 +600,14 @@ class NeighborhoodBuilder:
                 self.taylor_matrices[i] = None
                 continue
 
-            # Check if we can reuse GFDMOperator's Taylor matrices
-            # (only if neighborhood wasn't adapted AND no LCR rotation applied)
-            # For LCR boundary points, we need to rebuild with rotated offsets
+            # Check if we can reuse GFDMOperator's Taylor matrices.
+            # Requires: (1) neighborhood not adapted by delta enlargement,
+            # (2) no LCR rotation, and (3) neighbor count matches operator's
+            # original (may differ if visibility filtering removed neighbors).
             has_lcr_rotation = "rotated_offsets" in neighborhood and self._use_local_coordinate_rotation
-            if not neighborhood.get("adapted", False) and not has_lcr_rotation:
+            operator_neighborhood = self._gfdm_operator.get_neighborhood(i)
+            size_matches = n_neighbors == operator_neighborhood["size"]
+            if not neighborhood.get("adapted", False) and not has_lcr_rotation and size_matches:
                 base_taylor = self._gfdm_operator.get_taylor_data(i)
                 if base_taylor is not None:
                     # Compute condition number safely
