@@ -89,9 +89,11 @@ class BlockIterator(BaseMFGSolver):
         damping_factor: Damping parameter in (0, 1] (default: 1.0 = no damping)
         diffusion_field: Optional diffusion override
         drift_field: Optional drift override for non-MFG problems
-        adjoint_mode: Adjoint enforcement mode (Issue #622, #704).
+        adjoint_mode: Adjoint enforcement mode (Issue #622, #704, #707).
             - "off": Independent matrix construction (default)
-            - "transpose": FP uses A_hjb^T directly (only valid for symmetric BCs)
+            - "transpose": FP uses A_hjb^T directly (velocity-based, only valid for symmetric BCs)
+            - "jacobian_transpose": FP uses A_Jac^T from linearized HJB operator (Issue #707).
+              Correct for arbitrary Hamiltonians. Requires class-based Hamiltonian.
             - "auto": Detects BC types, uses transpose for symmetric, correction for Dirichlet
         adjoint_verify: Enable runtime adjoint verification for debugging.
 
@@ -147,8 +149,9 @@ class BlockIterator(BaseMFGSolver):
         self.drift_field = drift_field
 
         # Issue #622, #704: Adjoint mode
-        if adjoint_mode not in ("off", "transpose", "auto"):
-            raise ValueError(f"adjoint_mode must be 'off', 'transpose', or 'auto', got '{adjoint_mode}'")
+        _valid_adjoint_modes = ("off", "transpose", "jacobian_transpose", "auto")
+        if adjoint_mode not in _valid_adjoint_modes:
+            raise ValueError(f"adjoint_mode must be one of {_valid_adjoint_modes}, got '{adjoint_mode}'")
         self.adjoint_mode = adjoint_mode
         self.adjoint_verify = adjoint_verify
         self._adjoint_mismatch_count = 0
@@ -298,30 +301,38 @@ class BlockIterator(BaseMFGSolver):
 
         for k in range(num_time_steps - 1):
             U_k = U[k]
-            A_hjb = self.hjb_solver.build_advection_matrix(U_k)
-
-            # Optional verification
-            if self.adjoint_verify:
-                fp_build_matrix = getattr(self.fp_solver, "_build_advection_matrix", None)
-                if callable(fp_build_matrix):
-                    A_fp_ind = fp_build_matrix(U_k)
-                    is_adj, error = check_operator_adjoint(A_hjb, A_fp_ind.T, rtol=1e-10)
-                    if not is_adj:
-                        self._adjoint_mismatch_count += 1
-                        if self._adjoint_mismatch_count <= 5:
-                            logger.warning(f"Adjoint mismatch at step {k}: error={error:.2e}")
+            M_current = M_solution[k]
 
             # Build FP matrix based on mode
-            if self.adjoint_mode == "transpose":
-                A_fp = A_hjb.T.tocsr()
-            else:  # "auto"
-                bc_types = self._get_boundary_bc_types()
-                grid_shape = self.problem.geometry.get_grid_shape()
-                dx = self.problem.geometry.get_grid_spacing()
-                dt = self.problem.dt
-                A_fp = build_bc_aware_adjoint_matrix(A_hjb, bc_types, grid_shape, dx, dt)
+            if self.adjoint_mode == "jacobian_transpose":
+                # Issue #707: True adjoint via linearized HJB Jacobian
+                # A_fp = A_Jac^T where A_Jac = dH/dp * dp/dU (correct for any Hamiltonian)
+                A_jac = self.hjb_solver.build_linearized_operator(U_k, M_current, time=k * self.problem.dt)
+                A_fp = A_jac.T.tocsr()
+            else:
+                # Velocity-based modes use build_advection_matrix
+                A_hjb = self.hjb_solver.build_advection_matrix(U_k)
 
-            M_current = M_solution[k]
+                # Optional verification
+                if self.adjoint_verify:
+                    fp_build_matrix = getattr(self.fp_solver, "_build_advection_matrix", None)
+                    if callable(fp_build_matrix):
+                        A_fp_ind = fp_build_matrix(U_k)
+                        is_adj, error = check_operator_adjoint(A_hjb, A_fp_ind.T, rtol=1e-10)
+                        if not is_adj:
+                            self._adjoint_mismatch_count += 1
+                            if self._adjoint_mismatch_count <= 5:
+                                logger.warning(f"Adjoint mismatch at step {k}: error={error:.2e}")
+
+                if self.adjoint_mode == "transpose":
+                    A_fp = A_hjb.T.tocsr()
+                else:  # "auto"
+                    bc_types = self._get_boundary_bc_types()
+                    grid_shape = self.problem.geometry.get_grid_shape()
+                    dx = self.problem.geometry.get_grid_spacing()
+                    dt = self.problem.dt
+                    A_fp = build_bc_aware_adjoint_matrix(A_hjb, bc_types, grid_shape, dx, dt)
+
             M_next = self.fp_solver.solve_fp_step_adjoint_mode(M_current, A_fp, sigma=sigma, time=k * self.problem.dt)
             M_solution[k + 1] = M_next
 

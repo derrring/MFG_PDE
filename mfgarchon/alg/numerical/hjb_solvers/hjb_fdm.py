@@ -1148,6 +1148,208 @@ class HJBFDMSolver(BaseHJBSolver):
 
         return A
 
+    # =========================================================================
+    # True Adjoint Mode (Issue #707)
+    # =========================================================================
+
+    def build_linearized_operator(
+        self,
+        U: NDArray,
+        M: NDArray,
+        time: float = 0.0,
+    ) -> sparse.csr_matrix:
+        """
+        Build the linearized HJB advection operator (Jacobian) for true adjoint coupling.
+
+        Returns the Hamiltonian advection part of the HJB Jacobian:
+            A_adv[i,j] = (dH/dp)_i * (dp_i/dU_j)
+
+        where dH/dp comes from the Hamiltonian class and dp/dU comes from the
+        upwind gradient stencil. The transpose A_adv^T is the correct FP
+        advection operator (Achdou's structure-preserving discretization).
+
+        This is mathematically different from build_advection_matrix() which uses
+        velocity v = -coupling * grad(U). The Jacobian approach is correct for
+        arbitrary Hamiltonians, not just quadratic H = (c/2)|p|^2.
+
+        Args:
+            U: Value function, shape (*spatial_shape)
+            M: Density field, shape (*spatial_shape) -- used for H_p evaluation
+            time: Current time for time-dependent problems
+
+        Returns:
+            Sparse CSR matrix A_adv of shape (N_total, N_total).
+            Transpose A_adv.T gives the correct FP advection operator.
+
+        See Also:
+            - Issue #707: True Adjoint Mode
+            - docs/theory/adjoint_discretization_mfg.md
+            - compute_hjb_jacobian() in base_hjb.py (1D Newton solver version)
+        """
+        if self.dimension == 1:
+            return self._build_linearized_operator_1d(U, M, time)
+        else:
+            return self._build_linearized_operator_nd(U, M, time)
+
+    def _build_linearized_operator_1d(
+        self,
+        U: NDArray,
+        M: NDArray,
+        time: float = 0.0,
+    ) -> sparse.csr_matrix:
+        """Build 1D linearized HJB advection operator.
+
+        Extracts the Hamiltonian advection part of the Jacobian:
+            J_D[i] += dH_dp[i] * dp_i/dU_i    (diagonal)
+            J_L[i] += dH_dp[i] * dp_i/dU_{i-1} (lower)
+            J_U[i] += dH_dp[i] * dp_i/dU_{i+1} (upper)
+
+        where dp/dU depends on the Godunov upwind stencil direction.
+        """
+        import scipy.sparse as sparse
+
+        Nx = self.problem.geometry.get_grid_shape()[0]
+        dx = self.problem.geometry.get_grid_spacing()[0]
+        bc = self.get_boundary_conditions()
+        H_class = self.problem.hamiltonian_class
+
+        U_flat = np.asarray(U).ravel()
+        M_flat = np.asarray(M).ravel()
+
+        J_D = np.zeros(Nx)
+        J_L = np.zeros(Nx)
+        J_U = np.zeros(Nx)
+
+        if H_class is None:
+            raise ValueError(
+                "build_linearized_operator requires a Hamiltonian class with dp() method. "
+                "Set problem.hamiltonian_class or use build_advection_matrix() for quadratic H."
+            )
+
+        # Compute BC-aware upwind gradient
+        precomputed_grad = base_hjb._compute_gradient_array_1d(U_flat, dx, bc=bc, upwind=True, time=time)
+
+        # Evaluate dH/dp at all grid points
+        x_grid = self.problem.geometry.get_spatial_grid()  # (Nx, 1)
+        p_grid = precomputed_grad.reshape(-1, 1)  # (Nx, 1)
+        dH_dp = np.asarray(H_class.dp(x_grid, M_flat, p_grid, t=time), dtype=float).ravel()  # (Nx,)
+
+        # Stencil coefficients: dp_i/dU_j depends on Godunov upwind direction
+        # p >= 0: backward stencil (U_i - U_{i-1})/dx
+        # p < 0:  forward stencil  (U_{i+1} - U_i)/dx
+        inv_dx = 1.0 / dx
+        backward_mask = precomputed_grad >= 0  # (Nx,)
+
+        # Diagonal: dp_i/dU_i
+        J_D = dH_dp * np.where(backward_mask, inv_dx, -inv_dx)
+        # Lower: dp_i/dU_{i-1} (backward stencil only)
+        J_L = dH_dp * np.where(backward_mask, -inv_dx, 0.0)
+        # Upper: dp_i/dU_{i+1} (forward stencil only)
+        J_U = dH_dp * np.where(backward_mask, 0.0, inv_dx)
+
+        # Zero out boundary rows (no-flux: boundary nodes have no advection)
+        J_D[0] = J_D[-1] = 0.0
+        J_L[0] = J_L[-1] = 0.0
+        J_U[0] = J_U[-1] = 0.0
+
+        # Assemble tridiagonal sparse matrix
+        J_L_shifted = np.roll(J_L, -1) if Nx > 1 else J_L
+        J_U_shifted = np.roll(J_U, 1) if Nx > 1 else J_U
+
+        diags = [J_L_shifted, J_D, J_U_shifted] if Nx > 1 else [J_D]
+        offsets = [-1, 0, 1] if Nx > 1 else [0]
+
+        return sparse.spdiags(diags, offsets, Nx, Nx, format="csr")
+
+    def _build_linearized_operator_nd(
+        self,
+        U: NDArray,
+        M: NDArray,
+        time: float = 0.0,
+    ) -> sparse.csr_matrix:
+        """Build nD linearized HJB advection operator.
+
+        Generalizes the 1D approach: for each dimension d, computes
+        dH/dp_d * dp_d/dU_j using the upwind stencil in that dimension,
+        then sums contributions across all dimensions.
+        """
+        import scipy.sparse as sparse
+
+        H_class = self.problem.hamiltonian_class
+        if H_class is None:
+            raise ValueError("build_linearized_operator requires a Hamiltonian class with dp() method.")
+
+        N_total = int(np.prod(self.shape))
+        M_flat = np.asarray(M).ravel()
+
+        # Compute upwind gradients in each dimension
+        gradients = self._compute_gradients_nd(U, time=time)
+
+        # Stack gradients as (Nx, dim) for H_class.dp()
+        x_grid = self.problem.geometry.get_spatial_grid()  # (N_total, dim)
+        p_grid = np.column_stack([gradients[d].ravel() for d in range(self.dimension)])
+
+        # Evaluate dH/dp: returns (N_total, dim) -- one component per dimension
+        dH_dp_all = np.asarray(H_class.dp(x_grid, M_flat, p_grid, t=time), dtype=float)
+        if dH_dp_all.ndim == 1:
+            dH_dp_all = dH_dp_all.reshape(-1, 1)
+
+        # Build sparse matrix using COO format
+        row_indices = []
+        col_indices = []
+        data_values = []
+
+        for flat_idx in range(N_total):
+            multi_idx = self.grid.get_multi_index(flat_idx)
+
+            # Skip boundary points (no-flux)
+            is_boundary = any(multi_idx[d] == 0 or multi_idx[d] == self.shape[d] - 1 for d in range(self.dimension))
+            if is_boundary:
+                continue
+
+            for d in range(self.dimension):
+                dx_d = self.spacing[d]
+                inv_dx_d = 1.0 / dx_d
+                grad_d = gradients[d][multi_idx]
+                dH_dp_d = dH_dp_all[flat_idx, d] if dH_dp_all.shape[1] > 1 else dH_dp_all[flat_idx, 0]
+
+                if abs(dH_dp_d) < 1e-14:
+                    continue
+
+                if grad_d >= 0:
+                    # Backward stencil: p_d = (U_i - U_{i-1})/dx_d
+                    # dp/dU_i = 1/dx, dp/dU_{i-1} = -1/dx
+                    row_indices.append(flat_idx)
+                    col_indices.append(flat_idx)
+                    data_values.append(dH_dp_d * inv_dx_d)
+
+                    neighbor_idx = list(multi_idx)
+                    neighbor_idx[d] -= 1
+                    neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.shape)
+                    row_indices.append(flat_idx)
+                    col_indices.append(neighbor_flat)
+                    data_values.append(dH_dp_d * (-inv_dx_d))
+                else:
+                    # Forward stencil: p_d = (U_{i+1} - U_i)/dx_d
+                    # dp/dU_i = -1/dx, dp/dU_{i+1} = 1/dx
+                    row_indices.append(flat_idx)
+                    col_indices.append(flat_idx)
+                    data_values.append(dH_dp_d * (-inv_dx_d))
+
+                    neighbor_idx = list(multi_idx)
+                    neighbor_idx[d] += 1
+                    neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.shape)
+                    row_indices.append(flat_idx)
+                    col_indices.append(neighbor_flat)
+                    data_values.append(dH_dp_d * inv_dx_d)
+
+        A = sparse.coo_matrix(
+            (data_values, (row_indices, col_indices)),
+            shape=(N_total, N_total),
+        ).tocsr()
+
+        return A
+
 
 if __name__ == "__main__":
     """Quick smoke test for development."""
