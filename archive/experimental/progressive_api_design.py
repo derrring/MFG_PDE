@@ -13,7 +13,7 @@ without being overwhelmed by type complexity.
 
 def level_1_example():
     """Dead simple - no types visible to user."""
-    from mfg_pde import solve_mfg_problem
+    from mfgarchon import solve_mfg_problem
 
     # One function call - everything else is hidden
     result = solve_mfg_problem(problem_type="crowd_dynamics", domain_size=5.0, time_horizon=2.0, crowd_size=1000)
@@ -30,7 +30,7 @@ def level_1_example():
 
 def level_2_example():
     """Expose key concepts but keep types simple."""
-    from mfg_pde import create_problem, create_solver
+    from mfgarchon import create_problem, create_solver
 
     # Two-step process with some customization
     problem = create_problem(
@@ -60,9 +60,9 @@ def level_3_example():
     """Full access to internal types and customization."""
     import numpy as np
 
-    from mfg_pde.alg.hjb_solvers import HJBSemiLagrangianSolver
-    from mfg_pde.config import HJBSolverConfig
-    from mfg_pde.core import LagrangianMFGProblem, MFGComponents
+    from mfgarchon.alg.hjb_solvers import HJBSemiLagrangianSolver
+    from mfgarchon.config import HJBSolverConfig
+    from mfgarchon.core import LagrangianMFGProblem, MFGComponents
 
     # Custom Hamiltonian
     def custom_hamiltonian(x, p, m, t):

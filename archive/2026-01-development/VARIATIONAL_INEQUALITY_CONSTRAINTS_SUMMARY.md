@@ -6,13 +6,13 @@
 
 ## Overview
 
-Implemented comprehensive variational inequality constraint infrastructure for MFG_PDE, enabling obstacle problems and box constraints on PDE solutions. The implementation supports unilateral constraints (u ≥ ψ or u ≤ ψ), bilateral constraints (ψ_lower ≤ u ≤ ψ_upper), and regional constraints (constraints active only in spatial subdomains).
+Implemented comprehensive variational inequality constraint infrastructure for MFGarchon, enabling obstacle problems and box constraints on PDE solutions. The implementation supports unilateral constraints (u ≥ ψ or u ≤ ψ), bilateral constraints (ψ_lower ≤ u ≤ ψ_upper), and regional constraints (constraints active only in spatial subdomains).
 
 ## Implementation
 
 ### Core Infrastructure
 
-#### 1. Constraint Protocol (`mfg_pde/geometry/boundary/constraint_protocol.py`)
+#### 1. Constraint Protocol (`mfgarchon/geometry/boundary/constraint_protocol.py`)
 
 Protocol-based interface for all constraint types:
 
@@ -31,7 +31,7 @@ class ConstraintProtocol(Protocol):
 
 **Design**: Duck-typed protocol enables flexible constraint composition without inheritance.
 
-#### 2. Concrete Implementations (`mfg_pde/geometry/boundary/constraints.py`)
+#### 2. Concrete Implementations (`mfgarchon/geometry/boundary/constraints.py`)
 
 **ObstacleConstraint** - Unilateral constraints:
 ```python
@@ -77,7 +77,7 @@ class BilateralConstraint:
 
 ### Integration with Solvers
 
-#### HJB FDM Solver (`mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py`)
+#### HJB FDM Solver (`mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py`)
 
 **1D Path** (lines 481-501):
 ```python
@@ -234,17 +234,17 @@ Physical interpretation:
 ## Files Modified/Created
 
 ### Created
-- `mfg_pde/geometry/boundary/constraint_protocol.py` (~60 lines)
-- `mfg_pde/geometry/boundary/constraints.py` (~640 lines)
+- `mfgarchon/geometry/boundary/constraint_protocol.py` (~60 lines)
+- `mfgarchon/geometry/boundary/constraints.py` (~640 lines)
 - `tests/unit/geometry/boundary/test_constraints.py` (~370 lines)
 - `examples/advanced/obstacle_problem_1d_heat.py` (~400 lines)
 - `examples/advanced/obstacle_problem_1d_bilateral.py` (~420 lines)
 - `examples/advanced/obstacle_problem_1d_regional.py` (~470 lines)
 
 ### Modified
-- `mfg_pde/geometry/boundary/__init__.py` - Export constraint classes
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` - Constraint integration
-- `mfg_pde/geometry/boundary/applicator_fdm.py` - Import updates
+- `mfgarchon/geometry/boundary/__init__.py` - Export constraint classes
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` - Constraint integration
+- `mfgarchon/geometry/boundary/applicator_fdm.py` - Import updates
 
 ### Tests
 - **Unit tests**: 34 tests, all passing ✓
@@ -256,10 +256,10 @@ Physical interpretation:
 ### Basic Example
 
 ```python
-from mfg_pde.geometry import TensorProductGrid
-from mfg_pde.geometry.boundary import ObstacleConstraint
-from mfg_pde.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfg_pde import MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import ObstacleConstraint
+from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+from mfgarchon import MFGProblem
 
 # Setup
 grid = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx=[100])

@@ -158,11 +158,11 @@ dt < dx² / (2·diffusion_coef)
 ## Files Summary
 
 ### Infrastructure (860 lines)
-- `mfg_pde/geometry/operators/divergence.py` (~75 lines)
-- `mfg_pde/geometry/operators/advection.py` (~80 lines)
-- `mfg_pde/geometry/operators/interpolation.py` (~65 lines)
-- `mfg_pde/geometry/boundary/constraint_protocol.py` (~60 lines)
-- `mfg_pde/geometry/boundary/constraints.py` (~640 lines)
+- `mfgarchon/geometry/operators/divergence.py` (~75 lines)
+- `mfgarchon/geometry/operators/advection.py` (~80 lines)
+- `mfgarchon/geometry/operators/interpolation.py` (~65 lines)
+- `mfgarchon/geometry/boundary/constraint_protocol.py` (~60 lines)
+- `mfgarchon/geometry/boundary/constraints.py` (~640 lines)
 
 ### Tests (370 lines)
 - `tests/unit/geometry/boundary/test_constraints.py` (~370 lines)
@@ -178,10 +178,10 @@ dt < dx² / (2·diffusion_coef)
 - `docs/development/GEOMETRY_BC_WORK_2026-01-17.md` - This file
 
 ### Modified
-- `mfg_pde/geometry/operators/__init__.py` - Export new operators
-- `mfg_pde/geometry/boundary/__init__.py` - Export constraints (already done)
-- `mfg_pde/alg/numerical/hjb_solvers/hjb_fdm.py` - Constraint integration
-- `mfg_pde/geometry/operators/laplacian.py` - Linting fixes
+- `mfgarchon/geometry/operators/__init__.py` - Export new operators
+- `mfgarchon/geometry/boundary/__init__.py` - Export constraints (already done)
+- `mfgarchon/alg/numerical/hjb_solvers/hjb_fdm.py` - Constraint integration
+- `mfgarchon/geometry/operators/laplacian.py` - Linting fixes
 
 **Total**: ~2960 lines created/modified
 

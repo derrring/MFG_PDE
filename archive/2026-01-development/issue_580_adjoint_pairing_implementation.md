@@ -97,7 +97,7 @@ This breaks the adjoint relationship because:
 class HJBFDMSolver(BaseHJBSolver):
     """FDM solver for HJB equations."""
 
-    from mfg_pde.alg.base_solver import SchemeFamily
+    from mfgarchon.alg.base_solver import SchemeFamily
     _scheme_family = SchemeFamily.FDM
 ```
 
@@ -236,8 +236,8 @@ def solve(
 For users who want guaranteed correctness with zero configuration:
 
 ```python
-from mfg_pde import MFGProblem
-from mfg_pde.types import NumericalScheme
+from mfgarchon import MFGProblem
+from mfgarchon.types import NumericalScheme
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -255,7 +255,7 @@ result = problem.solve(scheme=NumericalScheme.FDM_UPWIND)
 For advanced users who need custom solver configuration:
 
 ```python
-from mfg_pde.alg.numerical import HJBFDMSolver, FPFDMSolver
+from mfgarchon.alg.numerical import HJBFDMSolver, FPFDMSolver
 
 problem = MFGProblem(Nx=[40], Nt=20, T=1.0)
 
@@ -367,7 +367,7 @@ result = problem.solve()
 
 ```python
 # Old factory: Works but emits DeprecationWarning
-from mfg_pde.factory import create_solver
+from mfgarchon.factory import create_solver
 solver = create_solver(problem, hjb_solver=hjb, fp_solver=fp)
 ```
 
@@ -520,7 +520,7 @@ Add support for:
 ```python
 # 1. Add trait
 class HJBNewSolver(BaseHJBSolver):
-    from mfg_pde.alg.base_solver import SchemeFamily
+    from mfgarchon.alg.base_solver import SchemeFamily
     _scheme_family = SchemeFamily.FDM  # or new family
 
 # 2. Test trait
@@ -547,11 +547,11 @@ def test_safe_mode_new_variant():
 ### Code Locations
 
 **Core Implementation**:
-- Traits: `mfg_pde/alg/numerical/{hjb_solvers,fp_solvers}/*.py`
-- Enums: `mfg_pde/types/schemes.py`, `mfg_pde/alg/base_solver.py`
-- Validation: `mfg_pde/utils/adjoint_validation.py`
-- Factory: `mfg_pde/factory/scheme_factory.py`
-- API: `mfg_pde/core/mfg_problem.py:1954-2137`
+- Traits: `mfgarchon/alg/numerical/{hjb_solvers,fp_solvers}/*.py`
+- Enums: `mfgarchon/types/schemes.py`, `mfgarchon/alg/base_solver.py`
+- Validation: `mfgarchon/utils/adjoint_validation.py`
+- Factory: `mfgarchon/factory/scheme_factory.py`
+- API: `mfgarchon/core/mfg_problem.py:1954-2137`
 
 **Tests**:
 - Unit: `tests/unit/{alg,utils,factory}/test_*.py`

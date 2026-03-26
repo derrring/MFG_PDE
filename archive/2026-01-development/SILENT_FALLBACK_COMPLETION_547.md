@@ -173,8 +173,8 @@ except (RuntimeError, OSError) as e:
 
 - **Issue #547**: Eliminate silent fallbacks
 - **CLAUDE.md**: Fail Fast & Surface Problems principle
-- **Custom exceptions**: `mfg_pde/utils/exceptions.py`
-- **Logging**: `mfg_pde/utils/mfg_logging/`
+- **Custom exceptions**: `mfgarchon/utils/exceptions.py`
+- **Logging**: `mfgarchon/utils/mfg_logging/`
 
 ---
 
@@ -207,7 +207,7 @@ except (RuntimeError, OSError) as e:
 
 **12. `utils/performance/monitoring.py:250`** ✅ COMPLETE
 - Performance tracking
-- Replaced `print()` with `logger.warning()` + MFG_PDE logger initialization
+- Replaced `print()` with `logger.warning()` + MFGarchon logger initialization
 - Correctly keeps `except Exception:` (re-raises with context)
 
 ### Deferred Items (3/13)
@@ -229,7 +229,7 @@ These were documented in audit but determined to already have acceptable pattern
 **After**:
 - ✅ All 13 instances use specific exceptions (except legitimate re-raise case)
 - ✅ Critical bugs now surface with clear warnings
-- ✅ Consistent MFG_PDE logging infrastructure throughout
+- ✅ Consistent MFGarchon logging infrastructure throughout
 - ✅ All fallback behavior preserved for robustness
 - ✅ Performance degradations explicitly warned
 

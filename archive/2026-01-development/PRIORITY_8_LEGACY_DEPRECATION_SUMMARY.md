@@ -9,7 +9,7 @@
 
 ### 1. DeprecationWarning Implementation ✅
 
-**File**: `mfg_pde/core/mfg_problem.py` (lines 318-334)
+**File**: `mfgarchon/core/mfg_problem.py` (lines 318-334)
 
 Added clear deprecation warning when legacy parameters (Nx, xmin, xmax, Lx) are used:
 - Triggers on ANY legacy parameter usage
@@ -29,7 +29,7 @@ Use the Geometry API instead:
   problem = MFGProblem(Nx=100, xmin=0.0, xmax=1.0, Nt=50)
 
   # New (recommended):
-  from mfg_pde.geometry import TensorProductGrid
+  from mfgarchon.geometry import TensorProductGrid
   geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
   problem = MFGProblem(geometry=geometry, Nt=50)
 
@@ -114,7 +114,7 @@ Nx_points = [101]  # Same 101 points
 
 All migrations add:
 ```python
-from mfg_pde.geometry import TensorProductGrid
+from mfgarchon.geometry import TensorProductGrid
 ```
 
 Placed after existing imports but before first non-import line.
@@ -160,7 +160,7 @@ Classes explicitly testing legacy API (e.g., `TestLegacy1DMode`) are NOT migrate
 ## Files Modified
 
 ```
-M  mfg_pde/core/mfg_problem.py                     (+18 lines: deprecation warning)
+M  mfgarchon/core/mfg_problem.py                     (+18 lines: deprecation warning)
 M  tests/unit/utils/test_adjoint_validation.py     (migrated to Geometry API)
 M  tests/unit/test_core/test_mfg_problem.py        (migrated to Geometry API)
 M  tests/unit/test_experiment_manager.py           (migrated to Geometry API)
