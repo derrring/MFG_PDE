@@ -148,10 +148,24 @@ class BlockIterator(BaseMFGSolver):
         self.diffusion_field = diffusion_field
         self.drift_field = drift_field
 
-        # Issue #622, #704: Adjoint mode
+        # Issue #622, #704, #707: Adjoint mode
         _valid_adjoint_modes = ("off", "transpose", "jacobian_transpose", "auto")
         if adjoint_mode not in _valid_adjoint_modes:
             raise ValueError(f"adjoint_mode must be one of {_valid_adjoint_modes}, got '{adjoint_mode}'")
+
+        # Deprecate old modes (#706, #707)
+        if adjoint_mode in ("transpose", "auto"):
+            import warnings
+
+            warnings.warn(
+                f"adjoint_mode='{adjoint_mode}' is deprecated since v0.17.13. "
+                "Use adjoint_mode='jacobian_transpose' instead, which correctly "
+                "transposes the linearized HJB Jacobian (Issue #707). "
+                f"The '{adjoint_mode}' mode will be removed in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         self.adjoint_mode = adjoint_mode
         self.adjoint_verify = adjoint_verify
         self._adjoint_mismatch_count = 0

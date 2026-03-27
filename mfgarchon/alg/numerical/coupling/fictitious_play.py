@@ -531,6 +531,15 @@ class FictitiousPlayIterator(BaseMFGSolver):
         )
 
         if return_tuple:
+            import warnings
+
+            warnings.warn(
+                "return_tuple=True is deprecated since v0.17.13. "
+                "Use SolverResult object instead (the default). "
+                "Will be removed in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             return (
                 self.U,
                 self.M,
