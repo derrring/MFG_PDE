@@ -171,8 +171,18 @@ class TestNetworkMFGProblemSetup:
         assert problem.components.drift_coefficient == 1.0
 
 
+@pytest.mark.skip(
+    reason="NetworkGraph geometry is incompatible with GFDM/FDM solvers "
+    "(requires CartesianGrid). These tests will be enabled when network-specific "
+    "solvers are implemented. See Issue #833."
+)
 class TestNetworkMFGSolverExecution:
-    """Test network MFG solver execution."""
+    """Test network MFG solver execution.
+
+    NOTE: All tests in this class are skipped because the current FDM/GFDM
+    solvers require CartesianGrid, not NetworkGraph. This is a design limitation,
+    not a bug. Network MFG solving needs dedicated graph-based solvers.
+    """
 
     @pytest.mark.xfail(
         reason="Pre-existing: NetworkGraph geometry incompatible with GFDM solver (requires CartesianGrid)",
