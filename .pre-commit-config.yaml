@@ -1,4 +1,4 @@
-# Modern pre-commit configuration for MFGarchon using Ruff
+# Modern pre-commit configuration for MFGArchon using Ruff
 # Unified linting and formatting with 10-100x faster performance
 # Uses pyproject.toml settings for all configuration
 #

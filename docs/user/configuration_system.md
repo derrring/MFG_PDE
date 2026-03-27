@@ -7,7 +7,7 @@
 
 ## Overview
 
-MFGarchon uses a **Dual-System Configuration Architecture** that balances runtime safety with experimental flexibility. This guide explains how to use the configuration system effectively.
+MFGArchon uses a **Dual-System Configuration Architecture** that balances runtime safety with experimental flexibility. This guide explains how to use the configuration system effectively.
 
 ---
 

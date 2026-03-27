@@ -10,7 +10,7 @@
 
 ## 1. Context
 
-MFGarchon solves coupled HJB-FP systems on various spatial domains. The
+MFGArchon solves coupled HJB-FP systems on various spatial domains. The
 topology-geometry-BC infrastructure is how the library represents domains,
 identifies boundaries, and enforces boundary conditions across different
 discretization methods.
@@ -28,7 +28,7 @@ abstraction:
 SPEC-GEO-1.0 was conceived from practical experience across diverse PDE domains
 and identifies fundamental concerns (metric structure, temporality, composition)
 through abstract inference. This document describes how those concerns are
-realized in MFGarchon's current architecture — some in the geometry layer, some in
+realized in MFGArchon's current architecture — some in the geometry layer, some in
 the BC layer, some in the coupling layer. The concerns are decomposed and
 relocated, not discarded.
 

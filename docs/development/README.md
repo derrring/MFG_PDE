@@ -1,9 +1,9 @@
-# MFGarchon Development Documentation
+# MFGArchon Development Documentation
 
 **Last Updated**: 2026-02-13
 **Status**: Production-Ready Framework v0.17.8
 
-This directory contains comprehensive development documentation for MFGarchon contributors and maintainers.
+This directory contains comprehensive development documentation for MFGArchon contributors and maintainers.
 
 ---
 

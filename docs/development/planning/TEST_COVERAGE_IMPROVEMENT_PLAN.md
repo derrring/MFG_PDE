@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This plan strategically improves MFGarchon test coverage from **37% to 50-60%** by focusing on:
+This plan strategically improves MFGArchon test coverage from **37% to 50-60%** by focusing on:
 1. **Quick wins** (0% coverage utils) → 42%
 2. **High-impact core** (backends, config, geometry) → 50%
 3. **Comprehensive validation** (RL, factory, performance) → 60%

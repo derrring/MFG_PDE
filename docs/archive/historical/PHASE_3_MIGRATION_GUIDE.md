@@ -8,7 +8,7 @@
 
 ## Overview
 
-Phase 3 (v0.9.0) introduces a **unified architecture** that dramatically simplifies the MFGarchon API while maintaining full backward compatibility. The key changes:
+Phase 3 (v0.9.0) introduces a **unified architecture** that dramatically simplifies the MFGArchon API while maintaining full backward compatibility. The key changes:
 
 1. **Unified `solve_mfg()` interface** - Single entry point for all MFG problems
 2. **Unified `SolverConfig` system** - Three patterns: YAML, Builder, Presets
@@ -784,5 +784,5 @@ Use this checklist to track your migration progress:
 
 **Migration Guide Version**: 1.0
 **Last Updated**: 2025-11-03
-**Applies to**: MFGarchon v0.9.0
+**Applies to**: MFGArchon v0.9.0
 **Next Review**: v0.10.0 release

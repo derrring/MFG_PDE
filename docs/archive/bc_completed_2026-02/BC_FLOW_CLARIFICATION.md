@@ -1,4 +1,4 @@
-# Boundary Condition Flow in MFGarchon
+# Boundary Condition Flow in MFGArchon
 
 **Status**: Clarification Document
 **Date**: 2025-12-17

@@ -6,7 +6,7 @@
 
 ## Overview
 
-Extend MFGarchon to support anisotropic diffusion via diffusion tensors **D(t, x, m)**, enabling direction-dependent diffusion coefficients. This generalizes scalar diffusion σ²(t, x, m) to full tensors supporting cross-diffusion and preferential directions.
+Extend MFGArchon to support anisotropic diffusion via diffusion tensors **D(t, x, m)**, enabling direction-dependent diffusion coefficients. This generalizes scalar diffusion σ²(t, x, m) to full tensors supporting cross-diffusion and preferential directions.
 
 ### Mathematical Formulation
 

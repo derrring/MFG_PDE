@@ -9,7 +9,7 @@
 
 ## 1. Motivation
 
-MFGarchon's time integration is currently embedded inside individual solvers.
+MFGArchon's time integration is currently embedded inside individual solvers.
 Each solver owns its time loop, scheme selection, and step-size logic. This
 works for the current solver count (7 HJB + 4 FP) but creates issues:
 

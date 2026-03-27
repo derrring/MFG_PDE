@@ -2,7 +2,7 @@
 
 ## Technical Report
 
-**Project**: MFGarchon (Mean Field Games PDE Solver Framework)
+**Project**: MFGArchon (Mean Field Games PDE Solver Framework)
 **Date**: 2025-12-16
 **Status**: ✅ AUDITED - Ready for Implementation
 

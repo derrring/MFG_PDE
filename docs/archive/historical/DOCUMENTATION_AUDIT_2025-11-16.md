@@ -1,4 +1,4 @@
-# MFGarchon Documentation Audit Report
+# MFGArchon Documentation Audit Report
 **Date**: 2025-11-16
 **Post**: v0.12.5 Geometry Reorganization
 **Total Files**: 181 markdown files
@@ -80,7 +80,7 @@ Old import paths still referenced in docs:
 | GEOMETRY_CONSOLIDATION_QUICK_START.md | `geometry.boundary_conditions_1d` | `geometry.boundary.bc_1d` |
 | v0.10.1_amr_geometry_protocol.md | `geometry.domain_1d` | `geometry` (alias) |
 | anisotropic_mfg_mathematical_formulation.md | `geometry/domain_2d.py` | `geometry/meshes/mesh_2d.py` |
-| MFGarchon_ARCHITECTURE_AUDIT.md | `geometry/domain_3d.py` | `geometry/meshes/mesh_3d.py` |
+| MFGArchon_ARCHITECTURE_AUDIT.md | `geometry/domain_3d.py` | `geometry/meshes/mesh_3d.py` |
 
 **Impact**: Medium - documentation references are informational, not code-breaking
 
@@ -231,7 +231,7 @@ Files marked ✅ COMPLETED still in active directories:
 
 ## Appendix: Detailed Broken Links
 
-See: `/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFGarchon/broken_links_report.md`
+See: `/Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFGArchon/broken_links_report.md`
 
 ---
 

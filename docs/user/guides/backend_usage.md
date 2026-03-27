@@ -1,8 +1,8 @@
-# MFGarchon Backend Usage Guide
+# MFGArchon Backend Usage Guide
 
 ## 🚀 **Quick Start: Choose Your Backend**
 
-MFGarchon automatically selects the best available backend, but you can also manually choose based on your hardware and problem type.
+MFGArchon automatically selects the best available backend, but you can also manually choose based on your hardware and problem type.
 
 ### **One-Line Backend Selection**
 ```python
@@ -355,7 +355,7 @@ backend = create_backend("numba")
 
 ### **Automatic Backend Selection (Recommended)**
 ```python
-# Let MFGarchon choose the best backend
+# Let MFGArchon choose the best backend
 from mfgarchon import MFGProblem
 from mfgarchon.factory import create_solver
 

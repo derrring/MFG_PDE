@@ -94,7 +94,7 @@ examples/
 Added targeted MFG-specific patterns that prevent accumulation while preserving valuable examples and tests:
 
 ```gitignore
-# MFGarchon specific - prevent accumulation of analysis outputs
+# MFGArchon specific - prevent accumulation of analysis outputs
 # Only ignore output directories, not source code
 *_results/
 *_demo_data/

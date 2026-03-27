@@ -8,7 +8,7 @@
 
 ## Problem Statement
 
-Current MFGarchon API has **4 layers** of problem construction:
+Current MFGArchon API has **4 layers** of problem construction:
 
 1. **Factory level**: `create_fast_solver()`, `create_accurate_solver()` (in `factory.py`)
 2. **Problem factories**: `create_mfg_problem()` (redundant)

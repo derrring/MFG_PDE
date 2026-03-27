@@ -9,7 +9,7 @@
 
 ## 1. Motivation
 
-MFGarchon has a mature operator library (`mfgarchon/operators/differential/`)
+MFGArchon has a mature operator library (`mfgarchon/operators/differential/`)
 with 8+ concrete operators inheriting from `scipy.sparse.linalg.LinearOperator`.
 Geometries advertise operator support via 4 protocol traits. This system works
 but has structural gaps:
@@ -161,7 +161,7 @@ class OperatorTraits:
 
 ```python
 class PDEOperator(LinearOperator):
-    """Base class for all MFGarchon differential operators.
+    """Base class for all MFGArchon differential operators.
 
     Extends scipy.sparse.linalg.LinearOperator with:
     - Operator traits (metadata)

@@ -1,4 +1,4 @@
-# MFGarchon Architecture Documentation Index
+# MFGArchon Architecture Documentation Index
 
 **Complete guide to architecture analysis and audit documentation**
 
@@ -9,7 +9,7 @@
 ### 0. Geometry-BC Infrastructure (2026-02-14)
 
 **0a. Implementation Blueprint**: `GEOMETRY_BC_INFRASTRUCTURE.md`
-**Purpose**: How topology-geometry-BC concerns are realized in MFGarchon
+**Purpose**: How topology-geometry-BC concerns are realized in MFGArchon
 
 **What's Inside**:
 - The actual 4-axis orthogonal BC design (WHAT x WHERE x WHEN x HOW)
@@ -36,7 +36,7 @@
 
 ### 1. Factory Pattern Design (UPDATED - 2026-01-17)
 **File**: `FACTORY_PATTERN_DESIGN.md`
-**Purpose**: Three-concern factory architecture for MFGarchon
+**Purpose**: Three-concern factory architecture for MFGArchon
 **Version**: 1.3 (Consolidated with infrastructure audit)
 
 **What's Inside**:
@@ -102,10 +102,10 @@
 ---
 
 ### 3. Original Architecture Audit
-**File**: `experiments/maze_navigation/MFGarchon_ARCHITECTURE_AUDIT.md`
+**File**: `experiments/maze_navigation/MFGArchon_ARCHITECTURE_AUDIT.md`
 **Pages**: 200+
 **Date**: 2025-10-30 (before research)
-**Purpose**: Comprehensive theoretical analysis of MFGarchon architecture
+**Purpose**: Comprehensive theoretical analysis of MFGArchon architecture
 
 **What's Inside**:
 - Part 1: What proposal got right
@@ -119,7 +119,7 @@
 ---
 
 ### 4. Architecture Refactoring Proposal
-**File**: `MFGarchon_ARCHITECTURE_REFACTOR_PROPOSAL.md`
+**File**: `MFGArchon_ARCHITECTURE_REFACTOR_PROPOSAL.md`
 **Purpose**: Original refactoring proposal (pre-audit)
 
 **Status**: Needs revision based on audit and research findings
@@ -145,7 +145,7 @@
 
 ### Bug #14: GFDM Gradient Sign Error
 **Location**: `experiments/maze_navigation/archives/bugs/bug14_gfdm_sign/`
-**Main Report**: `BUG_14_MFGarchon_REPORT.md`
+**Main Report**: `BUG_14_MFGArchon_REPORT.md`
 **Documents**: 10 files
 
 **Status**: FIXED, merged, GitHub issue filed
@@ -159,7 +159,7 @@
 **Main Report**: `BUG_15_QP_SIGMA_METHOD.md`
 **Documents**: 7 files
 
-**Status**: Workaround exists (`SmartSigma`), NOT FIXED in MFGarchon
+**Status**: Workaround exists (`SmartSigma`), NOT FIXED in MFGArchon
 
 **Impact**: Cannot use QP constraints without workaround
 
@@ -300,7 +300,7 @@
 ### For Complete Understanding (4 hours)
 1. `AUDIT_ENRICHMENT_SUMMARY.md` (15 min)
 2. `ARCHITECTURE_AUDIT_ENRICHMENT.md` (2 hours)
-3. `MFGarchon_ARCHITECTURE_AUDIT.md` Part 1-2 (1 hour)
+3. `MFGArchon_ARCHITECTURE_AUDIT.md` Part 1-2 (1 hour)
 4. Bug #13, #14, #15 main reports (45 min)
 
 ### For Specific Issues
@@ -350,7 +350,7 @@
 ### Path 2: Technical (4 hours)
 ```
 1. ARCHITECTURE_AUDIT_ENRICHMENT.md (complete)
-2. MFGarchon_ARCHITECTURE_AUDIT.md Parts 1-2
+2. MFGArchon_ARCHITECTURE_AUDIT.md Parts 1-2
 3. Bug #13 Lessons Learned
 4. QP Analysis Comprehensive
 → Outcome: Full technical understanding
@@ -411,7 +411,7 @@
 
 ## Related Documentation
 
-**In MFGarchon Repository**:
+**In MFGArchon Repository**:
 - `ARCHITECTURE.md` (if exists)
 - `CONTRIBUTING.md`
 - API documentation
@@ -434,7 +434,7 @@
 | Full evidence | ARCHITECTURE_AUDIT_ENRICHMENT.md | 2 hours |
 | Theory | anisotropic_crowd_qp/docs/theory/theory.md | 3 hours |
 | Bug #13 | BUG_13_INDEX.md → Quick Reference | 5 min |
-| Bug #14 | BUG_14_MFGarchon_REPORT.md | 30 min |
+| Bug #14 | BUG_14_MFGArchon_REPORT.md | 30 min |
 | Bug #15 | BUG_15_QP_SIGMA_METHOD.md | 20 min |
 | FDM issue | FDM_SOLVER_LIMITATION_ANALYSIS.md | 15 min |
 | Anderson | ANDERSON_ISSUE_POSTED.md | 10 min |

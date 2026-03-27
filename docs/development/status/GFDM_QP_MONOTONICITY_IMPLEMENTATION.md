@@ -401,4 +401,4 @@ solver = HJBGFDMSolver(
 ---
 
 **Last Updated**: 2025-10-15
-**Implemented by**: Claude Code following MFGarchon production standards
+**Implemented by**: Claude Code following MFGArchon production standards

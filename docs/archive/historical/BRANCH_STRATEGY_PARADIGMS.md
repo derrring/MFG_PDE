@@ -1,4 +1,4 @@
-# MFGarchon Paradigm Development Branch Strategy
+# MFGArchon Paradigm Development Branch Strategy
 
 ## Overview
 

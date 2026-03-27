@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides comprehensive documentation for the Network MFG implementation in MFGarchon, which extends Mean Field Games from continuous domains to discrete network/graph structures.
+This guide provides comprehensive documentation for the Network MFG implementation in MFGArchon, which extends Mean Field Games from continuous domains to discrete network/graph structures.
 
 ## Table of Contents
 

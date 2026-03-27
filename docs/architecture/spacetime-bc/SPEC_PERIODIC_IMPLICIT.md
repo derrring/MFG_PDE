@@ -10,13 +10,13 @@
 ## 1. Overview: Topology vs. Function
 
 While periodic BCs on arbitrary implicit manifolds require complex tessellation,
-MFGarchon identifies canonical cases where $O(1)$ complexity is achievable.
+MFGArchon identifies canonical cases where $O(1)$ complexity is achievable.
 
 Two types of periodicity:
 - **Topological**: Domain connectivity wraps around (e.g., Torus).
 - **Functional**: The SDF $\phi(x)$ repeats in space (e.g., TPMS).
 
-**MFGarchon relevance**: Periodic domains arise in:
+**MFGArchon relevance**: Periodic domains arise in:
 - Homogenization-based MFG (periodic cost landscapes)
 - Crowd models on periodic structures (corridors, transit systems)
 - Mean field limit with wrap-around state space (angular variables)
@@ -37,7 +37,7 @@ Most common case. Used in DNS turbulence and homogenization.
 - **Kernel**: `idx_neighbor = (idx + stride) % total_size`
 - **Performance**: Zero memory overhead; ALU-only.
 
-**MFGarchon status**: Partially supported via `BCType.PERIODIC` and
+**MFGArchon status**: Partially supported via `BCType.PERIODIC` and
 `SupportsPeriodic` protocol. Modulo-based stencils implemented in
 `boundary/periodic.py`.
 

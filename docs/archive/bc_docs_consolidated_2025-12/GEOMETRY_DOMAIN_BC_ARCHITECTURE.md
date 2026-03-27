@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the relationship between geometry, domain, and boundary conditions in MFGarchon at both the implementation and application levels.
+This document describes the relationship between geometry, domain, and boundary conditions in MFGArchon at both the implementation and application levels.
 
 ---
 
@@ -396,4 +396,4 @@ mfgarchon/geometry/
 
 *Generated: 2025-12-09*
 *Last audited: 2025-12-10*
-*Part of: MFGarchon Deprecation Cleanup Phase 2*
+*Part of: MFGArchon Deprecation Cleanup Phase 2*

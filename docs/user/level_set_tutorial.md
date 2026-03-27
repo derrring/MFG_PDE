@@ -1,7 +1,7 @@
 # Tutorial: Level Set Methods for Free Boundary Problems
 
 **Tutorial Level**: Advanced
-**Prerequisites**: PDEs, basic numerical methods, MFGarchon geometry module
+**Prerequisites**: PDEs, basic numerical methods, MFGArchon geometry module
 **Estimated Time**: 60-90 minutes
 **Version**: 1.0 (2026-01-18)
 
@@ -946,7 +946,7 @@ if n % 10 == 0:
 **Upgrade**: WENO5 (5th-order Weighted Essentially Non-Oscillatory).
 
 ```python
-# MFGarchon currently uses Godunov (Issue #592)
+# MFGArchon currently uses Godunov (Issue #592)
 # Future: WENO5 for reduced diffusion
 
 # Expected improvement:
@@ -1036,5 +1036,5 @@ vapor_region = (phi_water_vapor > 0)
 ---
 
 **Last Updated**: 2026-01-18
-**Author**: MFGarchon Documentation Team
+**Author**: MFGArchon Documentation Team
 **Related Issues**: #592 (Level Set Methods), #594 (Documentation)

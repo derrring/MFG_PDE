@@ -6,7 +6,7 @@
 
 ## Overview
 
-MFGarchon provides a complete suite of maze generation algorithms optimized for Mean Field Games reinforcement learning research. This guide covers all implemented algorithms, hybrid composition methods, and recommendations for different MFG scenarios.
+MFGArchon provides a complete suite of maze generation algorithms optimized for Mean Field Games reinforcement learning research. This guide covers all implemented algorithms, hybrid composition methods, and recommendations for different MFG scenarios.
 
 ## Implemented Algorithms
 

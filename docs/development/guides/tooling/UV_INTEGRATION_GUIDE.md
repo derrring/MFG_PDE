@@ -1,4 +1,4 @@
-# UV Integration Guide for MFGarchon
+# UV Integration Guide for MFGArchon
 
 **Date**: 2025-08-12  
 **Status**: ✅ **IMPLEMENTED**  
@@ -15,7 +15,7 @@ pip install uv
 uv sync --extra dev
 
 # 3. Verify installation
-uv run python -c "import mfgarchon; print('✅ MFGarchon ready!')"
+uv run python -c "import mfgarchon; print('✅ MFGArchon ready!')"
 ```
 
 ### **Daily Development Workflow**
@@ -47,7 +47,7 @@ uv run jupyter lab   # Jupyter with full MFG environment
 | Lock file generation | 30-60 seconds | 1-3 seconds | **20x faster** |
 | Clean environment rebuild | 3-5 minutes | 15-30 seconds | **10x faster** |
 
-## 🔧 **UV Features for MFGarchon**
+## 🔧 **UV Features for MFGArchon**
 
 ### **1. Exact Reproducible Environments**
 ```bash
@@ -138,7 +138,7 @@ uv run sphinx-autobuild docs/ build/html
 ## 📁 **File Structure Created**
 
 ```
-MFGarchon/
+MFGArchon/
 ├── .venv/                   # UV-managed virtual environment  
 ├── uv.lock                  # Exact dependency versions (294 packages)
 ├── .pre-commit-config-uv.yaml    # UV-powered pre-commit hooks
@@ -332,7 +332,7 @@ uv sync --all-extras
 
 ## 🏆 **Summary**
 
-**UV integration is successful** and provides significant performance improvements for MFGarchon development:
+**UV integration is successful** and provides significant performance improvements for MFGArchon development:
 
 - ✅ **10-100x faster** dependency management
 - ✅ **Perfect reproducibility** with uv.lock (294 packages)  

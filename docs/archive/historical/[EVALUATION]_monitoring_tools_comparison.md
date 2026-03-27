@@ -2,7 +2,7 @@
 
 **Date**: July 26, 2025  
 **Status**: DEFERRED - Focus on core MFG functionality first  
-**Context**: Scientific Computing & Mathematical Research (MFGarchon)  
+**Context**: Scientific Computing & Mathematical Research (MFGArchon)  
 **Purpose**: Compare experiment tracking and visualization tools for research workflows
 
 **Decision**: Advanced monitoring tools evaluation postponed until core MFG and network features are stable.
@@ -200,7 +200,7 @@ wandb.init(project="mfg_research")
 
 ### 6. **Scientific Computing Specific Features**
 
-#### **For MFGarchon Research**
+#### **For MFGArchon Research**
 
 **Weights & Biases Advantages:**
 ```python
@@ -302,17 +302,17 @@ writer.add_hparams(
 - Standard loss curves
 - Minimal collaboration requirements
 
-## 🚀 Specific Recommendation for MFGarchon
+## 🚀 Specific Recommendation for MFGArchon
 
 ### **Best Fit: Weights & Biases**
 
 **Rationale:**
-1. **Mathematical Research Focus**: MFGarchon involves complex mathematical experiments that benefit from rich visualization and experiment tracking
+1. **Mathematical Research Focus**: MFGArchon involves complex mathematical experiments that benefit from rich visualization and experiment tracking
 2. **Collaboration Value**: Research often involves sharing results with advisors, colleagues, and the broader community
 3. **Publication Quality**: Mathematical research benefits from high-quality visualizations for papers and presentations
 4. **Experiment Management**: Solver parameter optimization naturally fits wandb's hyperparameter sweep capabilities
 
-### **Implementation Example for MFGarchon:**
+### **Implementation Example for MFGArchon:**
 
 ```python
 # Enhanced notebook_reporting.py integration
@@ -402,4 +402,4 @@ def log_metrics(iteration, metrics):
 | **Mathematical Research** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | wandb |
 | **Publication Quality** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | wandb |
 
-**Overall Recommendation for MFGarchon: Weights & Biases** - The collaboration features, experiment management capabilities, and publication-quality visualizations make it ideal for mathematical research workflows.
+**Overall Recommendation for MFGArchon: Weights & Biases** - The collaboration features, experiment management capabilities, and publication-quality visualizations make it ideal for mathematical research workflows.

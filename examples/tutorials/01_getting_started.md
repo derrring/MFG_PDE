@@ -1,4 +1,4 @@
-# Getting Started with MFGarchon
+# Getting Started with MFGArchon
 
 **Tutorial Level**: Beginner
 **Estimated Time**: 30 minutes
@@ -9,7 +9,7 @@
 ## What You'll Learn
 
 In this tutorial, you'll learn:
-1. How to install MFGarchon
+1. How to install MFGArchon
 2. How to solve your first Mean Field Game
 3. How to visualize the results
 4. The three core concepts: Problems, Configs, and Results
@@ -95,7 +95,7 @@ print(f"Solve time: {result.execution_time:.3f}s")
 
 ## Visualizing the Results
 
-MFGarchon includes built-in visualization tools:
+MFGArchon includes built-in visualization tools:
 
 ```python
 from mfgarchon.visualization import plot_results
@@ -417,20 +417,20 @@ Now that you've solved your first MFG problem, here's what to explore next:
 
 - **API Reference**: `docs/api/` - Complete API documentation
 - **Research Guide**: `docs/development/AI_INTERACTION_DESIGN.md` - Research-grade usage
-- **Contributing**: `CONTRIBUTING.md` - Contribute to MFGarchon
+- **Contributing**: `CONTRIBUTING.md` - Contribute to MFGArchon
 
 ---
 
 ## Summary
 
 **You've learned**:
-- ✅ How to install MFGarchon
+- ✅ How to install MFGArchon
 - ✅ How to solve an MFG problem in 3 lines: `problem = MFGProblem()` → `result = solve_mfg(problem, preset="fast")`
 - ✅ How to access and visualize results
 - ✅ The three core concepts: Problems (what), Configs (how), Results (output)
 - ✅ Common troubleshooting techniques
 
-**Key takeaway**: MFGarchon makes solving Mean Field Games **simple**. The unified `solve_mfg()` interface handles all the complexity for you.
+**Key takeaway**: MFGArchon makes solving Mean Field Games **simple**. The unified `solve_mfg()` interface handles all the complexity for you.
 
 ---
 
@@ -464,5 +464,5 @@ result = solve_mfg(problem, config=config)
 
 **Tutorial Version**: 1.0
 **Last Updated**: 2025-11-03
-**MFGarchon Version**: v0.9.0+
+**MFGArchon Version**: v0.9.0+
 **Next Tutorial**: [02_configuration_patterns.md](02_configuration_patterns.md)

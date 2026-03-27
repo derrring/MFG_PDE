@@ -241,9 +241,9 @@ $$\mathbb{E}[W_2^2(m_k^N, m_k)] = O(N^{-1/d}) \quad \text{(curse of dimensionali
 
 ---
 
-## 5. Implementation in MFGarchon
+## 5. Implementation in MFGArchon
 
-The MFGarchon package implements these convergence criteria through:
+The MFGArchon package implements these convergence criteria through:
 
 ### 5.1 Core Components
 

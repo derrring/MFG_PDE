@@ -1,6 +1,6 @@
 # GFDM Boundary Condition Handling Investigation Report
 
-**Date**: 2025-12-18 (Updated: Integration with MFGarchon Infrastructure)
+**Date**: 2025-12-18 (Updated: Integration with MFGArchon Infrastructure)
 **Status**: In Progress - Infrastructure Integration Phase
 **Authors**: Claude Code Investigation
 
@@ -12,11 +12,11 @@ Investigation of HJB-GFDM solver producing catastrophic negative values (U(0) mi
 
 1. **Geometric Issue (Fixed)**: Ghost particles corrupting derivative computation
 2. **Algebraic Issue (Partially Implemented)**: Missing Row Replacement for Neumann BC
-3. **Infrastructure Integration (New)**: GFDM should use existing MFGarchon BC infrastructure
+3. **Infrastructure Integration (New)**: GFDM should use existing MFGArchon BC infrastructure
 
 Both issues stem from conflating **derivative computation** with **boundary condition enforcement**.
 
-**Key Finding**: The MFGarchon codebase already has mature BC infrastructure (`BoundaryConditions`, `MeshfreeApplicator`, Calculator/Topology pattern) that GFDM should integrate with rather than bypass. See **Section 11** for integration details.
+**Key Finding**: The MFGArchon codebase already has mature BC infrastructure (`BoundaryConditions`, `MeshfreeApplicator`, Calculator/Topology pattern) that GFDM should integrate with rather than bypass. See **Section 11** for integration details.
 
 ---
 
@@ -521,11 +521,11 @@ def test_neumann_bc_row_replacement():
 
 ---
 
-## 11. Existing MFGarchon Boundary Condition Infrastructure
+## 11. Existing MFGArchon Boundary Condition Infrastructure
 
 ### 11.1 Architecture Overview
 
-The MFGarchon codebase already has a mature BC infrastructure that GFDM should integrate with rather than bypass:
+The MFGArchon codebase already has a mature BC infrastructure that GFDM should integrate with rather than bypass:
 
 ```
 mfgarchon/geometry/boundary/
@@ -708,7 +708,7 @@ class BoundaryConditionManager:
     """
     Single source of truth for GFDM boundary condition handling.
 
-    Integrates with existing MFGarchon infrastructure to provide:
+    Integrates with existing MFGArchon infrastructure to provide:
     - Consistent BC type resolution
     - Normal vector computation (via BoundaryConditions/MeshfreeApplicator)
     - Row Replacement matrix assembly
@@ -1296,7 +1296,7 @@ u^{n+1} = u^n + Δt · L(u^n)
 | Hermite GFDM | ❌ No | Low priority for MFG |
 | Explicit GFDM | ✅ Yes | Time-stepping in solvers |
 
-### 14.6 Recommendations for MFGarchon
+### 14.6 Recommendations for MFGArchon
 
 **Priority Order**:
 

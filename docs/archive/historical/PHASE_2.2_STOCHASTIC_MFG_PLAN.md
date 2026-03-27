@@ -9,7 +9,7 @@
 
 ## 🎯 Executive Summary
 
-Implement advanced stochastic formulations for Mean Field Games, enabling modeling of uncertain environments and common noise scenarios. This positions MFGarchon at the research frontier by supporting both Common Noise MFG and Master Equation formulations.
+Implement advanced stochastic formulations for Mean Field Games, enabling modeling of uncertain environments and common noise scenarios. This positions MFGArchon at the research frontier by supporting both Common Noise MFG and Master Equation formulations.
 
 **Strategic Impact**:
 - **Research Leadership**: First comprehensive framework for stochastic MFG

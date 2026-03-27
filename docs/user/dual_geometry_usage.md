@@ -2,7 +2,7 @@
 
 **Status**: ✅ COMPLETED (Issue #257)
 **Created**: 2025-11-10
-**Audience**: MFGarchon users (researchers, application developers)
+**Audience**: MFGArchon users (researchers, application developers)
 
 ## Overview
 
@@ -676,4 +676,4 @@ For true 3D, use `TensorProductGrid` for HJB geometry.
 
 **Document Version**: 1.0
 **Last Updated**: 2025-11-10
-**Feature Status**: ✅ Available in MFGarchon v1.0+
+**Feature Status**: ✅ Available in MFGArchon v1.0+

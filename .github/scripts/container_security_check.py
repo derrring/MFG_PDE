@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Container security configuration checking script for MFGarchon.
+Container security configuration checking script for MFGArchon.
 Checks Docker configuration for security best practices.
 """
 

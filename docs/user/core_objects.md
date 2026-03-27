@@ -6,7 +6,7 @@ This is the primary API tier for research users who need to define custom Hamilt
 
 ## Architecture Overview
 
-The MFGarchon core objects follow a clean pipeline:
+The MFGArchon core objects follow a clean pipeline:
 
 ```python
 MFGProblem → FixedPointSolver → MFGResult

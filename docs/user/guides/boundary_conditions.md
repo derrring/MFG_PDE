@@ -1,6 +1,6 @@
 # Boundary Conditions Guide
 
-This guide explains how to specify and apply boundary conditions in MFGarchon.
+This guide explains how to specify and apply boundary conditions in MFGArchon.
 
 ## Quick Start
 

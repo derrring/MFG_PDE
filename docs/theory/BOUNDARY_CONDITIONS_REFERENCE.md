@@ -24,7 +24,7 @@
 
 ## 1. Overview
 
-Boundary condition (BC) handling in MFGarchon follows a layered architecture separating **specification** (what conditions apply), **application** (how to enforce them numerically), and **solver integration** (when to apply them during computation).
+Boundary condition (BC) handling in MFGArchon follows a layered architecture separating **specification** (what conditions apply), **application** (how to enforce them numerically), and **solver integration** (when to apply them during computation).
 
 ### 1.1 Design Principles
 
@@ -625,4 +625,4 @@ This reference consolidates and supersedes:
 
 ---
 
-*This document is the canonical reference for boundary condition handling in MFGarchon.*
+*This document is the canonical reference for boundary condition handling in MFGArchon.*

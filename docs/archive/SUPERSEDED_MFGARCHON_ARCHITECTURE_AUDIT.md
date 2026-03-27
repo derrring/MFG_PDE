@@ -1,4 +1,4 @@
-# [SUPERSEDED] MFGarchon Architecture Audit: Comprehensive Refactoring Critique
+# [SUPERSEDED] MFGArchon Architecture Audit: Comprehensive Refactoring Critique
 
 > **Superseded Note (2025-12-09)**: This audit contains outdated analysis. Key findings
 > have been addressed or found to be based on incomplete understanding:
@@ -10,14 +10,14 @@
 > significantly since this analysis. See current docs for accurate architecture info.
 
 **Date**: 2025-10-30
-**Purpose**: Validate refactoring proposal against actual MFGarchon architecture
+**Purpose**: Validate refactoring proposal against actual MFGArchon architecture
 **Context**: Analysis based on current codebase structure and maze navigation research findings
 
 ---
 
 ## Executive Summary
 
-This audit evaluates the proposed refactoring against the **actual** MFGarchon architecture as of commit 02e0066. The analysis reveals significant gaps between the idealized proposal and production reality.
+This audit evaluates the proposed refactoring against the **actual** MFGArchon architecture as of commit 02e0066. The analysis reveals significant gaps between the idealized proposal and production reality.
 
 **Key Findings**:
 - Proposal correctly identifies major pain points (dimensional limitations, API inconsistency)
@@ -116,7 +116,7 @@ def solve_hjb_system(self, M_density_evolution_from_FP, U_final_condition_at_T, 
 
 ### 2.1 Backend System (Not Mentioned)
 
-**Reality**: MFGarchon has a sophisticated backend abstraction layer.
+**Reality**: MFGArchon has a sophisticated backend abstraction layer.
 
 ```python
 # mfgarchon/backends/
@@ -180,7 +180,7 @@ def backend_aware_assign(target, indices, values, backend=None):
 
 ### 2.2 Configuration System (Oversimplified)
 
-**Reality**: MFGarchon has **three** configuration systems (not one).
+**Reality**: MFGArchon has **three** configuration systems (not one).
 
 ```python
 # mfgarchon/config/
@@ -334,7 +334,7 @@ def create_solver(problem, solver_type, config=None, backend="auto"):
 
 ### 2.4 Geometry System (More Complex Than Proposed)
 
-**Reality**: MFGarchon has dimension-specific geometry classes.
+**Reality**: MFGArchon has dimension-specific geometry classes.
 
 ```python
 # mfgarchon/geometry/
@@ -397,7 +397,7 @@ def create_solver(problem, solver_type, config=None, backend="auto"):
 
 ### 2.5 Plugin System (Completely Ignored)
 
-**Reality**: MFGarchon has an extensibility mechanism.
+**Reality**: MFGArchon has an extensibility mechanism.
 
 ```python
 # mfgarchon/core/plugin_system.py
@@ -467,12 +467,12 @@ Current Inventory:
    - HYBRID mode: Particles internally, grid output (1D)
    - COLLOCATION mode: Particles in, particles out (N-D)
 
-2. MFGarchon's FPParticleSolver - IMPLICIT HYBRID
+2. MFGArchon's FPParticleSolver - IMPLICIT HYBRID
    - Input: Grid density (Nx,)
    - Internal: Particles (sampled from grid)
    - Output: Grid density via KDE
 
-3. MFGarchon's HJBGFDMSolver - Flexible (not dual-mode)
+3. MFGArchon's HJBGFDMSolver - Flexible (not dual-mode)
    - Grid mode: Problem has Nx, maps grid → collocation
    - Collocation mode: No Nx, identity mapping
 ```
@@ -1367,7 +1367,7 @@ Plus:
 
 ### What We Learned
 
-1. **Proposal is directionally correct** - MFGarchon needs unification
+1. **Proposal is directionally correct** - MFGArchon needs unification
 2. **BUT significantly underestimates complexity** - 6-12 months, not weeks
 3. **AND misses critical infrastructure** - backends, factories, configs
 4. **AND overlooks existing solutions** - dual-mode patterns, geometry subsystem
@@ -1379,7 +1379,7 @@ Plus:
 1. Fix known bugs (Issue #14, #199)
 2. Graduate `PureParticleFPSolver` from research to production
 3. Document domain-solver compatibility matrix
-4. Add 2D maze navigation example to MFGarchon docs
+4. Add 2D maze navigation example to MFGArchon docs
 
 **Medium-term (Months 4-9)**:
 1. Implement Domain abstraction with backward compatibility
@@ -1397,7 +1397,7 @@ Plus:
 
 **Key Message to Proposal Author**:
 
-> Your diagnosis is correct - MFGarchon needs architectural improvements.
+> Your diagnosis is correct - MFGArchon needs architectural improvements.
 > However, this is not a simple refactoring. It's a **v2.0 → v3.0 redesign**.
 >
 > The codebase has:
@@ -1422,7 +1422,7 @@ Plus:
 
 **Document Prepared By**: MFG Research Team
 **Based On**:
-- MFGarchon codebase commit 02e0066
+- MFGArchon codebase commit 02e0066
 - Maze navigation research findings (PR #197)
 - Issues #14 (GFDM gradient), #199 (Anderson), #13 (Picard)
 - Analysis documents: SOLVER_ORGANIZATION_ANALYSIS.md, PURE_PARTICLE_FP_PROPOSAL.md

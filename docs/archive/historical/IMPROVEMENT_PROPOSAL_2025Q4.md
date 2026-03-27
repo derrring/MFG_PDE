@@ -1,4 +1,4 @@
-# MFGarchon Improvement Proposal - Q4 2025
+# MFGArchon Improvement Proposal - Q4 2025
 
 **Date**: October 8, 2025
 **Author**: Claude (AI Assistant)
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document proposes **three strategic improvement tracks** for MFGarchon, prioritized by impact on research capability and user experience. All proposals leverage existing infrastructure and require minimal disruption to current codebase.
+This document proposes **three strategic improvement tracks** for MFGArchon, prioritized by impact on research capability and user experience. All proposals leverage existing infrastructure and require minimal disruption to current codebase.
 
 ### Proposed Tracks
 
@@ -707,7 +707,7 @@ def main():
 
 ```python
 """
-Quickstart: 5-Minute Introduction to MFGarchon.
+Quickstart: 5-Minute Introduction to MFGArchon.
 
 Solves the simplest possible MFG problem in ~10 seconds:
 - Linear-Quadratic Hamiltonian

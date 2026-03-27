@@ -1,4 +1,4 @@
-# MFGarchon Architecture Refactoring Proposal: Unified Problem Interface
+# MFGArchon Architecture Refactoring Proposal: Unified Problem Interface
 
 **Date**: 2025-10-30
 **Status**: ~~Proposal~~ **SUPERSEDED**
@@ -8,11 +8,11 @@
 
 ## ⚠️ PROPOSAL SUPERSEDED - DO NOT IMPLEMENT ⚠️
 
-**This proposal has been superseded by the current MFGarchon architecture.**
+**This proposal has been superseded by the current MFGArchon architecture.**
 
 ### Why This Proposal Was Not Implemented
 
-After thorough analysis during Phase 3 gradient notation standardization (October 2025), we discovered that the **current MFGarchon architecture already achieves all the goals of this proposal** through a superior design pattern:
+After thorough analysis during Phase 3 gradient notation standardization (October 2025), we discovered that the **current MFGArchon architecture already achieves all the goals of this proposal** through a superior design pattern:
 
 **Current Design (Implemented)**:
 - ✅ Concrete `MFGProblem` class with **composition via `MFGComponents`**
@@ -46,7 +46,7 @@ This proves the current architecture is **excellent** and does **not** need the 
 
 ### Conclusion
 
-**DO NOT implement this proposal.** The current MFGarchon architecture already provides:
+**DO NOT implement this proposal.** The current MFGArchon architecture already provides:
 - Composition over inheritance (via MFGComponents)
 - Solver flexibility (via protocol interfaces)
 - Progressive complexity disclosure (ExampleMFGProblem → MFGProblem)
@@ -58,7 +58,7 @@ The original proposal text below is preserved for historical reference only.
 
 ## Executive Summary (HISTORICAL - DO NOT IMPLEMENT)
 
-MFGarchon currently has three separate problem classes (`MFGProblem`, `HighDimMFGProblem`, `NetworkMFGProblem`) with incompatible APIs and different spatial discretization assumptions. This creates artificial limitations where:
+MFGArchon currently has three separate problem classes (`MFGProblem`, `HighDimMFGProblem`, `NetworkMFGProblem`) with incompatible APIs and different spatial discretization assumptions. This creates artificial limitations where:
 
 - FDM solvers only work with 1D problems
 - GFDM solvers only work with high-dimensional implicit geometry
@@ -690,14 +690,14 @@ solver = HJBFDMSolver(problem, Nx=100)
 
 ## Conclusion
 
-The current MFGarchon architecture artificially limits solver applicability to specific problem types. The proposed refactoring:
+The current MFGArchon architecture artificially limits solver applicability to specific problem types. The proposed refactoring:
 
 - **Enables**: Using any solver with any compatible geometry
 - **Simplifies**: Adding new geometries and discretization methods
 - **Maintains**: Backward compatibility during migration
 - **Improves**: Code clarity and extensibility
 
-This refactoring aligns MFGarchon with modern computational frameworks and removes a major barrier to research flexibility.
+This refactoring aligns MFGArchon with modern computational frameworks and removes a major barrier to research flexibility.
 
 ---
 
@@ -707,4 +707,4 @@ This refactoring aligns MFGarchon with modern computational frameworks and remov
 3. Benchmark and validate
 4. Roll out migration plan
 
-**Contact**: Submit issues/PRs to MFGarchon repository with tag `architecture-refactor`
+**Contact**: Submit issues/PRs to MFGArchon repository with tag `architecture-refactor`

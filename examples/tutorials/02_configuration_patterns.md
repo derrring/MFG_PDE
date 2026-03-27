@@ -1,4 +1,4 @@
-# Configuration Patterns in MFGarchon
+# Configuration Patterns in MFGArchon
 
 **Tutorial Level**: Beginner-Intermediate
 **Estimated Time**: 20 minutes
@@ -8,7 +8,7 @@
 
 ## Three Ways to Configure Solvers
 
-MFGarchon offers three configuration patterns, each suited to different use cases:
+MFGArchon offers three configuration patterns, each suited to different use cases:
 
 1. **Presets** - Quick start with sensible defaults
 2. **Builder API** - Programmatic configuration

@@ -251,7 +251,7 @@ class DuelingQNetwork(nn.Module):
 
 ---
 
-## Practical Recommendations for MFGarchon
+## Practical Recommendations for MFGArchon
 
 ### Immediate Extensions (Can Implement Now)
 

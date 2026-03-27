@@ -1,19 +1,19 @@
-# Plugin Development Guide for MFGarchon
+# Plugin Development Guide for MFGArchon
 
 **Date:** July 27, 2025  
 **Version:** 1.0  
-**Purpose:** Comprehensive guide for developing plugins for the MFGarchon framework  
+**Purpose:** Comprehensive guide for developing plugins for the MFGArchon framework  
 **Target Audience:** Plugin developers, researchers, and third-party contributors  
 
 ## Overview
 
-The MFGarchon plugin system enables researchers and developers to extend the framework with custom solvers, analysis tools, and algorithms without modifying the core codebase. This guide provides everything needed to create, test, and distribute MFGarchon plugins.
+The MFGArchon plugin system enables researchers and developers to extend the framework with custom solvers, analysis tools, and algorithms without modifying the core codebase. This guide provides everything needed to create, test, and distribute MFGArchon plugins.
 
 ## Plugin Architecture
 
 ### Plugin Types
 
-MFGarchon supports two main types of plugins:
+MFGArchon supports two main types of plugins:
 
 1. **Solver Plugins** (`SolverPlugin`): Provide new solver algorithms
 2. **Analysis Plugins** (`AnalysisPlugin`): Provide post-processing and analysis tools
@@ -281,7 +281,7 @@ from setuptools import setup, find_packages
 setup(
     name="mfg-custom-solver-plugin",
     version="1.0.0",
-    description="Custom solver plugin for MFGarchon",
+    description="Custom solver plugin for MFGArchon",
     author="Your Name",
     author_email="your.email@example.com",
     packages=find_packages(),
@@ -637,7 +637,7 @@ class ParallelSolver:
 2. **Version Compatibility**
    - Update min_mfg_version in metadata
    - Check dependency versions
-   - Test with target MFGarchon version
+   - Test with target MFGArchon version
 
 3. **Import Errors**
    - Verify all dependencies are installed
@@ -692,4 +692,4 @@ validate_solver_result(result, problem)
 - Provide example notebooks
 - Include citation information for academic use
 
-This guide provides the foundation for creating powerful, extensible plugins for MFGarchon. The plugin system enables the community to collaborate and extend the framework while maintaining code quality and user experience standards.
+This guide provides the foundation for creating powerful, extensible plugins for MFGArchon. The plugin system enables the community to collaborate and extend the framework while maintaining code quality and user experience standards.

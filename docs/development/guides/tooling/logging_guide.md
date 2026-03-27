@@ -1,13 +1,13 @@
-# MFGarchon Logging System Guide
+# MFGArchon Logging System Guide
 
 **Date**: August 15, 2025
 **Updated**: January 24, 2026 - Added thread safety documentation (Issue #620)  
 **Quality Score**: 8.7/10 - Excellent scientific computing logging infrastructure  
-**Purpose**: Complete guide for using the professional logging system in MFGarchon
+**Purpose**: Complete guide for using the professional logging system in MFGArchon
 
 ## Overview
 
-The MFGarchon logging system provides a **sophisticated, multi-layered logging infrastructure** specifically designed for scientific computing and mathematical research workflows. The system demonstrates professional-grade engineering with extensive configurability, performance monitoring integration, and analytical capabilities.
+The MFGArchon logging system provides a **sophisticated, multi-layered logging infrastructure** specifically designed for scientific computing and mathematical research workflows. The system demonstrates professional-grade engineering with extensive configurability, performance monitoring integration, and analytical capabilities.
 
 **Key Features**:
 - **Multi-destination logging**: Console and file output with independent formatting
@@ -636,7 +636,7 @@ logger.error("Error level test")
 
 # Inspect active loggers
 import logging
-print("Active MFGarchon loggers:")
+print("Active MFGArchon loggers:")
 for name in sorted(logging.Logger.manager.loggerDict.keys()):
     if name.startswith('mfgarchon'):
         logger_obj = logging.getLogger(name)
@@ -712,7 +712,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# New MFGarchon logging
+# New MFGArchon logging
 from mfgarchon.utils import configure_logging, get_logger
 configure_logging(level="INFO", use_colors=True)
 logger = get_logger(__name__)
@@ -740,4 +740,4 @@ logger = get_logger(__name__)
 
 ---
 
-This logging system provides professional debugging and monitoring capabilities while maintaining the clean, text-based formatting preferences established for the MFGarchon project.
+This logging system provides professional debugging and monitoring capabilities while maintaining the clean, text-based formatting preferences established for the MFGArchon project.

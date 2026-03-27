@@ -1,4 +1,4 @@
-# Code Review Guidelines for MFGarchon
+# Code Review Guidelines for MFGArchon
 
 **Date**: 2025-09-23
 **Status**: ✅ **ACTIVE** - Standard code review practices
@@ -144,7 +144,7 @@ gh pr review [PR_NUMBER] --approve --body "LGTM! Ready to merge"
 **Nitpicky**: "Use single quotes instead of double quotes" (when both are acceptable)
 ```
 
-## 🎯 **Special Considerations for MFGarchon**
+## 🎯 **Special Considerations for MFGArchon**
 
 ### **Research Code Flexibility**
 - **Accept** `**kwargs: Any` patterns for research interfaces

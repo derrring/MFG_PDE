@@ -469,7 +469,7 @@ where $\bar{F} = m F(m) + (1-m) U_{\text{home}}$ is average fitness.
 
 ---
 
-## 11. Implementation in MFGarchon
+## 11. Implementation in MFGArchon
 
 ### 11.1 Discrete MFG Solver
 

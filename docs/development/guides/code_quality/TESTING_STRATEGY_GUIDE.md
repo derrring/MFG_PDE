@@ -1,12 +1,12 @@
-# Unit Testing Strategy Guide for MFGarchon
+# Unit Testing Strategy Guide for MFGArchon
 
 **Date:** July 27, 2025  
 **Purpose:** Comprehensive guide for implementing effective unit testing in scientific computing packages  
-**Target Audience:** Developers and researchers working on MFGarchon  
+**Target Audience:** Developers and researchers working on MFGArchon  
 
 ## Executive Summary
 
-Unit testing in scientific computing requires a balanced approach that validates both computational correctness and software engineering principles. This guide provides a comprehensive strategy for implementing effective testing throughout the MFGarchon package.
+Unit testing in scientific computing requires a balanced approach that validates both computational correctness and software engineering principles. This guide provides a comprehensive strategy for implementing effective testing throughout the MFGArchon package.
 
 **Key Principle:** *Test strategically, not everywhere* - Focus on critical functionality, edge cases, and public APIs while maintaining computational efficiency.
 
@@ -31,7 +31,7 @@ Unit testing in scientific computing requires a balanced approach that validates
 
 ### Recommended Directory Layout:
 ```
-MFGarchon/
+MFGArchon/
 ├── mfgarchon/                    # Source code
 ├── tests/                      # Test suite (separate from source)
 │   ├── unit/                   # Fast, isolated tests

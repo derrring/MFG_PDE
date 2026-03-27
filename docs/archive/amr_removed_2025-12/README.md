@@ -2,7 +2,7 @@
 
 **Status**: ARCHIVED (December 2025)
 
-**Reason**: AMR implementation was removed from MFGarchon. The custom AMR code (~3100 lines) was replaced with a minimal API stub that will wrap external libraries when AMR is needed.
+**Reason**: AMR implementation was removed from MFGArchon. The custom AMR code (~3100 lines) was replaced with a minimal API stub that will wrap external libraries when AMR is needed.
 
 ## Recommended External Libraries
 

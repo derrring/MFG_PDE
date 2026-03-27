@@ -2,7 +2,7 @@
 
 ## Overview
 
-MFGarchon provides clear error messages and diagnostics for optional dependencies through `mfgarchon/utils/dependencies.py`.
+MFGArchon provides clear error messages and diagnostics for optional dependencies through `mfgarchon/utils/dependencies.py`.
 
 ## Core Utilities
 
@@ -38,7 +38,7 @@ show_optional_features()
 
 **Output**:
 ```
-MFGarchon Optional Features Status
+MFGArchon Optional Features Status
 ================================================================================
 
 Core (always available):

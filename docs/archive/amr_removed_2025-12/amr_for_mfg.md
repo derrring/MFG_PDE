@@ -1222,5 +1222,5 @@ amr_solver = create_amr_solver(
 ---
 
 **Last Updated**: August 1, 2025
-**Module Version**: MFGarchon 2.0+
-**Maintainer**: MFGarchon Development Team
+**Module Version**: MFGArchon 2.0+
+**Maintainer**: MFGArchon Development Team

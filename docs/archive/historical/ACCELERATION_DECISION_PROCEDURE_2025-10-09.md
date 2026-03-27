@@ -28,7 +28,7 @@ DONE
 
 ### Task 1.1: Identify Actual Bottleneck
 ```bash
-cd /Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFGarchon
+cd /Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFGArchon
 
 # Profile WENO5 solver
 python -m cProfile -o weno_profile.prof -s cumtime << 'EOF'
@@ -430,7 +430,7 @@ python benchmarks/numpy/weno5_vectorized_benchmark.py
 ### Task 4.1: Create Rust Extension Skeleton
 ```bash
 # Create Rust crate
-cd /Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFGarchon
+cd /Users/zvezda/Library/CloudStorage/OneDrive-Personal/code/MFGArchon
 cargo new --lib mfgarchon_rust
 cd mfgarchon_rust
 

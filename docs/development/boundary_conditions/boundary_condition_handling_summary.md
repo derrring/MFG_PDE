@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-The boundary condition (BC) handling in MFGarchon is **architecturally ambitious but inconsistently executed**. The core data model (`BoundaryConditions`, `BCSegment`) is well-designed, but the application layer suffers from:
+The boundary condition (BC) handling in MFGArchon is **architecturally ambitious but inconsistently executed**. The core data model (`BoundaryConditions`, `BCSegment`) is well-designed, but the application layer suffers from:
 
 - **Parallel implementations** that were never unified
 - **Deprecated code** still in active use

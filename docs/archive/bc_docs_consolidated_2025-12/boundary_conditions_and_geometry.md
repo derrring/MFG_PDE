@@ -4,7 +4,7 @@ This document provides guidance for choosing discretization methods based on dom
 
 ## Architecture Overview
 
-MFGarchon separates boundary condition handling into three layers:
+MFGArchon separates boundary condition handling into three layers:
 
 ```
 Layer 1: BC Specification (geometry/boundary/conditions.py)
@@ -101,7 +101,7 @@ This works because obstacles are still axis-aligned.
 - Matrix assembly more complex than FDM
 - Mesh quality affects solution quality
 
-**Implementation status in MFGarchon**:
+**Implementation status in MFGArchon**:
 - `FEMApplicator` available
 - 1D/2D/3D boundary condition classes implemented
 - Less tested than FDM solvers
@@ -121,7 +121,7 @@ This works because obstacles are still axis-aligned.
 - Consistency/stability analysis more complex
 - Less mature solvers than FDM/FEM
 
-**Implementation status in MFGarchon**:
+**Implementation status in MFGArchon**:
 - `MeshfreeApplicator` with `ParticleReflector`
 - GFDM solvers available
 - Good for particle-based MFG methods

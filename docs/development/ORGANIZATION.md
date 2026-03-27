@@ -1,9 +1,9 @@
-# MFGarchon Repository Organization
+# MFGArchon Repository Organization
 
 ## Directory Structure
 
 ```
-MFGarchon/
+MFGArchon/
 ├── README.md                    # Project overview and quick start
 ├── CONTRIBUTING.md             # Development guidelines
 ├── CLAUDE.md                   # AI interaction preferences
@@ -157,4 +157,4 @@ MFGarchon/
 - Performance benchmarks for critical paths
 - Documentation updated with code changes
 
-This organizational structure supports both rapid development and long-term maintainability while providing clear pathways for users, developers, and researchers to engage with the MFGarchon framework.
+This organizational structure supports both rapid development and long-term maintainability while providing clear pathways for users, developers, and researchers to engage with the MFGArchon framework.

@@ -43,14 +43,14 @@ existing code and identifies the real gaps.
 ### 2.3 What's Already Better Than the Spec
 
 1. **BCValueProvider pattern** (Issue #625): The spec's `DataField(array)` is static.
-   MFGarchon has *dynamic* providers that compute BC values from solver state each
+   MFGArchon has *dynamic* providers that compute BC values from solver state each
    iteration. This is more powerful.
 
 2. **5 matching modes**: The spec has 3 region types. BCSegment has 5 matching modes
    (boundary name, axis ranges, SDF region, normal direction, marked region name)
    with validated non-mixing rules.
 
-3. **Corner handling**: The spec mentions corner consistency briefly. MFGarchon has a
+3. **Corner handling**: The spec mentions corner consistency briefly. MFGArchon has a
    full corner handling subsystem (`boundary/corner/`) with strategies (priority,
    average, mollify) and particle reflection algorithms.
 

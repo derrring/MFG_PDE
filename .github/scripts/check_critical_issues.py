@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Critical security issues checker for MFGarchon CI/CD pipeline.
+Critical security issues checker for MFGArchon CI/CD pipeline.
 
 This script analyzes all security scan results and determines if there are
 any critical issues that should fail the CI/CD pipeline.

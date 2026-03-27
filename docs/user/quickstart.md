@@ -1,12 +1,12 @@
-# MFGarchon Quickstart
+# MFGArchon Quickstart
 
-**Get started with MFGarchon in 5 minutes**
+**Get started with MFGArchon in 5 minutes**
 
 ---
 
 ## Prerequisites
 
-MFGarchon assumes you understand:
+MFGArchon assumes you understand:
 - **Mean Field Games**: HJB-FP coupled systems, Nash equilibria
 - **Numerical PDEs**: Finite difference methods, stability
 - **Python**: NumPy and basic scientific computing
@@ -114,7 +114,7 @@ print(f"Mass error: {result.mass_conservation_error:.2e}")
 
 ## Three Solver Tiers
 
-MFGarchon provides three solver tiers based on **quality**:
+MFGArchon provides three solver tiers based on **quality**:
 
 | Tier | Name | Mass Error | Convergence | Use Case |
 |:-----|:-----|:-----------|:------------|:---------|

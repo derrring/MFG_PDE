@@ -1,4 +1,4 @@
-# MFGarchon Development Roadmap: Q4 2025 - Q2 2026
+# MFGArchon Development Roadmap: Q4 2025 - Q2 2026
 
 **Last Updated**: 2025-10-09  
 **Current Version**: v0.7.1  
@@ -41,7 +41,7 @@
 ## 🎯 Strategic Vision
 
 ### Mission
-Transform MFGarchon from **research-grade** to **production-grade** while maintaining mathematical rigor and flexibility for research.
+Transform MFGArchon from **research-grade** to **production-grade** while maintaining mathematical rigor and flexibility for research.
 
 ### Guiding Principles
 

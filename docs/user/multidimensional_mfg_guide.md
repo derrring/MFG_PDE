@@ -1,6 +1,6 @@
 # Multi-Dimensional Mean Field Games: User Guide
 
-Complete guide for setting up and solving 2D and 3D Mean Field Game problems using MFGarchon's multi-dimensional infrastructure.
+Complete guide for setting up and solving 2D and 3D Mean Field Game problems using MFGArchon's multi-dimensional infrastructure.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ Complete guide for setting up and solving 2D and 3D Mean Field Game problems usi
 
 ## Overview
 
-MFGarchon's multi-dimensional framework enables efficient solution of Mean Field Games on 2D and 3D spatial domains with memory-efficient data structures, sparse linear algebra, and interactive visualizations.
+MFGArchon's multi-dimensional framework enables efficient solution of Mean Field Games on 2D and 3D spatial domains with memory-efficient data structures, sparse linear algebra, and interactive visualizations.
 
 ### Key Features
 
@@ -551,4 +551,4 @@ u = SparseSolver(method='cg').solve(L, b)  # Direct sparse solve
 ---
 
 *Last Updated: 2025-10-06*
-*MFGarchon Version: 1.4.0+*
+*MFGArchon Version: 1.4.0+*

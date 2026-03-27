@@ -385,6 +385,6 @@ $$F(u_1, \ldots, u_k) \text{ is non-decreasing in each argument}$$
 ---
 
 **Document Status**: Complete mathematical foundations
-**Usage**: Reference for all MFGarchon theory and implementation
+**Usage**: Reference for all MFGArchon theory and implementation
 **Notation Standards**: See `NOTATION_STANDARDS.md`
 **Implementation**: Mathematical foundations for all numerical solvers in `mfgarchon.alg.numerical`

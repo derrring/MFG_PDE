@@ -73,7 +73,7 @@ Code catches broad exceptions and silently falls back to lower-fidelity methods 
 - ✅ 100% completion (13/13 fixes)
 - ✅ All broad `except Exception:` replaced with specific exception types
 - ✅ Comprehensive logging with context throughout
-- ✅ Consistent MFGarchon logging infrastructure
+- ✅ Consistent MFGArchon logging infrastructure
 - ✅ All fallback behavior preserved for robustness
 - ✅ Critical bugs (Newton solver) now surface instead of silently failing
 

@@ -7,7 +7,7 @@
 
 ## Summary
 
-Comprehensive architecture refactoring issue created in MFGarchon repository based on 3 weeks of intensive research usage (2025-10-06 to 2025-10-30).
+Comprehensive architecture refactoring issue created in MFGArchon repository based on 3 weeks of intensive research usage (2025-10-06 to 2025-10-30).
 
 ---
 
@@ -42,7 +42,7 @@ Comprehensive architecture refactoring issue created in MFGarchon repository bas
 
 ## Repository State Verified
 
-**MFGarchon Branches**:
+**MFGArchon Branches**:
 - `main` (current)
 - `feature/osqp-and-adaptive-neighborhoods` (remote)
 - `refactor/remove-use-monotone-constraints` (remote)
@@ -64,7 +64,7 @@ Comprehensive architecture refactoring issue created in MFGarchon repository bas
 
 ## Documentation Organized
 
-All comprehensive documentation is in `MFGarchon/docs/architecture/`:
+All comprehensive documentation is in `MFGArchon/docs/architecture/`:
 
 ```
 docs/architecture/
@@ -72,10 +72,10 @@ docs/architecture/
 ├── audit/
 │   ├── AUDIT_ENRICHMENT_SUMMARY.md        # Executive summary (371 lines)
 │   ├── ARCHITECTURE_AUDIT_ENRICHMENT.md   # Full audit (1,799 lines)
-│   ├── MFGarchon_ARCHITECTURE_AUDIT.md      # Original audit
+│   ├── MFGArchon_ARCHITECTURE_AUDIT.md      # Original audit
 │   └── ARCHITECTURE_AUDIT_SUMMARY.md      # Original summary
 ├── proposals/
-│   └── MFGarchon_ARCHITECTURE_REFACTOR_PROPOSAL.md
+│   └── MFGArchon_ARCHITECTURE_REFACTOR_PROPOSAL.md
 ├── evidence/
 │   └── FDM_SOLVER_LIMITATION_ANALYSIS.md
 └── navigation/
@@ -99,7 +99,7 @@ docs/architecture/
 - 1,080 lines of custom problem code required
 
 ### 3. Bug #15: QP Sigma Type Error (HIGH PRIORITY)
-- NOT YET FIXED in MFGarchon
+- NOT YET FIXED in MFGArchon
 - Workaround exists (`SmartSigma`)
 - 5-line fix proposed in issue
 
@@ -166,7 +166,7 @@ docs/architecture/
 **Documentation Trail**:
 - 181 markdown files analyzed
 - 94 Python test/experiment files
-- 251 Python files in MFGarchon (100% coverage)
+- 251 Python files in MFGArchon (100% coverage)
 - 15 documents for Bug #13
 - 10 documents for Bug #14
 - 7 documents for Bug #15
@@ -180,7 +180,7 @@ docs/architecture/
 
 ---
 
-## Related Issues in MFGarchon
+## Related Issues in MFGArchon
 
 **This Issue Consolidates**:
 - Bug #15: QP sigma type error (NEW)
@@ -251,7 +251,7 @@ U, M, info = solution
 - ✅ Repository state verified (branches, issues, PRs)
 - ✅ Comprehensive issue created (#200)
 - ✅ Appropriate labels added
-- ✅ All documentation organized in `MFGarchon/docs/architecture/`
+- ✅ All documentation organized in `MFGArchon/docs/architecture/`
 - ✅ Related issues and PRs cross-referenced
 - ✅ Evidence and quantification included
 - ✅ Clear action plan with timeline
@@ -266,8 +266,8 @@ U, M, info = solution
 
 **For Questions**:
 - GitHub Issue: https://github.com/derrring/mfgarchon/issues/200
-- Full documentation: `MFGarchon/docs/architecture/README.md`
-- Quick navigation: `MFGarchon/docs/architecture/navigation/ARCHITECTURE_DOCUMENTATION_INDEX.md`
+- Full documentation: `MFGArchon/docs/architecture/README.md`
+- Quick navigation: `MFGArchon/docs/architecture/navigation/ARCHITECTURE_DOCUMENTATION_INDEX.md`
 
 ---
 

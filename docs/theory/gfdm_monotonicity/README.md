@@ -401,7 +401,7 @@ $$
 
 **Last Updated**: 2025-12-03
 
-**Maintainers**: MFGarchon Development Team
+**Maintainers**: MFGArchon Development Team
 
 **Status**:
 - ✅ Mathematical foundation documented

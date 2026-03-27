@@ -521,7 +521,7 @@ where $p$ is the interpolation order (1 for linear, 3 for cubic).
 
 ## Recommendations
 
-### For MFGarchon Library
+### For MFGArchon Library
 
 **Current Implementation** (Explicit + Clipping):
 - **Use Case**: General MFG problems with moderate gradients

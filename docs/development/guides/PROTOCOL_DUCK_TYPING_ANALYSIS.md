@@ -61,7 +61,7 @@ The **Interface Segregation Principle** states that no client should be forced t
 | **Coupling** | High (Client depends on full hierarchy). | Low (Client depends on single method). |
 | **Flexibility** | Rigid taxonomy. | Mix-and-match traits. |
 
-**Example in MFGarchon**:
+**Example in MFGArchon**:
 
 ```python
 # ✅ GOOD: Focused protocols (Interface Segregation)
@@ -108,7 +108,7 @@ render(external_lib.ThirdPartyShape())
 
 ### ✅ Case 3: Gradual Typing of Legacy Code
 
-For mature codebases like portions of `MFGarchon`, refactoring deep inheritance hierarchies to add type hints is risky. Protocols allow you to define types for existing behaviors without changing the runtime code structure.
+For mature codebases like portions of `MFGArchon`, refactoring deep inheritance hierarchies to add type hints is risky. Protocols allow you to define types for existing behaviors without changing the runtime code structure.
 
 ```python
 # Legacy code (no types, no inheritance)
@@ -280,9 +280,9 @@ class ObstacleConstraint(ConstraintBase):  # Inherits ABC utilities
 
 ---
 
-## 5. MFGarchon Contextual Audit
+## 5. MFGArchon Contextual Audit
 
-Based on the current architecture of `MFGarchon`, here is the specific guidance:
+Based on the current architecture of `MFGArchon`, here is the specific guidance:
 
 ### ✅ Approved Uses (Keep as Protocols)
 
@@ -401,7 +401,7 @@ To decide between a Protocol and an ABC, ask these three questions:
 2. **ABCs** define **how** (behavior, implementation, identity)
 3. **Hybrid approach** often optimal: Protocol for public API, ABC for internal utilities
 
-**MFGarchon Recommendation**:
+**MFGArchon Recommendation**:
 - ✅ Keep: `ConstraintProtocol`, geometry traits, minimal handler interfaces
 - ⚠️ Refactor: `BCApplicatorProtocol` → `BCApplicatorBase(ABC)` with template method
 - 📋 Guideline: Default to Protocol for < 5 methods with no shared logic, ABC otherwise
@@ -423,5 +423,5 @@ To decide between a Protocol and an ABC, ask these three questions:
 **Document Metadata**:
 - **Last Updated**: 2026-01-17
 - **Context**: Design review during Issue #591 (Variational Inequality Constraints)
-- **Status**: Authoritative architectural reference for MFGarchon
+- **Status**: Authoritative architectural reference for MFGArchon
 - **Format**: Typora/Obsidian compatible with proper footnotes

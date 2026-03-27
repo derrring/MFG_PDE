@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-The reinforcement learning (RL) paradigm in MFGarchon provides **agent-based, data-driven approaches** for solving Mean Field Games through multi-agent reinforcement learning (MARL). This paradigm bridges classical MFG theory with modern deep RL, enabling:
+The reinforcement learning (RL) paradigm in MFGArchon provides **agent-based, data-driven approaches** for solving Mean Field Games through multi-agent reinforcement learning (MARL). This paradigm bridges classical MFG theory with modern deep RL, enabling:
 
 - **Agent-based learning** without solving PDEs explicitly
 - **Model-free methods** learning from environment interactions
@@ -763,7 +763,7 @@ solver.visualize_trajectories(num_agents=50)
 
 ## ✅ Summary
 
-The reinforcement learning paradigm in MFGarchon provides **state-of-the-art multi-agent RL approaches** for solving Mean Field Games:
+The reinforcement learning paradigm in MFGArchon provides **state-of-the-art multi-agent RL approaches** for solving Mean Field Games:
 
 **✅ Production-Ready**: 16,472 lines of code, comprehensive implementation
 **✅ 10+ RL Algorithms**: Q-learning, DDPG, SAC, TD3, MADDPG, PPO

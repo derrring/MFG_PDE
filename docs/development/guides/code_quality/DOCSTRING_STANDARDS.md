@@ -1,4 +1,4 @@
-# Docstring Standards for MFGarchon Package
+# Docstring Standards for MFGArchon Package
 
 **Version:** 1.4.0  
 **Last Updated:** 2025-07-27  
@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document establishes comprehensive docstring standards for the MFGarchon package to ensure consistency, clarity, and maintainability across all modules. All public code must follow these standards.
+This document establishes comprehensive docstring standards for the MFGArchon package to ensure consistency, clarity, and maintainability across all modules. All public code must follow these standards.
 
 ## Docstring Format
 
@@ -400,4 +400,4 @@ Configure your IDE for docstring support:
 - Set up auto-formatting for docstring text
 - Configure spell-checking for documentation
 
-This comprehensive standard ensures that all MFGarchon documentation is consistent, informative, and maintainable while supporting the mathematical and computational nature of the package.
+This comprehensive standard ensures that all MFGArchon documentation is consistent, informative, and maintainable while supporting the mathematical and computational nature of the package.

@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "MFGarchon: A Research-Grade Framework for Mean Field Games"
+title: "MFGArchon: A Research-Grade Framework for Mean Field Games"
 authors:
   - family-names: Wang
     given-names: Jiongyi

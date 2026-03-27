@@ -1,4 +1,4 @@
-# MFGarchon User Documentation
+# MFGArchon User Documentation
 
 **Research-grade Mean Field Games solver for academic and industrial applications**
 
@@ -24,7 +24,7 @@ print(result.M)  # Density m(t,x)
 
 ## 📚 **Two-Level API Design**
 
-MFGarchon is designed for users who **understand Mean Field Games** (HJB-FP systems, Nash equilibria).
+MFGArchon is designed for users who **understand Mean Field Games** (HJB-FP systems, Nash equilibria).
 
 | **API Level** | **Target Users** | **Entry Point** | **What You Get** |
 |---------------|------------------|-----------------|------------------|
@@ -193,7 +193,7 @@ result = solver.solve()
 
 ## 🔄 **Migration from Old API**
 
-Already using MFGarchon? The new API is backward compatible. See [quickstart](quickstart.md) for the latest patterns.
+Already using MFGArchon? The new API is backward compatible. See [quickstart](quickstart.md) for the latest patterns.
 
 ---
 
@@ -206,7 +206,7 @@ Already using MFGarchon? The new API is backward compatible. See [quickstart](qu
 
 ## 📋 **What You Should Know**
 
-MFGarchon assumes you understand:
+MFGArchon assumes you understand:
 - **Mean Field Games**: HJB-FP coupled systems, Nash equilibria
 - **Numerical PDEs**: Finite difference methods, stability, convergence
 - **Python**: Basic programming and scientific computing (NumPy)

@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-The neural paradigm in MFGarchon provides **data-driven and physics-informed approaches** for solving Mean Field Games using deep learning. This paradigm complements traditional numerical methods by enabling:
+The neural paradigm in MFGArchon provides **data-driven and physics-informed approaches** for solving Mean Field Games using deep learning. This paradigm complements traditional numerical methods by enabling:
 
 - **High-dimensional problems** (d > 15) through neural network parameterization
 - **Mesh-free solving** without explicit spatial discretization
@@ -687,7 +687,7 @@ solution = operator.predict(new_params)  # Milliseconds!
 
 ## ✅ Summary
 
-The neural paradigm in MFGarchon provides **state-of-the-art deep learning approaches** for solving Mean Field Games:
+The neural paradigm in MFGArchon provides **state-of-the-art deep learning approaches** for solving Mean Field Games:
 
 **✅ Production-Ready**: 7,553 lines of code, comprehensive testing
 **✅ Three Solver Families**: PINN, DGM, Neural Operators

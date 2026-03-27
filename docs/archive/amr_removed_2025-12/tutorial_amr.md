@@ -2,13 +2,13 @@
 
 **Date**: August 1, 2025  
 **Difficulty**: Intermediate to Advanced  
-**Prerequisites**: Basic MFGarchon usage, understanding of numerical methods  
+**Prerequisites**: Basic MFGArchon usage, understanding of numerical methods  
 **Estimated Time**: 45-60 minutes  
 **Architecture**: AMR as solver enhancement (not standalone solver)
 
 ## Tutorial Overview
 
-This tutorial covers the practical use of Adaptive Mesh Refinement (AMR) in MFGarchon, from basic concepts to advanced optimization techniques. You'll learn when to use AMR, how to configure it effectively, and how to interpret the results.
+This tutorial covers the practical use of Adaptive Mesh Refinement (AMR) in MFGArchon, from basic concepts to advanced optimization techniques. You'll learn when to use AMR, how to configure it effectively, and how to interpret the results.
 
 **Important Architectural Note**: AMR is implemented as an **enhancement wrapper** that can be applied to any base MFG solver (FDM, particle, spectral, etc.). AMR is a mesh adaptation technique, not a solution method itself. This tutorial reflects this correct understanding.
 
@@ -1155,4 +1155,4 @@ def epidemic_spread_amr_example():
 
 ---
 
-This completes the comprehensive AMR tutorial. The adaptive mesh refinement system in MFGarchon provides powerful capabilities for efficiently solving Mean Field Games with complex solution features, offering both automatic adaptation and fine-grained control for advanced users.
+This completes the comprehensive AMR tutorial. The adaptive mesh refinement system in MFGArchon provides powerful capabilities for efficiently solving Mean Field Games with complex solution features, offering both automatic adaptation and fine-grained control for advanced users.

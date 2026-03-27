@@ -4,7 +4,7 @@
 
 ## Overview
 
-MFGarchon pins the ruff version to ensure consistent formatting across all environments (local dev, pre-commit hooks, CI/CD). This provides:
+MFGArchon pins the ruff version to ensure consistent formatting across all environments (local dev, pre-commit hooks, CI/CD). This provides:
 
 - ✅ **Consistency**: Same formatting behavior everywhere
 - ✅ **Reproducibility**: Code formatting is deterministic

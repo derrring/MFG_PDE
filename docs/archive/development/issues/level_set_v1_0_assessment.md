@@ -12,7 +12,7 @@
 
 **Verdict**: Competent Research Prototype.
 
-The implementation successfully integrates the Level Set Method (LSM) into the existing MFGarchon framework without breaking changes. It meets the critical accuracy targets for the Stefan Problem (< 5% error), but relies on computationally expensive explicit time-stepping and first-order spatial schemes. It is "correct but inefficient," making it suitable for research demonstrations but not yet ready for high-performance production workloads.
+The implementation successfully integrates the Level Set Method (LSM) into the existing MFGArchon framework without breaking changes. It meets the critical accuracy targets for the Stefan Problem (< 5% error), but relies on computationally expensive explicit time-stepping and first-order spatial schemes. It is "correct but inefficient," making it suitable for research demonstrations but not yet ready for high-performance production workloads.
 
 ---
 
@@ -272,7 +272,7 @@ Additional References:
 
 ## 10. Conclusion
 
-The Level Set v1.0 implementation successfully integrates LSM into MFGarchon with:
+The Level Set v1.0 implementation successfully integrates LSM into MFGArchon with:
 - ✅ Correct physics (Stefan < 5% error)
 - ✅ Clean architecture (composition, operator reuse)
 - ✅ No breaking changes

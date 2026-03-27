@@ -328,7 +328,7 @@ This analytical solution serves as a benchmark for testing the Common Noise MFG 
 
 ---
 
-## Implementation in MFGarchon
+## Implementation in MFGArchon
 
 ### Basic Usage
 

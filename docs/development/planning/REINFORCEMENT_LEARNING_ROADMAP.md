@@ -1,4 +1,4 @@
-# Reinforcement Learning Development Roadmap for MFGarchon
+# Reinforcement Learning Development Roadmap for MFGArchon
 
 **Status**: [IN PROGRESS] Phase 1 Complete - Core algorithms in development
 **Date**: 2025-10-01
@@ -11,8 +11,8 @@ With the successful completion of the algorithm reorganization establishing thre
 
 ## Strategic Context
 
-### Position in MFGarchon Evolution
-The RL paradigm represents the next major expansion of MFGarchon's capabilities:
+### Position in MFGArchon Evolution
+The RL paradigm represents the next major expansion of MFGArchon's capabilities:
 
 **Completed Foundation** (September 2025):
 - ✅ **Numerical Paradigm**: 16 algorithms (finite difference, particle methods)
@@ -367,7 +367,7 @@ wandb>=0.15.0  # Experiment tracking
 - **Voronoi-Based Environments**: Non-grid MFG spaces for robustness testing
 
 ### Long-Term Vision
-**5-Year Goal**: Establish MFGarchon as the definitive framework for RL-based approaches to Mean Field Games, with:
+**5-Year Goal**: Establish MFGArchon as the definitive framework for RL-based approaches to Mean Field Games, with:
 - **Comprehensive Algorithm Library**: 20+ RL algorithms for MFG
 - **Diverse Environment Suite**: Grid-based, Voronoi, continuous, and hybrid spaces
 - **Real-World Impact**: Deployed solutions in transportation, finance, and energy

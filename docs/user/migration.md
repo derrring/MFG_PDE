@@ -10,11 +10,11 @@
 >
 > See [quickstart.md](quickstart.md) and [GEOMETRY_FIRST_API_GUIDE.md](../migration/GEOMETRY_FIRST_API_GUIDE.md) for current patterns.
 
-**Smooth transition from old MFGarchon API to the two-level factory-based API**
+**Smooth transition from old MFGArchon API to the two-level factory-based API**
 
 ## Overview
 
-MFGarchon now provides a **two-level research-grade API**:
+MFGArchon now provides a **two-level research-grade API**:
 - **Level 1 (Users - 95%)**: Factory API for researchers and practitioners
 - **Level 2 (Developers - 5%)**: Core API for framework contributors
 

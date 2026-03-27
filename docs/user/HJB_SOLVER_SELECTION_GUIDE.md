@@ -543,4 +543,4 @@ From `benchmarks/hjb_solver_comparison.py`:
 ---
 
 **Last Updated**: 2025-11-02
-**Version**: MFGarchon 0.8.1+
+**Version**: MFGArchon 0.8.1+

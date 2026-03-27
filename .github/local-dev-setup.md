@@ -148,11 +148,11 @@ python -m pytest tests/integration/ -v
 
 ### Advanced Pre-Commit Configuration
 
-#### Custom Hooks for MFGarchon
+#### Custom Hooks for MFGArchon
 Add MFG-specific checks to `.pre-commit-config.yaml`:
 
 ```yaml
-  # MFGarchon specific checks
+  # MFGArchon specific checks
   - repo: local
     hooks:
       # Ensure no emojis in Python files (per CLAUDE.md standards)

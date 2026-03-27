@@ -243,7 +243,7 @@ m* = μ(π*)
 
 ---
 
-## Implementation in MFGarchon
+## Implementation in MFGArchon
 
 ### Network Architecture
 

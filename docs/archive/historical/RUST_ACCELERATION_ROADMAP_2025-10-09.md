@@ -1,4 +1,4 @@
-# Rust Acceleration Roadmap for MFGarchon
+# Rust Acceleration Roadmap for MFGArchon
 
 **Date**: 2025-10-09
 **Status**: Planning Phase
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Strategic plan for integrating Rust extensions into MFGarchon to accelerate compute-intensive numerical operations. Primary focus: WENO5 stencil computations with expected 5-10× speedup.
+Strategic plan for integrating Rust extensions into MFGArchon to accelerate compute-intensive numerical operations. Primary focus: WENO5 stencil computations with expected 5-10× speedup.
 
 ## Strategic Analysis: Where to Use Rust
 
@@ -301,7 +301,7 @@ class RustBackend(BackendProtocol):
 ## Project Structure
 
 ```
-MFGarchon/
+MFGArchon/
 ├── mfgarchon/                  # Python package
 │   ├── backends/
 │   │   └── rust_backend.py   # Rust backend interface

@@ -1,6 +1,6 @@
 # Implicit Domain Geometry for Meshfree MFG Methods
 
-Production-ready dimension-agnostic implicit domain representation for particle-collocation methods. **Preparing for graduation to MFGarchon**.
+Production-ready dimension-agnostic implicit domain representation for particle-collocation methods. **Preparing for graduation to MFGArchon**.
 
 ## Overview
 
@@ -11,16 +11,16 @@ This module provides meshfree geometry infrastructure using **signed distance fu
 - **Natural obstacle handling** via CSG operations
 - **Particle-friendly** sampling and boundary conditions
 
-### Key Advantage Over MFGarchon's Current Approach
+### Key Advantage Over MFGArchon's Current Approach
 
-| Feature | MFGarchon (Gmsh) | This Module (SDF) |
+| Feature | MFGArchon (Gmsh) | This Module (SDF) |
 |---------|----------------|-------------------|
 | **Dimensions** | d ∈ {1,2,3} | Any d ≥ 1 |
 | **Memory** | O(N^d) vertices | O(d) parameters |
 | **Obstacles** | Boolean mesh cuts | Min/max operations |
 | **Use Case** | Low-dim FEM/FVM | High-dim particles |
 
-These approaches are **complementary**, not competing. Both will coexist in MFGarchon after graduation.
+These approaches are **complementary**, not competing. Both will coexist in MFGArchon after graduation.
 
 ---
 
@@ -354,7 +354,7 @@ Examples:
 
 ---
 
-## Graduation Plan to MFGarchon
+## Graduation Plan to MFGArchon
 
 ### Status: **Phase 1 Complete** ✅
 
@@ -363,15 +363,15 @@ Examples:
 - ✅ Documentation (this README + inline docstrings)
 - ✅ Proven on research problems (anisotropic_crowd_qp)
 
-### Next Steps (Phase 2): Integration into MFGarchon
+### Next Steps (Phase 2): Integration into MFGArchon
 
-1. **Create branch** `feature/implicit-domains` in MFGarchon
+1. **Create branch** `feature/implicit-domains` in MFGArchon
 2. **Port module** to `mfgarchon/geometry/implicit/`
 3. **Add tests** to `tests/unit/geometry/test_implicit_domain.py`
-4. **Update docs** in MFGarchon documentation
+4. **Update docs** in MFGArchon documentation
 5. **Open PR** with reference to high-dimensional support (PR #188)
 
-### Expected MFGarchon Structure
+### Expected MFGArchon Structure
 
 ```
 mfgarchon/
@@ -404,7 +404,7 @@ from mfgarchon.geometry.implicit import (
 
 ### Design Decisions
 
-1. **Type hints:** Full production-quality hints for MFGarchon standards
+1. **Type hints:** Full production-quality hints for MFGArchon standards
 2. **Rejection sampling:** Used for spheres and complex domains
 3. **Bounding boxes:** Required for efficient sampling
 4. **CSG via min/max:** Simple, fast, dimension-agnostic
@@ -413,7 +413,7 @@ from mfgarchon.geometry.implicit import (
 
 1. **Rejection sampling inefficiency:** Hypersphere sampling becomes slow for d>10 due to curse of dimensionality
 2. **Approximate SDFs:** CSG operations (union/intersection) don't preserve exact distance, only sign
-3. **No mesh output:** Cannot export to Gmsh format (by design - use MFGarchon's Domain2D for that)
+3. **No mesh output:** Cannot export to Gmsh format (by design - use MFGArchon's Domain2D for that)
 
 ### Future Enhancements
 
@@ -439,7 +439,7 @@ See `CLAUDE.md` for research repository conventions.
 
 ## License
 
-Part of mfg-research repository. Will graduate to MFGarchon under its license after publication.
+Part of mfg-research repository. Will graduate to MFGArchon under its license after publication.
 
 ---
 
@@ -448,4 +448,4 @@ Part of mfg-research repository. Will graduate to MFGarchon under its license af
 For questions about:
 - **Implementation**: See inline docstrings
 - **Mathematics**: See TECHNICAL_REFERENCE_HIGH_DIMENSIONAL_MFG.md
-- **MFGarchon integration**: Open issue in MFGarchon repository
+- **MFGArchon integration**: Open issue in MFGArchon repository

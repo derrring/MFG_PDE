@@ -441,7 +441,7 @@ $$L(x, u, m, m_{\text{hist}}) = |x - x_{\text{stall}}| + \lambda \ln(m) + \beta 
 
 ---
 
-## 9. Implementation in MFGarchon
+## 9. Implementation in MFGArchon
 
 ### 9.1 Core Components
 

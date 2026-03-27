@@ -11,7 +11,7 @@
 
 ## Executive Summary
 
-MFGarchon already has substantial dimension-agnostic infrastructure (`HighDimMFGProblem`, `GridBasedMFGProblem`, `TensorProductGrid`). The task is to extend the FDM solvers to work with this infrastructure, not to build dimension-agnostic support from scratch.
+MFGArchon already has substantial dimension-agnostic infrastructure (`HighDimMFGProblem`, `GridBasedMFGProblem`, `TensorProductGrid`). The task is to extend the FDM solvers to work with this infrastructure, not to build dimension-agnostic support from scratch.
 
 **Current State**:
 - ✅ Dimension-agnostic problem classes exist (`GridBasedMFGProblem`)
@@ -794,7 +794,7 @@ def test_2d_fp_mass_conservation():
 
 ### Architecture Consistency
 
-**MFGarchon Design Principle**: Dimension is a parameter, not a constraint
+**MFGArchon Design Principle**: Dimension is a parameter, not a constraint
 
 ```
 Component                    Dimensions Supported
@@ -1007,7 +1007,7 @@ U, M, info = solver.solve()     # Just works
 - ✅ Leverages existing dimension-agnostic problem classes
 - ✅ Well-established numerical method (proven accuracy)
 - ✅ Single implementation works for 2D, 3D, 4D, ... (automatic 3D support)
-- ✅ Matches MFGarchon architecture principle: dimension is a parameter, not a constraint
+- ✅ Matches MFGArchon architecture principle: dimension is a parameter, not a constraint
 - ✅ Provides classical FDM baseline for nD research
 
 **Design Choice**: Generic `_sweep_dimension(U, M, problem, dt, dim)` function

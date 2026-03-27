@@ -20,7 +20,7 @@ The project's main contribution was validating that existing BC infrastructure i
 
 ### README.md
 **Purpose**: Project overview and scope guard.
-**Assessment**: Correctly distinguishes MFG infrastructure from general PDE framework. The scope guard ("MFGarchon is production MFG infrastructure, not a general PDE framework") is the most valuable sentence in the entire project.
+**Assessment**: Correctly distinguishes MFG infrastructure from general PDE framework. The scope guard ("MFGArchon is production MFG infrastructure, not a general PDE framework") is the most valuable sentence in the entire project.
 
 ### SPEC_SPACETIME_SOLVERS.md (MFG-SPEC-ST-0.8)
 **Proposes**: SpacetimeField, SpacetimeBoundaryData, TrajectorySolver protocol, SequentialMarchingSolver.

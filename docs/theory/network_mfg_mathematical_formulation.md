@@ -384,7 +384,7 @@ where $μ_i$ is the uniform distribution on $N(i)$ and $d(i,j)$ is graph distanc
 
 ---
 
-## 8. Implementation in MFGarchon
+## 8. Implementation in MFGArchon
 
 ### 8.1 Core Files
 

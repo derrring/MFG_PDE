@@ -13,7 +13,7 @@
 
 ## Overview
 
-This document maps boundary condition support across all numerical solvers in MFGarchon. It serves as:
+This document maps boundary condition support across all numerical solvers in MFGArchon. It serves as:
 1. Reference for users selecting appropriate solvers
 2. Gap analysis for infrastructure integration
 3. Guide for new solver development

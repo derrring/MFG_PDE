@@ -1,4 +1,4 @@
-# MFGarchon Architecture Documentation
+# MFGArchon Architecture Documentation
 
 **Last Updated**: 2025-12-14
 **Current Version**: v0.16.8
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This directory contains architecture documentation for MFGarchon. Historical audit documents and completed phase plans have been archived to `docs/archive/historical/`.
+This directory contains architecture documentation for MFGArchon. Historical audit documents and completed phase plans have been archived to `docs/archive/historical/`.
 
 ## Current Architecture
 
@@ -69,7 +69,7 @@ This directory contains architecture documentation for MFGarchon. Historical aud
 | `GEOMETRY_AND_TOPOLOGY.md` | Geometry trait system design |
 | `FACTORY_PATTERN_DESIGN.md` | Three-concern factory architecture |
 | `proposals/DIMENSION_AGNOSTIC_FDM_ANALYSIS.md` | FDM extension analysis |
-| `proposals/MFGarchon_ARCHITECTURE_REFACTOR_PROPOSAL.md` | Long-term refactoring plan |
+| `proposals/MFGArchon_ARCHITECTURE_REFACTOR_PROPOSAL.md` | Long-term refactoring plan |
 | `proposals/EXTERNAL_PDE_INTEROPERABILITY_PROPOSAL.md` | **[DEFERRED]** External PDE framework interop & problem extension (post-v1.0) |
 
 ## Archived Documents

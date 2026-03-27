@@ -1,4 +1,4 @@
-# Nash Q-Learning Architecture Design for MFGarchon
+# Nash Q-Learning Architecture Design for MFGArchon
 
 **Date**: October 2, 2025
 **Status**: Architecture Design
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document presents the architectural design for implementing Nash Q-Learning in MFGarchon. Based on the theoretical formulation, we identify that:
+This document presents the architectural design for implementing Nash Q-Learning in MFGArchon. Based on the theoretical formulation, we identify that:
 
 1. **For symmetric MFG**: Nash Q-Learning ≈ Mean Field Q-Learning (already implemented)
 2. **Extension needed**: Support for heterogeneous agents and multi-population games

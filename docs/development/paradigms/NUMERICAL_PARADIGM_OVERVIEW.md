@@ -1,6 +1,6 @@
 # Numerical Methods Paradigm for Mean Field Games
 
-**Status**: ✅ ACTIVE (Core paradigm for MFGarchon)
+**Status**: ✅ ACTIVE (Core paradigm for MFGArchon)
 **Last Updated**: 2025-10-11
 **Related Issues**: #105
 
@@ -759,7 +759,7 @@ $$
 \frac{\sigma^2 \Delta t}{\Delta x^2} \leq \frac{1}{2}
 $$
 
-(Implicit FDM used in MFGarchon removes this restriction.)
+(Implicit FDM used in MFGArchon removes this restriction.)
 
 ### Mass Conservation
 
@@ -798,5 +798,5 @@ print(f"Max mass conservation error: {mass_error.max():.2e}")
 
 ---
 
-**Maintained by**: MFGarchon Development Team
+**Maintained by**: MFGArchon Development Team
 **Last Updated**: 2025-10-11

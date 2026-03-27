@@ -1,10 +1,10 @@
-# MFGarchon Documentation
+# MFGArchon Documentation
 
 **Last Updated**: December 14, 2025
 **Version**: v0.16.8 - Current Release
 **Status**: Production-Ready Framework with Validated Examples
 
-Welcome to the comprehensive documentation for MFGarchon - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
+Welcome to the comprehensive documentation for MFGArchon - a state-of-the-art computational framework for Mean Field Games with network capabilities, GPU acceleration, and professional research tools.
 
 ---
 
@@ -79,7 +79,7 @@ docs/
 ├── user/                              # 👥 USER-FACING DOCUMENTATION
 │   ├── README.md                      # User documentation index
 │   ├── quickstart.md                  # Quick start guide
-│   ├── core_objects.md                # Core MFGarchon objects
+│   ├── core_objects.md                # Core MFGArchon objects
 │   ├── guides/                        # Feature usage guides
 │   │   ├── multi_population_quick_start.md  # Multi-population guide
 │   │   ├── backend_usage.md           # Computational backends
@@ -333,7 +333,7 @@ Complete framework documentation for achieving 100% type safety in scientific co
 
 ---
 
-## 🎉 **Welcome to MFGarchon**
+## 🎉 **Welcome to MFGArchon**
 
 **The premier platform for Mean Field Games computational research - now with enterprise-grade performance, professional research tools, GPU acceleration capabilities, and user-centric documentation.**
 

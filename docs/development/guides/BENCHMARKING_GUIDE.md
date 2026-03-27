@@ -1,4 +1,4 @@
-# MFGarchon Benchmark Design Guide
+# MFGArchon Benchmark Design Guide
 
 **Document Version**: 1.0  
 **Last Updated**: August 1, 2025  
@@ -6,7 +6,7 @@
 
 ## 📋 **Executive Summary**
 
-This document describes the design principles, architecture, and implementation guidelines for the MFGarchon benchmarking framework. The framework provides comprehensive evaluation capabilities for MFG solvers across multiple performance dimensions with an extensible, category-based organization.
+This document describes the design principles, architecture, and implementation guidelines for the MFGArchon benchmarking framework. The framework provides comprehensive evaluation capabilities for MFG solvers across multiple performance dimensions with an extensible, category-based organization.
 
 ## 🎯 **Design Objectives**
 
@@ -619,7 +619,7 @@ dependencies = {
 
 ## 🎯 **Conclusion**
 
-The MFGarchon benchmark design provides a **comprehensive, extensible, and scientifically rigorous framework** for evaluating MFG solver performance. Key design achievements:
+The MFGArchon benchmark design provides a **comprehensive, extensible, and scientifically rigorous framework** for evaluating MFG solver performance. Key design achievements:
 
 ### **Technical Excellence**
 - **Modular Architecture**: Clean separation of concerns with standardized interfaces

@@ -1,6 +1,6 @@
 # Guide: Geometry Trait Protocols for Solver Developers
 
-**Audience**: Solver developers, advanced users extending MFGarchon
+**Audience**: Solver developers, advanced users extending MFGArchon
 **Prerequisites**: Python protocols, linear algebra, numerical PDEs
 **Version**: 1.0 (2026-01-18)
 
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-MFGarchon uses **trait protocols** to decouple solvers from geometry implementations. Solvers request **capabilities** (e.g., "can compute Laplacian"), and geometries provide **operators** (e.g., finite difference Laplacian matrix).
+MFGArchon uses **trait protocols** to decouple solvers from geometry implementations. Solvers request **capabilities** (e.g., "can compute Laplacian"), and geometries provide **operators** (e.g., finite difference Laplacian matrix).
 
 ### What Are Trait Protocols?
 
@@ -112,7 +112,7 @@ Trait protocols move **capability checking from runtime to design time**. If a g
 
 ## Core Trait Protocols
 
-MFGarchon provides the following trait protocols for geometry capabilities:
+MFGArchon provides the following trait protocols for geometry capabilities:
 
 ### 1. SupportsLaplacian
 
@@ -881,5 +881,5 @@ def my_solver(geometry: SupportsLaplacian):
 ---
 
 **Last Updated**: 2026-01-18
-**Author**: MFGarchon Documentation Team
+**Author**: MFGArchon Documentation Team
 **Related Issues**: #590 (Geometry Traits), #594 (Documentation)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Custom secrets scanning script for MFGarchon security pipeline.
+Custom secrets scanning script for MFGArchon security pipeline.
 Scans for hardcoded secrets, API keys, and sensitive information.
 """
 
