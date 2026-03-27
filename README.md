@@ -184,6 +184,7 @@ If you use MFGArchon in your research, please cite it. You can use GitHub's
   title={{MFGArchon}: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jiongyi},
   year={2025},
+  doi={10.5281/zenodo.19251868},
   url={https://github.com/derrring/MFGArchon}
 }
 ```
