@@ -97,10 +97,13 @@ def create_paired_solvers(
     elif scheme == NumericalScheme.GFDM:
         hjb_solver, fp_solver = _create_gfdm_pair(problem, hjb_config, fp_config)
 
+    elif scheme in (NumericalScheme.FEM_P1, NumericalScheme.FEM_P2):
+        hjb_solver, fp_solver = _create_fem_pair(problem, scheme, hjb_config, fp_config)
+
     else:
         raise NotImplementedError(
             f"Scheme {scheme.value} is defined but not yet implemented in factory. "
-            f"Available schemes: FDM_UPWIND, FDM_CENTERED, SL_LINEAR, GFDM"
+            f"Available schemes: FDM_UPWIND, FDM_CENTERED, SL_LINEAR, GFDM, FEM_P1, FEM_P2"
         )
 
     # Validate duality
@@ -260,6 +263,41 @@ def _create_gfdm_pair(
     return hjb_solver, fp_solver
 
 
+def _create_fem_pair(
+    problem: MFGProblem,
+    scheme: NumericalScheme,
+    hjb_config: dict[str, Any],
+    fp_config: dict[str, Any],
+) -> tuple[BaseHJBSolver, BaseFPSolver]:
+    """
+    Create FEM HJB-FP solver pair using scikit-fem backend.
+
+    Discrete duality (Type A): Stiffness and mass matrices are symmetric,
+    so L_FP = L_HJB^T exactly.
+
+    Requires:
+        - Unstructured mesh geometry (Mesh2D/Mesh3D with mesh_data)
+        - scikit-fem installed (pip install scikit-fem)
+
+    Args:
+        problem: MFG problem with unstructured mesh geometry
+        scheme: FEM_P1 or FEM_P2
+        hjb_config: HJB solver config
+        fp_config: FP solver config
+
+    Returns:
+        (HJBFEMSolver, FPFEMSolver) tuple
+    """
+    from mfgarchon.alg.numerical.fem import FPFEMSolver, HJBFEMSolver
+
+    order = 1 if scheme == NumericalScheme.FEM_P1 else 2
+
+    hjb_solver = HJBFEMSolver(problem, order=order, **hjb_config)
+    fp_solver = FPFEMSolver(problem, order=order, **fp_config)
+
+    return hjb_solver, fp_solver
+
+
 def get_recommended_scheme(problem: MFGProblem) -> NumericalScheme:
     """
     Recommend a numerical scheme based on problem geometry (Phase 3 integration).
@@ -279,11 +317,15 @@ def get_recommended_scheme(problem: MFGProblem) -> NumericalScheme:
         This is a placeholder for Phase 3 auto-selection logic.
         For now, returns FDM_UPWIND as safe default.
     """
-    # Phase 3 TODO: Implement geometry introspection
-    # - Check if geometry.is_structured()
-    # - Check if geometry has complex obstacles
-    # - Check dimension
-    # - Return appropriate scheme
+    from mfgarchon.geometry.protocol import GeometryType
 
-    # Default: FDM upwind (stable, works everywhere)
-    return NumericalScheme.FDM_UPWIND
+    geo_type = getattr(problem.geometry, "geometry_type", None)
+
+    if geo_type == GeometryType.UNSTRUCTURED_MESH:
+        # Unstructured mesh -> FEM (Issue #773)
+        return NumericalScheme.FEM_P1
+    elif geo_type == GeometryType.CARTESIAN_GRID:
+        return NumericalScheme.FDM_UPWIND
+    else:
+        # Default: FDM upwind (stable, works everywhere)
+        return NumericalScheme.FDM_UPWIND
