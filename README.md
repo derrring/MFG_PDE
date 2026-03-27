@@ -2,6 +2,7 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![CI/CD](https://github.com/derrring/MFGArchon/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/MFGArchon/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/derrring/MFGArchon/graph/badge.svg?token=HGZFRSF5V6)](https://codecov.io/gh/derrring/MFGArchon)
 [![Release](https://img.shields.io/github/v/release/derrring/MFGArchon)](https://github.com/derrring/MFGArchon/releases)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19251868.svg)](https://doi.org/10.5281/zenodo.19251868)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/derrring/MFGArchon/blob/main/LICENSE)
