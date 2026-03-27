@@ -7,10 +7,11 @@ authors:
     given-names: Jiongyi
     alias: Jeremy
     email: jiongyiwang@gmail.com
+    orcid: "https://orcid.org/0009-0003-7717-2361"
 version: "0.17.13"
-date-released: "2026-02-15"
-url: "https://github.com/derrring/mfgarchon"
-repository-code: "https://github.com/derrring/mfgarchon"
+date-released: "2026-03-27"
+url: "https://github.com/derrring/MFGArchon"
+repository-code: "https://github.com/derrring/MFGArchon"
 license: MIT
 keywords:
   - mean-field-games
@@ -18,6 +19,8 @@ keywords:
   - numerical-methods
   - hamilton-jacobi-bellman
   - fokker-planck
+  - finite-element-method
+  - generalized-finite-differences
 abstract: >-
   A comprehensive Python framework for solving Mean Field Game (MFG) systems
   using modern numerical methods, GPU acceleration, and reinforcement learning.

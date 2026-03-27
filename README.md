@@ -180,11 +180,11 @@ If you use MFGArchon in your research, please cite it. You can use GitHub's
 "Cite this repository" button in the sidebar, or use the following BibTeX:
 
 ```bibtex
-@software{mfgarchon,
-  title={MFGArchon: A Research-Grade Framework for Mean Field Games},
+@software{MFGArchon2025,
+  title={{MFGArchon}: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jiongyi},
   year={2025},
-  url={https://github.com/derrring/mfgarchon}
+  url={https://github.com/derrring/MFGArchon}
 }
 ```
 
