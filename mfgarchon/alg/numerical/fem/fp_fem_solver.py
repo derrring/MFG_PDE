@@ -67,7 +67,8 @@ class FPFEMSolver(BaseFPSolver):
         self._K = assemble_stiffness(self._basis)
         self._M = assemble_mass(self._basis)
 
-        self._boundary_dofs = self._skfem_mesh.boundary_nodes()
+        # BC from problem geometry (same framework as FDM/GFDM)
+        self._bc = getattr(problem.geometry, "boundary_conditions", None)
 
         logger.info(f"FPFEMSolver initialized: {self._n_dof} DOFs, {self._skfem_mesh.t.shape[1]} elements")
 
@@ -117,9 +118,10 @@ class FPFEMSolver(BaseFPSolver):
         # Base system matrix: M/dt + D*K (no advection yet)
         A_base = self._M / dt + D * self._K
 
-        # For no-flux BC on FP: don't condense boundary DOFs.
-        # The natural (Neumann) BC in weak form is zero-flux, which is the default.
-        # Simply solve the full system.
+        # BC handling via framework adapter
+        from .bc_adapter import apply_bc_to_fem_system, is_pure_neumann
+
+        pure_neumann = is_pure_neumann(self._bc)
 
         for n in range(Nt):
             rhs = (self._M / dt) @ M[n]
@@ -132,8 +134,18 @@ class FPFEMSolver(BaseFPSolver):
             else:
                 A_system = A_base
 
-            # Solve (full system — natural BC = no-flux)
-            M[n + 1] = spsolve(A_system, rhs)
+            if pure_neumann:
+                # Natural BC (no-flux) — solve full system
+                M[n + 1] = spsolve(A_system, rhs)
+            else:
+                # Has Dirichlet segments (e.g., absorbing boundaries)
+                A_bc, rhs_bc = apply_bc_to_fem_system(A_system, rhs, self._basis, self._bc)
+                from .bc_adapter import get_dirichlet_dofs_and_values
+
+                d_dofs, d_vals = get_dirichlet_dofs_and_values(self._basis, self._bc)
+                interior = np.setdiff1d(np.arange(N), d_dofs)
+                M[n + 1, interior] = spsolve(A_bc, rhs_bc)
+                M[n + 1, d_dofs] = d_vals
 
             # Enforce non-negativity
             M[n + 1] = np.maximum(M[n + 1], 0.0)
