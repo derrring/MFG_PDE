@@ -904,9 +904,9 @@ class TensorProductGrid(
             UserWarning,
             stacklevel=2,
         )
-        from mfgarchon.geometry.boundary.fem_bc_3d import BoundaryConditionManager3D
+        from mfgarchon.geometry.boundary.fem_bc import FEMBoundaryConditionManager
 
-        return BoundaryConditionManager3D()
+        return FEMBoundaryConditionManager(mesh=None)
 
     # ============================================================================
     # Boundary Trait Implementations (Issue #590 - Phase 1.2)

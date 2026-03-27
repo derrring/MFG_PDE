@@ -44,40 +44,38 @@ if TYPE_CHECKING:
 # Import dimension-specific implementations
 # =============================================================================
 
-# 1D implementations (point-based boundaries)
-from .fem_bc_1d import (
+# Consolidated dimension-agnostic FEM BC classes (Issue #802 Phase 4)
+from .fem_bc import (
     BoundaryCondition1D,
+    BoundaryCondition2D,
+    BoundaryCondition3D,
     BoundaryConditionManager1D,
+    BoundaryConditionManager2D,
+    BoundaryConditionManager3D,
     DirichletBC1D,
+    DirichletBC2D,
+    DirichletBC3D,
     MFGBoundaryHandler1D,
+    MFGBoundaryHandler2D,
+    MFGBoundaryHandler3D,
     NeumannBC1D,
+    NeumannBC2D,
+    NeumannBC3D,
     PeriodicBC1D,
+    PeriodicBC2D,
+    PeriodicBC3D,
     RobinBC1D,
-    create_interval_boundary_conditions,
+    RobinBC2D,
+    RobinBC3D,
 )
 
-# 2D implementations (edge-based boundaries)
+# Dimension-specific factory functions (remain in original files)
+from .fem_bc_1d import create_interval_boundary_conditions
 from .fem_bc_2d import (
-    BoundaryCondition2D,
-    BoundaryConditionManager2D,
-    DirichletBC2D,
-    MFGBoundaryHandler2D,
-    NeumannBC2D,
-    PeriodicBC2D,
-    RobinBC2D,
     create_circle_boundary_conditions,
     create_rectangle_boundary_conditions,
 )
-
-# 3D implementations (face-based boundaries)
 from .fem_bc_3d import (
-    BoundaryCondition3D,
-    BoundaryConditionManager3D,
-    DirichletBC3D,
-    MFGBoundaryHandler3D,
-    NeumannBC3D,
-    PeriodicBC3D,
-    RobinBC3D,
     create_box_boundary_conditions,
     create_sphere_boundary_conditions,
 )
