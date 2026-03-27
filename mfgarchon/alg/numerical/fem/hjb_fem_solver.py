@@ -74,8 +74,8 @@ class HJBFEMSolver(BaseHJBSolver):
         self._K = assemble_stiffness(self._basis)  # Stiffness (Laplacian)
         self._M = assemble_mass(self._basis)  # Mass
 
-        # Boundary DOFs for Dirichlet BC
-        self._boundary_dofs = self._skfem_mesh.boundary_nodes()
+        # BC from problem geometry (same framework as FDM/GFDM)
+        self._bc = self.get_boundary_conditions()
 
         logger.info(
             f"HJBFEMSolver initialized: {self._n_dof} DOFs, {self._skfem_mesh.t.shape[1]} elements, order={order}"
@@ -178,16 +178,21 @@ class HJBFEMSolver(BaseHJBSolver):
                 # Weak form: integral(H * phi_i) = M @ H_values
                 rhs += self._M @ H_values
 
-            # Apply Dirichlet BC (u = 0 at boundary for Neumann-type problems)
-            # For general BC, this would use the BC framework
-            interior = np.setdiff1d(np.arange(N), self._boundary_dofs)
-            A_int = A_system[np.ix_(interior, interior)]
-            rhs_int = rhs[interior] - A_system[np.ix_(interior, self._boundary_dofs)] @ np.zeros(
-                len(self._boundary_dofs)
-            )
+            # Apply BC from framework (same API as FDM/GFDM solvers)
+            from .bc_adapter import apply_bc_to_fem_system, is_pure_neumann
 
-            # Solve
-            U[n, interior] = spsolve(A_int, rhs_int)
+            if is_pure_neumann(self._bc):
+                # No-flux / Neumann: solve full system (natural BC)
+                U[n] = spsolve(A_system, rhs)
+            else:
+                # Has Dirichlet segments: condense system
+                A_bc, rhs_bc = apply_bc_to_fem_system(A_system, rhs, self._basis, self._bc)
+                from .bc_adapter import get_dirichlet_dofs_and_values
+
+                d_dofs, d_vals = get_dirichlet_dofs_and_values(self._basis, self._bc)
+                interior = np.setdiff1d(np.arange(N), d_dofs)
+                U[n, interior] = spsolve(A_bc, rhs_bc)
+                U[n, d_dofs] = d_vals
 
         return U
 
