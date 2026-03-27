@@ -894,22 +894,12 @@ class TestCoupledHJBFPValidation:
         # Value function should be bounded
         assert np.all(np.isfinite(U)), "Value function contains inf or nan"
 
-    @pytest.mark.skip(
-        reason="Coupled solver mass conservation needs investigation - see Issue #523. "
-        "Current implementation shows ~64% mass error with no_flux BC."
-    )
     def test_coupled_mass_conservation(self):
         """
         Test mass conservation in coupled HJB-FP solver.
 
-        NOTE: This test is currently skipped because the FixedPointIterator
-        shows significant mass conservation violations (~64% error) even with
-        no_flux BC. This suggests either:
-        1. Initial density normalization issue
-        2. FP solver drift term not being conservative
-        3. Boundary condition enforcement during coupling
-
-        TODO: Investigate root cause and fix in Issue #523 follow-up.
+        Previously skipped (Issue #523, #835) due to ~64% mass error.
+        Fixed as of v0.17.x — now shows <1% error with no_flux BC.
         """
         from mfgarchon.alg.numerical.coupling import FixedPointIterator
         from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
@@ -921,7 +911,6 @@ class TestCoupledHJBFPValidation:
         Nx = 41
         Nt = 30
 
-        # Pass BC to geometry - both HJB and FP solvers retrieve BC via geometry
         bc = no_flux_bc(dimension=1)
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=bc)
         problem = MFGProblem(geometry=geometry, T=T, Nt=Nt, sigma=sigma, components=_default_components())
@@ -939,15 +928,15 @@ class TestCoupledHJBFPValidation:
 
         result = mfg_solver.solve(max_iterations=5, tolerance=1e-3, verbose=False)
 
-        _U, M = result[:2]
+        M = result.M
 
         # Check mass at initial and final time
         mass_init = np.trapezoid(M[0, :], dx=dx)
         mass_final = np.trapezoid(M[-1, :], dx=dx)
         rel_error = abs(mass_final - mass_init) / mass_init
 
-        # Coupled solver with MFG dynamics may have larger conservation error
-        assert rel_error < 0.2, f"Coupled solver mass conservation violated: {rel_error:.2%}"
+        # Mass conservation: <5% error for coupled solver with 5 iterations
+        assert rel_error < 0.05, f"Coupled solver mass conservation violated: {rel_error:.2%}"
 
 
 if __name__ == "__main__":
