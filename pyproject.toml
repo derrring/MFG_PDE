@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.17.14"  # v0.17.14: scikit-fem FEM solvers (#773), display name MFGArchon
+version = "0.17.15"  # v0.17.14: scikit-fem FEM solvers (#773), display name MFGArchon
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
