@@ -4,7 +4,7 @@
 [![CI/CD](https://github.com/derrring/MFGArchon/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/MFGArchon/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/derrring/MFGArchon/graph/badge.svg?token=HGZFRSF5V6)](https://codecov.io/gh/derrring/MFGArchon)
 [![Release](https://img.shields.io/github/v/release/derrring/MFGArchon)](https://github.com/derrring/MFGArchon/releases)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19251868.svg)](https://doi.org/10.5281/zenodo.19251868)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19251867.svg)](https://doi.org/10.5281/zenodo.19251867)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/derrring/MFGArchon/blob/main/LICENSE)
 
 A Python framework for solving Mean Field Game systems using modern numerical methods, GPU acceleration, and reinforcement learning.
@@ -185,7 +185,7 @@ If you use MFGArchon in your research, please cite it. You can use GitHub's
   title={{MFGArchon}: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jiongyi},
   year={2025},
-  doi={10.5281/zenodo.19251868},
+  doi={10.5281/zenodo.19251867},
   url={https://github.com/derrring/MFGArchon}
 }
 ```
