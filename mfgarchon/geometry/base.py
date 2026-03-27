@@ -1041,108 +1041,149 @@ class UnstructuredMesh(Geometry):
         }
 
     # ============================================================================
-    # Solver Operation Interface (FEM-style for unstructured meshes)
+    # Solver Operation Interface (FEM via scikit-fem, Issue #773 Phase 2)
     # ============================================================================
+
+    def _ensure_fem_operators(self) -> None:
+        """Lazily initialize scikit-fem basis and assemble operators on first use."""
+        if hasattr(self, "_fem_basis"):
+            return
+
+        if self.mesh_data is None:
+            raise ValueError("Mesh not generated. Call generate_mesh() first.")
+
+        try:
+            from mfgarchon.alg.numerical.fem.assembly import (
+                assemble_mass,
+                assemble_stiffness,
+                create_basis,
+            )
+            from mfgarchon.alg.numerical.fem.mesh_adapter import meshdata_to_skfem
+        except ImportError:
+            raise ImportError(
+                "scikit-fem is required for FEM operators on unstructured meshes. Install with: pip install scikit-fem"
+            ) from None
+
+        self._skfem_mesh = meshdata_to_skfem(self.mesh_data)
+        self._fem_basis = create_basis(self._skfem_mesh, order=1)
+        self._fem_stiffness = assemble_stiffness(self._fem_basis)
+        self._fem_mass = assemble_mass(self._fem_basis)
+
+        # Mass-lumped diagonal for pointwise operations
+        self._fem_mass_lumped = np.array(self._fem_mass.sum(axis=1)).ravel()
+        self._fem_mass_lumped[self._fem_mass_lumped < 1e-15] = 1e-15
+
+    def get_stiffness_matrix(self):
+        """Return assembled FEM stiffness matrix K (Laplacian discretization).
+
+        K[i,j] = integral(grad(phi_i) . grad(phi_j)). Scipy CSR format.
+        For the diffusion term: D * K @ u approximates D * Laplacian(u).
+        """
+        self._ensure_fem_operators()
+        return self._fem_stiffness
+
+    def get_mass_matrix(self):
+        """Return assembled FEM mass matrix M.
+
+        M[i,j] = integral(phi_i * phi_j). Scipy CSR format.
+        Used for time stepping: (M/dt + D*K) u^{n+1} = M/dt * u^n.
+        """
+        self._ensure_fem_operators()
+        return self._fem_mass
+
+    def get_fem_basis(self):
+        """Return scikit-fem Basis object for advanced assembly."""
+        self._ensure_fem_operators()
+        return self._fem_basis
 
     def get_laplacian_operator(self) -> Callable:
         """
         Return FEM Laplacian operator for unstructured mesh.
 
+        Uses scikit-fem stiffness matrix: Laplacian(u) = M_lumped^{-1} @ K @ u.
+
         Returns:
-            Function with signature: (u: NDArray, vertex_idx: int) -> float
-
-        Note: This is a placeholder implementation. Full FEM Laplacian requires
-        assembly of mass and stiffness matrices.
+            Function: (u: NDArray) -> NDArray, returns Laplacian at all vertices.
         """
+        self._ensure_fem_operators()
+        K = self._fem_stiffness
+        M_inv = 1.0 / self._fem_mass_lumped
 
-        def laplacian_fem_placeholder(u: NDArray, vertex_idx: int) -> float:
-            """
-            Placeholder FEM Laplacian (returns 0.0).
+        def laplacian_fem(u: NDArray) -> NDArray:
+            return M_inv * (K @ u.ravel())
 
-            TODO: Implement full FEM assembly with mass/stiffness matrices.
-
-            Args:
-                u: Solution vector at mesh vertices
-                vertex_idx: Vertex index
-
-            Returns:
-                Laplacian value (currently 0.0)
-            """
-            return 0.0
-
-        return laplacian_fem_placeholder
+        return laplacian_fem
 
     def get_gradient_operator(self) -> Callable:
         """
         Return FEM gradient operator for unstructured mesh.
 
+        Computes gradient via L2 projection of element-wise gradients.
+
         Returns:
-            Function with signature: (u: NDArray, vertex_idx: int) -> NDArray
-
-        Note: This is a placeholder implementation. Full FEM gradient requires
-        element-wise gradient reconstruction.
+            Function: (u: NDArray) -> NDArray, shape (N_vertices, dim).
         """
+        self._ensure_fem_operators()
+        basis = self._fem_basis
+        M_inv = 1.0 / self._fem_mass_lumped
+        dim = self._dimension
 
-        def gradient_fem_placeholder(u: NDArray, vertex_idx: int) -> NDArray:
-            """
-            Placeholder FEM gradient (returns zeros).
+        def gradient_fem(u: NDArray) -> NDArray:
+            from skfem import LinearForm
 
-            TODO: Implement FEM gradient with element-wise reconstruction.
+            u_flat = u.ravel()
+            grad = np.zeros((len(u_flat), dim))
 
-            Args:
-                u: Solution vector at mesh vertices
-                vertex_idx: Vertex index
+            for d in range(dim):
+                du_dx = basis.interpolate(u_flat).grad[d]
 
-            Returns:
-                Gradient vector (currently zeros)
-            """
-            return np.zeros(self._dimension)
+                @LinearForm
+                def grad_form(v, w, *, _du=du_dx):
+                    return _du * v.value
 
-        return gradient_fem_placeholder
+                rhs_d = grad_form.assemble(basis)
+                grad[:, d] = M_inv * rhs_d
+
+            return grad
+
+        return gradient_fem
 
     def get_interpolator(self) -> Callable:
         """
-        Return barycentric interpolator for unstructured mesh.
+        Return FEM interpolator for unstructured mesh.
+
+        Uses nearest-neighbor lookup. For higher accuracy, use scikit-fem's
+        element-based interpolation via Basis.probes().
 
         Returns:
-            Function with signature: (u: NDArray, point: NDArray) -> float
-
-        Note: This is a placeholder. Full implementation requires finding
-        containing element and computing barycentric coordinates.
+            Function: (u: NDArray, point: NDArray) -> float.
         """
+        if self.mesh_data is None:
+            raise ValueError("Mesh not generated")
 
-        def interpolate_barycentric_placeholder(u: NDArray, point: NDArray) -> float:
-            """
-            Placeholder barycentric interpolation (nearest neighbor).
+        vertices = self.mesh_data.vertices
 
-            TODO: Implement proper barycentric interpolation with element search.
-
-            Args:
-                u: Solution vector at mesh vertices
-                point: Physical coordinates
-
-            Returns:
-                Interpolated value (currently nearest neighbor)
-            """
-            if self.mesh_data is None:
-                raise ValueError("Mesh not generated")
-
-            # Simple nearest neighbor for now
-            vertices = self.mesh_data.vertices
+        def interpolate_nearest(u: NDArray, point: NDArray) -> float:
             distances = np.linalg.norm(vertices - point, axis=1)
             nearest_idx = int(np.argmin(distances))
             return float(u[nearest_idx])
 
-        return interpolate_barycentric_placeholder
+        return interpolate_nearest
 
     def get_boundary_handler(self):
         """
-        Return boundary condition handler.
-
-        Returns:
-            Dict with boundary information (placeholder)
+        Return boundary condition handler with mesh boundary information.
         """
-        return {"type": "unstructured_mesh", "implementation": "placeholder"}
+        if self.mesh_data is None:
+            return {"type": "unstructured_mesh", "boundary_faces": None}
+
+        self._ensure_fem_operators()
+        return {
+            "type": "unstructured_mesh",
+            "boundary_nodes": self._skfem_mesh.boundary_nodes(),
+            "boundary_facets": self._skfem_mesh.boundary_facets(),
+            "n_dof": self._fem_basis.N,
+        }
 
     # ============================================================================
     # Boundary Methods (FEM-specific overrides)
