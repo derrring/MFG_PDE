@@ -1,8 +1,8 @@
-# MFGarchon Improvements Summary - 2025-11-23
+# MFGArchon Improvements Summary - 2025-11-23
 
 ## Overview
 
-This document summarizes three critical improvements to MFGarchon based on gaps discovered during Protocol v1.4 implementation:
+This document summarizes three critical improvements to MFGArchon based on gaps discovered during Protocol v1.4 implementation:
 
 1. **Complete removal of deprecated `ExampleMFGProblem`**
 2. **Fixed Gap 1: 2D/nD Hamiltonian indexing**
@@ -230,7 +230,7 @@ assert problem.u_fin.max() == 125.0  # (10-0)^2 + (5-0)^2
 ### Problem
 
 **Current Limitation**:
-- MFGarchon only supports **uniform** BC types (periodic, Dirichlet, Neumann)
+- MFGArchon only supports **uniform** BC types (periodic, Dirichlet, Neumann)
 - Cannot specify different BC on different boundary segments
 - **Critical blocker**: Protocol v1.4 requires mixed BC:
   - Exit (x=10, y∈[4.25, 5.75]): Dirichlet `u=0` (absorbing)
@@ -392,6 +392,6 @@ SUCCESS: All fixes working!
 
 ---
 
-**Author**: MFGarchon Development Team
+**Author**: MFGArchon Development Team
 **Date**: 2025-11-23
 **Version**: v0.13.0-dev

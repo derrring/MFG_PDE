@@ -1,4 +1,4 @@
-# [WIP] Periodic Boundary Conditions (PBC) Implementation in MFGarchon
+# [WIP] Periodic Boundary Conditions (PBC) Implementation in MFGArchon
 
 **Status**: [WIP] - Under Development and Review
 **Version**: 0.4 (Added compatibility requirements)
@@ -9,7 +9,7 @@
 
 Periodic Boundary Conditions (PBCs) play a crucial role in many physics and engineering problems, especially when simulating infinite periodic systems or eliminating artificial boundary effects. In the field of Mean Field Games (MFG), PBCs are also widely used to model the behavior of particles, crowds, or agents in macroscopically large or infinite spaces.
 
-This report aims to detail the implementation strategy and architectural considerations for PBCs within the `MFGarchon` library, with the goal of building a solution that is both general-purpose and high-performance. We will analyze the topological nature of PBCs, explore the two core implementation approaches—real space and Fourier space—and propose a "three-tier" implementation architecture. We will also highlight potential "performance killers" and "logical pitfalls" in numerical implementation.
+This report aims to detail the implementation strategy and architectural considerations for PBCs within the `MFGArchon` library, with the goal of building a solution that is both general-purpose and high-performance. We will analyze the topological nature of PBCs, explore the two core implementation approaches—real space and Fourier space—and propose a "three-tier" implementation architecture. We will also highlight potential "performance killers" and "logical pitfalls" in numerical implementation.
 
 ## 2. The Topological Nature and Numerical Differences of PBCs
 
@@ -50,13 +50,13 @@ This topological property is directly reflected in the algebraic structure of th
     \end{pmatrix} $$
     This fundamental difference in algebraic structure is the primary reason why PBCs must be treated distinctly from other BCs in implementation.
 
-## 3. PBC Implementation Architecture in MFGarchon: The "Three-Tier" Model
+## 3. PBC Implementation Architecture in MFGArchon: The "Three-Tier" Model
 
-To balance generality, robustness, and performance, `MFGarchon` will adopt a tiered architecture for handling PBCs.
+To balance generality, robustness, and performance, `MFGArchon` will adopt a tiered architecture for handling PBCs.
 
 ### 3.1. Foundational Tier: Real Space Topology
 
-This is the core and foundation for handling PBCs in `MFGarchon`, providing the broadest generality.
+This is the core and foundation for handling PBCs in `MFGArchon`, providing the broadest generality.
 
 #### **Implementation Strategy: Ghost Cells (Halo Regions)**
 
@@ -232,9 +232,9 @@ where $Z = \iint \exp(-V/T_{eff}) \, dx\,dy$ and $T_{eff} = C_2 + \sigma^2/2$.
 
 ... (Remaining sections on `Evolution Path` and `References` would be translated similarly) ...
 
-## 5. Core Evolution Path for PBC in MFGarchon
+## 5. Core Evolution Path for PBC in MFGArchon
 
-This architectural report establishes the **"Topology First, Performance Specialized"** roadmap. The evolution of PBC support in `MFGarchon` will follow these steps:
+This architectural report establishes the **"Topology First, Performance Specialized"** roadmap. The evolution of PBC support in `MFGArchon` will follow these steps:
 
 1.  **Phase 1: Foundational Bedrock (Real Space Topology)**
     *   Refine the `Grid` object's topology management to **fully support Ghost-Cell-based periodic boundaries**, ensuring interfaces like `get_neighbors(index)` can handle the wrap-around logic seamlessly.
@@ -250,7 +250,7 @@ This architectural report establishes the **"Topology First, Performance Special
     *   Implement the **`method="auto"` logic** in the factory layer (`problem.solve()`) to intelligently route to the most appropriate solver based on problem characteristics.
     *   Provide clear documentation and error messages to guide users in selecting and debugging PBC-related issues.
 
-By following this architecture and its implementation details, `MFGarchon` will offer powerful, flexible, and high-performance handling of periodic boundary conditions to meet the demands of Mean Field Game research and applications.
+By following this architecture and its implementation details, `MFGArchon` will offer powerful, flexible, and high-performance handling of periodic boundary conditions to meet the demands of Mean Field Game research and applications.
 
 ---
 

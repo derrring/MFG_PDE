@@ -1,4 +1,4 @@
-# [DEFERRED] Optimization Integration Analysis for MFGarchon
+# [DEFERRED] Optimization Integration Analysis for MFGArchon
 
 **Date**: July 31, 2025  
 **Status**: DEFERRED - Lower priority after core MFG functionality  
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Analysis of optimization integration options for MFGarchon concluded that a **minimal integration layer** is preferred over custom optimization implementations. The focus should remain on leveraging mature optimization libraries (scipy, optax, cvxpy) with MFG-specific convenience functions rather than reimplementing optimization algorithms.
+Analysis of optimization integration options for MFGArchon concluded that a **minimal integration layer** is preferred over custom optimization implementations. The focus should remain on leveraging mature optimization libraries (scipy, optax, cvxpy) with MFG-specific convenience functions rather than reimplementing optimization algorithms.
 
 ## Optimization Library Comparison
 

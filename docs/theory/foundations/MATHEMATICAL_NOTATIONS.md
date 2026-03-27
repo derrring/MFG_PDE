@@ -1,4 +1,4 @@
-# MFGarchon Theory Documentation: Notation Standards and Consistency Guide
+# MFGArchon Theory Documentation: Notation Standards and Consistency Guide
 
 **Document Type**: Cross-Document Standards
 **Created**: October 8, 2025

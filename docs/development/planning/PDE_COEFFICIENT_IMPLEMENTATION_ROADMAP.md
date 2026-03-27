@@ -6,7 +6,7 @@
 
 ## Purpose
 
-This document provides **status tracking and task checklists** for implementing flexible drift and diffusion coefficients in MFGarchon.
+This document provides **status tracking and task checklists** for implementing flexible drift and diffusion coefficients in MFGArchon.
 
 **For detailed technical specifications, algorithms, and implementation guides**, see:
 - **`PHASE_2_DESIGN_STATE_DEPENDENT_COEFFICIENTS.md`** - Complete implementation spec (1,380 lines)

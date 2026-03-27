@@ -14,7 +14,7 @@
 4. [Mollifiers and Regularization](#mollifiers-and-regularization)
 5. [Convolution and Approximation](#convolution-and-approximation)
 6. [Kernel Types](#kernel-types)
-7. [Applications in MFGarchon](#applications-in-mfgarchon)
+7. [Applications in MFGArchon](#applications-in-mfgarchon)
 8. [References](#references)
 
 ---
@@ -233,7 +233,7 @@ If $\int K_h = 1$, then $(f * K_h)(\mathbf{x}) \to f(\mathbf{x})$ as $h \to 0$ (
 Given particles $\{\mathbf{x}_i\}_{i=1}^N$, approximate density:
 $$\rho_h(\mathbf{x}) = \frac{1}{N} \sum_{i=1}^N K_h(\mathbf{x} - \mathbf{x}_i)$$
 
-**Used in MFGarchon**: `FPParticleSolver` in hybrid mode uses KDE to project particle density onto grid.
+**Used in MFGArchon**: `FPParticleSolver` in hybrid mode uses KDE to project particle density onto grid.
 
 ### 5.3 SPH Approximation
 
@@ -256,7 +256,7 @@ $$w_{ij} = K_h(\mathbf{x}_i - \mathbf{x}_j)$$
 Minimize weighted residual:
 $$\min_{\nabla f} \sum_j w_{ij} \left[ f(\mathbf{x}_j) - f(\mathbf{x}_i) - \nabla f \cdot (\mathbf{x}_j - \mathbf{x}_i) \right]^2$$
 
-**Used in MFGarchon**: `gfdm_operators.py` uses Gaussian RBF weights for GFDM derivative approximation.
+**Used in MFGArchon**: `gfdm_operators.py` uses Gaussian RBF weights for GFDM derivative approximation.
 
 ---
 
@@ -275,7 +275,7 @@ $$K_h(r) = \frac{1}{(\pi h^2)^{d/2}} \exp\left(-\frac{r^2}{h^2}\right)$$
 - Infinite support (practically zero for $r > 3h$)
 - Fourier transform: Gaussian (ideal low-pass filter)
 
-**MFGarchon Implementation**: `GaussianKernel()` in `mfgarchon.utils.numerical.kernels`
+**MFGArchon Implementation**: `GaussianKernel()` in `mfgarchon.utils.numerical.kernels`
 
 ### 6.2 Wendland Kernels (Compact Support)
 
@@ -325,7 +325,7 @@ $$\frac{dk}{dq} = \begin{cases}
 Wendland kernels require normalization constants $\sigma_d$:
 $$K_h(r) = \frac{\sigma_d}{h^d} k\left(\frac{r}{h}\right)$$
 
-**MFGarchon Implementation**: `WendlandKernel(k, dimension)` with $k \in \{0, 1, 2, 3\}$
+**MFGArchon Implementation**: `WendlandKernel(k, dimension)` with $k \in \{0, 1, 2, 3\}$
 - Unified parameterized class replaces separate C0/C2/C4/C6 classes
 - Automatic polynomial coefficient generation based on $k$
 - Factory: `create_kernel('wendland_c2')` → `WendlandKernel(k=1)`
@@ -372,7 +372,7 @@ The cubic spline is the B-spline of order 4, obtained by convolving the box func
 - Computational efficiency
 - Numerical stability
 
-**MFGarchon Implementation**: `CubicSplineKernel(dimension=d)`
+**MFGArchon Implementation**: `CubicSplineKernel(dimension=d)`
 
 ### 6.4 Quintic Spline (B-Spline M6)
 
@@ -435,7 +435,7 @@ However, the larger support radius (3h vs 2h) increases computational cost by ~3
 | Accuracy | Good | Excellent |
 | Cost | Low | Medium |
 
-**MFGarchon Implementation**: `QuinticSplineKernel(dimension=d)`
+**MFGArchon Implementation**: `QuinticSplineKernel(dimension=d)`
 
 **Note on Implementation**: B-splines are kept as separate classes (cubic and quintic) rather than parameterized by degree because:
 1. Only these two orders are standard in SPH literature
@@ -477,11 +477,11 @@ These simple kernels are useful for:
 - Educational examples
 - Cases where C^n continuity is not critical
 
-**MFGarchon Implementation**: `CubicKernel()`, `QuarticKernel()`
+**MFGArchon Implementation**: `CubicKernel()`, `QuarticKernel()`
 
 ---
 
-## 7. Applications in MFGarchon
+## 7. Applications in MFGArchon
 
 ### 6.1 Kernel Density Estimation (KDE)
 
@@ -577,7 +577,7 @@ u_interp = Σ_i w_i u_i / Σ_i w_i
 
 ## Summary
 
-This document provides the mathematical foundation for the `kernels` module in MFGarchon. Key concepts:
+This document provides the mathematical foundation for the `kernels` module in MFGArchon. Key concepts:
 
 1. **Kernels** are normalized, non-negative functions for smoothing and approximation
 2. **Mollifiers** are $C^\infty$ compactly supported kernels for regularization

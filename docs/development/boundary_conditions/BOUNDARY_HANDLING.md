@@ -6,7 +6,7 @@
 
 ## Purpose
 
-This document defines the **unified workflow** for boundary condition handling across all MFGarchon solvers. It eliminates duplicate BC detection logic and mixin hell by standardizing how solvers use the existing geometry and BC infrastructure.
+This document defines the **unified workflow** for boundary condition handling across all MFGArchon solvers. It eliminates duplicate BC detection logic and mixin hell by standardizing how solvers use the existing geometry and BC infrastructure.
 
 ## Problem: Mixin Hell
 

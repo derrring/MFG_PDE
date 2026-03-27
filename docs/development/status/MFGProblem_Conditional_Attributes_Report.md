@@ -13,7 +13,7 @@
 
 ## Executive Summary
 
-`MFGProblem` is the central domain object in MFGarchon, representing a Mean Field Game problem. Currently, it has ~30 public attributes whose availability depends on the initialization mode (1D legacy, n-D grid, geometry, network, mesh). This creates type safety issues and runtime errors.
+`MFGProblem` is the central domain object in MFGArchon, representing a Mean Field Game problem. Currently, it has ~30 public attributes whose availability depends on the initialization mode (1D legacy, n-D grid, geometry, network, mesh). This creates type safety issues and runtime errors.
 
 Two architectural solutions are proposed:
 - **Option A**: Domain-Specific Subclasses

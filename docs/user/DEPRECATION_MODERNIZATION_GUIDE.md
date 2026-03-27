@@ -9,7 +9,7 @@
 
 ## Overview
 
-This guide documents deprecated usage patterns in MFGarchon and provides migration paths to modern APIs. All deprecated patterns will continue to work until v1.0.0 but will emit deprecation warnings.
+This guide documents deprecated usage patterns in MFGArchon and provides migration paths to modern APIs. All deprecated patterns will continue to work until v1.0.0 but will emit deprecation warnings.
 
 ---
 
@@ -77,13 +77,13 @@ from mfgarchon.utils.progress import console, Progress, Panel, Table
 from tqdm import tqdm
 from tqdm.auto import tqdm
 
-# New MFGarchon progress (use this)
+# New MFGArchon progress (use this)
 from mfgarchon.utils.progress import tqdm  # Alias for RichProgressBar
 from mfgarchon.utils.progress import solver_progress  # Preferred for solvers
 ```
 
 **Benefits**:
-- ✅ Consistent Rich-based UI across all MFGarchon tools
+- ✅ Consistent Rich-based UI across all MFGArchon tools
 - ✅ No fallback complexity (Rich is required, not optional)
 - ✅ Enhanced solver-specific utilities with error tracking
 - ✅ Unified console output with panels and tables
@@ -857,7 +857,7 @@ geometry.plot(mode='quality')
 - Document conversion pattern
 
 ### Phase 3: Systematic Migration (✅ Complete - 2025-12-18)
-- ✅ Batch convert remaining test files (55 files in MFGarchon)
+- ✅ Batch convert remaining test files (55 files in MFGArchon)
 - ✅ Update all `examples/` to use modern API
 - ✅ Migrate mfg-research repository (8 files)
 - ✅ Issue deprecation warnings for all legacy patterns

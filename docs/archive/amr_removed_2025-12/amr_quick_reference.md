@@ -312,7 +312,7 @@ values_new = JAXAcceleratedAMR.gradient_preserving_interpolation_2d(
 )
 ```
 
-## Integration with MFGarchon
+## Integration with MFGArchon
 
 ### Factory Integration
 ```python
@@ -376,4 +376,4 @@ Mass conservation enforced:
 ---
 
 **Last Updated**: August 1, 2025  
-**Version**: MFGarchon 2.0+
+**Version**: MFGArchon 2.0+

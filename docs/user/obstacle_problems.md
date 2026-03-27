@@ -22,7 +22,7 @@
 
 ## Introduction
 
-This tutorial teaches you how to solve **obstacle problems** and **variational inequalities** using MFGarchon. These problems arise when solutions must satisfy inequality constraints (e.g., $u(t,x) \geq \psi(x)$) rather than just equalities.
+This tutorial teaches you how to solve **obstacle problems** and **variational inequalities** using MFGArchon. These problems arise when solutions must satisfy inequality constraints (e.g., $u(t,x) \geq \psi(x)$) rather than just equalities.
 
 ### What You'll Learn
 
@@ -364,7 +364,7 @@ print(f"Mean capacity: {capacity.mean_capacity:.3f}")
 
 ### Step 2: Choose Congestion Model
 
-MFGarchon provides three congestion models:
+MFGArchon provides three congestion models:
 
 | Model | Formula | Derivative | Best For |
 |:------|:--------|:-----------|:---------|
@@ -893,5 +893,5 @@ for picard_iter in range(max_picard):
 ---
 
 **Last Updated**: 2026-01-18
-**Author**: MFGarchon Documentation Team
+**Author**: MFGArchon Documentation Team
 **Related Issues**: #591 (Variational Constraints), #594 (Documentation)

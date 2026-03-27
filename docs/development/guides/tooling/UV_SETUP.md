@@ -1,6 +1,6 @@
-# Using UV with MFGarchon
+# Using UV with MFGArchon
 
-This document explains how to use the modern `uv` package manager with MFGarchon instead of conda.
+This document explains how to use the modern `uv` package manager with MFGArchon instead of conda.
 
 ## Why UV?
 

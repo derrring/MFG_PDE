@@ -17,7 +17,7 @@
 4. **Connects** to statistical physics (free energy minimization)
 5. **Extends** to non-potential games via monotonicity conditions
 
-This document provides rigorous mathematical foundations for variational formulations and their computational implementation in MFGarchon.
+This document provides rigorous mathematical foundations for variational formulations and their computational implementation in MFGArchon.
 
 ---
 
@@ -307,7 +307,7 @@ $$\lim_{\epsilon \to 0} \epsilon W_{2,\epsilon}^2(m_0, m_1) = \text{Schrödinger
 
 ---
 
-## 8. Implementation in MFGarchon
+## 8. Implementation in MFGArchon
 
 ### 8.1 Core Components
 

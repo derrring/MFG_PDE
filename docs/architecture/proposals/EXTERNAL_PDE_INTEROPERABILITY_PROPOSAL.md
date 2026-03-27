@@ -10,11 +10,11 @@
 
 ## 1. Executive Summary
 
-This document analyzes MFGarchon's structural relationship to general PDE frameworks and proposes a phased interoperability strategy. Implementation is deferred, but the analysis and design thinking are recorded now while the strategic context is fresh.
+This document analyzes MFGArchon's structural relationship to general PDE frameworks and proposes a phased interoperability strategy. Implementation is deferred, but the analysis and design thinking are recorded now while the strategic context is fresh.
 
-**Core observation**: Mean Field Games are inherently PDE-constrained optimal control problems. The HJB equation *is* the optimality condition for controlling the Fokker-Planck dynamics. As MFGarchon matures toward richer problem classes (state constraints, multi-physics coupling, PDE control), interaction with general PDE solvers becomes structurally necessary, not merely convenient.
+**Core observation**: Mean Field Games are inherently PDE-constrained optimal control problems. The HJB equation *is* the optimality condition for controlling the Fokker-Planck dynamics. As MFGArchon matures toward richer problem classes (state constraints, multi-physics coupling, PDE control), interaction with general PDE solvers becomes structurally necessary, not merely convenient.
 
-**Core thesis**: MFGarchon should remain the specialized orchestrator for MFG-specific logic (backward-forward coupling, density-value iteration, control extraction), while providing clean delegation interfaces for the generic PDE capabilities that external frameworks do better (complex geometry, advanced discretization, parallel linear algebra).
+**Core thesis**: MFGArchon should remain the specialized orchestrator for MFG-specific logic (backward-forward coupling, density-value iteration, control extraction), while providing clean delegation interfaces for the generic PDE capabilities that external frameworks do better (complex geometry, advanced discretization, parallel linear algebra).
 
 **Current State**: Self-contained with NumPy/SciPy. No external PDE framework integration. Problem definition limited to standard separable HJB-FP coupling.
 
@@ -45,9 +45,9 @@ And the optimal control is recovered from the value function: $\alpha^* = -D_p H
 
 This structure has three consequences for interoperability:
 
-1. **The FP equation is the "physics"** --- any enrichment of the underlying dynamics (convection, reaction, nonlinear diffusion, obstacles) directly changes the PDE constraint, requiring PDE solver capabilities beyond what MFGarchon currently provides.
+1. **The FP equation is the "physics"** --- any enrichment of the underlying dynamics (convection, reaction, nonlinear diffusion, obstacles) directly changes the PDE constraint, requiring PDE solver capabilities beyond what MFGArchon currently provides.
 
-2. **The HJB equation adapts automatically** --- when the FP constraint changes, the adjoint (HJB) equation changes correspondingly. The Hamiltonian encodes this relationship. MFGarchon's Hamiltonian class hierarchy is well-positioned to express these variations.
+2. **The HJB equation adapts automatically** --- when the FP constraint changes, the adjoint (HJB) equation changes correspondingly. The Hamiltonian encodes this relationship. MFGArchon's Hamiltonian class hierarchy is well-positioned to express these variations.
 
 3. **New problem classes = new PDE constraints** --- MFG with congestion, MFG with obstacles, MFG on networks with continuum limits, multi-population MFG with inter-species dynamics --- all introduce additional PDE components that may benefit from external solver capabilities.
 
@@ -66,12 +66,12 @@ This structure has three consequences for interoperability:
 
 These are not speculative. Published MFG literature covers all of these, and any serious MFG infrastructure will eventually need to handle a subset.
 
-### 2.3 What MFGarchon Owns vs. What It Delegates
+### 2.3 What MFGArchon Owns vs. What It Delegates
 
-The key architectural question is: **where does MFGarchon's responsibility end and the external framework's begin?**
+The key architectural question is: **where does MFGArchon's responsibility end and the external framework's begin?**
 
 ```
-MFGarchon's Domain (KEEP)                External Framework's Domain (DELEGATE)
+MFGArchon's Domain (KEEP)                External Framework's Domain (DELEGATE)
 ┌─────────────────────────┐            ┌─────────────────────────────────┐
 │ Problem definition:     │            │ Spatial discretization:         │
 │   Hamiltonian H(x,m,p,t)│            │   FEM assembly on complex mesh  │
@@ -95,7 +95,7 @@ MFGarchon's Domain (KEEP)                External Framework's Domain (DELEGATE)
 └─────────────────────────┘            └─────────────────────────────────┘
 ```
 
-**Principle**: MFGarchon is the **control-theoretic orchestrator**. External frameworks are **computational backends**.
+**Principle**: MFGArchon is the **control-theoretic orchestrator**. External frameworks are **computational backends**.
 
 ---
 
@@ -111,24 +111,24 @@ MFGarchon's Domain (KEEP)                External Framework's Domain (DELEGATE)
 | **Trilinos** | C++ | Linear algebra toolkit | Modular solver packages | Alternative to PETSc |
 | **OpenFOAM** | C++ | FVM | CFD | Fluid-coupled MFG |
 | **SciML (Julia)** | Julia | Multi-paradigm | ML + PDE, multiple dispatch | Autodiff, neural operators |
-| **Firedrake** | Python/C | FEM (variational) | Composable solvers, PETSc backend | Closest philosophy to MFGarchon |
+| **Firedrake** | Python/C | FEM (variational) | Composable solvers, PETSc backend | Closest philosophy to MFGArchon |
 | **scikit-fem** | Python | FEM | Lightweight, Pythonic | Quick FEM prototyping |
 | **DUNE** | C++ | Multi-method | Flexible grid interface | Advanced discretization |
 
-### 3.2 Why MFGarchon Is Not (and Should Not Become) a General PDE Framework
+### 3.2 Why MFGArchon Is Not (and Should Not Become) a General PDE Framework
 
-MFGarchon exploits the specific **structure of the HJB-FP coupling**:
+MFGArchon exploits the specific **structure of the HJB-FP coupling**:
 
 1. **Backward-forward time structure**: HJB solves backward, FP solves forward. General frameworks don't optimize for this.
 2. **Picard iteration semantics**: The outer loop alternates between two PDEs with coupling through density $m$ and value function $u$. This is domain-specific.
-3. **Control-theoretic quantities**: $D_pH$ (optimal control), $D_mH$ (density coupling) are first-class objects in MFGarchon; in a general framework they would be user-level derived quantities.
+3. **Control-theoretic quantities**: $D_pH$ (optimal control), $D_mH$ (density coupling) are first-class objects in MFGArchon; in a general framework they would be user-level derived quantities.
 4. **Validation semantics**: Mass conservation $\int m \, dx = 1$, coupled convergence criteria, adjoint-consistent boundary conditions --- all MFG-specific invariants.
 
 General frameworks provide the building blocks (mesh, assembly, linear solve) but not the orchestration logic.
 
 ### 3.3 Capability Comparison
 
-| Criterion | MFGarchon (Specialized) | General PDE Framework |
+| Criterion | MFGArchon (Specialized) | General PDE Framework |
 |:----------|:----------------------|:----------------------|
 | **HJB-FP coupling** | Native, optimized | Manual, no special support |
 | **Complex geometry** | Limited (structured grids, GFDM) | Full (unstructured, AMR) |
@@ -144,10 +144,10 @@ General frameworks provide the building blocks (mesh, assembly, linear solve) bu
 
 ### 4.1 Design Principle
 
-MFGarchon delegates to external frameworks at well-defined boundaries, without coupling its internal representations to any specific external API. The adapter pattern keeps MFGarchon's core independent.
+MFGArchon delegates to external frameworks at well-defined boundaries, without coupling its internal representations to any specific external API. The adapter pattern keeps MFGArchon's core independent.
 
 ```
-MFGarchon Core          Adapter Layer           External Framework
+MFGArchon Core          Adapter Layer           External Framework
 +--------------+     +---------------+     +------------------+
 | MFGProblem   |---->| GeometryExport|---->| FEniCS Mesh      |
 | HJB/FP solve |     | FieldExport   |     | PETSc Mat/Vec    |
@@ -201,7 +201,7 @@ class FieldExporter(Protocol):
 
 
 class GeometryAdapter(Protocol):
-    """Convert between MFGarchon geometry and external mesh formats."""
+    """Convert between MFGArchon geometry and external mesh formats."""
 
     def to_meshio(self, geometry: GeometryProtocol) -> meshio.Mesh: ...
     def from_meshio(self, mesh: meshio.Mesh) -> GeometryProtocol: ...
@@ -209,9 +209,9 @@ class GeometryAdapter(Protocol):
 
 #### Tier 2: Solver Backend Delegation (Medium cost, targeted value)
 
-Replace internal linear algebra with external solvers at runtime. MFGarchon's discretization and iteration logic remain unchanged; only the inner $Ax = b$ solve is delegated.
+Replace internal linear algebra with external solvers at runtime. MFGArchon's discretization and iteration logic remain unchanged; only the inner $Ax = b$ solve is delegated.
 
-**Current internal state** --- MFGarchon already has partial infrastructure for this tier:
+**Current internal state** --- MFGArchon already has partial infrastructure for this tier:
 
 - **`SparseSolver`** (`mfgarchon/utils/sparse_operations.py:466-620`): Unified interface supporting `direct`/`cg`/`gmres`/`bicgstab` methods with ILU/Jacobi preconditioning and CuPy GPU backend. However, only 1-2 files use it; the remaining ~15 `spsolve` call sites across 9 files (`hjb_gfdm.py`, `base_hjb.py`, `fp_fdm.py`, `fp_fdm_time_stepping.py`, `fp_network.py`, `hjb_network.py`, `nonlinear_solvers.py`, `sparse_operations.py`, `optimization.py`) bypass it with direct `scipy.sparse.linalg.spsolve` imports.
 - **`BaseBackend`** (`mfgarchon/backends/`): Array operation abstraction (NumPy, JAX, PyTorch, Numba) with a `solve(A, b)` method, but for **dense** systems only. Sparse linear algebra is not covered by the backend hierarchy.
@@ -225,7 +225,7 @@ Replace internal linear algebra with external solvers at runtime. MFGarchon's di
 class LinearSolverBackend(Protocol):
     """Pluggable linear solver backend.
 
-    MFGarchon assembles the system; the backend solves it.
+    MFGArchon assembles the system; the backend solves it.
     This is the narrowest possible delegation boundary.
     """
 
@@ -284,20 +284,20 @@ class PETScSolver:
 
 **Why PETSc first**:
 - Operates at linear algebra level --- minimal semantic gap
-- MFGarchon keeps full control of FDM/GFDM discretization and Picard iteration
+- MFGArchon keeps full control of FDM/GFDM discretization and Picard iteration
 - `petsc4py` is mature and well-maintained
 - Immediate benefit: parallel solvers, AMG preconditioners for large 2D/3D problems
-- No changes to MFGarchon's problem definition or solver structure
+- No changes to MFGArchon's problem definition or solver structure
 
-**Integration point in MFGarchon**: The `LinearSolverBackend` would be injected into HJB/FP solvers where they currently call `scipy.sparse.linalg.spsolve`. This is a single point of delegation per solver.
+**Integration point in MFGArchon**: The `LinearSolverBackend` would be injected into HJB/FP solvers where they currently call `scipy.sparse.linalg.spsolve`. This is a single point of delegation per solver.
 
 #### Tier 3: Discretization Delegation (High cost, specialized value)
 
-Full coupling where an external framework handles spatial discretization while MFGarchon orchestrates the MFG-specific backward-forward iteration.
+Full coupling where an external framework handles spatial discretization while MFGArchon orchestrates the MFG-specific backward-forward iteration.
 
-**Scenario**: FEniCS assembles FEM stiffness matrices for the HJB equation on a complex 2D domain with holes. MFGarchon's Picard iterator calls FEniCS at each iteration to solve the spatial problem, then feeds the result into the FP solver.
+**Scenario**: FEniCS assembles FEM stiffness matrices for the HJB equation on a complex 2D domain with holes. MFGArchon's Picard iterator calls FEniCS at each iteration to solve the spatial problem, then feeds the result into the FP solver.
 
-**Key design decision**: The `SpatialSolverBackend` should NOT have MFG-specific methods like `solve_hjb_step()` or `solve_fp_step()`. That would leak MFG semantics into what should be a generic spatial solver. Instead, MFGarchon's Picard iterator translates MFG semantics into generic PDE coefficients, and the backend sees only a general evolution PDE.
+**Key design decision**: The `SpatialSolverBackend` should NOT have MFG-specific methods like `solve_hjb_step()` or `solve_fp_step()`. That would leak MFG semantics into what should be a generic spatial solver. Instead, MFGArchon's Picard iterator translates MFG semantics into generic PDE coefficients, and the backend sees only a general evolution PDE.
 
 **Why not `ParabolicCoefficients`?** The name "parabolic" assumes second-order MFG ($\sigma > 0$). But first-order MFG ($\sigma = 0$) produces a Hamilton-Jacobi equation (hyperbolic HJB) and a continuity equation (hyperbolic FP). Nonlinear diffusion, obstacle problems, and conservation laws further blur PDE type boundaries. The structure we actually need is the **convection-diffusion-reaction (CDR) form** --- a type-agnostic representation of a linearized evolution PDE at each Picard step:
 
@@ -319,7 +319,7 @@ class PDECoefficients:
     - D = 0, v = 0, R ≠ 0: reaction equation
     - Steady state (no ∂t): elliptic (Poisson, Laplace)
 
-    MFGarchon maps both HJB and FP to this form before delegation.
+    MFGArchon maps both HJB and FP to this form before delegation.
     The backend never sees MFG-specific types.
     """
     diffusion: np.ndarray | float       # D(x): diffusion coefficient or tensor (0 for 1st-order MFG)
@@ -332,7 +332,7 @@ class SpatialSolverBackend(Protocol):
     """Delegate spatial PDE solve to an external framework.
 
     The backend is PDE-generic: it sees evolution equations in CDR
-    coefficient form, NOT MFG-specific quantities. MFGarchon's Picard
+    coefficient form, NOT MFG-specific quantities. MFGArchon's Picard
     iterator handles the translation.
     """
 
@@ -354,7 +354,7 @@ class SpatialSolverBackend(Protocol):
         ...
 ```
 
-**How MFGarchon maps to CDR coefficients** --- the Picard iterator translates MFG semantics at each iteration:
+**How MFGArchon maps to CDR coefficients** --- the Picard iterator translates MFG semantics at each iteration:
 
 ```
 Second-order MFG (σ > 0):
@@ -398,26 +398,26 @@ First-order MFG (σ = 0):
         # Backend must use conservative discretization
 ```
 
-This separation means: (a) the backend adapter is reusable for any evolution PDE, not just MFG; (b) new MFG problem classes only require new coefficient mappings in the iterator, not new backend methods; (c) the backend never imports MFGarchon types; (d) first-order and second-order MFG use the same interface, differing only in coefficient values.
+This separation means: (a) the backend adapter is reusable for any evolution PDE, not just MFG; (b) new MFG problem classes only require new coefficient mappings in the iterator, not new backend methods; (c) the backend never imports MFGArchon types; (d) first-order and second-order MFG use the same interface, differing only in coefficient values.
 
 **Challenges** (honest assessment):
 
 | Challenge | Description | Severity |
 |:----------|:-----------|:---------|
-| DOF ordering | FEniCS numbers unknowns differently than MFGarchon's structured grids | High |
+| DOF ordering | FEniCS numbers unknowns differently than MFGArchon's structured grids | High |
 | Quadrature mismatch | Different numerical integration rules give slightly different matrices | Medium |
-| Time discretization mismatch | MFGarchon defaults to backward Euler; external frameworks may use Crank-Nicolson or $\theta$-schemes. Different time integrators produce different spatial operators at each step. If the HJB backend uses a different temporal scheme than the FP backend, the Picard iteration may not converge to the correct coupled solution. **Mitigation**: the `PDECoefficients` + `dt` interface above intentionally delegates only the spatial discretization per time step, keeping time stepping under MFGarchon's control. | High |
+| Time discretization mismatch | MFGArchon defaults to backward Euler; external frameworks may use Crank-Nicolson or $\theta$-schemes. Different time integrators produce different spatial operators at each step. If the HJB backend uses a different temporal scheme than the FP backend, the Picard iteration may not converge to the correct coupled solution. **Mitigation**: the `PDECoefficients` + `dt` interface above intentionally delegates only the spatial discretization per time step, keeping time stepping under MFGArchon's control. | High |
 | Scheme selection for hyperbolic case | When $D = 0$ (first-order MFG), the backend must use upwind/Godunov schemes, not central differences. The `PDECoefficients` interface must communicate whether the PDE is advection-dominated so the backend selects an appropriate discretization. | Medium |
 | Memory ownership | Python ↔ C++ boundary requires careful reference management | Medium |
 | Error debugging | Failures span two frameworks with different error models | High |
-| Conceptual gap | FEniCS: variational forms. MFGarchon: finite differences. Different abstractions. | High |
+| Conceptual gap | FEniCS: variational forms. MFGArchon: finite differences. Different abstractions. | High |
 | Performance | Format conversion overhead may negate solver speedup for small problems | Medium |
 
 **Estimated effort**: Multi-person-month per adapter. Justified only when MFG research requires complex 2D/3D geometry that structured grids cannot handle.
 
 #### Tier 4: Auxiliary PDE Solver Plugins (Medium cost, high research value)
 
-MFGarchon calls external solvers for **auxiliary equations** that arise in extended MFG formulations, while the core HJB-FP coupling remains internal.
+MFGArchon calls external solvers for **auxiliary equations** that arise in extended MFG formulations, while the core HJB-FP coupling remains internal.
 
 ```python
 class AuxiliarySolverPlugin(Protocol):
@@ -436,7 +436,7 @@ class AuxiliarySolverPlugin(Protocol):
         boundary_conditions: BoundaryConditions | None,
         **params: Any,
     ) -> np.ndarray:
-        """Solve the auxiliary equation, return field on MFGarchon's grid."""
+        """Solve the auxiliary equation, return field on MFGArchon's grid."""
         ...
 
     @property
@@ -445,7 +445,7 @@ class AuxiliarySolverPlugin(Protocol):
         ...
 ```
 
-**Why this tier is valuable**: Many MFG extensions need a "pre-computed field" (distance to obstacle, background velocity, external potential) that is computed once or infrequently, then fed into the Hamiltonian. This is a **loose coupling** --- the auxiliary solve is essentially a preprocessing step. The semantic gap is small because MFGarchon only needs the result as a numpy array on its grid.
+**Why this tier is valuable**: Many MFG extensions need a "pre-computed field" (distance to obstacle, background velocity, external potential) that is computed once or infrequently, then fed into the Hamiltonian. This is a **loose coupling** --- the auxiliary solve is essentially a preprocessing step. The semantic gap is small because MFGArchon only needs the result as a numpy array on its grid.
 
 **Examples**:
 - `EikonalPlugin(scikit_fmm)`: Compute signed distance field for obstacle avoidance
@@ -503,7 +503,7 @@ Agents move in a physical environment governed by its own PDE:
 
 Each coupling adds a PDE that must be solved at each Picard iteration.
 
-### 5.2 Extension Architecture: How MFGarchon Should Grow
+### 5.2 Extension Architecture: How MFGArchon Should Grow
 
 Rather than building a generic extension framework now, identify the **minimal structural changes** that would make future extensions clean.
 
@@ -523,7 +523,7 @@ Each hook is independent — implementing one doesn't require the others:
 
 #### 5.2.1 Hamiltonian Extensibility (Already Good)
 
-MFGarchon's `HamiltonianBase` class hierarchy already supports custom Hamiltonians:
+MFGArchon's `HamiltonianBase` class hierarchy already supports custom Hamiltonians:
 
 ```python
 class CongestionHamiltonian(HamiltonianBase):
@@ -568,7 +568,7 @@ class AuxiliaryField:
     as a penalty: H(x,m,p,t) = H_0(p,m) + λ/d(x)
     """
     name: str
-    values: np.ndarray          # On MFGarchon's spatial grid
+    values: np.ndarray          # On MFGArchon's spatial grid
     solver: AuxiliarySolverPlugin | None  # Optional: recompute during iteration
 
     def needs_update(self, iteration: int) -> bool:
@@ -681,7 +681,7 @@ def test_petsc_solver_matches_scipy():
 1. Implement the extension as a prototype in mfg-research
 2. Validate on research experiments with quantified metrics
 3. Extract the minimal necessary abstraction
-4. Add to MFGarchon with tests and documentation
+4. Add to MFGArchon with tests and documentation
 5. Update this document with lessons learned
 
 ---

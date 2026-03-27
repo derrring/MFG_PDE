@@ -6,7 +6,7 @@
 
 ## Overview
 
-Successfully implemented comprehensive dual geometry support for MFGarchon, enabling HJB and FP solvers to use different discretizations. This enables hybrid methods (particle FP + grid HJB), multi-resolution (fine HJB + coarse FP), and network-based agents.
+Successfully implemented comprehensive dual geometry support for MFGArchon, enabling HJB and FP solvers to use different discretizations. This enables hybrid methods (particle FP + grid HJB), multi-resolution (fine HJB + coarse FP), and network-based agents.
 
 ## Implementation Phases
 

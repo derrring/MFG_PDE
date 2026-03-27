@@ -8,7 +8,7 @@
 
 ## Overview
 
-This guide introduces **advanced boundary condition methods** implemented in MFGarchon v0.18.0+, covering:
+This guide introduces **advanced boundary condition methods** implemented in MFGArchon v0.18.0+, covering:
 
 - **Tier 2 BCs**: Variational inequalities and constraint-based boundary conditions
 - **Tier 3 BCs**: Time-dependent boundaries and free boundary problems
@@ -85,7 +85,7 @@ $$
 - You know the active set a priori (use strong BC on that region)
 - The constraint is nonlinear or non-convex (obstacle methods require convex constraints)
 
-### 1.4 Implementation in MFGarchon
+### 1.4 Implementation in MFGArchon
 
 **Step 1**: Define the obstacle constraint
 ```python
@@ -214,7 +214,7 @@ where $V_n$ is the **normal velocity** of the interface.
 - Boundary motion is simple and known (use time-dependent coordinate transform)
 - You need **exact** mass conservation (Level Set can drift; use Volume-of-Fluid instead)
 
-### 2.4 Implementation in MFGarchon
+### 2.4 Implementation in MFGArchon
 
 **Step 1**: Set up time-dependent domain
 ```python

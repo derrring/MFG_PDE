@@ -1,12 +1,12 @@
 # Capacity-Constrained Mean Field Games: Example Pattern
 
-**Author**: MFGarchon Development Team
+**Author**: MFGArchon Development Team
 **Date**: 2025-11-12
 **Status**: ✅ IMPLEMENTED AS EXAMPLE
 **Location**: `examples/advanced/capacity_constrained_mfg/`
 **Related Issues**: Capacity-constrained MFG, maze navigation, congestion modeling
 
-**Architecture Note**: This implementation demonstrates how to extend the MFGarchon framework
+**Architecture Note**: This implementation demonstrates how to extend the MFGArchon framework
 with application-specific features. It resides in `examples/` rather than `mfgarchon/core/`
 to keep the core framework minimal. Users can adapt this pattern for their own
 capacity-constrained or congestion-aware MFG applications.
@@ -589,7 +589,7 @@ The capacity-constrained framework is compatible with:
 **Total Implementation**: ~1,879 lines (example pattern complete)
 
 **Note**: This is an example implementation residing in `examples/` to demonstrate
-how users can extend the MFGarchon framework with application-specific features.
+how users can extend the MFGArchon framework with application-specific features.
 Users can adapt this pattern for their own capacity-constrained problems.
 
 ---

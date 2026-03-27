@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document analyzes the boundary condition (BC) architecture in MFGarchon, synthesizing lessons learned from implementing FP solver BC integration. The key insight is that **boundary conditions involve three distinct concerns that are often conflated**:
+This document analyzes the boundary condition (BC) architecture in MFGArchon, synthesizing lessons learned from implementing FP solver BC integration. The key insight is that **boundary conditions involve three distinct concerns that are often conflated**:
 
 1. **Topology**: How space connects (periodic vs bounded)
 2. **Discretization**: Where values are stored (cell-centered vs vertex-centered)

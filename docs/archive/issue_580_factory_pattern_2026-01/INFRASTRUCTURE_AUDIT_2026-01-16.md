@@ -2,14 +2,14 @@
 
 **Document**: Infrastructure Survey for Factory Pattern Design
 **Date**: 2026-01-16
-**Purpose**: Ground factory design in MFGarchon's actual codebase
+**Purpose**: Ground factory design in MFGArchon's actual codebase
 **Related**: `FACTORY_PATTERN_DESIGN.md`, Issue #580
 
 ---
 
 ## Executive Summary
 
-**Survey Scope**: Comprehensive analysis of MFGarchon infrastructure to validate factory pattern design assumptions.
+**Survey Scope**: Comprehensive analysis of MFGArchon infrastructure to validate factory pattern design assumptions.
 
 **Key Finding**: Infrastructure is **80% ready** for factory pattern implementation:
 - ✅ **Ready**: Config system (Pydantic), solver hierarchy, geometry protocol, BC applicators
@@ -520,7 +520,7 @@ Reality: No `is_convex()` method exists.
 ```markdown
 ## Current Implementation Status
 
-Before implementing Issue #580, understand MFGarchon's current state:
+Before implementing Issue #580, understand MFGArchon's current state:
 
 ### What Currently Exists ✅
 

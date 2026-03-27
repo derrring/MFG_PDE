@@ -1,4 +1,4 @@
-# MFGarchon Theory Documentation Index
+# MFGArchon Theory Documentation Index
 
 **Document Type**: Navigation and Reference Guide
 **Created**: October 8, 2025
@@ -9,7 +9,7 @@
 
 ## Overview
 
-This index provides a comprehensive guide to all theoretical documentation in the MFGarchon package. Documents are organized by topic with status indicators, cross-references, and implementation connections.
+This index provides a comprehensive guide to all theoretical documentation in the MFGArchon package. Documents are organized by topic with status indicators, cross-references, and implementation connections.
 
 **Enhancement Status Legend**:
 - ✅ **Enhanced**: Comprehensive mathematical rigor with footnoted references
@@ -393,7 +393,7 @@ mathematical_background.md (foundation)
 
 ---
 
-**Document Status**: Comprehensive index of all MFGarchon theory documentation
+**Document Status**: Comprehensive index of all MFGArchon theory documentation
 **Last Updated**: October 8, 2025
 **Maintained By**: Primary maintainer with AI assistance
 **Next Review**: January 2026

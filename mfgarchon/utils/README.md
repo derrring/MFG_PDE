@@ -1,12 +1,12 @@
-# MFGarchon Utils Module
+# MFGArchon Utils Module
 
-**Purpose**: Comprehensive utility components for enhanced MFGarchon functionality  
+**Purpose**: Comprehensive utility components for enhanced MFGArchon functionality  
 **Location**: `mfgarchon/utils/`  
 **Status**: Production Ready  
 
 ## 📋 Overview
 
-The `utils` module provides essential utilities that enhance the MFGarchon platform with modern features like progress monitoring, validation, error handling, CLI support, and solver enhancements. These components transform MFGarchon from a research prototype into a professional scientific computing platform.
+The `utils` module provides essential utilities that enhance the MFGArchon platform with modern features like progress monitoring, validation, error handling, CLI support, and solver enhancements. These components transform MFGArchon from a research prototype into a professional scientific computing platform.
 
 ## 🗂️ Module Components
 
@@ -209,7 +209,7 @@ class MySolver:
 
 ### 6. CLI Framework (`cli.py`)
 
-**Purpose**: Professional command-line interface for MFGarchon.
+**Purpose**: Professional command-line interface for MFGArchon.
 
 **Key Features**:
 - Comprehensive argument parsing
@@ -422,7 +422,7 @@ python -m mfgarchon.utils.cli solve \
 
 ### Core Dependencies
 ```bash
-# Essential (already included in MFGarchon)
+# Essential (already included in MFGArchon)
 numpy>=1.19.0
 scipy>=1.7.0
 ```
@@ -589,7 +589,7 @@ The utils module is designed for extensibility. Planned enhancements include:
 ### Getting Help
 - Check the examples in each module for usage patterns
 - Review the comprehensive test suites for integration examples
-- Consult the main MFGarchon documentation for context
+- Consult the main MFGArchon documentation for context
 
 ### Contributing
 - Follow existing code patterns and documentation standards
@@ -599,4 +599,4 @@ The utils module is designed for extensibility. Planned enhancements include:
 
 ---
 
-**The MFGarchon utils module transforms the platform into a modern, professional scientific computing environment while maintaining simplicity and backward compatibility.** 🚀
+**The MFGArchon utils module transforms the platform into a modern, professional scientific computing environment while maintaining simplicity and backward compatibility.** 🚀

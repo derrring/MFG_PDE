@@ -2,11 +2,11 @@
 
 **Date**: 2025-09-20 (Updated: 2025-12-14)
 **Context**: Best practices for type hints in scientific Python projects
-**Target**: Python 3.12+ (MFGarchon requires Python 3.12+)
+**Target**: Python 3.12+ (MFGArchon requires Python 3.12+)
 
 ## 🎯 **Executive Summary**
 
-This guide synthesizes modern Python typing best practices specifically for scientific computing projects like MFGarchon. It emphasizes clean, maintainable code using Python 3.9+ built-in collection types and Python 3.10+ union syntax.
+This guide synthesizes modern Python typing best practices specifically for scientific computing projects like MFGArchon. It emphasizes clean, maintainable code using Python 3.9+ built-in collection types and Python 3.10+ union syntax.
 
 ## 📖 **Table of Contents**
 
@@ -463,7 +463,7 @@ ruff check --select UP .
 
 ---
 
-## 🔧 **Practical Example: MFGarchon Modernization**
+## 🔧 **Practical Example: MFGArchon Modernization**
 
 ### **Before (Legacy Typing)**
 ```python

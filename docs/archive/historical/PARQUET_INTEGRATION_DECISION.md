@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-MFGarchon has a **partial Parquet implementation** with 543 lines of well-tested Polars integration code but missing the PyArrow dependency required for Parquet I/O. This document justifies the decision to **complete the integration** by adding `pyarrow>=10.0` to optional dependencies, making MFGarchon ready for Phase 3 HPC workflows.
+MFGArchon has a **partial Parquet implementation** with 543 lines of well-tested Polars integration code but missing the PyArrow dependency required for Parquet I/O. This document justifies the decision to **complete the integration** by adding `pyarrow>=10.0` to optional dependencies, making MFGArchon ready for Phase 3 HPC workflows.
 
 **Key Decision**: Add PyArrow to the `performance` optional dependency group in `pyproject.toml`.
 
@@ -190,7 +190,7 @@ class MFGParquetDataset(Dataset):
 - **Big Data**: Apache Spark, Apache Flink
 - **HPC**: Distributed computing workflows
 
-**MFGarchon Future Compatibility**:
+**MFGArchon Future Compatibility**:
 - Neural operator training pipelines
 - Cloud deployment (Docker/Kubernetes)
 - Large-scale parameter optimization
@@ -279,7 +279,7 @@ print("✅ Parquet integration working")
 ```markdown
 ### Data Export Formats
 
-MFGarchon supports multiple export formats for parameter sweeps and solutions:
+MFGArchon supports multiple export formats for parameter sweeps and solutions:
 
 - **CSV**: Human-readable, universal compatibility (default)
 - **JSON**: Structured data, web-friendly
@@ -404,7 +404,7 @@ def export_to_parquet(self, df: MFGDataFrame, filepath: str | Path) -> None:
 - Apache Parquet Format: https://parquet.apache.org/docs/
 - PyArrow Documentation: https://arrow.apache.org/docs/python/
 
-### MFGarchon Code References
+### MFGArchon Code References
 - Polars integration: `mfgarchon/utils/data/polars_integration.py:459-526`
 - Usage in analytics: `mfgarchon/visualization/mfg_analytics.py:230,446`
 - Phase 3 preparation: `docs/development/PHASE_3_PREPARATION_2025.md`

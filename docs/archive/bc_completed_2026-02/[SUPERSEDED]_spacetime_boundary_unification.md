@@ -92,9 +92,9 @@ Benefits:
 
 ## 2. Time-Varying Spatial Boundaries
 
-### 2.1 Current MFGarchon Design
+### 2.1 Current MFGArchon Design
 
-MFGarchon **already supports** time-dependent BCs via `Callable(point, time)`:
+MFGArchon **already supports** time-dependent BCs via `Callable(point, time)`:
 
 ```python
 from mfgarchon.geometry.boundary import dirichlet_bc
@@ -675,15 +675,15 @@ u_solution = stefan_solver.solve()
 
 **Research Relevance**: MFG with **congestion** (crowds avoiding overcrowded regions) can be formulated as free boundary problems. This design enables future support for such models.
 
-**Status**: Conceptual design only - not currently planned for MFGarchon v1.0
+**Status**: Conceptual design only - not currently planned for MFGArchon v1.0
 
 ---
 
-## 6. Connection to Current MFGarchon Architecture
+## 6. Connection to Current MFGArchon Architecture
 
 ### 6.1 What Already Exists
 
-MFGarchon **already has** the foundation for space-time BCs:
+MFGArchon **already has** the foundation for space-time BCs:
 
 1. ✅ **Time-varying spatial BCs**: `value=callable(x, t)` in `BCSegment`
 2. ✅ **Initial/terminal conditions**: Passed separately to solvers
@@ -1027,7 +1027,7 @@ Can use Lagrange multipliers or penalty methods to enforce BCs weakly:
 
 ### Implementation Status
 
-**MFGarchon Current**:
+**MFGArchon Current**:
 - ✅ Supports time-varying BCs via `callable(x, t)`
 - ✅ Evaluates at each timestep
 - ⏸️ No unified space-time BC class

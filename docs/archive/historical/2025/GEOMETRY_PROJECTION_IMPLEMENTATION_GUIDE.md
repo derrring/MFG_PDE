@@ -6,7 +6,7 @@
 
 ## Overview
 
-This guide covers the implementation details of the geometry projection system for MFGarchon developers who need to:
+This guide covers the implementation details of the geometry projection system for MFGArchon developers who need to:
 - Understand the codebase structure
 - Add new projection methods
 - Extend to new geometry types

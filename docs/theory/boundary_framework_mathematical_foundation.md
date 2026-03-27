@@ -5,7 +5,7 @@
 **Related**:
 - [BOUNDARY_CONDITIONS_REFERENCE.md](./BOUNDARY_CONDITIONS_REFERENCE.md) (practical usage)
 - [boundary_framework_implementation_design.md](../development/boundary_framework_implementation_design.md) (implementation roadmap)
-- GitHub Issues: [#535](https://github.com/zvezda/MFGarchon/issues/535), [#536](https://github.com/zvezda/MFGarchon/issues/536)
+- GitHub Issues: [#535](https://github.com/zvezda/MFGArchon/issues/535), [#536](https://github.com/zvezda/MFGArchon/issues/536)
 
 ---
 

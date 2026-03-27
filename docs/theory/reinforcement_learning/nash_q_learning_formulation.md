@@ -212,7 +212,7 @@ This is because in symmetric MFG, all agents follow the same policy $\pi^*$, so 
 
 ---
 
-## Implementation Design for MFGarchon
+## Implementation Design for MFGArchon
 
 ### Architecture
 
@@ -353,5 +353,5 @@ Where:
 ---
 
 **Status**: ✅ Theoretical foundation complete
-**Next**: Design and implement Nash Q-Learning for MFGarchon
+**Next**: Design and implement Nash Q-Learning for MFGArchon
 **Key Insight**: For symmetric MFG, Nash Q-Learning simplifies to standard Q-learning with population state (which we already have!). The extension is mainly for heterogeneous/competitive scenarios.

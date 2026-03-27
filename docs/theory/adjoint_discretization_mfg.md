@@ -1057,4 +1057,4 @@ The adjoint relationship $A_{\text{FP}} = A_{\text{HJB}}^\top$ must hold **at ea
 - **Last Updated:** 2026-01
 - **Related Files:** `fp_fdm.py`, `hjb_fdm.py`, `advection_discretization_methods.md`
 - **Related Issues:** Issue #706 (Deprecation), Issue #707 (True Adjoint Implementation)
-- **Author:** MFGarchon Development Team
+- **Author:** MFGArchon Development Team

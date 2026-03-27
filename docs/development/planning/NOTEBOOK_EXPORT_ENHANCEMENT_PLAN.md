@@ -7,7 +7,7 @@
 
 ## Context
 
-Currently, `SolverResult.export_summary()` supports only `markdown` and `latex` output formats. However, MFGarchon has comprehensive Jupyter notebook support through `mfgarchon.utils.notebooks.reporting.MFGNotebookReporter`.
+Currently, `SolverResult.export_summary()` supports only `markdown` and `latex` output formats. However, MFGArchon has comprehensive Jupyter notebook support through `mfgarchon.utils.notebooks.reporting.MFGNotebookReporter`.
 
 **User Request**: Add notebook export support to `export_summary()` method to enable interactive exploration of solver results.
 

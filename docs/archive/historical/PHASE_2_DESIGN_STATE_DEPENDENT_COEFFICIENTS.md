@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Phase 2 extends MFGarchon to support **state-dependent (nonlinear) PDEs** by enabling:
+Phase 2 extends MFGArchon to support **state-dependent (nonlinear) PDEs** by enabling:
 1. Array diffusion in FP solvers (spatially varying)
 2. Callable coefficients evaluated at runtime (state-dependent)
 3. Seamless integration with MFG fixed-point coupling

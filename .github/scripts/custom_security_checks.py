@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Custom security checks for MFGarchon scientific computing package.
+Custom security checks for MFGArchon scientific computing package.
 
 This script performs domain-specific security checks that are relevant
 for scientific computing packages but may not be covered by general
@@ -25,7 +25,7 @@ class CustomSecurityChecker:
 
     def run_all_checks(self) -> dict[str, Any]:
         """Run all custom security checks."""
-        print("🔍 Running custom security checks for MFGarchon...")
+        print("🔍 Running custom security checks for MFGArchon...")
 
         # Scientific computing specific checks
         self.check_numerical_stability_patterns()

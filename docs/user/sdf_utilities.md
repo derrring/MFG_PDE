@@ -447,4 +447,4 @@ See `tests/unit/utils/test_sdf_utils.py` for comprehensive examples covering:
 
 **Documentation Version**: 1.0
 **Last Updated**: 2025-11-03
-**MFGarchon Version**: v0.9.0+
+**MFGArchon Version**: v0.9.0+

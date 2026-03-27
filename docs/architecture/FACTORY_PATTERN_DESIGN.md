@@ -1,4 +1,4 @@
-# MFGarchon Factory Pattern Design
+# MFGArchon Factory Pattern Design
 
 **Document**: Factory Pattern Design
 **Status**: Active Design Reference (Issue #580 Implementation)
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-MFGarchon uses a **three-concern factory organization** to separate concerns:
+MFGArchon uses a **three-concern factory organization** to separate concerns:
 - **Concern 1 (WHAT)**: Application-domain problem configuration
 - **Concern 2 (HOW)**: Numerical scheme selection with mathematical guarantees
 - **Concern 3 (WHO)**: Solver assembly and iteration control
@@ -63,7 +63,7 @@ scheme = NumericalScheme.FDM_UPWIND  # Enum, not factory call
 
 ### Comparison with Other Architecture "Layers"
 
-To avoid confusion with other uses of "layer" terminology in MFGarchon:
+To avoid confusion with other uses of "layer" terminology in MFGArchon:
 
 **Boundary Conditions Architecture** (different context):
 - Layer 1: BC Specification (`geometry/boundary/conditions.py`)
@@ -85,7 +85,7 @@ These are **separable concerns** (orthogonal dimensions), not stacked layers.
 
 ## Current Implementation Status
 
-**Purpose**: Ground factory design in MFGarchon's actual codebase state (as of 2026-01-16).
+**Purpose**: Ground factory design in MFGArchon's actual codebase state (as of 2026-01-16).
 
 ### What Currently Exists ✅
 
@@ -908,7 +908,7 @@ def check_solver_duality(hjb_solver, fp_solver) -> AdjointType:
 - ✅ Plugin-friendly: Custom solvers declare their family
 
 **Note on Validator Pattern** (Issue #543):
-MFGarchon uses `try/except AttributeError` instead of `hasattr()` for attribute validation (see Issue #543). The `getattr(..., default)` pattern above is preferred for optional attributes like `_scheme_family`. For required attributes, use:
+MFGArchon uses `try/except AttributeError` instead of `hasattr()` for attribute validation (see Issue #543). The `getattr(..., default)` pattern above is preferred for optional attributes like `_scheme_family`. For required attributes, use:
 ```python
 try:
     family = solver._scheme_family
@@ -1503,7 +1503,7 @@ def create_paired_solvers(
 ```
 
 **Benefits**:
-- ✅ **Extensibility**: Users can register custom schemes without modifying MFGarchon
+- ✅ **Extensibility**: Users can register custom schemes without modifying MFGArchon
 - ✅ **Separation**: Each scheme's pairing logic isolated in single function
 - ✅ **Testability**: Individual factories unit-testable
 - ✅ **Plugin-friendly**: Third-party packages can register schemes

@@ -61,7 +61,7 @@ hjb_solver = HJBGFDMSolver(
 
 ## Files Created/Modified
 
-### MFGarchon Repository
+### MFGArchon Repository
 
 **Core Implementation**:
 - `mfgarchon/alg/numerical/hjb_solvers/hjb_gfdm.py`:

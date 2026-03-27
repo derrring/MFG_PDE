@@ -1,6 +1,6 @@
-# Contributing to MFGarchon
+# Contributing to MFGArchon
 
-Thank you for your interest in contributing to the Mean Field Games Partial Differential Equations (MFGarchon) library! This guide will help you understand our development workflow and coding standards.
+Thank you for your interest in contributing to the Mean Field Games Partial Differential Equations (MFGArchon) library! This guide will help you understand our development workflow and coding standards.
 
 ## Repository Structure
 
@@ -21,7 +21,7 @@ Our codebase follows a strict organizational pattern:
 
 ### Import Conventions
 ```python
-# Preferred imports for MFGarchon
+# Preferred imports for MFGArchon
 from mfgarchon import MFGProblem, BoundaryConditions
 from mfgarchon.factory import create_fast_solver
 from mfgarchon.config import create_fast_config
@@ -57,7 +57,7 @@ logger = get_logger(__name__)
 # 1. Install pre-commit (one-time setup)
 pip install pre-commit
 
-# 2. Install the MFGarchon hooks (from project root)
+# 2. Install the MFGArchon hooks (from project root)
 pre-commit install
 
 # 3. Run on all files (optional - hooks run automatically on commit)
@@ -161,4 +161,4 @@ For mathematical foundations, see `docs/theory/` directory.
 
 ---
 
-By contributing to MFGarchon, you agree to maintain these standards and help build a high-quality, research-grade mathematical software library.
+By contributing to MFGArchon, you agree to maintain these standards and help build a high-quality, research-grade mathematical software library.

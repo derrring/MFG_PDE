@@ -3,7 +3,7 @@
 **Research Report**  
 **Date**: August 2025  
 **Classification**: Theoretical Analysis  
-**Framework**: MFGarchon  
+**Framework**: MFGArchon  
 
 ---
 
@@ -90,7 +90,7 @@ The coupling term $\kappa m(x)^2$ creates **feedback loops**:
 3. This creates persistent **spatial segregation**
 4. Final equilibrium reflects initial clustering patterns
 
-**Computational Verification** (MFGarchon):
+**Computational Verification** (MFGArchon):
 ```python
 from mfgarchon import MFGProblem, create_fast_solver
 import numpy as np
@@ -298,9 +298,9 @@ hub_problem = create_grid_mfg_problem(
 
 ## 6. Computational Methods and Verification
 
-### 6.1 Numerical Implementation in MFGarchon
+### 6.1 Numerical Implementation in MFGArchon
 
-The MFGarchon framework provides robust tools for studying $m_0$-sensitivity:
+The MFGArchon framework provides robust tools for studying $m_0$-sensitivity:
 
 **Solver Configuration**:
 ```python
@@ -557,7 +557,7 @@ class SensitivityAwareNNSolver(NeuralMFGSolver):
    - **Type II**: Moderately $m_0$-sensitive (balanced systems)  
    - **Type III**: Strongly $m_0$-sensitive (interaction-dominated, slow dynamics)
 
-5. **Computational Verification**: The MFGarchon framework successfully demonstrates these theoretical predictions numerically.
+5. **Computational Verification**: The MFGArchon framework successfully demonstrates these theoretical predictions numerically.
 
 ### 11.2 Implications
 
@@ -599,7 +599,7 @@ The dichotomy between $m_0$-sensitive and $m_0$-insensitive MFG systems represen
 
 4. **Achdou, Y., et al.** (2012). Mean field games: numerical methods. *SIAM Journal on Numerical Analysis*, 50(1), 77-109.
 
-5. **MFGarchon Documentation** (2025). *Advanced Mean Field Games Framework*. Available at: https://github.com/derrring/mfgarchon
+5. **MFGArchon Documentation** (2025). *Advanced Mean Field Games Framework*. Available at: https://github.com/derrring/mfgarchon
 
 6. **Gomes, D. A., et al.** (2014). *Regularity Theory for Mean Field Game Systems*. Springer Briefs in Mathematics.
 
@@ -760,6 +760,6 @@ def generate_phase_diagram():
 
 **Report Status**: ✅ **COMPLETED**  
 **Total Length**: ~15,000 words  
-**Code Examples**: Fully executable with MFGarchon framework  
+**Code Examples**: Fully executable with MFGArchon framework  
 **Mathematical Rigor**: Graduate research level  
 **Practical Applications**: Urban planning, economics, social dynamics  

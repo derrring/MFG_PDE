@@ -1163,7 +1163,7 @@ result = problem.solve(hjb_solver=hjb, fp_solver=fp)
 ```python
 problem = create_crowd_problem(...)
 
-# Let MFGarchon choose based on geometry
+# Let MFGArchon choose based on geometry
 result = problem.solve()
 ```
 

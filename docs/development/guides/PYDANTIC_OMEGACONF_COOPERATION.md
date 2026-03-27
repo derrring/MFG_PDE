@@ -1,4 +1,4 @@
-# Pydantic and OmegaConf Cooperation in MFGarchon
+# Pydantic and OmegaConf Cooperation in MFGArchon
 
 **Status**: [APPROVED / ARCHITECTURE_V2]
 **Created**: 2025-12-10
@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-MFGarchon employs a **Dual-System Configuration Architecture** to balance runtime safety with experimental flexibility.
+MFGArchon employs a **Dual-System Configuration Architecture** to balance runtime safety with experimental flexibility.
 
 | System | Role | Primary Responsibility |
 |:-------|:-----|:-----------------------|
@@ -324,7 +324,7 @@ This architecture adopts a **"Loose Coupling, Tight Validation"** strategy.
 - **Loose Coupling** allows researchers to organize YAMLs however they like.
 - **Tight Validation** ensures the Math Kernel never receives invalid parameters.
 
-By implementing the **Generic Bridge** and **Strict Naming Strategy** defined in this revision, `MFGarchon` achieves production-grade robustness while maintaining research-grade flexibility.
+By implementing the **Generic Bridge** and **Strict Naming Strategy** defined in this revision, `MFGArchon` achieves production-grade robustness while maintaining research-grade flexibility.
 
 ---
 

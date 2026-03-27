@@ -1,4 +1,4 @@
-# State-Dependent Coefficients in MFGarchon
+# State-Dependent Coefficients in MFGArchon
 
 **Tutorial**: Using flexible drift and diffusion fields in Mean Field Games
 
@@ -10,7 +10,7 @@
 
 ## Overview
 
-MFGarchon provides a **unified, flexible API** for specifying drift and diffusion coefficients in Fokker-Planck equations. This tutorial shows how to use:
+MFGArchon provides a **unified, flexible API** for specifying drift and diffusion coefficients in Fokker-Planck equations. This tutorial shows how to use:
 
 1. **Constant coefficients** (classical MFG)
 2. **Spatially varying coefficients**
@@ -617,7 +617,7 @@ M = solver.solve_fp_system(m0, drift_field=state_dependent_drift)
 
 ## Summary
 
-MFGarchon's coefficient API supports:
+MFGArchon's coefficient API supports:
 
 | Feature | Type | Example |
 |:--------|:-----|:--------|

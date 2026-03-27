@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-This document provides the complete implementation roadmap for Lipschitz boundary support in MFGarchon. Lipschitz boundaries include curves, surfaces, and manifolds with bounded gradients - essential for realistic crowd dynamics, evacuation, and obstacle avoidance problems.
+This document provides the complete implementation roadmap for Lipschitz boundary support in MFGArchon. Lipschitz boundaries include curves, surfaces, and manifolds with bounded gradients - essential for realistic crowd dynamics, evacuation, and obstacle avoidance problems.
 
 ### Current State
 

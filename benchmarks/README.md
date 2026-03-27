@@ -1,4 +1,4 @@
-# MFGarchon Benchmarking Framework
+# MFGArchon Benchmarking Framework
 
 This directory contains comprehensive benchmarking suites for evaluating different aspects of MFG solver performance, organized by benchmark category for clarity and extensibility.
 

@@ -1,6 +1,6 @@
 # Adjoint Operators and Discrete Duality in Mean Field Games
 
-**Author**: MFGarchon Development Team
+**Author**: MFGArchon Development Team
 **Date**: 2026-01-16
 **Status**: Active Theory Reference
 **Related**: Issue #580 (Adjoint-aware solver pairing), Issue #578 (FP SL adjoint solver)
@@ -163,13 +163,13 @@ This is the discrete analogue of $\nabla^T = -\text{div}$.
 
 **Examples**: Lax-Friedrichs, Godunov, Engquist-Osher schemes.
 
-**Status in MFGarchon**: Not yet implemented (future extension).
+**Status in MFGArchon**: Not yet implemented (future extension).
 
 ### 4.2 Schemes with Continuous Duality Only (Approximate)
 
 #### 4.2.1 Generalized Finite Difference Method (GFDM)
 
-**Current usage in MFGarchon**:
+**Current usage in MFGArchon**:
 - HJB: `HJBGFDMSolver` using weighted least-squares on collocation points
 - FP: `FPGFDMSolver` using same framework
 
@@ -242,7 +242,7 @@ $$(\mathbf{L}_{\text{GFDM}})_{ij} \neq (\mathbf{L}_{\text{GFDM}})_{ji}$$
 
 **Consequence**: Numerical artifacts (artificial aggregation, texturing) even in smooth regions.
 
-#### Approach B: Primal-Primal (Current MFGarchon)
+#### Approach B: Primal-Primal (Current MFGArchon)
 
 **Method**: Independently discretize both HJB and FP using GFDM.
 
@@ -406,7 +406,7 @@ assert fp.is_asymptotically_dual(hjb)  # True in limit h→0
 
 ### 6.5 The Value Proposition of Type B Schemes
 
-**GFDM in MFGarchon represents this tradeoff**:
+**GFDM in MFGArchon represents this tradeoff**:
 
 ✅ **What you gain**:
 - Irregular domains (no mesh generation)
@@ -592,4 +592,4 @@ assert np.allclose(L_fp, L_hjb.T)  # Should be exact transpose
 
 **End of Document**
 
-For questions or corrections, please open an issue on the MFGarchon GitHub repository.
+For questions or corrections, please open an issue on the MFGArchon GitHub repository.

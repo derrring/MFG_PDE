@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-The optimization paradigm in MFGarchon provides **variational and direct optimization approaches** for solving Mean Field Games by reformulating the classical HJB-FPK coupled system as an optimization problem on probability measure spaces. This paradigm complements PDE-based methods by enabling:
+The optimization paradigm in MFGArchon provides **variational and direct optimization approaches** for solving Mean Field Games by reformulating the classical HJB-FPK coupled system as an optimization problem on probability measure spaces. This paradigm complements PDE-based methods by enabling:
 
 - **Convexity-based uniqueness** for potential MFG problems
 - **Gradient-based optimization** using Wasserstein geometry
@@ -672,7 +672,7 @@ print(f"Final energy: {result.final_energy:.6f}")
 
 ## ✅ Summary
 
-The optimization paradigm in MFGarchon provides **state-of-the-art variational and optimal transport methods** for solving Mean Field Games:
+The optimization paradigm in MFGArchon provides **state-of-the-art variational and optimal transport methods** for solving Mean Field Games:
 
 **✅ Production-Ready**: 2,218 lines of code, comprehensive implementation
 **✅ Four Solver Families**: Variational, Optimal Transport, Primal-Dual, Augmented Lagrangian

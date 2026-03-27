@@ -1,4 +1,4 @@
-# MADDPG Architecture Design for MFGarchon
+# MADDPG Architecture Design for MFGArchon
 
 **Date**: October 2, 2025
 **Status**: Architecture Design (Future Extension)
@@ -8,9 +8,9 @@
 
 ## Executive Summary
 
-This document presents the architecture design for implementing **Mean Field MADDPG (MF-MADDPG)** in MFGarchon. MADDPG extends the current discrete-action RL paradigm to **continuous action spaces**, which is essential for many real-world MFG applications.
+This document presents the architecture design for implementing **Mean Field MADDPG (MF-MADDPG)** in MFGArchon. MADDPG extends the current discrete-action RL paradigm to **continuous action spaces**, which is essential for many real-world MFG applications.
 
-**Status**: This is a design document for future implementation. Current MFGarchon focuses on discrete actions. Continuous action support requires:
+**Status**: This is a design document for future implementation. Current MFGArchon focuses on discrete actions. Continuous action support requires:
 1. New network architectures (action as input to critic)
 2. Deterministic policy gradient updates
 3. Exploration strategies for continuous spaces
@@ -393,7 +393,7 @@ class MeanFieldMADDPG:
 
 ---
 
-## Integration with MFGarchon
+## Integration with MFGArchon
 
 ### Factory Function
 

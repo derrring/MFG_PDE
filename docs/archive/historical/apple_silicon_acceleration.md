@@ -13,7 +13,7 @@ Track Apple Silicon (M1/M2/M3) GPU acceleration support across backend framework
 ### PyTorch MPS
 - **Status**: ✅ Available and stable
 - **Detection**: Working (`torch.backends.mps.is_available()`)
-- **MFGarchon Integration**: ⚠️ Backend initializes, but solver has tensor type incompatibilities
+- **MFGArchon Integration**: ⚠️ Backend initializes, but solver has tensor type incompatibilities
 - **Issue**: `"can't assign numpy.ndarray to torch.FloatTensor"`
 - **Root Cause**: Solver internals mix NumPy arrays with PyTorch tensors
 - **Required Work**: Consistent tensor type handling in solver pipeline
@@ -22,7 +22,7 @@ Track Apple Silicon (M1/M2/M3) GPU acceleration support across backend framework
 - **Status**: 🧪 Experimental (`jax-metal` package)
 - **Official Support**: Not yet production-ready
 - **Documentation**: https://github.com/google/jax/tree/main/jax_plugins/metal_plugin
-- **MFGarchon Integration**: ❌ Not attempted (waiting for stable release)
+- **MFGArchon Integration**: ❌ Not attempted (waiting for stable release)
 - **Tracking**: Monitor JAX releases for production-ready Metal backend
 
 ### Current Workaround
@@ -90,7 +90,7 @@ All backends run on CPU on Apple Silicon:
 ### Community Tracking
 - JAX GitHub Discussions: https://github.com/google/jax/discussions
 - PyTorch Forums: https://discuss.pytorch.org/c/mps/
-- MFGarchon should check quarterly for updates
+- MFGArchon should check quarterly for updates
 
 ## Expected Performance Gains
 
@@ -166,7 +166,7 @@ def get_available_backends():
 1. **JAX Metal Plugin**: https://github.com/google/jax/tree/main/jax_plugins/metal_plugin
 2. **PyTorch MPS Backend**: https://pytorch.org/docs/stable/notes/mps.html
 3. **Apple Metal Performance Shaders**: https://developer.apple.com/metal/
-4. **MFGarchon Backend System**: `mfgarchon/backends/`
+4. **MFGArchon Backend System**: `mfgarchon/backends/`
 
 ---
 

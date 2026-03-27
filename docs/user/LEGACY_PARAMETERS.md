@@ -202,4 +202,4 @@ geometry = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
 ---
 
 **Last Updated**: 2026-01-18
-**Author**: MFGarchon Development Team
+**Author**: MFGArchon Development Team

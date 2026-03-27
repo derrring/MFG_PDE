@@ -1,4 +1,4 @@
-# The Godunov Paradox and Defect Correction in MFGarchon
+# The Godunov Paradox and Defect Correction in MFGArchon
 
 **Document Type**: Theory & Implementation Note
 **Related Issue**: #597 Milestone 3
@@ -13,7 +13,7 @@
 
 **The Solution**: Defect Correction framework - use linear velocity-based Jacobian (LHS) with Godunov residual evaluation (RHS). This is standard CFD practice for nonlinear conservation laws.
 
-**Impact on MFGarchon**: Explicit solvers use AdvectionOperator (Godunov), implicit solvers use manual sparse matrix construction (velocity-based linear upwind). Both are mathematically correct for their respective roles.
+**Impact on MFGArchon**: Explicit solvers use AdvectionOperator (Godunov), implicit solvers use manual sparse matrix construction (velocity-based linear upwind). Both are mathematically correct for their respective roles.
 
 ---
 
@@ -178,7 +178,7 @@ Method:
 - Point in a descent direction
 - Be "close enough" to F'(m) for convergence
 
-### Applied to MFGarchon
+### Applied to MFGArchon
 
 **Residual** (RHS):
 ```
@@ -232,7 +232,7 @@ Then Defect Correction converges linearly to the solution of `F(m) = 0`.
 
 ---
 
-## Part IV: Implementation in MFGarchon
+## Part IV: Implementation in MFGArchon
 
 ### Architecture
 
@@ -328,7 +328,7 @@ def add_interior_entries_gradient_upwind(...):
 **Picard Iteration**:
 - Linearize nonlinear terms using previous iterate
 - Iterate until residual vanishes
-- MFGarchon implicit solver is essentially Picard with one iteration per timestep
+- MFGArchon implicit solver is essentially Picard with one iteration per timestep
 
 ---
 

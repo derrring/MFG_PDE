@@ -1,4 +1,4 @@
-# MFGarchon Geometry & Topology System Architecture — Conceptual Reference
+# MFGArchon Geometry & Topology System Architecture — Conceptual Reference
 
 **Document ID**: MFG-SPEC-GEO-1.0
 **Status**: **CONCEPTUAL REFERENCE**
@@ -11,7 +11,7 @@
 > in practice (see GEOMETRY_BC_INFRASTRUCTURE.md Section 5.3 for where each
 > concern is realized in the current architecture).
 >
-> **Relationship to implementation**: MFGarchon distributes these concerns across
+> **Relationship to implementation**: MFGArchon distributes these concerns across
 > three layers (geometry, BC, coupling) rather than colocating them in geometry
 > traits. The flat `GeometryProtocol` with `GeometryType` enum handles the
 > geometry layer; the 4-axis BC design (WHAT x WHERE x WHEN x HOW) handles
@@ -26,7 +26,7 @@
 
 ## 1. Executive Summary: The "Zero-Cost" & "Complete" Philosophy
 
-This specification defines the architecture for the Geometry and Topology module of the `MFGarchon` library. Addressing the eternal conflict between **"High-Level Abstraction"** and **"Low-Level Performance"** in scientific computing, this architecture establishes the following core principles:
+This specification defines the architecture for the Geometry and Topology module of the `MFGArchon` library. Addressing the eternal conflict between **"High-Level Abstraction"** and **"Low-Level Performance"** in scientific computing, this architecture establishes the following core principles:
 
 1.  **Trait-Based Static Polymorphism**: Abandoning traditional runtime virtual function inheritance in favor of compile-time Trait composition. This allows the compiler to generate highly optimized kernel code for specific geometric characteristics, achieving **Zero-Cost Abstraction**.
 2.  **Atomicity & Orthogonality**: Deconstructing all physical domains into 8 orthogonal atomic properties (Atomic Traits).
@@ -37,7 +37,7 @@ This specification defines the architecture for the Geometry and Topology module
 
 ## 2. The Type System: 8 Atomic Traits (The Core)
 
-A `Domain` in `MFGarchon` is not a class hierarchy but a **Signature**. This signature is uniquely determined by the following 8 compile-time characteristics:
+A `Domain` in `MFGArchon` is not a class hierarchy but a **Signature**. This signature is uniquely determined by the following 8 compile-time characteristics:
 
 ### 2.1 Connectivity (Topology)
 Defines how neighbor relationships are determined, directly dictating the memory access pattern of computational kernels.

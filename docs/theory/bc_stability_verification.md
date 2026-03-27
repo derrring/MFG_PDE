@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document records GKS (Gustafsson-Kreiss-Sundström) stability validation results for standard boundary condition discretizations used in MFGarchon.
+This document records GKS (Gustafsson-Kreiss-Sundström) stability validation results for standard boundary condition discretizations used in MFGArchon.
 
 **Purpose**: Developer-facing validation, ensuring BC implementations don't introduce numerical instabilities.
 
@@ -410,7 +410,7 @@ The GKS validation framework successfully verifies discrete stability for standa
 3. Extend to 2D/3D operators (Issue #535 coordination)
 4. Document in user-facing BC API
 
-This validation provides confidence in the numerical stability of MFGarchon's boundary condition implementations and establishes a framework for validating future BC methods.
+This validation provides confidence in the numerical stability of MFGArchon's boundary condition implementations and establishes a framework for validating future BC methods.
 
 ---
 

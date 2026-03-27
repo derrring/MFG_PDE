@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document outlines a comprehensive research and implementation plan for extending MFGarchon's reinforcement learning paradigm to **continuous action spaces**. Current implementations support discrete actions (|A| ≤ 20 optimal), but many real-world Mean Field Games require continuous control: crowd navigation with velocity control, price formation with continuous prices, resource allocation with continuous quantities.
+This document outlines a comprehensive research and implementation plan for extending MFGArchon's reinforcement learning paradigm to **continuous action spaces**. Current implementations support discrete actions (|A| ≤ 20 optimal), but many real-world Mean Field Games require continuous control: crowd navigation with velocity control, price formation with continuous prices, resource allocation with continuous quantities.
 
 **Strategic Goal**: Develop production-quality continuous action MFG-RL algorithms that maintain the same level of rigor, performance, and usability as our discrete implementations.
 
@@ -176,7 +176,7 @@ class MeanFieldSAC:
 
 ### 2.4 Proximal Policy Optimization (PPO) for Continuous Actions
 
-**Current Status**: MFGarchon has discrete-action PPO-style Actor-Critic
+**Current Status**: MFGArchon has discrete-action PPO-style Actor-Critic
 
 **Extension to Continuous**:
 - Replace categorical policy with Gaussian: $\pi(a|s,m) = \mathcal{N}(\mu(s,m), \sigma)$
@@ -1233,7 +1233,7 @@ $$
 
 ### Summary
 
-This roadmap outlines a comprehensive plan to extend MFGarchon's RL paradigm to **continuous action spaces**, addressing a critical gap between classical MFG theory (which assumes continuous control) and current RL implementations (which use discrete actions).
+This roadmap outlines a comprehensive plan to extend MFGArchon's RL paradigm to **continuous action spaces**, addressing a critical gap between classical MFG theory (which assumes continuous control) and current RL implementations (which use discrete actions).
 
 **Key Deliverables**:
 1. **Algorithms**: DDPG, TD3, SAC, continuous PPO for MFG
@@ -1243,7 +1243,7 @@ This roadmap outlines a comprehensive plan to extend MFGarchon's RL paradigm to 
 
 **Timeline**: 3-6 months for core implementation (Phase 1-4), additional 2-3 months for applications (Phase 5)
 
-**Impact**: Enable realistic MFG applications requiring continuous control, bringing MFGarchon closer to practical deployment in robotics, economics, and social systems.
+**Impact**: Enable realistic MFG applications requiring continuous control, bringing MFGArchon closer to practical deployment in robotics, economics, and social systems.
 
 ### Immediate Next Steps
 

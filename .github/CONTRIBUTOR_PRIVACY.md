@@ -1,6 +1,6 @@
 # Contributor Privacy and Personal Workflow Guide
 
-This document explains how to maintain personal development preferences while contributing to MFGarchon.
+This document explains how to maintain personal development preferences while contributing to MFGArchon.
 
 ## 🔒 Personal Development Environment
 
@@ -72,7 +72,7 @@ echo "- Focus on Python typing when possible" >> CLAUDE.md.personal
 1. **Clone the repository**
    ```bash
    git clone <repo-url>
-   cd MFGarchon
+   cd MFGArchon
    ```
 
 2. **Set up personal AI guidelines (optional)**

@@ -1,8 +1,8 @@
-# MFGarchon Comprehensive Consistency Guide
+# MFGArchon Comprehensive Consistency Guide
 
 **Version:** 1.0  
 **Date:** July 26, 2025  
-**Purpose:** Master guide for maintaining consistency across all aspects of the MFGarchon repository  
+**Purpose:** Master guide for maintaining consistency across all aspects of the MFGArchon repository  
 
 This document consolidates all consistency standards into a single authoritative reference, covering code, documentation, mathematical notation, naming conventions, testing patterns, and architectural decisions.
 
@@ -564,9 +564,9 @@ def create_solver(problem, solver_type, config=None, **kwargs):
 
 **✅ STANDARD EXCEPTION CLASSES:**
 ```python
-# Base exception for MFGarchon
+# Base exception for MFGArchon
 class MFGPDEError(Exception):
-    """Base exception for MFGarchon package"""
+    """Base exception for MFGArchon package"""
     pass
 
 # Specific exception categories
@@ -639,7 +639,7 @@ def __init__(self, problem, NiterNewton=None, max_newton_iterations=None, **kwar
 **✅ __init__.py EXPORT STANDARDS:**
 ```python
 # mfgarchon/__init__.py
-"""MFGarchon: Numerical Solvers for Mean Field Games"""
+"""MFGArchon: Numerical Solvers for Mean Field Games"""
 
 # Core exports (most commonly used)
 from .core.mfg_problem import MFGProblem, MFGProblem
@@ -655,7 +655,7 @@ from .config import MFGSolverConfig, create_fast_config, create_accurate_config
 
 # Version info
 __version__ = "1.4.0"
-__author__ = "MFGarchon Development Team"
+__author__ = "MFGArchon Development Team"
 
 # All exports for * imports (discouraged but needed)
 __all__ = [

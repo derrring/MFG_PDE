@@ -2,14 +2,14 @@
 
 **Status**: Active Development Plan
 **Created**: 2025-01-03
-**GitHub Issues**: [#535](https://github.com/zvezda/MFGarchon/issues/535) (Framework Enhancement), [#536](https://github.com/zvezda/MFGarchon/issues/536) (Particle Absorbing BC)
+**GitHub Issues**: [#535](https://github.com/zvezda/MFGArchon/issues/535) (Framework Enhancement), [#536](https://github.com/zvezda/MFGArchon/issues/536) (Particle Absorbing BC)
 **Theory Reference**: [boundary_framework_mathematical_foundation.md](../theory/boundary_framework_mathematical_foundation.md)
 
 ---
 
 ## Overview
 
-This document outlines the implementation design for enhancing the MFGarchon boundary condition framework. It complements the mathematical theory document with concrete architecture, API design, and implementation phases.
+This document outlines the implementation design for enhancing the MFGArchon boundary condition framework. It complements the mathematical theory document with concrete architecture, API design, and implementation phases.
 
 **Design Philosophy**: Specification-Application-Validation separation with solver-agnostic BC definition and solver-specific interpretation.
 

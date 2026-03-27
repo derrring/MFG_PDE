@@ -4,13 +4,13 @@
 **Date**: 2025-12-16
 **Revision**: 1.0
 **Status**: Assessment Complete
-**Author**: MFGarchon Development Team
+**Author**: MFGArchon Development Team
 
 ---
 
 ## Executive Summary
 
-This report documents a comprehensive audit of the MFGarchon solver infrastructure, identifying critical gaps, incomplete implementations, and architectural defects that limit solver capabilities. The audit covers HJB solvers (FDM, WENO, GFDM, Semi-Lagrangian), FP solvers (FDM, Particle, GFDM), and supporting utilities.
+This report documents a comprehensive audit of the MFGArchon solver infrastructure, identifying critical gaps, incomplete implementations, and architectural defects that limit solver capabilities. The audit covers HJB solvers (FDM, WENO, GFDM, Semi-Lagrangian), FP solvers (FDM, Particle, GFDM), and supporting utilities.
 
 **Key Findings**:
 - 3 critical blockers preventing 3D+ support

@@ -1,4 +1,4 @@
-# MFGarchon: Mean Field Games Framework
+# MFGArchon: Mean Field Games Framework
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![CI/CD](https://github.com/derrring/mfgarchon/actions/workflows/ci.yml/badge.svg)](https://github.com/derrring/mfgarchon/actions/workflows/ci.yml)
@@ -176,12 +176,12 @@ Optional: PyTorch, JAX, igraph, plotly (for advanced features)
 
 ## Citation
 
-If you use MFGarchon in your research, please cite it. You can use GitHub's
+If you use MFGArchon in your research, please cite it. You can use GitHub's
 "Cite this repository" button in the sidebar, or use the following BibTeX:
 
 ```bibtex
 @software{mfgarchon,
-  title={MFGarchon: A Research-Grade Framework for Mean Field Games},
+  title={MFGArchon: A Research-Grade Framework for Mean Field Games},
   author={Wang, Jiongyi},
   year={2025},
   url={https://github.com/derrring/mfgarchon}

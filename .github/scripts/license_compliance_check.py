@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-License compliance checking script for MFGarchon security pipeline.
+License compliance checking script for MFGArchon security pipeline.
 Checks dependencies for license compatibility and compliance.
 """
 

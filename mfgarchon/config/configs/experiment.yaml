@@ -4,7 +4,7 @@
 experiment:
   name: "beach_parameter_sweep"
   description: "Parameter sweep for Towel on Beach problem"
-  author: "MFGarchon User"
+  author: "MFGArchon User"
   timestamp: null  # Auto-generated
 
   # Output configuration

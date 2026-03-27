@@ -503,7 +503,7 @@ jobs:
     steps:
     - name: Generate CI summary
       run: |
-        echo "# 🚀 MFGarchon CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "# 🚀 MFGArchon CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Build Information" >> $GITHUB_STEP_SUMMARY
         echo "- **Event**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY

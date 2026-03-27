@@ -2,12 +2,12 @@
 
 **Status**: Planning Phase
 **Target**: v0.13.0
-**Author**: MFGarchon Development Team
+**Author**: MFGArchon Development Team
 **Created**: 2025-11-23
 
 ## Executive Summary
 
-MFGarchon currently only supports **uniform** boundary conditions (periodic, Dirichlet, Neumann) across the entire domain boundary. This document proposes a design for **mixed boundary conditions**, where different BC types apply to different boundary segments.
+MFGArchon currently only supports **uniform** boundary conditions (periodic, Dirichlet, Neumann) across the entire domain boundary. This document proposes a design for **mixed boundary conditions**, where different BC types apply to different boundary segments.
 
 **Critical Use Case**: 2D crowd motion with exit (Dirichlet `u=0`) and reflective walls (Neumann `∂u/∂n=0`).
 

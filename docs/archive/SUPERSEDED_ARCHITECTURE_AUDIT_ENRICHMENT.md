@@ -1,8 +1,8 @@
-# MFGarchon Architecture Audit Enrichment: Evidence from Research
+# MFGArchon Architecture Audit Enrichment: Evidence from Research
 
 **Date**: 2025-10-30
 **Source**: Comprehensive analysis of mfg-research repository
-**Purpose**: Enrich MFGarchon architecture audit with empirical evidence from research sessions
+**Purpose**: Enrich MFGArchon architecture audit with empirical evidence from research sessions
 **Documents Analyzed**: 181 markdown files, 94 test/experiment files, 3 weeks of research sessions
 
 ---
@@ -39,7 +39,7 @@
 | 2025-10-20 | `ModuleNotFoundError: algorithms` | Python path issue after reorganization | Set PYTHONPATH manually | Blocked all experiment execution | `maze_navigation/archives/investigations_2025-10/completed_investigations/API_ISSUES_LOG.md` |
 | 2025-10-20 | Function `sample_particles_in_maze` doesn't exist | Function never implemented | Had to implement custom sampling | 2 hours investigating API | `maze_navigation/archives/investigations_2025-10/completed_investigations/API_ISSUES_LOG.md` |
 | 2025-10-24 | Hamiltonian receives wrong gradient keys | `maze_mfg_problem.py` used `'grad_u_x'` instead of `'dpx'` | Changed 2 characters (Bug #13) | 3 days debugging, entire MFG system broken | `docs/archived_bug_investigations/BUG_13_INDEX.md` |
-| 2025-10-26 | GFDM gradients have wrong sign | Line 453: `b = u_center - u_neighbors` | Changed to `b = u_neighbors - u_center` (Bug #14) | Agents move away from goals, MFG doesn't converge | `maze_navigation/archives/bugs/bug14_gfdm_sign/BUG_14_MFGarchon_REPORT.md` |
+| 2025-10-26 | GFDM gradients have wrong sign | Line 453: `b = u_center - u_neighbors` | Changed to `b = u_neighbors - u_center` (Bug #14) | Agents move away from goals, MFG doesn't converge | `maze_navigation/archives/bugs/bug14_gfdm_sign/BUG_14_MFGArchon_REPORT.md` |
 | 2025-10-26 | QP monotonicity checker calls `sigma**2` on method | `getattr(problem, "sigma")` returns method, not value | Created `SmartSigma` wrapper class (Bug #15) | Cannot validate QP constraints | `maze_navigation/archives/bugs/bug15_qp_sigma/BUG_15_QP_SIGMA_METHOD.md` |
 | 2025-10-29 | Anderson accelerator fails on 2D arrays | `np.column_stack` behavior difference for 1D vs 2D | Flatten before calling, reshape after | MFG density arrays naturally (Nt, N) shape | `maze_navigation/ANDERSON_ISSUE_POSTED.md` |
 | 2025-10-30 | Cannot use FDM solvers with 2D maze | FDM solvers only accept 1D `MFGProblem` | Impossible - switched to GFDM | BLOCKED: Pure FDM comparison for baseline | `maze_navigation/FDM_SOLVER_LIMITATION_ANALYSIS.md` |
@@ -48,7 +48,7 @@
 | 2025-10-27 | Grid-based problems cannot use particle FP solver | Type mismatch in `create_1d_adapter_problem()` | Manual adapter creation | Complex workaround code (50 lines) | `maze_navigation/archives/investigations_2025-10/api_unification_2025-10-27/API_MISMATCH_ANALYSIS.md` |
 | 2025-10-25 | QP constraints applied excessively | Called in every HJB iteration | Cached QP results | 100× speedup after fix | `maze_navigation/archives/bugs/bug15_qp_sigma/BUG_15_EXCESSIVE_QP_INVOCATIONS.md` |
 | 2025-10-22 | Gradient computation returns wrong derivative types | Expected 1D `float`, got 2D `dict` | Manual type conversion at every call site | Fragile adapter code | `maze_navigation/test_gfdm_derivative_types.py` |
-| 2025-10-20 | Hamiltonian signature incompatibility | MFGarchon expects `H(x, p, m)`, research code passes `H(**kwargs)` | Wrapper functions at every boundary | 150+ lines of adapter code | `maze_navigation/test_hamiltonian_types.py` |
+| 2025-10-20 | Hamiltonian signature incompatibility | MFGArchon expects `H(x, p, m)`, research code passes `H(**kwargs)` | Wrapper functions at every boundary | 150+ lines of adapter code | `maze_navigation/test_hamiltonian_types.py` |
 | 2025-10-17 | Cannot mix FDM-HJB with Particle-FP | Requires grid-to-particle interpolation | Feature abandoned | BLOCKED: Hybrid solver comparison | `docs/FP_PARTICLE_HYBRID_VS_COLLOCATION.md` |
 | 2025-10-16 | Network geometry not compatible with regular grids | `NetworkMFGProblem` uses graph structure | Separate code paths for network vs grid | Code duplication | `docs/HYBRID_SOLVER_INTERFACE_ANALYSIS.md` |
 | 2025-10-15 | Adaptive solver doesn't pass backend parameter | `create_fast_solver` ignores backend setting | Manual backend injection | GPU acceleration unavailable | `anisotropic_crowd_qp/research_logs/ADAPTIVE_SOLVER_FIX_2025-10-16.md` |
@@ -95,7 +95,7 @@
 **User's Insight**:
 > "maze can still have grids under coordinate system, right?"
 
-Yes - the maze HAS a regular grid. The problem is MFGarchon's artificial separation of problem definition (`GridBasedMFGProblem` for 2D) and solver implementation (`HJBFDMSolver` for 1D only).
+Yes - the maze HAS a regular grid. The problem is MFGArchon's artificial separation of problem definition (`GridBasedMFGProblem` for 2D) and solver implementation (`HJBFDMSolver` for 1D only).
 
 ---
 
@@ -139,7 +139,7 @@ M_new = M_new_flat.reshape(shape_2d)
 2. **Excessive QP Invocations**: QP solver called 12000+ times per iteration
    - **Cause**: No caching of QP results
    - **Impact**: 50ms × 12000 = 10 minutes per iteration
-   - **Fix**: Add caching logic (not in MFGarchon)
+   - **Fix**: Add caching logic (not in MFGArchon)
    - **Time Lost**: 4 hours optimization
 
 3. **OSQP Performance**: Each QP call takes 50ms
@@ -211,7 +211,7 @@ M_new = M_new_flat.reshape(shape_2d)
    - Evidence: 6 different config imports across experiment files
 
 5. **"Hamiltonian signature keeps changing"**
-   - MFGarchon main: `H(x, p, m)`
+   - MFGArchon main: `H(x, p, m)`
    - GFDM: `H(t, x, p, m, sigma, **kwargs)`
    - Collocation: `H(**derivs)` where `derivs` is dictionary
    - Required 150+ lines of wrapper code to reconcile
@@ -247,7 +247,7 @@ M_new = M_new_flat.reshape(shape_2d)
    - Evidence: `anisotropic_crowd_qp/docs/phase_history/PHASE2_CRITICAL_BUG_REPORT.md`
 
 2. **"Can we use GPU acceleration?"**
-   - MFGarchon has `torch_backend.py`
+   - MFGArchon has `torch_backend.py`
    - BUT: Not wired through `create_fast_solver()`
    - Workaround: Manual backend injection
    - Status: **GPU acceleration unavailable** in practice
@@ -351,7 +351,7 @@ Gradient approximation: ∇u^(k) ≈ GFDM_gradient(u, X, k)
 
 ### 3.4 Notation Inconsistencies Discovered
 
-**Problem**: MFGarchon uses different notations for gradients across modules:
+**Problem**: MFGArchon uses different notations for gradients across modules:
 
 | Module | Gradient Notation | Example | Dimension Handling |
 |--------|-------------------|---------|-------------------|
@@ -589,7 +589,7 @@ def solve_hjb_system_2d(self, M_density, U_final, ...):
 ```
 
 **Effort to implement**: ~200 lines, 2-3 days
-**Status**: Not implemented in MFGarchon
+**Status**: Not implemented in MFGArchon
 
 ---
 
@@ -604,7 +604,7 @@ Discovered bugs:
 2. **Bug #15**: QP monotonicity check assumes numeric sigma
    - Impact: Cannot use QP constraints with particle methods
    - Workaround: `SmartSigma` class
-   - Status: Not fixed in MFGarchon
+   - Status: Not fixed in MFGArchon
 
 ---
 
@@ -664,7 +664,7 @@ if dimension not in [1, 2, 3]:
 **Impact**: Cannot create 4D, 5D, 6D problems
 **User Request**: 4D drone swarms, 5D portfolio optimization
 **Status**: **BLOCKED** by explicit check
-**Evidence**: `docs/MFGarchon_NDIM_ISSUE_DRAFT.md`
+**Evidence**: `docs/MFGArchon_NDIM_ISSUE_DRAFT.md`
 
 ---
 
@@ -862,7 +862,7 @@ class MazeNavigationMFG(HighDimMFGProblem):
 **1. Particle Sampling in Domains with Obstacles** (~80 lines)
 
 ```python
-# Should exist in MFGarchon geometry module, but doesn't
+# Should exist in MFGArchon geometry module, but doesn't
 def sample_particles_in_domain_with_obstacles(domain, n_particles, obstacles):
     """Sample particles uniformly in domain, rejecting those in obstacles."""
     particles = []
@@ -881,7 +881,7 @@ def sample_particles_in_domain_with_obstacles(domain, n_particles, obstacles):
 **2. Particle-to-Grid Interpolation** (~120 lines)
 
 ```python
-# Should exist in MFGarchon as standard operation
+# Should exist in MFGArchon as standard operation
 def interpolate_particles_to_grid(values_particles, particle_positions, grid):
     """Interpolate particle values to regular grid."""
     # Kernel density estimation OR
@@ -898,7 +898,7 @@ def interpolate_particles_to_grid(values_particles, particle_positions, grid):
 **3. Grid-to-Particle Interpolation** (~100 lines)
 
 ```python
-# Should exist in MFGarchon as standard operation
+# Should exist in MFGArchon as standard operation
 def interpolate_grid_to_particles(values_grid, grid, particle_positions):
     """Interpolate grid values to particle positions."""
     # Bilinear/trilinear interpolation for regular grids
@@ -926,7 +926,7 @@ class AdaptiveNeighborhoods:
 
 **Research finding**: Fixed k_neighbors performs poorly near obstacles
 **Solution**: Custom adaptive selection (Bug #6 fix)
-**Status**: Implemented in research, NOT in MFGarchon
+**Status**: Implemented in research, NOT in MFGArchon
 **Evidence**: `maze_navigation/ADAPTIVE_NEIGHBORHOODS.md`
 
 ---
@@ -974,7 +974,7 @@ class QPConstraintCache:
 ```
 
 **Impact of NOT having this**: 100× slowdown (12000 QP solves per iteration)
-**Fix**: Custom caching (not in MFGarchon)
+**Fix**: Custom caching (not in MFGArchon)
 **Evidence**: Bug #15 investigation
 
 ---
@@ -1060,7 +1060,7 @@ class ConvergenceMonitor:
 | Convergence monitoring | 60 | 3 | 180 |
 | **TOTAL** | | | **1655** |
 
-**1655 lines of utility code that should be in MFGarchon but isn't.**
+**1655 lines of utility code that should be in MFGArchon but isn't.**
 
 ---
 
@@ -1221,7 +1221,7 @@ class ConvergenceMonitor:
 **Based on research blockers, these items block ALL progress**:
 
 #### Item 1: Fix Bug #15 (QP Sigma API)
-**Status**: Workaround exists (`SmartSigma`), not fixed in MFGarchon
+**Status**: Workaround exists (`SmartSigma`), not fixed in MFGArchon
 **Blocks**: QP-constrained particle collocation (major research direction)
 **Effort**: 1 day
 **Priority**: **CRITICAL - DO FIRST**
@@ -1516,7 +1516,7 @@ experiments/maze_navigation/
   archives/bugs/bug13_gfdm_gradient/
     [15 files - see BUG_13_INDEX.md for complete list]
   archives/bugs/bug14_gfdm_sign/
-    BUG_14_MFGarchon_REPORT.md
+    BUG_14_MFGArchon_REPORT.md
     BUG_14_GFDM_SIGN_ERROR.md
     BUG_14_STATUS_FINAL.md
     BUG_14_FIX_VERIFIED.md
@@ -1555,16 +1555,16 @@ experiments/maze_navigation/
 **Architecture Analysis** (5 files):
 ```
 experiments/maze_navigation/
-  MFGarchon_ARCHITECTURE_AUDIT.md (200+ pages)
+  MFGArchon_ARCHITECTURE_AUDIT.md (200+ pages)
   ARCHITECTURE_AUDIT_SUMMARY.md
   ARCHITECTURE_AUDIT_INDEX.md
   analysis/PARTICLE_COLLOCATION_ARCHITECTURE_ANALYSIS.md
 
 mfg-research/
-  MFGarchon_ARCHITECTURE_REFACTOR_PROPOSAL.md
+  MFGArchon_ARCHITECTURE_REFACTOR_PROPOSAL.md
 
 docs/
-  MFGarchon_NDIM_ISSUE_DRAFT.md
+  MFGArchon_NDIM_ISSUE_DRAFT.md
   HYBRID_SOLVER_INTERFACE_ANALYSIS.md
 ```
 
@@ -1740,7 +1740,7 @@ TypeError: unsupported operand type(s) for ** or pow(): 'method' and 'int'
 - Backend inaccessibility (MEDIUM)
 - Picard damping (LOW)
 
-### Recommendations for MFGarchon
+### Recommendations for MFGArchon
 
 **Immediate (2 weeks)**:
 1. Fix Bug #15 (sigma API) - 1 day
@@ -1788,12 +1788,12 @@ The original architecture audit identified the problems theoretically. This enri
 - Bugs analyzed: 5 (3 critical)
 
 **Cross-references**:
-- Original audit: MFGarchon_ARCHITECTURE_AUDIT.md
-- Refactoring proposal: MFGarchon_ARCHITECTURE_REFACTOR_PROPOSAL.md
+- Original audit: MFGArchon_ARCHITECTURE_AUDIT.md
+- Refactoring proposal: MFGArchon_ARCHITECTURE_REFACTOR_PROPOSAL.md
 - Research repository: 181 documentation files analyzed
 
 ---
 
 **Last Updated**: 2025-10-30
 **Authors**: Research team (mfg-research repository)
-**Status**: Complete and ready for MFGarchon maintainers review
+**Status**: Complete and ready for MFGArchon maintainers review

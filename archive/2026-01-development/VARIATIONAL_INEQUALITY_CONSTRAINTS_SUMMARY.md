@@ -6,7 +6,7 @@
 
 ## Overview
 
-Implemented comprehensive variational inequality constraint infrastructure for MFGarchon, enabling obstacle problems and box constraints on PDE solutions. The implementation supports unilateral constraints (u ≥ ψ or u ≤ ψ), bilateral constraints (ψ_lower ≤ u ≤ ψ_upper), and regional constraints (constraints active only in spatial subdomains).
+Implemented comprehensive variational inequality constraint infrastructure for MFGArchon, enabling obstacle problems and box constraints on PDE solutions. The implementation supports unilateral constraints (u ≥ ψ or u ≤ ψ), bilateral constraints (ψ_lower ≤ u ≤ ψ_upper), and regional constraints (constraints active only in spatial subdomains).
 
 ## Implementation
 

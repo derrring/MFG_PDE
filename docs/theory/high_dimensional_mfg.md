@@ -43,9 +43,9 @@
 
 ## The Dimensional Problem
 
-### MFGarchon's Explicit Dimensional Limits
+### MFGArchon's Explicit Dimensional Limits
 
-MFGarchon has **hard-coded dimension checks** that prevent 4D+ usage:
+MFGArchon has **hard-coded dimension checks** that prevent 4D+ usage:
 
 ```python
 # From mfgarchon/geometry/tensor_product_grid.py (line 80-81)
@@ -634,7 +634,7 @@ assert domain.contains(np.array([0.1]*4))
 
 ### Why Refactor for All Methods?
 
-**Question:** Should MFGarchon be dimension-agnostic even for mesh methods that can't scale to d>3?
+**Question:** Should MFGArchon be dimension-agnostic even for mesh methods that can't scale to d>3?
 
 **Answer:** **YES** - Benefits both mesh-based AND meshfree methods.
 

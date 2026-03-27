@@ -311,5 +311,5 @@ When using these theoretical frameworks, please cite:
 
 **Target Audience**: Researchers, algorithm developers, theoretical MFG practitioners
 **Prerequisites**: Familiarity with RL, MFG theory, and numerical methods
-**Maintained by**: MFGarchon Development Team
+**Maintained by**: MFGArchon Development Team
 **Last Updated**: 2025-10-12

@@ -207,7 +207,7 @@ except (RuntimeError, OSError) as e:
 
 **12. `utils/performance/monitoring.py:250`** ✅ COMPLETE
 - Performance tracking
-- Replaced `print()` with `logger.warning()` + MFGarchon logger initialization
+- Replaced `print()` with `logger.warning()` + MFGArchon logger initialization
 - Correctly keeps `except Exception:` (re-raises with context)
 
 ### Deferred Items (3/13)
@@ -229,7 +229,7 @@ These were documented in audit but determined to already have acceptable pattern
 **After**:
 - ✅ All 13 instances use specific exceptions (except legitimate re-raise case)
 - ✅ Critical bugs now surface with clear warnings
-- ✅ Consistent MFGarchon logging infrastructure throughout
+- ✅ Consistent MFGArchon logging infrastructure throughout
 - ✅ All fallback behavior preserved for robustness
 - ✅ Performance degradations explicitly warned
 

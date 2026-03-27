@@ -1,6 +1,6 @@
 # Continuous MFG Environments User Guide
 
-Comprehensive guide to the continuous action space environments in MFGarchon's reinforcement learning framework.
+Comprehensive guide to the continuous action space environments in MFGArchon's reinforcement learning framework.
 
 ## Overview
 
@@ -575,7 +575,7 @@ pip install gymnasium
 
 ## Related Documentation
 
-- [Quickstart Guide](quickstart.md) - Getting started with MFGarchon
+- [Quickstart Guide](quickstart.md) - Getting started with MFGArchon
 - [Advanced Examples](../../examples/advanced/) - More complex examples
 
 ---

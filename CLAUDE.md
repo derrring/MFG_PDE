@@ -1,6 +1,6 @@
-# Claude Code Preferences for MFGarchon
+# Claude Code Preferences for MFGArchon
 
-This file contains preferences and conventions for Claude Code when working with the MFGarchon repository.
+This file contains preferences and conventions for Claude Code when working with the MFGArchon repository.
 
 ## ⚠️ **Communication Principles**
 
@@ -18,7 +18,7 @@ This file contains preferences and conventions for Claude Code when working with
 
 ## 🎯 **Repository Mission & Scope** ⚠️ **CRITICAL**
 
-### **MFGarchon: Public Infrastructure Package**
+### **MFGArchon: Public Infrastructure Package**
 Production-ready infrastructure for Mean Field Games research and applications.
 
 **Scope**:
@@ -33,11 +33,11 @@ Novel research, experimental algorithms, unpublished methods.
 - 🔬 Research algorithms (novel schemes, experimental architectures)
 - 🔬 Research applications (case studies, parameter studies, publications)
 
-**Key Principle**: MFG-Research **imports** MFGarchon but **never modifies** it.
+**Key Principle**: MFG-Research **imports** MFGArchon but **never modifies** it.
 
 ### **Decision Criteria**
 
-| Criterion | MFGarchon (Public) | MFG-Research (Private) |
+| Criterion | MFGArchon (Public) | MFG-Research (Private) |
 |:----------|:-----------------|:-----------------------|
 | **Maturity** | Production-ready, tested | Experimental |
 | **Publication** | Published methods | Unpublished |
@@ -46,12 +46,12 @@ Novel research, experimental algorithms, unpublished methods.
 | **Testing** | Full coverage | Exploratory |
 
 ### **Migration Path: Research → Infrastructure**
-When research matures: Add tests, write docs, ensure API consistency, open PR in MFGarchon.
+When research matures: Add tests, write docs, ensure API consistency, open PR in MFGArchon.
 
 ### **Bug Fixes from Research** ⚠️ **CRITICAL**
 When bugs are discovered and validated in mfg-research:
 
-**Requirements before modifying MFGarchon**:
+**Requirements before modifying MFGArchon**:
 1. GitHub issue created with quantified validation evidence
 2. Standalone validation experiment in mfg-research demonstrating the fix
 3. Discussion and approval of approach
@@ -434,7 +434,7 @@ For long-running computations (GFDM solvers, Picard iterations, parameter sweeps
 
 ## 🧪 **Testing Philosophy**
 
-MFGarchon uses a **hybrid testing approach** optimized for research code that evolves rapidly.
+MFGArchon uses a **hybrid testing approach** optimized for research code that evolves rapidly.
 
 ### **1. Unit Tests (`tests/`) - For Stable APIs**
 
@@ -878,4 +878,4 @@ Before marking an issue as complete or creating a PR:
 
 **Last Updated**: 2026-02-15
 **Repository Version**: v0.17.13 (Pre-1.0.0)
-**Claude Code**: Always reference this file for MFGarchon conventions
+**Claude Code**: Always reference this file for MFGArchon conventions

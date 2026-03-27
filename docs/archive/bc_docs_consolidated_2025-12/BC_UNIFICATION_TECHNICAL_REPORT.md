@@ -4,14 +4,14 @@
 **Date**: 2025-12-16
 **Revision**: 1.2 (Performance & Scalability Review)
 **Status**: Proposed
-**Author**: MFGarchon Development Team
+**Author**: MFGArchon Development Team
 **Reviewer**: External Technical Expert
 
 ---
 
 ## Executive Summary
 
-This report documents the current state of boundary condition (BC) handling across the MFGarchon solver ecosystem, identifies architectural inconsistencies, and proposes a unified approach. The goal is to enable all solvers to leverage the existing BC infrastructure in `geometry/boundary/` rather than using ad-hoc implementations.
+This report documents the current state of boundary condition (BC) handling across the MFGArchon solver ecosystem, identifies architectural inconsistencies, and proposes a unified approach. The goal is to enable all solvers to leverage the existing BC infrastructure in `geometry/boundary/` rather than using ad-hoc implementations.
 
 ---
 

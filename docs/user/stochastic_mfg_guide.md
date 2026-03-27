@@ -1,6 +1,6 @@
 # Stochastic MFG User Guide
 
-**Target Audience**: Researchers and practitioners using MFGarchon for stochastic problems
+**Target Audience**: Researchers and practitioners using MFGArchon for stochastic problems
 **Prerequisites**: Basic understanding of Mean Field Games and HJB-FP systems
 **Related Documentation**: [High Dimensional MFG](../theory/high_dimensional_mfg.md)
 

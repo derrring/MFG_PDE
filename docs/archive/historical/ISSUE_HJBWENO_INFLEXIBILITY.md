@@ -9,7 +9,7 @@
 
 ## Issue Summary
 
-`hjb_weno.py` hardcodes a specific Hamiltonian form instead of using the flexible `problem.H()` interface. This limits the solver to one specific problem type and is inconsistent with MFGarchon's extensible design philosophy.
+`hjb_weno.py` hardcodes a specific Hamiltonian form instead of using the flexible `problem.H()` interface. This limits the solver to one specific problem type and is inconsistent with MFGArchon's extensible design philosophy.
 
 **Impact**: Users cannot use WENO solver with custom Hamiltonians (obstacle costs, running costs, nonlinear control, etc.)
 
@@ -416,7 +416,7 @@ def test_weno_backward_compatibility():
 
 `hjb_weno.py`'s hardcoded Hamiltonian is a **design limitation** that:
 1. Restricts WENO solver to one specific problem type
-2. Is inconsistent with MFGarchon's extensible architecture
+2. Is inconsistent with MFGArchon's extensible architecture
 3. Has NO significant performance justification (< 1% overhead)
 
 **Recommendation**: Refactor to use `problem.H()` interface while preserving WENO's gradient computation advantages.

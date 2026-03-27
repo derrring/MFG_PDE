@@ -11,7 +11,7 @@
 
 ### Three-Mode Solving API
 
-MFGarchon now provides **guaranteed adjoint duality** between HJB and FP solvers through a new three-mode solving API. This prevents a subtle but critical numerical error that can break Nash equilibrium convergence.
+MFGArchon now provides **guaranteed adjoint duality** between HJB and FP solvers through a new three-mode solving API. This prevents a subtle but critical numerical error that can break Nash equilibrium convergence.
 
 **Key Benefit**: You can now safely experiment with different numerical schemes knowing that duality is guaranteed by construction.
 
@@ -376,7 +376,7 @@ A: Safe Mode guarantees duality. Expert Mode validates automatically and emits w
 
 ## Summary
 
-The three-mode solving API represents a major improvement in MFGarchon's usability and scientific correctness. By making it **impossible** to accidentally break adjoint duality, this release ensures your MFG simulations converge correctly while maintaining complete backward compatibility.
+The three-mode solving API represents a major improvement in MFGArchon's usability and scientific correctness. By making it **impossible** to accidentally break adjoint duality, this release ensures your MFG simulations converge correctly while maintaining complete backward compatibility.
 
 **Key Takeaway**: Better defaults, stronger guarantees, zero breaking changes.
 

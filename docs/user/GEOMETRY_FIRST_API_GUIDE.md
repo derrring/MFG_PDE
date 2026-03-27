@@ -7,7 +7,7 @@
 
 ## Overview
 
-The geometry-first API is the **recommended way** to construct MFG problems in MFGarchon. Instead of manually specifying grid parameters in `MFGProblem`, you first create a geometry object and pass it to `MFGProblem`.
+The geometry-first API is the **recommended way** to construct MFG problems in MFGArchon. Instead of manually specifying grid parameters in `MFGProblem`, you first create a geometry object and pass it to `MFGProblem`.
 
 As of v0.16.0, `MFGProblem.geometry` is **always non-None** after initialization, and all spatial information is derived from the geometry object. Legacy attributes (`xmin`, `xmax`, `Nx`, `dx`, etc.) emit `DeprecationWarning` when accessed.
 

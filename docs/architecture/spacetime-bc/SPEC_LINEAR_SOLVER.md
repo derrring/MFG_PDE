@@ -9,7 +9,7 @@
 
 ## 1. Motivation
 
-Every implicit time step in MFGarchon ends with a linear solve: `A x = b`.
+Every implicit time step in MFGArchon ends with a linear solve: `A x = b`.
 The system matrix $A$ varies in structure depending on the PDE, discretization,
 and dimension. Currently, solver selection is manual — mostly `spsolve()` everywhere,
 with `splu()` in the implicit heat solver and iterative methods available but rarely used.

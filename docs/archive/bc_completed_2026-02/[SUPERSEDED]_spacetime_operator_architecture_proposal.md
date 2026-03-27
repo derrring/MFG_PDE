@@ -941,7 +941,7 @@ The Space-Time Operator Architecture offers a mathematically principled and comp
 
 **Recommendation**: **Proceed with phased adoption** starting with protocol definitions and wrappers (v0.17), followed by gradual solver refactoring (v0.18-v1.0), culminating in advanced features (v1.1+).
 
-This positions MFGarchon as a cutting-edge research platform while preserving stability for existing users.
+This positions MFGArchon as a cutting-edge research platform while preserving stability for existing users.
 
 ---
 

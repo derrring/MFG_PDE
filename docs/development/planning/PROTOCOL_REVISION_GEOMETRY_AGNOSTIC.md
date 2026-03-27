@@ -8,7 +8,7 @@
 
 ## Problem: Not All Geometries Are Grid-Based
 
-### Geometry Types in MFGarchon
+### Geometry Types in MFGArchon
 
 | Geometry Type | Structure | Has Regular Grid? |
 |:--------------|:----------|:------------------|

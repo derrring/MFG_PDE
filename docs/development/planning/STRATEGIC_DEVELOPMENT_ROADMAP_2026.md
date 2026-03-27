@@ -1,4 +1,4 @@
-# MFGarchon Strategic Development Roadmap 2026
+# MFGArchon Strategic Development Roadmap 2026
 
 **Document Version**: 1.9
 **Created**: September 28, 2025
@@ -9,10 +9,10 @@
 
 ## 🎯 **Executive Summary**
 
-This strategic roadmap charts MFGarchon's evolution from a comprehensive research platform to the definitive computational framework for Mean Field Games. Building on substantial 2025 achievements, the roadmap focuses on high-dimensional neural methods, multi-dimensional problems, and production-scale capabilities.
+This strategic roadmap charts MFGArchon's evolution from a comprehensive research platform to the definitive computational framework for Mean Field Games. Building on substantial 2025 achievements, the roadmap focuses on high-dimensional neural methods, multi-dimensional problems, and production-scale capabilities.
 
 ### **Vision Statement**
-Transform MFGarchon into the premier platform for Mean Field Games computation, enabling breakthrough research in high-dimensional problems while providing production-ready solutions for industrial applications.
+Transform MFGArchon into the premier platform for Mean Field Games computation, enabling breakthrough research in high-dimensional problems while providing production-ready solutions for industrial applications.
 
 ## ✅ **Foundation Achieved (2025)**
 
@@ -136,7 +136,7 @@ result = dgm_solver.solve()  # Handles d > 10 efficiently
 
 ### **🎉 PHASE 1 COMPLETION SUMMARY (October 2025)**
 
-**BREAKTHROUGH ACHIEVEMENT**: Complete neural paradigm implementation finished **6 months ahead of Q1 2026 timeline**, establishing MFGarchon as the first comprehensive neural framework for high-dimensional Mean Field Games.
+**BREAKTHROUGH ACHIEVEMENT**: Complete neural paradigm implementation finished **6 months ahead of Q1 2026 timeline**, establishing MFGArchon as the first comprehensive neural framework for high-dimensional Mean Field Games.
 
 **✅ Technical Achievements**:
 - **Complete DGM Framework**: High-dimensional solver (d > 10) with variance reduction
@@ -161,7 +161,7 @@ pinn_solver = MFGPINNSolver(problem, bayesian=True)
 posterior_samples = pinn_solver.sample_posterior(mcmc_samples=1000)  # ✅ WORKS NOW
 ```
 
-**✅ Research Impact**: MFGarchon now enables breakthrough research in dimensions previously computationally intractable (d > 10).
+**✅ Research Impact**: MFGArchon now enables breakthrough research in dimensions previously computationally intractable (d > 10).
 
 **✅ Next Priority**: Neural Operator Methods (FNO/DeepONet) for rapid parameter studies.
 
@@ -209,7 +209,7 @@ solution = fno.evaluate(new_parameters)  # 100x faster than solving
 - Comprehensive documentation and working examples
 
 **✅ Research Impact**:
-MFGarchon is now the first comprehensive framework enabling:
+MFGArchon is now the first comprehensive framework enabling:
 - High-dimensional MFG problems (d > 10) via DGM
 - Uncertainty quantification via Bayesian PINNs
 - Real-time control via neural operators
@@ -398,7 +398,7 @@ result = solve_mfg(problem, config=config_builder.build())     # Builder
 
 ### **🎉 PHASE 3 COMPLETION SUMMARY (November 2025)**
 
-**BREAKTHROUGH ACHIEVEMENT**: Most significant architectural improvement in MFGarchon history, delivering production-ready unified system that resolves 48 documented issues and enables all future development.
+**BREAKTHROUGH ACHIEVEMENT**: Most significant architectural improvement in MFGArchon history, delivering production-ready unified system that resolves 48 documented issues and enables all future development.
 
 **✅ Results Delivered**:
 - **Issues closed**: #200 (Architecture Refactoring), #221 (Config), #223 (Factory Integration)
@@ -480,7 +480,7 @@ Functional Derivatives: Efficient computation of δU/δm
 
 **Status**: Foundation complete (functional calculus implemented), solver deferred to future phase
 
-**✅ Research Impact**: MFGarchon is now the **first comprehensive open-source framework** for stochastic MFG with common noise, enabling:
+**✅ Research Impact**: MFGArchon is now the **first comprehensive open-source framework** for stochastic MFG with common noise, enabling:
 - Financial applications with market volatility
 - Epidemic modeling with random events
 - Robotics with shared sensor noise
@@ -493,7 +493,7 @@ Functional Derivatives: Efficient computation of δU/δm
 
 ### **🎉 PHASE 2 COMPLETION SUMMARY (October 2025)**
 
-**BREAKTHROUGH ACHIEVEMENT**: Complete multi-dimensional framework and stochastic MFG extensions finished **6 months ahead of Q2-Q3 2026 timeline**, establishing MFGarchon as the first comprehensive framework for both spatial multi-dimensional and stochastic Mean Field Games.
+**BREAKTHROUGH ACHIEVEMENT**: Complete multi-dimensional framework and stochastic MFG extensions finished **6 months ahead of Q2-Q3 2026 timeline**, establishing MFGArchon as the first comprehensive framework for both spatial multi-dimensional and stochastic Mean Field Games.
 
 #### **✅ Phase 2.1: Multi-Dimensional Framework**
 **Delivered Components**:
@@ -532,7 +532,7 @@ Functional Derivatives: Efficient computation of δU/δm
 - Complete documentation and examples
 - 3 diverse application domains demonstrated
 
-**Research Significance**: MFGarchon is now the **only comprehensive open-source framework** supporting:
+**Research Significance**: MFGArchon is now the **only comprehensive open-source framework** supporting:
 1. High-dimensional problems (d > 10) via neural methods
 2. Multi-dimensional spatial domains (2D/3D) with memory efficiency
 3. Stochastic MFG with common noise and uncertainty quantification
@@ -1134,10 +1134,10 @@ MFGC Formulation:
 **Publication Strategy**:
 - **Method Paper**: "Non-Asymptotic Convergence Rates for Stochastic Mean Field Games"
 - **Application Paper**: "Regime-Switching MFG for Financial Market Modeling"
-- **Software Paper**: "MFGarchon: A Comprehensive Framework for Stochastic Differential Games"
+- **Software Paper**: "MFGArchon: A Comprehensive Framework for Stochastic Differential Games"
 
 **Competitive Advantage**:
-MFGarchon will be the **only open-source framework** providing:
+MFGArchon will be the **only open-source framework** providing:
 - Complete spectrum: N-player games → MFG limit with convergence analysis
 - Stochastic extensions: Common noise, regime-switching, control interaction
 - Quantitative validation: Non-asymptotic convergence rate estimation
@@ -1275,7 +1275,7 @@ result = npg.update(trajectories)
 **Publication Strategy**:
 - **Method Paper**: "Information-Geometric Optimization for Mean Field Games"
 - **Application Paper**: "Robust Mean Field Control via KL Regularization"
-- **Software Paper**: "MFGarchon: Information Geometry Implementation"
+- **Software Paper**: "MFGArchon: Information Geometry Implementation"
 
 **Novel Contributions**:
 - First open-source IG-enhanced MFG framework
@@ -1340,7 +1340,7 @@ result = npg.update(trajectories)
 ### **Research Impact**
 | Metric | Current | 2026 Target | 2027 Target |
 |--------|---------|-------------|-------------|
-| **Publications** | Research ready | 10+ papers using MFGarchon | 25+ citations |
+| **Publications** | Research ready | 10+ papers using MFGArchon | 25+ citations |
 | **GitHub Stars** | ~100 | 1000+ | 2000+ |
 | **Contributors** | Core team | 50+ contributors | 200+ community |
 | **Industrial Users** | Academic | 10+ companies | 25+ production users |
@@ -1500,4 +1500,4 @@ result = npg.update(trajectories)
 - **Quarterly**: Strategic direction and resource allocation
 - **Annually**: Vision refinement and long-term planning
 
-This roadmap represents MFGarchon's evolution from a comprehensive research platform to the definitive computational framework for Mean Field Games, positioned to enable breakthrough discoveries while serving production applications across academia and industry.
+This roadmap represents MFGArchon's evolution from a comprehensive research platform to the definitive computational framework for Mean Field Games, positioned to enable breakthrough discoveries while serving production applications across academia and industry.

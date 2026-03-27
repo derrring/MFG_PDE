@@ -315,7 +315,7 @@ def plot_lagrangian_solution(result, problem):
 
 ## Conclusion
 
-The Lagrangian formulation provides essential capabilities that significantly enhance the MFGarchon framework:
+The Lagrangian formulation provides essential capabilities that significantly enhance the MFGArchon framework:
 
 1. **Mathematical Completeness**: Dual perspective to Hamiltonian methods
 2. **Constraint Handling**: Natural framework for complex constraints  
@@ -329,5 +329,5 @@ The Lagrangian formulation provides essential capabilities that significantly en
 
 **Implementation Status**: Complete core system with examples and validation  
 **Documentation**: Comprehensive system documentation  
-**Integration**: Full compatibility with existing MFGarchon framework  
+**Integration**: Full compatibility with existing MFGArchon framework  
 **Examples**: Basic usage, constraints, comparisons with Hamiltonian methods

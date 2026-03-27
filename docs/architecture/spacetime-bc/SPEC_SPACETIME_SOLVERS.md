@@ -10,7 +10,7 @@
 ## 1. Executive Summary
 
 This specification defines the architecture for **Time Integration** and
-**Global Solution** modules of MFGarchon. It marks a paradigm shift from
+**Global Solution** modules of MFGArchon. It marks a paradigm shift from
 imperative time-stepping loops to declarative **Space-Time Operators**.
 
 **Core Philosophy**:
@@ -58,7 +58,7 @@ $$
 
 ### 3.1 StoragePolicy (Memory Management)
 
-> **Status**: DEFERRED for MFGarchon v1.0. Documented for future reference.
+> **Status**: DEFERRED for MFGArchon v1.0. Documented for future reference.
 
 - **`InCore`**: Full trajectory $(N_t, N_x)$ in RAM/VRAM. Enables global optimization and AD.
 - **`Streaming`**: Only current time-slab stored. Standard time-stepping.

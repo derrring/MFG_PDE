@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-The MFGarchon boundary condition system has two distinct layers:
+The MFGArchon boundary condition system has two distinct layers:
 
 | Layer | Purpose | Question Answered | Key Classes |
 |-------|---------|-------------------|-------------|

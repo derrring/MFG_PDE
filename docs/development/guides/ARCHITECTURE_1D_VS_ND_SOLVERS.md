@@ -1,4 +1,4 @@
-# Architecture Analysis: 1D vs nD Solvers in MFGarchon
+# Architecture Analysis: 1D vs nD Solvers in MFGArchon
 
 **Date**: 2025-11-19
 **Question**: Do we need separate 1D solvers inside FP/HJB solvers?
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-**Current Architecture**: MFGarchon **already uses** dimension-based routing with specialized 1D and nD solvers.
+**Current Architecture**: MFGArchon **already uses** dimension-based routing with specialized 1D and nD solvers.
 
 **Key Finding**: This is the **correct design pattern** for PDE solvers. Keep and enhance it.
 

@@ -6,7 +6,7 @@
 
 ## 🎯 Problem Statement
 
-Complete the modernization of typing patterns across MFGarchon to Python 3.12+ standards. While most typing errors have been resolved through recent systematic fixes, there are remaining type narrowing issues in `network_geometry.py` that were deferred due to complexity.
+Complete the modernization of typing patterns across MFGArchon to Python 3.12+ standards. While most typing errors have been resolved through recent systematic fixes, there are remaining type narrowing issues in `network_geometry.py` that were deferred due to complexity.
 
 **Current State**:
 - ✅ Utils directory typing modernized (logging.py, convergence.py, etc.)

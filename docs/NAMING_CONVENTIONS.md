@@ -1,4 +1,4 @@
-# MFGarchon Naming Conventions
+# MFGArchon Naming Conventions
 
 **Last Updated**: 2026-02-16
 **Status**: Current reference document (v0.17.11+)
@@ -8,7 +8,7 @@
 
 ## Purpose
 
-This document defines Python code naming conventions for MFGarchon based on actual codebase standards, not aspirational goals. Use this as the authoritative reference for parameter and variable naming.
+This document defines Python code naming conventions for MFGArchon based on actual codebase standards, not aspirational goals. Use this as the authoritative reference for parameter and variable naming.
 
 ---
 
@@ -311,7 +311,7 @@ Nx_points = Nx + 1  # 51 points
 - **Clarity**: `Nx_points` explicitly means grid points
 - **Grid spacing**: `dx = L / Nx` (NOT `L / (Nx-1)`)
 - **Arrays**: Solution arrays have shape `(Nt_points, Nx_points[0], Nx_points[1], ...)`
-- **Interoperability**: All MFGarchon solvers assume this convention
+- **Interoperability**: All MFGArchon solvers assume this convention
 
 ### Spatial Discretization
 
@@ -751,7 +751,7 @@ def solve(self) -> tuple[np.ndarray, np.ndarray]:
 
 ### ⚠️ CRITICAL: Unified Derivative Representation (v0.17.0+)
 
-MFGarchon uses **tensor-based derivative representation** as the canonical standard. Derivatives of order p in dimension d are stored as tensors of shape `(d,) * p`.
+MFGArchon uses **tensor-based derivative representation** as the canonical standard. Derivatives of order p in dimension d are stored as tensors of shape `(d,) * p`.
 
 ### DerivativeTensors Class
 

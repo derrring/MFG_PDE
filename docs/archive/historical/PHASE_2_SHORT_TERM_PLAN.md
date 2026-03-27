@@ -581,7 +581,7 @@ raise ConvergenceError(
 
 **Release Notes Structure**:
 ```markdown
-# MFGarchon v0.8.0 - Phase 2 Short-Term Improvements
+# MFGArchon v0.8.0 - Phase 2 Short-Term Improvements
 
 ## New Features
 

@@ -1,6 +1,6 @@
 # Migration Guide: Unified MFGProblem Interface
 
-**Version**: MFGarchon v0.10.x - v0.11.x
+**Version**: MFGArchon v0.10.x - v0.11.x
 **Status**: Stable API (v0.10.x+), Dual Geometry Added (v0.11.x)
 **Deprecation Timeline**: v0.9.0 (warnings) → v2.0.0 (removal)
 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-MFGarchon v0.9.0 introduces a unified `MFGProblem` class that supports all problem types through a single interface. The old `GridBasedMFGProblem` class has been converted to a factory function with deprecation warnings.
+MFGArchon v0.9.0 introduces a unified `MFGProblem` class that supports all problem types through a single interface. The old `GridBasedMFGProblem` class has been converted to a factory function with deprecation warnings.
 
 **v0.11.0 Update**: The unified API now includes complete dual geometry support, enabling HJB and FP solvers to use different discretizations.
 
@@ -505,7 +505,7 @@ assert np.allclose(result_old.U, result_new.U, atol=1e-12)
 
 **Problem**: `AttributeError: module 'mfgarchon' has no attribute 'GridBasedMFGProblem'`
 
-**Solution**: Update MFGarchon to v0.9.0+:
+**Solution**: Update MFGArchon to v0.9.0+:
 ```bash
 pip install --upgrade mfgarchon>=0.9.0
 ```

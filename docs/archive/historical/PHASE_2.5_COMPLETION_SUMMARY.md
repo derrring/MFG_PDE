@@ -9,7 +9,7 @@
 
 ## Overview
 
-Phase 2.5 implemented anisotropic tensor diffusion operators for MFGarchon, completing infrastructure originally planned for Phase 3. This work enables direction-dependent diffusion with applications in:
+Phase 2.5 implemented anisotropic tensor diffusion operators for MFGArchon, completing infrastructure originally planned for Phase 3. This work enables direction-dependent diffusion with applications in:
 
 - Crowd dynamics (preferential flow directions)
 - Traffic networks (road orientation effects)
@@ -334,7 +334,7 @@ Tensor diffusion involves 7× more operations than scalar Laplacian. Performance
 
 ## Conclusion
 
-Phase 2.5 successfully delivered anisotropic tensor diffusion infrastructure for MFGarchon. The work completed ~80% of the original Phase 3.3 feature (tensor diffusion) but deliberately stopped before full MFG integration to allow thorough validation.
+Phase 2.5 successfully delivered anisotropic tensor diffusion infrastructure for MFGArchon. The work completed ~80% of the original Phase 3.3 feature (tensor diffusion) but deliberately stopped before full MFG integration to allow thorough validation.
 
 **Key Achievements**:
 - Production-ready tensor operators with comprehensive tests

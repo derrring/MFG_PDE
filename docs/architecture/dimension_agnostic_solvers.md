@@ -1,6 +1,6 @@
 # Dimension-Agnostic MFG Solver Landscape
 
-**Purpose**: Comprehensive overview of dimension-agnostic approaches for Mean Field Games in MFGarchon
+**Purpose**: Comprehensive overview of dimension-agnostic approaches for Mean Field Games in MFGArchon
 **Date**: 2025-10-31
 **Status**: Living document
 
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-MFGarchon supports multiple strategies for solving Mean Field Games in arbitrary dimensions (2D, 3D, 4D, ...). This document categorizes approaches by:
+MFGArchon supports multiple strategies for solving Mean Field Games in arbitrary dimensions (2D, 3D, 4D, ...). This document categorizes approaches by:
 - **Grid structure**: Regular vs irregular vs dynamic
 - **Dimension handling**: Direct vs dimensional splitting
 - **Implementation status**: Production vs research
@@ -233,7 +233,7 @@ where S_i(Δt) is the solution operator for dimension i.
 
 **Approach**: Meshfree method using local polynomial approximation
 **Key Idea**: Compute derivatives from scattered neighbors via least squares
-**Implementation**: Production-ready in MFGarchon
+**Implementation**: Production-ready in MFGArchon
 
 ### Algorithm
 
@@ -393,7 +393,7 @@ where w_j are weights (e.g., inverse distance).
 
 **Location**: `mfg-research/algorithms/particle_collocation/`
 
-> **Note**: For basic meshfree density evolution in MFGarchon, use `FPGFDMSolver`.
+> **Note**: For basic meshfree density evolution in MFGArchon, use `FPGFDMSolver`.
 > This section describes more advanced fully-Lagrangian research methods.
 
 ### Algorithm
@@ -502,7 +502,7 @@ Different MFG problems have different needs:
 
 ### Principle 3: Production + Research
 
-- **Production code** (MFGarchon): Stable, tested, documented
+- **Production code** (MFGArchon): Stable, tested, documented
 - **Research code** (mfg-research): Experimental, flexible, evolving
 - Clear separation prevents research instability from affecting production
 
@@ -631,7 +631,7 @@ START: Need to solve nD MFG problem
 
 ## Related Documentation
 
-### MFGarchon
+### MFGArchon
 
 - `docs/architecture/README.md`: Overall architecture
 - `docs/architecture/proposals/DIMENSION_AGNOSTIC_FDM_ANALYSIS.md`: FDM splitting design
@@ -666,4 +666,4 @@ START: Need to solve nD MFG problem
 
 **Document Version**: 1.0
 **Last Updated**: 2025-10-31
-**Maintainer**: MFGarchon Development Team
+**Maintainer**: MFGArchon Development Team
