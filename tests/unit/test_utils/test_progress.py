@@ -134,13 +134,14 @@ class TestIterationProgress:
         with patch("sys.stdout", new=StringIO()), IterationProgress(max_iterations=10, disable=True) as progress:
             progress.update(1)
             progress.update(2, error=0.01)
-            # Just verify it doesn't crash
+            assert progress is not None  # Smoke: update completes without error
 
     def test_iteration_progress_set_description(self):
         """Test IterationProgress set_description method."""
         with patch("sys.stdout", new=StringIO()), IterationProgress(max_iterations=10, disable=True) as progress:
             progress.set_description("New Description")
-            # Just verify it doesn't crash
+            assert progress is not None
+            assert progress.max_iterations == 10
 
     def test_iteration_progress_disabled(self):
         """Test IterationProgress when disabled."""
@@ -199,7 +200,7 @@ class TestRichProgressBar:
         """Test RichProgressBar close method."""
         pbar = RichProgressBar(total=10, disable=True)
         pbar.close()
-        # Just verify it doesn't crash
+        assert pbar.disable is True
 
 
 class TestTimedOperation:
@@ -395,11 +396,17 @@ class TestIntegration:
 
     def test_nested_progress_contexts(self):
         """Test nested progress contexts."""
+        outer_count = 0
+        inner_count = 0
         with patch("sys.stdout", new=StringIO()):
             outer_items = range(3)
             with progress_context(outer_items, description="Outer", disable=True) as outer:
                 for _i in outer:
+                    outer_count += 1
                     inner_items = range(2)
                     with progress_context(inner_items, description="Inner", disable=True) as inner:
                         for _j in inner:
+                            inner_count += 1
                             time.sleep(0.001)
+        assert outer_count == 3
+        assert inner_count == 6

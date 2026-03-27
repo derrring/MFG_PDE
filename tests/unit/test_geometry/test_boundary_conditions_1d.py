@@ -258,7 +258,8 @@ def test_validate_values_periodic_no_requirements():
     """Test validation for periodic BC (no values required)."""
     bc = BoundaryConditions(type="periodic")
     # Should not raise
-    bc.validate_values()
+    result = bc.validate_values()
+    assert result is None
 
 
 @pytest.mark.unit
@@ -267,7 +268,8 @@ def test_validate_values_no_flux_no_requirements():
     """Test validation for no-flux BC (no values required)."""
     bc = BoundaryConditions(type="no_flux")
     # Should not raise
-    bc.validate_values()
+    result = bc.validate_values()
+    assert result is None
 
 
 @pytest.mark.unit
@@ -294,7 +296,8 @@ def test_validate_values_dirichlet_complete():
     """Test Dirichlet validation passes with all values."""
     bc = BoundaryConditions(type="dirichlet", left_value=0.0, right_value=1.0)
     # Should not raise
-    bc.validate_values()
+    result = bc.validate_values()
+    assert result is None
 
 
 @pytest.mark.unit
@@ -321,7 +324,8 @@ def test_validate_values_neumann_complete():
     """Test Neumann validation passes with all values."""
     bc = BoundaryConditions(type="neumann", left_value=0.5, right_value=-0.5)
     # Should not raise
-    bc.validate_values()
+    result = bc.validate_values()
+    assert result is None
 
 
 @pytest.mark.unit
@@ -353,7 +357,8 @@ def test_validate_values_robin_complete():
         right_value=1.0,
     )
     # Should not raise
-    bc.validate_values()
+    result = bc.validate_values()
+    assert result is None
 
 
 # ============================================================================
@@ -656,9 +661,12 @@ def test_validation_called_independently():
     """Test validate_values() can be called multiple times."""
     bc = dirichlet_bc(0.0, 1.0)
     # Should not raise on repeated calls
-    bc.validate_values()
-    bc.validate_values()
-    bc.validate_values()
+    result1 = bc.validate_values()
+    result2 = bc.validate_values()
+    result3 = bc.validate_values()
+    assert result1 is None
+    assert result2 is None
+    assert result3 is None
 
 
 @pytest.mark.unit

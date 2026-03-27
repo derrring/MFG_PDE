@@ -458,7 +458,8 @@ def test_plot_comparison_total_mass_no_viz():
     exp_data2["solver_name"] = "TestSolver2"
 
     with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
-        plot_comparison_total_mass([exp_data1, exp_data2])
+        result = plot_comparison_total_mass([exp_data1, exp_data2])
+        assert result is None
 
 
 @pytest.mark.unit
@@ -485,7 +486,8 @@ def test_plot_comparison_final_m_basic():
     exp_data = create_mock_experiment_data()
 
     with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
-        plot_comparison_final_m([exp_data])
+        result = plot_comparison_final_m([exp_data])
+        assert result is None
 
 
 @pytest.mark.unit
@@ -496,7 +498,8 @@ def test_plot_comparison_final_m_invalid_shape():
 
     with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
         # Should handle gracefully and print warning
-        plot_comparison_final_m([exp_data])
+        result = plot_comparison_final_m([exp_data])
+        assert result is None
 
 
 @pytest.mark.unit
@@ -505,7 +508,8 @@ def test_plot_comparison_initial_U_basic():
     exp_data = create_mock_experiment_data()
 
     with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
-        plot_comparison_initial_U([exp_data])
+        result = plot_comparison_initial_U([exp_data])
+        assert result is None
 
 
 @pytest.mark.unit
@@ -531,7 +535,8 @@ def test_plot_comparison_U_slice_basic():
     exp_data = create_mock_experiment_data()
 
     with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
-        plot_comparison_U_slice([exp_data], time_index=10)
+        result = plot_comparison_U_slice([exp_data], time_index=10)
+        assert result is None
 
 
 @pytest.mark.unit
@@ -541,7 +546,8 @@ def test_plot_comparison_U_slice_out_of_bounds():
 
     with patch("mfgarchon.utils.experiment_manager.VISUALIZATION_AVAILABLE", False), patch("matplotlib.pyplot.show"):
         # Should handle gracefully and print warning
-        plot_comparison_U_slice([exp_data], time_index=100)
+        result = plot_comparison_U_slice([exp_data], time_index=100)
+        assert result is None
 
 
 @pytest.mark.unit
