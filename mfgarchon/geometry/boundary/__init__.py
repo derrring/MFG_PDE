@@ -6,7 +6,7 @@ supporting Dirichlet, Neumann, Robin, periodic, and no-flux conditions.
 
 Architecture (4-layer model, see BC_ENFORCEMENT_ARCHITECTURE.md):
 - **Layer 1 — Specification**: types.py, conditions.py, providers.py
-- **Layer 2 — Resolution**: (planned) BCResolver resolves intent per PDE type
+- **Layer 2 — Resolution**: resolution.py (BCResolver, MathBCType, ResolvedBC)
 - **Layer 3 — Enforcement**: calculators.py, enforcement.py, ghost_cells.py
 - **Layer 4 — Application**: applicator_*.py, dispatch.py
 
@@ -73,6 +73,16 @@ from .providers import (
     is_provider,
     resolve_provider,
 )
+
+# Layer 2: Resolution (Issue #848 Phase 3)
+from .resolution import (
+    BCResolver,
+    FPResolver,
+    HJBResolver,
+    MathBCType,
+    ResolvedBC,
+    resolve_bc,
+)
 from .types import (
     BCSegment,
     BCType,
@@ -113,6 +123,13 @@ __all__ = [
     "ConstantProvider",
     "is_provider",
     "resolve_provider",
+    # Layer 2: Resolution
+    "MathBCType",
+    "ResolvedBC",
+    "BCResolver",
+    "HJBResolver",
+    "FPResolver",
+    "resolve_bc",
     # Constraints
     "ConstraintProtocol",
     "ObstacleConstraint",
