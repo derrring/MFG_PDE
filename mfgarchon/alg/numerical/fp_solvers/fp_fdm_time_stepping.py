@@ -193,10 +193,17 @@ def _get_bc_type(boundary_conditions: Any) -> str | None:
         # Try accessing type - may raise ValueError for mixed BC
         return boundary_conditions.type
     except ValueError:
-        # Mixed BC - type property raises ValueError
+        # Mixed BC: type property raises ValueError when segments have different types.
+        # If all segments share the same type, return it (e.g., all Dirichlet).
+        try:
+            types = {seg.bc_type.value for seg in boundary_conditions.segments}
+            if len(types) == 1:
+                return types.pop()
+        except (AttributeError, TypeError):
+            pass
         return None
     except AttributeError:
-        # Legacy BC: type is a direct attribute (shouldn't happen but fallback)
+        # Legacy BC: type is a direct attribute
         return getattr(boundary_conditions, "type", None)
 
 

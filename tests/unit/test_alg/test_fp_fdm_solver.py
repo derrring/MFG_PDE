@@ -15,10 +15,14 @@ from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonia
 from mfgarchon.core.mfg_components import MFGComponents
 from mfgarchon.core.mfg_problem import MFGProblem
 from mfgarchon.geometry import TensorProductGrid
-from mfgarchon.geometry.boundary import no_flux_bc
-
-# Legacy 1D BC for FDM solver boundary condition testing
-from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions
+from mfgarchon.geometry.boundary import (
+    BCSegment,
+    BCType,
+    BoundaryConditions,
+    dirichlet_bc,
+    no_flux_bc,
+    periodic_bc,
+)
 
 
 def _default_hamiltonian():
@@ -81,7 +85,7 @@ class TestFPFDMSolverInitialization:
 
     def test_initialization_with_periodic_bc(self, standard_problem):
         """Test initialization with periodic boundary conditions."""
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         assert solver.fp_method_name == "FDM"
@@ -89,17 +93,16 @@ class TestFPFDMSolverInitialization:
 
     def test_initialization_with_dirichlet_bc(self, standard_problem):
         """Test initialization with Dirichlet boundary conditions."""
-        bc = BoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
+        bc = dirichlet_bc(value=0.0, dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         assert solver.fp_method_name == "FDM"
         assert solver.boundary_conditions.type == "dirichlet"
-        assert solver.boundary_conditions.left_value == 0.0
-        assert solver.boundary_conditions.right_value == 0.0
+        assert solver.boundary_conditions.segments[0].value == 0.0
 
     def test_initialization_with_no_flux_bc(self, standard_problem):
         """Test initialization with no-flux boundary conditions."""
-        bc = BoundaryConditions(type="no_flux")
+        bc = no_flux_bc(dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         assert solver.fp_method_name == "FDM"
@@ -180,7 +183,7 @@ class TestFPFDMSolverBoundaryConditions:
 
     def test_periodic_boundary_conditions(self, standard_problem):
         """Test periodic boundary conditions."""
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         (Nx_points,) = standard_problem.geometry.get_grid_shape()
@@ -202,7 +205,13 @@ class TestFPFDMSolverBoundaryConditions:
 
     def test_dirichlet_boundary_conditions(self, standard_problem):
         """Test Dirichlet boundary conditions."""
-        bc = BoundaryConditions(type="dirichlet", left_value=0.1, right_value=0.2)
+        bc = BoundaryConditions(
+            segments=[
+                BCSegment(name="left", bc_type=BCType.DIRICHLET, value=0.1, boundary="x_min"),
+                BCSegment(name="right", bc_type=BCType.DIRICHLET, value=0.2, boundary="x_max"),
+            ],
+            dimension=1,
+        )
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         (Nx_points,) = standard_problem.geometry.get_grid_shape()
@@ -220,7 +229,7 @@ class TestFPFDMSolverBoundaryConditions:
 
     def test_no_flux_boundary_conditions(self, standard_problem):
         """Test no-flux boundary conditions."""
-        bc = BoundaryConditions(type="no_flux")
+        bc = no_flux_bc(dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         (Nx_points,) = standard_problem.geometry.get_grid_shape()
@@ -312,7 +321,7 @@ class TestFPFDMSolverWithDrift:
         value function U(t,x) = x^2, which creates linear drift = -2x.
         """
         # Explicit periodic BC to ensure density evolution under drift
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         (Nx_points,) = standard_problem.geometry.get_grid_shape()
@@ -384,7 +393,7 @@ class TestFPFDMSolverMassConservation:
 
     def test_mass_conservation_no_flux(self, standard_problem):
         """Test that mass is conserved with no-flux boundary conditions."""
-        bc = BoundaryConditions(type="no_flux")
+        bc = no_flux_bc(dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         (Nx_points,) = standard_problem.geometry.get_grid_shape()
@@ -407,7 +416,7 @@ class TestFPFDMSolverMassConservation:
 
     def test_mass_evolution_periodic(self, standard_problem):
         """Test mass evolution with periodic boundary conditions."""
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         (Nx_points,) = standard_problem.geometry.get_grid_shape()
@@ -457,7 +466,7 @@ class TestFPFDMSolverArrayDiffusion:
     def test_spatially_varying_diffusion_1d(self, standard_problem):
         """Test spatially varying diffusion: sigma(x) with periodic BC."""
         # Use periodic BC for better mass conservation with array diffusion
-        bc = BoundaryConditions(type="periodic")
+        bc = periodic_bc(dimension=1)
         solver = FPFDMSolver(standard_problem, boundary_conditions=bc)
 
         (Nx_points,) = standard_problem.geometry.get_grid_shape()
@@ -731,7 +740,7 @@ class TestFPFDMSolverTensorDiffusion:
         )
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
-        boundary_conditions = BoundaryConditions(type="no_flux")
+        boundary_conditions = no_flux_bc(dimension=1)
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
         Nx, Ny = domain.num_points[0], domain.num_points[1]
@@ -765,7 +774,7 @@ class TestFPFDMSolverTensorDiffusion:
         )
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
-        boundary_conditions = BoundaryConditions(type="periodic")
+        boundary_conditions = periodic_bc(dimension=1)
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
         Nx, Ny = domain.num_points[0], domain.num_points[1]
@@ -797,7 +806,7 @@ class TestFPFDMSolverTensorDiffusion:
         )
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
-        boundary_conditions = BoundaryConditions(type="no_flux")
+        boundary_conditions = no_flux_bc(dimension=1)
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
         Nx, Ny = domain.num_points[0], domain.num_points[1]
@@ -835,7 +844,7 @@ class TestFPFDMSolverTensorDiffusion:
         )
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
-        boundary_conditions = BoundaryConditions(type="no_flux")
+        boundary_conditions = no_flux_bc(dimension=1)
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
         Nx, Ny = domain.num_points[0], domain.num_points[1]
@@ -868,7 +877,7 @@ class TestFPFDMSolverTensorDiffusion:
         )
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
-        boundary_conditions = BoundaryConditions(type="periodic")
+        boundary_conditions = periodic_bc(dimension=1)
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
         Nx, Ny = domain.num_points[0], domain.num_points[1]
@@ -903,7 +912,7 @@ class TestFPFDMSolverTensorDiffusion:
         )
         problem = MFGProblem(geometry=domain, T=0.05, Nt=10, sigma=0.1, components=_default_components_2d())
 
-        boundary_conditions = BoundaryConditions(type="no_flux")
+        boundary_conditions = no_flux_bc(dimension=1)
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
         Nx, Ny = domain.num_points[0], domain.num_points[1]
@@ -942,7 +951,7 @@ class TestFPFDMSolverTensorDiffusion:
         )
         problem = MFGProblem(geometry=domain, T=0.05, Nt=5, sigma=0.1, components=_default_components_2d())
 
-        boundary_conditions = BoundaryConditions(type="no_flux")
+        boundary_conditions = no_flux_bc(dimension=1)
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
         Nx, Ny = domain.num_points[0], domain.num_points[1]
@@ -964,7 +973,7 @@ class TestFPFDMSolverTensorDiffusion:
         )
         problem = MFGProblem(geometry=domain, T=0.05, Nt=50, sigma=0.1, components=_default_components_2d())
 
-        boundary_conditions = BoundaryConditions(type="no_flux")
+        boundary_conditions = no_flux_bc(dimension=1)
         solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
 
         # Diagonal tensor (smaller values for stability)
