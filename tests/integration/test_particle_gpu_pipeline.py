@@ -14,8 +14,7 @@ from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonia
 from mfgarchon.core.mfg_components import MFGComponents
 from mfgarchon.core.mfg_problem import MFGProblem
 from mfgarchon.geometry import TensorProductGrid
-from mfgarchon.geometry.boundary import no_flux_bc
-from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions
+from mfgarchon.geometry.boundary import dirichlet_bc, no_flux_bc, periodic_bc
 
 
 def _default_hamiltonian():
@@ -85,7 +84,7 @@ class TestParticleGPUPipeline:
             problem,
             num_particles=1000,
             kde_bandwidth=0.1,
-            boundary_conditions=BoundaryConditions(type="periodic"),
+            boundary_conditions=periodic_bc(dimension=1),
         )
         solver_cpu.backend = None  # Force CPU
 
@@ -97,7 +96,7 @@ class TestParticleGPUPipeline:
             problem,
             num_particles=1000,
             kde_bandwidth=0.1,
-            boundary_conditions=BoundaryConditions(type="periodic"),
+            boundary_conditions=periodic_bc(dimension=1),
         )
         solver_gpu.backend = backend_gpu
 
@@ -147,7 +146,7 @@ class TestParticleGPUPipeline:
             problem,
             num_particles=5000,
             kde_bandwidth=0.15,
-            boundary_conditions=BoundaryConditions(type="no_flux"),
+            boundary_conditions=no_flux_bc(dimension=1),
         )
         solver.backend = backend
 
@@ -180,12 +179,12 @@ class TestParticleGPUPipeline:
 
         backend = TorchBackend(device="cpu")
 
-        for bc_type in ["periodic", "no_flux", "dirichlet"]:
+        for bc in [periodic_bc(dimension=1), no_flux_bc(dimension=1), dirichlet_bc(value=0.0, dimension=1)]:
             solver = FPParticleSolver(
                 problem,
                 num_particles=2000,
                 kde_bandwidth=0.1,
-                boundary_conditions=BoundaryConditions(type=bc_type),
+                boundary_conditions=bc,
             )
             solver.backend = backend
 
@@ -229,7 +228,7 @@ class TestGPUPerformance:
             problem,
             num_particles=N,
             kde_bandwidth=0.1,
-            boundary_conditions=BoundaryConditions(type="periodic"),
+            boundary_conditions=periodic_bc(dimension=1),
         )
         solver_cpu.backend = None
 
@@ -243,7 +242,7 @@ class TestGPUPerformance:
             problem,
             num_particles=N,
             kde_bandwidth=0.1,
-            boundary_conditions=BoundaryConditions(type="periodic"),
+            boundary_conditions=periodic_bc(dimension=1),
         )
         solver_gpu.backend = backend_gpu
 
