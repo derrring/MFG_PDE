@@ -442,9 +442,9 @@ print(f"CFL = {cfl:.3f}")  # Should be < 0.5 for stability
 - `docs/user/obstacle_problems.md` - VI tutorial with capacity-constrained MFG walkthrough
 - `docs/user/level_set_tutorial.md` - Stefan problem step-by-step
 
-**Theory Background**:
-- `docs/theory/variational_inequalities_theory.md` - VI mathematical foundations
-- `docs/theory/level_set_method.md` - Level Set theory and numerics
+**Theory Background** (in mfg-research):
+- `docs/archon-notes/theory/variational_inequalities_theory.md` - VI mathematical foundations
+- `docs/archon-notes/theory/level_set_method.md` - Level Set theory and numerics
 
 ---
 
@@ -594,7 +594,7 @@ A: Yes, this is exactly what it's designed for. See `examples/advanced/stefan_pr
 **Need Help?**
 - GitHub Issues: Bug reports, feature requests
 - GitHub Discussions: Usage questions, best practices
-- Documentation: `docs/user/` (tutorials), `docs/theory/` (math background)
+- Documentation: `docs/user/` (tutorials)
 
 ---
 

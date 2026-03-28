@@ -157,7 +157,7 @@ This library implements sophisticated Mean Field Games methods. Contributors sho
 - Numerical analysis
 - Hamilton-Jacobi-Bellman equations
 
-For mathematical foundations, see `docs/theory/` directory.
+For mathematical foundations, see `mfg-research/docs/archon-notes/theory/`.
 
 ---
 
