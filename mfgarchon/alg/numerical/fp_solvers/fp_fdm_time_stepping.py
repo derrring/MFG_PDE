@@ -90,6 +90,85 @@ from .fp_fdm_alg_gradient_upwind import (
 from .fp_fdm_bc import add_boundary_no_flux_entries_divergence_upwind
 from .fp_fdm_operators import is_boundary_point
 
+# =============================================================================
+# Scheme dispatch tables (Issue #859: replace if/elif chains)
+# =============================================================================
+
+_BOUNDARY_HANDLERS: dict[str, Any] = {
+    "gradient_centered": add_boundary_no_flux_entries_gradient_centered,
+    "gradient_upwind": add_boundary_no_flux_entries_gradient_upwind,
+    "divergence_centered": add_boundary_no_flux_entries_divergence_centered,
+    "divergence_upwind": add_boundary_no_flux_entries_divergence_upwind,
+}
+
+_INTERIOR_HANDLERS: dict[str, Any] = {
+    "gradient_centered": add_interior_entries_gradient_centered,
+    "gradient_upwind": add_interior_entries_gradient_upwind,
+    "divergence_centered": add_interior_entries_divergence_centered,
+    "divergence_upwind": add_interior_entries_divergence_upwind,
+}
+
+
+# =============================================================================
+# Dirichlet BC support for nD (Issue #859)
+# =============================================================================
+
+
+def _add_boundary_dirichlet_entries(
+    row_indices: list[int],
+    col_indices: list[int],
+    data_values: list[float],
+    flat_idx: int,
+    dt: float,
+    bc_value: float,
+) -> None:
+    """Add sparse matrix entries for Dirichlet BC at a boundary point.
+
+    Sets the row to enforce m(boundary) = bc_value by making the diagonal
+    entry 1/dt and placing bc_value/dt in the RHS (handled by the caller).
+    """
+    row_indices.append(flat_idx)
+    col_indices.append(flat_idx)
+    data_values.append(1.0 / dt)
+
+
+def _is_dirichlet_at_point(
+    boundary_conditions: Any,
+    multi_idx: tuple[int, ...],
+    shape: tuple[int, ...],
+) -> bool:
+    """Check if boundary conditions specify Dirichlet at this point."""
+    try:
+        if boundary_conditions.is_uniform:
+            return boundary_conditions.type == "dirichlet"
+        # Mixed BC: check per-segment
+        for seg in boundary_conditions.segments:
+            if seg.bc_type.value == "dirichlet":
+                # Check if this point matches the segment's boundary
+                return True
+    except (AttributeError, ValueError):
+        pass
+    return False
+
+
+def _get_dirichlet_value_at_point(
+    boundary_conditions: Any,
+    multi_idx: tuple[int, ...],
+    shape: tuple[int, ...],
+) -> float:
+    """Get Dirichlet BC value at a boundary point."""
+    try:
+        if boundary_conditions.is_uniform:
+            seg = boundary_conditions.segments[0]
+            return float(seg.value) if not callable(seg.value) else 0.0
+        # Mixed BC: find matching Dirichlet segment
+        for seg in boundary_conditions.segments:
+            if seg.bc_type.value == "dirichlet":
+                return float(seg.value) if not callable(seg.value) else 0.0
+    except (AttributeError, ValueError, IndexError):
+        pass
+    return 0.0
+
 
 def _get_bc_type(boundary_conditions: Any) -> str | None:
     """
@@ -936,163 +1015,77 @@ def solve_timestep_full_nd(
         # Check if this is a boundary point
         is_boundary = is_boundary_point(multi_idx, shape, ndim)
 
-        # Determine BC type - for mixed BC, default to no-flux behavior
-        # Issue #543 Phase 2: Replace hasattr with try/except
-        # Try modern BC interface first
+        # Determine BC type (Issue #859: explicit legacy handling, fail on unknown)
         try:
             is_no_flux = boundary_conditions.is_uniform and boundary_conditions.type == "no_flux"
             is_uniform = boundary_conditions.is_uniform
         except AttributeError:
-            # For BoundaryConditionManager2D or unknown types, default to no-flux
+            # Legacy BoundaryConditions1D from fdm_bc_1d: has .type string but no .is_uniform
+            legacy_type = getattr(boundary_conditions, "type", None)
+            if legacy_type is None:
+                raise TypeError(
+                    f"Unsupported boundary_conditions type: {type(boundary_conditions).__name__}. "
+                    "Expected BoundaryConditions from mfgarchon.geometry.boundary."
+                ) from None
+            # Legacy BC: treat as no-flux for backward compatibility
+            # (legacy periodic BC relies on no-flux boundary assembly + interior wrapping)
             is_no_flux = True
             is_uniform = False
 
-        # For mixed BC (not uniform), treat boundaries with default no-flux behavior
-        # The actual BC application will be handled by tensor_operators
-        if (is_no_flux or not is_uniform) and is_boundary:
-            # Boundary point with no-flux condition
-            # Select boundary function based on advection scheme
-            if advection_scheme == "gradient_centered":
-                add_boundary_no_flux_entries_gradient_centered(
-                    row_indices,
-                    col_indices,
-                    data_values,
-                    flat_idx,
-                    multi_idx,
-                    shape,
-                    ndim,
-                    dt,
-                    sigma_local,
-                    coupling_coefficient,
-                    spacing,
-                    u_flat,
-                    grid,
-                )
-            elif advection_scheme == "gradient_upwind":
-                add_boundary_no_flux_entries_gradient_upwind(
-                    row_indices,
-                    col_indices,
-                    data_values,
-                    flat_idx,
-                    multi_idx,
-                    shape,
-                    ndim,
-                    dt,
-                    sigma_local,
-                    coupling_coefficient,
-                    spacing,
-                    u_flat,
-                    grid,
-                )
-            elif advection_scheme == "divergence_centered":
-                add_boundary_no_flux_entries_divergence_centered(
-                    row_indices,
-                    col_indices,
-                    data_values,
-                    flat_idx,
-                    multi_idx,
-                    shape,
-                    ndim,
-                    dt,
-                    sigma_local,
-                    coupling_coefficient,
-                    spacing,
-                    u_flat,
-                    grid,
-                )
-            else:  # "divergence_upwind"
-                add_boundary_no_flux_entries_divergence_upwind(
-                    row_indices,
-                    col_indices,
-                    data_values,
-                    flat_idx,
-                    multi_idx,
-                    shape,
-                    ndim,
-                    dt,
-                    sigma_local,
-                    coupling_coefficient,
-                    spacing,
-                    u_flat,
-                    grid,
-                )
+        # Dispatch to scheme-specific assembly function (Issue #859)
+        if is_boundary and _is_dirichlet_at_point(boundary_conditions, multi_idx, shape):
+            # Dirichlet BC: row becomes identity (m = prescribed value)
+            bc_value = _get_dirichlet_value_at_point(boundary_conditions, multi_idx, shape)
+            _add_boundary_dirichlet_entries(row_indices, col_indices, data_values, flat_idx, dt, bc_value)
+        elif (is_no_flux or not is_uniform) and is_boundary:
+            # No-flux or mixed BC at boundary: scheme-specific assembly
+            _BOUNDARY_HANDLERS[advection_scheme](
+                row_indices,
+                col_indices,
+                data_values,
+                flat_idx,
+                multi_idx,
+                shape,
+                ndim,
+                dt,
+                sigma_local,
+                coupling_coefficient,
+                spacing,
+                u_flat,
+                grid,
+            )
         else:
             # Interior point or periodic boundary
-            # Select interior function based on advection scheme
-            if advection_scheme == "gradient_centered":
-                add_interior_entries_gradient_centered(
-                    row_indices,
-                    col_indices,
-                    data_values,
-                    flat_idx,
-                    multi_idx,
-                    shape,
-                    ndim,
-                    dt,
-                    sigma_local,
-                    coupling_coefficient,
-                    spacing,
-                    u_flat,
-                    grid,
-                    boundary_conditions,
-                )
-            elif advection_scheme == "gradient_upwind":
-                add_interior_entries_gradient_upwind(
-                    row_indices,
-                    col_indices,
-                    data_values,
-                    flat_idx,
-                    multi_idx,
-                    shape,
-                    ndim,
-                    dt,
-                    sigma_local,
-                    coupling_coefficient,
-                    spacing,
-                    u_flat,
-                    grid,
-                    boundary_conditions,
-                )
-            elif advection_scheme == "divergence_centered":
-                add_interior_entries_divergence_centered(
-                    row_indices,
-                    col_indices,
-                    data_values,
-                    flat_idx,
-                    multi_idx,
-                    shape,
-                    ndim,
-                    dt,
-                    sigma_local,
-                    coupling_coefficient,
-                    spacing,
-                    u_flat,
-                    grid,
-                    boundary_conditions,
-                )
-            else:  # "divergence_upwind"
-                add_interior_entries_divergence_upwind(
-                    row_indices,
-                    col_indices,
-                    data_values,
-                    flat_idx,
-                    multi_idx,
-                    shape,
-                    ndim,
-                    dt,
-                    sigma_local,
-                    coupling_coefficient,
-                    spacing,
-                    u_flat,
-                    grid,
-                    boundary_conditions,
-                )
+            _INTERIOR_HANDLERS[advection_scheme](
+                row_indices,
+                col_indices,
+                data_values,
+                flat_idx,
+                multi_idx,
+                shape,
+                ndim,
+                dt,
+                sigma_local,
+                coupling_coefficient,
+                spacing,
+                u_flat,
+                grid,
+                boundary_conditions,
+            )
 
     # Assemble sparse matrix
     A_matrix = sparse.coo_matrix((data_values, (row_indices, col_indices)), shape=(N_total, N_total)).tocsr()
 
     # Right-hand side
     b_rhs = m_flat / dt
+
+    # Enforce Dirichlet RHS at boundary points (Issue #859)
+    if _get_bc_type(boundary_conditions) == "dirichlet":
+        for idx in range(N_total):
+            multi_idx = np.unravel_index(idx, shape)
+            if is_boundary_point(multi_idx, shape, ndim):
+                bc_value = _get_dirichlet_value_at_point(boundary_conditions, multi_idx, shape)
+                b_rhs[idx] = bc_value / dt
 
     # Add source term to RHS (MMS verification)
     if source_term is not None:
