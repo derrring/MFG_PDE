@@ -86,12 +86,4 @@ __all__ = [
     # Dual classes (Legendre transform)
     "DualHamiltonian",
     "DualLagrangian",
-    # Capacity-constrained MFG
-    "CapacityConstrainedMFGProblem",
-    "CongestionModel",
-    "QuadraticCongestion",
-    "ExponentialCongestion",
-    "LogBarrierCongestion",
-    "PiecewiseCongestion",
-    "create_congestion_model",
 ]
