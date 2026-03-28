@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.17.15"  # v0.17.15: FEM BC integration, geometry consolidation
+version = "0.17.16"  # v0.17.16: Structured deprecation migration, deprecated_value decorator
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
