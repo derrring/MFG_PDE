@@ -21,10 +21,7 @@ from mfgarchon.geometry.boundary.applicator_base import DiscretizationType
 from mfgarchon.geometry.boundary.types import BCType
 from mfgarchon.utils.mfg_logging import get_logger
 
-# Legacy operator for backward compatibility (deprecated)
-from mfgarchon.utils.numerical.gfdm_operators import GFDMOperator
-
-# New GFDM infrastructure (Strategy Pattern)
+# GFDM infrastructure (Strategy Pattern)
 from mfgarchon.utils.numerical.gfdm_strategies import (
     DirectCollocationHandler,
     TaylorOperator,
@@ -322,7 +319,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             rbf_poly_degree: Polynomial augmentation degree for RBF-FD (default 2)
             use_new_infrastructure: Use new Strategy Pattern infrastructure (default True).
                 When True, uses TaylorOperator/LocalRBFOperator + DirectCollocationHandler.
-                When False, uses legacy GFDMOperator (deprecated, for backward compatibility).
+                When False, raises ValueError (legacy GFDMOperator removed in v0.17.15).
             use_local_coordinate_rotation: Enable Local Coordinate Rotation (LCR) for
                 boundary stencils (default False, Issue #531). When True, rotates
                 neighbor offsets at boundary points to align with the boundary normal,
@@ -559,8 +556,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
             print(f"\n[Wind-BC INIT] Enabled with {len(boundary_indices)} boundary points", flush=True, file=sys.stderr)
 
-        # Create differential operator using Strategy Pattern (recommended)
-        # or legacy GFDMOperator (for backward compatibility)
+        # Create differential operator using Strategy Pattern
         if use_new_infrastructure:
             # New infrastructure: TaylorOperator or LocalRBFOperator
             if derivative_method == "taylor":
@@ -636,33 +632,12 @@ class HJBGFDMSolver(BaseHJBSolver):
                 visibility_margin=visibility_margin,
             )
         else:
-            # Legacy: GFDMOperator (deprecated, for backward compatibility)
-            warnings.warn(
-                "use_new_infrastructure=False is deprecated. "
-                "The legacy GFDMOperator will be removed in v0.18.0. "
-                "Use use_new_infrastructure=True (default) instead.",
-                DeprecationWarning,
-                stacklevel=2,
+            raise ValueError(
+                "use_new_infrastructure=False is no longer supported (removed in v0.17.15). "
+                "Use use_new_infrastructure=True (default) with TaylorOperator."
             )
-            self._gfdm_operator = GFDMOperator(
-                points=collocation_points,
-                delta=delta,
-                taylor_order=taylor_order,
-                weight_function=weight_function,
-                weight_scale=weight_scale,
-                boundary_indices=self.boundary_indices,
-                domain_bounds=self.domain_bounds,
-                boundary_type=None,  # No ghost particles
-                k_neighbors=k_neighbors,
-                neighborhood_mode=neighborhood_mode,
-            )
-            self._bc_handler = None
-            self._boundary_normals = None
-            self._bc_config = None
-            self._boundary_handler = None  # No boundary handler for legacy path
-            self._neighborhood_builder = None  # No neighborhood builder for legacy path
 
-        # Get multi-indices from operator (both TaylorOperator and GFDMOperator have .multi_indices)
+        # Get multi-indices from operator
         self.multi_indices = self._gfdm_operator.multi_indices
         self.n_derivatives = len(self.multi_indices)
 
