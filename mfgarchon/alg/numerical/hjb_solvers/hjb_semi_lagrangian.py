@@ -1678,7 +1678,16 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             Solution after implicit diffusion step
         """
-        return solve_crank_nicolson_diffusion_1d(U_star, dt, sigma, self.x_grid)
+        bc_op = self._get_diffusion_bc_type()
+        return solve_crank_nicolson_diffusion_1d(U_star, dt, sigma, self.x_grid, bc_type=bc_op)
+
+    def _get_diffusion_bc_type(self) -> str:
+        """Get BC type string for diffusion step ('neumann' or 'periodic')."""
+        bc = self.get_boundary_conditions()
+        bc_type = get_bc_type_string(bc)
+        if bc_type == "periodic":
+            return "periodic"
+        return "neumann"
 
     def _adi_diffusion_step(self, U_star: np.ndarray, dt: float) -> np.ndarray:
         """
@@ -1697,12 +1706,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             # For 1D, use standard Crank-Nicolson
             return self._solve_crank_nicolson_diffusion(U_star, dt, self.problem.sigma)
 
+        bc_op = self._get_diffusion_bc_type()
         return adi_diffusion_step(
             U_star,
             dt,
             self.problem.sigma,
             self.dx,
             tuple(self._grid_shape),
+            bc_type=bc_op,
         )
 
     def _apply_diffusion(self, U_star: np.ndarray, dt: float) -> np.ndarray:
