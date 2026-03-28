@@ -24,6 +24,7 @@ For multi-dimensional or segment-based BC specification, use conditions.py.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 
 from mfgarchon.utils.deprecation import deprecated
@@ -36,18 +37,17 @@ class BoundaryConditions:
 
     .. deprecated:: 0.14.0
         Use :class:`mfgarchon.geometry.boundary.conditions.BoundaryConditions` instead.
+        This class will be removed in v1.0.0.
 
-    This class defines boundary conditions for the spatial domain boundaries,
-    specifying how the solution should behave at the domain endpoints.
+        Migration::
 
-    Note on matrix dimensions for different boundary condition types:
-    - periodic: M × M (domain is treated as circular)
-    - dirichlet: (M-1) × (M-1) (solution fixed at boundaries)
-    - neumann: (M+1) × (M+1) (gradient specified at boundaries)
-    - no_flux: M × M (special case of Neumann for FP equations: F(boundary) = 0)
-    - robin: (M+1) × (M+1) (mixed boundary condition: αu + βdu/dn = g)
+            # Old:
+            from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions
+            bc = BoundaryConditions(type="no_flux")
 
-    where M is the number of interior grid points.
+            # New:
+            from mfgarchon.geometry.boundary import no_flux_bc
+            bc = no_flux_bc(dimension=1)
     """
 
     type: str  # 'periodic', 'dirichlet', 'neumann', 'no_flux', or 'robin'
@@ -68,6 +68,14 @@ class BoundaryConditions:
 
     def __post_init__(self):
         """Validate boundary condition parameters."""
+        warnings.warn(
+            "fdm_bc_1d.BoundaryConditions is deprecated since v0.14.0. "
+            "Use no_flux_bc(dimension=1), periodic_bc(dimension=1), etc. "
+            "from mfgarchon.geometry.boundary instead. "
+            "Will be removed in v1.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self.type == "robin":
             if any(
                 v is None
