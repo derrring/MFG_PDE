@@ -159,7 +159,7 @@ from mfgarchon.utils.mfg_logging import get_logger, configure_research_logging
 ### **Documentation Style**
 - Use comprehensive docstrings with LaTeX math: `$u(t,x)$`, `$m(t,x)$`
 - Reference code locations: `file_path:line_number`
-- Follow `docs/development/CONSISTENCY_GUIDE.md`
+- Follow `mfg-research/docs/archon-notes/development/guides/CONSISTENCY_GUIDE.md`
 
 ### **Mathematical Typesetting**
 - **Theory docs (.md)**: Full LaTeX using `$...$` delimiters
@@ -319,7 +319,7 @@ problem = MFGProblem(..., boundary_conditions=bc)
 - Iterator integration: `mfgarchon/alg/numerical/coupling/fixed_point_iterator.py`
   - Resolves providers via `problem.using_resolved_bc(state)`
 
-**Reference**: See `docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md` § Boundary Condition Consistency Issue
+**Reference**: See `mfg-research/docs/archon-notes/development/TOWEL_ON_BEACH_1D_PROTOCOL.md` § Boundary Condition Consistency Issue
 
 ### **File Path Anchoring** ⚠️ **CRITICAL**
 Always anchor output paths to **project root**, never to CWD:
@@ -327,32 +327,28 @@ Always anchor output paths to **project root**, never to CWD:
 - ✅ `${hydra:runtime.cwd}/results` — fixed to launch location (Hydra/OmegaConf)
 - ❌ `Path("results")` or `os.getcwd()` — changes with `cd`, causes recursive nesting
 
-### **Development Documentation** ⚠️ **CRITICAL**
-Always document significant changes:
+### **Documentation: Two-Repo Policy** ⚠️ **CRITICAL**
 
-1. **Roadmap**: Update the strategic development roadmap for major features
-2. **Changes**: Document architecture changes in `ARCHITECTURAL_CHANGES.md`
-3. **Theory**: Create notes for mathematical features with code references
+MFGArchon documentation is split across two repositories:
 
-**Naming**: `docs/theory/[feature]_mathematical_formulation.md`, `docs/development/[feature]_implementation_summary.md`
+| Content | Location | Audience |
+|---------|----------|----------|
+| **User docs** (tutorials, guides, API) | `mfgarchon/docs/user/` | Public (future book) |
+| **Theory** (selected, user-educational) | `mfgarchon/docs/theory/` | Public (future book) |
+| **Internal notes** (architecture, roadmaps, design) | `mfg-research/docs/archon-notes/` | Private |
+| **Research notes** (experiments, analysis) | `mfg-research/docs/`, `experiments/*/docs/` | Private |
 
-**Status Marking**:
-- `✅ COMPLETED` - Finished features
-- `[RESOLVED]` / `[CLOSED]` - Fixed issues (prefix filename)
-- `[WIP]` - Work in progress
-- `[ARCHIVED]` - Obsolete content
+**Rules**:
+- ✅ User-facing docs (tutorials, guides) → `mfgarchon/docs/`
+- ✅ Internal design notes, roadmaps, issue analysis → `mfg-research/docs/archon-notes/`
+- ❌ Do NOT create `docs/development/` or `docs/architecture/` in mfgarchon
+- ❌ Do NOT put internal planning docs in the public repo
 
-### **Documentation Hygiene Checkpoints** ⚠️ **MANDATORY**
-
-Claude Code must proactively check at these triggers:
-
-1. **After Phase Completion**: Run `check_docs_structure.py`, consolidate if >60 active docs, create phase summary, archive detailed docs
-2. **Before Creating Directory**: Check if similar exists, verify ≥3 files planned, ask user
-3. **On [COMPLETED] Tag**: Immediately suggest moving to archive
-4. **Weekly Audit**: Report active docs count, suggest consolidation if needed
-5. **Before Commits**: Run `check_docs_structure.py` on docs/ changes
-
-**Key Principle**: Be proactive, not reactive.
+**Cross-repo workflow** (design → implementation):
+1. Design and analyze in `mfg-research/docs/archon-notes/`
+2. Create GitHub issue in mfgarchon with summary
+3. Implement in mfgarchon with issue reference
+4. Update user docs in mfgarchon if user-facing behavior changed
 
 ### **Logging and Progress Bars**
 ```python
@@ -554,7 +550,7 @@ When deprecating any API element (parameter, function, class, module):
 3. **Complete migration**: Update ALL call sites (direct, factory, defaults, examples, tests)
 4. **Timeline**: 3 minor versions OR 6 months before removal
 
-**Reference**: `docs/development/DEPRECATION_LIFECYCLE_POLICY.md`
+**Reference**: `mfg-research/docs/archon-notes/development/DEPRECATION_LIFECYCLE_POLICY.md`
 
 **Lesson from Issue #616** (`conservative=` parameter):
 - Deprecated with warning but wrong default → 1 month of catastrophic bugs (99.4% mass error)
@@ -665,7 +661,7 @@ gh pr create --title "Title" --body "Fixes #[issue_number]" \
 8. Label PR matching issue
 
 ### **Code Quality Expectations**
-- Follow `docs/development/CONSISTENCY_GUIDE.md`
+- Follow `mfg-research/docs/archon-notes/development/guides/CONSISTENCY_GUIDE.md`
 - Use type hints and comprehensive docstrings
 - Include error handling and validation
 - Support interactive and non-interactive usage
@@ -808,7 +804,7 @@ Use targeted patterns preserving valuable code:
 
 ## 🤖 **AI Interaction Design**
 
-For advanced MFG research, follow `docs/development/AI_INTERACTION_DESIGN.md`:
+For advanced MFG research, follow `mfg-research/docs/archon-notes/development/AI_INTERACTION_DESIGN.md`:
 
 **Research Context**:
 - Graduate/research level mathematical rigor
