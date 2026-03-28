@@ -107,6 +107,7 @@ def test_kde_consistency():
                 print(f"\n{status} {backend1} vs {backend2}:")
                 print(f"   Mean relative error: {mean_error:.2e}")
                 print(f"   Max relative error: {max_error:.2e}")
+                assert mean_error < 0.01, f"{backend1} vs {backend2}: mean error {mean_error:.2e} >= 0.01"
 
 
 @pytest.mark.skipif(not TORCH_IMPORTS_AVAILABLE, reason="PyTorch not available (optional dependency)")
@@ -200,6 +201,7 @@ def test_tridiagonal_solver_consistency():
                 print(f"   Mean absolute error: {mean_abs:.2e}")
                 print(f"   Mean relative error: {mean_rel:.2e}")
                 print(f"   Max absolute error: {max_abs:.2e}")
+                assert mean_rel < 1e-6, f"{backend1} vs {backend2}: mean rel error {mean_rel:.2e} >= 1e-6"
 
 
 def verify_tridiagonal_solution(a, b, c, d, x):
@@ -264,6 +266,9 @@ def test_backend_factory_integration():
             rel_error = abs(value - reference) / abs(reference)
             status = "✅" if rel_error < 1e-10 else "⚠️"
             print(f"{status} {name}: {value:.12f} (rel error: {rel_error:.2e})")
+            assert rel_error < 1e-6, f"Backend {name}: rel error {rel_error:.2e} >= 1e-6"
+    else:
+        pytest.skip("Only one backend available, nothing to compare")
 
 
 @pytest.mark.skipif(not TORCH_IMPORTS_AVAILABLE, reason="PyTorch not available (optional dependency)")
@@ -300,6 +305,8 @@ def test_performance_comparison():
         _ = torch_kde_cpu(x_eval)  # Evaluate but don't store (unused)
         torch_cpu_time = time.time() - start
         print(f"   PyTorch (CPU): {torch_cpu_time:.4f}s")
+
+        assert torch_cpu_time > 0, "PyTorch KDE should take measurable time"
 
         # MPS if available
         from mfgarchon.utils.acceleration.torch_utils import HAS_MPS

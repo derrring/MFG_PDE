@@ -638,5 +638,9 @@ def test_save_config_handles_exception():
     """Test save_config_file() handles exceptions gracefully."""
     config_data = {"problem": {"T": 2.0}}
 
-    with patch("builtins.open", side_effect=PermissionError("Cannot write")), patch("builtins.print"):
+    with patch("builtins.open", side_effect=PermissionError("Cannot write")), patch("builtins.print") as mock_print:
+        # Should not raise - handles exception gracefully
         save_config_file(config_data, "/invalid/path/config.json")
+
+    # Verify it printed an error message (graceful handling)
+    assert mock_print.called, "save_config_file should print error message on failure"

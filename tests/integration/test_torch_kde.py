@@ -80,6 +80,12 @@ def test_basic_kde():
     else:
         print("\n✅ PyTorch KDE computed successfully (scipy not available for comparison)")
 
+    # Verify KDE produces finite, non-negative densities
+    assert np.all(np.isfinite(torch_density)), "KDE density contains non-finite values"
+    assert np.all(torch_density >= 0), "KDE density contains negative values"
+    if HAS_SCIPY:
+        assert mean_rel_error < 0.05, f"Mean relative error vs scipy too large: {mean_rel_error}"
+
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available (optional dependency)")
 def test_bandwidth_methods():
@@ -101,6 +107,9 @@ def test_bandwidth_methods():
         print(f"  Bandwidth: {kde.bandwidth:.6f}")
         print(f"  Peak density: {density.max():.6f}")
         print(f"  Integral: {np.trapezoid(density, x_eval):.6f}")
+
+        assert kde.bandwidth > 0, f"Bandwidth should be positive, got {kde.bandwidth}"
+        assert np.all(np.isfinite(density)), f"Density not finite for method {method_name}"
 
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not available (optional dependency)")
@@ -141,6 +150,11 @@ def test_edge_cases():
     print(f"   Time: {elapsed:.4f} seconds")
     print(f"   Integral: {np.trapezoid(density_large, x_eval_large):.6f}")
 
+    # Verify all edge case results are finite
+    assert np.all(np.isfinite(density_single)), "Single particle KDE not finite"
+    assert np.all(np.isfinite(density_two)), "Two particle KDE not finite"
+    assert np.all(np.isfinite(density_large)), "Large dataset KDE not finite"
+
 
 def find_peaks(signal, threshold=0.01):
     """Simple peak detection."""
@@ -168,6 +182,7 @@ def test_device_compatibility():
     kde_cpu = TorchKDE(particles, bw_method="scott", device="cpu")
     density_cpu = kde_cpu(x_eval)
     print(f"   ✅ CPU KDE works, peak density: {density_cpu.max():.6f}")
+    assert np.all(np.isfinite(density_cpu)), "CPU KDE density not finite"
 
     # CUDA
     if HAS_CUDA:

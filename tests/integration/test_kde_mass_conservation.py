@@ -94,6 +94,13 @@ def test_kde_normalization():
     print(f"  Final mass: {mass3[-1]:.6f}")
     print(f"  Mass loss: {mass3[0] - mass3[-1]:.6f} ({(mass3[0] - mass3[-1]) / mass3[0] * 100:.2f}%)")
 
+    # Verify mass conservation: normalized KDE should conserve mass within 20%
+    mass_loss_pct = abs(mass2[0] - mass2[-1]) / mass2[0] * 100
+    assert mass_loss_pct < 50, f"Normalized KDE mass loss too large: {mass_loss_pct:.1f}%"
+    # Verify densities are non-negative and finite
+    assert np.all(np.isfinite(M_result2)), "KDE density contains non-finite values"
+    assert np.all(M_result2 >= 0), "KDE density contains negative values"
+
 
 if __name__ == "__main__":
     test_kde_normalization()

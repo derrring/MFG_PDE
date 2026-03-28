@@ -109,6 +109,11 @@ def test_weight_functions():
         best_func = min(valid_results.keys(), key=lambda k: valid_results[k])
         print(f"\nBest weight function: {best_func} (Max |U| = {valid_results[best_func]:.3f})")
 
+    # At least one weight function should succeed with finite results
+    assert len(valid_results) > 0, "All weight functions failed"
+    for func, max_val in valid_results.items():
+        assert np.isfinite(max_val), f"Weight function {func} produced non-finite results"
+
 
 if __name__ == "__main__":
     test_weight_functions()

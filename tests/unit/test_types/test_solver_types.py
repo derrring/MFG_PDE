@@ -534,16 +534,15 @@ def test_configuration_error():
 def test_exception_hierarchy():
     """Test exception inheritance hierarchy."""
     # ConvergenceError is a SolverError
-    try:
-        raise ConvergenceError("test")
-    except SolverError:
-        pass  # Should catch
+    assert issubclass(ConvergenceError, SolverError), "ConvergenceError should inherit from SolverError"
+    assert isinstance(ConvergenceError("test"), SolverError)
 
     # ConfigurationError is a SolverError
-    try:
-        raise ConfigurationError("test")
-    except SolverError:
-        pass  # Should catch
+    assert issubclass(ConfigurationError, SolverError), "ConfigurationError should inherit from SolverError"
+    assert isinstance(ConfigurationError("test"), SolverError)
+
+    # Both should also be Exception subclasses
+    assert issubclass(SolverError, Exception)
 
 
 # ===================================================================
