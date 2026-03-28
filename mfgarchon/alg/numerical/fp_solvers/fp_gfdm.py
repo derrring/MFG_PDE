@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from mfgarchon.alg.numerical.fp_solvers.base_fp import BaseFPSolver
-from mfgarchon.utils.numerical.gfdm_operators import GFDMOperator
+from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -133,17 +133,19 @@ class FPGFDMSolver(BaseFPSolver):
             boundary_type_str=boundary_type,
         )
 
-        # Create GFDM operator with optional boundary condition support
-        # GFDMOperator handles ghost particles for no-flux BC
-        self.gfdm_operator = GFDMOperator(
-            self.collocation_points,
+        # Create GFDM operator using TaylorOperator (Strategy Pattern, Issue #844)
+        # TaylorOperator handles neighborhoods and derivative weights
+        # BC is handled externally (no ghost particles — cleaner separation)
+        self.gfdm_operator = TaylorOperator(
+            points=self.collocation_points,
             delta=self.delta,
             taylor_order=taylor_order,
             weight_function=weight_function,
-            boundary_indices=boundary_indices,
-            domain_bounds=domain_bounds,
-            boundary_type=resolved_bc_type,
         )
+        # Store boundary info for solver-level BC enforcement
+        self._boundary_indices = boundary_indices
+        self._domain_bounds = domain_bounds
+        self._boundary_type = resolved_bc_type
 
         # Store upwind parameters
         self.upwind_scheme = upwind_scheme
@@ -525,8 +527,10 @@ class FPGFDMSolver(BaseFPSolver):
                 # Use upwind-stabilized divergence
                 advection = self._compute_upwind_divergence(drift, m_current)
             else:
-                # Use standard GFDM divergence (central differences)
-                advection = self.gfdm_operator.divergence(drift, m_current)
+                # Compute div(m*α) via gradient: div(m*α) = α·∇m + m·div(α)
+                # Simplified: use product rule with gradient operator
+                grad_m = self.gfdm_operator.gradient(m_current)  # (N, d)
+                advection = np.sum(drift * grad_m, axis=1)  # α·∇m (gradient form)
 
             # Diffusion term: D * Laplacian(m)
             laplacian = self.gfdm_operator.laplacian(m_current)
