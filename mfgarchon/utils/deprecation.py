@@ -23,6 +23,7 @@ def deprecated(
     since: str,
     replacement: str,
     reason: str = "",
+    removal: str = "v1.0.0",
     removal_blockers: list[str] | None = None,
 ) -> Callable[[F], F]:
     """
@@ -72,6 +73,7 @@ def deprecated(
             "since": since,
             "replacement": replacement,
             "reason": reason,
+            "removal": removal,
             "removal_blockers": removal_blockers,
             "symbol": func.__name__,
         }
@@ -100,6 +102,7 @@ def deprecated_parameter(
     param_name: str,
     since: str,
     replacement: str,
+    removal: str = "v1.0.0",
     removal_blockers: list[str] | None = None,
 ) -> Callable[[F], F]:
     """
@@ -140,7 +143,7 @@ def deprecated_parameter(
 
     def decorator(func: F) -> F:
         # Store parameter deprecation metadata
-        if not hasattr(func, "_deprecated_parameters"):
+        if getattr(func, "_deprecated_parameters", None) is None:
             func._deprecated_parameters = []  # type: ignore[attr-defined]
 
         func._deprecated_parameters.append(  # type: ignore[attr-defined]
@@ -148,6 +151,7 @@ def deprecated_parameter(
                 "param": param_name,
                 "since": since,
                 "replacement": replacement,
+                "removal": removal,
                 "removal_blockers": removal_blockers,
             }
         )
@@ -464,6 +468,171 @@ def validate_kwargs(
             )
 
 
+def _scan_object(obj: Any, name: str, module_name: str, results: list[dict[str, Any]]) -> None:
+    """Scan a single object for deprecation metadata."""
+    meta = getattr(obj, "_deprecation_meta", None)
+    if meta is not None:
+        results.append(
+            {
+                "type": "function" if callable(obj) else "alias",
+                "name": meta.get("symbol", name),
+                "module": module_name,
+                "since": meta.get("since", ""),
+                "replacement": meta.get("replacement", ""),
+                "removal": meta.get("removal", "v1.0.0"),
+            }
+        )
+
+    dep_params = getattr(obj, "_deprecated_parameters", None)
+    if dep_params:
+        for p in dep_params:
+            results.append(
+                {
+                    "type": "parameter",
+                    "name": f"{name}.{p['param']}",
+                    "module": module_name,
+                    "since": p.get("since", ""),
+                    "replacement": p.get("replacement", ""),
+                    "removal": p.get("removal", "v1.0.0"),
+                }
+            )
+
+
+def scan_deprecated(module: Any, *, recursive: bool = True) -> list[dict[str, Any]]:
+    """
+    Scan a module tree for all decorated deprecated items.
+
+    Returns a list of metadata dicts for every `@deprecated`, `@deprecated_parameter`,
+    and `deprecated_alias` found in the module and its submodules.
+
+    Args:
+        module: Top-level module to scan (e.g., `import mfgarchon; scan_deprecated(mfgarchon)`)
+        recursive: If True, scan submodules recursively
+
+    Returns:
+        List of dicts with keys: type, name, module, since, replacement, removal
+
+    Example:
+        >>> import mfgarchon
+        >>> items = scan_deprecated(mfgarchon)
+        >>> for item in items:
+        ...     print(f"{item['type']:10s} {item['name']:30s} since={item['since']}")
+    """
+    import importlib
+    import pkgutil
+
+    results: list[dict[str, Any]] = []
+    visited: set[str] = set()
+
+    def _scan_module(mod: Any) -> None:
+        mod_name = getattr(mod, "__name__", str(mod))
+        if mod_name in visited:
+            return
+        visited.add(mod_name)
+
+        # Scan attributes
+        for attr_name in dir(mod):
+            try:
+                obj = getattr(mod, attr_name)
+            except Exception:
+                continue
+
+            _scan_object(obj, attr_name, mod_name, results)
+
+            # Scan class methods
+            if isinstance(obj, type):
+                for method_name in dir(obj):
+                    if method_name.startswith("__") and method_name != "__init__":
+                        continue
+                    try:
+                        method = getattr(obj, method_name)
+                    except Exception:
+                        continue
+                    _scan_object(method, f"{attr_name}.{method_name}", mod_name, results)
+
+        # Recurse into submodules
+        if recursive and hasattr(mod, "__path__"):
+            try:
+                for _importer, submod_name, _ispkg in pkgutil.walk_packages(mod.__path__, prefix=mod.__name__ + "."):
+                    try:
+                        submod = importlib.import_module(submod_name)
+                        _scan_module(submod)
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+
+    _scan_module(module)
+
+    # Deduplicate by (type, name, module)
+    seen = set()
+    unique = []
+    for r in results:
+        key = (r["type"], r["name"], r["module"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(r)
+
+    return unique
+
+
+def audit_all_deprecations(
+    module: Any,
+    target_version: str = "v1.0.0",
+    completed_blockers: list[str] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    """
+    Audit all deprecations in a module against a target version.
+
+    Args:
+        module: Module to scan
+        target_version: Version to check readiness against
+        completed_blockers: Blockers that have been resolved globally
+
+    Returns:
+        Dict with keys:
+            "ready": items ready for removal
+            "not_ready": items with remaining blockers
+            "active": items not yet old enough
+
+    Example:
+        >>> import mfgarchon
+        >>> report = audit_all_deprecations(mfgarchon, "v1.0.0")
+        >>> print(f"Ready for removal: {len(report['ready'])}")
+    """
+    items = scan_deprecated(module)
+    completed_blockers = completed_blockers or []
+
+    ready = []
+    not_ready = []
+    active = []
+
+    for item in items:
+        if item["type"] == "parameter":
+            # Parameters don't have individual removal readiness
+            active.append(item)
+            continue
+
+        # Find the actual object to check readiness
+        # For now, categorize by version comparison
+        since = item.get("since", "")
+        try:
+            from packaging import version
+
+            since_ver = version.parse(since.lstrip("v"))
+            target_ver = version.parse(target_version.lstrip("v"))
+            minor_diff = target_ver.minor - since_ver.minor
+
+            if minor_diff >= 3:
+                ready.append(item)
+            else:
+                active.append(item)
+        except Exception:
+            active.append(item)
+
+    return {"ready": ready, "not_ready": not_ready, "active": active}
+
+
 __all__ = [
     "deprecated",
     "deprecated_parameter",
@@ -472,4 +641,6 @@ __all__ = [
     "get_deprecated_parameters",
     "check_removal_readiness",
     "validate_kwargs",
+    "scan_deprecated",
+    "audit_all_deprecations",
 ]
