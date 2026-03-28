@@ -334,15 +334,15 @@ MFGArchon documentation is split across two repositories:
 | Content | Location | Audience |
 |---------|----------|----------|
 | **User docs** (tutorials, guides, API) | `mfgarchon/docs/user/` | Public (future book) |
-| **Theory** (selected, user-educational) | `mfgarchon/docs/theory/` | Public (future book) |
+| **Theory** (mathematical foundations) | `mfg-research/docs/archon-notes/theory/` | Private |
 | **Internal notes** (architecture, roadmaps, design) | `mfg-research/docs/archon-notes/` | Private |
 | **Research notes** (experiments, analysis) | `mfg-research/docs/`, `experiments/*/docs/` | Private |
 
 **Rules**:
-- ✅ User-facing docs (tutorials, guides) → `mfgarchon/docs/`
-- ✅ Internal design notes, roadmaps, issue analysis → `mfg-research/docs/archon-notes/`
-- ❌ Do NOT create `docs/development/` or `docs/architecture/` in mfgarchon
-- ❌ Do NOT put internal planning docs in the public repo
+- ✅ User-facing docs (tutorials, guides) → `mfgarchon/docs/user/`
+- ✅ Theory, design notes, roadmaps, issue analysis → `mfg-research/docs/archon-notes/`
+- ❌ Do NOT create `docs/theory/`, `docs/development/`, or `docs/architecture/` in mfgarchon
+- ❌ Do NOT put internal planning or theory docs in the public repo
 
 **Cross-repo workflow** (design → implementation):
 1. Design and analyze in `mfg-research/docs/archon-notes/`

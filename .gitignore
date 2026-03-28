@@ -880,8 +880,4 @@ benchmarks/history/
 **/*\[PRIVATE\]*.pdf
 
 # Private directories (simpler: exclude everything)
-docs/theory/private/
-docs/development/private/
-# Obsolete planning documents (superseded)
-docs/development/AGGRESSIVE_NAMING_MIGRATION_PLAN.md
-docs/development/REVISED_PROTOCOL_COMPLIANCE_PLAN.md
+docs/user/private/

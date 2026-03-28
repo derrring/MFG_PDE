@@ -83,17 +83,17 @@ mv docs/development/phase_x_*.md archive/development/phases/
 **Action:**
 ```bash
 # Instead of:
-docs/theory/mfg_basics_1.md
-docs/theory/mfg_basics_2.md
-docs/theory/mfg_basics_3.md
-docs/theory/mfg_basics_4.md
-docs/theory/mfg_basics_5.md
+docs/user/mfg_basics_1.md
+docs/user/mfg_basics_2.md
+docs/user/mfg_basics_3.md
+docs/user/mfg_basics_4.md
+docs/user/mfg_basics_5.md
 
 # Create:
-docs/theory/MEAN_FIELD_GAMES_COMPLETE.md  # Consolidated guide
+docs/user/MEAN_FIELD_GAMES_COMPLETE.md  # Consolidated guide
 
 # Archive originals:
-mv docs/theory/mfg_basics_*.md archive/theory/
+mv docs/user/mfg_basics_*.md archive/docs/
 ```
 
 ### 3. Monthly Audit 📅
