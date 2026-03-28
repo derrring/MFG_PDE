@@ -290,6 +290,7 @@ class NetworkGeometry(GraphGeometry):
         self.network_data: NetworkData | None = None
         self.backend_preference = backend_preference
         self.backend_manager = get_backend_manager(backend_preference)
+        self._regions: dict[str, np.ndarray] = {}
 
     # =========================================================================
     # Pickle Support (Phase 5 of Issue #435)

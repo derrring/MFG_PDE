@@ -591,6 +591,23 @@ class ImplicitDomain(
 
         return points_interior[0] if is_single else points_interior
 
+    @property
+    def manifold_dimension(self) -> int:
+        """
+        Intrinsic dimension of the domain manifold.
+
+        Implements SupportsManifold protocol.
+
+        For ImplicitDomain representing a full domain D subset R^d,
+        manifold dimension equals ambient dimension d. The SDF boundary
+        dD is (d-1)-dimensional, but the domain itself is d-dimensional.
+
+        Note:
+            Subclasses representing embedded surfaces (codimension-1)
+            should override to return self.dimension - 1.
+        """
+        return self.dimension
+
     def get_metric_tensor(
         self,
         points: NDArray[np.float64],
@@ -677,6 +694,83 @@ class ImplicitDomain(
 
         else:
             raise ValueError(f"Unknown function_type '{function_type}'. Valid options: 'sdf', 'metric', 'projection'")
+
+    def get_tangent_space_basis(
+        self,
+        points: NDArray[np.float64],
+    ) -> NDArray[np.float64]:
+        """
+        Compute orthonormal basis for tangent space at given points.
+
+        Implements SupportsManifold protocol.
+
+        For ImplicitDomain in flat Euclidean space, the tangent space is R^d
+        with canonical basis at every point.
+
+        Args:
+            points: Query points, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Tangent basis vectors:
+                - Single point: (dimension, dimension) canonical basis
+                - Multiple points: (num_points, dimension, dimension)
+        """
+        # Canonical basis = metric tensor for flat space
+        return self.get_metric_tensor(points)
+
+    def compute_christoffel_symbols(
+        self,
+        points: NDArray[np.float64],
+    ) -> NDArray[np.float64]:
+        """
+        Compute Christoffel symbols for flat Euclidean space.
+
+        Implements SupportsManifold protocol.
+
+        For ImplicitDomain in flat Euclidean space, all Christoffel symbols
+        vanish: Gamma^k_{ij} = 0. This reflects zero curvature.
+
+        Args:
+            points: Query points, shape (num_points, dimension) or (dimension,)
+
+        Returns:
+            Christoffel symbols (all zeros):
+                - Single point: (dimension, dimension, dimension)
+                - Multiple points: (num_points, dimension, dimension, dimension)
+        """
+        is_single = points.ndim == 1
+        d = points.shape[-1] if points.ndim > 1 else len(points)
+
+        if is_single:
+            return np.zeros((d, d, d))
+
+        n_points = points.shape[0]
+        return np.zeros((n_points, d, d, d))
+
+    def validate_lipschitz_regularity(
+        self,
+        tolerance: float = 1e-6,
+    ) -> tuple[bool, str]:
+        """
+        Validate that boundary satisfies Lipschitz condition.
+
+        Implements SupportsLipschitz protocol.
+
+        For ImplicitDomain, regularity depends on the SDF. Exact SDFs
+        (|nabla phi| = 1) are automatically 1-Lipschitz with smooth
+        boundaries. Subclasses with non-smooth boundaries (corners, cusps)
+        should override.
+
+        Args:
+            tolerance: Numerical tolerance for validation checks
+
+        Returns:
+            (is_valid, message): True with empty message for smooth SDFs.
+        """
+        L = self.get_lipschitz_constant("sdf")
+        if not np.isfinite(L):
+            return False, f"SDF Lipschitz constant is not finite: {L}"
+        return True, ""
 
     # GeometryProtocol methods for solver interface
     def get_grid_shape(self) -> tuple[int]:

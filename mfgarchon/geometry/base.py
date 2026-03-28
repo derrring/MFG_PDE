@@ -1986,6 +1986,83 @@ class GraphGeometry(Geometry, SupportsGraphLaplacian, SupportsAdjacency):
         return [int(j) for j in range(len(A)) if A[node_idx, j] > 0]
 
     # ============================================================================
+    # Region Marking (Issue #590 Phase 1.3 — SupportsRegionMarking)
+    # ============================================================================
+
+    def mark_region(
+        self,
+        name: str,
+        predicate: Callable[[NDArray], NDArray] | None = None,
+        mask: NDArray | None = None,
+        boundary: str | None = None,
+    ) -> None:
+        """
+        Mark a named region on the graph.
+
+        For graphs, regions are sets of nodes identified by boolean masks.
+
+        Args:
+            name: Unique name for the region
+            predicate: Function taking node positions (N, d) -> bool mask (N,).
+                       Only works for spatially-embedded graphs.
+            mask: Boolean mask of shape (num_nodes,) directly
+            boundary: Not applicable for graphs (raises ValueError)
+
+        Raises:
+            ValueError: If name already exists, or boundary is used,
+                        or predicate is used on abstract graphs
+        """
+        if name in self._regions:
+            raise ValueError(f"Region '{name}' already exists")
+
+        specs = sum(x is not None for x in (predicate, mask, boundary))
+        if specs != 1:
+            raise ValueError("Exactly one of predicate, mask, or boundary must be provided")
+
+        if boundary is not None:
+            raise ValueError(
+                "Graph geometries do not support boundary-based region marking. Use predicate or mask instead."
+            )
+
+        if predicate is not None:
+            positions = self.get_node_positions()
+            if positions is None:
+                raise ValueError("Cannot use predicate on abstract graphs without spatial embedding. Use mask instead.")
+            self._regions[name] = np.asarray(predicate(positions), dtype=np.bool_)
+        else:
+            assert mask is not None
+            self._regions[name] = np.asarray(mask, dtype=np.bool_)
+
+    def get_region_mask(self, name: str) -> NDArray:
+        """
+        Get boolean mask for named region.
+
+        Args:
+            name: Region name (from mark_region call)
+
+        Returns:
+            Boolean mask of shape (num_nodes,)
+
+        Raises:
+            KeyError: If region name not found
+        """
+        if name not in self._regions:
+            raise KeyError(f"Region '{name}' not found. Available: {list(self._regions.keys())}")
+        return self._regions[name]
+
+    def get_region_names(self) -> list[str]:
+        """Return list of registered region names."""
+        return list(self._regions.keys())
+
+    def intersect_regions(self, name1: str, name2: str) -> NDArray:
+        """Boolean AND of two named regions."""
+        return self.get_region_mask(name1) & self.get_region_mask(name2)
+
+    def union_regions(self, name1: str, name2: str) -> NDArray:
+        """Boolean OR of two named regions."""
+        return self.get_region_mask(name1) | self.get_region_mask(name2)
+
+    # ============================================================================
     # Solver Operation Interface (graph-specific)
     # ============================================================================
 
