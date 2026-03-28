@@ -15,7 +15,7 @@ import numpy as np
 # Add MFGarchon to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mfgarchon.geometry import BoundaryManager, Mesh2D, MeshData
+from mfgarchon.geometry import Mesh2D, MeshData
 
 
 class TestMeshData:
@@ -162,102 +162,14 @@ class TestMesh2D:
         np.testing.assert_array_equal(max_coords, [3, 3])
 
 
-class TestBoundaryManager:
-    """Test the BoundaryManager class."""
-
-    def create_simple_mesh_data(self):
-        """Create simple mesh data for testing."""
-        vertices = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
-        elements = np.array([[0, 1, 2], [0, 2, 3]])
-        boundary_tags = np.array([1, 2, 3, 4])  # Different regions
-
-        return MeshData(
-            vertices=vertices,
-            elements=elements,
-            element_type="triangle",
-            boundary_tags=boundary_tags,
-            element_tags=np.array([1, 1]),
-            boundary_faces=np.array([[0, 1], [1, 2], [2, 3], [3, 0]]),
-            dimension=2,
-        )
-
-    def test_boundary_manager_creation(self):
-        """Test BoundaryManager creation and boundary extraction."""
-        mesh_data = self.create_simple_mesh_data()
-        boundary_manager = BoundaryManager(mesh_data)
-
-        assert boundary_manager.mesh_data is mesh_data
-        assert len(boundary_manager.boundary_nodes) == 4  # 4 boundary regions
-
-    def test_add_boundary_condition(self):
-        """Test adding boundary conditions."""
-        mesh_data = self.create_simple_mesh_data()
-        boundary_manager = BoundaryManager(mesh_data)
-
-        # Add Dirichlet boundary condition
-        bc = boundary_manager.add_boundary_condition(
-            region_id=1, bc_type="dirichlet", value=1.0, description="Bottom boundary"
-        )
-
-        assert bc.region_id == 1
-        assert bc.bc_type == "dirichlet"
-        assert bc.value == 1.0
-        assert bc.description == "Bottom boundary"
-        assert 1 in boundary_manager.boundary_conditions
-
-    def test_boundary_condition_evaluation(self):
-        """Test boundary condition evaluation."""
-        mesh_data = self.create_simple_mesh_data()
-        boundary_manager = BoundaryManager(mesh_data)
-
-        # Add constant Dirichlet BC
-        boundary_manager.add_boundary_condition(region_id=1, bc_type="dirichlet", value=2.5)
-
-        # Add function Dirichlet BC
-        boundary_manager.add_boundary_condition(
-            region_id=2,
-            bc_type="dirichlet",
-            value=lambda coords: coords[:, 0] + coords[:, 1],  # x + y
-        )
-
-        # Evaluate constant BC
-        values1 = boundary_manager.evaluate_boundary_condition(region_id=1)
-        assert np.all(values1 == 2.5)
-
-        # Evaluate function BC (this test assumes node 1 is in region 2)
-        values2 = boundary_manager.evaluate_boundary_condition(region_id=2)
-        assert len(values2) > 0
-
-    def test_summary_generation(self):
-        """Test boundary condition summary generation."""
-        mesh_data = self.create_simple_mesh_data()
-        boundary_manager = BoundaryManager(mesh_data)
-
-        boundary_manager.add_boundary_condition(
-            region_id=1, bc_type="dirichlet", value=0.0, description="Zero Dirichlet"
-        )
-
-        boundary_manager.add_boundary_condition(
-            region_id=2, bc_type="neumann", gradient_value=1.0, description="Unit flux"
-        )
-
-        summary = boundary_manager.get_summary()
-
-        assert summary["num_regions"] == 2
-        assert 1 in summary["regions"]
-        assert 2 in summary["regions"]
-        assert summary["regions"][1]["type"] == "dirichlet"
-        assert summary["regions"][2]["type"] == "neumann"
-
-
 def test_geometry_package_import():
     """Test that the geometry package imports correctly."""
-    from mfgarchon.geometry import BoundaryManager, Mesh2D, MeshData
+    from mfgarchon.geometry import BoundaryConditions, Mesh2D, MeshData
 
     # Test that classes are available
     assert MeshData is not None
     assert Mesh2D is not None
-    assert BoundaryManager is not None
+    assert BoundaryConditions is not None
 
 
 def test_main_package_geometry_import():

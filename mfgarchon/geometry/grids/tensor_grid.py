@@ -868,39 +868,23 @@ class TensorProductGrid(
             return BoundaryConditions(type="periodic")  # Safe default
 
     def _create_bc_nd(self, bc_type: str):
-        """
-        Create nD boundary conditions (D >= 2) using factory pattern.
-
-        Dimension-agnostic: Flattens bounds and dispatches to appropriate factory.
-        """
-        # Flatten bounds to tuple format expected by factories
-        flat_bounds = tuple(coord for min_max in self.bounds for coord in min_max)
-
-        # Dimension-specific factory dispatch
-        factory_map = {
-            2: ("boundary.fem_bc_2d", "create_rectangle_boundary_conditions"),
-            3: ("boundary.fem_bc_3d", "create_box_boundary_conditions"),
-        }
-
-        if self._dimension in factory_map:
-            module_name, factory_name = factory_map[self._dimension]
-            module = __import__(f"mfgarchon.geometry.{module_name}", fromlist=[factory_name])
-            factory = getattr(module, factory_name)
-            return factory(flat_bounds, bc_type)
-
-        # Dimension > 3: Use 3D infrastructure as fallback (generalizes to nD hyperboxes)
-        import warnings
-
-        warnings.warn(
-            f"Using 3D BC manager as fallback for dimension={self._dimension}. "
-            f"BC handler will treat {self._dimension}D hypercube as generalized 3D box. "
-            "This works for rectangular domains but may not handle all nD edge cases.",
-            UserWarning,
-            stacklevel=2,
+        """Create nD boundary conditions using unified BC framework."""
+        from mfgarchon.geometry.boundary import (
+            dirichlet_bc,
+            neumann_bc,
+            no_flux_bc,
+            periodic_bc,
         )
-        from mfgarchon.geometry.boundary.fem_bc import FEMBoundaryConditionManager
 
-        return FEMBoundaryConditionManager(mesh=None)
+        bc_factory = {
+            "periodic": periodic_bc,
+            "neumann": neumann_bc,
+            "neumann_zero": neumann_bc,
+            "dirichlet_zero": lambda dimension=None: dirichlet_bc(value=0.0, dimension=dimension),
+            "no_flux": no_flux_bc,
+        }
+        factory = bc_factory.get(bc_type, neumann_bc)
+        return factory(dimension=self._dimension)
 
     # ============================================================================
     # Boundary Trait Implementations (Issue #590 - Phase 1.2)

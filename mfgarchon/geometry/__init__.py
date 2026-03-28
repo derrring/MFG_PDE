@@ -19,7 +19,7 @@ Key Components:
 - MeshData: Universal mesh data container
 - MeshPipeline: Complete Gmsh → Meshio → PyVista workflow orchestration
 - MeshManager: High-level mesh management for multiple geometries
-- BoundaryManager: Advanced boundary condition management
+- BoundaryConditions: Unified boundary condition specification
 
 Discretization Methods:
 - Use TensorProductGrid for finite difference solvers (all dimensions)
@@ -37,38 +37,12 @@ from mfgarchon.operators import GeometryProjector, ProjectionRegistry
 # AMR stub (for future library integration)
 from .amr import AdaptiveGeometry, AMRNotImplementedError, create_amr_grid, is_adaptive
 
-# Boundary conditions from subdirectories
-# Factory functions for uniform BCs
-# FEM boundary condition classes (2D/3D)
+# Boundary conditions (unified BC framework)
 from .boundary import (
     BCSegment,
     BCType,
-    # 2D aliases
-    BoundaryCondition2D,
-    # 3D aliases
-    BoundaryCondition3D,
-    # Base FEM class
-    BoundaryConditionFEM,
-    BoundaryConditionManager2D,
-    BoundaryConditionManager3D,
     BoundaryConditions,
-    BoundaryManager,
-    DirichletBC2D,
-    DirichletBC3D,
-    GeometricBoundaryCondition,
-    MFGBoundaryHandler2D,
-    MFGBoundaryHandler3D,
     MixedBoundaryConditions,
-    NeumannBC2D,
-    NeumannBC3D,
-    PeriodicBC2D,
-    PeriodicBC3D,
-    RobinBC2D,
-    RobinBC3D,
-    create_box_boundary_conditions,
-    create_circle_boundary_conditions,
-    create_rectangle_boundary_conditions,
-    create_sphere_boundary_conditions,
     create_standard_boundary_names,
     dirichlet_bc,
     neumann_bc,
@@ -185,21 +159,18 @@ __all__ = [
     # Boundary condition components
     "BCSegment",
     "BCType",
-    "BoundaryCondition2D",
-    "BoundaryCondition3D",
-    "BoundaryConditionFEM",
-    "BoundaryConditionManager2D",
-    "BoundaryConditionManager3D",
     "BoundaryConditions",
-    "BoundaryManager",
-    # Specific boundary condition types
-    "DirichletBC2D",
-    "DirichletBC3D",
+    "MixedBoundaryConditions",
+    "create_standard_boundary_names",
+    "dirichlet_bc",
+    "neumann_bc",
+    "no_flux_bc",
+    "periodic_bc",
+    "robin_bc",
     # Geometry components
     "Mesh1D",
     "Mesh2D",
     "Mesh3D",
-    "GeometricBoundaryCondition",
     # Unified geometry protocol
     "GeometryProtocol",
     "GeometryType",
@@ -225,27 +196,18 @@ __all__ = [
     "GeometryProjector",
     "ProjectionRegistry",
     "GridNetwork",
-    "MFGBoundaryHandler2D",
-    "MFGBoundaryHandler3D",
     "MeshData",
     "MeshManager",
     "MeshPipeline",
     "MeshVisualizationMode",
-    "MixedBoundaryConditions",
     # Network backend components
     "NetworkBackendType",
     # Network geometry components
     "NetworkData",
     "NetworkType",
-    "NeumannBC2D",
-    "NeumannBC3D",
     "OperationType",
-    "PeriodicBC2D",
-    "PeriodicBC3D",
     "PointCloudGeometry",
     "RandomNetwork",
-    "RobinBC2D",
-    "RobinBC3D",
     "ScaleFreeNetwork",
     "TensorProductGrid",
     # Implicit geometry (CSG operations)
@@ -258,15 +220,8 @@ __all__ = [
     "UnionDomain",
     # Factory and utility functions
     "compute_network_statistics",
-    # Boundary condition factory functions
-    "create_box_boundary_conditions",
-    "create_circle_boundary_conditions",
     "create_network",
-    "create_rectangle_boundary_conditions",
-    "create_sphere_boundary_conditions",
-    "create_standard_boundary_names",
     "detect_geometry_type",
-    "dirichlet_bc",
     "get_backend_manager",
     "is_geometry_compatible",
     # Maze geometry (primary names)
@@ -285,10 +240,6 @@ __all__ = [
     "maze_RecursiveDivisionConfig",
     "maze_RecursiveDivisionGenerator",
     "maze_VoronoiGenerator",
-    "neumann_bc",
-    "no_flux_bc",
-    "periodic_bc",
-    "robin_bc",
     "set_preferred_backend",
     "validate_geometry",
     # Mask generation utilities

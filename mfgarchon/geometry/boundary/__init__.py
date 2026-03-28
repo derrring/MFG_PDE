@@ -21,7 +21,7 @@ Primary API (covers 95% of usage)::
 For applicators, import from submodules::
 
     from mfgarchon.geometry.boundary.applicator_fdm import FDMApplicator
-    from mfgarchon.geometry.boundary.applicator_fem import FEMApplicator
+    from mfgarchon.geometry.boundary.bc_adapter import apply_fem_bc  # FEM via scikit-fem
     from mfgarchon.geometry.boundary.applicator_graph import GraphApplicator
     from mfgarchon.geometry.boundary.dispatch import apply_bc
 """
@@ -83,8 +83,8 @@ from .types import (
 # __all__: Primary public API
 #
 # For secondary/specialist APIs (applicators, calculators, ghost formulas,
-# FEM classes, graph BC, corner handling, etc.), import from submodules:
-#   from mfgarchon.geometry.boundary.applicator_fem import FEMApplicator
+# graph BC, corner handling, etc.), import from submodules:
+#   from mfgarchon.geometry.boundary.bc_adapter import apply_fem_bc  # FEM
 #   from mfgarchon.geometry.boundary.applicator_graph import GraphApplicator
 #   from mfgarchon.geometry.boundary.protocols import BoundaryCapable
 #   from mfgarchon.geometry.boundary.calculators import DirichletCalculator
@@ -129,50 +129,14 @@ __all__ = [
 # =============================================================================
 # Backward compatibility: lazy imports for symbols that were in the old __all__
 # =============================================================================
-# These are no longer in __all__ but remain importable via:
-#   from mfgarchon.geometry.boundary import FEMApplicator  # still works
-#
-# Using __getattr__ for lazy loading avoids importing everything eagerly.
+# These are no longer in __all__ but remain importable via __getattr__
+# for lazy loading (avoids importing everything eagerly).
 
 
 def __getattr__(name: str):
     """Lazy import for backward-compatible symbols not in __all__."""
     # Applicators
     _applicator_map = {
-        # FEM
-        "FEMApplicator": ("applicator_fem", "FEMApplicator"),
-        "BoundaryConditionFEM": ("applicator_fem", "BoundaryConditionFEM"),
-        "MFGBoundaryHandlerFEM": ("applicator_fem", "MFGBoundaryHandlerFEM"),
-        "BoundaryManager": ("applicator_fem", "BoundaryManager"),
-        "GeometricBoundaryCondition": ("applicator_fem", "GeometricBoundaryCondition"),
-        "BoundaryCondition1D": ("applicator_fem", "BoundaryCondition1D"),
-        "BoundaryConditionManager1D": ("applicator_fem", "BoundaryConditionManager1D"),
-        "DirichletBC1D": ("applicator_fem", "DirichletBC1D"),
-        "NeumannBC1D": ("applicator_fem", "NeumannBC1D"),
-        "RobinBC1D": ("applicator_fem", "RobinBC1D"),
-        "PeriodicBC1D": ("applicator_fem", "PeriodicBC1D"),
-        "MFGBoundaryHandler1D": ("applicator_fem", "MFGBoundaryHandler1D"),
-        "create_interval_boundary_conditions": ("applicator_fem", "create_interval_boundary_conditions"),
-        "BoundaryCondition2D": ("applicator_fem", "BoundaryCondition2D"),
-        "BoundaryConditionManager2D": ("applicator_fem", "BoundaryConditionManager2D"),
-        "DirichletBC2D": ("applicator_fem", "DirichletBC2D"),
-        "NeumannBC2D": ("applicator_fem", "NeumannBC2D"),
-        "RobinBC2D": ("applicator_fem", "RobinBC2D"),
-        "PeriodicBC2D": ("applicator_fem", "PeriodicBC2D"),
-        "MFGBoundaryHandler2D": ("applicator_fem", "MFGBoundaryHandler2D"),
-        "create_rectangle_boundary_conditions": ("applicator_fem", "create_rectangle_boundary_conditions"),
-        "create_circle_boundary_conditions": ("applicator_fem", "create_circle_boundary_conditions"),
-        "BoundaryCondition3D": ("applicator_fem", "BoundaryCondition3D"),
-        "BoundaryConditionManager3D": ("applicator_fem", "BoundaryConditionManager3D"),
-        "DirichletBC3D": ("applicator_fem", "DirichletBC3D"),
-        "NeumannBC3D": ("applicator_fem", "NeumannBC3D"),
-        "RobinBC3D": ("applicator_fem", "RobinBC3D"),
-        "PeriodicBC3D": ("applicator_fem", "PeriodicBC3D"),
-        "MFGBoundaryHandler3D": ("applicator_fem", "MFGBoundaryHandler3D"),
-        "create_box_boundary_conditions": ("applicator_fem", "create_box_boundary_conditions"),
-        "create_sphere_boundary_conditions": ("applicator_fem", "create_sphere_boundary_conditions"),
-        "get_bc_class": ("applicator_fem", "get_bc_class"),
-        "get_manager_class": ("applicator_fem", "get_manager_class"),
         # Graph
         "GraphApplicator": ("applicator_graph", "GraphApplicator"),
         "GraphBCConfig": ("applicator_graph", "GraphBCConfig"),
