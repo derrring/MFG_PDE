@@ -141,9 +141,10 @@ class TestSolverMonitoringOptions:
             def solve(self, max_iterations=10, verbose=False, **kwargs):
                 return {"converged": True}
 
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert "deprecated" in str(w[0].message).lower()
+            # Each deprecated parameter triggers its own warning
+            assert len(w) >= 1
+            assert all(issubclass(warning.category, DeprecationWarning) for warning in w)
+            assert any("deprecated" in str(warning.message).lower() for warning in w)
 
 
 class TestWithProgressMonitoring:

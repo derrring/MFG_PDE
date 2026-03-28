@@ -10,11 +10,12 @@ manipulated, optimized, and compiled to different backends (NumPy, JAX, Numba).
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+from mfgarchon.utils.deprecation import deprecated_parameter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -197,6 +198,8 @@ class MFGSystemBuilder:
         self.parameters[name] = value
         return self
 
+    @deprecated_parameter(param_name="nx", since="v0.17.0", replacement="Nx")
+    @deprecated_parameter(param_name="nt", since="v0.17.0", replacement="Nt")
     def domain(
         self,
         xmin: float,
@@ -223,24 +226,12 @@ class MFGSystemBuilder:
         Returns:
             Self for method chaining
         """
-        # Handle deprecated lowercase parameters
-        if nx is not None:
-            warnings.warn(
-                "Parameter 'nx' is deprecated, use 'Nx' (uppercase) instead. Will be removed in v1.0.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if Nx is None:
-                Nx = nx
+        # Handle deprecated lowercase parameters (redirect to new names)
+        if nx is not None and Nx is None:
+            Nx = nx
 
-        if nt is not None:
-            warnings.warn(
-                "Parameter 'nt' is deprecated, use 'Nt' (uppercase) instead. Will be removed in v1.0.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if Nt is None:
-                Nt = nt
+        if nt is not None and Nt is None:
+            Nt = nt
 
         # Set defaults if not provided
         if Nx is None:

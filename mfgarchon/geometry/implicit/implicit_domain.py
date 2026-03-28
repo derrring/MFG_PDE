@@ -17,7 +17,6 @@ References:
 - TECHNICAL_REFERENCE_HIGH_DIMENSIONAL_MFG.md Section 4
 """
 
-import warnings
 from abc import abstractmethod
 from collections.abc import Callable
 from typing import Literal
@@ -35,6 +34,7 @@ from mfgarchon.geometry.protocols import (
     SupportsManifold,
 )
 from mfgarchon.geometry.traits import BoundaryDef, ConnectivityType, StructureType
+from mfgarchon.utils.deprecation import deprecated
 from mfgarchon.utils.mfg_logging import get_logger
 
 # Module logger
@@ -257,6 +257,10 @@ class ImplicitDomain(
         else:
             raise ValueError(f"Unknown projection method: {method}")
 
+    @deprecated(
+        since="v0.12.0",
+        replacement="Use MeshfreeApplicator from mfgarchon.geometry.boundary instead.",
+    )
     def apply_boundary_conditions(
         self,
         particles: NDArray[np.float64],
@@ -289,15 +293,6 @@ class ImplicitDomain(
             >>> applicator = MeshfreeApplicator(domain)
             >>> particles_updated = applicator.apply_particle_bc(particles, "reflecting")
         """
-        warnings.warn(
-            "ImplicitDomain.apply_boundary_conditions() is deprecated. "
-            "Use MeshfreeApplicator from mfgarchon.geometry.boundary instead:\n"
-            "  from mfgarchon.geometry.boundary import MeshfreeApplicator\n"
-            "  applicator = MeshfreeApplicator(domain)\n"
-            "  particles_updated = applicator.apply_particle_bc(particles, bc_type)",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if bc_type == "reflecting":
             return self.project_to_domain(particles, method="simple")
 

@@ -21,8 +21,9 @@ See docs/theory/adjoint_discretization_mfg.md for mathematical foundations.
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+from mfgarchon.utils.deprecation import deprecated
 
 if TYPE_CHECKING:
     import numpy as np
@@ -107,6 +108,12 @@ class LinearizedOperatorCapable(Protocol):
         ...
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="validate_scheme_pairing",
+    reason="The adjoint_mode approach (using A_hjb.T for FP) is mathematically incorrect. "
+    "Use scheme pairing instead: gradient_upwind + divergence_upwind. See Issue #706.",
+)
 def validate_adjoint_capability(
     hjb_solver: object,
     fp_solver: object,
@@ -131,14 +138,6 @@ def validate_adjoint_capability(
 
     See Issue #706 and docs/theory/adjoint_discretization_mfg.md.
     """
-    warnings.warn(
-        "validate_adjoint_capability is deprecated. The adjoint_mode approach "
-        "(using A_hjb.T for FP) is mathematically incorrect. Use scheme pairing "
-        "instead: gradient_upwind + divergence_upwind. See Issue #706.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
     issues = []
 
     if not isinstance(hjb_solver, AdjointCapableHJBSolver):

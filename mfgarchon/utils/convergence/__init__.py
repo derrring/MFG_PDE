@@ -44,8 +44,6 @@ Usage:
 
 from __future__ import annotations
 
-import warnings
-
 # =============================================================================
 # CONVERGENCE CHECKERS (convergence_checkers.py)
 # =============================================================================
@@ -98,20 +96,6 @@ from .convergence_monitors import (
     test_particle_detection,
     wrap_solver_with_adaptive_convergence,
 )
-
-# =============================================================================
-# DEPRECATION HELPERS
-# =============================================================================
-
-
-def _warn_deprecated(old_name: str, new_name: str) -> None:
-    """Issue deprecation warning for renamed classes."""
-    warnings.warn(
-        f"{old_name} is deprecated and will be removed in v1.0.0. Use {new_name} instead.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
-
 
 # =============================================================================
 # PUBLIC API

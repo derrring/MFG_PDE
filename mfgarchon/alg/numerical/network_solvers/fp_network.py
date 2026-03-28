@@ -30,6 +30,7 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
 
 from mfgarchon.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+from mfgarchon.utils.deprecation import deprecated_parameter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -123,6 +124,7 @@ class FPNetworkSolver(BaseFPSolver):
             if self.dt > self.dt_stable:
                 print(f"Warning: dt={self.dt:.2e} > dt_stable={self.dt_stable:.2e}")
 
+    @deprecated_parameter(param_name="m_initial_condition", since="v0.17.0", replacement="M_initial")
     def solve_fp_system(
         self,
         M_initial: np.ndarray | None = None,
@@ -151,20 +153,13 @@ class FPNetworkSolver(BaseFPSolver):
         Returns:
             (Nt+1, num_nodes) density evolution
         """
-        import warnings
-
-        # Handle deprecated parameter name
+        # Handle deprecated parameter redirect
         if m_initial_condition is not None:
             if M_initial is not None:
                 raise ValueError(
                     "Cannot specify both M_initial and m_initial_condition. "
                     "Use M_initial (m_initial_condition is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'm_initial_condition' is deprecated. Use 'M_initial' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_initial = m_initial_condition
 
         # Validate required parameter

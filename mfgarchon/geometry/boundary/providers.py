@@ -53,6 +53,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol, TypedDict, runtime_ch
 import numpy as np
 
 from mfgarchon.geometry.boundary.bc_coupling import compute_boundary_log_density_gradient_1d
+from mfgarchon.utils.deprecation import deprecated_parameter
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -247,6 +248,11 @@ class AdjointConsistentProvider(BaseBCValueProvider):
         "back": "z_max",
     }
 
+    @deprecated_parameter(
+        param_name="sigma",
+        since="v0.17.0",
+        replacement="diffusion",
+    )
     def __init__(
         self,
         side: str,
@@ -268,19 +274,12 @@ class AdjointConsistentProvider(BaseBCValueProvider):
                            to prevent log(0). Default 1e-10.
             sigma: DEPRECATED. Use diffusion instead.
         """
-        import warnings
-
         if side not in self._SIDE_ALIASES:
             valid = sorted(self._SIDE_ALIASES.keys())
             raise ValueError(f"side must be one of {valid}, got '{side}'")
 
         # Handle sigma as legacy alias (deprecated)
         if sigma is not None:
-            warnings.warn(
-                "Parameter 'sigma' is deprecated. Use 'diffusion' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             if diffusion is None:
                 diffusion = sigma
 

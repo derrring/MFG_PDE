@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfgarchon.alg.base_solver import BaseNeuralSolver
+from mfgarchon.utils.deprecation import deprecated_parameter
 
 if TYPE_CHECKING:
     from mfgarchon.core.mfg_problem import MFGProblem
@@ -167,22 +168,8 @@ class PINNConfig:
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch is required for PINN functionality. Install with: pip install torch torchvision")
 
-        # Handle deprecated normalization parameters
+        # Handle deprecated normalization parameters (warnings issued by deprecated_parameter decorator on __init__)
         if self.use_batch_norm is not None or self.use_layer_norm is not None:
-            warnings.warn(
-                "Parameters 'use_batch_norm' and 'use_layer_norm' are deprecated "
-                "and will be removed in v1.0.0. Use 'normalization' instead.\n\n"
-                "Migration guide:\n"
-                "  Old: PINNConfig(use_batch_norm=True)\n"
-                "  New: PINNConfig(normalization=NormalizationType.BATCH)\n\n"
-                "Available normalization types:\n"
-                "  - NONE: No normalization (default)\n"
-                "  - BATCH: Batch normalization\n"
-                "  - LAYER: Layer normalization",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
             # Map deprecated booleans to normalization enum
             if self.normalization == NormalizationType.NONE:  # Only if not explicitly set
                 if self.use_batch_norm:
@@ -207,6 +194,12 @@ class PINNConfig:
         # Warning for potential issues
         if self.batch_size > self.n_interior_points:
             warnings.warn("Batch size larger than number of interior points")
+
+
+# Apply deprecated_parameter decorators to auto-generated __init__
+PINNConfig.__init__ = deprecated_parameter(  # type: ignore[misc]
+    param_name="use_batch_norm", since="v0.17.0", replacement="normalization"
+)(deprecated_parameter(param_name="use_layer_norm", since="v0.17.0", replacement="normalization")(PINNConfig.__init__))
 
 
 class PINNBase(BaseNeuralSolver, ABC):

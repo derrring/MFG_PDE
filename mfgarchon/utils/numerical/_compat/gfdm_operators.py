@@ -71,10 +71,11 @@ Updated: 2025-12-03 (Added GFDMOperator class)
 from __future__ import annotations
 
 import math
-import warnings
 
 import numpy as np
 from scipy.spatial import cKDTree
+
+from mfgarchon.utils.deprecation import deprecated
 
 # =============================================================================
 # GFDMOperator Class - Primary Interface
@@ -137,6 +138,11 @@ class GFDMOperator:
         >>> lap = gfdm.laplacian(u)      # Shape: (100,), ≈ 4.0
     """
 
+    @deprecated(
+        since="v0.17.0",
+        replacement="Use TaylorOperator from gfdm_strategies instead: "
+        "from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator",
+    )
     def __init__(
         self,
         points: np.ndarray,
@@ -168,14 +174,6 @@ class GFDMOperator:
                 - "knn": Use exactly k nearest neighbors
                 - "hybrid": Use delta, but ensure at least k neighbors (default, most robust)
         """
-        warnings.warn(
-            "GFDMOperator is deprecated since v0.17.0 and will be removed in v1.0.0. "
-            "Use TaylorOperator from gfdm_strategies instead:\n"
-            "  from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator\n"
-            "  op = TaylorOperator(points, delta=0.1, taylor_order=2)",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self.points = np.asarray(points)
         self.n_points, self.dimension = self.points.shape
         self.delta = delta

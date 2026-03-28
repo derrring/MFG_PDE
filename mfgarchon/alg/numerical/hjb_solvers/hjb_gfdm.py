@@ -19,6 +19,7 @@ from mfgarchon.alg.numerical.gfdm_components import (
 )
 from mfgarchon.geometry.boundary.applicator_base import DiscretizationType
 from mfgarchon.geometry.boundary.types import BCType
+from mfgarchon.utils.deprecation import deprecated_parameter, deprecated_value
 from mfgarchon.utils.mfg_logging import get_logger
 
 # GFDM infrastructure (Strategy Pattern)
@@ -211,6 +212,21 @@ class HJBGFDMSolver(BaseHJBSolver):
         kwargs.update(extra)
         return cls(problem, collocation_points, **kwargs)
 
+    @deprecated_value(
+        param_name="qp_optimization_level",
+        deprecated_values={"smart": "auto", "tuned": "auto", "basic": "auto"},
+        since="v0.17.0",
+    )
+    @deprecated_parameter(
+        param_name="NiterNewton",
+        since="v0.17.0",
+        replacement="max_newton_iterations",
+    )
+    @deprecated_parameter(
+        param_name="l2errBoundNewton",
+        since="v0.17.0",
+        replacement="newton_tolerance",
+    )
     def __init__(
         self,
         problem: MFGProblem,
@@ -355,18 +371,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         super().__init__(problem)
 
-        # Handle deprecated QP level names
-        if qp_optimization_level in ["smart", "tuned", "basic"]:
-            import warnings
-
-            warnings.warn(
-                f"qp_optimization_level='{qp_optimization_level}' is deprecated. Use 'auto' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            qp_optimization_level = "auto"
-
-        # Store QP optimization level
+        # Store QP optimization level (deprecated values remapped by @deprecated_value)
         self.qp_optimization_level = qp_optimization_level
 
         # Set method name based on QP optimization level
@@ -381,24 +386,12 @@ class HJBGFDMSolver(BaseHJBSolver):
         else:
             self.hjb_method_name = f"GFDM-{qp_optimization_level}"
 
-        import warnings
-
-        # Handle backward compatibility
+        # Handle backward compatibility (warnings issued by @deprecated_parameter decorators)
         if NiterNewton is not None:
-            warnings.warn(
-                "Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             if max_newton_iterations is None:
                 max_newton_iterations = NiterNewton
 
         if l2errBoundNewton is not None:
-            warnings.warn(
-                "Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             if newton_tolerance is None:
                 newton_tolerance = l2errBoundNewton
 
@@ -2054,6 +2047,21 @@ class HJBGFDMSolver(BaseHJBSolver):
     # Note: _build_monotonicity_constraints moved to MonotonicityEnforcer component
     # Note: _build_hamiltonian_gradient_constraints moved to MonotonicityEnforcer component
 
+    @deprecated_parameter(
+        param_name="M_density_evolution_from_FP",
+        since="v0.17.0",
+        replacement="M_density",
+    )
+    @deprecated_parameter(
+        param_name="U_final_condition_at_T",
+        since="v0.17.0",
+        replacement="U_terminal",
+    )
+    @deprecated_parameter(
+        param_name="U_from_prev_picard",
+        since="v0.17.0",
+        replacement="U_coupling_prev",
+    )
     def solve_hjb_system(
         self,
         M_density: np.ndarray | None = None,
@@ -2085,35 +2093,20 @@ class HJBGFDMSolver(BaseHJBSolver):
         Returns:
             (Nt, *spatial_shape) solution array
         """
-        # Handle deprecated parameter names with warnings
+        # Handle deprecated parameter names (warnings issued by @deprecated_parameter decorators)
         if M_density_evolution_from_FP is not None:
             if M_density is not None:
                 raise ValueError("Cannot specify both 'M_density' and deprecated 'M_density_evolution_from_FP'")
-            warnings.warn(
-                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution_from_FP
 
         if U_final_condition_at_T is not None:
             if U_terminal is not None:
                 raise ValueError("Cannot specify both 'U_terminal' and deprecated 'U_final_condition_at_T'")
-            warnings.warn(
-                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_terminal = U_final_condition_at_T
 
         if U_from_prev_picard is not None:
             if U_coupling_prev is not None:
                 raise ValueError("Cannot specify both 'U_coupling_prev' and deprecated 'U_from_prev_picard'")
-            warnings.warn(
-                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_coupling_prev = U_from_prev_picard
 
         # Validate required parameters

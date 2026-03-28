@@ -27,11 +27,11 @@ Applications:
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
@@ -125,21 +125,6 @@ class AdaptiveTrainingConfig:
         )
 
         if deprecated_params_used:
-            warnings.warn(
-                "Parameters 'enable_curriculum', 'enable_multiscale', and 'enable_refinement' "
-                "are deprecated and will be removed in v1.0.0. Use 'training_mode' instead.\n\n"
-                "Migration guide:\n"
-                "  Old: AdaptiveTrainingConfig(enable_curriculum=True, enable_multiscale=True, enable_refinement=True)\n"
-                "  New: AdaptiveTrainingConfig(training_mode=AdaptiveTrainingMode.FULL_ADAPTIVE)\n\n"
-                "Available modes:\n"
-                "  - BASIC: No adaptive features\n"
-                "  - CURRICULUM: Curriculum learning only\n"
-                "  - MULTISCALE: Multi-resolution training only\n"
-                "  - FULL_ADAPTIVE: All features (default)",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
             # Map deprecated booleans to training mode (only if training_mode not explicitly set)
             if self.training_mode == AdaptiveTrainingMode.FULL_ADAPTIVE:  # Default value
                 # Determine mode from boolean combination
@@ -171,6 +156,18 @@ class AdaptiveTrainingConfig:
     def uses_refinement(self) -> bool:
         """Whether residual-based refinement is enabled."""
         return self.training_mode == AdaptiveTrainingMode.FULL_ADAPTIVE
+
+
+# Apply deprecated_parameter decorators to auto-generated __init__
+AdaptiveTrainingConfig.__init__ = deprecated_parameter(  # type: ignore[misc]
+    param_name="enable_curriculum", since="v0.17.0", replacement="training_mode"
+)(
+    deprecated_parameter(param_name="enable_multiscale", since="v0.17.0", replacement="training_mode")(
+        deprecated_parameter(param_name="enable_refinement", since="v0.17.0", replacement="training_mode")(
+            AdaptiveTrainingConfig.__init__
+        )
+    )
+)
 
 
 @dataclass

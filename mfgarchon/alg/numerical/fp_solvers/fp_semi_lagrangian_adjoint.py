@@ -25,7 +25,7 @@ Issue #578: Adjoint SL implementation for proper SL-SL MFG coupling
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 from scipy.linalg import solve_banded
@@ -38,6 +38,7 @@ from mfgarchon.geometry.boundary.bc_utils import (
     bc_type_to_geometric_operation,
     get_bc_type_string,
 )
+from mfgarchon.utils.deprecation import deprecated, deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 
 from .base_fp import BaseFPSolver
@@ -214,6 +215,8 @@ class FPSLSolver(BaseFPSolver):
         bc_type = get_bc_type_string(self.boundary_conditions)
         return bc_type_to_geometric_operation(bc_type)
 
+    @deprecated_parameter(param_name="m_initial_condition", since="v0.17.0", replacement="M_initial")
+    @deprecated_parameter(param_name="diffusion_field", since="v0.17.0", replacement="volatility_field")
     def solve_fp_system(
         self,
         M_initial: np.ndarray | None = None,
@@ -245,17 +248,10 @@ class FPSLSolver(BaseFPSolver):
         Returns:
             Density evolution M(t,x). Shape: (Nt+1, Nx)
         """
-        import warnings
-
         # Handle deprecated parameter
         if m_initial_condition is not None:
             if M_initial is not None:
                 raise ValueError("Cannot specify both M_initial and m_initial_condition")
-            warnings.warn(
-                "Parameter 'm_initial_condition' is deprecated. Use 'M_initial' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_initial = m_initial_condition
 
         if M_initial is None:
@@ -273,12 +269,6 @@ class FPSLSolver(BaseFPSolver):
                     "Cannot specify both volatility_field and diffusion_field. "
                     "Use volatility_field (diffusion_field is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
-                "Note: volatility_field expects σ (SDE noise), same as diffusion_field did.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             volatility_field = diffusion_field
 
         # Handle volatility (Issue #717: unified API)
@@ -761,29 +751,31 @@ if __name__ == "__main__":
 # =============================================================================
 
 
-def _deprecated_alias_factory(new_cls, old_name: str, new_name: str):
-    """Create a deprecated alias class that warns on instantiation."""
-    import warnings
-
-    class DeprecatedAlias(new_cls):
-        def __init__(self, *args, **kwargs):
-            warnings.warn(
-                f"{old_name} is deprecated since v0.17.6. Use {new_name} instead. {old_name} will be removed in v1.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            super().__init__(*args, **kwargs)
-
-    DeprecatedAlias.__name__ = old_name
-    DeprecatedAlias.__qualname__ = old_name
-    DeprecatedAlias.__doc__ = f"""
-    DEPRECATED: Use :class:`{new_name}` instead.
+# Backward compatibility: FPSLAdjointSolver -> FPSLSolver
+# Uses subclass pattern (not deprecated_alias) to preserve isinstance checks
+# and class attribute inheritance (_scheme_family trait for duality validation).
+class FPSLAdjointSolver(FPSLSolver):
+    """
+    DEPRECATED: Use :class:`FPSLSolver` instead.
 
     .. deprecated:: 0.17.6
-        {old_name} has been renamed to {new_name} (Issue #710).
+        Renamed to FPSLSolver. Will be removed in v1.0.0.
     """
-    return DeprecatedAlias
 
+    _deprecation_meta: ClassVar[dict[str, Any]] = {
+        "since": "v0.17.6",
+        "replacement": "FPSLSolver",
+        "reason": "Renamed to FPSLSolver",
+        "removal": "v1.0.0",
+        "removal_blockers": ["internal_usage", "equivalence_test"],
+        "symbol": "FPSLAdjointSolver",
+        "alias_for": "FPSLSolver",
+    }
 
-# Backward compatibility: FPSLAdjointSolver -> FPSLSolver
-FPSLAdjointSolver = _deprecated_alias_factory(FPSLSolver, "FPSLAdjointSolver", "FPSLSolver")
+    @deprecated(
+        since="v0.17.6",
+        replacement="FPSLSolver",
+        reason="FPSLAdjointSolver was renamed to FPSLSolver",
+    )
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)

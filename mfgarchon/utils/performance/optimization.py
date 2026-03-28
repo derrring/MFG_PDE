@@ -19,6 +19,8 @@ import numpy as np
 from scipy.sparse import csc_matrix, csr_matrix, lil_matrix
 from scipy.sparse import linalg as sp_linalg
 
+from mfgarchon.utils.deprecation import deprecated_parameter
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -143,6 +145,9 @@ class SparseMatrixOptimizer:
     """Sparse matrix operations optimized for MFG problems."""
 
     @staticmethod
+    @deprecated_parameter(param_name="nx", since="v0.17.0", replacement="Nx")
+    @deprecated_parameter(param_name="ny", since="v0.17.0", replacement="Ny")
+    @deprecated_parameter(param_name="nz", since="v0.17.0", replacement="Nz")
     def create_laplacian_3d(
         Nx: int | None = None,
         Ny: int | None = None,
@@ -174,29 +179,14 @@ class SparseMatrixOptimizer:
         """
         # Handle deprecated lowercase parameters
         if nx is not None:
-            warnings.warn(
-                "Parameter 'nx' is deprecated, use 'Nx' (uppercase) instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             if Nx is None:
                 Nx = nx
 
         if ny is not None:
-            warnings.warn(
-                "Parameter 'ny' is deprecated, use 'Ny' (uppercase) instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             if Ny is None:
                 Ny = ny
 
         if nz is not None:
-            warnings.warn(
-                "Parameter 'nz' is deprecated, use 'Nz' (uppercase) instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             if Nz is None:
                 Nz = nz
 

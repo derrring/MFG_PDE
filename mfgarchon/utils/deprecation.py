@@ -195,6 +195,90 @@ def deprecated_parameter(
     return decorator
 
 
+def deprecated_value(
+    param_name: str,
+    deprecated_values: dict[Any, Any],
+    since: str,
+    removal: str = "v1.0.0",
+) -> Callable[[F], F]:
+    """
+    Mark specific parameter values as deprecated, with automatic remapping.
+
+    Use this when a parameter still exists but certain values have been renamed
+    or replaced. The decorator automatically remaps deprecated values to their
+    replacements and issues a warning.
+
+    Args:
+        param_name: Name of the parameter whose values are deprecated
+        deprecated_values: Mapping of {old_value: new_value}. When old_value is
+            passed, it is silently replaced with new_value after warning.
+        since: Version when deprecation started (e.g., "v0.17.0")
+        removal: Version when deprecated values will stop working
+
+    Example:
+        >>> @deprecated_value(
+        ...     param_name="qp_optimization_level",
+        ...     deprecated_values={"smart": "auto", "tuned": "auto", "basic": "auto"},
+        ...     since="v0.17.0",
+        ... )
+        ... def __init__(self, qp_optimization_level="auto"):
+        ...     # qp_optimization_level is already remapped when we get here
+        ...     self.level = qp_optimization_level
+
+    Note:
+        Unlike @deprecated_parameter (which detects deprecated parameter *names*),
+        this detects deprecated parameter *values*. The function body receives the
+        remapped value directly -- no manual redirect logic needed.
+    """
+
+    def decorator(func: F) -> F:
+        # Store value deprecation metadata
+        if getattr(func, "_deprecated_values", None) is None:
+            func._deprecated_values = []  # type: ignore[attr-defined]
+
+        func._deprecated_values.append(  # type: ignore[attr-defined]
+            {
+                "param": param_name,
+                "values": deprecated_values,
+                "since": since,
+                "removal": removal,
+            }
+        )
+
+        sig = inspect.signature(func)
+
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            try:
+                bound = sig.bind(*args, **kwargs)
+                bound.apply_defaults()
+
+                if param_name in bound.arguments:
+                    value = bound.arguments[param_name]
+                    if value in deprecated_values:
+                        new_value = deprecated_values[value]
+                        warnings.warn(
+                            f"Value '{value}' for parameter '{param_name}' in "
+                            f"'{func.__qualname__}' is deprecated since {since}. "
+                            f"Use '{new_value}' instead. "
+                            f"Will be removed in {removal}.",
+                            DeprecationWarning,
+                            stacklevel=2,
+                        )
+                        bound.arguments[param_name] = new_value
+                        return func(*bound.args, **bound.kwargs)
+            except TypeError:
+                pass
+
+            return func(*args, **kwargs)
+
+        wrapper._deprecated_values = func._deprecated_values  # type: ignore[attr-defined]
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorator
+
+
 def get_deprecation_metadata(obj: Any) -> dict[str, Any] | None:
     """
     Get deprecation metadata from a decorated object.
@@ -470,11 +554,16 @@ def validate_kwargs(
 
 def _scan_object(obj: Any, name: str, module_name: str, results: list[dict[str, Any]]) -> None:
     """Scan a single object for deprecation metadata."""
+    # For property descriptors, check the underlying fget function
+    is_property = isinstance(obj, property)
+    if is_property and obj.fget is not None:
+        obj = obj.fget
+
     meta = getattr(obj, "_deprecation_meta", None)
     if meta is not None:
         results.append(
             {
-                "type": "function" if callable(obj) else "alias",
+                "type": "property" if is_property else ("function" if callable(obj) else "alias"),
                 "name": meta.get("symbol", name),
                 "module": module_name,
                 "since": meta.get("since", ""),
@@ -497,13 +586,29 @@ def _scan_object(obj: Any, name: str, module_name: str, results: list[dict[str, 
                 }
             )
 
+    dep_values = getattr(obj, "_deprecated_values", None)
+    if dep_values:
+        for v in dep_values:
+            old_vals = ", ".join(str(k) for k in v["values"])
+            new_vals = ", ".join(str(val) for val in v["values"].values())
+            results.append(
+                {
+                    "type": "value",
+                    "name": f"{name}.{v['param']}",
+                    "module": module_name,
+                    "since": v.get("since", ""),
+                    "replacement": f"values [{old_vals}] -> [{new_vals}]",
+                    "removal": v.get("removal", "v1.0.0"),
+                }
+            )
+
 
 def scan_deprecated(module: Any, *, recursive: bool = True) -> list[dict[str, Any]]:
     """
     Scan a module tree for all decorated deprecated items.
 
     Returns a list of metadata dicts for every `@deprecated`, `@deprecated_parameter`,
-    and `deprecated_alias` found in the module and its submodules.
+    `@deprecated_value`, and `deprecated_alias` found in the module and its submodules.
 
     Args:
         module: Top-level module to scan (e.g., `import mfgarchon; scan_deprecated(mfgarchon)`)
@@ -636,6 +741,7 @@ def audit_all_deprecations(
 __all__ = [
     "deprecated",
     "deprecated_parameter",
+    "deprecated_value",
     "deprecated_alias",
     "get_deprecation_metadata",
     "get_deprecated_parameters",
