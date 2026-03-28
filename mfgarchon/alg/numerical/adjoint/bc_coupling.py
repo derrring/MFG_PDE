@@ -44,7 +44,7 @@ References:
 - Issue #574: https://github.com/derrring/mfgarchon/issues/574
 - Issue #704: https://github.com/derrring/mfgarchon/issues/704
 - Protocol: docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md § BC Consistency
-- Theory: docs/theory/state_dependent_bc_coupling.md
+- Theory: Issue #625 (state-dependent BC coupling)
 """
 
 from __future__ import annotations

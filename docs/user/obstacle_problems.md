@@ -884,7 +884,6 @@ for picard_iter in range(max_picard):
 
 ### Further Reading
 
-- **Theory**: `docs/theory/variational_inequalities_theory.md`
 - **Examples**:
   - `examples/advanced/obstacle_problem_1d.py` (basic HJB obstacle)
   - `examples/advanced/capacity_constrained_mfg/example_maze_mfg.py` (capacity MFG)

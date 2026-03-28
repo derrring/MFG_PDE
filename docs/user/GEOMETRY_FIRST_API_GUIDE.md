@@ -398,6 +398,5 @@ Use structured grids for:
 ## See Also
 
 - `docs/api/geometry_protocol.md` - Full protocol specification
-- `docs/theory/implicit_domains.md` - Mathematical foundation for SDFs
 - `examples/basic/geometry_demo.py` - Complete working examples
 - `CLAUDE.md` - Repository conventions and standards

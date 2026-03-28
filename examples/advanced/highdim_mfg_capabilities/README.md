@@ -228,7 +228,7 @@ m(x,0) = m₀(x)                         in Ω
 
 - **Mathematical Theory**: Cardaliaguet et al. "Notes on Mean Field Games"
 - **Computational Methods**: Achdou & Capuzzo-Dolcetta "Mean Field Games: Numerical Methods"
-- **Implementation Details**: See `docs/theory/` for mathematical formulations
+- **Implementation Details**: See source code docstrings for mathematical formulations
 - **API Reference**: See `docs/api/` for complete class documentation
 
 ---

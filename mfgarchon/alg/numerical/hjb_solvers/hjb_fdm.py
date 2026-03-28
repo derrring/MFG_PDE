@@ -1176,7 +1176,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
         See Also:
             - Issue #707: True Adjoint Mode
-            - docs/theory/adjoint_discretization_mfg.md
+            - Issue #706 (adjoint discretization)
             - compute_hjb_jacobian() in base_hjb.py (1D Newton solver version)
         """
         if self.dimension == 1:

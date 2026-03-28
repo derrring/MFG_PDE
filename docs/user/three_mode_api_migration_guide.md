@@ -425,7 +425,6 @@ Use `SL_LINEAR` or `SL_CUBIC` in Safe Mode. The factory automatically pairs with
 
 - **Documentation**: `docs/development/issue_580_adjoint_pairing_implementation.md`
 - **Examples**: `examples/basic/three_mode_api_demo.py`
-- **Theory**: `docs/theory/adjoint_operators_mfg.md`
 - **Issues**: Report problems at https://github.com/anthropics/mfgarchon/issues
 
 ---

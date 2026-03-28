@@ -145,13 +145,6 @@ See `CLAUDE.md` for full coding standards.
 
 ---
 
-## Theory References
-
-- **Mathematical Background**: `docs/theory/mathematical_background.md`
-- **Convergence Criteria**: `docs/theory/convergence_criteria.md`
-- **Solver Methods**: `docs/theory/numerical_methods.md`
-- **Complete Index**: `docs/DOCUMENTATION_INDEX.md`
-
 ---
 
 **Last Updated**: 2025-11-11

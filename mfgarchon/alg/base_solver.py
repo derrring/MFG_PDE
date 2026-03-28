@@ -99,7 +99,7 @@ class SchemeFamily(Enum):
     --------
     - NumericalScheme: User-facing enum for Safe Mode API
     - check_solver_duality(): Validation function using this enum
-    - docs/theory/adjoint_operators_mfg.md: Mathematical foundation
+    - Issue #706: Adjoint operators mathematical foundation
 
     References
     ----------

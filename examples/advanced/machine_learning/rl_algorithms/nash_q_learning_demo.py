@@ -276,7 +276,7 @@ def main():
     print("3. All agents follow same policy π*(s,m) = argmax_a Q(s,a,m)")
     print("4. Nash value V*(s,m) = max_a Q(s,a,m)")
     print("\nFor heterogeneous or competitive games, general Nash solvers needed.")
-    print("See: docs/theory/reinforcement_learning/nash_q_learning_architecture.md")
+    print("See MFG + RL literature for Nash Q-learning architecture details.")
 
 
 if __name__ == "__main__":

@@ -22,8 +22,8 @@ This leads to persistent Nash gap:
 References:
 -----------
 - Issue #580: Adjoint-aware solver pairing
-- docs/theory/adjoint_operators_mfg.md
-- docs/development/issue_580_adjoint_pairing_implementation.md
+- Issue #706 (adjoint operators)
+- Issue #580 (adjoint pairing implementation)
 """
 
 import pytest

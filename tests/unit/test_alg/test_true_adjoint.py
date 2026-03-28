@@ -8,7 +8,7 @@ core mathematical claim of the true adjoint approach:
     A_FP_advection = (A_HJB_Jacobian)^T
 
 References:
-    - docs/theory/adjoint_discretization_mfg.md
+    - Issue #706 (adjoint discretization)
     - Achdou & Capuzzo-Dolcetta (2010): Structure-preserving discretization
 """
 

@@ -325,7 +325,7 @@ class AdvectionOperator(LinearOperator):
         - ✅ For implicit solvers, use velocity-based upwind sparse construction
           (see fp_fdm_alg_*.py modules)
 
-        **See**: docs/theory/godunov_paradox_and_defect_correction.md for full
+        **See**: Godunov paradox and defect correction analysis for full
         mathematical explanation and the Defect Correction solution strategy.
 
         Args:

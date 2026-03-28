@@ -442,7 +442,7 @@ print("Related Files:")
 print("  - mfgarchon/geometry/mazes/: Maze generation algorithms")
 print("  - mfgarchon/geometry/implicit/: Implicit domain CSG operations")
 print("  - examples/advanced/arbitrary_nd_geometry_demo.py: nD geometry")
-print("  - docs/theory/unified_hamiltonian_signature.md: Dimension-agnostic design")
+print("  - See MFG literature for dimension-agnostic Hamiltonian design")
 print()
 
 print("=" * 70)

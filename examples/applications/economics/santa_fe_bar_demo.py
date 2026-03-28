@@ -25,7 +25,6 @@ Key Differences from El Farol:
     - Both exhibit same coordination paradox
 
 References:
-    - docs/theory/coordination_games_mfg.md: Full formulation
     - Arthur, W. B. (1994): "Inductive reasoning and bounded rationality"
     - Section 3 of coordination_games_mfg.md: Continuous formulation
 

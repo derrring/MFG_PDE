@@ -658,7 +658,6 @@ For true 3D, use `TensorProductGrid` for HJB geometry.
 ## Further Reading
 
 ### Documentation
-- `docs/theory/geometry_projection_mathematical_formulation.md`: Mathematical details
 - `docs/development/GEOMETRY_PROJECTION_IMPLEMENTATION_GUIDE.md`: Developer guide
 - API Reference: `mfgarchon.geometry.GeometryProjector`
 
