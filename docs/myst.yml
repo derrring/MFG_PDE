@@ -1,0 +1,74 @@
+version: 1
+
+project:
+  title: MFGArchon Documentation
+  description: Production-ready infrastructure for Mean Field Games research
+  keywords:
+    - mean field games
+    - numerical methods
+    - PDE solvers
+    - optimal control
+  github: https://github.com/derrring/MFGArchon
+  license:
+    code: MIT
+
+  toc:
+    - file: user/README.md
+      title: Introduction
+
+    - title: Getting Started
+      children:
+        - file: user/quickstart.md
+        - file: user/core_objects.md
+        - file: user/configuration_system.md
+        - file: user/usage_patterns.md
+        - file: user/migration.md
+
+    - title: Solver Guides
+      children:
+        - file: user/SOLVER_SELECTION_GUIDE.md
+        - file: user/HJB_SOLVER_SELECTION_GUIDE.md
+        - file: user/stochastic_mfg_guide.md
+        - file: user/multidimensional_mfg_guide.md
+        - file: user/traffic_flow_control_mfg.md
+
+    - title: Geometry & Boundaries
+      children:
+        - file: user/GEOMETRY_FIRST_API_GUIDE.md
+        - file: user/geometry_traits.md
+        - file: user/dual_geometry_usage.md
+        - file: user/sdf_utilities.md
+        - file: user/guides/boundary_conditions.md
+        - file: user/advanced_boundary_conditions.md
+        - file: user/obstacle_problems.md
+        - file: user/continuous_environments_guide.md
+
+    - title: Tutorials
+      children:
+        - file: user/level_set_tutorial.md
+        - file: user/tutorial_network_mfg.md
+        - file: user/guides/maze_generation.md
+        - file: user/guides/multi_population_quick_start.md
+        - file: user/particle_interpolation.md
+        - file: user/fem_mesh_projection_guide.md
+
+    - title: Advanced Topics
+      children:
+        - file: user/guides/backend_usage.md
+        - file: user/guides/hooks.md
+        - file: user/advanced_hooks.md
+        - file: user/guides/plugin_development.md
+        - file: user/guides/phase2_features.md
+        - file: user/notebook_execution_guide.md
+
+    - title: Reference
+      children:
+        - file: user/three_mode_api_migration_guide.md
+        - file: user/DEPRECATION_MODERNIZATION_GUIDE.md
+        - file: user/LEGACY_PARAMETERS.md
+
+site:
+  title: MFGArchon
+  options:
+    favicon: ""
+    logo: ""
