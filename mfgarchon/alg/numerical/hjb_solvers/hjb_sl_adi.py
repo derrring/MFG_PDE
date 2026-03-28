@@ -38,18 +38,22 @@ def solve_crank_nicolson_diffusion_1d(
     dt: float,
     sigma: float,
     x_grid: np.ndarray,
+    bc_type: str = "neumann",
 ) -> np.ndarray:
     """
     Solve 1D diffusion step using Crank-Nicolson (unconditionally stable).
 
-    Solves: (I - θ*dt*σ²/2*L) u^n = (I + θ*dt*σ²/2*L) u*
-    where θ = 0.5 for Crank-Nicolson, L is the 1D Laplacian operator.
+    Solves: (I - theta*dt*sigma^2/2*L) u^n = (I + theta*dt*sigma^2/2*L) u*
+    where theta = 0.5 for Crank-Nicolson, L is the 1D Laplacian operator.
 
     Args:
         U_star: Intermediate solution after advection step, shape (Nx,)
         dt: Time step size
         sigma: Diffusion coefficient
         x_grid: 1D spatial grid points
+        bc_type: Boundary condition type for diffusion step.
+            'neumann' (default): du/dx = 0 at boundaries.
+            'periodic': u(x_min) = u(x_max), wrap-around Laplacian.
 
     Returns:
         Solution after implicit diffusion step, shape (Nx,)
@@ -57,16 +61,21 @@ def solve_crank_nicolson_diffusion_1d(
     Nx = len(U_star)
     dx = x_grid[1] - x_grid[0]
 
-    # Diffusion coefficient: α = σ²/2 * dt/dx²
+    # Diffusion coefficient: alpha = sigma^2/2 * dt/dx^2
     alpha = 0.5 * sigma**2 * dt / dx**2
     theta = 0.5  # Crank-Nicolson parameter
 
+    if bc_type == "periodic":
+        return _crank_nicolson_periodic_1d(U_star, alpha, theta)
+
+    # --- Neumann BC (default) ---
+
     # Build tridiagonal system: A * u^n = b
-    # where A = (I - θ*α*L), b = (I + (1-θ)*α*L) * u*
+    # where A = (I - theta*alpha*L), b = (I + (1-theta)*alpha*L) * u*
 
     # Tridiagonal matrix coefficients
-    # Main diagonal: 1 + 2*θ*α
-    # Off-diagonals: -θ*α
+    # Main diagonal: 1 + 2*theta*alpha
+    # Off-diagonals: -theta*alpha
     main_diag = np.ones(Nx) * (1.0 + 2.0 * theta * alpha)
     off_diag = np.ones(Nx - 1) * (-theta * alpha)
 
@@ -76,7 +85,7 @@ def solve_crank_nicolson_diffusion_1d(
     ab[1, :] = main_diag  # Main diagonal
     ab[2, :-1] = off_diag  # Lower diagonal
 
-    # Build right-hand side: b = (I + (1-θ)*α*L) * u*
+    # Build right-hand side: b = (I + (1-theta)*alpha*L) * u*
     b = np.zeros(Nx)
     for i in range(1, Nx - 1):
         b[i] = (1.0 - 2.0 * (1.0 - theta) * alpha) * U_star[i] + (1.0 - theta) * alpha * (U_star[i - 1] + U_star[i + 1])
@@ -98,12 +107,76 @@ def solve_crank_nicolson_diffusion_1d(
     return u_new
 
 
+def _crank_nicolson_periodic_1d(
+    U_star: np.ndarray,
+    alpha: float,
+    theta: float,
+) -> np.ndarray:
+    """Crank-Nicolson diffusion with periodic BC using Sherman-Morrison.
+
+    The periodic Laplacian makes the system nearly tridiagonal plus rank-1
+    corner entries (A[0, N-1] and A[N-1, 0]). Sherman-Morrison converts
+    this to two tridiagonal solves.
+    """
+    N = len(U_star)
+    off_rhs = (1.0 - theta) * alpha
+    main_rhs = 1.0 - 2.0 * (1.0 - theta) * alpha
+
+    # RHS with periodic wrap
+    b = np.zeros(N)
+    b[0] = main_rhs * U_star[0] + off_rhs * (U_star[N - 1] + U_star[1])
+    for i in range(1, N - 1):
+        b[i] = main_rhs * U_star[i] + off_rhs * (U_star[i - 1] + U_star[i + 1])
+    b[N - 1] = main_rhs * U_star[N - 1] + off_rhs * (U_star[N - 2] + U_star[0])
+
+    # LHS: tridiagonal with corner entries c = -theta*alpha
+    c = -theta * alpha  # corner value A[0,N-1] = A[N-1,0] = c
+    d = 1.0 + 2.0 * theta * alpha  # main diagonal
+
+    # Sherman-Morrison: A = T + u*v^T where
+    # T is tridiagonal (A with corners zeroed, diagonal adjusted)
+    # gamma chosen to keep T well-conditioned
+    gamma = -d
+    # Modified diagonal for T: T[0,0] = d - gamma, T[N-1,N-1] = d - c^2/gamma
+    T_main = np.full(N, d)
+    T_main[0] = d - gamma
+    T_main[N - 1] = d - c * c / gamma
+
+    T_off = np.full(N - 1, -theta * alpha)
+
+    # Build banded T
+    ab = np.zeros((3, N))
+    ab[0, 1:] = T_off
+    ab[1, :] = T_main
+    ab[2, :-1] = T_off
+
+    # u vector: u[0] = gamma, u[N-1] = c
+    u_vec = np.zeros(N)
+    u_vec[0] = gamma
+    u_vec[N - 1] = c
+
+    # v vector: v[0] = 1, v[N-1] = c/gamma
+    v_vec = np.zeros(N)
+    v_vec[0] = 1.0
+    v_vec[N - 1] = c / gamma
+
+    # Solve T*y = b and T*z = u
+    y = solve_banded((1, 1), ab, b)
+    z = solve_banded((1, 1), ab, u_vec)
+
+    # Sherman-Morrison formula: x = y - (v^T y)/(1 + v^T z) * z
+    vTy = v_vec @ y
+    vTz = v_vec @ z
+    return y - (vTy / (1.0 + vTz)) * z
+
+
 def adi_diffusion_step(
     U_star: np.ndarray,
     dt: float,
     sigma: float | np.ndarray,
     spacing: np.ndarray,
     grid_shape: tuple[int, ...],
+    bc_type: str = "neumann",
 ) -> np.ndarray:
     """
     Apply ADI (Alternating Direction Implicit) diffusion for nD grids.
@@ -176,7 +249,7 @@ def adi_diffusion_step(
         theta = 0.5  # Crank-Nicolson parameter
 
         # Apply implicit solve along dimension d
-        U_current = solve_1d_diffusion_along_axis(U_current, d, alpha_d, theta)
+        U_current = solve_1d_diffusion_along_axis(U_current, d, alpha_d, theta, bc_type)
 
     # Return in original shape
     if U_star.ndim == 1:
@@ -298,12 +371,13 @@ def solve_1d_diffusion_along_axis(
     axis: int,
     alpha: float,
     theta: float = 0.5,
+    bc_type: str = "neumann",
 ) -> np.ndarray:
     """
     Solve 1D implicit diffusion along a specific axis using vectorized Thomas algorithm.
 
     For each line along the axis, solve:
-        (I - θ*α*L) u_new = (I + (1-θ)*α*L) u_old
+        (I - theta*alpha*L) u_new = (I + (1-theta)*alpha*L) u_old
 
     where L is the 1D Laplacian operator.
 
@@ -313,8 +387,9 @@ def solve_1d_diffusion_along_axis(
     Args:
         U: Solution array, shape (N1, N2, ..., Nd)
         axis: Dimension along which to apply diffusion (0, 1, ..., d-1)
-        alpha: Diffusion parameter α = (σ²/2) * dt / dx²
+        alpha: Diffusion parameter alpha = (sigma^2/2) * dt / dx^2
         theta: Implicitness parameter (0.5 = Crank-Nicolson)
+        bc_type: 'neumann' (default) or 'periodic'
 
     Returns:
         Updated solution array (in-place modification avoided)
@@ -344,12 +419,18 @@ def solve_1d_diffusion_along_axis(
     # Interior points (vectorized over all lines)
     b[:, 1:-1] = main_rhs * U_2d[:, 1:-1] + off_rhs * (U_2d[:, :-2] + U_2d[:, 2:])
 
-    # Boundary conditions (Neumann: du/dx = 0)
-    b[:, 0] = (1.0 - (1.0 - theta) * alpha) * U_2d[:, 0] + off_rhs * U_2d[:, 1]
-    b[:, -1] = (1.0 - (1.0 - theta) * alpha) * U_2d[:, -1] + off_rhs * U_2d[:, -2]
+    # Boundary conditions
+    if bc_type == "periodic":
+        # Periodic: wrap-around Laplacian
+        b[:, 0] = main_rhs * U_2d[:, 0] + off_rhs * (U_2d[:, -1] + U_2d[:, 1])
+        b[:, -1] = main_rhs * U_2d[:, -1] + off_rhs * (U_2d[:, -2] + U_2d[:, 0])
+    else:
+        # Neumann: du/dx = 0 (ghost point reflection)
+        b[:, 0] = (1.0 - (1.0 - theta) * alpha) * U_2d[:, 0] + off_rhs * U_2d[:, 1]
+        b[:, -1] = (1.0 - (1.0 - theta) * alpha) * U_2d[:, -1] + off_rhs * U_2d[:, -2]
 
     # Solve tridiagonal systems using vectorized Thomas algorithm
-    U_new_2d = thomas_solve_batched(main_coef, off_coef, b, theta, alpha, N_axis)
+    U_new_2d = thomas_solve_batched(main_coef, off_coef, b, theta, alpha, N_axis, bc_type)
 
     # Reshape back and move axis to original position
     U_new_transposed = U_new_2d.reshape(original_shape)
@@ -363,6 +444,7 @@ def thomas_solve_batched(
     theta: float,
     alpha: float,
     N: int,
+    bc_type: str = "neumann",
 ) -> np.ndarray:
     """
     Vectorized Thomas algorithm for batched tridiagonal solves.
@@ -372,6 +454,9 @@ def thomas_solve_batched(
 
     where A is the same tridiagonal matrix for all systems.
 
+    For periodic BC, uses Sherman-Morrison to convert the circulant system
+    into two tridiagonal solves.
+
     Args:
         main_coef: Main diagonal coefficient (interior points)
         off_coef: Off-diagonal coefficient
@@ -379,10 +464,14 @@ def thomas_solve_batched(
         theta: Implicitness parameter
         alpha: Diffusion parameter
         N: Size of each system
+        bc_type: 'neumann' (default) or 'periodic'
 
     Returns:
         Solution x, shape (n_lines, N)
     """
+    if bc_type == "periodic":
+        return _thomas_solve_batched_periodic(main_coef, off_coef, b, N)
+
     n_lines = b.shape[0]
 
     # Build full diagonal arrays with boundary modifications
@@ -416,6 +505,80 @@ def thomas_solve_batched(
     x = np.zeros_like(b)
     x[:, N - 1] = d_prime[:, N - 1]
 
+    for i in range(N - 2, -1, -1):
+        x[:, i] = d_prime[:, i] - c_prime[i] * x[:, i + 1]
+
+    return x
+
+
+def _thomas_solve_batched_periodic(
+    main_coef: float,
+    off_coef: float,
+    b: np.ndarray,
+    N: int,
+) -> np.ndarray:
+    """Batched Sherman-Morrison solve for periodic tridiagonal systems.
+
+    The periodic system A = T + u*v^T where T is tridiagonal with modified
+    corners and u, v encode the wrap-around entries.
+    """
+    c = off_coef  # corner entry A[0,N-1] = A[N-1,0]
+    d = main_coef  # main diagonal (uniform for periodic)
+    gamma = -d
+
+    # Modified tridiagonal T
+    T_main = np.full(N, d)
+    T_main[0] = d - gamma
+    T_main[N - 1] = d - c * c / gamma
+    T_upper = np.full(N - 1, off_coef)
+    T_lower = np.full(N - 1, off_coef)
+
+    # u and v vectors for Sherman-Morrison
+    u_vec = np.zeros(N)
+    u_vec[0] = gamma
+    u_vec[N - 1] = c
+    v_vec = np.zeros(N)
+    v_vec[0] = 1.0
+    v_vec[N - 1] = c / gamma
+
+    # Solve T*y = b (batched) and T*z = u (single)
+    y = _thomas_forward_back(T_main, T_upper, T_lower, b, N)
+
+    u_2d = u_vec.reshape(1, N)
+    z_2d = _thomas_forward_back(T_main, T_upper, T_lower, u_2d, N)
+    z = z_2d[0]
+
+    # Sherman-Morrison: x = y - (v^T y)/(1 + v^T z) * z
+    vTz = v_vec @ z
+    vTy = y @ v_vec  # shape (n_lines,)
+    factor = vTy / (1.0 + vTz)
+    return y - factor[:, np.newaxis] * z[np.newaxis, :]
+
+
+def _thomas_forward_back(
+    main_diag: np.ndarray,
+    upper_diag: np.ndarray,
+    lower_diag: np.ndarray,
+    b: np.ndarray,
+    N: int,
+) -> np.ndarray:
+    """Thomas algorithm (forward elimination + back substitution) for batched RHS."""
+    c_prime = np.zeros(N - 1)
+    d_prime = np.zeros_like(b)
+
+    c_prime[0] = upper_diag[0] / main_diag[0]
+    d_prime[:, 0] = b[:, 0] / main_diag[0]
+
+    for i in range(1, N - 1):
+        denom = main_diag[i] - lower_diag[i - 1] * c_prime[i - 1]
+        c_prime[i] = upper_diag[i] / denom
+        d_prime[:, i] = (b[:, i] - lower_diag[i - 1] * d_prime[:, i - 1]) / denom
+
+    denom = main_diag[N - 1] - lower_diag[N - 2] * c_prime[N - 2]
+    d_prime[:, N - 1] = (b[:, N - 1] - lower_diag[N - 2] * d_prime[:, N - 2]) / denom
+
+    x = np.zeros_like(b)
+    x[:, N - 1] = d_prime[:, N - 1]
     for i in range(N - 2, -1, -1):
         x[:, i] = d_prime[:, i] - c_prime[i] * x[:, i + 1]
 
@@ -507,5 +670,35 @@ if __name__ == "__main__":
     print(f"   Relative error: {mass_error:.2e}")
     assert mass_error < 0.05
     print("   Mass conservation: OK")
+
+    # Test 7: Periodic BC diffusion (Issue #858)
+    print("\n7. Testing periodic BC diffusion (1D)...")
+    x_periodic = np.linspace(0, 1, 51)
+    # Sinusoidal initial condition (compatible with periodic BC)
+    U_sin = np.sin(2 * np.pi * x_periodic)
+    U_sin_diffused = solve_crank_nicolson_diffusion_1d(U_sin, dt=0.01, sigma=0.1, x_grid=x_periodic, bc_type="periodic")
+    assert U_sin_diffused.shape == U_sin.shape
+    assert not np.any(np.isnan(U_sin_diffused))
+    # Diffusion should reduce amplitude of sinusoidal
+    assert abs(U_sin_diffused).max() < abs(U_sin).max()
+    # Should remain approximately sinusoidal (periodic BC preserves mode shape)
+    # Check at x=0.25 where sin(2*pi*0.25) = 1 (peak)
+    peak_idx = len(x_periodic) // 4
+    ratio = U_sin_diffused[peak_idx] / U_sin[peak_idx]
+    assert 0.9 < ratio < 1.0, f"Unexpected decay ratio: {ratio}"
+    print(f"   Amplitude: {abs(U_sin).max():.4f} -> {abs(U_sin_diffused).max():.4f}")
+    print("   Periodic 1D: OK")
+
+    # Test 8: Periodic BC ADI (2D)
+    print("\n8. Testing periodic BC ADI (2D)...")
+    U_2d_sin = np.sin(2 * np.pi * X) * np.sin(2 * np.pi * Y)
+    U_2d_sin_diffused = adi_diffusion_step(
+        U_2d_sin, dt=0.01, sigma=0.1, spacing=spacing, grid_shape=grid_shape, bc_type="periodic"
+    )
+    assert U_2d_sin_diffused.shape == U_2d_sin.shape
+    assert not np.any(np.isnan(U_2d_sin_diffused))
+    assert abs(U_2d_sin_diffused).max() < abs(U_2d_sin).max()
+    print(f"   Amplitude: {abs(U_2d_sin).max():.4f} -> {abs(U_2d_sin_diffused).max():.4f}")
+    print("   Periodic 2D ADI: OK")
 
     print("\nAll ADI diffusion smoke tests passed!")
