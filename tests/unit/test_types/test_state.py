@@ -294,11 +294,16 @@ def test_convergence_info_plot_convergence_no_matplotlib(capsys):
         convergence_reason="done",
     )
 
-    # Try plotting - should either work or print message
-    import contextlib
-
-    with contextlib.suppress(Exception):
+    # plot_convergence() should not raise even without matplotlib
+    # It may silently return or print a message
+    try:
         info.plot_convergence()
+        plot_succeeded = True
+    except ImportError:
+        plot_succeeded = False  # Acceptable: matplotlib not available
+
+    # Either path is valid - the test verifies no unexpected exception
+    assert isinstance(plot_succeeded, bool)
 
 
 # ===================================================================

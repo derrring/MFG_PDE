@@ -293,17 +293,16 @@ def test_smoke_rotation_matrix():
         R = solver._boundary_handler.build_rotation_matrix(normal)
         result = R @ e_x
 
+        # Verify orthogonality: R^T @ R = I
+        assert np.allclose(R.T @ R, np.eye(2), atol=1e-10), f"{label}: Rotation matrix not orthogonal"
+
         if np.allclose(result, normal, atol=1e-10):
             print(f"✓ {label:12s}: R @ e_x = {result} (correct)")
         else:
             print(f"✗ {label:12s}: R @ e_x = {result}, expected {normal} (FAILED)")
             all_passed = False
 
-    if all_passed:
-        print("\n✓ All rotation matrix tests passed!")
-    else:
-        print("\n✗ Some tests failed!")
-        return False
+    assert all_passed, "Some rotation matrix tests failed"
 
     return True
 

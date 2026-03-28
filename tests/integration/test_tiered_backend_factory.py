@@ -26,6 +26,9 @@ def test_backend_availability():
         status_str = "✅ Available" if status else "❌ Not available"
         print(f"  {backend:20s}: {status_str}")
 
+    assert "numpy" in available, "numpy backend should always be listed"
+    assert available["numpy"] is True, "numpy backend should always be available"
+
     return available
 
 
@@ -91,6 +94,11 @@ def test_backend_info():
     print("=" * 80)
 
     info = get_backend_info()
+
+    assert isinstance(info, dict), "get_backend_info() should return a dict"
+    assert "default_backend" in info, "info should contain 'default_backend'"
+    assert "registered_backends" in info, "info should contain 'registered_backends'"
+    assert len(info["registered_backends"]) > 0, "Should have at least one registered backend"
 
     print(f"\nDefault backend: {info['default_backend']}")
     print(f"Registered backends: {', '.join(info['registered_backends'])}")

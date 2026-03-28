@@ -161,23 +161,19 @@ def test_validation():
     applicator._validate_field(field)  # Should not raise
     print("  ✓ Valid field accepted")
 
-    # Field with NaN
+    # Field with NaN should raise ValueError
     field_nan = np.ones((10, 10))
     field_nan[5, 5] = np.nan
-    try:
+    with pytest.raises(ValueError, match="NaN"):
         applicator._validate_field(field_nan)
-        raise AssertionError("Should have raised ValueError")
-    except ValueError as e:
-        print(f"  ✓ NaN detected: {str(e)[:50]}...")
+    print("  ✓ NaN detected")
 
-    # Field with Inf
+    # Field with Inf should raise ValueError
     field_inf = np.ones((10, 10))
     field_inf[5, 5] = np.inf
-    try:
+    with pytest.raises(ValueError, match="Inf"):
         applicator._validate_field(field_inf)
-        raise AssertionError("Should have raised ValueError")
-    except ValueError as e:
-        print(f"  ✓ Inf detected: {str(e)[:50]}...")
+    print("  ✓ Inf detected")
 
 
 def test_buffer_creation():

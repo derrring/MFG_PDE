@@ -231,6 +231,7 @@ def test_convergence_order():
             # Should be close to requested order (within tolerance)
             # Note: Neumann BC with non-zero gradient is harder, so allow some slack
             print(f"  Order {order}: errors = {errors}, convergence rate ≈ {conv_order:.2f}")
+            assert conv_order > 1.0, f"Order {order}: convergence rate {conv_order:.2f} too low (expected > 1.0)"
 
 
 if __name__ == "__main__":

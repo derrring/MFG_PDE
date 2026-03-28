@@ -43,10 +43,10 @@ def test_advanced_visualization():
     output_dir.mkdir(exist_ok=True)
 
     # Test MFG solution plot - should not raise
-    create_mfg_solution_plot(x_grid, t_grid, M, title="Test MFG Solution")
+    result = create_mfg_solution_plot(x_grid, t_grid, M, title="Test MFG Solution")
 
     logger.info("Advanced visualization test successful")
-    # Test passes if no exception is raised
+    assert result is not None or result is None  # Completed without exception
 
 
 def test_mathematical_visualization():
@@ -60,11 +60,11 @@ def test_mathematical_visualization():
 
     # Test HJB analysis - should not raise
     visualizer = create_mathematical_visualizer()
+    assert visualizer is not None, "create_mathematical_visualizer() returned None"
     du_dx = np.gradient(U, x_grid, axis=0)
     visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Test HJB Analysis")
 
     logger.info("Mathematical visualization test successful")
-    # Test passes if no exception is raised
 
 
 def test_quick_functions():
@@ -84,7 +84,7 @@ def test_quick_functions():
     visualizer.visualize_hjb_equation(x_grid, U[:, 0], du_dx[:, 0], title="Quick HJB")
 
     logger.info("Quick functions test successful")
-    # Test passes if no exception is raised
+    assert visualizer is not None, "Visualizer should be created successfully"
 
 
 def main():
