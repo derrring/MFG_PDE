@@ -287,6 +287,45 @@ Particles are reflected at boundaries:
 - Normal reflection for no-flux
 - Absorption for Dirichlet (particle removed or reset)
 
+## Periodic BC: Model Compatibility
+
+When using periodic boundary conditions, all physical quantities (potential, running cost, terminal cost) **must** be periodic functions with continuous derivatives. Violating this causes gradient discontinuities at the boundary.
+
+### The Problem: Quadratic Potential on Periodic Domain
+
+A standard quadratic potential $V(x) = C(x - L/2)^2$ has opposite gradients at opposite boundaries:
+
+- At $x = 0$: $\partial V / \partial x = -CL$
+- At $x = L$: $\partial V / \partial x = +CL$
+
+Since periodic BC identifies $x = 0$ with $x = L$, this creates a gradient jump of $2CL$, causing numerical instability in HJB time-stepping and spurious oscillations in FP density.
+
+### The Solution: Use Periodic-Compatible Functions
+
+Replace non-periodic functions with their periodic counterparts:
+
+```python
+import numpy as np
+
+# WRONG: Quadratic potential on periodic domain
+V_quad = lambda x: C * (x - L/2)**2  # Gradient discontinuity at boundary!
+
+# CORRECT: Cosine potential (periodic, smooth)
+V_periodic = lambda x: C/2 * (1 + np.cos(2 * np.pi * x / L))
+# V_min = 0 at center, V_max = C at boundaries
+# Gradient is continuous: dV/dx = 0 at both x=0 and x=L
+```
+
+### Decision Guide
+
+| Physical Setup | Recommended BC | Potential Form |
+|----------------|----------------|----------------|
+| Bounded domain with walls | No-flux (Neumann) | Quadratic $V \propto r^2$ |
+| Infinite periodic lattice | Periodic | Cosine $V \propto \cos(kx)$ |
+| Torus topology | Periodic | Cosine $V \propto \cos(kx)$ |
+
+**Rule of thumb**: If any function in your MFG model is not periodic on the domain, use Neumann/no-flux BC instead.
+
 ## Performance Tips
 
 1. **Pre-compute masks**: For mixed BCs, use `create_boundary_mask_2d()` to identify segments once
@@ -321,5 +360,4 @@ apply_boundary_conditions_2d(field, bc, domain_bounds=bounds)
 ## See Also
 
 - `mfgarchon.geometry.boundary` module documentation
-- `docs/development/reports/BC_CORNER_LOGIC_AUDIT.md` - Technical details on corner handling
-- `docs/development/reports/BC_UNIFICATION_TECHNICAL_REPORT.md` - Architecture overview
+- `docs/user/advanced_boundary_conditions.md` - Variational inequalities, moving boundaries
