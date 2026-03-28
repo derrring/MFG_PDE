@@ -8,10 +8,6 @@
 ### User Documentation (`user/`)
 Tutorials, guides, API usage patterns, migration guides.
 
-### Conventions
-- `NAMING_CONVENTIONS.md` — Naming standards
-- `DOCUMENTATION_POLICY.md` — Documentation standards
-
 ## Internal Development Notes
 
 Architecture design, roadmaps, issue analysis, and mathematical theory notes

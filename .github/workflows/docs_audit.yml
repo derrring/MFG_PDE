@@ -64,7 +64,7 @@ jobs:
               - Max 70 active docs (excluding archive/)
               - Min 3 files per directory
               - No [COMPLETED] files outside archive/
-              - See: docs/DOCUMENTATION_POLICY.md
+              - See: CLAUDE.md for documentation standards
               `,
               labels: ['documentation', 'chore', 'automated', 'priority: medium']
             })
@@ -88,6 +88,6 @@ jobs:
               python scripts/check_docs_structure.py --report
               \`\`\`
 
-              See \`docs/DOCUMENTATION_POLICY.md\` for standards.
+              See \`CLAUDE.md\` for documentation standards.
               `
             })
