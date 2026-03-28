@@ -8,6 +8,7 @@ import scipy.sparse as sparse
 
 from mfgarchon.alg.base_solver import BaseNumericalSolver, SchemeFamily
 from mfgarchon.backends.compat import backend_aware_assign, backend_aware_copy, has_nan_or_inf
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
@@ -92,6 +93,11 @@ def _compute_gradient_array_1d(
     return grad
 
 
+@deprecated_parameter(
+    param_name="bc_values",
+    since="v0.17.0",
+    replacement="Robin BC segments via AdjointConsistentProvider",
+)
 def _compute_laplacian_1d(
     U_array: np.ndarray,
     Dx: float,
@@ -124,16 +130,7 @@ def _compute_laplacian_1d(
         return np.zeros(Nx)
 
     # Issue #574: bc_values parameter deprecated — Robin BC framework handles this
-    if bc_values is not None:
-        import warnings
-
-        warnings.warn(
-            "bc_values parameter is deprecated and no longer used. "
-            "Adjoint-consistent BC is now handled via proper Robin BC segments. "
-            "This parameter will be removed in v0.18.0.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
+    # Warning now handled by @deprecated_parameter decorator
 
     # Delegate to unified stencil infrastructure (Issue #639)
     return laplacian_with_bc(U_array, [Dx], bc=bc, time=time)
@@ -1001,6 +998,16 @@ def newton_hjb_step(
     return U_n_next_newton_iterate, l2_error_of_step
 
 
+@deprecated_parameter(
+    param_name="NiterNewton",
+    since="v0.17.0",
+    replacement="max_newton_iterations",
+)
+@deprecated_parameter(
+    param_name="l2errBoundNewton",
+    since="v0.17.0",
+    replacement="newton_tolerance",
+)
 def solve_hjb_timestep_newton(
     U_n_plus_1_from_hjb_step: np.ndarray,  # U_new[n+1] in notebook
     U_k_n_from_prev_picard: np.ndarray,  # U_k[n] in notebook
@@ -1036,24 +1043,12 @@ def solve_hjb_timestep_newton(
         l2errBoundNewton: DEPRECATED - use newton_tolerance
         bc_values: Per-boundary BC values (Issue #574)
     """
-    import warnings
-
-    # Handle backward compatibility
+    # Handle backward compatibility (warnings handled by @deprecated_parameter decorators)
     if NiterNewton is not None:
-        warnings.warn(
-            "Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if max_newton_iterations is None:
             max_newton_iterations = NiterNewton
 
     if l2errBoundNewton is not None:
-        warnings.warn(
-            "Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if newton_tolerance is None:
             newton_tolerance = l2errBoundNewton
 
@@ -1210,6 +1205,16 @@ def solve_hjb_timestep_newton(
     return U_n_current_newton_iterate
 
 
+@deprecated_parameter(
+    param_name="NiterNewton",
+    since="v0.17.0",
+    replacement="max_newton_iterations",
+)
+@deprecated_parameter(
+    param_name="l2errBoundNewton",
+    since="v0.17.0",
+    replacement="newton_tolerance",
+)
 def solve_hjb_system_backward(
     M_density_from_prev_picard: np.ndarray,  # M_k in notebook
     U_final_condition_at_T: np.ndarray,
@@ -1244,24 +1249,12 @@ def solve_hjb_system_backward(
             {"x_min": gradient_left, "x_max": gradient_right}
             For adjoint-consistent BC. Default: None (standard BC with 0 gradient).
     """
-    import warnings
-
-    # Handle backward compatibility
+    # Handle backward compatibility (warnings handled by @deprecated_parameter decorators)
     if NiterNewton is not None:
-        warnings.warn(
-            "Parameter 'NiterNewton' is deprecated. Use 'max_newton_iterations' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if max_newton_iterations is None:
             max_newton_iterations = NiterNewton
 
     if l2errBoundNewton is not None:
-        warnings.warn(
-            "Parameter 'l2errBoundNewton' is deprecated. Use 'newton_tolerance' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if newton_tolerance is None:
             newton_tolerance = l2errBoundNewton
 

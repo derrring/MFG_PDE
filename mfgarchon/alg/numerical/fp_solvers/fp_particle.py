@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
+from mfgarchon.utils.deprecation import deprecated_parameter
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -114,6 +116,10 @@ class FPParticleSolver(BaseFPSolver):
 
     _scheme_family = SchemeFamily.GENERIC  # Particle methods don't fit standard families
 
+    @deprecated_parameter(param_name="mode", since="v0.17.0", replacement="density_mode")
+    @deprecated_parameter(param_name="external_particles", since="v0.17.0", replacement="num_particles")
+    @deprecated_parameter(param_name="normalize_kde_output", since="v0.17.0", replacement="kde_normalization")
+    @deprecated_parameter(param_name="normalize_only_initial", since="v0.17.0", replacement="kde_normalization")
     def __init__(
         self,
         problem: MFGProblem,
@@ -146,27 +152,8 @@ class FPParticleSolver(BaseFPSolver):
             # Map old 'mode' to new 'density_mode' (hybrid was the old name)
             density_mode = mode
 
-        # Handle deprecated 'external_particles' parameter
-        if external_particles is not None:
-            import warnings
-
-            warnings.warn(
-                "external_particles is deprecated. External particle injection is no longer supported. "
-                "Use num_particles to control particle count.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
         # Handle deprecated normalization parameters
         if normalize_kde_output is not None or normalize_only_initial is not None:
-            import warnings
-
-            warnings.warn(
-                "normalize_kde_output and normalize_only_initial are deprecated. "
-                "Use kde_normalization='all', 'initial_only', or 'none' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             # Map old parameters to new enum
             if normalize_kde_output is False:
                 kde_normalization = KDENormalization.NONE
@@ -1177,6 +1164,8 @@ class FPParticleSolver(BaseFPSolver):
         else:
             return m_density_estimated  # Return raw KDE output on grid
 
+    @deprecated_parameter(param_name="m_initial_condition", since="v0.17.0", replacement="M_initial")
+    @deprecated_parameter(param_name="diffusion_field", since="v0.17.0", replacement="volatility_field")
     def solve_fp_system(
         self,
         M_initial: np.ndarray | None = None,
@@ -1235,11 +1224,6 @@ class FPParticleSolver(BaseFPSolver):
                     "Cannot specify both M_initial and m_initial_condition. "
                     "Use M_initial (m_initial_condition is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'm_initial_condition' is deprecated. Use 'M_initial' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_initial = m_initial_condition
 
         # Handle deprecated diffusion_field parameter
@@ -1249,12 +1233,6 @@ class FPParticleSolver(BaseFPSolver):
                     "Cannot specify both volatility_field and diffusion_field. "
                     "Use volatility_field (diffusion_field is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
-                "Note: volatility_field expects σ (SDE noise), same as diffusion_field did.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             volatility_field = diffusion_field
 
         # Validate required parameter - either M_initial or initial_particles

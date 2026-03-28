@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from mfgarchon.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator
 
 if TYPE_CHECKING:
@@ -378,6 +379,7 @@ class FPGFDMSolver(BaseFPSolver):
 
         return divergence
 
+    @deprecated_parameter(param_name="diffusion_field", since="v0.17.0", replacement="volatility_field")
     def solve_fp_system(
         self,
         m_initial_condition: np.ndarray,
@@ -442,20 +444,12 @@ class FPGFDMSolver(BaseFPSolver):
         dt = self.problem.T / self.problem.Nt
 
         # Handle deprecated diffusion_field parameter (Issue #717)
-        import warnings
-
         if diffusion_field is not None:
             if volatility_field is not None:
                 raise ValueError(
                     "Cannot specify both volatility_field and diffusion_field. "
                     "Use volatility_field (diffusion_field is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
-                "Note: volatility_field expects σ (SDE noise), same as diffusion_field did.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             volatility_field = diffusion_field
 
         # Volatility coefficient (Issue #717: unified API)

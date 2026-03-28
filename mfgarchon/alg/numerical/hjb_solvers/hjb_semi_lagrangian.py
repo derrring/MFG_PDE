@@ -19,7 +19,6 @@ where û^n is the value interpolated at the departure point of the characteristi
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -31,6 +30,7 @@ from mfgarchon.geometry.boundary.bc_utils import (
     bc_type_to_geometric_operation,
     get_bc_type_string,
 )
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.pde_coefficients import check_adi_compatibility
 
@@ -728,6 +728,9 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         # Use InterpolationApplicator for dimension-agnostic BC enforcement
         return self.interp_bc_applicator.enforce_values(U, bc, time=time)
 
+    @deprecated_parameter(param_name="M_density_evolution_from_FP", since="v0.17.0", replacement="M_density")
+    @deprecated_parameter(param_name="U_final_condition_at_T", since="v0.17.0", replacement="U_terminal")
+    @deprecated_parameter(param_name="U_from_prev_picard", since="v0.17.0", replacement="U_coupling_prev")
     def solve_hjb_system(
         self,
         M_density: np.ndarray | None = None,
@@ -761,35 +764,20 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             (Nt, *grid_shape) solution array for value function
         """
-        # Handle deprecated parameter names with warnings
+        # Handle deprecated parameter names (warnings issued by @deprecated_parameter decorator)
         if M_density_evolution_from_FP is not None:
             if M_density is not None:
                 raise ValueError("Cannot specify both 'M_density' and deprecated 'M_density_evolution_from_FP'")
-            warnings.warn(
-                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution_from_FP
 
         if U_final_condition_at_T is not None:
             if U_terminal is not None:
                 raise ValueError("Cannot specify both 'U_terminal' and deprecated 'U_final_condition_at_T'")
-            warnings.warn(
-                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_terminal = U_final_condition_at_T
 
         if U_from_prev_picard is not None:
             if U_coupling_prev is not None:
                 raise ValueError("Cannot specify both 'U_coupling_prev' and deprecated 'U_from_prev_picard'")
-            warnings.warn(
-                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_coupling_prev = U_from_prev_picard
 
         # Validate required parameters

@@ -30,9 +30,9 @@ References:
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass
 
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.neural import NormalizationType
 
 # Import with availability checking
@@ -85,22 +85,12 @@ if TORCH_AVAILABLE:
 
         def __post_init__(self):
             """Handle deprecated parameters and set defaults."""
-            # Handle deprecated boolean parameters
+            # Handle deprecated boolean parameters (warnings issued by deprecated_parameter decorator on __init__)
             if self.use_batch_norm is not None:
-                warnings.warn(
-                    "Parameter 'use_batch_norm' is deprecated, use 'normalization=NormalizationType.BATCH' instead",
-                    DeprecationWarning,
-                    stacklevel=3,
-                )
                 if self.use_batch_norm and self.normalization == NormalizationType.LAYER:
                     self.normalization = NormalizationType.BATCH
 
             if self.use_layer_norm is not None:
-                warnings.warn(
-                    "Parameter 'use_layer_norm' is deprecated, use 'normalization=NormalizationType.LAYER' instead",
-                    DeprecationWarning,
-                    stacklevel=3,
-                )
                 if self.use_layer_norm and self.normalization == NormalizationType.LAYER:
                     # Already default
                     pass
@@ -118,6 +108,15 @@ if TORCH_AVAILABLE:
 
             super().__post_init__()
             self.operator_type = "deeponet"
+
+    # Apply deprecated_parameter decorators to auto-generated __init__
+    DeepONetConfig.__init__ = deprecated_parameter(  # type: ignore[misc]
+        param_name="use_batch_norm", since="v0.17.0", replacement="normalization"
+    )(
+        deprecated_parameter(param_name="use_layer_norm", since="v0.17.0", replacement="normalization")(
+            DeepONetConfig.__init__
+        )
+    )
 
     class BranchNetwork(nn.Module):
         """Branch network for encoding parameter functions."""

@@ -15,7 +15,6 @@ The canonical way to apply boundary conditions is via `FDMApplicator` or
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -1017,6 +1016,10 @@ def _apply_corner_values_nd(padded: NDArray[np.floating], d: int) -> None:
                 padded[intersection_slice] = avg_val
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+)
 def apply_boundary_conditions_nd(
     field: NDArray[np.floating],
     boundary_conditions: BoundaryConditions | LegacyBoundaryConditions1D,
@@ -1045,12 +1048,6 @@ def apply_boundary_conditions_nd(
         Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
         See issue #577 for migration guide.
     """
-    warnings.warn(
-        "apply_boundary_conditions_nd is deprecated and will be removed in v0.19.0. "
-        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     if config is None:
         config = GhostCellConfig()
 
@@ -1510,6 +1507,10 @@ def create_boundary_mask_2d(
 # =============================================================================
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+)
 def apply_boundary_conditions_1d(
     field: NDArray[np.floating],
     boundary_conditions: BoundaryConditions | LegacyBoundaryConditions1D,
@@ -1540,18 +1541,16 @@ def apply_boundary_conditions_1d(
         Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
         See issue #577 for migration guide.
     """
-    warnings.warn(
-        "apply_boundary_conditions_1d is deprecated and will be removed in v0.19.0. "
-        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     if config is None:
         config = GhostCellConfig()
 
     return _apply_bc_1d(field, boundary_conditions, domain_bounds, time, config, geometry)
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+)
 def apply_boundary_conditions_3d(
     field: NDArray[np.floating],
     boundary_conditions: BoundaryConditions | LegacyBoundaryConditions1D,
@@ -1582,12 +1581,6 @@ def apply_boundary_conditions_3d(
         Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
         See issue #577 for migration guide.
     """
-    warnings.warn(
-        "apply_boundary_conditions_3d is deprecated and will be removed in v0.19.0. "
-        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     if config is None:
         config = GhostCellConfig()
 
@@ -1603,6 +1596,10 @@ def apply_boundary_conditions_3d(
 # =============================================================================
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
+)
 def get_ghost_values_nd(
     field: NDArray[np.floating],
     boundary_conditions: BoundaryConditions | LegacyBoundaryConditions1D,
@@ -1654,12 +1651,6 @@ def get_ghost_values_nd(
         Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
         See issue #577 for migration guide.
     """
-    warnings.warn(
-        "get_ghost_values_nd is deprecated and will be removed in v0.19.0. "
-        "Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     if config is None:
         config = GhostCellConfig()
 

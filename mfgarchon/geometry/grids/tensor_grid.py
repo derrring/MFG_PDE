@@ -39,6 +39,7 @@ from mfgarchon.geometry.protocols import (
     SupportsPeriodic,
     SupportsRegionMarking,
 )
+from mfgarchon.utils.deprecation import deprecated, deprecated_parameter
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -120,6 +121,16 @@ class TensorProductGrid(
         ... )
     """
 
+    @deprecated_parameter(
+        param_name="num_points",
+        since="v0.17.0",
+        replacement="Nx_points",
+    )
+    @deprecated_parameter(
+        param_name="dimension",
+        since="v0.17.0",
+        replacement="len(bounds) (dimension is inferred from bounds)",
+    )
     def __init__(
         self,
         bounds: Sequence[tuple[float, float]],
@@ -183,16 +194,8 @@ class TensorProductGrid(
                     f"dimension={dimension} doesn't match len(bounds)={inferred_dimension}. "
                     f"Dimension is inferred from bounds; remove explicit dimension parameter."
                 )
-            # Issue #674: Fail Fast - warn on redundant parameter
-            import warnings
-
-            warnings.warn(
-                f"dimension={dimension} is redundant when bounds is provided. "
-                f"Dimension is inferred from len(bounds). "
-                f"Remove the dimension= parameter. Will error in v1.0.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+            # Issue #674: dimension is deprecated, inferred from bounds
+            # Warning already emitted by @deprecated_parameter decorator
         dimension = inferred_dimension
 
         if dimension < 1:
@@ -212,13 +215,7 @@ class TensorProductGrid(
             Nx_points = [Nx_points]
 
         if num_points is not None:
-            import warnings
-
-            warnings.warn(
-                "num_points is deprecated, use Nx_points instead. Will be removed in v1.0.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+            # Warning already emitted by @deprecated_parameter decorator
             Nx_points = num_points
 
         # Convert to internal storage (always store as points)
@@ -328,15 +325,12 @@ class TensorProductGrid(
         return self._Nx_points.copy()
 
     @property
+    @deprecated(
+        since="v0.17.0",
+        replacement="Use Nx_points instead.",
+    )
     def num_points(self) -> list[int]:
         """Deprecated: Use Nx_points instead. Number of grid points along each dimension."""
-        import warnings
-
-        warnings.warn(
-            "num_points is deprecated, use Nx_points instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return self._Nx_points.copy()
 
     def get_spatial_grid(self) -> NDArray:

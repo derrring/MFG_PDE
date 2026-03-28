@@ -304,6 +304,36 @@ class HJBFDMSolver(BaseHJBSolver):
             self._laplacian_op = self.problem.geometry.get_laplacian_operator(order=2, bc=bc)
         return self._laplacian_op
 
+    @deprecated_parameter(
+        param_name="M_density_evolution",
+        since="v0.17.0",
+        replacement="M_density",
+    )
+    @deprecated_parameter(
+        param_name="M_density_evolution_from_FP",
+        since="v0.17.0",
+        replacement="M_density",
+    )
+    @deprecated_parameter(
+        param_name="U_final_condition",
+        since="v0.17.0",
+        replacement="U_terminal",
+    )
+    @deprecated_parameter(
+        param_name="U_final_condition_at_T",
+        since="v0.17.0",
+        replacement="U_terminal",
+    )
+    @deprecated_parameter(
+        param_name="U_from_prev_picard",
+        since="v0.17.0",
+        replacement="U_coupling_prev",
+    )
+    @deprecated_parameter(
+        param_name="bc_values",
+        since="v0.17.0",
+        replacement="BCValueProvider in BoundaryConditions",
+    )
     def solve_hjb_system(
         self,
         M_density: NDArray | None = None,
@@ -315,7 +345,7 @@ class HJBFDMSolver(BaseHJBSolver):
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
         # MMS verification support
         source_term: Callable | None = None,
-        # Deprecated parameter names for backward compatibility
+        # Deprecated parameter names for backward compatibility (decorators handle warnings)
         M_density_evolution_from_FP: NDArray | None = None,
         U_final_condition_at_T: NDArray | None = None,
         U_from_prev_picard: NDArray | None = None,
@@ -342,68 +372,31 @@ class HJBFDMSolver(BaseHJBSolver):
             providers each iteration via problem.using_resolved_bc(state).
             See mfgarchon/geometry/boundary/providers.py for details.
         """
-        import warnings
-
-        # Handle deprecated parameter names (oldest first)
+        # Handle deprecated parameter names (decorators handle warnings, keep redirect logic)
         if M_density_evolution is not None:
             if M_density is not None or M_density_evolution_from_FP is not None:
                 raise ValueError("Cannot specify M_density_evolution with M_density or M_density_evolution_from_FP")
-            warnings.warn(
-                "Parameter 'M_density_evolution' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution
 
         if M_density_evolution_from_FP is not None:
             if M_density is not None:
                 raise ValueError("Cannot specify both 'M_density' and deprecated 'M_density_evolution_from_FP'")
-            warnings.warn(
-                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution_from_FP
 
         if U_final_condition is not None:
             if U_terminal is not None or U_final_condition_at_T is not None:
                 raise ValueError("Cannot specify U_final_condition with U_terminal or U_final_condition_at_T")
-            warnings.warn(
-                "Parameter 'U_final_condition' is deprecated. Use 'U_terminal' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_terminal = U_final_condition
 
         if U_final_condition_at_T is not None:
             if U_terminal is not None:
                 raise ValueError("Cannot specify both 'U_terminal' and deprecated 'U_final_condition_at_T'")
-            warnings.warn(
-                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_terminal = U_final_condition_at_T
 
         if U_from_prev_picard is not None:
             if U_coupling_prev is not None:
                 raise ValueError("Cannot specify both 'U_coupling_prev' and deprecated 'U_from_prev_picard'")
-            warnings.warn(
-                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_coupling_prev = U_from_prev_picard
-
-        # Warn about deprecated bc_values parameter
-        if bc_values is not None:
-            warnings.warn(
-                "Parameter 'bc_values' is deprecated and no longer used. "
-                "Adjoint-consistent BC is handled via BCValueProvider in BoundaryConditions. "
-                "See AdjointConsistentProvider in mfgarchon.geometry.boundary.providers.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         # Validate required parameters
         if M_density is None:

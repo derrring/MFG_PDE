@@ -29,6 +29,7 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
 
 from mfgarchon.alg.numerical.hjb_solvers.base_hjb import BaseHJBSolver
+from mfgarchon.utils.deprecation import deprecated_parameter
 
 if TYPE_CHECKING:
     from mfgarchon.extensions.topology import NetworkMFGProblem
@@ -113,6 +114,10 @@ class NetworkHJBSolver(BaseHJBSolver):
             if self.dt > self.dt_stable:
                 print(f"Warning: dt={self.dt:.2e} > dt_stable={self.dt_stable:.2e}")
 
+    @deprecated_parameter(param_name="M_density_evolution_from_FP", since="v0.17.0", replacement="M_density")
+    @deprecated_parameter(param_name="M_density_evolution", since="v0.17.0", replacement="M_density")
+    @deprecated_parameter(param_name="U_final_condition_at_T", since="v0.17.0", replacement="U_terminal")
+    @deprecated_parameter(param_name="U_from_prev_picard", since="v0.17.0", replacement="U_coupling_prev")
     def solve_hjb_system(
         self,
         M_density: np.ndarray | None = None,
@@ -141,20 +146,13 @@ class NetworkHJBSolver(BaseHJBSolver):
         Returns:
             (Nt+1, num_nodes) value function evolution
         """
-        import warnings
-
-        # Handle deprecated parameter names
+        # Handle deprecated parameter redirects
         if M_density_evolution_from_FP is not None:
             if M_density is not None:
                 raise ValueError(
                     "Cannot specify both M_density and M_density_evolution_from_FP. "
                     "Use M_density (M_density_evolution_from_FP is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution_from_FP
 
         if M_density_evolution is not None:
@@ -163,11 +161,6 @@ class NetworkHJBSolver(BaseHJBSolver):
                     "Cannot specify both M_density and M_density_evolution. "
                     "Use M_density (M_density_evolution is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'M_density_evolution' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution
 
         if U_final_condition_at_T is not None:
@@ -176,11 +169,6 @@ class NetworkHJBSolver(BaseHJBSolver):
                     "Cannot specify both U_terminal and U_final_condition_at_T. "
                     "Use U_terminal (U_final_condition_at_T is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_terminal = U_final_condition_at_T
 
         if U_from_prev_picard is not None:
@@ -189,11 +177,6 @@ class NetworkHJBSolver(BaseHJBSolver):
                     "Cannot specify both U_coupling_prev and U_from_prev_picard. "
                     "Use U_coupling_prev (U_from_prev_picard is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_coupling_prev = U_from_prev_picard
 
         # Validate required parameters
@@ -369,6 +352,10 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         # Current policy (action for each node)
         self.current_policy: dict[int, int] = {}
 
+    @deprecated_parameter(param_name="M_density_evolution_from_FP", since="v0.17.0", replacement="M_density")
+    @deprecated_parameter(param_name="M_density_evolution", since="v0.17.0", replacement="M_density")
+    @deprecated_parameter(param_name="U_final_condition_at_T", since="v0.17.0", replacement="U_terminal")
+    @deprecated_parameter(param_name="U_from_prev_picard", since="v0.17.0", replacement="U_coupling_prev")
     def solve_hjb_system(
         self,
         M_density: np.ndarray | None = None,
@@ -382,20 +369,13 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         M_density_evolution: np.ndarray | None = None,
     ) -> np.ndarray:
         """Solve HJB using policy iteration."""
-        import warnings
-
-        # Handle deprecated parameter names
+        # Handle deprecated parameter redirects
         if M_density_evolution_from_FP is not None:
             if M_density is not None:
                 raise ValueError(
                     "Cannot specify both M_density and M_density_evolution_from_FP. "
                     "Use M_density (M_density_evolution_from_FP is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution_from_FP
 
         if M_density_evolution is not None:
@@ -404,11 +384,6 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
                     "Cannot specify both M_density and M_density_evolution. "
                     "Use M_density (M_density_evolution is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'M_density_evolution' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution
 
         if U_final_condition_at_T is not None:
@@ -417,11 +392,6 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
                     "Cannot specify both U_terminal and U_final_condition_at_T. "
                     "Use U_terminal (U_final_condition_at_T is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_terminal = U_final_condition_at_T
 
         if U_from_prev_picard is not None:
@@ -430,11 +400,6 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
                     "Cannot specify both U_coupling_prev and U_from_prev_picard. "
                     "Use U_coupling_prev (U_from_prev_picard is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_coupling_prev = U_from_prev_picard
 
         # Validate required parameters

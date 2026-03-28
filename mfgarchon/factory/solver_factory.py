@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from mfgarchon.alg.numerical.coupling import FixedPointIterator
 from mfgarchon.config import MFGSolverConfig
+from mfgarchon.utils.deprecation import deprecated
 
 if TYPE_CHECKING:
     from mfgarchon.alg.numerical.fp_solvers.base_fp import BaseFPSolver
@@ -174,6 +175,16 @@ class SolverFactory:
 # Convenience function
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement=(
+        "Use the new three-mode solving API instead (Issue #580):\n"
+        "  - Safe Mode: problem.solve(scheme=NumericalScheme.FDM_UPWIND)\n"
+        "  - Expert Mode: problem.solve(hjb_solver=hjb, fp_solver=fp)\n"
+        "  - Auto Mode: problem.solve()\n"
+        "See examples/basic/three_mode_api_demo.py for details."
+    ),
+)
 def create_solver(
     problem: MFGProblem,
     hjb_solver: BaseHJBSolver | None = None,
@@ -213,19 +224,6 @@ def create_solver(
     Note:
         Prefer problem.solve() which handles solver creation and duality validation.
     """
-    import warnings
-
-    warnings.warn(
-        "create_solver() is deprecated since v0.17.0 (Issue #580). "
-        "Use the new three-mode solving API instead:\n"
-        "  • Safe Mode: problem.solve(scheme=NumericalScheme.FDM_UPWIND)\n"
-        "  • Expert Mode: problem.solve(hjb_solver=hjb, fp_solver=fp)\n"
-        "  • Auto Mode: problem.solve()\n"
-        "See examples/basic/three_mode_api_demo.py for details.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
     return SolverFactory.create_solver(
         problem=problem,
         hjb_solver=hjb_solver,

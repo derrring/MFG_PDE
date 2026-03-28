@@ -22,10 +22,11 @@ References:
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+
+from mfgarchon.utils.deprecation import deprecated
 
 from .implicit_domain import ImplicitDomain
 
@@ -287,6 +288,10 @@ class Hyperrectangle(ImplicitDomain):
 
         return particles
 
+    @deprecated(
+        since="v0.12.0",
+        replacement="Use MeshfreeApplicator from mfgarchon.geometry.boundary instead.",
+    )
     def apply_boundary_conditions(
         self,
         particles: NDArray[np.float64],
@@ -319,15 +324,6 @@ class Hyperrectangle(ImplicitDomain):
             >>> applicator = MeshfreeApplicator(domain)
             >>> particles_reflected = applicator.apply_particle_bc(particles, "reflecting")
         """
-        warnings.warn(
-            "Hyperrectangle.apply_boundary_conditions() is deprecated. "
-            "Use MeshfreeApplicator from mfgarchon.geometry.boundary instead:\n"
-            "  from mfgarchon.geometry.boundary import MeshfreeApplicator\n"
-            "  applicator = MeshfreeApplicator(domain)\n"
-            "  particles_updated = applicator.apply_particle_bc(particles, bc_type)",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         particles = particles.copy()
 
         if bc_type == "reflecting":

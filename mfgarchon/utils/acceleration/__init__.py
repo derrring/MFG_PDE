@@ -16,8 +16,6 @@ This replaces the old mfgarchon/accelerated/ directory with better organization.
 
 from __future__ import annotations
 
-import warnings
-
 from mfgarchon.utils.mfg_logging import get_logger
 
 logger = get_logger(__name__)
@@ -122,16 +120,6 @@ def get_acceleration_info():
             logger.debug(f"Could not retrieve PyTorch detailed info: {e}")
 
     return info
-
-
-# Backward compatibility warning for old imports
-def _warn_deprecated_import():
-    """Warn about deprecated import paths."""
-    warnings.warn(
-        "Importing from mfgarchon.accelerated is deprecated. Use mfgarchon.utils.acceleration instead. Will be removed in v1.0.0.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
 
 
 __all__ = [

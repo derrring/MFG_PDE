@@ -20,7 +20,6 @@ Key Features:
 
 from __future__ import annotations
 
-import warnings
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -29,6 +28,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfgarchon.alg.base_solver import BaseNeuralSolver
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
@@ -116,21 +116,6 @@ class DGMConfig:
         """Set default hidden layers and handle deprecated parameters."""
         # Handle deprecated variance reduction parameters
         if self.use_control_variates is not None or self.use_importance_sampling is not None:
-            warnings.warn(
-                "Parameters 'use_control_variates' and 'use_importance_sampling' are deprecated "
-                "and will be removed in v1.0.0. Use 'variance_reduction' instead.\n\n"
-                "Migration guide:\n"
-                "  Old: DGMConfig(use_control_variates=True, use_importance_sampling=False)\n"
-                "  New: DGMConfig(variance_reduction=VarianceReductionMethod.CONTROL_VARIATES)\n\n"
-                "Available variance reduction methods:\n"
-                "  - NONE: No variance reduction\n"
-                "  - CONTROL_VARIATES: Control variates only\n"
-                "  - IMPORTANCE_SAMPLING: Importance sampling only\n"
-                "  - BOTH: Both techniques",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-
             # Map deprecated booleans to variance reduction enum
             if self.variance_reduction == VarianceReductionMethod.CONTROL_VARIATES:  # Default value
                 cv = self.use_control_variates if self.use_control_variates is not None else True
@@ -149,6 +134,16 @@ class DGMConfig:
         if self.hidden_layers is None:
             # Default architecture for high-dimensional approximation
             self.hidden_layers = [256, 256, 256, 256]
+
+
+# Apply deprecated_parameter decorators to auto-generated __init__
+DGMConfig.__init__ = deprecated_parameter(  # type: ignore[misc]
+    param_name="use_control_variates", since="v0.17.0", replacement="variance_reduction"
+)(
+    deprecated_parameter(param_name="use_importance_sampling", since="v0.17.0", replacement="variance_reduction")(
+        DGMConfig.__init__
+    )
+)
 
 
 @dataclass

@@ -42,6 +42,7 @@ from mfgarchon.geometry.boundary.bc_utils import (
 
 # Issue #625: Migrated from tensor_calculus to operators/stencils
 from mfgarchon.operators.stencils.finite_difference import laplacian_with_bc
+from mfgarchon.utils.deprecation import deprecated, deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 
 from .base_fp import BaseFPSolver
@@ -93,6 +94,7 @@ class FPSLJacobianSolver(BaseFPSolver):
 
     _scheme_family = SchemeFamily.SL
 
+    @deprecated(since="v0.17.6", replacement="FPSLSolver")
     def __init__(
         self,
         problem: MFGProblem,
@@ -114,16 +116,6 @@ class FPSLJacobianSolver(BaseFPSolver):
                 - 'rk4': Fourth-order Runge-Kutta
             boundary_conditions: Optional boundary conditions (defaults to no-flux)
         """
-        import warnings
-
-        warnings.warn(
-            "FPSLJacobianSolver is deprecated since v0.17.6. "
-            "Use FPSLSolver (Forward SL) for adjoint consistency with HJB Semi-Lagrangian. "
-            "FPSLJacobianSolver will be removed in v1.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
         super().__init__(problem)
         self.fp_method_name = "Semi-Lagrangian (Jacobian)"
 
@@ -195,6 +187,8 @@ class FPSLJacobianSolver(BaseFPSolver):
         bc_type = get_bc_type_string(self.boundary_conditions)
         return bc_type_to_geometric_operation(bc_type)
 
+    @deprecated_parameter(param_name="m_initial_condition", since="v0.17.0", replacement="M_initial")
+    @deprecated_parameter(param_name="diffusion_field", since="v0.17.0", replacement="volatility_field")
     def solve_fp_system(
         self,
         M_initial: np.ndarray | None = None,
@@ -233,17 +227,10 @@ class FPSLJacobianSolver(BaseFPSolver):
             drift_field is the VALUE FUNCTION U, not the velocity alpha.
             The velocity is computed internally as alpha = -grad(U).
         """
-        import warnings
-
         # Handle deprecated parameter
         if m_initial_condition is not None:
             if M_initial is not None:
                 raise ValueError("Cannot specify both M_initial and m_initial_condition")
-            warnings.warn(
-                "Parameter 'm_initial_condition' is deprecated. Use 'M_initial' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_initial = m_initial_condition
 
         if M_initial is None:
@@ -265,12 +252,6 @@ class FPSLJacobianSolver(BaseFPSolver):
                     "Cannot specify both volatility_field and diffusion_field. "
                     "Use volatility_field (diffusion_field is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
-                "Note: volatility_field expects σ (SDE noise), same as diffusion_field did.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             volatility_field = diffusion_field
 
         # Handle volatility (Issue #717: unified API)

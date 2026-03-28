@@ -24,7 +24,6 @@ Hierarchy:
 
 from __future__ import annotations
 
-import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -32,6 +31,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import numpy as np
 from numpy.typing import NDArray
+
+from mfgarchon.utils.deprecation import deprecated
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -578,14 +579,11 @@ class NoFluxCalculator(ZeroGradientCalculator):
         For mass-conserving flux BC (J·n = 0), use :class:`ZeroFluxCalculator`.
     """
 
+    @deprecated(
+        since="v0.16.11",
+        replacement="Use ZeroGradientCalculator for du/dn = 0, or ZeroFluxCalculator for J*n = 0.",
+    )
     def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "NoFluxCalculator is deprecated since v0.16.11. "
-            "Use ZeroGradientCalculator for du/dn = 0 (edge extension), "
-            "or ZeroFluxCalculator for J·n = 0 (mass conservation).",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         super().__init__(*args, **kwargs)
 
 
@@ -757,13 +755,11 @@ class FPNoFluxCalculator(ZeroFluxCalculator):
         Use :class:`ZeroFluxCalculator` instead for J·n = 0 (mass conservation).
     """
 
+    @deprecated(
+        since="v0.16.11",
+        replacement="Use ZeroFluxCalculator instead for J*n = 0 (mass conservation).",
+    )
     def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "FPNoFluxCalculator is deprecated since v0.16.11. "
-            "Use ZeroFluxCalculator instead for J·n = 0 (mass conservation).",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         super().__init__(*args, **kwargs)
 
 

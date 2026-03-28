@@ -11,6 +11,8 @@ from __future__ import annotations
 import functools
 from enum import Flag, auto
 
+from mfgarchon.utils.deprecation import deprecated_parameter
+
 from .progress import IterationProgress, SolverTimer, time_solver_operation
 
 
@@ -156,6 +158,13 @@ def with_progress_monitoring(
     return decorator
 
 
+@deprecated_parameter(
+    param_name="monitor_convergence", since="v0.17.0", replacement="options=SolverMonitoringOptions.CONVERGENCE"
+)
+@deprecated_parameter(
+    param_name="auto_progress", since="v0.17.0", replacement="options=SolverMonitoringOptions.PROGRESS"
+)
+@deprecated_parameter(param_name="timing", since="v0.17.0", replacement="options=SolverMonitoringOptions.TIMING")
 def enhanced_solver_method(
     options: SolverMonitoringOptions | None = None,
     *,
@@ -188,18 +197,8 @@ def enhanced_solver_method(
         ... def solve(self):
         ...     ...
     """
-    # Handle backward compatibility
+    # Handle backward compatibility -- convert old API to new
     if monitor_convergence is not None or auto_progress is not None or timing is not None:
-        import warnings
-
-        warnings.warn(
-            "Parameters 'monitor_convergence', 'auto_progress', and 'timing' are deprecated. "
-            "Use 'options' parameter instead: SolverMonitoringOptions.CONVERGENCE, .PROGRESS, .TIMING, or .ALL",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        # Convert old API to new
         flags = SolverMonitoringOptions.NONE
         if monitor_convergence:
             flags |= SolverMonitoringOptions.CONVERGENCE

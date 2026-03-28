@@ -17,7 +17,7 @@ from mfgarchon.core.mfg_components import (
 from mfgarchon.geometry.protocol import GeometryProtocol  # noqa: TC001
 
 # Deprecation utilities (Issue #616, #666)
-from mfgarchon.utils.deprecation import deprecated_parameter, validate_kwargs
+from mfgarchon.utils.deprecation import deprecated, deprecated_parameter, validate_kwargs
 
 # Use unified nD-capable BoundaryConditions from conditions.py
 
@@ -647,6 +647,11 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         # Detect solver compatibility
         self._detect_solver_compatibility()
 
+    @deprecated(
+        since="v0.17.0",
+        replacement="geometry-first API with TensorProductGrid",
+        reason="Manual grid construction is deprecated. See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md",
+    )
     def _init_1d_legacy(
         self,
         xmin: list[float],
@@ -674,21 +679,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             the geometry-first API with TensorProductGrid instead.
             See migration guide: docs/migration/GEOMETRY_PARAMETER_MIGRATION.md
         """
-        import warnings
-
         from mfgarchon.geometry import TensorProductGrid
-
-        # Emit deprecation warning for manual grid construction pattern
-        warnings.warn(
-            "Manual grid construction in MFGProblem is deprecated and will be "
-            "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
-            "  from mfgarchon.geometry import TensorProductGrid\n"
-            f"  domain = TensorProductGrid(bounds=[({xmin[0]}, {xmax[0]})], Nx_points=[{Nx[0] + 1}])\n"
-            f"  problem = MFGProblem(geometry=domain, T={T}, Nt={Nt})\n\n"
-            "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
-            DeprecationWarning,
-            stacklevel=4,  # Point to user's code, not internal calls
-        )
 
         # Extract scalar values from arrays for backward compatibility
         xmin_scalar = xmin[0]
@@ -729,6 +720,11 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         self.spatial_bounds = [(xmin_scalar, xmax_scalar)]
         self.spatial_discretization = [Nx_scalar]
 
+    @deprecated(
+        since="v0.17.0",
+        replacement="geometry-first API with TensorProductGrid",
+        reason="Manual grid construction is deprecated. See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md",
+    )
     def _init_nd(
         self,
         spatial_bounds: list[tuple[float, float]],
@@ -747,29 +743,11 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             the geometry-first API with TensorProductGrid instead.
             See migration guide: docs/migration/GEOMETRY_PARAMETER_MIGRATION.md
         """
-        import warnings
-
         # Validate inputs
         if not spatial_bounds:
             raise ValueError("spatial_bounds must be a non-empty list of (min, max) tuples")
 
         dimension = len(spatial_bounds)
-
-        # Emit deprecation warning for manual grid construction pattern
-        warnings.warn(
-            "Manual grid construction in MFGProblem is deprecated and will be "
-            "restricted in v1.0.0. Use the geometry-first API instead:\n\n"
-            "  from mfgarchon.geometry import TensorProductGrid\n"
-            "  geometry = TensorProductGrid(\n"
-            f"      dimension={dimension},\n"
-            f"      bounds={spatial_bounds},\n"
-            f"      Nx_points={spatial_discretization if spatial_discretization else [51] * dimension}\n"
-            "  )\n"
-            f"  problem = MFGProblem(geometry=geometry, T={T}, Nt={Nt})\n\n"
-            "See docs/migration/GEOMETRY_PARAMETER_MIGRATION.md for details.",
-            DeprecationWarning,
-            stacklevel=4,  # Point to user's code, not internal calls
-        )
 
         if spatial_discretization is None:
             # Default: 51 points per dimension
@@ -1288,20 +1266,13 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     # =========================================================================
 
     @property
+    @deprecated(since="v0.17.0", replacement="problem.geometry.get_bounds()[0][0]")
     def xmin(self) -> float | None:
         """
         DEPRECATED: Use problem.geometry.get_bounds() instead.
 
         Returns the minimum x-coordinate for 1D problems.
         """
-        import warnings
-
-        warnings.warn(
-            "Accessing 'xmin' is deprecated. Use 'problem.geometry.get_bounds()[0][0]' instead. "
-            "Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         # Check for stored value first (for backward compat with tests that set it)
         if getattr(self, "_xmin_override", None) is not None:
             return self._xmin_override
@@ -1312,32 +1283,19 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         return None
 
     @xmin.setter
+    @deprecated(since="v0.17.0", replacement="geometry-first API")
     def xmin(self, value: float | None) -> None:
         """Allow setting for backward compatibility (with warning)."""
-        import warnings
-
-        warnings.warn(
-            "Setting 'xmin' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self._xmin_override = value
 
     @property
+    @deprecated(since="v0.17.0", replacement="problem.geometry.get_bounds()[1][0]")
     def xmax(self) -> float | None:
         """
         DEPRECATED: Use problem.geometry.get_bounds() instead.
 
         Returns the maximum x-coordinate for 1D problems.
         """
-        import warnings
-
-        warnings.warn(
-            "Accessing 'xmax' is deprecated. Use 'problem.geometry.get_bounds()[1][0]' instead. "
-            "Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if getattr(self, "_xmax_override", None) is not None:
             return self._xmax_override
         if self.geometry is not None and self.dimension == 1:
@@ -1347,31 +1305,19 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         return None
 
     @xmax.setter
+    @deprecated(since="v0.17.0", replacement="geometry-first API")
     def xmax(self, value: float | None) -> None:
         """Allow setting for backward compatibility (with warning)."""
-        import warnings
-
-        warnings.warn(
-            "Setting 'xmax' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self._xmax_override = value
 
     @property
+    @deprecated(since="v0.17.0", replacement="compute from geometry bounds")
     def Lx(self) -> float | None:
         """
         DEPRECATED: Compute from geometry bounds instead.
 
         Returns the domain length for 1D problems.
         """
-        import warnings
-
-        warnings.warn(
-            "Accessing 'Lx' is deprecated. Compute from geometry bounds instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if self._Lx_override is not None:
             return self._Lx_override
         if self.geometry is not None and self.dimension == 1:
@@ -1381,32 +1327,19 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         return None
 
     @Lx.setter
+    @deprecated(since="v0.17.0", replacement="geometry-first API")
     def Lx(self, value: float | None) -> None:
         """Allow setting for backward compatibility (with warning)."""
-        import warnings
-
-        warnings.warn(
-            "Setting 'Lx' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self._Lx_override = value
 
     @property
+    @deprecated(since="v0.17.0", replacement="problem.geometry.num_spatial_points - 1")
     def Nx(self) -> int | None:
         """
         DEPRECATED: Use problem.geometry.num_spatial_points instead.
 
         Returns the number of intervals (not points) for 1D problems.
         """
-        import warnings
-
-        warnings.warn(
-            "Accessing 'Nx' is deprecated. Use 'problem.geometry.num_spatial_points - 1' for intervals. "
-            "Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if self._Nx_override is not None:
             return self._Nx_override
         if self.geometry is not None and self.dimension == 1:
@@ -1415,32 +1348,19 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         return None
 
     @Nx.setter
+    @deprecated(since="v0.17.0", replacement="geometry-first API")
     def Nx(self, value: int | None) -> None:
         """Allow setting for backward compatibility (with warning)."""
-        import warnings
-
-        warnings.warn(
-            "Setting 'Nx' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self._Nx_override = value
 
     @property
+    @deprecated(since="v0.17.0", replacement="compute from geometry bounds and num_points")
     def dx(self) -> float | None:
         """
         DEPRECATED: Compute from geometry bounds and num_points instead.
 
         Returns the grid spacing for 1D problems.
         """
-        import warnings
-
-        warnings.warn(
-            "Accessing 'dx' is deprecated. Compute from geometry bounds and num_points instead. "
-            "Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if self._dx_override is not None:
             return self._dx_override
         if self.geometry is not None and self.dimension == 1:
@@ -1458,32 +1378,19 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         return None
 
     @dx.setter
+    @deprecated(since="v0.17.0", replacement="geometry-first API")
     def dx(self, value: float | None) -> None:
         """Allow setting for backward compatibility (with warning)."""
-        import warnings
-
-        warnings.warn(
-            "Setting 'dx' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self._dx_override = value
 
     @property
+    @deprecated(since="v0.17.0", replacement="problem.geometry.get_spatial_grid()")
     def xSpace(self) -> np.ndarray | None:
         """
         DEPRECATED: Use problem.geometry.get_spatial_grid() instead.
 
         Returns the spatial grid array.
         """
-        import warnings
-
-        warnings.warn(
-            "Accessing 'xSpace' is deprecated. Use 'problem.geometry.get_spatial_grid()' instead. "
-            "Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if self._xSpace_override is not None:
             return self._xSpace_override
         if self.geometry is not None:
@@ -1491,45 +1398,27 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         return None
 
     @xSpace.setter
+    @deprecated(since="v0.17.0", replacement="geometry-first API")
     def xSpace(self, value: np.ndarray | None) -> None:
         """Allow setting for backward compatibility (with warning)."""
-        import warnings
-
-        warnings.warn(
-            "Setting 'xSpace' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self._xSpace_override = value
 
     @property
+    @deprecated(since="v0.17.0", replacement="problem.geometry")
     def _grid(self) -> Any:
         """
         DEPRECATED: Use problem.geometry instead.
 
         Returns the geometry object (for backward compatibility).
         """
-        import warnings
-
-        warnings.warn(
-            "Accessing '_grid' is deprecated. Use 'problem.geometry' instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         if self._grid_override is not None:
             return self._grid_override
         return self.geometry
 
     @_grid.setter
+    @deprecated(since="v0.17.0", replacement="geometry-first API")
     def _grid(self, value: Any) -> None:
         """Allow setting for backward compatibility (with warning)."""
-        import warnings
-
-        warnings.warn(
-            "Setting '_grid' is deprecated. Use geometry-first API instead. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         self._grid_override = value
 
     # =========================================================================

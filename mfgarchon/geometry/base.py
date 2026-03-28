@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfgarchon.utils.deprecation import deprecated_parameter
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -1278,6 +1280,16 @@ class UnstructuredMesh(Geometry):
         """
         ...
 
+    @deprecated_parameter(
+        param_name="show_edges",
+        since="v0.17.0",
+        replacement="mode",
+    )
+    @deprecated_parameter(
+        param_name="show_quality",
+        since="v0.17.0",
+        replacement="mode",
+    )
     def visualize_mesh(
         self,
         mode: MeshVisualizationMode | str = MeshVisualizationMode.WITH_EDGES,
@@ -1320,15 +1332,6 @@ class UnstructuredMesh(Geometry):
 
         # Handle backward compatibility
         if show_edges is not None or show_quality is not None:
-            import warnings
-
-            warnings.warn(
-                "Parameters 'show_edges' and 'show_quality' are deprecated. "
-                "Use 'mode' parameter instead: MeshVisualizationMode.SURFACE, .WITH_EDGES, "
-                ".QUALITY, or .QUALITY_WITH_EDGES",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             # Convert old API to new
             edges = show_edges if show_edges is not None else True
             quality = show_quality if show_quality is not None else False

@@ -28,6 +28,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from mfgarchon.utils.deprecation import deprecated
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -131,6 +133,10 @@ def absorb_positions(
 
 # Backward compatibility: import from new location
 # TODO: Remove in v1.0.0 after deprecation period
+@deprecated(
+    since="v0.17.0",
+    replacement="Use mfgarchon.geometry.boundary.periodic.wrap_positions instead.",
+)
 def wrap_positions(
     positions: NDArray[np.floating],
     bounds: list[tuple[float, float]] | NDArray[np.floating],
@@ -140,16 +146,8 @@ def wrap_positions(
 
     This function is kept for backward compatibility and will be removed in v1.0.0.
     """
-    import warnings
-
     from mfgarchon.geometry.boundary.periodic import wrap_positions as _wrap
 
-    warnings.warn(
-        "wrap_positions in corner/position.py is deprecated. "
-        "Use mfgarchon.geometry.boundary.periodic.wrap_positions instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     return _wrap(positions, bounds)
 
 

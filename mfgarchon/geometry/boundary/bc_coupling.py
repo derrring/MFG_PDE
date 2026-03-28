@@ -15,10 +15,11 @@ See Issue #704 for details on the unified adjoint module.
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+from mfgarchon.utils.deprecation import deprecated
 
 # Import from submodules directly (deprecated module, see Issue #704)
 from .conditions import BoundaryConditions
@@ -27,18 +28,11 @@ from .types import BCSegment, BCType
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-_DEPRECATION_MSG = (
-    "Importing from 'mfgarchon.geometry.boundary.bc_coupling' is deprecated since v0.17.0. "
-    "Use 'mfgarchon.alg.numerical.adjoint' instead. "
-    "This module will be removed in v1.0.0."
+
+@deprecated(
+    since="v0.17.0",
+    replacement="Use mfgarchon.alg.numerical.adjoint.compute_boundary_log_density_gradient_1d instead.",
 )
-
-
-def _warn_deprecated() -> None:
-    """Emit deprecation warning once per session."""
-    warnings.warn(_DEPRECATION_MSG, DeprecationWarning, stacklevel=3)
-
-
 def compute_boundary_log_density_gradient_1d(
     m: NDArray[np.floating],
     dx: float,
@@ -50,8 +44,6 @@ def compute_boundary_log_density_gradient_1d(
 
     Compute dln(m)/dn at 1D boundary using one-sided finite differences.
     """
-    _warn_deprecated()
-
     m_safe = m + regularization
     ln_m = np.log(m_safe)
 
@@ -65,6 +57,10 @@ def compute_boundary_log_density_gradient_1d(
     return float(grad_ln_m)
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="Use mfgarchon.alg.numerical.adjoint.create_adjoint_consistent_bc_1d instead.",
+)
 def create_adjoint_consistent_bc_1d(
     m_current: NDArray[np.floating],
     dx: float,
@@ -77,7 +73,6 @@ def create_adjoint_consistent_bc_1d(
 
     Create adjoint-consistent Robin BC for 1D HJB equation.
     """
-    _warn_deprecated()
 
     # Inline implementation to avoid circular import
     m_safe = m_current + regularization
@@ -120,6 +115,10 @@ def create_adjoint_consistent_bc_1d(
     )
 
 
+@deprecated(
+    since="v0.17.0",
+    replacement="Use mfgarchon.alg.numerical.adjoint.compute_adjoint_consistent_bc_values instead.",
+)
 def compute_adjoint_consistent_bc_values(
     m_current: NDArray[np.floating],
     geometry: object,
@@ -132,7 +131,6 @@ def compute_adjoint_consistent_bc_values(
 
     Create adjoint-consistent Robin BC for HJB equation (dimension-agnostic).
     """
-    _warn_deprecated()
 
     if dimension == 1:
         dx = geometry.get_grid_spacing()[0]
@@ -148,7 +146,7 @@ def compute_adjoint_consistent_bc_values(
         raise NotImplementedError(f"Adjoint-consistent BC not yet implemented for {dimension}D.")
 
 
-# Backward compatibility alias
+# Backward compatibility alias (the target already warns via @deprecated)
 compute_coupled_hjb_bc_values = compute_adjoint_consistent_bc_values
 
 

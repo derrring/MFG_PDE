@@ -8,6 +8,7 @@ import scipy.sparse as sparse
 from mfgarchon.backends.compat import has_nan_or_inf
 from mfgarchon.geometry import BoundaryConditions
 from mfgarchon.utils.aux_func import npart, ppart
+from mfgarchon.utils.deprecation import deprecated, deprecated_parameter
 
 from .base_fp import BaseFPSolver
 from .fp_fdm_time_stepping import (
@@ -228,6 +229,10 @@ class FPFDMSolver(BaseFPSolver):
 
     # _detect_dimension() inherited from BaseNumericalSolver (Issue #633)
 
+    @deprecated_parameter(param_name="m_initial_condition", since="v0.17.0", replacement="M_initial")
+    @deprecated_parameter(param_name="diffusion_field", since="v0.17.0", replacement="volatility_field")
+    @deprecated_parameter(param_name="tensor_diffusion_field", since="v0.17.0", replacement="volatility_field")
+    @deprecated_parameter(param_name="volatility_matrix", since="v0.17.0", replacement="volatility_field")
     def solve_fp_system(
         self,
         M_initial: np.ndarray | None = None,
@@ -367,8 +372,6 @@ class FPFDMSolver(BaseFPSolver):
         >>> alpha_quartic = -np.sign(grad_U) * np.abs(grad_U) ** (1/3)  # α* = -(∇U)^(1/3)
         >>> M = solver.solve_fp_system(m0, drift_field=alpha_quartic)
         """
-        import warnings
-
         # Handle deprecated parameter name
         if m_initial_condition is not None:
             if M_initial is not None:
@@ -376,11 +379,6 @@ class FPFDMSolver(BaseFPSolver):
                     "Cannot specify both M_initial and m_initial_condition. "
                     "Use M_initial (m_initial_condition is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'm_initial_condition' is deprecated. Use 'M_initial' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_initial = m_initial_condition
 
         # Validate required parameter
@@ -435,12 +433,6 @@ class FPFDMSolver(BaseFPSolver):
                     "Cannot specify both volatility_field and diffusion_field. "
                     "Use volatility_field (diffusion_field is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'diffusion_field' is deprecated. Use 'volatility_field' instead. "
-                "Note: Both accept volatility σ, not diffusion D. The solver computes D = σ²/2 internally.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             volatility_field = diffusion_field
 
         # Handle deprecated tensor_diffusion_field → volatility_field
@@ -452,12 +444,6 @@ class FPFDMSolver(BaseFPSolver):
                     "Cannot specify both volatility_field and tensor_diffusion_field. "
                     "Use volatility_field (tensor_diffusion_field is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'tensor_diffusion_field' is deprecated. Use 'volatility_field' instead. "
-                "Note: Pass (d,d) array for matrix volatility. The solver computes D = ΣΣᵀ/2 internally.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             volatility_field = tensor_diffusion_field
             _from_tensor_param = True
 
@@ -468,12 +454,6 @@ class FPFDMSolver(BaseFPSolver):
                     "Cannot specify both volatility_field and volatility_matrix. "
                     "Use volatility_field (volatility_matrix is deprecated)."
                 )
-            warnings.warn(
-                "Parameter 'volatility_matrix' is deprecated. Use 'volatility_field' instead. "
-                "Note: Pass (d,d) array for matrix volatility. The solver computes D = ΣΣᵀ/2 internally.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             volatility_field = volatility_matrix
             _from_tensor_param = True
 
@@ -666,6 +646,7 @@ class FPFDMSolver(BaseFPSolver):
 
         return M_next
 
+    @deprecated(since="v0.17.1", replacement="solve_fp_system")
     def _solve_fp_1d(
         self,
         m_initial_condition: np.ndarray,
@@ -685,14 +666,6 @@ class FPFDMSolver(BaseFPSolver):
             - Full BC support (no_flux, neumann, robin, periodic, dirichlet)
             - Cleaner codebase with less code path branching
         """
-        import warnings
-
-        warnings.warn(
-            "_solve_fp_1d is deprecated. Use solve_fp_system() which now routes "
-            "all cases through the unified nD solver. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         # Use geometry-based interface (geometry is always available)
         Nx = self.problem.geometry.get_grid_shape()[0]
         Dx = self.problem.geometry.get_grid_spacing()[0]
@@ -1140,6 +1113,7 @@ class FPFDMSolver(BaseFPSolver):
 
         return output
 
+    @deprecated(since="v0.17.1", replacement="solve_fp_system")
     def _solve_fp_1d_with_callable(
         self,
         m_initial_condition: np.ndarray,
@@ -1174,14 +1148,6 @@ class FPFDMSolver(BaseFPSolver):
         np.ndarray
             Density evolution, shape (Nt, Nx)
         """
-        import warnings
-
-        warnings.warn(
-            "_solve_fp_1d_with_callable is deprecated. Use solve_fp_system() which now routes "
-            "callable diffusion through the unified nD solver. Will be removed in v1.0.0.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         from mfgarchon.types.pde_coefficients import DiffusionCallable
 
         # Validate callable signature using protocol

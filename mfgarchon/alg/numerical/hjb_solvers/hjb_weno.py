@@ -37,7 +37,6 @@ References:
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -45,6 +44,7 @@ import numpy as np
 from mfgarchon.core.derivatives import DerivativeTensors, to_multi_index_dict
 from mfgarchon.geometry.boundary.applicator_fdm import PreallocatedGhostBuffer
 from mfgarchon.geometry.boundary.conditions import neumann_bc
+from mfgarchon.utils.deprecation import deprecated_parameter
 
 from .base_hjb import BaseHJBSolver
 
@@ -821,6 +821,9 @@ class HJBWenoSolver(BaseHJBSolver):
 
         return max(dt_stable, 1e-10)  # Ensure positive time step
 
+    @deprecated_parameter(param_name="M_density_evolution_from_FP", since="v0.17.0", replacement="M_density")
+    @deprecated_parameter(param_name="U_final_condition_at_T", since="v0.17.0", replacement="U_terminal")
+    @deprecated_parameter(param_name="U_from_prev_picard", since="v0.17.0", replacement="U_coupling_prev")
     def solve_hjb_system(
         self,
         M_density: np.ndarray | None = None,
@@ -848,35 +851,20 @@ class HJBWenoSolver(BaseHJBSolver):
         Returns:
             U_solved: Complete solution u(t,x) over time domain
         """
-        # Handle deprecated parameter names with warnings
+        # Handle deprecated parameter names (warnings handled by @deprecated_parameter decorators)
         if M_density_evolution_from_FP is not None:
             if M_density is not None:
                 raise ValueError("Cannot specify both 'M_density' and deprecated 'M_density_evolution_from_FP'")
-            warnings.warn(
-                "Parameter 'M_density_evolution_from_FP' is deprecated. Use 'M_density' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             M_density = M_density_evolution_from_FP
 
         if U_final_condition_at_T is not None:
             if U_terminal is not None:
                 raise ValueError("Cannot specify both 'U_terminal' and deprecated 'U_final_condition_at_T'")
-            warnings.warn(
-                "Parameter 'U_final_condition_at_T' is deprecated. Use 'U_terminal' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_terminal = U_final_condition_at_T
 
         if U_from_prev_picard is not None:
             if U_coupling_prev is not None:
                 raise ValueError("Cannot specify both 'U_coupling_prev' and deprecated 'U_from_prev_picard'")
-            warnings.warn(
-                "Parameter 'U_from_prev_picard' is deprecated. Use 'U_coupling_prev' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             U_coupling_prev = U_from_prev_picard
 
         # Validate required parameters

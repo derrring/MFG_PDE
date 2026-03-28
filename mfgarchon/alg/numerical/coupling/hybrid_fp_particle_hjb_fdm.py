@@ -40,6 +40,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfgarchon.utils.deprecation import deprecated_parameter
+
 from .base_mfg import BaseMFGSolver
 
 if TYPE_CHECKING:
@@ -67,6 +69,26 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         See HJBFDMSolver docstring for trait details.
     """
 
+    @deprecated_parameter(
+        param_name="mfg_problem",
+        since="v0.17.0",
+        replacement="problem",
+    )
+    @deprecated_parameter(
+        param_name="hjb_newton_iterations",
+        since="v0.17.0",
+        replacement="max_newton_iterations",
+    )
+    @deprecated_parameter(
+        param_name="hjb_newton_tolerance",
+        since="v0.17.0",
+        replacement="newton_tolerance",
+    )
+    @deprecated_parameter(
+        param_name="hjb_fd_scheme",
+        since="v0.17.0",
+        replacement="none (HJBFDMSolver handles scheme internally)",
+    )
     def __init__(
         self,
         problem: MFGProblem | None = None,
@@ -103,15 +125,8 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             hjb_fd_scheme: (Deprecated) No longer used, HJBFDMSolver handles scheme internally
             **kwargs: Additional parameters
         """
-        import warnings
-
-        # Handle deprecated 'mfg_problem' parameter
+        # Handle deprecated 'mfg_problem' parameter (warning via decorator)
         if mfg_problem is not None:
-            warnings.warn(
-                "Parameter 'mfg_problem' is deprecated. Use 'problem' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             if problem is None:
                 problem = mfg_problem
 
@@ -119,32 +134,15 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         if problem is None:
             raise ValueError("Parameter 'problem' is required")
 
-        # Handle deprecated 'hjb_newton_iterations' parameter
+        # Handle deprecated 'hjb_newton_iterations' parameter (warning via decorator)
         if hjb_newton_iterations is not None:
-            warnings.warn(
-                "Parameter 'hjb_newton_iterations' is deprecated. Use 'max_newton_iterations' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             max_newton_iterations = hjb_newton_iterations
 
-        # Handle deprecated 'hjb_newton_tolerance' parameter
+        # Handle deprecated 'hjb_newton_tolerance' parameter (warning via decorator)
         if hjb_newton_tolerance is not None:
-            warnings.warn(
-                "Parameter 'hjb_newton_tolerance' is deprecated. Use 'newton_tolerance' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             newton_tolerance = hjb_newton_tolerance
 
-        # Warn about hjb_fd_scheme being removed
-        if hjb_fd_scheme is not None:
-            warnings.warn(
-                "Parameter 'hjb_fd_scheme' is deprecated and ignored. "
-                "HJBFDMSolver handles finite difference scheme internally.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        # hjb_fd_scheme is deprecated and ignored (warning via decorator)
 
         super().__init__(problem)
 
@@ -189,6 +187,16 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
             newton_tolerance=self.newton_tolerance,
         )
 
+    @deprecated_parameter(
+        param_name="max_picard_iterations",
+        since="v0.17.0",
+        replacement="max_iterations",
+    )
+    @deprecated_parameter(
+        param_name="picard_tolerance",
+        since="v0.17.0",
+        replacement="tolerance",
+    )
     def solve(
         self,
         max_iterations: int | None = None,
@@ -213,17 +221,10 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         Returns:
             Tuple of (U_solution, M_solution, convergence_info)
         """
-        import warnings
-
-        # Handle parameter precedence: standardized > deprecated
+        # Handle parameter precedence: standardized > deprecated (warnings via decorator)
         if max_iterations is not None:
             final_max_iterations = max_iterations
         elif max_picard_iterations is not None:
-            warnings.warn(
-                "Parameter 'max_picard_iterations' is deprecated. Use 'max_iterations' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             final_max_iterations = max_picard_iterations
         else:
             final_max_iterations = 50  # Default for hybrid solver
@@ -231,11 +232,6 @@ class HybridFPParticleHJBFDM(BaseMFGSolver):
         if tolerance is not None:
             final_tolerance = tolerance
         elif picard_tolerance is not None:
-            warnings.warn(
-                "Parameter 'picard_tolerance' is deprecated. Use 'tolerance' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             final_tolerance = picard_tolerance
         else:
             final_tolerance = 1e-6  # Default for hybrid solver

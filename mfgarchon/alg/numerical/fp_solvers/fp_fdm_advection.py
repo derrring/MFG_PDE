@@ -38,7 +38,10 @@ from typing import Any
 
 import numpy as np
 
+from mfgarchon.utils.deprecation import deprecated
 
+
+@deprecated(since="v0.18.0", replacement="AdvectionOperator")
 def _compute_upwind_advection(
     M: np.ndarray,
     drift_per_dim: list[np.ndarray],
@@ -76,13 +79,6 @@ def _compute_upwind_advection(
     np.ndarray
         Advection term div(alpha * m), same shape as M
     """
-    import warnings
-
-    warnings.warn(
-        "_compute_upwind_advection is deprecated. Use AdvectionOperator instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
     advection = np.zeros_like(M)
 
     for d in range(ndim):

@@ -24,21 +24,9 @@ For multi-dimensional or segment-based BC specification, use conditions.py.
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass
 
-
-def _emit_deprecation_warning(func_name: str = "BoundaryConditions") -> None:
-    """Emit deprecation warning for fdm_bc_1d module usage."""
-    warnings.warn(
-        f"mfgarchon.geometry.boundary.fdm_bc_1d.{func_name} is deprecated. "
-        "Use the unified API instead:\n"
-        "  from mfgarchon.geometry import periodic_bc, dirichlet_bc, neumann_bc\n"
-        "  bc = periodic_bc(dimension=1)\n"
-        "This module will be removed in v1.0.0.",
-        DeprecationWarning,
-        stacklevel=3,
-    )
+from mfgarchon.utils.deprecation import deprecated
 
 
 @dataclass
@@ -178,46 +166,62 @@ class BoundaryConditions:
 
 
 # Convenience functions for common boundary condition types
+@deprecated(
+    since="v0.14.0",
+    replacement="Use from mfgarchon.geometry import periodic_bc; bc = periodic_bc(dimension=1).",
+)
 def periodic_bc() -> BoundaryConditions:
     """Create periodic boundary conditions.
 
     .. deprecated:: 0.14.0
         Use ``from mfgarchon.geometry import periodic_bc; bc = periodic_bc(dimension=1)``
     """
-    _emit_deprecation_warning("periodic_bc")
     return BoundaryConditions(type="periodic")
 
 
+@deprecated(
+    since="v0.14.0",
+    replacement="Use from mfgarchon.geometry import dirichlet_bc; bc = dirichlet_bc(value=..., dimension=1).",
+)
 def dirichlet_bc(left_value: float, right_value: float) -> BoundaryConditions:
     """Create Dirichlet boundary conditions.
 
     .. deprecated:: 0.14.0
         Use ``from mfgarchon.geometry import dirichlet_bc; bc = dirichlet_bc(value=..., dimension=1)``
     """
-    _emit_deprecation_warning("dirichlet_bc")
     return BoundaryConditions(type="dirichlet", left_value=left_value, right_value=right_value)
 
 
+@deprecated(
+    since="v0.14.0",
+    replacement="Use from mfgarchon.geometry import neumann_bc; bc = neumann_bc(value=..., dimension=1).",
+)
 def neumann_bc(left_gradient: float, right_gradient: float) -> BoundaryConditions:
     """Create Neumann boundary conditions.
 
     .. deprecated:: 0.14.0
         Use ``from mfgarchon.geometry import neumann_bc; bc = neumann_bc(value=..., dimension=1)``
     """
-    _emit_deprecation_warning("neumann_bc")
     return BoundaryConditions(type="neumann", left_value=left_gradient, right_value=right_gradient)
 
 
+@deprecated(
+    since="v0.14.0",
+    replacement="Use from mfgarchon.geometry import no_flux_bc; bc = no_flux_bc(dimension=1).",
+)
 def no_flux_bc() -> BoundaryConditions:
     """Create no-flux boundary conditions.
 
     .. deprecated:: 0.14.0
         Use ``from mfgarchon.geometry import no_flux_bc; bc = no_flux_bc(dimension=1)``
     """
-    _emit_deprecation_warning("no_flux_bc")
     return BoundaryConditions(type="no_flux")
 
 
+@deprecated(
+    since="v0.14.0",
+    replacement="Use from mfgarchon.geometry import robin_bc; bc = robin_bc(alpha=..., beta=..., dimension=1).",
+)
 def robin_bc(
     left_alpha: float,
     left_beta: float,
@@ -231,7 +235,6 @@ def robin_bc(
     .. deprecated:: 0.14.0
         Use ``from mfgarchon.geometry import robin_bc; bc = robin_bc(alpha=..., beta=..., dimension=1)``
     """
-    _emit_deprecation_warning("robin_bc")
     return BoundaryConditions(
         type="robin",
         left_alpha=left_alpha,
