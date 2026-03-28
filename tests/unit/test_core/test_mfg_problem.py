@@ -18,12 +18,7 @@ import numpy as np
 
 from mfgarchon.core.mfg_problem import MFGComponents, MFGProblem
 from mfgarchon.geometry import TensorProductGrid
-
-# Unified BC from conditions.py (current API)
-from mfgarchon.geometry.boundary.conditions import BoundaryConditions, no_flux_bc
-
-# Legacy 1D BC: testing compatibility with 1D MFG problems (deprecated in v0.14, remove in v1.0)
-from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions as LegacyBoundaryConditions
+from mfgarchon.geometry.boundary import BoundaryConditions, dirichlet_bc, no_flux_bc
 
 # ===========================================================================
 # Test Helpers - Issue #670: m_initial/u_final now required in MFGComponents
@@ -555,8 +550,8 @@ def test_get_boundary_conditions_custom():
     Note: With geometry-first API (Issue #674), the geometry's BC takes priority
     over components BC. This test verifies this priority order.
     """
-    # Uses legacy 1D BC in components (lower priority)
-    custom_bc = LegacyBoundaryConditions(type="dirichlet", left_value=0.0, right_value=0.0)
+    # Uses Dirichlet BC in components (lower priority)
+    custom_bc = dirichlet_bc(value=0.0, dimension=1)
     # Issue #670: must provide m_initial and u_final
     # Issue #673: Hamiltonian required
     components = MFGComponents(

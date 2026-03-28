@@ -15,10 +15,7 @@ from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonia
 from mfgarchon.core.mfg_components import MFGComponents
 from mfgarchon.core.mfg_problem import MFGProblem
 from mfgarchon.geometry import TensorProductGrid
-from mfgarchon.geometry.boundary import no_flux_bc
-
-# Legacy 1D BC: testing compatibility with 1D FP solvers (deprecated in v0.14, remove in v1.0)
-from mfgarchon.geometry.boundary.fdm_bc_1d import BoundaryConditions
+from mfgarchon.geometry.boundary import no_flux_bc, periodic_bc
 
 
 def _default_hamiltonian():
@@ -152,7 +149,7 @@ class TestFPParticleSolverInitialization:
         """Test initialization with custom boundary conditions."""
         geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
         problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, components=_default_components())
-        bc = BoundaryConditions(type="no_flux")
+        bc = no_flux_bc(dimension=1)
         solver = FPParticleSolver(problem, boundary_conditions=bc)
 
         assert solver.boundary_conditions.type == "no_flux"
@@ -507,10 +504,9 @@ class TestFPParticleSolverIntegration:
         Nx_points = problem.geometry.get_grid_shape()[0]
         Nt_points = problem.Nt_points
 
-        bc_types = ["periodic", "no_flux"]
+        bc_options = [periodic_bc(dimension=1), no_flux_bc(dimension=1)]
 
-        for bc_type in bc_types:
-            bc = BoundaryConditions(type=bc_type)
+        for bc in bc_options:
             solver = FPParticleSolver(problem, num_particles=500, boundary_conditions=bc)
 
             m_initial = np.ones(Nx_points) / Nx_points
