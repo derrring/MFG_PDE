@@ -14,13 +14,14 @@ Submodules:
 """
 
 # Flux diagnostics for mass conservation analysis
+# GFDMOperator: deprecated, moved to _compat. Import without triggering warning.
+from mfgarchon.utils.numerical._compat.gfdm_operators import GFDMOperator
 from mfgarchon.utils.numerical.flux_diagnostics import (
     BoundaryFluxResult,
     FluxDiagnostics,
     FluxSummary,
     compute_mass_conservation_error,
 )
-from mfgarchon.utils.numerical.gfdm_operators import GFDMOperator
 
 # GFDM Strategy Pattern (modular operators and BC handlers)
 from mfgarchon.utils.numerical.gfdm_strategies import (
