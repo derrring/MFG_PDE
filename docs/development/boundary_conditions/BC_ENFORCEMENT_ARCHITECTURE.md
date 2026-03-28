@@ -800,6 +800,126 @@ For performance-critical applications:
 
 ---
 
+## Well-Posedness Validation: GKS Theory & Lopatinski-Shapiro
+
+The 4-layer architecture produces combinations of (PDE type × mathematical BC × discretization).
+Not all combinations are well-posed. **GKS (Gustafsson-Kreiss-Sundstrom) theory** provides
+the discrete stability criterion; **Lopatinski-Shapiro (L-S)** provides the continuous counterpart.
+
+### Where GKS/L-S fits in the 4-layer model
+
+```
+Layer 2 (Resolution): physical intent → mathematical BC
+          ↓
+    ┌─────────────────────────────────────────┐
+    │  VALIDATION: Is this combination        │
+    │  well-posed for this PDE?               │
+    │                                         │
+    │  Continuous: L-S condition              │
+    │    B : E+(xi') → C^k isomorphism?       │
+    │                                         │
+    │  Discrete: GKS condition                │
+    │    Re(lambda) ≤ 0 for all eigenvalues   │
+    │    of the combined interior+boundary    │
+    │    discretization?                      │
+    └─────────────────────────────────────────┘
+          ↓
+Layer 3 (Enforcement): mathematical BC → discrete operations
+```
+
+GKS/L-S validation sits **between** Layer 2 and Layer 3 — it validates that the
+resolved mathematical BC is compatible with the PDE and the discretization before
+enforcement proceeds. This is a developer-time check, not a runtime check.
+
+### The Lopatinski-Shapiro condition (continuous well-posedness)
+
+At the PDE level, L-S determines whether a boundary operator $B$ is compatible with
+an interior operator $P$. The criterion: at each boundary point, freeze coefficients,
+take the tangential Fourier transform, and check that the boundary symbol restricts
+to an isomorphism on the stable subspace of the frozen ODE.
+
+**For MFG specifically:**
+- **HJB** ($-\partial_t u + H(\nabla u) = 0$): Linearized HJB is a transport-diffusion
+  equation. L-S requires that the boundary condition does not create outgoing
+  characteristics without absorbing them. Dirichlet and Neumann both satisfy L-S.
+  The variational inequality $\nabla u \cdot n \leq 0$ (reflecting) is well-posed as
+  a one-sided condition (Soner, 1986).
+- **FP** ($\partial_t m + \nabla \cdot(\alpha m) = D\Delta m$): L-S for the zero-flux condition
+  $J \cdot n = \alpha m - D \partial m/\partial n = 0$ holds because this is a Robin BC with
+  coefficients matching the PDE structure. **Critical**: the pure Neumann approximation
+  ($\partial m/\partial n = 0$) violates L-S when $|\alpha| \gg D$ (advection-dominated regime)
+  — this is precisely the situation where the resolver must produce Robin, not Neumann.
+
+**Connection to the resolution problem**: The L-S condition is why `BCType.NO_FLUX`
+cannot be resolved to Neumann for advection-diffusion — it's not just numerically
+inaccurate, it's mathematically ill-posed in the advection-dominated limit.
+
+### The GKS condition (discrete stability)
+
+GKS extends L-S to discrete schemes. For a given interior discretization (FDM stencil,
+FEM basis, GFDM neighborhood) and boundary discretization (ghost cell formula,
+condense, FacetBasis integral), GKS checks whether the combined operator has eigenvalues
+satisfying the stability requirement for the PDE type:
+
+| PDE type | GKS requirement | What failure means |
+|----------|----------------|-------------------|
+| Parabolic (FP) | Re($\lambda$) $\leq$ 0 | Boundary creates energy, solution blows up |
+| Hyperbolic (inviscid HJB) | No exponentially growing modes | Boundary wave reflection amplifies |
+| Mixed (advection-diffusion) | Both conditions on respective modes | Worst of both |
+
+### Implementation in MFGArchon
+
+**Existing**: `mfgarchon/geometry/boundary/validation/gks.py` provides eigenvalue-based
+GKS checking as a developer tool. It assembles the combined (interior + boundary)
+discrete operator and checks eigenvalue stability.
+
+**Future integration with 4-layer model**:
+
+```python
+class BCResolver(Protocol):
+    def resolve(self, segment, solver_state) -> ResolvedBC: ...
+
+    def validate_wellposedness(
+        self,
+        resolved_bc: ResolvedBC,
+        pde_type: str,
+        discretization: str,
+    ) -> GKSResult:
+        """
+        Optional: Validate that the resolved BC is well-posed.
+
+        Runs L-S check (continuous) or GKS check (discrete) depending
+        on whether discretization info is available.
+
+        This is a developer-time validation, not a runtime check.
+        Called during solver initialization or BC framework testing.
+        """
+        ...
+```
+
+**When to validate**:
+- After implementing a new resolver (e.g., `FPResolver` for zero-flux)
+- After changing ghost cell formulas in `calculators.py`
+- After adding new BC types to the framework
+- As CI regression test for standard BC + PDE combinations
+
+**What to validate**:
+- Standard combinations: (Dirichlet, FDM), (Neumann, FDM), (Robin, FDM), (Periodic, FDM)
+- The no-flux resolution: (Robin from FPResolver, FDM) — must be stable
+- The incorrect resolution: (Neumann for advection-dominated FP, FDM) — should fail GKS
+- FEM combinations: (Dirichlet via condense, FEM), (Neumann natural, FEM)
+
+### References (GKS/L-S)
+
+- `docs/theory/boundary_framework_mathematical_foundation.md` Section 5: Full L-S theory
+- `mfgarchon/geometry/boundary/validation/gks.py`: Eigenvalue-based GKS checker
+- Gustafsson, Kreiss, Oliger (1995). *Time Dependent Problems and Difference Methods*
+- Lopatinski (1953). *Ukrain. Mat. Zh.* — Original L-S condition
+- Kreiss (1970). *Comm. Pure Appl. Math.* — Hyperbolic extension
+- Soner (1986). *SIAM J. Control* — Viscosity solution BCs for HJB
+
+---
+
 ## References
 
 - Issue #542: FDM BC handling bug (fixed in v0.16.16)
@@ -808,10 +928,12 @@ For performance-critical applications:
 - PR #548: BC-aware Laplacian implementation
 - `CONDITIONS_VS_CONSTRAINTS_ARCHITECTURE.md`: Conditions vs variational inequalities
 - `BC_SOLVER_INTEGRATION_DESIGN.md`: Paradigm-specific BC helpers
+- `docs/theory/boundary_framework_mathematical_foundation.md`: L-S theory, ADN theorem
 - Achdou & Lauriere (2020): MFG Applications, FP no-flux BC derivation
+- Gustafsson, Kreiss, Oliger (1995): GKS stability theory
 
 ---
 
 **Last Updated**: 2026-03-28
-**Status**: Design document, updated with 4-layer resolution architecture
-**Authors**: Claude Sonnet 4.5 (original v0.16.16), updated v0.17.16 with resolution layer
+**Status**: Design document, 4-layer resolution architecture with GKS/L-S validation
+**Authors**: Claude Sonnet 4.5 (original v0.16.16), updated v0.17.16

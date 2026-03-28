@@ -108,9 +108,13 @@ def get_applicator_for_geometry(
         return MeshfreeApplicator(geometry=geometry)
 
     elif discretization == DiscretizationType.FEM:
-        from .applicator_fem import FEMApplicator
-
-        return FEMApplicator(dimension=dim)
+        # FEM BC is handled via bc_adapter.py (scikit-fem condense pattern),
+        # not through the applicator dispatch. See bc_adapter.py for usage.
+        raise NotImplementedError(
+            "FEM BC application uses bc_adapter.py (scikit-fem condense pattern) "
+            "directly, not through the applicator dispatch. "
+            "Use: from mfgarchon.geometry.boundary.bc_adapter import apply_fem_bc"
+        )
 
     elif discretization == DiscretizationType.GRAPH:
         from .applicator_graph import GraphApplicator
@@ -216,9 +220,11 @@ def apply_bc(
         return applicator.apply(field, boundary_conditions, points, time=time)
 
     elif discretization == DiscretizationType.FEM:
-        # FEM: would modify matrix/rhs, not field directly
+        # FEM: modifies matrix/rhs, not field directly.
+        # Use bc_adapter.py (scikit-fem condense pattern) instead.
         raise NotImplementedError(
-            "FEM BC application requires matrix/rhs modification. Use FEMApplicator.apply(matrix, rhs, mesh) instead."
+            "FEM BC application requires matrix/rhs modification. "
+            "Use bc_adapter.py (scikit-fem condense pattern) directly."
         )
 
     else:

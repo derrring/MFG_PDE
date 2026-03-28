@@ -155,7 +155,7 @@ class BoundaryCapable(Protocol):
 
         Used to select the appropriate applicator class:
         - FDM -> FDMApplicator (ghost cells)
-        - FEM -> FEMApplicator (matrix modification)
+        - FEM -> bc_adapter.py (scikit-fem condense pattern)
         - MESHFREE/GFDM -> MeshfreeApplicator (collocation/particles)
         - GRAPH -> GraphApplicator (network BCs)
         """
