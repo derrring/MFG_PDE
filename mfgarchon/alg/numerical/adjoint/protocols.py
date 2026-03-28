@@ -16,7 +16,7 @@ transposed the velocity-based advection matrix. This is incorrect for
 non-symmetric upwind stencils. The "jacobian_transpose" mode (#707) is
 the correct implementation.
 
-See docs/theory/adjoint_discretization_mfg.md for mathematical foundations.
+See Issue #706 (adjoint discretization) for mathematical foundations.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ class AdjointCapableHJBSolver(Protocol):
     the gradient matrix) is mathematically incorrect. Use scheme pairing instead:
     - HJB: gradient_upwind + FP: divergence_upwind
 
-    See Issue #706 and docs/theory/adjoint_discretization_mfg.md.
+    See Issue #706 (adjoint discretization).
     """
 
     def build_advection_matrix(
@@ -65,7 +65,7 @@ class AdjointCapableFPSolver(Protocol):
     This protocol is deprecated because the underlying approach (using A_hjb.T)
     is mathematically incorrect. Use divergence_upwind scheme instead.
 
-    See Issue #706 and docs/theory/adjoint_discretization_mfg.md.
+    See Issue #706 (adjoint discretization).
     """
 
     def solve_fp_step_adjoint_mode(
@@ -136,7 +136,7 @@ def validate_adjoint_capability(
         return valid_pairs.get(hjb_scheme) == fp_scheme
     ```
 
-    See Issue #706 and docs/theory/adjoint_discretization_mfg.md.
+    See Issue #706 (adjoint discretization).
     """
     issues = []
 
@@ -190,7 +190,7 @@ def validate_scheme_pairing(hjb_solver: object, fp_solver: object) -> tuple[bool
         - gradient_upwind + divergence_upwind (stability-first)
         - gradient_centered + divergence_centered (accuracy-first)
 
-    See docs/theory/adjoint_discretization_mfg.md for mathematical foundations.
+    See Issue #706 (adjoint discretization) for mathematical foundations.
     """
     valid_pairs = {
         "gradient_upwind": "divergence_upwind",

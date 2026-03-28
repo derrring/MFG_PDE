@@ -213,13 +213,6 @@ All examples save to `examples/outputs/advanced/`:
 
 ---
 
-## Theory References
-
-- **Advanced Numerical Methods**: `docs/theory/advanced_numerical_methods.md`
-- **High-Dimensional MFG**: `docs/theory/high_dimensional_mfg.md`
-- **Neural Methods**: `docs/theory/neural_methods_mfg.md`
-- **Applications**: `docs/applications/` (domain-specific)
-
 ---
 
 ## Contributing

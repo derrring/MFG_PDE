@@ -77,7 +77,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         is MATHEMATICALLY INVALID because the optimal control alpha* = -grad(u)
         requires grad(u) at FIXED spatial locations.
 
-        See ``docs/theory/adaptive_collocation_analysis.md`` for detailed analysis
+        See adaptive collocation analysis for detailed discussion
         of three collocation strategies and why only fixed collocation is valid.
     """
 

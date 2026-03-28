@@ -20,7 +20,7 @@ Typical workflow:
 
 1. Implement new BC discretization
 2. Run GKS validation on representative test problems
-3. Document results in `docs/theory/bc_stability_verification.md`
+3. Document results in BC stability verification notes
 4. Add as optional CI check
 
 **References**:

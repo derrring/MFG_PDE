@@ -546,7 +546,7 @@ u = SparseSolver(method='cg').solve(L, b)  # Direct sparse solve
 - **Examples**: `examples/advanced/` directory for complete applications
 - **Tests**: `tests/integration/test_multidim_workflow.py` for usage patterns
 - **API Reference**: `docs/reference/` for detailed API documentation
-- **Theory**: `docs/theory/` for mathematical formulations
+- **Theory**: See MFG literature references in examples for mathematical formulations
 
 ---
 

@@ -31,7 +31,6 @@ Key Features:
 
 References:
     - Arthur, W. B. (1994). "Inductive reasoning and bounded rationality."
-    - docs/theory/coordination_games_mfg.md: Comprehensive formulation
     - Lasry & Lions (2007): Mean field games
 
 Example Usage:

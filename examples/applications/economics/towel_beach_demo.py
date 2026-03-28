@@ -31,7 +31,6 @@ Key Features:
     - Log-barrier congestion term
 
 References:
-    - docs/theory/spatial_competition_mfg.md: Full mathematical formulation
     - docs/development/TOWEL_ON_BEACH_1D_PROTOCOL.md: Validation protocol
     - Lasry & Lions (2007): Mean field games with congestion
 

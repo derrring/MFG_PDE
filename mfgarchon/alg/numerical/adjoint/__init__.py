@@ -45,7 +45,7 @@ References:
 - Issue #574: Adjoint-consistent BC for reflecting boundaries
 - Issue #704: Adjoint module redesign
 - Issue #706: Deprecation of incorrect transpose approach
-- docs/theory/adjoint_discretization_mfg.md: Mathematical foundations
+- Issue #706: Adjoint discretization mathematical foundations
 """
 
 # BC coupling (state-dependent BC for boundary adjoint correction)

@@ -22,7 +22,7 @@ Benefits over Manual Solver Selection:
 References:
     - Issue #580: Adjoint-aware solver pairing
     - Issue #543: Validator pattern (getattr instead of hasattr)
-    - docs/theory/adjoint_operators_mfg.md: Mathematical theory
+    - Issue #706: Adjoint operators mathematical theory
 """
 
 from __future__ import annotations

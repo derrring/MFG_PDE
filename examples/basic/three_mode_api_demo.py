@@ -6,7 +6,6 @@ adjoint duality between HJB and FP solvers.
 
 References:
     - Issue #580: Adjoint-aware solver pairing
-    - docs/theory/adjoint_operators_mfg.md: Mathematical theory
 """
 
 import matplotlib.pyplot as plt

@@ -1024,7 +1024,6 @@ vapor_region = (phi_water_vapor > 0)
 
 ### Further Reading
 
-- **Theory**: `docs/theory/level_set_method.md` (complete mathematical derivation)
 - **Examples**:
   - `examples/advanced/stefan_problem_1d.py` (ice melting, analytical validation)
   - `examples/advanced/stefan_problem_2d.py` (circular interface)

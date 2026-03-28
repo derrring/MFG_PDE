@@ -10,7 +10,7 @@ The NumericalScheme enum is used with the three-mode solving API:
     - Auto Mode: problem.solve()  # Auto-selects based on geometry
 
 See docs/architecture/FACTORY_PATTERN_DESIGN.md for complete design.
-See docs/theory/adjoint_operators_mfg.md for mathematical foundation.
+See Issue #706 (adjoint operators) for mathematical foundation.
 
 Related:
     - Issue #580: Adjoint-aware solver pairing
@@ -119,7 +119,7 @@ class NumericalScheme(Enum):
         Both operators converge to correct continuous adjoints as h→0, but
         L_FP ≠ (L_HJB)^T at finite h. Requires post-hoc mass conservation fixes.
 
-    See docs/theory/adjoint_operators_mfg.md for detailed mathematical treatment
+    See Issue #706 (adjoint operators) for detailed mathematical treatment
     of discrete vs continuous duality in MFG systems.
 
     Examples

@@ -869,7 +869,6 @@ def my_solver(geometry: SupportsLaplacian):
 
 ### Further Reading
 
-- **Theory**: `docs/theory/GEOMETRY_BC_ARCHITECTURE_DESIGN.md` (design rationale)
 - **Examples**:
   - `examples/advanced/stefan_problem_1d.py` (SupportsGradient, SupportsDivergence for curvature)
   - `examples/advanced/capacity_constrained_mfg/` (SupportsLaplacian, SupportsAdvection)

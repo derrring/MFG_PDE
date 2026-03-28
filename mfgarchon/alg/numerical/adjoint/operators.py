@@ -29,7 +29,7 @@ Adjoint relationships:
 References:
 -----------
 - Issue #704: Unified adjoint module
-- docs/theory/state_dependent_bc_coupling.md
+- Issue #625 (state-dependent BC coupling)
 """
 
 from __future__ import annotations
