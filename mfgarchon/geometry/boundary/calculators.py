@@ -1,0 +1,658 @@
+"""
+Concrete topology and calculator implementations for boundary conditions.
+
+This module contains the concrete implementations of the Topology and
+BoundaryCalculator protocols, plus the LinearConstraint dataclass and
+calculator_to_constraint bridge function.
+
+Extracted from applicator_base.py (mechanical refactor, no logic changes).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from mfgarchon.utils.deprecation import deprecated
+
+from .ghost_cells import (
+    ghost_cell_dirichlet,
+    ghost_cell_fp_no_flux,
+    ghost_cell_neumann,
+    ghost_cell_robin,
+)
+from .protocols import BoundaryCalculator, FieldData, GridType
+
+# =============================================================================
+# Concrete Topology Implementations
+# =============================================================================
+
+
+class PeriodicTopology:
+    """
+    Periodic boundary topology.
+
+    In periodic topology, boundaries wrap around: the ghost cell at the
+    low boundary equals the interior value at the high boundary, and vice versa.
+
+    This is a MEMORY/INDEXING concept, not a physics concept. The Calculator
+    is NOT used for periodic boundaries - values come from wrap-around.
+    """
+
+    def __init__(self, dimension: int, shape: tuple[int, ...]):
+        """
+        Initialize periodic topology.
+
+        Args:
+            dimension: Spatial dimension (1, 2, 3, ...)
+            shape: Grid shape (interior points)
+        """
+        if len(shape) != dimension:
+            raise ValueError(f"Shape length {len(shape)} must match dimension {dimension}")
+        self._dimension = dimension
+        self._shape = shape
+
+    @property
+    def is_periodic(self) -> bool:
+        return True
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._shape
+
+    def __repr__(self) -> str:
+        return f"PeriodicTopology(dimension={self._dimension}, shape={self._shape})"
+
+
+class BoundedTopology:
+    """
+    Bounded (non-periodic) boundary topology.
+
+    In bounded topology, boundaries are physical edges that require ghost
+    values computed by a Calculator. The topology itself just marks that
+    boundaries exist - the Calculator provides the values.
+
+    This separation enables:
+    - Same Calculator works with any bounded grid
+    - Different Calculators can be swapped without changing topology
+    """
+
+    def __init__(self, dimension: int, shape: tuple[int, ...]):
+        """
+        Initialize bounded topology.
+
+        Args:
+            dimension: Spatial dimension (1, 2, 3, ...)
+            shape: Grid shape (interior points)
+        """
+        if len(shape) != dimension:
+            raise ValueError(f"Shape length {len(shape)} must match dimension {dimension}")
+        self._dimension = dimension
+        self._shape = shape
+
+    @property
+    def is_periodic(self) -> bool:
+        return False
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self._shape
+
+    def __repr__(self) -> str:
+        return f"BoundedTopology(dimension={self._dimension}, shape={self._shape})"
+
+
+# =============================================================================
+# Concrete Calculator Implementations
+# =============================================================================
+
+
+class DirichletCalculator:
+    """
+    Calculator for Dirichlet (fixed value) boundary conditions.
+
+    Computes ghost cell value such that the boundary value equals the
+    prescribed value g:
+        u_boundary = (u_ghost + u_interior) / 2 = g  (cell-centered)
+        => u_ghost = 2*g - u_interior
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(
+        self,
+        boundary_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Dirichlet calculator.
+
+        Args:
+            boundary_value: Prescribed value at boundary
+            grid_type: Grid type (cell-centered or vertex-centered)
+        """
+        self._boundary_value = boundary_value
+        self._grid_type = grid_type
+
+    @property
+    def boundary_value(self) -> float:
+        return self._boundary_value
+
+    @property
+    def grid_type(self) -> GridType:
+        return self._grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """Compute ghost value for Dirichlet BC (vectorized)."""
+        # NumPy broadcasting handles both scalar and array inputs
+        return ghost_cell_dirichlet(interior_value, self._boundary_value, self._grid_type)
+
+    def __repr__(self) -> str:
+        return f"DirichletCalculator(boundary_value={self._boundary_value})"
+
+
+class NeumannCalculator:
+    """
+    Calculator for Neumann (fixed flux) boundary conditions.
+
+    Computes ghost cell value such that the normal derivative equals
+    the prescribed flux g:
+        du/dn = (u_ghost - u_interior) / (2*dx) = g  (cell-centered)
+        => u_ghost = u_interior + 2*dx*g
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(
+        self,
+        flux_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Neumann calculator.
+
+        Args:
+            flux_value: Prescribed normal flux (du/dn)
+            grid_type: Grid type
+        """
+        self._flux_value = flux_value
+        self._grid_type = grid_type
+
+    @property
+    def flux_value(self) -> float:
+        return self._flux_value
+
+    @property
+    def grid_type(self) -> GridType:
+        return self._grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """Compute ghost value for Neumann BC (vectorized)."""
+        # Outward normal sign: +1 for max boundary, -1 for min boundary
+        outward_sign = 1.0 if side == "max" else -1.0
+        return ghost_cell_neumann(interior_value, self._flux_value, dx, outward_sign, self._grid_type)
+
+    def __repr__(self) -> str:
+        return f"NeumannCalculator(flux_value={self._flux_value})"
+
+
+class RobinCalculator:
+    """
+    Calculator for Robin (mixed) boundary conditions.
+
+    Computes ghost cell value for the Robin condition:
+        alpha*u + beta*du/dn = g
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(
+        self,
+        alpha: float = 1.0,
+        beta: float = 0.0,
+        rhs_value: float = 0.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize Robin calculator.
+
+        Args:
+            alpha: Coefficient on u (Dirichlet weight)
+            beta: Coefficient on du/dn (Neumann weight)
+            rhs_value: Right-hand side value g
+            grid_type: Grid type
+        """
+        self._alpha = alpha
+        self._beta = beta
+        self._rhs_value = rhs_value
+        self._grid_type = grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """Compute ghost value for Robin BC (vectorized)."""
+        outward_sign = 1.0 if side == "max" else -1.0
+        return ghost_cell_robin(
+            interior_value,
+            self._rhs_value,
+            self._alpha,
+            self._beta,
+            dx,
+            outward_sign,
+            self._grid_type,
+        )
+
+    def __repr__(self) -> str:
+        return f"RobinCalculator(alpha={self._alpha}, beta={self._beta}, rhs={self._rhs_value})"
+
+
+class ZeroGradientCalculator:
+    """
+    Calculator for zero gradient (du/dn = 0) boundary conditions.
+
+    Implements edge extension: ghost = interior, ensuring du/dn = 0.
+
+    Physical meaning: The field has no gradient normal to the boundary.
+    Use cases:
+    - HJB value functions at reflective walls
+    - Any field needing smooth extension at boundaries
+
+    **For mass-conserving boundaries (FP equations), use ZeroFluxCalculator instead.**
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(self, grid_type: GridType = GridType.CELL_CENTERED):
+        self._grid_type = grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        **kwargs,
+    ) -> T:
+        """Compute ghost value for zero gradient BC (edge extension, vectorized)."""
+        # Simply return interior value - works for both scalar and array
+        return interior_value
+
+    def __repr__(self) -> str:
+        return "ZeroGradientCalculator()"
+
+
+# Backward compatibility alias (with deprecation warning)
+class NoFluxCalculator(ZeroGradientCalculator):
+    """
+    Deprecated alias for ZeroGradientCalculator.
+
+    .. deprecated:: 0.16.11
+        Use :class:`ZeroGradientCalculator` instead for du/dn = 0.
+        For mass-conserving flux BC (J*n = 0), use :class:`ZeroFluxCalculator`.
+    """
+
+    @deprecated(
+        since="v0.16.11",
+        replacement="Use ZeroGradientCalculator for du/dn = 0, or ZeroFluxCalculator for J*n = 0.",
+    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class LinearExtrapolationCalculator:
+    """
+    Calculator for linear extrapolation boundary conditions.
+
+    Uses zero second derivative (d^2 u/dx^2 = 0) at boundary.
+    Ghost = 2*u_0 - u_1
+
+    Suitable for HJB problems with linear value growth at infinity.
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        second_interior_value: T | None = None,
+        **kwargs,
+    ) -> T:
+        """
+        Compute ghost value via linear extrapolation (vectorized).
+
+        Args:
+            interior_value: Value at point adjacent to boundary (u_0)
+            dx: Grid spacing (not used, but part of protocol)
+            side: Boundary side (not used, but part of protocol)
+            second_interior_value: Value at second interior point (u_1)
+
+        Returns:
+            Ghost value = 2*u_0 - u_1
+        """
+        if second_interior_value is None:
+            # Fall back to edge extension if second value not provided
+            return interior_value
+        # Vectorized: works for both scalar and array
+        return 2.0 * interior_value - second_interior_value
+
+    def __repr__(self) -> str:
+        return "LinearExtrapolationCalculator()"
+
+
+class QuadraticExtrapolationCalculator:
+    """
+    Calculator for quadratic extrapolation boundary conditions.
+
+    Uses zero third derivative (d^3 u/dx^3 = 0) at boundary.
+    Ghost = 3*u_0 - 3*u_1 + u_2
+
+    Suitable for LQG-type problems with quadratic value functions.
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        second_interior_value: T | None = None,
+        third_interior_value: T | None = None,
+        **kwargs,
+    ) -> T:
+        """
+        Compute ghost value via quadratic extrapolation (vectorized).
+
+        Args:
+            interior_value: Value at point adjacent to boundary (u_0)
+            dx: Grid spacing (not used)
+            side: Boundary side (not used)
+            second_interior_value: Value at second interior point (u_1)
+            third_interior_value: Value at third interior point (u_2)
+
+        Returns:
+            Ghost value = 3*u_0 - 3*u_1 + u_2
+        """
+        if second_interior_value is None or third_interior_value is None:
+            # Fall back to linear if not enough points
+            if second_interior_value is not None:
+                return 2.0 * interior_value - second_interior_value
+            return interior_value
+        # Vectorized: works for both scalar and array
+        return 3.0 * interior_value - 3.0 * second_interior_value + third_interior_value
+
+    def __repr__(self) -> str:
+        return "QuadraticExtrapolationCalculator()"
+
+
+class ZeroFluxCalculator:
+    """
+    Calculator for zero total flux (J*n = 0) boundary conditions.
+
+    For advection-diffusion equations, this ensures the total flux
+    J = v*rho - D*grad(rho) vanishes at the boundary, preserving mass conservation.
+
+    Formula: u_ghost = (2D + v*dx) / (2D - v*dx) * u_interior
+
+    Physical meaning: No mass/probability crosses the boundary.
+    Use cases:
+    - Fokker-Planck density with impermeable walls
+    - Any advection-diffusion equation requiring mass conservation
+
+    **For zero gradient (du/dn = 0), use ZeroGradientCalculator instead.**
+
+    Supports vectorized operations for efficient array processing.
+    """
+
+    def __init__(
+        self,
+        drift_velocity: float = 0.0,
+        diffusion_coeff: float = 1.0,
+        grid_type: GridType = GridType.CELL_CENTERED,
+    ):
+        """
+        Initialize FP no-flux calculator.
+
+        Args:
+            drift_velocity: Normal component of drift (positive = outward)
+            diffusion_coeff: Diffusion coefficient D = sigma^2/2
+            grid_type: Grid type
+        """
+        self._drift = drift_velocity
+        self._diffusion = diffusion_coeff
+        self._grid_type = grid_type
+
+    def compute[T: FieldData](
+        self,
+        interior_value: T,
+        dx: float,
+        side: str,
+        drift_velocity: float | None = None,
+        **kwargs,
+    ) -> T:
+        """
+        Compute ghost value for FP no-flux BC (vectorized).
+
+        Args:
+            interior_value: Density at interior point(s)
+            dx: Grid spacing
+            side: Boundary side ('min' or 'max')
+            drift_velocity: Override drift velocity (optional)
+
+        Returns:
+            Ghost value(s) ensuring zero total flux J*n = 0
+        """
+        outward_sign = 1.0 if side == "max" else -1.0
+        v = drift_velocity if drift_velocity is not None else self._drift
+        # Vectorized formula: works for both scalar and array
+        return ghost_cell_fp_no_flux(
+            interior_value,
+            v,
+            self._diffusion,
+            dx,
+            outward_sign,
+            self._grid_type,
+        )
+
+    def __repr__(self) -> str:
+        return f"ZeroFluxCalculator(drift={self._drift}, D={self._diffusion})"
+
+
+# Backward compatibility alias (with deprecation warning)
+class FPNoFluxCalculator(ZeroFluxCalculator):
+    """
+    Deprecated alias for ZeroFluxCalculator.
+
+    .. deprecated:: 0.16.11
+        Use :class:`ZeroFluxCalculator` instead for J*n = 0 (mass conservation).
+    """
+
+    @deprecated(
+        since="v0.16.11",
+        replacement="Use ZeroFluxCalculator instead for J*n = 0 (mass conservation).",
+    )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+# =============================================================================
+# LinearConstraint: Bridge between Ghost Cells and Matrix Assembly
+# =============================================================================
+#
+# The "Tier-Based Coefficient Folding" pattern from bc_architecture_analysis.md
+#
+# For EXPLICIT schemes: Ghost cells are filled with computed values
+#   u_ghost = Calculator.compute(u_inner, dx)
+#
+# For IMPLICIT schemes: Ghost node relationships become matrix coefficients
+#   u_ghost = sum(weights[k] * u[inner+k]) + bias
+#
+# This dataclass expresses the linear relationship for matrix folding:
+#   Tier 1 (State/Dirichlet): weights={}, bias=value
+#   Tier 2 (Gradient/Neumann): weights={0: 1.0}, bias=dx*grad
+#   Tier 3 (Flux/Robin): weights={0: alpha}, bias=0
+#   Tier 4 (Artificial/Extrapolation): weights={0: 2.0, 1: -1.0}, bias=0
+# =============================================================================
+
+
+@dataclass
+class LinearConstraint:
+    """
+    Linear constraint expressing ghost cell as function of interior values.
+
+    For matrix assembly, when a stencil accesses ghost index j, the assembler:
+    1. Adds weight * w to A[i, inner+k] for each (k, w) in weights
+    2. Subtracts weight * bias from b[i]
+
+    This is the "Coefficient Folding" pattern from the 2+4 BC architecture.
+
+    Attributes:
+        weights: Mapping from relative offset to weight. Offset 0 = boundary cell,
+                 offset 1 = one cell inward, etc.
+        bias: Constant term (for Dirichlet values or gradient offsets)
+
+    Examples:
+        # Tier 1: Dirichlet u=g -> u_ghost = g (constant)
+        LinearConstraint(weights={}, bias=g)
+
+        # Tier 2: Neumann du/dn=0 -> u_ghost = u_inner
+        LinearConstraint(weights={0: 1.0}, bias=0.0)
+
+        # Tier 2: Neumann du/dn=g -> u_ghost = u_inner + dx*g
+        LinearConstraint(weights={0: 1.0}, bias=dx * g)
+
+        # Tier 3: Robin (FP no-flux) -> u_ghost = alpha * u_inner
+        LinearConstraint(weights={0: alpha}, bias=0.0)
+
+        # Tier 4: Linear extrapolation -> u_ghost = 2*u[0] - u[1]
+        LinearConstraint(weights={0: 2.0, 1: -1.0}, bias=0.0)
+    """
+
+    weights: dict[int, float]
+    bias: float = 0.0
+
+
+def calculator_to_constraint(
+    calculator: BoundaryCalculator | None,
+    dx: float,
+    side: str,
+    grid_type: GridType = GridType.CELL_CENTERED,
+) -> LinearConstraint:
+    """
+    Convert a BoundaryCalculator to LinearConstraint for matrix assembly.
+
+    This bridges the explicit (ghost cell) and implicit (matrix) worlds,
+    ensuring mathematical equivalence as required by GKS stability.
+
+    Args:
+        calculator: The physics calculator (None for periodic topology)
+        dx: Grid spacing
+        side: Boundary side ('min' or 'max')
+        grid_type: Grid alignment type
+
+    Returns:
+        LinearConstraint describing how ghost depends on interior values
+
+    Note:
+        For periodic topology, this function should not be called - the
+        Topology layer handles periodic by index wrapping, no physics needed.
+    """
+    if calculator is None:
+        # Periodic topology - should not reach here
+        raise ValueError("Periodic boundaries use index wrapping, not LinearConstraint")
+
+    # Tier 1: State constraints (Dirichlet)
+    if isinstance(calculator, DirichletCalculator):
+        return LinearConstraint(weights={}, bias=calculator._boundary_value)
+
+    # Tier 2: Gradient constraints (Neumann/ZeroGradient)
+    if isinstance(calculator, (NeumannCalculator, ZeroGradientCalculator)):
+        flux_value = calculator._flux_value if isinstance(calculator, NeumannCalculator) else 0.0
+        # For cell-centered: u_ghost = u_inner +/- dx * g (sign depends on side)
+        sign = 1.0 if side == "max" else -1.0
+        return LinearConstraint(weights={0: 1.0}, bias=sign * dx * flux_value)
+
+    # Tier 3: Flux constraints (Robin/ZeroFlux)
+    if isinstance(calculator, (RobinCalculator, ZeroFluxCalculator)):
+        if isinstance(calculator, ZeroFluxCalculator):
+            # FP no-flux: alpha = (2D + v*dx) / (2D - v*dx)
+            v = calculator._drift
+            D = calculator._diffusion
+            outward_sign = 1.0 if side == "max" else -1.0
+            v_n = v * outward_sign
+            alpha = (2 * D + v_n * dx) / (2 * D - v_n * dx + 1e-14)
+            return LinearConstraint(weights={0: alpha}, bias=0.0)
+        else:
+            # General Robin: alpha*u + beta*(u_ghost - u_inner)/(2*dx) = g
+            # (central difference for du/dn, outward sign absorbed by side convention)
+            # Solving for u_ghost:
+            #   u_ghost = u_inner * (beta - 2*alpha*dx) / (beta + 2*alpha*dx) + 4*g*dx / (beta + 2*alpha*dx)
+            # when beta = 0 -> Dirichlet; when alpha = 0 -> Neumann (degenerate cases handled above)
+            alpha = calculator._alpha
+            beta = calculator._beta
+            g = calculator._rhs_value
+            outward_sign = 1.0 if side == "max" else -1.0
+            # Effective beta with outward sign
+            beta_eff = beta * outward_sign
+            denom = beta_eff + 2 * alpha * dx
+            if abs(denom) < 1e-14:
+                # Degenerate: fall back to copy (Neumann-like)
+                return LinearConstraint(weights={0: 1.0}, bias=0.0)
+            weight = (beta_eff - 2 * alpha * dx) / denom
+            bias = 2 * g * dx / denom
+            return LinearConstraint(weights={0: weight}, bias=bias)
+
+    # Tier 4: Artificial constraints (Extrapolation)
+    if isinstance(calculator, LinearExtrapolationCalculator):
+        # u_ghost = 2*u[0] - u[1]
+        return LinearConstraint(weights={0: 2.0, 1: -1.0}, bias=0.0)
+
+    if isinstance(calculator, QuadraticExtrapolationCalculator):
+        # u_ghost = 3*u[0] - 3*u[1] + u[2]
+        return LinearConstraint(weights={0: 3.0, 1: -3.0, 2: 1.0}, bias=0.0)
+
+    # Default fallback: Neumann-like (copy interior)
+    return LinearConstraint(weights={0: 1.0}, bias=0.0)
+
+
+__all__ = [
+    # Topology implementations
+    "PeriodicTopology",
+    "BoundedTopology",
+    # Calculator implementations (physics-based naming)
+    "DirichletCalculator",
+    "NeumannCalculator",
+    "RobinCalculator",
+    "ZeroGradientCalculator",  # du/dn = 0 (edge extension)
+    "ZeroFluxCalculator",  # J*n = 0 (mass conservation)
+    "LinearExtrapolationCalculator",
+    "QuadraticExtrapolationCalculator",
+    # Backward compatibility aliases
+    "NoFluxCalculator",  # -> ZeroGradientCalculator
+    "FPNoFluxCalculator",  # -> ZeroFluxCalculator
+    # Matrix assembly support (Tier-Based Coefficient Folding)
+    "LinearConstraint",
+    "calculator_to_constraint",
+]
