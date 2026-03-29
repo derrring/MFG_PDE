@@ -8,9 +8,8 @@
 
 ```python
 import numpy as np
-from mfgarchon import MFGProblem
-from mfgarchon.core import MFGComponents
-from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
+from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import neumann_bc
 
