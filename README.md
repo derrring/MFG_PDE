@@ -24,154 +24,118 @@ pip install -e .
 ### Your First MFG Solution
 
 ```python
+import numpy as np
 from mfgarchon import MFGProblem
+from mfgarchon.core import MFGComponents
+from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import neumann_bc
 
+# Define the MFG problem components
+H = SeparableHamiltonian(
+    control_cost=QuadraticControlCost(control_cost=1.0),
+    coupling=lambda m: 0.1 * m,
+    coupling_dm=lambda m: 0.1 * np.ones_like(m),
+)
+components = MFGComponents(
+    hamiltonian=H,
+    u_terminal=lambda x: np.zeros_like(x),
+    m_initial=lambda x: np.exp(-5 * (x - 0.5) ** 2),
+)
+
 # Create geometry with boundary conditions
-domain = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51],
-                           boundary_conditions=neumann_bc(dimension=1))
+domain = TensorProductGrid(
+    bounds=[(0.0, 1.0)], Nx_points=[51],
+    boundary_conditions=neumann_bc(dimension=1),
+)
 
 # Create and solve
-problem = MFGProblem(geometry=domain, T=1.0, Nt=20)
+problem = MFGProblem(geometry=domain, T=1.0, Nt=20, components=components)
 result = problem.solve()
+print(f"Converged: {result.converged} in {result.iterations} iterations")
 ```
-
-**That's it.** Check convergence with `result.converged` and access solutions via `result.U` and `result.M`.
 
 ---
 
 ## Key Features
 
-- **🎯 Simple API** - From problem definition to solution in 2 lines
-- **⚡ Production-Ready** - 10⁻¹⁵ mass conservation error, 98.4% test pass rate
-- **🧩 Modular** - Mix and match HJB + FP solvers (FDM, Particles, WENO, Neural)
-- **🌐 Multi-Dimensional** - 1D/2D/3D/nD support with automatic dimensional splitting
-- **🔀 Dual Geometry** - Separate discretizations for HJB and FP (multi-resolution, FEM meshes)
-- **🎮 Reinforcement Learning** - Complete RL framework (DDPG, TD3, SAC)
-- **⚡ GPU Acceleration** - PyTorch, JAX, Numba backends
-- **🛠️ Essential Utilities** - Particle interpolation, SDF, QP caching, convergence monitoring
+- **Simple API** - From problem definition to solution in a few lines
+- **Production-Ready** - 3,700+ tests passing, 10^-15 mass conservation error
+- **Modular** - Mix and match HJB + FP solvers (FDM, GFDM, Semi-Lagrangian, WENO, Particles, FEM, Neural)
+- **Multi-Dimensional** - 1D/2D/3D/nD support with TensorProductGrid and implicit domains
+- **Geometry Traits** - 12 protocol-based traits for solver-geometry compatibility validation
+- **Unified BC Framework** - 4-layer architecture (Specification, Resolution, Enforcement, Application)
+- **Dual Geometry** - Separate HJB/FP discretizations with automatic projection
+- **Reinforcement Learning** - Complete RL framework (DDPG, TD3, SAC)
+- **GPU Acceleration** - PyTorch, JAX, Numba backends
 
 ---
 
 ## Documentation
 
-**Tutorials**:
-- [Getting Started](examples/tutorials/01_getting_started.md) - First solve in 30 minutes
-- [Configuration Patterns](examples/tutorials/02_configuration_patterns.md) - Three ways to configure
-- [Examples](examples/) - Working code examples
+**Tutorials** (`examples/tutorials/`):
+- [01 - Hello MFG](examples/tutorials/01_hello_mfg.py) - Your first MFG solve
+- [02 - Custom Hamiltonian](examples/tutorials/02_custom_hamiltonian.py) - Non-quadratic control
+- [03 - 2D Geometry](examples/tutorials/03_2d_geometry.py) - Multi-dimensional problems
+- [04 - Particle Methods](examples/tutorials/04_particle_methods.py) - Monte Carlo FP solver
+- [05 - Config System](examples/tutorials/05_config_system.py) - Pydantic + OmegaConf
+- [06 - BC Coupling](examples/tutorials/06_boundary_condition_coupling.py) - Adjoint-consistent BC
 
-**Guides**:
-- [Configuration System](docs/user/configuration_system.md) - Pydantic + OmegaConf dual architecture
-- [Particle Interpolation](docs/user/particle_interpolation.md) - Grid-particle transfer
-- [SDF Utilities](docs/user/sdf_utilities.md) - Geometry and obstacles
-- [Developer Guide](docs/development/) - Extending the framework
-
----
-
-## Examples
-
-### Custom Solver Parameters
-
-```python
-result = problem.solve(
-    max_iterations=200,
-    tolerance=1e-8,
-    verbose=True
-)
-
-print(f"Converged: {result.converged} in {result.iterations} iterations")
-```
-
-### Dual Geometry
-
-```python
-from mfgarchon import MFGProblem
-from mfgarchon.geometry import TensorProductGrid
-from mfgarchon.geometry.boundary import no_flux_bc
-
-# Multi-resolution: fine HJB + coarse FP
-hjb_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[101, 101],
-                              boundary_conditions=no_flux_bc(dimension=2))
-fp_grid = TensorProductGrid(bounds=[(0, 1), (0, 1)], Nx_points=[26, 26],
-                             boundary_conditions=no_flux_bc(dimension=2))
-
-problem = MFGProblem(
-    hjb_geometry=hjb_grid,
-    fp_geometry=fp_grid,
-    T=1.0, Nt=100, diffusion=0.1
-)
-
-# Projections handled automatically
-result = problem.solve()
-```
-
-### Utilities
-
-```python
-# Particle interpolation
-from mfgarchon.utils import interpolate_grid_to_particles
-u_particles = interpolate_grid_to_particles(u_grid, (0, 1), particles)
-
-# Signed distance functions
-from mfgarchon.utils import sdf_sphere, sdf_box, sdf_union
-obstacles = sdf_union(
-    sdf_sphere(points, center=[0.3, 0.5], radius=0.1),
-    sdf_box(points, bounds=[[0.6, 0.8], [0.4, 0.6]])
-)
-
-# QP caching (2-5x speedup for GFDM)
-from mfgarchon.utils import QPSolver, QPCache
-solver = QPSolver(backend="osqp", cache=QPCache(max_size=1000))
-```
+**Guides** (`docs/user/guides/`):
+- [Boundary Conditions](docs/user/guides/boundary_conditions.md) - BC types, mixed BC, ghost cells
+- [Advanced BC](docs/user/advanced_boundary_conditions.md) - Variational inequalities, moving boundaries
+- [Backend Usage](docs/user/guides/backend_usage.md) - NumPy, JAX, PyTorch backends
+- [Maze Generation](docs/user/guides/maze_generation.md) - Graph-based MFG domains
 
 ---
 
 ## Numerical Methods
 
 ### HJB Solvers
-- **Finite Difference (FDM)** - Standard grid-based discretization
-- **GFDM with Monotonicity** - Generalized FDM with QP-based monotone scheme enforcement, direct Hamiltonian gradient constraints
-- **Semi-Lagrangian** - Adaptive time-stepping with CFL monitoring
-- **WENO** - High-order shock-capturing schemes for non-smooth solutions
-- **Neural (DGM, PINN)** - Deep learning approaches for high dimensions
+- **Finite Difference (FDM)** - Standard grid-based with upwind schemes
+- **GFDM** - Meshfree generalized FDM with QP-monotonicity enforcement
+- **Semi-Lagrangian** - Adaptive time-stepping with periodic BC support
+- **WENO** - High-order (5th) shock-capturing with high-order ghost nodes
+- **FEM** - scikit-fem based P1/P2 finite elements on unstructured meshes
+- **Neural (DGM, PINN)** - Deep learning for high dimensions
 
 ### Fokker-Planck Solvers
-- **FDM** - Conservative finite difference schemes
-- **Particle Methods** - Monte Carlo, kernel density estimation
+- **FDM** - Conservative finite difference with dict-dispatched BC
+- **Particle Methods** - Monte Carlo, KDE, MCMC sampling
+- **FEM** - Mass-conserving Galerkin weak form
+- **Semi-Lagrangian Adjoint** - Structure-preserving forward splatting
 
-### Operator Infrastructure
-- **RBF Operators** - Radial basis function differential operators for meshless methods
-- **GFDM Operators** - Generalized finite difference with polynomial basis
-- **JAX Autodiff** - Automatic Jacobian computation for O(1) Newton iteration
+### Coupling Methods
+- **Fixed-Point (Picard)** - With Anderson acceleration and adaptive damping
+- **Fictitious Play** - Decaying learning rates for potential games
+- **Block Iterators** - Jacobi and Gauss-Seidel with true adjoint mode
+- **Newton** - Quadratic convergence near solution
 
 ### Geometry & Boundaries
-- **SDF Utilities** - Signed distance functions with CSG operations (union, intersection, difference)
-- **Boundary Normals** - SDF-based normal computation and projection
-- **Dual Geometry** - Separate HJB/FP discretizations, multi-resolution support
+- **TensorProductGrid** - Structured nD grids with 12 trait protocols
+- **Implicit Domains** - SDF-based meshfree geometry with CSG operations
+- **Unstructured Meshes** - Gmsh integration for FEM (Mesh1D/2D/3D)
+- **Graph Networks** - MFG on abstract graphs and mazes
+- **Region Predicates** - `box_region()`, `sphere_region()`, `sdf_region()` for spatial marking
 
-See [Changelog](CHANGELOG.md) for version history.
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ---
 
 ## Optional Dependencies
 
-Additional capabilities can be enabled by installing optional packages:
-
+- **FEM solvers**: `pip install mfgarchon[fem]` (scikit-fem)
 - **Neural solvers** (PINNs, DGM): PyTorch
 - **Reinforcement learning** (DDPG, TD3, SAC): Stable-Baselines3
 - **GPU acceleration**: JAX with CUDA, PyTorch CUDA
-- **Performance**: JAX backend, Numba JIT
-- **Mesh generation**: Gmsh (for Mesh2D/Mesh3D geometry)
+- **Mesh generation**: Gmsh (for Mesh2D/Mesh3D)
 
 ---
 
 ## Requirements
 
 - Python 3.12+
-- NumPy, SciPy, Matplotlib (installed automatically)
-
-Optional: PyTorch, JAX, igraph, plotly (for advanced features)
+- NumPy, SciPy, Matplotlib, Rich (installed automatically)
 
 ---
 
