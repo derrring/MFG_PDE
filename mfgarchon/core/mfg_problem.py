@@ -476,6 +476,16 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             self._v1_conditions = None
             self._v1_constraints = None
 
+            # Issue #875: Deprecation warning for legacy API path
+            warnings.warn(
+                "Legacy MFGProblem(geometry=, components=, sigma=, T=, Nt=) is deprecated. "
+                "Use the v1.0 API: MFGProblem(model=Model(...), domain=grid, "
+                "conditions=Conditions(...), Nt=50). "
+                "Legacy support will be removed in v1.0.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         # Normalize parameter aliases
         if time_domain is not None:
             if T is not None or Nt is not None:
