@@ -45,6 +45,7 @@ from .mfg_components import (
     MFGComponents,
 )
 from .mfg_problem import MFGProblem
+from .model import Conditions, ErgodicConditions, Model
 
 __all__ = [
     # Geometry
@@ -59,6 +60,10 @@ __all__ = [
     # Base MFG problem
     "MFGProblem",
     "MFGComponents",
+    # API v1.0 classes (Issue #875)
+    "Model",
+    "Conditions",
+    "ErgodicConditions",
     # Mixins
     "HamiltonianMixin",
     "ConditionsMixin",

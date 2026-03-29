@@ -227,6 +227,12 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
     )
     def __init__(
         self,
+        # === API v1.0 parameters (Issue #875) ===
+        model: Any | None = None,  # Model instance (game rules)
+        domain: GeometryProtocol | None = None,  # Spatial geometry
+        conditions: Any | None = None,  # Conditions instance (time + IC/TC)
+        constraints: list | None = None,  # Optional constraints (future)
+        # === Legacy parameters (all below deprecated in favor of model/domain/conditions) ===
         # Legacy 1D parameters (backward compatible - scalars will be converted to arrays with deprecation warning)
         xmin: float | list[float] | None = None,
         xmax: float | list[float] | None = None,
@@ -388,6 +394,87 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             )
         """
         import warnings
+
+        # =====================================================================
+        # API v1.0 path (Issue #875): Model + Domain + Conditions
+        # =====================================================================
+        from mfgarchon.core.model import Conditions as _Conditions
+        from mfgarchon.core.model import Model as _Model
+
+        _new_api = model is not None or domain is not None or conditions is not None
+        if _new_api:
+            # Validate all three are provided
+            if model is None or domain is None or conditions is None:
+                _missing = [
+                    n for n, v in [("model", model), ("domain", domain), ("conditions", conditions)] if v is None
+                ]
+                raise ValueError(
+                    f"API v1.0 requires all three: model, domain, conditions. Missing: {', '.join(_missing)}"
+                )
+            if not isinstance(model, _Model):
+                raise TypeError(f"model must be a Model instance, got {type(model).__name__}")
+            if not isinstance(conditions, _Conditions):
+                raise TypeError(f"conditions must be a Conditions instance, got {type(conditions).__name__}")
+
+            # Check for conflicting legacy parameters
+            # Note: Nt is allowed with v1.0 API — sets construction default
+            # (can be overridden at solve() time)
+            _legacy_params = {
+                n: v
+                for n, v in [
+                    ("geometry", geometry),
+                    ("xmin", xmin),
+                    ("xmax", xmax),
+                    ("Nx", Nx),
+                    ("spatial_bounds", spatial_bounds),
+                    ("spatial_discretization", spatial_discretization),
+                    ("sigma", sigma),
+                    ("diffusion", diffusion),
+                    ("volatility", volatility),
+                    ("T", T),
+                    ("time_domain", time_domain),
+                    ("components", components),
+                    ("hamiltonian", hamiltonian),
+                ]
+                if v is not None
+            }
+            if _legacy_params:
+                raise ValueError(
+                    f"Cannot mix API v1.0 (model/domain/conditions) with legacy parameters. "
+                    f"Got legacy parameters: {', '.join(_legacy_params.keys())}"
+                )
+
+            # Translate to legacy parameters
+            geometry = domain
+            sigma = model.sigma
+            T = conditions.T
+            # Nt must be provided — fail fast (no silent defaults)
+            if Nt is None:
+                raise ValueError(
+                    "Nt (time discretization) is required. "
+                    "Pass Nt= to MFGProblem() or use problem.solve(Nt=...).\n"
+                    "  MFGProblem(model=..., domain=..., conditions=..., Nt=50)"
+                )
+            # Build MFGComponents from Model + Conditions
+            _h = (
+                model.effective_hamiltonian if (model.hamiltonian is not None or model.lagrangian is not None) else None
+            )
+            components = MFGComponents(
+                hamiltonian=_h,
+                u_terminal=conditions.u_terminal,
+                m_initial=conditions.m_initial,
+            )
+            # Drift-only models: pass drift through
+            if model.drift_field is not None:
+                drift = model.drift_field
+            # Store v1.0 objects for solve() and with_*() methods
+            self._v1_model = model
+            self._v1_conditions = conditions
+            self._v1_constraints = constraints
+        else:
+            self._v1_model = None
+            self._v1_conditions = None
+            self._v1_constraints = None
 
         # Normalize parameter aliases
         if time_domain is not None:
@@ -2251,6 +2338,8 @@ See: docs/migration/HAMILTONIAN_API.md"""
 
     def solve(
         self,
+        Nt: int | None = None,
+        *,
         max_iterations: int | None = None,
         tolerance: float | None = None,
         verbose: bool | None = None,
@@ -2279,6 +2368,10 @@ See: docs/migration/HAMILTONIAN_API.md"""
             Analyzes geometry and selects appropriate scheme automatically.
 
         Args:
+            Nt: Time discretization steps (Issue #875). If provided, overrides
+                the Nt stored at construction time. This separates physics (T)
+                from numerics (Nt) — different solvers may want different Nt
+                for the same physical problem.
             max_iterations: Maximum fixed-point iterations (default: from config or 100)
             tolerance: Convergence tolerance (default: from config or 1e-6)
             verbose: Show solver progress (default: from config or True)
@@ -2313,6 +2406,35 @@ See: docs/migration/HAMILTONIAN_API.md"""
         from mfgarchon.config import MFGSolverConfig
         from mfgarchon.factory import create_paired_solvers, get_recommended_scheme
         from mfgarchon.utils import check_solver_duality
+
+        # Issue #875: Nt override at solve() time
+        if Nt is not None and Nt != self.Nt:
+            # Nt deeply affects solver setup. For v1.0 API, reconstruct
+            # with the correct Nt and delegate solve to the new problem.
+            if self._v1_model is not None:
+                new_problem = MFGProblem(
+                    model=self._v1_model,
+                    domain=self.geometry,
+                    conditions=self._v1_conditions,
+                    constraints=self._v1_constraints,
+                    Nt=Nt,
+                )
+                return new_problem.solve(
+                    max_iterations=max_iterations,
+                    tolerance=tolerance,
+                    verbose=verbose,
+                    config=config,
+                    scheme=scheme,
+                    hjb_solver=hjb_solver,
+                    fp_solver=fp_solver,
+                )
+            else:
+                raise ValueError(
+                    f"solve(Nt={Nt}) differs from construction Nt={self.Nt}. "
+                    "Nt override at solve time is only supported for v1.0 API problems "
+                    "(created with model/domain/conditions). For legacy problems, "
+                    "reconstruct with the desired Nt."
+                )
 
         # Create or update config
         if config is None:
@@ -2434,3 +2556,51 @@ See: docs/migration/HAMILTONIAN_API.md"""
         )
 
         return solver.solve(verbose=verbose)
+
+    # ==========================================================================
+    # API v1.0: Parameter Variation Helpers (Issue #875)
+    # ==========================================================================
+
+    def with_model(self, model: Any) -> MFGProblem:
+        """Return new problem with different model (game rules).
+
+        Requires that this problem was created with the v1.0 API.
+        """
+        if self._v1_model is None:
+            raise ValueError("with_model() requires a problem created with API v1.0 (model/domain/conditions)")
+        return MFGProblem(
+            model=model,
+            domain=self.geometry,
+            conditions=self._v1_conditions,
+            constraints=self._v1_constraints,
+            Nt=self.Nt,
+        )
+
+    def with_domain(self, domain: Any) -> MFGProblem:
+        """Return new problem with different domain (spatial geometry)."""
+        if self._v1_model is None:
+            raise ValueError("with_domain() requires a problem created with API v1.0 (model/domain/conditions)")
+        return MFGProblem(
+            model=self._v1_model,
+            domain=domain,
+            conditions=self._v1_conditions,
+            constraints=self._v1_constraints,
+            Nt=self.Nt,
+        )
+
+    def with_conditions(self, conditions: Any) -> MFGProblem:
+        """Return new problem with different conditions (time + IC/TC)."""
+        if self._v1_model is None:
+            raise ValueError("with_conditions() requires a problem created with API v1.0 (model/domain/conditions)")
+        return MFGProblem(
+            model=self._v1_model,
+            domain=self.geometry,
+            conditions=conditions,
+            constraints=self._v1_constraints,
+            Nt=self.Nt,
+        )
+
+    # No with_sigma() or with_T() — these are premature convenience shortcuts
+    # that break orthogonality. sigma lives in Model, T lives in Conditions.
+    # Use with_model(Model(hamiltonian=H, sigma=0.2)) or
+    # with_conditions(Conditions(u_terminal=..., m_initial=..., T=2.0)) instead.

@@ -36,6 +36,9 @@ class SolverResult:
         converged: Whether convergence was achieved
         execution_time: Total solve time in seconds
         metadata: Additional solver-specific information
+        ergodic_constant: Ergodic constant lambda for stationary MFG (Issue #875)
+        policy: Optimal control policy alpha*(t, x) as callable (Issue #875)
+        mass_conservation_error: max|sum(m) - 1| over time steps (Issue #875)
     """
 
     U: NDArray[np.floating]
@@ -47,6 +50,9 @@ class SolverResult:
     converged: bool = False
     execution_time: float | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    ergodic_constant: float | None = None
+    policy: Any | None = None
+    mass_conservation_error: float = 0.0
 
     def __init__(
         self,
@@ -59,6 +65,9 @@ class SolverResult:
         converged: bool = False,
         execution_time: float | None = None,
         metadata: dict[str, Any] | None = None,
+        ergodic_constant: float | None = None,
+        policy: Any | None = None,
+        mass_conservation_error: float = 0.0,
     ):
         """
         Initialize SolverResult.
@@ -73,6 +82,9 @@ class SolverResult:
             converged: Whether convergence was achieved
             execution_time: Total solve time in seconds
             metadata: Additional solver-specific information
+            ergodic_constant: Ergodic constant lambda for stationary MFG
+            policy: Optimal control policy alpha*(t, x) as callable
+            mass_conservation_error: max|sum(m) - 1| over time steps
         """
         # Initialize dataclass fields
         self.U = U
@@ -84,6 +96,9 @@ class SolverResult:
         self.converged = converged
         self.execution_time = execution_time
         self.metadata = metadata if metadata is not None else {}
+        self.ergodic_constant = ergodic_constant
+        self.policy = policy
+        self.mass_conservation_error = mass_conservation_error
 
         # Validate
         self.__post_init__()

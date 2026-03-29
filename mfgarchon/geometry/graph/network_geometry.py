@@ -957,6 +957,8 @@ class GridNetwork(NetworkGeometry):
         self.height = height or width
         self.periodic = periodic
         super().__init__(self.width * self.height, NetworkType.GRID, backend_preference)
+        # Issue #875: Auto-initialize network so users don't need to call create_network()
+        self.create_network()
 
     def get_adjacency_matrix(self) -> NDArray:
         """Get adjacency matrix for the grid network."""
@@ -1047,6 +1049,8 @@ class RandomNetwork(NetworkGeometry):
     ):
         self.connection_prob = connection_prob
         super().__init__(num_nodes, NetworkType.RANDOM, backend_preference)
+        # Issue #875: Auto-initialize network
+        self.create_network()
 
     def get_adjacency_matrix(self) -> NDArray:
         """Get adjacency matrix for the random network."""
@@ -1124,6 +1128,8 @@ class ScaleFreeNetwork(NetworkGeometry):
     ):
         self.num_edges_per_node = num_edges_per_node
         super().__init__(num_nodes, NetworkType.SCALE_FREE, backend_preference)
+        # Issue #875: Auto-initialize network
+        self.create_network()
 
     def get_adjacency_matrix(self) -> NDArray:
         """Get adjacency matrix for the scale-free network."""
