@@ -94,7 +94,6 @@ Advanced numerical methods:
 - `semi_lagrangian_validation.py` - Semi-Lagrangian HJB solver
 - `semi_lagrangian_2d_enhancements.py` - 2D Semi-Lagrangian
 - `weno_family_comparison_demo.py` - WENO schemes comparison
-- `hybrid_fp_particle_hjb_fdm_demo.py` - Hybrid particle-FDM methods
 - `particle_collocation_dual_mode_demo.py` - Particle collocation
 - `jax_acceleration_demo.py` - JAX GPU acceleration
 

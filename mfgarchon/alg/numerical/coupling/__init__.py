@@ -34,7 +34,6 @@ from .fixed_point_utils import (
     preserve_initial_condition,
     preserve_terminal_condition,
 )
-from .hybrid_fp_particle_hjb_fdm import HybridFPParticleHJBFDM
 
 # Newton family solvers (Issue #492)
 from .mfg_residual import MFGResidual
@@ -46,7 +45,6 @@ __all__ = [
     "BaseMFGSolver",
     "FixedPointIterator",
     "FictitiousPlayIterator",
-    "HybridFPParticleHJBFDM",
     # Block iterators (Issue #492 Phase 2)
     "BlockIterator",
     "BlockJacobiIterator",
@@ -84,11 +82,7 @@ NEWTON_SOLVERS = [
 
 # Note: PARTICLE_SOLVERS category removed - removed from core package
 
-HYBRID_SOLVERS = [
-    "HybridFPParticleHJBFDM",  # FP-Particle + HJB-FDM hybrid solver
-]
-
 # JAX-accelerated solvers (optional)
 JAX_SOLVERS: list[str] = []
 
-ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + BLOCK_SOLVERS + NEWTON_SOLVERS + HYBRID_SOLVERS + JAX_SOLVERS
+ALL_MFG_SOLVERS = FIXED_POINT_SOLVERS + BLOCK_SOLVERS + NEWTON_SOLVERS + JAX_SOLVERS

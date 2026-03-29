@@ -123,6 +123,9 @@ from .masks import (
 # Mesh geometry
 from .meshes import Mesh1D, Mesh2D, Mesh3D, MeshData, MeshManager, MeshPipeline, MeshVisualizationMode
 
+# Region predicate factories (BC Roadmap Phase 1.3)
+from .predicates import box_region, halfspace_region, sdf_region, sphere_region
+
 # Unified geometry protocol
 from .protocol import (
     # Boundary-aware protocol (for unified BC handling)
@@ -218,6 +221,11 @@ __all__ = [
     "ImplicitDomain",
     "IntersectionDomain",
     "UnionDomain",
+    # Region predicate factories (BC Roadmap Phase 1.3)
+    "box_region",
+    "sphere_region",
+    "sdf_region",
+    "halfspace_region",
     # Factory and utility functions
     "compute_network_statistics",
     "create_network",

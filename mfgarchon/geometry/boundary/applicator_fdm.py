@@ -74,8 +74,6 @@ import numpy as np
 
 from mfgarchon.utils.mfg_logging import get_logger
 
-# GhostCellConfig is still used for configuration
-from ._compat import GhostCellConfig
 from .applicator_base import (
     BaseStructuredApplicator,
     BoundaryCalculator,
@@ -94,6 +92,7 @@ from .applicator_base import (
 from .conditions import BoundaryConditions
 from .enforcement import enforce_dirichlet_value_nd, enforce_neumann_value_nd
 from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
+from .ghost_cells import GhostCellConfig
 from .types import BCSegment, BCType
 
 logger = get_logger(__name__)

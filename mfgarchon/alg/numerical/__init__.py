@@ -18,7 +18,6 @@ from mfgarchon.alg.base_solver import BaseNumericalSolver
 from .coupling import (
     BaseMFGSolver,
     FixedPointIterator,
-    HybridFPParticleHJBFDM,
 )
 
 # Import FP solvers
@@ -64,6 +63,4 @@ __all__ = [
     "NetworkHJBSolver",
     # Coupling Methods
     "FixedPointIterator",
-    "HybridFPParticleHJBFDM",
-    # Note: ParticleCollocationSolver has been removed from core package
 ]

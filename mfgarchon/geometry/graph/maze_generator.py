@@ -278,6 +278,7 @@ class MazeGeometry(GraphGeometry):
         self.cols = cols
         self.algorithm = algorithm
         self.grid = Grid(rows, cols)
+        self._regions: dict[str, np.ndarray] = {}
 
         # Generate maze immediately
         self.generate(seed=seed)

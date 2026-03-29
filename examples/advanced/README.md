@@ -7,7 +7,7 @@ Multi-feature demonstrations combining multiple concepts and advanced techniques
 ```bash
 # Run any example
 python examples/advanced/applications/traffic_flow_2d_demo.py
-python examples/advanced/solvers_advanced/hybrid_fp_particle_hjb_fdm_demo.py
+python examples/advanced/solvers_advanced/semi_lagrangian_validation.py
 
 # Outputs saved to examples/outputs/advanced/
 ```
@@ -38,7 +38,6 @@ Advanced numerical methods and hybrid approaches:
 - **`semi_lagrangian_validation.py`** - Semi-Lagrangian HJB solver
 - **`semi_lagrangian_2d_enhancements.py`** - 2D Semi-Lagrangian enhancements
 - **`weno_family_comparison_demo.py`** - WENO schemes comparison
-- **`hybrid_fp_particle_hjb_fdm_demo.py`** - Hybrid particle-FDM methods
 - **`particle_collocation_dual_mode_demo.py`** - Particle collocation with dual modes
 - **`jax_acceleration_demo.py`** - JAX GPU acceleration
 
@@ -202,7 +201,6 @@ All examples save to `examples/outputs/advanced/`:
 
 3. **Solvers** (Numerical methods):
    - `solvers_advanced/semi_lagrangian_validation.py`
-   - `solvers_advanced/hybrid_fp_particle_hjb_fdm_demo.py`
 
 4. **Machine Learning** (Data-driven):
    - `machine_learning/pinn_mfg_example.py`
