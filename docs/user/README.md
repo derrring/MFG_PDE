@@ -45,12 +45,12 @@ Step-by-step learning from basics to advanced:
 
 | Tutorial | Topic |
 |:---------|:------|
-| [01 - Hello MFG](../../examples/tutorials/01_hello_mfg.py) | First MFG solve |
-| [02 - Custom Hamiltonian](../../examples/tutorials/02_custom_hamiltonian.py) | Non-quadratic control |
-| [03 - 2D Geometry](../../examples/tutorials/03_2d_geometry.py) | Multi-dimensional problems |
-| [04 - Particle Methods](../../examples/tutorials/04_particle_methods.py) | Monte Carlo FP solver |
-| [05 - Config System](../../examples/tutorials/05_config_system.py) | Pydantic + OmegaConf |
-| [06 - BC Coupling](../../examples/tutorials/06_boundary_condition_coupling.py) | Adjoint-consistent BC |
+| [01 - Hello MFG](../../examples/tutorials/01_hello_mfg.ipynb) | First MFG solve |
+| [02 - Custom Hamiltonian](../../examples/tutorials/02_custom_hamiltonian.ipynb) | Non-quadratic control |
+| [03 - 2D Geometry](../../examples/tutorials/03_2d_geometry.ipynb) | Multi-dimensional problems |
+| [04 - Particle Methods](../../examples/tutorials/04_particle_methods.ipynb) | Monte Carlo FP solver |
+| [05 - Config System](../../examples/tutorials/05_config_system.ipynb) | Pydantic + OmegaConf |
+| [06 - BC Coupling](../../examples/tutorials/06_boundary_condition_coupling.ipynb) | Adjoint-consistent BC |
 
 ### Guides
 

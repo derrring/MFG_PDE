@@ -409,8 +409,9 @@ benchmarks/reports/*.html # Tracked (exported reports)
 ### **File Organization Rules**
 1. **Python scripts**: Save to `examples/outputs/[category]/`, never root
 2. **Notebooks**: Track .ipynb with cleared outputs + exported HTML
-3. **Documentation**: Markdown preferred, notebooks for tutorials
-4. **Benchmarks**: Use notebooks in `benchmarks/notebooks/`, export HTML to `benchmarks/reports/`
+3. **Documentation**: Markdown preferred
+4. **Tutorials**: `.ipynb` is canonical (math rendering + inline plots). Companion `.py` scripts kept for CI/linting.
+5. **Benchmarks**: Use notebooks in `benchmarks/notebooks/`, export HTML to `benchmarks/reports/`
 
 ### **Incremental Data Saving** ⚠️ **CRITICAL**
 For long-running computations (GFDM solvers, Picard iterations, parameter sweeps):

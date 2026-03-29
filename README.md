@@ -73,13 +73,13 @@ print(f"Converged: {result.converged} in {result.iterations} iterations")
 
 ## Documentation
 
-**Tutorials** (`examples/tutorials/`):
-- [01 - Hello MFG](examples/tutorials/01_hello_mfg.py) - Your first MFG solve
-- [02 - Custom Hamiltonian](examples/tutorials/02_custom_hamiltonian.py) - Non-quadratic control
-- [03 - 2D Geometry](examples/tutorials/03_2d_geometry.py) - Multi-dimensional problems
-- [04 - Particle Methods](examples/tutorials/04_particle_methods.py) - Monte Carlo FP solver
-- [05 - Config System](examples/tutorials/05_config_system.py) - Pydantic + OmegaConf
-- [06 - BC Coupling](examples/tutorials/06_boundary_condition_coupling.py) - Adjoint-consistent BC
+**Tutorials** (`examples/tutorials/`) — Jupyter notebooks with math + code:
+- [01 - Hello MFG](examples/tutorials/01_hello_mfg.ipynb) - Your first MFG solve
+- [02 - Custom Hamiltonian](examples/tutorials/02_custom_hamiltonian.ipynb) - Non-quadratic control
+- [03 - 2D Geometry](examples/tutorials/03_2d_geometry.ipynb) - Multi-dimensional problems
+- [04 - Particle Methods](examples/tutorials/04_particle_methods.ipynb) - Monte Carlo FP solver
+- [05 - Config System](examples/tutorials/05_config_system.ipynb) - Pydantic + OmegaConf
+- [06 - BC Coupling](examples/tutorials/06_boundary_condition_coupling.ipynb) - Adjoint-consistent BC
 
 **Guides** (`docs/user/guides/`):
 - [Boundary Conditions](docs/user/guides/boundary_conditions.md) - BC types, mixed BC, ghost cells
