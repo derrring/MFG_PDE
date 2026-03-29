@@ -881,3 +881,7 @@ benchmarks/history/
 
 # Private directories (simpler: exclude everything)
 docs/user/private/
+
+# Generated outputs (regenerable)
+outputs/
+research_outputs/
