@@ -15,7 +15,6 @@ The canonical way to apply boundary conditions is via `FDMApplicator` or
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -29,6 +28,10 @@ from .applicator_base import (
 )
 from .conditions import BoundaryConditions
 from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
+
+# GhostCellConfig moved to ghost_cells.py (canonical location).
+# Re-exported here for backward compatibility.
+from .ghost_cells import GhostCellConfig
 from .types import BCType
 
 logger = get_logger(__name__)
@@ -42,32 +45,6 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from .types import BCSegment
-
-
-@dataclass
-class GhostCellConfig:
-    """Configuration for ghost cell computation."""
-
-    # Grid type affects ghost cell formula (use GridType enum or string)
-    grid_type: GridType | str = GridType.CELL_CENTERED
-
-    # For vertex-centered grids, boundary is at grid point
-    # For cell-centered grids, boundary is at cell face (between ghost and interior)
-
-    def __post_init__(self) -> None:
-        """Convert string grid_type to enum for backward compatibility."""
-        if isinstance(self.grid_type, str):
-            self.grid_type = GridType.VERTEX_CENTERED if self.grid_type == "vertex_centered" else GridType.CELL_CENTERED
-
-    @property
-    def is_vertex_centered(self) -> bool:
-        """Check if grid is vertex-centered."""
-        return self.grid_type == GridType.VERTEX_CENTERED
-
-    @property
-    def is_cell_centered(self) -> bool:
-        """Check if grid is cell-centered."""
-        return self.grid_type == GridType.CELL_CENTERED
 
 
 @deprecated(

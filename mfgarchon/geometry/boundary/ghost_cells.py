@@ -14,7 +14,40 @@ Extracted from applicator_base.py (mechanical refactor, no logic changes).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .protocols import GridType
+
+
+@dataclass
+class GhostCellConfig:
+    """Configuration for ghost cell computation.
+
+    Controls how ghost cell formulas are applied based on grid type.
+
+    Attributes:
+        grid_type: Grid centering type. Cell-centered grids have the
+            boundary at cell faces (ghost = 2g - interior for Dirichlet).
+            Vertex-centered grids have the boundary at grid points.
+    """
+
+    grid_type: GridType | str = GridType.CELL_CENTERED
+
+    def __post_init__(self) -> None:
+        """Convert string grid_type to enum for backward compatibility."""
+        if isinstance(self.grid_type, str):
+            self.grid_type = GridType.VERTEX_CENTERED if self.grid_type == "vertex_centered" else GridType.CELL_CENTERED
+
+    @property
+    def is_vertex_centered(self) -> bool:
+        """Check if grid is vertex-centered."""
+        return self.grid_type == GridType.VERTEX_CENTERED
+
+    @property
+    def is_cell_centered(self) -> bool:
+        """Check if grid is cell-centered."""
+        return self.grid_type == GridType.CELL_CENTERED
+
 
 # =============================================================================
 # Ghost Cell Formula Helpers (used by FDM applicators)
