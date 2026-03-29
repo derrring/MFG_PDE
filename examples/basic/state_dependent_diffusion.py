@@ -19,28 +19,29 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.alg.numerical.coupling import FixedPointIterator
 from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
 from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfgarchon.core import MFGComponents
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
 
 
-def create_lq_components(coupling_strength: float = 1.0):
-    """Create standard LQ-MFG components."""
+def create_lq_model_and_conditions(coupling_strength: float = 1.0, sigma: float = 0.1) -> tuple[Model, Conditions]:
+    """Create standard LQ-MFG model and conditions."""
     hamiltonian = SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=1.0),
         coupling=lambda m: coupling_strength * m,
         coupling_dm=lambda m: coupling_strength,
     )
-    return MFGComponents(
-        hamiltonian=hamiltonian,
-        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+    conditions = Conditions(
         u_terminal=lambda x: (x - 0.5) ** 2,
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+        T=1.0,
     )
+    return model, conditions
 
 
 def scenario_porous_medium():
@@ -61,19 +62,19 @@ def scenario_porous_medium():
         """Diffusion proportional to density."""
         return 0.1 * m
 
-    # Create problem with geometry-based API
+    # Create problem with v1.0 API
     domain = TensorProductGrid(
         bounds=[(0.0, 1.0)],
         Nx_points=[101],
         boundary_conditions=no_flux_bc(dimension=1),
     )
 
+    model, conditions = create_lq_model_and_conditions(coupling_strength=1.0, sigma=0.1)
     problem = MFGProblem(
-        geometry=domain,
-        T=1.0,
+        model=model,
+        domain=domain,
+        conditions=conditions,
         Nt=100,
-        sigma=0.1,  # Base diffusion (used if diffusion_field=None)
-        components=create_lq_components(coupling_strength=1.0),
     )
 
     # Create solvers
@@ -131,12 +132,12 @@ def scenario_crowd_dynamics():
         boundary_conditions=no_flux_bc(dimension=1),
     )
 
+    model, conditions = create_lq_model_and_conditions(coupling_strength=1.0, sigma=0.1)
     problem = MFGProblem(
-        geometry=domain,
-        T=1.0,
+        model=model,
+        domain=domain,
+        conditions=conditions,
         Nt=100,
-        sigma=0.1,
-        components=create_lq_components(coupling_strength=1.0),
     )
 
     hjb_solver = HJBFDMSolver(problem)
@@ -188,12 +189,12 @@ def scenario_spatially_varying():
         boundary_conditions=no_flux_bc(dimension=1),
     )
 
+    model, conditions = create_lq_model_and_conditions(coupling_strength=1.0, sigma=0.1)
     problem = MFGProblem(
-        geometry=domain,
-        T=1.0,
+        model=model,
+        domain=domain,
+        conditions=conditions,
         Nt=100,
-        sigma=0.1,
-        components=create_lq_components(coupling_strength=1.0),
     )
 
     hjb_solver = HJBFDMSolver(problem)

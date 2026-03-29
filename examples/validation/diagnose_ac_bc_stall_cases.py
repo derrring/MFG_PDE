@@ -21,8 +21,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
-from mfgarchon.core.mfg_problem import MFGComponents
+from mfgarchon import Conditions, MFGProblem, Model
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import (
     AdjointConsistentProvider,
@@ -64,30 +64,18 @@ def create_towel_problem(
 ) -> MFGProblem:
     """Create towel-on-beach problem with specified BC type."""
 
-    def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else derivs.grad[0]
-        kinetic = 0.5 * p**2
-        proximity = abs(x_position - x_stall)
-        m_reg = max(m_at_x, 1e-10)
-        congestion = lambda_crowd * np.log(m_reg)
-        return kinetic + proximity + congestion
-
-    def hamiltonian_dm_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        m_reg = max(m_at_x, 1e-10)
-        return lambda_crowd / m_reg
-
-    def initial_density(x):
-        return np.ones_like(x) / L
-
-    def terminal_value(x):
-        return 0.0
-
-    # Create components (Issue #670: m_initial/u_final in MFGComponents)
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-        m_initial=initial_density,
-        u_terminal=terminal_value,
+    # Class-based Hamiltonian: H = (1/2)|p|^2 + |x - x_stall| + lambda_crowd * ln(m)
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        potential=lambda x, t: abs(x[0] - x_stall),
+        coupling=lambda m: lambda_crowd * np.log(max(m, 1e-10)),
+        coupling_dm=lambda m: lambda_crowd / max(m, 1e-10),
+    )
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+    conditions = Conditions(
+        m_initial=lambda x: np.ones_like(x) / L,
+        u_terminal=lambda x: np.zeros_like(x),
+        T=T,
     )
 
     # Determine boundary conditions
@@ -126,11 +114,10 @@ def create_towel_problem(
     )
 
     return MFGProblem(
-        geometry=geometry,
-        T=T,
+        model=model,
+        domain=geometry,
+        conditions=conditions,
         Nt=Nt,
-        sigma=sigma,
-        components=components,
     )
 
 

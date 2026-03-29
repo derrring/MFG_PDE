@@ -16,28 +16,12 @@ matplotlib.use("Agg")  # Non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfgarchon.alg.numerical.fp_solvers.fp_particle import FPParticleSolver
 from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfgarchon.core.mfg_components import MFGComponents
-from mfgarchon.core.mfg_problem import MFGProblem
 from mfgarchon.geometry import TensorProductGrid, no_flux_bc
-
-
-def _default_components():
-    """Default MFGComponents for testing (Issue #670: explicit specification required)."""
-    # Class-based Hamiltonian: H = (1/2)|p|² + coupling * m
-    hamiltonian = SeparableHamiltonian(
-        control_cost=QuadraticControlCost(control_cost=1.0),
-        coupling=lambda m: m,
-        coupling_dm=lambda m: 1.0,
-    )
-    return MFGComponents(
-        hamiltonian=hamiltonian,
-        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
-        u_terminal=lambda x: 0.0,  # Zero terminal cost
-    )
 
 
 def main():
@@ -54,15 +38,24 @@ def main():
     # Setup with reduced resolution
     np.random.seed(42)
     geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[26], boundary_conditions=no_flux_bc(dimension=1))
-    problem = MFGProblem(
-        geometry=geometry,
-        T=1.0,
-        Nt=25,
-        sigma=1.0,
-        coupling_coefficient=0.5,
-        components=_default_components(),
-    )
     bc = no_flux_bc(dimension=1)
+
+    # Model: H = (1/2)|p|^2 + m
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: m,
+        coupling_dm=lambda m: 1.0,
+    )
+    model = Model(hamiltonian=hamiltonian, sigma=1.0)
+
+    # Conditions
+    conditions = Conditions(
+        m_initial=lambda x: np.exp(-10 * (x - 0.5) ** 2),  # Gaussian centered at 0.5
+        u_terminal=lambda x: np.zeros_like(x),  # Zero terminal cost
+        T=1.0,
+    )
+
+    problem = MFGProblem(model=model, domain=geometry, conditions=conditions, Nt=25)
 
     fp_solver = FPParticleSolver(
         problem,

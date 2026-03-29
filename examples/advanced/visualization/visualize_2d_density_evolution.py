@@ -25,106 +25,80 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
 
-class SimpleCoupledMFGProblem(MFGProblem):
+def create_simple_coupled_problem(
+    domain_bounds=(0.0, 1.0, 0.0, 1.0),
+    grid_resolution=20,
+    time_domain=(0.5, 30),
+    diffusion_coeff=0.1,
+    coupling_strength=1.0,
+    goal_position=None,
+) -> MFGProblem:
     """
-    Simple coupled MFG problem for visualization.
+    Create a simple coupled MFG problem for visualization.
 
     Agents navigate from (0.3, 0.3) to (0.7, 0.7) while avoiding congestion.
+    Hamiltonian: H = (1/2)|p|^2 + coupling_strength * m
     """
+    if goal_position is None:
+        goal_position = [0.7, 0.7]
 
-    def __init__(
-        self,
-        domain_bounds=(0.0, 1.0, 0.0, 1.0),
-        grid_resolution=20,
-        time_domain=(0.5, 30),
-        diffusion_coeff=0.1,
-        coupling_strength=1.0,
-        goal_position=None,
-    ):
-        # Convert domain_bounds to spatial_bounds
-        spatial_bounds = [(domain_bounds[0], domain_bounds[1]), (domain_bounds[2], domain_bounds[3])]
-        T, Nt = time_domain
+    T, Nt = time_domain
 
-        super().__init__(
-            spatial_bounds=spatial_bounds,
-            spatial_discretization=[grid_resolution, grid_resolution],
-            T=T,
-            Nt=Nt,
-            sigma=diffusion_coeff,
-        )
-        self.grid_resolution = grid_resolution
-        self.coupling_strength = coupling_strength
-        self.goal_position = goal_position if goal_position is not None else [0.7, 0.7]
+    # Class-based Hamiltonian: H = (1/2)|p|^2 + coupling_strength * m
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: coupling_strength * m,
+        coupling_dm=lambda m: coupling_strength,
+    )
+    model = Model(hamiltonian=hamiltonian, sigma=diffusion_coeff)
 
-    def initial_density(self, x):
+    def initial_density_func(x):
         """Gaussian initial density centered at (0.3, 0.3)."""
+        x = np.atleast_2d(x)
         center = np.array([0.3, 0.3])
         dist_sq = np.sum((x - center) ** 2, axis=1)
         density = np.exp(-50 * dist_sq)
         return density / (np.sum(density) + 1e-10)
 
-    def terminal_cost(self, x):
+    def terminal_cost_func(x):
         """Quadratic terminal cost: distance to goal."""
-        goal = np.array(self.goal_position)
+        x = np.atleast_2d(x)
+        goal = np.array(goal_position)
         dist_sq = np.sum((x - goal) ** 2, axis=1)
         return 0.5 * dist_sq
 
-    def running_cost(self, x, t):
-        """Zero running cost."""
-        return np.zeros(x.shape[0])
+    conditions = Conditions(
+        m_initial=initial_density_func,
+        u_terminal=terminal_cost_func,
+        T=T,
+    )
 
-    def hamiltonian(self, x, m, p, t):
-        """Isotropic Hamiltonian with MFG coupling: H = (1/2)|p|² + κ·m"""
-        p_squared = np.sum(p**2, axis=1) if p.ndim > 1 else p**2
-        return 0.5 * p_squared + self.coupling_strength * m
+    # 2D geometry with no-flux BC
+    spatial_bounds = [(domain_bounds[0], domain_bounds[1]), (domain_bounds[2], domain_bounds[3])]
+    geometry = TensorProductGrid(
+        bounds=spatial_bounds,
+        Nx_points=[grid_resolution, grid_resolution],
+        boundary_conditions=no_flux_bc(dimension=2),
+    )
 
-    def setup_components(self):
-        """Setup MFG components."""
-        coupling_strength = self.coupling_strength
-
-        def initial_density_func(x):
-            """Gaussian initial density."""
-            if np.isscalar(x):
-                x = np.array([x])
-            x = np.atleast_1d(x)
-            center = np.array([0.3, 0.3])
-            if x.shape[0] >= 2:
-                dist_sq = np.sum((x[:2] - center) ** 2)
-            else:
-                dist_sq = (x[0] - center[0]) ** 2
-            return np.exp(-50 * dist_sq)
-
-        def terminal_cost_func(x):
-            """Quadratic terminal cost."""
-            if np.isscalar(x):
-                x = np.array([x])
-            x = np.atleast_1d(x)
-            goal = np.array(self.goal_position)
-            if x.shape[0] >= 2:
-                dist_sq = np.sum((x[:2] - goal) ** 2)
-            else:
-                dist_sq = (x[0] - goal[0]) ** 2
-            return 0.5 * dist_sq
-
-        # Class-based Hamiltonian: H = (1/2)|p|² + κ·m
-        hamiltonian = SeparableHamiltonian(
-            control_cost=QuadraticControlCost(control_cost=1.0),
-            coupling=lambda m: coupling_strength * m,
-            coupling_dm=lambda m: coupling_strength,
-        )
-
-        return MFGComponents(
-            hamiltonian=hamiltonian,
-            m_initial=initial_density_func,
-            u_terminal=terminal_cost_func,
-        )
+    problem = MFGProblem(
+        model=model,
+        domain=geometry,
+        conditions=conditions,
+        Nt=Nt,
+    )
+    # Store for use by visualization/solver code
+    problem.coupling_strength = coupling_strength
+    problem.goal_position = goal_position
+    return problem
 
 
 def solve_mfg_with_enhancements(use_enhancements=True):
@@ -135,7 +109,7 @@ def solve_mfg_with_enhancements(use_enhancements=True):
     print("=" * 80)
 
     # Create problem
-    problem = SimpleCoupledMFGProblem(
+    problem = create_simple_coupled_problem(
         domain_bounds=(0.0, 1.0, 0.0, 1.0),
         grid_resolution=20,
         time_domain=(0.5, 30),
@@ -196,8 +170,8 @@ def solve_mfg_with_enhancements(use_enhancements=True):
     meshgrid_arrays = np.meshgrid(*x_vals, indexing="ij")
     x_flat = np.column_stack([arr.ravel() for arr in meshgrid_arrays])
 
-    # Initialize density
-    m_init_flat = problem.initial_density(x_flat)
+    # Initialize density using components (populated from Model+Conditions)
+    m_init_flat = problem.components.m_initial(x_flat)
     m_init = m_init_flat.reshape(shape)
     m_init = m_init / np.sum(m_init)
 
@@ -205,7 +179,7 @@ def solve_mfg_with_enhancements(use_enhancements=True):
     M = np.tile(m_init, (Nt, *([1] * ndim)))
 
     # Initialize U as terminal cost
-    u_final_flat = problem.terminal_cost(x_flat)
+    u_final_flat = problem.components.u_terminal(x_flat)
     u_final = u_final_flat.reshape(shape)
     U = np.tile(u_final, (Nt, *([1] * ndim)))
 

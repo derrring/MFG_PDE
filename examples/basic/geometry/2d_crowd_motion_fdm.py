@@ -20,121 +20,90 @@ Problem Setup:
 
 import numpy as np
 
-from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.factory import create_basic_solver
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 
 
-class CrowdMotion2D(MFGProblem):
+def create_crowd_motion_2d(
+    grid_resolution=15,
+    time_horizon=0.5,
+    num_timesteps=20,
+    sigma=0.05,
+    congestion_weight=0.5,
+    goal=(0.8, 0.8),
+    start=(0.2, 0.2),
+):
     """
-    2D crowd motion MFG problem.
+    Create a 2D crowd motion MFG problem.
 
     Agents navigate from start to goal while avoiding congestion.
+
+    Parameters
+    ----------
+    grid_resolution : int
+        Points per dimension (grid_resolution x grid_resolution)
+    time_horizon : float
+        Final time T
+    num_timesteps : int
+        Number of time steps
+    sigma : float
+        Diffusion coefficient
+    congestion_weight : float
+        Weight kappa for congestion cost
+    goal : tuple
+        Goal position (x, y)
+    start : tuple
+        Initial density center (x, y)
+
+    Returns
+    -------
+    MFGProblem
+        Configured 2D crowd motion problem.
     """
+    goal_arr = np.array(goal)
+    start_arr = np.array(start)
 
-    def __init__(
-        self,
-        grid_resolution=15,
-        time_horizon=0.5,
-        num_timesteps=20,
-        sigma=0.05,
-        congestion_weight=0.5,
-        goal=(0.8, 0.8),
-        start=(0.2, 0.2),
-    ):
-        """
-        Initialize 2D crowd motion problem.
+    # Geometry
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0), (0.0, 1.0)],
+        Nx_points=[grid_resolution, grid_resolution],
+        boundary_conditions=no_flux_bc(dimension=2),
+    )
 
-        Parameters
-        ----------
-        grid_resolution : int
-            Points per dimension (grid_resolution × grid_resolution)
-        time_horizon : float
-            Final time T
-        num_timesteps : int
-            Number of time steps
-        diffusion : float
-            Diffusion coefficient σ
-        congestion_weight : float
-            Weight κ for congestion cost
-        goal : tuple
-            Goal position (x, y)
-        start : tuple
-            Initial density center (x, y)
-        """
-        super().__init__(
-            spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
-            spatial_discretization=[grid_resolution, grid_resolution],
-            T=time_horizon,
-            Nt=num_timesteps,
-            sigma=sigma,
-        )
-        self.grid_resolution = grid_resolution
+    # Model: H = (1/2)|p|^2 + kappa * m
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: congestion_weight * m,
+        coupling_dm=lambda m: congestion_weight,
+    )
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
 
-        self.congestion_weight = congestion_weight
-        self.goal = np.array(goal)
-        self.start = np.array(start)
+    # Conditions (callables, resolution-independent)
+    def initial_density(x):
+        """Gaussian blob centered at start. x shape: (2,) for single 2D point."""
+        dist_sq = (x[0] - start_arr[0]) ** 2 + (x[1] - start_arr[1]) ** 2
+        return np.exp(-100 * dist_sq)
 
-    def initial_density(self, x):
-        """Gaussian blob centered at start position."""
-        dist_sq = np.sum((x - self.start) ** 2, axis=1)
-        density = np.exp(-100 * dist_sq)
-        return density / (np.sum(density) + 1e-10)
-
-    def terminal_cost(self, x):
-        """Quadratic cost: distance to goal."""
-        dist_sq = np.sum((x - self.goal) ** 2, axis=1)
+    def terminal_cost(x):
+        """Quadratic cost: distance to goal. x shape: (2,) for single 2D point."""
+        dist_sq = (x[0] - goal_arr[0]) ** 2 + (x[1] - goal_arr[1]) ** 2
         return 5.0 * dist_sq
 
-    def running_cost(self, x, t):
-        """Small running cost encourages fast movement."""
-        return 0.1 * np.ones(x.shape[0])
+    conditions = Conditions(
+        m_initial=initial_density,
+        u_terminal=terminal_cost,
+        T=time_horizon,
+    )
 
-    def hamiltonian(self, x, m, p, t):
-        """H = (1/2)|p|² + κ·m (isotropic control + congestion)."""
-        p_squared = np.sum(p**2, axis=1) if p.ndim > 1 else p**2
-        h = 0.5 * p_squared
-        h += self.congestion_weight * m
-        return h
-
-    def setup_components(self):
-        """Setup MFG components for numerical solvers."""
-        kappa = self.congestion_weight
-
-        def initial_density_func(x):
-            """Gaussian initial density."""
-            if np.isscalar(x):
-                x = np.array([x])
-            x = np.atleast_1d(x)
-            if x.shape[0] >= 2:
-                dist_sq = np.sum((x[:2] - self.start) ** 2)
-            else:
-                dist_sq = (x[0] - self.start[0]) ** 2
-            return np.exp(-100 * dist_sq)
-
-        def terminal_cost_func(x):
-            """Quadratic terminal cost."""
-            if np.isscalar(x):
-                x = np.array([x])
-            x = np.atleast_1d(x)
-            if x.shape[0] >= 2:
-                dist_sq = np.sum((x[:2] - self.goal) ** 2)
-            else:
-                dist_sq = (x[0] - self.goal[0]) ** 2
-            return 5.0 * dist_sq
-
-        # Class-based Hamiltonian: H = (1/2)|p|² + κ·m
-        hamiltonian = SeparableHamiltonian(
-            control_cost=QuadraticControlCost(control_cost=1.0),
-            coupling=lambda m: kappa * m,
-            coupling_dm=lambda m: kappa,
-        )
-
-        return MFGComponents(
-            hamiltonian=hamiltonian,
-            m_initial=initial_density_func,
-            u_terminal=terminal_cost_func,
-        )
+    problem = MFGProblem(model=model, domain=geometry, conditions=conditions, Nt=num_timesteps)
+    # Attach metadata for use in main()
+    problem.congestion_weight = congestion_weight
+    problem.goal = goal_arr
+    problem.start = start_arr
+    return problem
 
 
 def main():
@@ -145,8 +114,8 @@ def main():
 
     # Create problem
     print("Creating 2D MFG problem...")
-    problem = CrowdMotion2D(
-        grid_resolution=12,  # 12×12 grid
+    problem = create_crowd_motion_2d(
+        grid_resolution=12,  # 12x12 grid
         time_horizon=0.4,
         num_timesteps=15,
         sigma=0.05,
