@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-03-29
+
+### Added
+
+- **Geometry trait compliance** (PR #872)
+  - `ImplicitDomain`: `manifold_dimension`, `get_tangent_space_basis()`, `compute_christoffel_symbols()`, `validate_lipschitz_regularity()`
+  - `GraphGeometry`: `mark_region()`, `get_region_mask()`, `get_region_names()`, `intersect_regions()`, `union_regions()`
+  - Region predicate factories: `box_region()`, `sphere_region()`, `sdf_region()`, `halfspace_region()` in `geometry.predicates`
+- **Periodic BC model compatibility** warning in user guide (quadratic potential on periodic domain pitfall)
+
+### Changed
+
+- `GhostCellConfig` relocated from `_compat.py` to `ghost_cells.py` (canonical location)
+- Common noise MFG test updated for modern API (Issues #670, #673)
+
+### Removed
+
+- `HybridFPParticleHJBFDM` coupling solver (-757 lines) — deprecated since v0.9.0, 9 versions past policy
+
+### Fixed
+
+- Stale `See Also` references in boundary conditions user guide (docs migrated to mfg-research)
+
+## [0.17.16] - 2026-03-28
+
+### Added
+
+- **BC resolution layer** — `MathBCType`, `BCResolver`, `HJBResolver`, `FPResolver` (PR #856, Issue #848)
+- **Periodic BC for SL diffusion** — Sherman-Morrison circulant solver (PR #865, Issue #858)
+- **Jupyter Book v2 (MyST)** configuration for docs (PR #864)
+- Runtime `DeprecationWarning` for legacy `fdm_bc_1d.BoundaryConditions` (PR #869)
+
+### Changed
+
+- FP FDM boundary assembly decoupled — dict dispatch, Dirichlet nD, fail-fast (PR #868, Issue #859)
+- Boundary module restructured — split monolith, slim exports (PR #849, Issue #848)
+- BC design docs consolidated from 14 to 10 files (PR #850)
+- ~111 raw deprecation warnings migrated to structured decorators (PR #847, Issue #841)
+- All FP FDM tests migrated to modern BC API (PR #870)
+- All remaining tests migrated from legacy fdm_bc_1d (PR #871, -706 lines)
+
+### Removed
+
+- Duplicate FEM BC system (PR #851, Issue #848)
+- Theory docs moved to mfg-research (-7,567 lines) (PRs #853-855, Issue #852)
+- Stale `docs/theory/` references (-429 lines) (PR #863)
+- 28 RL placeholder test files (-9,051 lines) (PR #867, Issue #833)
+
 ## [0.17.13] - 2026-03-26
 
 ### Added
