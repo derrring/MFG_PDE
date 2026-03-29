@@ -4,28 +4,27 @@ Tutorial 01: Hello Mean Field Games
 This is the simplest possible MFG example using the Linear-Quadratic (LQ) framework.
 
 What you'll learn:
-- How to define an MFG problem using MFGProblem
-- How to solve it using the problem.solve() method
+- How to define an MFG problem using Model, Conditions, and MFGProblem
+- How to solve it using problem.solve()
 - How to inspect the solution
 
 Mathematical Problem:
     A Linear-Quadratic Mean Field Game on [0,1] with:
-    - Hamiltonian: H(p) = (1/2)|p|^2 + coupling * m
+    - Hamiltonian: H(p, m) = (1/2)|p|^2 + coupling * m
     - Initial density: Gaussian centered at 0.5
-    - Terminal cost: Quadratic penalty u_T(x) = (x - 0.5)^2
+    - Terminal cost: u_T(x) = (x - 0.5)^2
 """
 
 import numpy as np
 
-from mfgarchon import MFGProblem
-from mfgarchon.core import MFGComponents
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
 
 if __name__ == "__main__":
     # ==============================================================================
-    # Step 1: Define the Domain
+    # Step 1: Define the Model (game rules)
     # ==============================================================================
 
     print("=" * 70)
@@ -33,35 +32,9 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
 
-    # Create a 1D spatial grid
-    grid = TensorProductGrid(
-        bounds=[(0.0, 1.0)],  # Domain [0, 1]
-        Nx_points=[51],  # 51 grid points (50 intervals)
-        boundary_conditions=no_flux_bc(dimension=1),
-    )
-
-    print("Grid created:")
-    print("  Domain: [0.0, 1.0]")
-    print(f"  Points: {grid.num_spatial_points}")
-    print()
-
-    # ==============================================================================
-    # Step 2: Define the MFG Components
-    # ==============================================================================
-
     # Physical parameters
     sigma = 0.1  # SDE volatility (controls agent randomness)
     coupling = 0.5  # Congestion cost strength
-
-    # Terminal cost: agents want to be at x = 0.5
-    def terminal_cost(x):
-        """Terminal cost u_T(x) = (x - 0.5)^2"""
-        return (x - 0.5) ** 2
-
-    # Initial density: Gaussian centered at 0.5
-    def initial_density(x):
-        """Gaussian initial density centered at 0.5"""
-        return np.exp(-50 * (x - 0.5) ** 2)
 
     # Hamiltonian: H(p, m) = (1/2)|p|^2 + coupling * m
     hamiltonian = SeparableHamiltonian(
@@ -70,30 +43,49 @@ if __name__ == "__main__":
         coupling_dm=lambda m: coupling,
     )
 
-    # Bundle all components
-    components = MFGComponents(
-        hamiltonian=hamiltonian,
-        m_initial=initial_density,
-        u_terminal=terminal_cost,
-    )
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
 
-    # ==============================================================================
-    # Step 3: Create and Solve the Problem
-    # ==============================================================================
-
-    problem = MFGProblem(
-        geometry=grid,
-        T=1.0,  # Time horizon
-        Nt=50,  # Time steps
-        sigma=sigma,
-        components=components,
-    )
-
-    print("Problem created:")
-    print(f"  Time horizon: T = {problem.T}")
-    print(f"  Time steps: {problem.Nt}")
+    print("Model created:")
+    print(f"  Hamiltonian: H(p, m) = |p|^2/2 + {coupling}*m")
     print(f"  Sigma (volatility): {sigma}")
     print()
+
+    # ==============================================================================
+    # Step 2: Define the Domain (spatial arena)
+    # ==============================================================================
+
+    domain = TensorProductGrid(
+        bounds=[(0.0, 1.0)],  # Domain [0, 1]
+        Nx_points=[51],  # 51 grid points (50 intervals)
+        boundary_conditions=no_flux_bc(dimension=1),
+    )
+
+    print("Domain created:")
+    print("  Spatial: [0.0, 1.0]")
+    print(f"  Points: {domain.num_spatial_points}")
+    print()
+
+    # ==============================================================================
+    # Step 3: Define the Conditions (problem data)
+    # ==============================================================================
+
+    conditions = Conditions(
+        u_terminal=lambda x: (x - 0.5) ** 2,  # Agents want to be at x = 0.5
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),  # Start near center
+        T=1.0,  # Time horizon
+    )
+
+    print("Conditions created:")
+    print(f"  Time horizon: T = {conditions.T}")
+    print("  Terminal cost: u_T(x) = (x - 0.5)^2")
+    print("  Initial density: Gaussian at x = 0.5")
+    print()
+
+    # ==============================================================================
+    # Step 4: Create and Solve the Problem
+    # ==============================================================================
+
+    problem = MFGProblem(model=model, domain=domain, conditions=conditions, Nt=50)
 
     print("Solving MFG system...")
     print()
@@ -105,7 +97,7 @@ if __name__ == "__main__":
     print()
 
     # ==============================================================================
-    # Step 4: Inspect the Solution
+    # Step 5: Inspect the Solution
     # ==============================================================================
 
     print("=" * 70)
@@ -125,13 +117,33 @@ if __name__ == "__main__":
     print()
 
     # Mass conservation check
-    dx = grid.get_grid_spacing()[0]
+    dx = domain.get_grid_spacing()[0]
     total_mass = np.sum(result.M[-1, :]) * dx
     print(f"Final mass (should be ~1.0): {total_mass:.6f}")
     print()
 
     # ==============================================================================
-    # Step 5: Visualize (Optional)
+    # Step 6: Parameter Variation (new in v1.0)
+    # ==============================================================================
+
+    print("=" * 70)
+    print("PARAMETER VARIATION")
+    print("=" * 70)
+    print()
+
+    # Change sigma without rebuilding everything
+    problem2 = problem.with_sigma(0.3)
+    result2 = problem2.solve(verbose=False)
+    print(f"sigma=0.3: converged={result2.converged}, error={result2.max_error:.2e}")
+
+    # Change time horizon
+    problem3 = problem.with_T(2.0)
+    result3 = problem3.solve(verbose=False)
+    print(f"T=2.0: converged={result3.converged}, error={result3.max_error:.2e}")
+    print()
+
+    # ==============================================================================
+    # Step 7: Visualize (Optional)
     # ==============================================================================
 
     print("=" * 70)
@@ -146,7 +158,7 @@ if __name__ == "__main__":
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
-        x = grid.coordinates[0]
+        x = domain.coordinates[0]
         t = np.linspace(0, problem.T, problem.Nt + 1)
 
         # Plot value function at final time
@@ -186,11 +198,12 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
     print("What you learned:")
-    print("  1. Create a grid with TensorProductGrid")
-    print("  2. Define components: hamiltonian, initial density, terminal cost")
-    print("  3. Bundle components in MFGComponents")
-    print("  4. Create and solve with MFGProblem")
-    print("  5. Inspect the solution (U, M, convergence)")
+    print("  1. Model: game rules (Hamiltonian + sigma)")
+    print("  2. Domain: spatial grid (TensorProductGrid)")
+    print("  3. Conditions: problem data (u_terminal, m_initial, T)")
+    print("  4. MFGProblem(model, domain, conditions, Nt=50)")
+    print("  5. result = problem.solve()")
+    print("  6. Parameter variation: problem.with_sigma(), problem.with_T()")
     print()
     print("Next: Tutorial 02 - Custom Hamiltonian")
     print("=" * 70)

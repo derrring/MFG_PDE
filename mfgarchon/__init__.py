@@ -37,6 +37,7 @@ from .core.mfg_problem import (  # noqa: E402
     MFGComponents,
     MFGProblem,
 )
+from .core.model import Conditions, ErgodicConditions, Model  # noqa: E402
 from .extensions.topology import (  # noqa: E402
     NetworkMFGComponents,
     NetworkMFGProblem,
@@ -137,6 +138,10 @@ __all__ = [
     "KDENormalization",
     "MFGComponents",
     "MFGProblem",
+    # API v1.0 classes (Issue #875)
+    "Model",
+    "Conditions",
+    "ErgodicConditions",
     # Hamiltonian/Lagrangian classes (Issues #651, #667, #673)
     "ControlCostBase",
     "OptimizationSense",
