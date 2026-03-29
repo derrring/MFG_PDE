@@ -24,7 +24,7 @@ import pytest
 import numpy as np
 
 from mfgarchon import MFGProblem
-from mfgarchon.alg.numerical.mfg_solvers import HybridFPParticleHJBFDM, ParticleCollocationSolver
+from mfgarchon.alg.numerical.mfg_solvers import ParticleCollocationSolver
 
 
 # Test problem fixtures
@@ -84,29 +84,6 @@ def test_particle_collocation_small_performance(benchmark, small_problem):
     assert metadata.get("iterations", 0) > 0, "Solver must perform iterations"
 
 
-@pytest.mark.benchmark(group="solvers-small")
-def test_hybrid_solver_small_performance(benchmark, small_problem):
-    """
-    Baseline: HybridFPParticleHJBFDM on small problem.
-
-    This test establishes a performance baseline for the unified
-    HybridFPParticleHJBFDM solver on a small grid suitable for CI.
-    """
-    solver = HybridFPParticleHJBFDM(
-        problem=small_problem,
-        max_iterations=50,
-        tolerance=1e-5,
-        num_particles=500,  # Moderate particle count
-    )
-
-    # Benchmark the solve method
-    _, _, metadata = benchmark(solver.solve)
-
-    # Verify convergence
-    assert metadata.get("converged", False), "Solver must converge for valid benchmark"
-    assert metadata.get("iterations", 0) > 0, "Solver must perform iterations"
-
-
 @pytest.mark.benchmark(group="solvers-medium")
 @pytest.mark.slow
 def test_particle_collocation_medium_performance(benchmark, medium_problem):
@@ -124,29 +101,6 @@ def test_particle_collocation_medium_performance(benchmark, medium_problem):
     solver = ParticleCollocationSolver(
         problem=medium_problem,
         collocation_points=x_collocation.reshape(-1, 1),  # Must be 2D array
-        num_particles=1000,  # More particles for accuracy
-    )
-
-    # Benchmark the solve method
-    _, _, metadata = benchmark(solver.solve)
-
-    # Verify convergence
-    assert metadata.get("converged", False), "Solver must converge for valid benchmark"
-
-
-@pytest.mark.benchmark(group="solvers-medium")
-@pytest.mark.slow
-def test_hybrid_solver_medium_performance(benchmark, medium_problem):
-    """
-    Extended: HybridFPParticleHJBFDM on medium problem.
-
-    This test provides more comprehensive performance data but takes
-    longer to run. Marked as 'slow' for optional execution.
-    """
-    solver = HybridFPParticleHJBFDM(
-        problem=medium_problem,
-        max_iterations=100,
-        tolerance=1e-6,
         num_particles=1000,  # More particles for accuracy
     )
 
