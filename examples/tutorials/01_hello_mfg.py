@@ -131,13 +131,19 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
 
-    # Change sigma without rebuilding everything
-    problem2 = problem.with_sigma(0.3)
+    # Swap the Model component (same domain, same conditions)
+    model2 = Model(hamiltonian=hamiltonian, sigma=0.3)
+    problem2 = problem.with_model(model2)
     result2 = problem2.solve(verbose=False)
     print(f"sigma=0.3: converged={result2.converged}, error={result2.max_error:.2e}")
 
-    # Change time horizon
-    problem3 = problem.with_T(2.0)
+    # Swap the Conditions component (same model, same domain)
+    cond2 = Conditions(
+        u_terminal=lambda x: (x - 0.5) ** 2,
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+        T=2.0,
+    )
+    problem3 = problem.with_conditions(cond2)
     result3 = problem3.solve(verbose=False)
     print(f"T=2.0: converged={result3.converged}, error={result3.max_error:.2e}")
     print()
@@ -203,7 +209,7 @@ if __name__ == "__main__":
     print("  3. Conditions: problem data (u_terminal, m_initial, T)")
     print("  4. MFGProblem(model, domain, conditions, Nt=50)")
     print("  5. result = problem.solve()")
-    print("  6. Parameter variation: problem.with_sigma(), problem.with_T()")
+    print("  6. Parameter variation: problem.with_model(), problem.with_conditions()")
     print()
     print("Next: Tutorial 02 - Custom Hamiltonian")
     print("=" * 70)

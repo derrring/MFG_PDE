@@ -2569,7 +2569,11 @@ See: docs/migration/HAMILTONIAN_API.md"""
         if self._v1_model is None:
             raise ValueError("with_model() requires a problem created with API v1.0 (model/domain/conditions)")
         return MFGProblem(
-            model=model, domain=self.geometry, conditions=self._v1_conditions, constraints=self._v1_constraints
+            model=model,
+            domain=self.geometry,
+            conditions=self._v1_conditions,
+            constraints=self._v1_constraints,
+            Nt=self.Nt,
         )
 
     def with_domain(self, domain: Any) -> MFGProblem:
@@ -2577,7 +2581,11 @@ See: docs/migration/HAMILTONIAN_API.md"""
         if self._v1_model is None:
             raise ValueError("with_domain() requires a problem created with API v1.0 (model/domain/conditions)")
         return MFGProblem(
-            model=self._v1_model, domain=domain, conditions=self._v1_conditions, constraints=self._v1_constraints
+            model=self._v1_model,
+            domain=domain,
+            conditions=self._v1_conditions,
+            constraints=self._v1_constraints,
+            Nt=self.Nt,
         )
 
     def with_conditions(self, conditions: Any) -> MFGProblem:
@@ -2585,29 +2593,14 @@ See: docs/migration/HAMILTONIAN_API.md"""
         if self._v1_model is None:
             raise ValueError("with_conditions() requires a problem created with API v1.0 (model/domain/conditions)")
         return MFGProblem(
-            model=self._v1_model, domain=self.geometry, conditions=conditions, constraints=self._v1_constraints
+            model=self._v1_model,
+            domain=self.geometry,
+            conditions=conditions,
+            constraints=self._v1_constraints,
+            Nt=self.Nt,
         )
 
-    def with_sigma(self, sigma: float) -> MFGProblem:
-        """Return new problem with different sigma (diffusion)."""
-        import copy
-
-        if self._v1_model is None:
-            raise ValueError("with_sigma() requires a problem created with API v1.0 (model/domain/conditions)")
-        new_model = copy.copy(self._v1_model)
-        new_model.sigma = sigma
-        return MFGProblem(
-            model=new_model, domain=self.geometry, conditions=self._v1_conditions, constraints=self._v1_constraints
-        )
-
-    def with_T(self, T: float) -> MFGProblem:
-        """Return new problem with different time horizon."""
-        import copy
-
-        if self._v1_conditions is None:
-            raise ValueError("with_T() requires a problem created with API v1.0 (model/domain/conditions)")
-        new_cond = copy.copy(self._v1_conditions)
-        new_cond.T = T
-        return MFGProblem(
-            model=self._v1_model, domain=self.geometry, conditions=new_cond, constraints=self._v1_constraints
-        )
+    # No with_sigma() or with_T() — these are premature convenience shortcuts
+    # that break orthogonality. sigma lives in Model, T lives in Conditions.
+    # Use with_model(Model(hamiltonian=H, sigma=0.2)) or
+    # with_conditions(Conditions(u_terminal=..., m_initial=..., T=2.0)) instead.
