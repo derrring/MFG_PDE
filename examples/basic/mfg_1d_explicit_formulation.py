@@ -28,8 +28,7 @@ Created: 2026-01-26
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
-from mfgarchon.core import MFGComponents
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
@@ -184,7 +183,7 @@ geometry = TensorProductGrid(
 #   m_normalized = m_raw / (np.sum(m_raw) * dx)  # Now ∫m dx = 1
 #
 # Class-based Hamiltonian: H = (1/2)|p|² + V(x) + coupling * m
-# This is now required by MFGComponents (Issue #673).
+# Coupling is part of the Hamiltonian in v1.0 (no separate coupling_coefficient).
 hamiltonian = SeparableHamiltonian(
     control_cost=QuadraticControlCost(control_cost=1.0),
     potential=hamiltonian_potential,  # V(x, t) = potential_field(x)
@@ -192,20 +191,20 @@ hamiltonian = SeparableHamiltonian(
     coupling_dm=lambda m: coupling_coefficient,  # dH/dm = coupling_coefficient
 )
 
-components = MFGComponents(
-    hamiltonian=hamiltonian,
-    m_initial=initial_density,
+# v1.0 API: Model holds game rules, Conditions holds IC/TC + time horizon
+model = Model(hamiltonian=hamiltonian, sigma=sigma)
+conditions = Conditions(
     u_terminal=terminal_condition,
+    m_initial=initial_density,
+    T=T,
 )
 
 # Create problem
 problem = MFGProblem(
-    geometry=geometry,
-    T=T,
+    model=model,
+    domain=geometry,
+    conditions=conditions,
     Nt=Nt,
-    sigma=sigma,
-    coupling_coefficient=coupling_coefficient,
-    components=components,
 )
 
 

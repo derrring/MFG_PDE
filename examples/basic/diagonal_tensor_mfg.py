@@ -24,11 +24,10 @@ Diffusion enters as an anisotropic Laplacian (1/2) sum_i sigma_i^2 d^2u/dx_i^2.
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfgarchon.core import MFGComponents
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfgarchon.core.mfg_problem import MFGProblem
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary.conditions import no_flux_bc
 
@@ -78,20 +77,21 @@ def terminal_cost_2d(xy):
     return (xy[:, 0] - 0.5) ** 2 + (xy[:, 1] - 0.3) ** 2
 
 
-components = MFGComponents(
-    hamiltonian=hamiltonian,
-    m_initial=m0,  # Pass array directly
+# v1.0 API: Model holds game rules, Conditions holds IC/TC + time horizon
+model = Model(hamiltonian=hamiltonian, sigma=0.1)
+conditions = Conditions(
     u_terminal=terminal_cost_2d,
+    m_initial=lambda xy: np.exp(-50 * ((xy[:, 0] - x0) ** 2 + (xy[:, 1] - y0) ** 2)),
+    T=0.1,  # Short time horizon
 )
 
 # Nt=20 for CFL stability: the anisotropic Laplacian term requires
 # dt * (sigma_x^2/dx^2 + sigma_y^2/dy^2) < O(1) for the explicit scheme.
 problem = MFGProblem(
-    geometry=domain,
-    T=0.1,  # Short time horizon
+    model=model,
+    domain=domain,
+    conditions=conditions,
     Nt=20,  # 20 timesteps (dt=0.005 for CFL stability)
-    sigma=0.1,  # Base diffusion (tensor_diffusion_field overrides)
-    components=components,
 )
 
 print("Domain: [0.0, 1.0] x [0.0, 0.6]")
@@ -125,7 +125,7 @@ print(f"  - Ratio: sigma_x/sigma_y = {sigma_x / sigma_y:.1f}x")
 print()
 
 # ============================================================================
-# Initial Density (already configured in MFGComponents above)
+# Initial Density (already configured in Conditions above)
 # ============================================================================
 
 print("Initial density: Gaussian centered at (0.3, 0.3)")

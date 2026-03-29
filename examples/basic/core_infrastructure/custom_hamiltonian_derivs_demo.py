@@ -35,8 +35,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfgarchon.core.mfg_problem import MFGComponents, MFGProblem
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -69,7 +71,7 @@ def create_custom_problem(
 
     This demonstrates the recommended approach for custom Hamiltonians:
     - Use SeparableHamiltonian with control_cost, potential, and coupling
-    - Pass directly to MFGComponents(hamiltonian=H)
+    - Pass to Model(hamiltonian=H) + Conditions(u_terminal=..., m_initial=...)
 
     The class-based approach offers:
     - Type-safe, composable Hamiltonians
@@ -111,30 +113,27 @@ def create_custom_problem(
         coupling_dm=coupling_dm,
     )
 
-    # Initial distribution: Gaussian near x=0
-    def initial_density_func(x):
-        return np.exp(-((x - 0.5) ** 2) / 0.5)
+    # v1.0 API: Model holds game rules, Conditions holds IC/TC + time horizon
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+    conditions = Conditions(
+        u_terminal=lambda x: 0.0,
+        m_initial=lambda x: np.exp(-((x - 0.5) ** 2) / 0.5),
+        T=T,
+    )
 
-    # Terminal value
-    def terminal_value_func(x):
-        return 0.0
-
-    # Create components with class-based Hamiltonian (Issue #673)
-    components = MFGComponents(
-        hamiltonian=hamiltonian,  # Class-based API
-        m_initial=initial_density_func,
-        u_terminal=terminal_value_func,
+    # Create geometry
+    domain = TensorProductGrid(
+        bounds=[(0.0, L)],
+        Nx_points=[Nx],
+        boundary_conditions=no_flux_bc(dimension=1),
     )
 
     # Create problem
     problem = MFGProblem(
-        xmin=0.0,
-        xmax=L,
-        Nx=Nx,
-        T=T,
+        model=model,
+        domain=domain,
+        conditions=conditions,
         Nt=Nt,
-        sigma=sigma,
-        components=components,
     )
 
     return problem
@@ -340,7 +339,7 @@ def main():
     logger.info("  1. Use SeparableHamiltonian for most MFG problems")
     logger.info("  2. Components: control_cost, potential, coupling, coupling_dm")
     logger.info("  3. Methods: H(), dp(), dm(), legendre_transform()")
-    logger.info("  4. Pass directly to MFGComponents(hamiltonian=H)")
+    logger.info("  4. Pass to Model(hamiltonian=H) + Conditions(u_terminal=..., m_initial=...)")
     logger.info("\nSee Also:")
     logger.info("  - mfgarchon/core/hamiltonian.py (HamiltonianBase, SeparableHamiltonian)")
     logger.info("  - examples/basic/core_infrastructure/ (more examples)")

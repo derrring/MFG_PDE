@@ -13,7 +13,7 @@ Each tutorial is a Python script (`.py`) with inline comments and explanations. 
 
 Your first Mean Field Game solve.
 
-**You'll learn**: `MFGProblem`, `MFGComponents`, `SeparableHamiltonian`, `TensorProductGrid`, `result.solve()`
+**You'll learn**: `Model`, `Conditions`, `MFGProblem`, `SeparableHamiltonian`, `TensorProductGrid`, `problem.solve()`
 
 ---
 

@@ -36,10 +36,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
-from mfgarchon.core.mfg_problem import MFGComponents
-
-# Note: Using problem.solve() API (v0.17.0+) instead of deprecated create_solver()
+from mfgarchon import Conditions, MFGProblem, Model
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry.boundary import (
     AdjointConsistentProvider,
     BCSegment,
@@ -100,45 +98,18 @@ def create_towel_problem_standard_bc(
     """Create towel-on-beach problem with STANDARD Neumann BC."""
     from mfgarchon.geometry import TensorProductGrid
 
-    # Custom Hamiltonian using MFGComponents API (advanced signature with derivs)
-    def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """
-        Towel-on-beach Hamiltonian: H = (1/2)|p|² + V(x) + λ ln(m)
-
-        Where V(x) = |x - x_stall| is the position cost (attraction to stall).
-        """
-        # Get gradient from derivs dict
-        p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else derivs.grad[0]
-
-        # Kinetic term: (1/2)|p|²
-        kinetic = 0.5 * p**2
-
-        # Position cost: V(x) = |x - x_stall|
-        proximity = abs(x_position - x_stall)
-
-        # Congestion cost: λ ln(m)
-        m_reg = max(m_at_x, 1e-10)
-        congestion = lambda_crowd * np.log(m_reg)
-
-        return kinetic + proximity + congestion
-
-    def hamiltonian_dm_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """Derivative of Hamiltonian w.r.t. density: ∂H/∂m = λ/m"""
-        m_reg = max(m_at_x, 1e-10)
-        return lambda_crowd / m_reg
-
-    def initial_density(x):
-        return np.ones_like(x) / L  # Uniform
-
-    def terminal_value(x):
-        return 0.0  # Zero terminal cost
-
-    # Create components with custom Hamiltonian (Issue #670: m_initial/u_final in MFGComponents)
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-        m_initial=initial_density,
-        u_terminal=terminal_value,
+    # Class-based Hamiltonian: H = (1/2)|p|^2 + |x - x_stall| + lambda_crowd * ln(m)
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        potential=lambda x, t: abs(x[0] - x_stall),
+        coupling=lambda m: lambda_crowd * np.log(max(m, 1e-10)),
+        coupling_dm=lambda m: lambda_crowd / max(m, 1e-10),
+    )
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+    conditions = Conditions(
+        m_initial=lambda x: np.ones_like(x) / L,
+        u_terminal=lambda x: np.zeros_like(x),
+        T=T,
     )
 
     # Create geometry with Neumann BC
@@ -148,15 +119,12 @@ def create_towel_problem_standard_bc(
         boundary_conditions=neumann_bc(dimension=1),
     )
 
-    problem = MFGProblem(
-        geometry=geometry,
-        T=T,
+    return MFGProblem(
+        model=model,
+        domain=geometry,
+        conditions=conditions,
         Nt=Nt,
-        sigma=sigma,
-        components=components,
     )
-
-    return problem
 
 
 def create_towel_problem_adjoint_bc(
@@ -171,45 +139,18 @@ def create_towel_problem_adjoint_bc(
     """Create towel-on-beach problem with ADJOINT-CONSISTENT BC via provider."""
     from mfgarchon.geometry import TensorProductGrid
 
-    # Custom Hamiltonian using MFGComponents API (advanced signature with derivs)
-    def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """
-        Towel-on-beach Hamiltonian: H = (1/2)|p|² + V(x) + λ ln(m)
-
-        Where V(x) = |x - x_stall| is the position cost (attraction to stall).
-        """
-        # Get gradient from derivs dict
-        p = derivs.get((1,), 0.0) if isinstance(derivs, dict) else derivs.grad[0]
-
-        # Kinetic term: (1/2)|p|²
-        kinetic = 0.5 * p**2
-
-        # Position cost: V(x) = |x - x_stall|
-        proximity = abs(x_position - x_stall)
-
-        # Congestion cost: λ ln(m)
-        m_reg = max(m_at_x, 1e-10)
-        congestion = lambda_crowd * np.log(m_reg)
-
-        return kinetic + proximity + congestion
-
-    def hamiltonian_dm_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """Derivative of Hamiltonian w.r.t. density: ∂H/∂m = λ/m"""
-        m_reg = max(m_at_x, 1e-10)
-        return lambda_crowd / m_reg
-
-    def initial_density(x):
-        return np.ones_like(x) / L  # Uniform
-
-    def terminal_value(x):
-        return 0.0  # Zero terminal cost
-
-    # Create components with custom Hamiltonian (Issue #670: m_initial/u_final in MFGComponents)
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
-        m_initial=initial_density,
-        u_terminal=terminal_value,
+    # Class-based Hamiltonian: H = (1/2)|p|^2 + |x - x_stall| + lambda_crowd * ln(m)
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        potential=lambda x, t: abs(x[0] - x_stall),
+        coupling=lambda m: lambda_crowd * np.log(max(m, 1e-10)),
+        coupling_dm=lambda m: lambda_crowd / max(m, 1e-10),
+    )
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+    conditions = Conditions(
+        m_initial=lambda x: np.ones_like(x) / L,
+        u_terminal=lambda x: np.zeros_like(x),
+        T=T,
     )
 
     # Adjoint-consistent BC via provider pattern (Issue #625)
@@ -244,15 +185,12 @@ def create_towel_problem_adjoint_bc(
         boundary_conditions=bc,
     )
 
-    problem = MFGProblem(
-        geometry=geometry,
-        T=T,
+    return MFGProblem(
+        model=model,
+        domain=geometry,
+        conditions=conditions,
         Nt=Nt,
-        sigma=sigma,
-        components=components,
     )
-
-    return problem
 
 
 def run_validation():

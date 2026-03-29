@@ -37,8 +37,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
-from mfgarchon.core.mfg_problem import MFGComponents
+from mfgarchon import Conditions, MFGProblem, Model
+from mfgarchon.core.hamiltonian import HamiltonianBase
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import neumann_bc
 from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -49,6 +51,46 @@ logger = get_logger(__name__)
 EXAMPLE_DIR = Path(__file__).parent
 OUTPUT_DIR = EXAMPLE_DIR.parent / "outputs" / "basic"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+class SantaFeHamiltonian(HamiltonianBase):
+    """
+    Hamiltonian for Santa Fe Bar continuous preference evolution.
+
+    H(theta, p, m) = (1/2)|p|^2 + V(theta, m_attend)
+
+    where V depends on whether the agent attends (theta > 0) and the
+    aggregate attendance fraction m_attend (non-local coupling).
+    """
+
+    def __init__(self, payoff_function, attendance_cache: dict):
+        super().__init__()
+        self.payoff_function = payoff_function
+        self.attendance_cache = attendance_cache
+
+    def __call__(self, x: np.ndarray, m: float, p: np.ndarray, t: float = 0.0) -> float:
+        """Evaluate H(theta, m, p, t)."""
+        x_arr = np.atleast_1d(x)
+        p_arr = np.atleast_1d(p)
+        theta = float(x_arr[0])
+        p_val = float(p_arr[0])
+
+        # Use cached aggregate attendance
+        m_attend = self.attendance_cache["m_attend"]
+        F = self.payoff_function(m_attend)
+
+        # Potential: attend if theta > 0
+        V = -F if theta > 0 else 0.0
+
+        return 0.5 * p_val**2 + V
+
+    def dm(self, x: np.ndarray, m: float, p: np.ndarray, t: float = 0.0) -> float:
+        """dH/dm: simplified (local changes have negligible effect on aggregate)."""
+        return 0.0
+
+    def dp(self, x: np.ndarray, m: float, p: np.ndarray, t: float = 0.0) -> np.ndarray:
+        """dH/dp = p (quadratic control cost)."""
+        return np.atleast_1d(p)
 
 
 def create_santa_fe_problem(
@@ -62,7 +104,7 @@ def create_santa_fe_problem(
     sigma: float = 0.5,
 ):
     """
-    Create Santa Fe Bar MFG with continuous preference evolution.
+    Create Santa Fe Bar MFG with continuous preference evolution using Model + Conditions API.
 
     Args:
         threshold: Attendance threshold (overcrowding if > threshold)
@@ -116,53 +158,6 @@ def create_santa_fe_problem(
     # Cache for aggregate attendance (updated per iteration)
     attendance_cache = {"m_attend": 0.5}  # Start with neutral assumption
 
-    def hamiltonian_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """
-        H(θ, p, m) = (1/2)p² + V(θ, m_attend)
-
-        where V(θ, m_attend) depends on whether agent attends (θ > 0).
-
-        Note: This is a non-local Hamiltonian - the potential depends on aggregate
-        attendance m_attend = ∫_{θ>0} m(θ) dθ, not just local density.
-
-        Args:
-            x_idx: Grid index
-            x_position: θ value (preference state)
-            m_at_x: Local density m(θ) at this point
-            derivs: Gradient dictionary with tuple keys
-            t_idx: Time index
-            current_time: Time t
-            problem: MFGProblem instance (gives access to full density)
-
-        Returns:
-            Hamiltonian value at this point
-        """
-        # Extract momentum from derivs
-        p = derivs.get((1,), 0.0)
-
-        # Use cached aggregate attendance (computed at start of iteration)
-        m_attend = attendance_cache["m_attend"]
-
-        # Payoff for attending
-        F = payoff_function(m_attend)
-
-        # Potential depends on preference sign
-        # If θ > 0: agent attends, receives F(m)
-        # If θ < 0: agent stays home, receives 0
-        V = -F if x_position > 0 else 0.0
-
-        # Hamiltonian with quadratic control cost
-        return 0.5 * p**2 + V
-
-    def hamiltonian_dm_func(x_idx, x_position, m_at_x, derivs, t_idx, current_time, problem):
-        """Derivative of Hamiltonian with respect to density.
-
-        For this non-local problem, dH/dm is complex due to aggregate coupling.
-        Using simplified approximation (local contribution to aggregate).
-        """
-        # The aggregate attendance sensitivity is small when distributed
-        return 0.0  # Simplified: local changes have negligible effect on aggregate
-
     # Initial distribution: Gaussian centered at θ=0 (no strong preference)
     def initial_density_func(theta):
         """Gaussian initial distribution."""
@@ -173,23 +168,33 @@ def create_santa_fe_problem(
         """Zero terminal cost."""
         return 0.0
 
-    # Create MFGComponents (Issue #670: m_initial/u_final must be in MFGComponents)
-    components = MFGComponents(
-        hamiltonian_func=hamiltonian_func,
-        hamiltonian_dm_func=hamiltonian_dm_func,
+    # Model: game rules (Hamiltonian + diffusion)
+    hamiltonian = SantaFeHamiltonian(
+        payoff_function=payoff_function,
+        attendance_cache=attendance_cache,
+    )
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+
+    # Conditions: problem data (initial/terminal + time horizon)
+    conditions = Conditions(
         m_initial=initial_density_func,
         u_terminal=terminal_value_func,
+        T=T,
     )
 
-    # Create problem
+    # Domain: preference space [-theta_max, theta_max]
+    domain = TensorProductGrid(
+        bounds=[(-theta_max, theta_max)],
+        Nx_points=[Nx],
+        boundary_conditions=neumann_bc(dimension=1),
+    )
+
+    # Create problem with v1.0 API
     problem = MFGProblem(
-        xmin=-theta_max,
-        xmax=theta_max,
-        Nx=Nx,
-        T=T,
+        model=model,
+        domain=domain,
+        conditions=conditions,
         Nt=Nt,
-        sigma=sigma,
-        components=components,
     )
 
     # Store helpers for external access

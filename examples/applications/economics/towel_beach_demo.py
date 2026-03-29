@@ -43,9 +43,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import HamiltonianBase
-from mfgarchon.core.mfg_problem import MFGComponents
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import neumann_bc
 from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
@@ -115,7 +114,7 @@ def create_towel_beach_problem(
     sigma: float = 0.3,
 ):
     """
-    Create Towel on Beach MFG problem using MFGComponents API.
+    Create Towel on Beach MFG problem using Model + Conditions API.
 
     Args:
         beach_length: Length of beach [0, L]
@@ -146,27 +145,29 @@ def create_towel_beach_problem(
         crowd_aversion=crowd_aversion,
     )
 
-    # Create MFGComponents (Issue #673: class-based Hamiltonian required)
-    components = MFGComponents(
-        hamiltonian=hamiltonian,
+    # Model: game rules (Hamiltonian + diffusion)
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+
+    # Conditions: problem data (initial/terminal + time horizon)
+    conditions = Conditions(
         m_initial=initial_density_func,
         u_terminal=terminal_value_func,
+        T=T,
     )
 
     # Create geometry with Neumann (reflecting) boundary conditions
-    geometry = TensorProductGrid(
+    domain = TensorProductGrid(
         bounds=[(0.0, beach_length)],
         Nx_points=[Nx],
         boundary_conditions=neumann_bc(dimension=1),
     )
 
-    # Create problem with MFGComponents
+    # Create problem with v1.0 API
     problem = MFGProblem(
-        geometry=geometry,
-        T=T,
+        model=model,
+        domain=domain,
+        conditions=conditions,
         Nt=Nt,
-        sigma=sigma,
-        components=components,
     )
 
     return problem

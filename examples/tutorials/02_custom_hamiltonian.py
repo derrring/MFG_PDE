@@ -7,7 +7,7 @@ What you'll learn:
 - How to create a custom Hamiltonian class
 - How to define H(x, p, m) and its derivatives
 - How to specify terminal costs and initial density
-- How to use the MFGComponents API
+- How to use the Model/Conditions API
 
 Mathematical Problem:
     A crowd evacuation problem with congestion:
@@ -18,8 +18,7 @@ Mathematical Problem:
 
 import numpy as np
 
-from mfgarchon import MFGProblem
-from mfgarchon.core import MFGComponents
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import HamiltonianBase
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
@@ -120,12 +119,9 @@ if __name__ == "__main__":
     # Create custom Hamiltonian
     hamiltonian = CongestionHamiltonian(congestion_strength=congestion_strength)
 
-    # Bundle components
-    components = MFGComponents(
-        hamiltonian=hamiltonian,
-        m_initial=initial_density,
-        u_terminal=terminal_cost,
-    )
+    # Bundle model and conditions
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+    conditions = Conditions(u_terminal=terminal_cost, m_initial=initial_density, T=1.0)
 
     # ==============================================================================
     # Step 3: Create and Solve Problem
@@ -133,11 +129,10 @@ if __name__ == "__main__":
 
     print("Creating problem with custom Hamiltonian...")
     problem = MFGProblem(
-        geometry=grid,
-        T=1.0,
+        model=model,
+        domain=grid,
+        conditions=conditions,
         Nt=50,
-        sigma=sigma,
-        components=components,
     )
 
     print(f"  Congestion strength: lambda = {congestion_strength}")
@@ -163,18 +158,7 @@ if __name__ == "__main__":
     print("Solving baseline (no congestion)...")
 
     baseline_hamiltonian = CongestionHamiltonian(congestion_strength=0.0)
-    baseline_components = MFGComponents(
-        hamiltonian=baseline_hamiltonian,
-        m_initial=initial_density,
-        u_terminal=terminal_cost,
-    )
-    baseline = MFGProblem(
-        geometry=grid,
-        T=1.0,
-        Nt=50,
-        sigma=sigma,
-        components=baseline_components,
-    )
+    baseline = problem.with_model(Model(hamiltonian=baseline_hamiltonian, sigma=sigma))
     result_baseline = baseline.solve(verbose=False)
 
     # Measure evacuation efficiency
@@ -272,7 +256,7 @@ if __name__ == "__main__":
     print("  1. Create a custom Hamiltonian by subclassing HamiltonianBase")
     print("  2. Implement __call__(x, m, p, t) for H(x, m, p)")
     print("  3. Implement dp() and dm() for derivatives")
-    print("  4. Bundle with MFGComponents and solve")
+    print("  4. Bundle with Model/Conditions and solve")
     print()
     print("Key insight:")
     print("  Congestion (lambda*m*|p|^2) slows evacuation by making movement")

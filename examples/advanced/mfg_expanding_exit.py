@@ -34,9 +34,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
-from mfgarchon.core.mfg_components import MFGComponents
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
 from mfgarchon.geometry.level_set import LevelSetEvolver, TimeDependentDomain
@@ -132,7 +131,7 @@ def create_mfg_problem(phi_current: np.ndarray) -> MFGProblem:
     Exit defined by: phi(x) <= 0
     Terminal cost: 0 inside exit, large outside
 
-    Uses MFGComponents + SeparableHamiltonian (modern API).
+    Uses Model + Conditions + SeparableHamiltonian (v1.0 API).
     The running cost g(m) = 1 + w*m is split:
     - constant 1: absorbed into base HJB structure
     - density-dependent w*m: the coupling term in SeparableHamiltonian
@@ -146,18 +145,24 @@ def create_mfg_problem(phi_current: np.ndarray) -> MFGProblem:
         coupling_dm=lambda m: congestion_weight,
     )
 
-    components = MFGComponents(
-        hamiltonian=hamiltonian,
-        m_initial=m0.copy(),
-        u_terminal=u_final,
+    # Model: game rules (Hamiltonian + diffusion)
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
+
+    # Conditions: problem data (initial/terminal + time horizon)
+    # Wrap arrays in callables for Conditions API
+    m0_snapshot = m0.copy()
+    u_final_snapshot = u_final.copy()
+    conditions = Conditions(
+        m_initial=lambda _x: m0_snapshot,
+        u_terminal=lambda _x: u_final_snapshot,
+        T=T_final,
     )
 
     problem = MFGProblem(
-        geometry=grid,
-        T=T_final,
+        model=model,
+        domain=grid,
+        conditions=conditions,
         Nt=Nt,
-        sigma=sigma,
-        components=components,
     )
 
     return problem

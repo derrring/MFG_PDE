@@ -26,10 +26,12 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfgarchon.alg.numerical.hjb_solvers import HJBSemiLagrangianSolver
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.geometry import TensorProductGrid
+from mfgarchon.geometry.boundary import no_flux_bc
 from mfgarchon.utils.mfg_logging import configure_research_logging, get_logger
 
 # Configure logging
@@ -37,94 +39,67 @@ configure_research_logging("semi_lagrangian_2d", level="INFO")
 logger = get_logger(__name__)
 
 
-class Simple2DCrowdNavigationProblem(MFGProblem):
+def create_2d_crowd_navigation_problem(
+    grid_resolution=15,
+    time_horizon=0.5,
+    num_timesteps=25,
+    sigma=0.05,
+    coupling_strength=0.5,
+):
     """
-    Simple 2D crowd navigation problem for demonstrating enhancements.
+    Create a simple 2D crowd navigation problem for demonstrating enhancements.
 
     Agents navigate from bottom-left to top-right while avoiding congestion.
-    - Isotropic Hamiltonian: H = (1/2)|∇u|²
+    - Isotropic Hamiltonian: H = (1/2)|nabla u|^2
     - MFG coupling: agents prefer less crowded regions
     - Goal: reach target at (0.8, 0.8)
+
+    Returns
+    -------
+    MFGProblem
+        Configured 2D crowd navigation problem.
     """
+    goal_position = np.array([0.8, 0.8])
+    initial_position = np.array([0.2, 0.2])
 
-    def __init__(
-        self,
-        grid_resolution=15,
-        time_horizon=0.5,
-        num_timesteps=25,
-        sigma=0.05,
-        coupling_strength=0.5,
-    ):
-        super().__init__(
-            spatial_bounds=[(0.0, 1.0), (0.0, 1.0)],
-            spatial_discretization=[grid_resolution, grid_resolution],
-            T=time_horizon,
-            Nt=num_timesteps,
-            sigma=sigma,
-        )
-        self.grid_resolution = grid_resolution
-        self.coupling_strength = coupling_strength
-        self.goal_position = np.array([0.8, 0.8])
-        self.initial_position = np.array([0.2, 0.2])
+    # Geometry
+    geometry = TensorProductGrid(
+        bounds=[(0.0, 1.0), (0.0, 1.0)],
+        Nx_points=[grid_resolution, grid_resolution],
+        boundary_conditions=no_flux_bc(dimension=2),
+    )
 
-    def initial_density(self, x):
-        """Gaussian initial density centered at (0.2, 0.2)."""
-        dist_sq = np.sum((x - self.initial_position) ** 2, axis=1)
-        density = np.exp(-100 * dist_sq)
-        return density / (np.sum(density) + 1e-10)
+    # Model: H = (1/2)|p|^2 + kappa * m
+    hamiltonian = SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: coupling_strength * m,
+        coupling_dm=lambda m: coupling_strength,
+    )
+    model = Model(hamiltonian=hamiltonian, sigma=sigma)
 
-    def terminal_cost(self, x):
-        """Quadratic terminal cost: distance to goal."""
-        dist_sq = np.sum((x - self.goal_position) ** 2, axis=1)
+    # Conditions (callables, resolution-independent)
+    def initial_density(x):
+        """Gaussian initial density centered at (0.2, 0.2). x shape: (2,) for single 2D point."""
+        dist_sq = (x[0] - initial_position[0]) ** 2 + (x[1] - initial_position[1]) ** 2
+        return np.exp(-100 * dist_sq)
+
+    def terminal_cost(x):
+        """Quadratic terminal cost: distance to goal. x shape: (2,) for single 2D point."""
+        dist_sq = (x[0] - goal_position[0]) ** 2 + (x[1] - goal_position[1]) ** 2
         return 0.5 * dist_sq
 
-    def running_cost(self, x, t):
-        """Zero running cost."""
-        return np.zeros(x.shape[0])
+    conditions = Conditions(
+        m_initial=initial_density,
+        u_terminal=terminal_cost,
+        T=time_horizon,
+    )
 
-    def hamiltonian(self, x, m, p, t):
-        """Isotropic Hamiltonian with MFG coupling: H = (1/2)|p|² + κ·m"""
-        p_squared = np.sum(p**2, axis=1) if p.ndim > 1 else p**2
-        return 0.5 * p_squared + self.coupling_strength * m
-
-    def setup_components(self):
-        """Setup MFG components."""
-        coupling_strength = self.coupling_strength
-
-        def initial_density_func(x):
-            """Gaussian initial density."""
-            if np.isscalar(x):
-                x = np.array([x])
-            x = np.atleast_1d(x)
-            if x.shape[0] >= 2:
-                dist_sq = np.sum((x[:2] - self.initial_position) ** 2)
-            else:
-                dist_sq = (x[0] - self.initial_position[0]) ** 2
-            return np.exp(-100 * dist_sq)
-
-        def terminal_cost_func(x):
-            """Quadratic terminal cost."""
-            if np.isscalar(x):
-                x = np.array([x])
-            x = np.atleast_1d(x)
-            if x.shape[0] >= 2:
-                dist_sq = np.sum((x[:2] - self.goal_position) ** 2)
-            else:
-                dist_sq = (x[0] - self.goal_position[0]) ** 2
-            return 0.5 * dist_sq
-
-        # Class-based Hamiltonian: H = (1/2)|p|² + κ·m
-        hamiltonian = SeparableHamiltonian(
-            control_cost=QuadraticControlCost(control_cost=1.0),
-            coupling=lambda m: coupling_strength * m,
-            coupling_dm=lambda m: coupling_strength,
-        )
-
-        return MFGComponents(
-            hamiltonian=hamiltonian,
-            m_initial=initial_density_func,
-            u_terminal=terminal_cost_func,
-        )
+    problem = MFGProblem(model=model, domain=geometry, conditions=conditions, Nt=num_timesteps)
+    # Attach metadata for use in solve/visualization code
+    problem.coupling_strength = coupling_strength
+    problem.goal_position = goal_position
+    problem.initial_position = initial_position
+    return problem
 
 
 def solve_with_configuration(problem, config_name, config):
@@ -149,12 +124,12 @@ def solve_with_configuration(problem, config_name, config):
     # Create FP solver
     fp_solver = FPFDMSolver(problem)
 
-    # Initialize
-    components = problem.setup_components()
-
     # Get grid dimensions
     Nt = problem.geometry.time_grid.num_points
     N_total = problem.geometry.grid.num_points_total
+
+    # Initial density and terminal cost from problem components
+    components = problem.components
 
     # Initial density
     M = np.zeros((Nt, N_total))
@@ -164,13 +139,19 @@ def solve_with_configuration(problem, config_name, config):
         for d in range(problem.geometry.grid.dimension):
             x_d = problem.geometry.grid.bounds[d][0] + multi_idx[d] * problem.geometry.grid.spacing[d]
             coords.append(x_d)
-        coords_array = np.array(coords).reshape(1, -1)
-        M[0, idx] = problem.initial_density(coords_array)[0]
+        coords_array = np.array(coords)
+        M[0, idx] = components.initial_density(coords_array)
 
     # Terminal cost
     U_terminal = np.zeros(N_total)
     for idx in range(N_total):
-        U_terminal[idx] = components.terminal_cost(problem.geometry.grid.get_multi_index(idx))
+        multi_idx = problem.geometry.grid.get_multi_index(idx)
+        coords = []
+        for d in range(problem.geometry.grid.dimension):
+            x_d = problem.geometry.grid.bounds[d][0] + multi_idx[d] * problem.geometry.grid.spacing[d]
+            coords.append(x_d)
+        coords_array = np.array(coords)
+        U_terminal[idx] = components.terminal_cost(coords_array)
 
     # Solve with simple Picard iteration (2 iterations for demo)
     U = np.zeros((Nt, N_total))
@@ -200,10 +181,11 @@ def compare_configurations():
     print("=" * 80)
 
     # Create problem
-    problem = Simple2DCrowdNavigationProblem(
+    problem = create_2d_crowd_navigation_problem(
         grid_resolution=15,
-        time_domain=(0.5, 25),
-        diffusion_coeff=0.05,
+        time_horizon=0.5,
+        num_timesteps=25,
+        sigma=0.05,
     )
 
     print("\nProblem setup:")
