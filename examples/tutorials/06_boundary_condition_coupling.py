@@ -36,11 +36,10 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfgarchon.alg.numerical.fp_solvers.fp_fdm import FPFDMSolver
 from mfgarchon.alg.numerical.hjb_solvers.hjb_fdm import HJBFDMSolver
-from mfgarchon.core import MFGComponents
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import (
@@ -60,19 +59,25 @@ MAX_ITERATIONS = 30
 TOLERANCE = 1e-6
 
 
-def create_lq_components():
-    """Create standard LQ-MFG components for boundary stall scenario."""
+def create_lq_model_and_conditions() -> tuple[Model, Conditions]:
+    """Create standard LQ-MFG model and conditions for boundary stall scenario.
+
+    Returns:
+        (Model, Conditions) tuple for boundary stall MFG problem.
+    """
     hamiltonian = SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=1.0),
         coupling=lambda m: 0.5 * m,
         coupling_dm=lambda m: 0.5,
     )
-    return MFGComponents(
-        hamiltonian=hamiltonian,
+    model = Model(hamiltonian=hamiltonian, sigma=SIGMA)
+    conditions = Conditions(
         # Stall point at x=0 (boundary) - agents want to be at left edge
         m_initial=lambda x: np.exp(-20 * (x - 0.3) ** 2),
         u_terminal=lambda x: x**2,  # Minimal cost at x=0
+        T=T,
     )
+    return model, conditions
 
 
 def create_standard_problem() -> MFGProblem:
@@ -85,18 +90,18 @@ def create_standard_problem() -> MFGProblem:
     Returns:
         Configured MFGProblem with Neumann BC
     """
-    geometry = TensorProductGrid(
+    grid = TensorProductGrid(
         bounds=[(0.0, 1.0)],
         Nx_points=[NX + 1],
         boundary_conditions=neumann_bc(dimension=1),
     )
+    model, conditions = create_lq_model_and_conditions()
 
     return MFGProblem(
-        geometry=geometry,
-        T=T,
+        model=model,
+        domain=grid,
+        conditions=conditions,
         Nt=NT,
-        sigma=SIGMA,
-        components=create_lq_components(),
     )
 
 
@@ -138,18 +143,18 @@ def create_adjoint_consistent_problem() -> MFGProblem:
         dimension=1,
     )
 
-    geometry = TensorProductGrid(
+    grid = TensorProductGrid(
         bounds=[(0.0, 1.0)],
         Nx_points=[NX + 1],
         boundary_conditions=bc,
     )
+    model, conditions = create_lq_model_and_conditions()
 
     return MFGProblem(
-        geometry=geometry,
-        T=T,
+        model=model,
+        domain=grid,
+        conditions=conditions,
         Nt=NT,
-        sigma=SIGMA,
-        components=create_lq_components(),
     )
 
 
@@ -235,7 +240,7 @@ def compare_bc_modes():
     print("  Domain: [0, 1]")
     print(f"  Grid points: {problem_std.geometry.get_grid_shape()[0]}")
     print(f"  Time steps: {problem_std.Nt}")
-    print(f"  Diffusion: sigma = {problem_std.sigma}")
+    print(f"  Diffusion: sigma = {SIGMA}")
 
     # Step 2: Solve with standard BC
     print("\n[Step 2] Standard Neumann BC (classical dU/dn = 0)...")

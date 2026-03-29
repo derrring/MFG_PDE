@@ -18,9 +18,8 @@ from pathlib import Path
 
 import numpy as np
 
-from mfgarchon import MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.config import MFGSolverConfig, PicardConfig
-from mfgarchon.core import MFGComponents
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.factory import SolverFactory
 from mfgarchon.geometry import TensorProductGrid
@@ -45,19 +44,19 @@ if __name__ == "__main__":
         coupling_dm=lambda m: 0.3,
     )
 
-    components = MFGComponents(
-        hamiltonian=hamiltonian,
-        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+    model = Model(hamiltonian=hamiltonian, sigma=0.15)
+    conditions = Conditions(
         u_terminal=lambda x: (x - 0.5) ** 2,
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+        T=1.0,
     )
 
     # Create problem
     problem = MFGProblem(
-        geometry=grid,
-        T=1.0,
+        model=model,
+        domain=grid,
+        conditions=conditions,
         Nt=50,
-        sigma=0.15,
-        components=components,
     )
 
     print("Solving with DEFAULT settings...")

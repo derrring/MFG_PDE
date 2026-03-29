@@ -11,43 +11,44 @@ References:
 import matplotlib.pyplot as plt
 import numpy as np
 
-from mfgarchon import MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
 from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
-from mfgarchon.core import MFGComponents
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
 from mfgarchon.types import NumericalScheme
 
 
-def create_lq_components():
-    """Create standard LQ-MFG components for demos."""
+def create_lq_model_and_conditions():
+    """Create standard LQ-MFG model and conditions for demos."""
     hamiltonian = SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=1.0),
         coupling=lambda m: 0.5 * m,
         coupling_dm=lambda m: 0.5,
     )
-    return MFGComponents(
-        hamiltonian=hamiltonian,
-        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+    model = Model(hamiltonian=hamiltonian, sigma=0.1)
+    conditions = Conditions(
         u_terminal=lambda x: (x - 0.5) ** 2,
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+        T=1.0,
     )
+    return model, conditions
 
 
 def create_problem():
     """Create a simple 1D problem for demos."""
-    geometry = TensorProductGrid(
+    domain = TensorProductGrid(
         bounds=[(0.0, 1.0)],
         Nx_points=[40],
         boundary_conditions=no_flux_bc(dimension=1),
     )
+    model, conditions = create_lq_model_and_conditions()
     return MFGProblem(
-        geometry=geometry,
+        model=model,
+        domain=domain,
+        conditions=conditions,
         Nt=20,
-        T=1.0,
-        sigma=0.1,
-        components=create_lq_components(),
     )
 
 

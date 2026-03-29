@@ -14,37 +14,34 @@ This tutorial wraps up the series and points you toward more advanced topics.
 
 import numpy as np
 
-from mfgarchon import MFGProblem
-from mfgarchon.core import MFGComponents
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
 
 if __name__ == "__main__":
     # ==============================================================================
-    # Helper: Create Standard LQ Components
+    # Helper: Create Standard LQ Model and Conditions
     # ==============================================================================
 
-    def create_lq_components(coupling_strength: float = 0.5):
+    def create_lq_model(sigma: float = 0.15, coupling_strength: float = 0.5) -> Model:
         """
-        Create standard Linear-Quadratic MFG components.
+        Create a Linear-Quadratic MFG model.
 
-        This is the default setup used throughout this tutorial:
-        - Hamiltonian: H(p,m) = (1/2)|p|^2 + coupling * m
-        - Terminal cost: (x - 0.5)^2 (agents want to be at center)
-        - Initial density: Gaussian at center
+        H(p,m) = (1/2)|p|^2 + coupling * m
         """
         hamiltonian = SeparableHamiltonian(
             control_cost=QuadraticControlCost(control_cost=1.0),
             coupling=lambda m: coupling_strength * m,
             coupling_dm=lambda m: coupling_strength,
         )
+        return Model(hamiltonian=hamiltonian, sigma=sigma)
 
-        return MFGComponents(
-            hamiltonian=hamiltonian,
-            m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
-            u_terminal=lambda x: (x - 0.5) ** 2,
-        )
+    conditions = Conditions(
+        m_initial=lambda x: np.exp(-50 * (x - 0.5) ** 2),
+        u_terminal=lambda x: (x - 0.5) ** 2,
+        T=1.0,
+    )
 
     # ==============================================================================
     # Step 1: Problem Setup
@@ -74,16 +71,12 @@ if __name__ == "__main__":
     diffusion_values = [0.05, 0.15, 0.30]
     results_diffusion = {}
 
+    grid = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
+
     for sigma in diffusion_values:
         print(f"Solving with sigma={sigma}...")
-        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(
-            geometry=geometry,
-            T=1.0,
-            Nt=50,
-            sigma=sigma,
-            components=create_lq_components(coupling_strength=0.5),
-        )
+        model = create_lq_model(sigma=sigma, coupling_strength=0.5)
+        problem = MFGProblem(model=model, domain=grid, conditions=conditions, Nt=50)
         results_diffusion[sigma] = problem.solve(verbose=False)
         print(f"  Converged in {results_diffusion[sigma].iterations} iterations")
 
@@ -107,14 +100,8 @@ if __name__ == "__main__":
 
     for coupling in coupling_values:
         print(f"Solving with coupling={coupling}...")
-        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[51], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(
-            geometry=geometry,
-            T=1.0,
-            Nt=50,
-            sigma=0.15,
-            components=create_lq_components(coupling_strength=coupling),
-        )
+        model = create_lq_model(sigma=0.15, coupling_strength=coupling)
+        problem = MFGProblem(model=model, domain=grid, conditions=conditions, Nt=50)
         results_coupling[coupling] = problem.solve(verbose=False)
         print(f"  Converged in {results_coupling[coupling].iterations} iterations")
 
@@ -136,16 +123,12 @@ if __name__ == "__main__":
     Nx_values = [26, 51, 101]  # Number of grid points
     results_grid = {}
 
+    model = create_lq_model(sigma=0.15, coupling_strength=0.5)
+
     for Nx in Nx_values:
         print(f"Solving with Nx={Nx} grid points...")
-        geometry = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
-        problem = MFGProblem(
-            geometry=geometry,
-            T=1.0,
-            Nt=Nx,  # Keep dt/dx ratio constant
-            sigma=0.15,
-            components=create_lq_components(coupling_strength=0.5),
-        )
+        grid_nx = TensorProductGrid(bounds=[(0.0, 1.0)], Nx_points=[Nx], boundary_conditions=no_flux_bc(dimension=1))
+        problem = MFGProblem(model=model, domain=grid_nx, conditions=conditions, Nt=Nx)  # Keep dt/dx ratio constant
         results_grid[Nx] = problem.solve(verbose=False)
         print(f"  Converged in {results_grid[Nx].iterations} iterations")
 
@@ -310,7 +293,7 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
     print("What you learned:")
-    print("  1. Create parameter variations using helper functions")
+    print("  1. Create Model/Conditions variations for parameter studies")
     print("  2. Compare diffusion, coupling, and resolution effects")
     print("  3. Analyze mass conservation and convergence")
     print("  4. Visualize parameter studies")

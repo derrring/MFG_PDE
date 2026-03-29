@@ -19,8 +19,7 @@ Mathematical Problem:
 
 import numpy as np
 
-from mfgarchon import MFGProblem
-from mfgarchon.core import MFGComponents
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
@@ -53,14 +52,7 @@ if __name__ == "__main__":
     print(f"  Grid: {GRID_RESOLUTION} x {GRID_RESOLUTION}")
     print()
 
-    # Get grid coordinates
-    x_coords = geometry.coordinates[0]
-    y_coords = geometry.coordinates[1]
-    X, Y = np.meshgrid(x_coords, y_coords, indexing="ij")
-    dx, dy = geometry.get_grid_spacing()
-
-    # Compute initial density: 4 Gaussian blobs at corners
-    print("Setting up initial density (4 Gaussian blobs at corners)...")
+    # Corner positions for initial density
     corners = [
         (2.0, 2.0),  # Bottom-left
         (8.0, 2.0),  # Bottom-right
@@ -68,42 +60,38 @@ if __name__ == "__main__":
         (8.0, 8.0),  # Top-right
     ]
 
-    m_initial = np.zeros_like(X)
-    for cx, cy in corners:
-        dist_squared = (X - cx) ** 2 + (Y - cy) ** 2
-        m_initial += np.exp(-5 * dist_squared)
-
-    # Normalize to probability distribution
-    m_initial /= np.sum(m_initial) * dx * dy
-    print(f"  Initial mass: {np.sum(m_initial) * dx * dy:.6f}")
-    print()
-
-    # Compute terminal cost: distance to target
-    u_final = (X - TARGET[0]) ** 2 + (Y - TARGET[1]) ** 2
-
-    # Create Hamiltonian: H = (1/2)|p|^2 + lambda*m
+    # Define Model (game rules)
     hamiltonian = SeparableHamiltonian(
         control_cost=QuadraticControlCost(control_cost=1.0),
         coupling=lambda m: CONGESTION_WEIGHT * m,
         coupling_dm=lambda m: CONGESTION_WEIGHT,
     )
+    model = Model(hamiltonian=hamiltonian, sigma=SIGMA)
 
-    # Bundle components (using precomputed arrays)
-    components = MFGComponents(
-        hamiltonian=hamiltonian,
-        m_initial=m_initial,
-        u_terminal=u_final,
+    # Define Conditions (callables for resolution-independence)
+    def terminal_cost(x):
+        """Distance to target. x shape: (2,) for a single 2D point."""
+        return (x[0] - TARGET[0]) ** 2 + (x[1] - TARGET[1]) ** 2
+
+    def initial_density(x):
+        """4 Gaussian blobs at corners. x shape: (2,) for a single 2D point."""
+        m = 0.0
+        for cx, cy in corners:
+            m += np.exp(-5 * ((x[0] - cx) ** 2 + (x[1] - cy) ** 2))
+        return m
+
+    conditions = Conditions(
+        u_terminal=terminal_cost,
+        m_initial=initial_density,
+        T=2.0,
     )
+
+    print("Setting up initial density (4 Gaussian blobs at corners)...")
+    print()
 
     # Create problem
     print("Creating 2D target attraction problem...")
-    problem = MFGProblem(
-        geometry=geometry,
-        T=2.0,  # Reduced terminal time for faster demo
-        Nt=20,  # Reduced time steps
-        sigma=SIGMA,
-        components=components,
-    )
+    problem = MFGProblem(model=model, domain=geometry, conditions=conditions, Nt=20)
 
     print(f"  Target: {TARGET}")
     print(f"  Time horizon: T = {problem.T}")
@@ -213,10 +201,10 @@ if __name__ == "__main__":
     print("  4. How to visualize 2D density evolution")
     print()
     print("Key API elements for 2D:")
+    print("  - Model(hamiltonian=..., sigma=...)")
     print("  - TensorProductGrid(bounds=[(xmin,xmax), (ymin,ymax)], Nx_points=[Nx, Ny])")
+    print("  - Conditions with callables: f(x) where x is shape (2,) for 2D points")
     print("  - boundary_conditions=no_flux_bc(dimension=2)")
-    print("  - Initial/terminal functions receive shape (N, 2) arrays")
-    print("  - Use np.atleast_2d() for robust callable handling")
     print()
     print("Next: Tutorial 04 - Advanced Solver Configuration")
     print("=" * 70)
