@@ -15,16 +15,8 @@ Submodules:
 
 # Flux diagnostics for mass conservation analysis
 # GFDMOperator: deprecated, moved to _compat. Import without triggering warning.
-from mfgarchon.utils.numerical._compat.gfdm_operators import GFDMOperator
-from mfgarchon.utils.numerical.flux_diagnostics import (
-    BoundaryFluxResult,
-    FluxDiagnostics,
-    FluxSummary,
-    compute_mass_conservation_error,
-)
-
-# GFDM Strategy Pattern (modular operators and BC handlers)
-from mfgarchon.utils.numerical.gfdm_strategies import (
+# GFDM Strategy Pattern (canonical location: alg/numerical/gfdm_components/)
+from mfgarchon.alg.numerical.gfdm_components.gfdm_strategies import (
     BoundaryHandler,
     DifferentialOperator,
     DirectCollocationHandler,
@@ -34,6 +26,33 @@ from mfgarchon.utils.numerical.gfdm_strategies import (
     UpwindOperator,
     create_bc_handler,
     create_operator,
+)
+
+# SDF utilities (canonical location: geometry/implicit/)
+from mfgarchon.geometry.implicit.sdf_utils import (
+    sdf_box,
+    sdf_complement,
+    sdf_difference,
+    sdf_gradient,
+    sdf_intersection,
+    sdf_smooth_intersection,
+    sdf_smooth_union,
+    sdf_sphere,
+    sdf_union,
+)
+
+# Mesh distance metrics (canonical location: geometry/meshes/)
+from mfgarchon.geometry.meshes.mesh_distances import (
+    MeshDistances,
+    compute_distances_for_eoc_study,
+    compute_mesh_distances,
+)
+from mfgarchon.utils.numerical._compat.gfdm_operators import GFDMOperator
+from mfgarchon.utils.numerical.flux_diagnostics import (
+    BoundaryFluxResult,
+    FluxDiagnostics,
+    FluxSummary,
+    compute_mass_conservation_error,
 )
 from mfgarchon.utils.numerical.hjb_policy_iteration import (
     HJBPolicyProblem,
@@ -49,13 +68,6 @@ from mfgarchon.utils.numerical.kernels import (
     PHSKernel,
     WendlandKernel,
     create_kernel,
-)
-
-# Mesh distance metrics for EOC analysis (GFDM)
-from mfgarchon.utils.numerical.mesh_distances import (
-    MeshDistances,
-    compute_distances_for_eoc_study,
-    compute_mesh_distances,
 )
 from mfgarchon.utils.numerical.monotonicity_stats import (
     MonotonicityStats,
@@ -87,17 +99,6 @@ from mfgarchon.utils.numerical.particle.interpolation import (
     estimate_kde_bandwidth,
     interpolate_grid_to_particles,
     interpolate_particles_to_grid,
-)
-from mfgarchon.utils.numerical.sdf_utils import (
-    sdf_box,
-    sdf_complement,
-    sdf_difference,
-    sdf_gradient,
-    sdf_intersection,
-    sdf_smooth_intersection,
-    sdf_smooth_union,
-    sdf_sphere,
-    sdf_union,
 )
 
 # Tensor Calculus functions (gradient, laplacian, etc.) are no longer re-exported here.

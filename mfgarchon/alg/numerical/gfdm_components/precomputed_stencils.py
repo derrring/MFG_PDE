@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator
+    from mfgarchon.alg.numerical.gfdm_components.gfdm_strategies import TaylorOperator
 
 # Optional: OSQP for fast QP solving
 try:

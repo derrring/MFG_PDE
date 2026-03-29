@@ -9,7 +9,7 @@ NOTE: Strategy Pattern Refactoring (Issue #524)
 -----------------------------------------------
 For NEW code, consider using the Strategy Pattern implementation in gfdm_strategies.py:
 
-    from mfgarchon.utils.numerical.gfdm_strategies import (
+    from mfgarchon.alg.numerical.gfdm_components.gfdm_strategies import (
         TaylorOperator,           # Clean GFDM without ghost particles
         UpwindOperator,           # Flow-biased stencils for advection
         DirectCollocationHandler, # Row Replacement for BC (RECOMMENDED)
@@ -89,7 +89,7 @@ class GFDMOperator:
     .. deprecated:: 0.17.0
         Use ``TaylorOperator`` from ``gfdm_strategies`` module instead:
 
-            from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator
+            from mfgarchon.alg.numerical.gfdm_components.gfdm_strategies import TaylorOperator
             op = TaylorOperator(points, delta=0.1, taylor_order=2)
 
         For boundary conditions, use ``DirectCollocationHandler`` instead of
@@ -141,7 +141,7 @@ class GFDMOperator:
     @deprecated(
         since="v0.17.0",
         replacement="Use TaylorOperator from gfdm_strategies instead: "
-        "from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator",
+        "from mfgarchon.alg.numerical.gfdm_components.gfdm_strategies import TaylorOperator",
     )
     def __init__(
         self,

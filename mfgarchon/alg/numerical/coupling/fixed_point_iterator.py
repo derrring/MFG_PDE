@@ -123,7 +123,7 @@ class FixedPointIterator(BaseMFGSolver):
         self.use_anderson = use_anderson
         self.anderson_accelerator = None
         if use_anderson:
-            from mfgarchon.utils.numerical.anderson_acceleration import AndersonAccelerator
+            from mfgarchon.alg.numerical.coupling.anderson_acceleration import AndersonAccelerator
 
             self.anderson_accelerator = AndersonAccelerator(depth=anderson_depth, beta=anderson_beta)
 
