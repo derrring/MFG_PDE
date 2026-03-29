@@ -17,17 +17,17 @@ from mfgarchon.alg.numerical.gfdm_components import (
     NeighborhoodBuilder,
     PrecomputedMonotoneStencils,
 )
-from mfgarchon.geometry.boundary.applicator_base import DiscretizationType
-from mfgarchon.geometry.boundary.types import BCType
-from mfgarchon.utils.deprecation import deprecated_parameter, deprecated_value
-from mfgarchon.utils.mfg_logging import get_logger
 
 # GFDM infrastructure (Strategy Pattern)
-from mfgarchon.utils.numerical.gfdm_strategies import (
+from mfgarchon.alg.numerical.gfdm_components.gfdm_strategies import (
     DirectCollocationHandler,
     TaylorOperator,
     create_operator,
 )
+from mfgarchon.geometry.boundary.applicator_base import DiscretizationType
+from mfgarchon.geometry.boundary.types import BCType
+from mfgarchon.utils.deprecation import deprecated_parameter, deprecated_value
+from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.numerical.qp_utils import QPCache, QPSolver
 
 from .base_hjb import BaseHJBSolver

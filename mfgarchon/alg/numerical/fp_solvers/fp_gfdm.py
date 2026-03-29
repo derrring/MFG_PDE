@@ -28,8 +28,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from mfgarchon.alg.numerical.fp_solvers.base_fp import BaseFPSolver
+from mfgarchon.alg.numerical.gfdm_components.gfdm_strategies import TaylorOperator
 from mfgarchon.utils.deprecation import deprecated_parameter
-from mfgarchon.utils.numerical.gfdm_strategies import TaylorOperator
 
 if TYPE_CHECKING:
     from collections.abc import Callable
