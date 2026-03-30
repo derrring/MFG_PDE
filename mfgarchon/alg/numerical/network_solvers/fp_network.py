@@ -129,7 +129,7 @@ class FPNetworkSolver(BaseFPSolver):
         self,
         M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
-        diffusion_field: float | np.ndarray | Callable | None = None,
+        volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         # Deprecated parameter name for backward compatibility
         m_initial_condition: np.ndarray | None = None,
@@ -144,7 +144,7 @@ class FPNetworkSolver(BaseFPSolver):
                 - None: Zero drift (pure diffusion on network)
                 - np.ndarray: Precomputed drift (e.g., -∇U/λ for MFG)
                 - Callable: Function α(t, x, m) -> drift (Phase 2)
-            diffusion_field: Diffusion specification (optional):
+            volatility_field: Diffusion specification (optional):
                 - None: Use self.diffusion_coefficient (backward compatible)
                 - float: Constant diffusion on network
                 - np.ndarray/Callable: Phase 2
@@ -185,27 +185,27 @@ class FPNetworkSolver(BaseFPSolver):
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
-        # Handle diffusion_field parameter
-        if diffusion_field is None:
+        # Handle volatility_field parameter
+        if volatility_field is None:
             # Use self.diffusion_coefficient (backward compatible)
             effective_diffusion = self.diffusion_coefficient
-        elif isinstance(diffusion_field, (int, float)):
+        elif isinstance(volatility_field, (int, float)):
             # Constant diffusion
-            effective_diffusion = float(diffusion_field)
-        elif isinstance(diffusion_field, np.ndarray) or callable(diffusion_field):
+            effective_diffusion = float(volatility_field)
+        elif isinstance(volatility_field, np.ndarray) or callable(volatility_field):
             # Spatially varying or state-dependent - Phase 2
             raise NotImplementedError(
-                "FPNetworkSolver does not yet support spatially varying or callable diffusion_field. "
+                "FPNetworkSolver does not yet support spatially varying or callable volatility_field. "
                 "Pass constant diffusion as float. Support coming in Phase 2."
             )
         else:
             raise TypeError(
-                f"diffusion_field must be None, float, np.ndarray, or Callable, got {type(diffusion_field)}"
+                f"volatility_field must be None, float, np.ndarray, or Callable, got {type(volatility_field)}"
             )
 
         # Temporarily override diffusion_coefficient if custom diffusion provided
         original_diffusion = self.diffusion_coefficient
-        if diffusion_field is not None:
+        if volatility_field is not None:
             self.diffusion_coefficient = effective_diffusion
 
         try:

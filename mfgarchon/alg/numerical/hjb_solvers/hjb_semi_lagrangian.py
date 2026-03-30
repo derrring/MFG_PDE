@@ -736,7 +736,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         M_density: np.ndarray | None = None,
         U_terminal: np.ndarray | None = None,
         U_coupling_prev: np.ndarray | None = None,
-        diffusion_field: float | np.ndarray | None = None,
+        volatility_field: float | np.ndarray | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: np.ndarray | None = None,
         U_final_condition_at_T: np.ndarray | None = None,
@@ -759,7 +759,7 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             M_density: (Nt, *spatial_shape) density from FP solver
             U_terminal: (*spatial_shape,) terminal condition u(T, x)
             U_coupling_prev: (Nt, *spatial_shape) previous coupling iteration estimate
-            diffusion_field: Optional diffusion coefficient override
+            volatility_field: Optional diffusion coefficient override
 
         Returns:
             (Nt, *grid_shape) solution array for value function

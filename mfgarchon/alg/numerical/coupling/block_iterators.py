@@ -87,7 +87,7 @@ class BlockIterator(BaseMFGSolver):
         fp_solver: FP solver instance
         method: Block iteration method ('jacobi' or 'gauss_seidel')
         damping_factor: Damping parameter in (0, 1] (default: 1.0 = no damping)
-        diffusion_field: Optional diffusion override
+        volatility_field: Optional diffusion override
         drift_field: Optional drift override for non-MFG problems
         adjoint_mode: Adjoint enforcement mode (Issue #622, #704, #707).
             - "off": Independent matrix construction (default)
@@ -116,7 +116,7 @@ class BlockIterator(BaseMFGSolver):
         method: str | BlockMethod = BlockMethod.GAUSS_SEIDEL,
         damping_factor: float = 1.0,
         damping_factor_M: float | None = None,
-        diffusion_field: float | NDArray | Any | None = None,
+        volatility_field: float | NDArray | Any | None = None,
         drift_field: NDArray | Any | None = None,
         adjoint_mode: str = "off",
         adjoint_verify: bool = False,
@@ -145,7 +145,7 @@ class BlockIterator(BaseMFGSolver):
         self.damping_factor_M = damping_factor_M  # None = use damping_factor for both
 
         # PDE coefficient overrides
-        self.diffusion_field = diffusion_field
+        self.volatility_field = volatility_field
         self.drift_field = drift_field
 
         # Issue #622, #704, #707: Adjoint mode
@@ -259,8 +259,8 @@ class BlockIterator(BaseMFGSolver):
         if self._hjb_sig_params is not None:
             if "show_progress" in self._hjb_sig_params:
                 kwargs["show_progress"] = False
-            if "diffusion_field" in self._hjb_sig_params and self.diffusion_field is not None:
-                kwargs["diffusion_field"] = self.diffusion_field
+            if "volatility_field" in self._hjb_sig_params and self.volatility_field is not None:
+                kwargs["volatility_field"] = self.volatility_field
 
         return self.hjb_solver.solve_hjb_system(M, U_terminal, U_prev, **kwargs)
 
@@ -280,8 +280,8 @@ class BlockIterator(BaseMFGSolver):
 
             if "drift_field" in self._fp_sig_params:
                 kwargs["drift_field"] = effective_drift
-                if "diffusion_field" in self._fp_sig_params and self.diffusion_field is not None:
-                    kwargs["diffusion_field"] = self.diffusion_field
+                if "volatility_field" in self._fp_sig_params and self.volatility_field is not None:
+                    kwargs["volatility_field"] = self.volatility_field
                 return self.fp_solver.solve_fp_system(M_initial, **kwargs)
             else:
                 return self.fp_solver.solve_fp_system(M_initial, effective_drift, **kwargs)
@@ -305,7 +305,7 @@ class BlockIterator(BaseMFGSolver):
         M_solution = np.zeros((num_time_steps, *spatial_shape))
         M_solution[0] = M_initial
 
-        sigma = self.diffusion_field if self.diffusion_field is not None else self.problem.sigma
+        sigma = self.volatility_field if self.volatility_field is not None else self.problem.sigma
 
         # Import utilities
         if self.adjoint_verify:

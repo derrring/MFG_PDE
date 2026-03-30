@@ -69,7 +69,7 @@ class MFGResidual:
         hjb_solver: BaseHJBSolver,
         fp_solver: BaseFPSolver,
         *,
-        diffusion_field: float | NDArray | Any | None = None,
+        volatility_field: float | NDArray | Any | None = None,
         drift_field: NDArray | Any | None = None,
     ):
         """
@@ -79,13 +79,13 @@ class MFGResidual:
             problem: MFG problem definition
             hjb_solver: HJB solver instance
             fp_solver: FP solver instance
-            diffusion_field: Optional diffusion override (Phase 2.3)
+            volatility_field: Optional diffusion override (Phase 2.3)
             drift_field: Optional drift override for non-MFG problems
         """
         self.problem = problem
         self.hjb_solver = hjb_solver
         self.fp_solver = fp_solver
-        self.diffusion_field = diffusion_field
+        self.volatility_field = volatility_field
         self.drift_field = drift_field
 
         # Cache problem dimensions
@@ -171,8 +171,8 @@ class MFGResidual:
         if self._hjb_sig_params is not None:
             if "show_progress" in self._hjb_sig_params:
                 kwargs["show_progress"] = False
-            if "diffusion_field" in self._hjb_sig_params and self.diffusion_field is not None:
-                kwargs["diffusion_field"] = self.diffusion_field
+            if "volatility_field" in self._hjb_sig_params and self.volatility_field is not None:
+                kwargs["volatility_field"] = self.volatility_field
 
         return self.hjb_solver.solve_hjb_system(M, self.U_terminal, U_prev, **kwargs)
 
@@ -197,8 +197,8 @@ class MFGResidual:
 
             if "drift_field" in self._fp_sig_params:
                 kwargs["drift_field"] = effective_drift
-                if "diffusion_field" in self._fp_sig_params and self.diffusion_field is not None:
-                    kwargs["diffusion_field"] = self.diffusion_field
+                if "volatility_field" in self._fp_sig_params and self.volatility_field is not None:
+                    kwargs["volatility_field"] = self.volatility_field
                 return self.fp_solver.solve_fp_system(self.M_initial, **kwargs)
             else:
                 # Legacy interface

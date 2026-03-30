@@ -149,11 +149,11 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
 
     # Type annotations for PDE coefficient fields (Issue #811)
     # sigma: SDE volatility (scalar, used by all solvers as problem.sigma)
-    # diffusion_field: Full volatility field — stores SDE volatility, NOT PDE D
-    #   (historical naming; all solvers expect sigma, not D)
+    # volatility_field: Full volatility field — stores SDE volatility (sigma), NOT PDE D
+    #   (all solvers expect sigma, not D)
     # drift_field: Optional drift (float, array, or callable)
     sigma: float
-    diffusion_field: DiffusionField
+    volatility_field: DiffusionField
     drift_field: DriftField
 
     @staticmethod
@@ -537,16 +537,16 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             drift = 0.0
 
         # Store the full volatility field for advanced solvers.
-        # Note (Issue #811): diffusion_field stores SDE VOLATILITY (not PDE D),
-        # because all existing solvers expect sigma and compute (1/2)*sigma^2
-        # internally. The naming is historical; changing it would break solvers.
-        self.diffusion_field = vola_value
+        # Note (Issue #811): volatility_field stores SDE volatility (sigma),
+        # not PDE diffusion D. All solvers expect sigma and compute D = sigma^2/2
+        # internally.
+        self.volatility_field = vola_value
         self.drift_field = drift
 
         # Extract scalar sigma for backward compatibility.
         # If volatility is callable or array, use a representative scalar value.
         if callable(vola_value):
-            # Callable: store 1.0 as default, solvers should use diffusion_field
+            # Callable: store 1.0 as default, solvers should use volatility_field
             sigma_scalar = 1.0
         elif isinstance(vola_value, np.ndarray):
             # Array: use mean value as representative scalar
@@ -1287,7 +1287,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         """SDE volatility sigma. Alias for ``self.sigma``.
 
         Returns the scalar SDE noise coefficient. For the full field
-        (array or callable), use ``self.diffusion_field``.
+        (array or callable), use ``self.volatility_field``.
         """
         return self.sigma
 
@@ -1299,10 +1299,23 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             dm/dt + div(alpha m) = D Laplacian(m)
 
         Computed from the scalar ``self.sigma``. For non-scalar or
-        state-dependent diffusion, evaluate ``self.diffusion_field`` and
+        state-dependent diffusion, evaluate ``self.volatility_field`` and
         apply the conversion ``D = sigma^2/2`` as needed.
         """
         return self.sigma**2 / 2.0
+
+    @property
+    def diffusion_field(self):
+        """Deprecated: use volatility_field instead."""
+        import warnings
+
+        warnings.warn(
+            "diffusion_field is deprecated, use volatility_field. "
+            "The field stores SDE volatility (sigma), not PDE diffusion (D).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.volatility_field
 
     # =========================================================================
     # Hamiltonian Properties (Issue #673)
@@ -1571,7 +1584,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         directly accessing self.sigma.
 
         Returns:
-            CoefficientField wrapping self.diffusion_field with self.sigma as default
+            CoefficientField wrapping self.volatility_field with self.sigma as default
 
         Example:
             >>> diffusion = problem.get_diffusion_coefficient_field()
@@ -1585,7 +1598,7 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         from mfgarchon.utils.pde_coefficients import CoefficientField
 
         return CoefficientField(
-            field=self.diffusion_field,
+            field=self.volatility_field,
             default_value=self.sigma,
             field_name="diffusion",
             dimension=self.dimension,
@@ -1631,9 +1644,9 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         constant/precomputed ones (e.g., re-evaluate at each timestep).
 
         Returns:
-            True if diffusion_field or drift_field is callable
+            True if volatility_field or drift_field is callable
         """
-        return callable(self.diffusion_field) or callable(self.drift_field)
+        return callable(self.volatility_field) or callable(self.drift_field)
 
     def __repr__(self) -> str:
         """
@@ -2038,13 +2051,13 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
                 validate_finite,
             )
 
-            # Validate diffusion_field if ndarray
-            if isinstance(self.diffusion_field, np.ndarray):
+            # Validate volatility_field if ndarray
+            if isinstance(self.volatility_field, np.ndarray):
                 arr_result = ValidationResult()
                 for check in [
-                    validate_array_dtype(self.diffusion_field, "diffusion_field"),
-                    validate_field_shape(self.diffusion_field, self.spatial_shape, "diffusion_field"),
-                    validate_finite(self.diffusion_field, "diffusion_field"),
+                    validate_array_dtype(self.volatility_field, "volatility_field"),
+                    validate_field_shape(self.volatility_field, self.spatial_shape, "volatility_field"),
+                    validate_finite(self.volatility_field, "volatility_field"),
                 ]:
                     arr_result.issues.extend(check.issues)
                     if not check.is_valid:

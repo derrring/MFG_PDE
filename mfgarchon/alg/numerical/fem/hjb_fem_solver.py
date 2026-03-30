@@ -96,7 +96,7 @@ class HJBFEMSolver(BaseHJBSolver):
         M_density: NDArray | None = None,
         U_terminal: NDArray | None = None,
         U_coupling_prev: NDArray | None = None,
-        diffusion_field: float | NDArray | None = None,
+        volatility_field: float | NDArray | None = None,
         # Deprecated names
         M_density_evolution_from_FP: NDArray | None = None,
         U_final_condition_at_T: NDArray | None = None,
@@ -110,7 +110,7 @@ class HJBFEMSolver(BaseHJBSolver):
             M_density: Density field from FP, shape (Nt+1, N_dof) or (N_dof,)
             U_terminal: Terminal condition u(T,x), shape (N_dof,)
             U_coupling_prev: Previous Picard iterate, shape (Nt+1, N_dof)
-            diffusion_field: Diffusion D = sigma^2/2 (None uses problem default)
+            volatility_field: Diffusion D = sigma^2/2 (None uses problem default)
 
         Returns:
             Value function U(t,x), shape (Nt+1, N_dof)
@@ -140,12 +140,12 @@ class HJBFEMSolver(BaseHJBSolver):
             M_density = np.tile(M_density, (Nt + 1, 1))
 
         # Diffusion coefficient
-        if diffusion_field is None:
+        if volatility_field is None:
             D = 0.5 * self.problem.sigma**2
-        elif isinstance(diffusion_field, (int, float)):
-            D = float(diffusion_field)
+        elif isinstance(volatility_field, (int, float)):
+            D = float(volatility_field)
         else:
-            D = float(np.mean(diffusion_field))
+            D = float(np.mean(volatility_field))
 
         # Allocate solution
         U = np.zeros((Nt + 1, N))

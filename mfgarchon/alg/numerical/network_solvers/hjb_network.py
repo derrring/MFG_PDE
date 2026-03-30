@@ -123,7 +123,7 @@ class NetworkHJBSolver(BaseHJBSolver):
         M_density: np.ndarray | None = None,
         U_terminal: np.ndarray | None = None,
         U_coupling_prev: np.ndarray | None = None,
-        diffusion_field: float | np.ndarray | None = None,
+        volatility_field: float | np.ndarray | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: np.ndarray | None = None,
         U_final_condition_at_T: np.ndarray | None = None,
@@ -137,7 +137,7 @@ class NetworkHJBSolver(BaseHJBSolver):
             M_density: (Nt+1, num_nodes) density evolution from FP solver
             U_terminal: Terminal condition u(T, i)
             U_coupling_prev: Previous Picard iterate for coupling
-            diffusion_field: Diffusion coefficient (not yet used in network solver)
+            volatility_field: Diffusion coefficient (not yet used in network solver)
             M_density_evolution_from_FP: DEPRECATED, use M_density
             U_final_condition_at_T: DEPRECATED, use U_terminal
             U_from_prev_picard: DEPRECATED, use U_coupling_prev
@@ -361,7 +361,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         M_density: np.ndarray | None = None,
         U_terminal: np.ndarray | None = None,
         U_coupling_prev: np.ndarray | None = None,
-        diffusion_field: float | np.ndarray | None = None,
+        volatility_field: float | np.ndarray | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: np.ndarray | None = None,
         U_final_condition_at_T: np.ndarray | None = None,

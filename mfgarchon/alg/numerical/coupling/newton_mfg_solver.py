@@ -80,7 +80,7 @@ class NewtonMFGSolver(BaseMFGSolver):
         newton_max_iterations: Maximum Newton iterations (default: 20)
         line_search: Enable backtracking line search (default: True)
         use_jax_autodiff: Use JAX for Jacobian ('auto', True, False)
-        diffusion_field: Optional diffusion override
+        volatility_field: Optional diffusion override
         drift_field: Optional drift override
 
     Example:
@@ -101,7 +101,7 @@ class NewtonMFGSolver(BaseMFGSolver):
         newton_max_iterations: int = 20,
         line_search: bool = True,
         use_jax_autodiff: bool | str = "auto",
-        diffusion_field: float | NDArray | Any | None = None,
+        volatility_field: float | NDArray | Any | None = None,
         drift_field: NDArray | Any | None = None,
     ):
         """Initialize Newton MFG solver."""
@@ -121,7 +121,7 @@ class NewtonMFGSolver(BaseMFGSolver):
         self.use_jax_autodiff = use_jax_autodiff
 
         # PDE coefficient overrides
-        self.diffusion_field = diffusion_field
+        self.volatility_field = volatility_field
         self.drift_field = drift_field
 
         # Create MFG residual computer
@@ -129,7 +129,7 @@ class NewtonMFGSolver(BaseMFGSolver):
             problem,
             hjb_solver,
             fp_solver,
-            diffusion_field=diffusion_field,
+            volatility_field=volatility_field,
             drift_field=drift_field,
         )
 

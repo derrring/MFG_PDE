@@ -70,7 +70,7 @@ class FixedPointIterator(BaseMFGSolver):
         anderson_depth: Anderson acceleration memory depth
         anderson_beta: Anderson acceleration mixing parameter
         backend: Backend name ('numpy', 'torch', 'jax', etc.)
-        diffusion_field: Optional diffusion override (float, array, or callable)
+        volatility_field: Optional diffusion override (float, array, or callable)
             - None: Use problem.sigma (default)
             - float: Constant diffusion
             - ndarray: Spatially/temporally varying diffusion
@@ -93,7 +93,7 @@ class FixedPointIterator(BaseMFGSolver):
         anderson_depth: int = 5,
         anderson_beta: float = 1.0,
         backend: str | None = None,
-        diffusion_field: float | np.ndarray | Any | None = None,  # Phase 2.3
+        volatility_field: float | np.ndarray | Any | None = None,  # Phase 2.3
         drift_field: np.ndarray | Any | None = None,  # Phase 2.3
         adaptive_damping: bool = False,  # Issue #583: Adaptive Picard damping
         adaptive_damping_decay: float = 0.5,  # Damping reduction on oscillation
@@ -116,7 +116,7 @@ class FixedPointIterator(BaseMFGSolver):
         self.config = config
 
         # PDE coefficient overrides (Phase 2.3)
-        self.diffusion_field = diffusion_field
+        self.volatility_field = volatility_field
         self.drift_field = drift_field
 
         # Anderson acceleration support
@@ -445,8 +445,8 @@ class FixedPointIterator(BaseMFGSolver):
                         kwargs = {}
                         if "show_progress" in params:
                             kwargs["show_progress"] = False  # Subtask replaces inner bar
-                        if "diffusion_field" in params and self.diffusion_field is not None:
-                            kwargs["diffusion_field"] = self.diffusion_field
+                        if "volatility_field" in params and self.volatility_field is not None:
+                            kwargs["volatility_field"] = self.volatility_field
                         # Issue #640: Pass progress callback for incremental updates
                         if "progress_callback" in params:
                             kwargs["progress_callback"] = hjb_subtask.advance
@@ -485,8 +485,8 @@ class FixedPointIterator(BaseMFGSolver):
                             # solve_fp_system(m_initial, U_drift, **kwargs)
                             pass  # Will use positional argument below
 
-                        if "diffusion_field" in params and self.diffusion_field is not None:
-                            kwargs["diffusion_field"] = self.diffusion_field
+                        if "volatility_field" in params and self.volatility_field is not None:
+                            kwargs["volatility_field"] = self.volatility_field
 
                         # Issue #640: Pass progress callback for incremental updates
                         if "progress_callback" in params:

@@ -84,7 +84,7 @@ class FPFEMSolver(BaseFPSolver):
         self,
         m_initial: NDArray,
         drift_field: NDArray | None = None,
-        diffusion_field: float | NDArray | None = None,
+        volatility_field: float | NDArray | None = None,
         **kwargs,
     ) -> NDArray:
         """
@@ -94,7 +94,7 @@ class FPFEMSolver(BaseFPSolver):
             m_initial: Initial density m(0,x), shape (N_dof,)
             drift_field: Value function U for drift v = -coupling*grad(U),
                 shape (Nt+1, N_dof). If None, pure diffusion.
-            diffusion_field: Diffusion D = sigma^2/2
+            volatility_field: Diffusion D = sigma^2/2
 
         Returns:
             Density M(t,x), shape (Nt+1, N_dof)
@@ -104,12 +104,12 @@ class FPFEMSolver(BaseFPSolver):
         N = self._n_dof
 
         # Diffusion coefficient
-        if diffusion_field is None:
+        if volatility_field is None:
             D = 0.5 * self.problem.sigma**2
-        elif isinstance(diffusion_field, (int, float)):
-            D = float(diffusion_field)
+        elif isinstance(volatility_field, (int, float)):
+            D = float(volatility_field)
         else:
-            D = float(np.mean(diffusion_field))
+            D = float(np.mean(volatility_field))
 
         # Allocate solution
         M = np.zeros((Nt + 1, N))

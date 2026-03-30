@@ -829,7 +829,7 @@ class HJBWenoSolver(BaseHJBSolver):
         M_density: np.ndarray | None = None,
         U_terminal: np.ndarray | None = None,
         U_coupling_prev: np.ndarray | None = None,
-        diffusion_field: float | np.ndarray | None = None,
+        volatility_field: float | np.ndarray | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: np.ndarray | None = None,
         U_final_condition_at_T: np.ndarray | None = None,
@@ -846,7 +846,7 @@ class HJBWenoSolver(BaseHJBSolver):
             M_density: Density m(t,x) from FP solver
             U_terminal: Terminal condition u(T,x)
             U_coupling_prev: Value function from previous coupling iteration
-            diffusion_field: Optional diffusion coefficient override
+            volatility_field: Optional diffusion coefficient override
 
         Returns:
             U_solved: Complete solution u(t,x) over time domain
