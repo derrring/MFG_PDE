@@ -210,7 +210,7 @@ def test_mfg_problem_valid_diffusion_array_accepted():
         sigma=sigma_array,
     )
     assert problem is not None
-    assert isinstance(problem.diffusion_field, np.ndarray)
+    assert isinstance(problem.volatility_field, np.ndarray)
 
 
 @pytest.mark.unit
