@@ -28,17 +28,17 @@ class CoefficientMode(Enum):
 
     Examples
     --------
-    Time-only diffusion:
+    Time-only volatility:
     >>> sigma_t = lambda t: 0.1 + 0.05 * t
-    >>> field = CoefficientField(sigma_t, 0.1, "diffusion", mode=CoefficientMode.TIME)
+    >>> field = CoefficientField(sigma_t, 0.1, "volatility", mode=CoefficientMode.TIME)
 
-    Space-only diffusion:
+    Space-only volatility:
     >>> sigma_x = lambda x: 0.1 * np.exp(-np.linalg.norm(x)**2)
-    >>> field = CoefficientField(sigma_x, 0.1, "diffusion", mode=CoefficientMode.SPACE)
+    >>> field = CoefficientField(sigma_x, 0.1, "volatility", mode=CoefficientMode.SPACE)
 
-    Density-dependent (degenerate) diffusion:
+    Density-dependent (degenerate) volatility:
     >>> sigma_m = lambda m: 0.1 * np.sqrt(m + 1e-6)
-    >>> field = CoefficientField(sigma_m, 0.1, "diffusion", mode=CoefficientMode.DENSITY)
+    >>> field = CoefficientField(sigma_m, 0.1, "volatility", mode=CoefficientMode.DENSITY)
     """
 
     FULL = "full"  # σ(t, x, m) - all three variables
@@ -69,7 +69,7 @@ class CoefficientField:
     default_value : float | ndarray
         Default value to use when field is None (typically problem.sigma or problem.drift)
     field_name : str
-        Name of coefficient for error messages (e.g., "diffusion_field", "drift_field")
+        Name of coefficient for error messages (e.g., "volatility_field", "drift_field")
     dimension : int
         Spatial dimension (1 for 1D, 2 for 2D, etc.)
     mode : CoefficientMode | str | None, optional
@@ -79,28 +79,28 @@ class CoefficientField:
     Examples
     --------
     Scalar diffusion:
-    >>> field = CoefficientField(0.1, problem.sigma, "diffusion_field", dimension=1)
+    >>> field = CoefficientField(0.1, problem.sigma, "volatility_field", dimension=1)
     >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
 
     Array diffusion:
     >>> sigma_array = np.ones((Nt, Nx)) * 0.1
-    >>> field = CoefficientField(sigma_array, problem.sigma, "diffusion_field", dimension=1)
+    >>> field = CoefficientField(sigma_array, problem.sigma, "volatility_field", dimension=1)
     >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
 
     Callable diffusion (modern keyword-only style):
     >>> sigma_tm = lambda *, t, m: 0.1 * t * np.sqrt(m)
-    >>> field = CoefficientField(sigma_tm, problem.sigma, "diffusion_field", dimension=1)
+    >>> field = CoefficientField(sigma_tm, problem.sigma, "volatility_field", dimension=1)
     >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
 
     Callable diffusion (legacy positional style with mode):
     >>> sigma_t = lambda t: 0.1 + 0.05 * t
-    >>> field = CoefficientField(sigma_t, problem.sigma, "diffusion", mode="time")
+    >>> field = CoefficientField(sigma_t, problem.sigma, "volatility", mode="time")
     >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
 
     Porous medium diffusion:
     >>> def porous_medium(*, m):
     ...     return 0.1 * np.sqrt(m + 1e-6)
-    >>> field = CoefficientField(porous_medium, problem.sigma, "diffusion_field", dimension=1)
+    >>> field = CoefficientField(porous_medium, problem.sigma, "volatility_field", dimension=1)
     >>> sigma = field.evaluate_at(timestep=5, grid=x_coords, density=m)
     """
 
@@ -381,7 +381,7 @@ class CoefficientField:
         Examples
         --------
         Scalar diffusion:
-        >>> field = CoefficientField(0.1, 0.05, "diffusion_field", dimension=2)
+        >>> field = CoefficientField(0.1, 0.05, "volatility_field", dimension=2)
         >>> field.validate_tensor_psd(0.1)  # Pass
 
         Full tensor:

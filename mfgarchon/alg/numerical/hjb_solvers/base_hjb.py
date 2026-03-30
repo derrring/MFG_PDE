@@ -324,7 +324,7 @@ class BaseHJBSolver(BaseNumericalSolver):
         M_density_evolution_from_FP: np.ndarray,
         U_final_condition_at_T: np.ndarray,
         U_from_prev_picard: np.ndarray,
-        diffusion_field: float | np.ndarray | None = None,
+        volatility_field: float | np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Solve the HJB system given density evolution and boundary conditions.
@@ -347,7 +347,7 @@ class BaseHJBSolver(BaseNumericalSolver):
             U_from_prev_picard: Value function from previous Picard iteration
                                For MFG: actual previous iterate U^{k-1}
                                For standalone: initial guess (zeros, terminal condition, etc.)
-            diffusion_field: Diffusion coefficient specification (optional):
+            volatility_field: Diffusion coefficient specification (optional):
                 - None: Use problem.sigma (backward compatible)
                 - float: Constant diffusion σ²
                 - np.ndarray: Spatially/temporally varying diffusion σ²(t,x)
@@ -358,7 +358,7 @@ class BaseHJBSolver(BaseNumericalSolver):
             np.ndarray: Value function U(t,x) solution
 
         Note:
-            For MFG consistency, the same diffusion_field should be used in both
+            For MFG consistency, the same volatility_field should be used in both
             HJB and FP solvers. The coupling solver handles this synchronization.
         """
 
@@ -1226,7 +1226,7 @@ def solve_hjb_system_backward(
     NiterNewton: int | None = None,
     l2errBoundNewton: float | None = None,
     backend: BaseBackend | None = None,
-    diffusion_field: float | np.ndarray | None = None,  # Diffusion field
+    volatility_field: float | np.ndarray | None = None,  # Diffusion field
     use_upwind: bool = True,  # Use Godunov upwind (True) or central (False)
     bc: BoundaryConditions | None = None,  # Boundary conditions (Issue #542 fix)
     domain_bounds: np.ndarray | None = None,  # Domain bounds for BC
@@ -1307,14 +1307,14 @@ def solve_hjb_system_backward(
             continue
 
         # Extract or evaluate diffusion using CoefficientField abstraction
-        diffusion = CoefficientField(diffusion_field, problem.sigma, "diffusion_field", dimension=1)
+        diffusion = CoefficientField(volatility_field, problem.sigma, "volatility_field", dimension=1)
         grid = get_spatial_grid(problem)
         sigma_at_n = diffusion.evaluate_at(timestep_idx=n_idx_hjb, grid=grid, density=M_n_prev_picard, dt=problem.dt)
 
         # Handle backend compatibility for NaN/Inf checking in callable results
         if diffusion.is_callable() and isinstance(sigma_at_n, np.ndarray):
             if has_nan_or_inf(sigma_at_n, backend):
-                raise ValueError(f"Callable diffusion_field returned NaN/Inf at timestep {n_idx_hjb}")
+                raise ValueError(f"Callable volatility_field returned NaN/Inf at timestep {n_idx_hjb}")
 
         # Compute current time for time-dependent BCs
         current_time = n_idx_hjb * problem.dt

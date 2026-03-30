@@ -2068,7 +2068,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         U_terminal: np.ndarray | None = None,
         U_coupling_prev: np.ndarray | None = None,
         show_progress: bool = True,
-        diffusion_field: float | np.ndarray | None = None,
+        volatility_field: float | np.ndarray | None = None,
         running_cost: np.ndarray | Callable[[int], np.ndarray] | None = None,
         # Deprecated parameter names for backward compatibility
         M_density_evolution_from_FP: np.ndarray | None = None,
@@ -2088,7 +2088,7 @@ class HJBGFDMSolver(BaseHJBSolver):
                 Time-dependent array: shape (n_time_points, n_points) -- L(t_n, x) per step.
                 Callable: f(time_index) -> (n_points,) array, evaluated per step.
                 Added to Hamiltonian: H_total = H(x,p,m) + L(t,x).
-            diffusion_field: Optional diffusion coefficient override
+            volatility_field: Optional diffusion coefficient override
 
         Returns:
             (Nt, *spatial_shape) solution array

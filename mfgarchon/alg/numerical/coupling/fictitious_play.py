@@ -95,7 +95,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
             - False: Pure fictitious play (damp only M)
             - True: Hybrid approach (damp both U and M)
         backend: Backend name ('numpy', 'torch', 'jax', etc.)
-        diffusion_field: Optional diffusion override
+        volatility_field: Optional diffusion override
         drift_field: Optional drift override for non-MFG problems
 
     Example:
@@ -121,7 +121,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
         min_learning_rate: float = 0.01,
         damp_value_function: bool = False,
         backend: str | None = None,
-        diffusion_field: float | np.ndarray | Any | None = None,
+        volatility_field: float | np.ndarray | Any | None = None,
         drift_field: np.ndarray | Any | None = None,
     ):
         super().__init__(problem)
@@ -140,7 +140,7 @@ class FictitiousPlayIterator(BaseMFGSolver):
         self._lr_schedule_name = learning_rate_schedule if isinstance(learning_rate_schedule, str) else "custom"
 
         # PDE coefficient overrides
-        self.diffusion_field = diffusion_field
+        self.volatility_field = volatility_field
         self.drift_field = drift_field
 
         # State arrays (initialized in solve)
@@ -418,8 +418,8 @@ class FictitiousPlayIterator(BaseMFGSolver):
                 hjb_kwargs: dict[str, Any] = {}
                 if "show_progress" in params:
                     hjb_kwargs["show_progress"] = show_hjb_progress
-                if "diffusion_field" in params and self.diffusion_field is not None:
-                    hjb_kwargs["diffusion_field"] = self.diffusion_field
+                if "volatility_field" in params and self.volatility_field is not None:
+                    hjb_kwargs["volatility_field"] = self.volatility_field
 
                 # Solve HJB with current averaged M
                 U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **hjb_kwargs)
@@ -442,8 +442,8 @@ class FictitiousPlayIterator(BaseMFGSolver):
 
                 if "drift_field" in params:
                     fp_kwargs["drift_field"] = effective_drift
-                if "diffusion_field" in params and self.diffusion_field is not None:
-                    fp_kwargs["diffusion_field"] = self.diffusion_field
+                if "volatility_field" in params and self.volatility_field is not None:
+                    fp_kwargs["volatility_field"] = self.volatility_field
 
                 if "drift_field" in params:
                     M_candidate = self.fp_solver.solve_fp_system(M_initial, **fp_kwargs)

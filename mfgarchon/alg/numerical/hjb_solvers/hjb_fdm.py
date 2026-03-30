@@ -339,8 +339,8 @@ class HJBFDMSolver(BaseHJBSolver):
         M_density: NDArray | None = None,
         U_terminal: NDArray | None = None,
         U_coupling_prev: NDArray | None = None,
-        diffusion_field: float | NDArray | None = None,
-        tensor_diffusion_field: NDArray | None = None,
+        volatility_field: float | NDArray | None = None,
+        tensor_volatility_field: NDArray | None = None,
         bc_values: dict[str, float] | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
         # MMS verification support
@@ -361,8 +361,8 @@ class HJBFDMSolver(BaseHJBSolver):
             M_density: Density field from FP solver
             U_terminal: Terminal condition u(T,x)
             U_coupling_prev: Previous coupling iteration estimate
-            diffusion_field: Diffusion coefficient (None uses problem.sigma)
-            tensor_diffusion_field: Tensor diffusion (Phase 3.0, not yet fully implemented)
+            volatility_field: Diffusion coefficient (None uses problem.sigma)
+            tensor_volatility_field: Tensor diffusion (Phase 3.0, not yet fully implemented)
             bc_values: DEPRECATED. No longer used (kept for backward compatibility).
                 Adjoint-consistent BC is handled via BCValueProvider in BoundaryConditions.
 
@@ -406,27 +406,27 @@ class HJBFDMSolver(BaseHJBSolver):
         if U_coupling_prev is None:
             raise ValueError("U_coupling_prev is required")
         # Validate mutual exclusivity
-        if diffusion_field is not None and tensor_diffusion_field is not None:
+        if volatility_field is not None and tensor_volatility_field is not None:
             raise ValueError(
-                "Cannot specify both diffusion_field and tensor_diffusion_field. "
-                "Use diffusion_field for scalar or tensor_diffusion_field for anisotropic."
+                "Cannot specify both volatility_field and tensor_volatility_field. "
+                "Use volatility_field for scalar or tensor_volatility_field for anisotropic."
             )
 
         # Check tensor type and warn if non-diagonal (not fully implemented yet)
-        if tensor_diffusion_field is not None:
+        if tensor_volatility_field is not None:
             import warnings
 
             # Check if diagonal
-            if callable(tensor_diffusion_field):
+            if callable(tensor_volatility_field):
                 # Cannot easily check callable tensors without evaluation
                 warnings.warn(
-                    "Callable tensor_diffusion_field in HJB solver is not yet fully implemented. "
+                    "Callable tensor_volatility_field in HJB solver is not yet fully implemented. "
                     "If the tensor is diagonal, it will be handled correctly. "
                     "Full tensor (non-diagonal) support requires Hamiltonian refactoring.",
                     UserWarning,
                     stacklevel=2,
                 )
-            elif not is_diagonal_tensor(tensor_diffusion_field):
+            elif not is_diagonal_tensor(tensor_volatility_field):
                 warnings.warn(
                     "Full tensor (non-diagonal) diffusion in HJB solver is not yet implemented. "
                     "The parameter is accepted for API compatibility but only diagonal tensors "
@@ -468,7 +468,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 max_newton_iterations=self.max_newton_iterations,
                 newton_tolerance=self.newton_tolerance,
                 backend=self.backend,
-                diffusion_field=diffusion_field,
+                volatility_field=volatility_field,
                 use_upwind=self.use_upwind,
                 bc=bc,  # Uses Robin BC from geometry; providers resolved by iterator (Issue #625)
                 domain_bounds=domain_bounds,
@@ -488,8 +488,8 @@ class HJBFDMSolver(BaseHJBSolver):
                 M_density,
                 U_terminal,
                 U_coupling_prev,
-                diffusion_field,
-                tensor_diffusion_field,
+                volatility_field,
+                tensor_volatility_field,
                 progress_callback=progress_callback,
                 source_term=source_term,
             )
@@ -499,8 +499,8 @@ class HJBFDMSolver(BaseHJBSolver):
         M_density: NDArray,
         U_final: NDArray,
         U_prev: NDArray,
-        diffusion_field: float | NDArray | None = None,
-        tensor_diffusion_field: NDArray | None = None,
+        volatility_field: float | NDArray | None = None,
+        tensor_volatility_field: NDArray | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
         source_term: Callable | None = None,  # MMS verification
     ) -> NDArray:
@@ -513,7 +513,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 If provided, internal progress bar is suppressed.
                 Typically a subtask.advance callable from HierarchicalProgress.
 
-        Note: tensor_diffusion_field is accepted but not yet fully implemented.
+        Note: tensor_volatility_field is accepted but not yet fully implemented.
         """
         # Validate shapes
         # n_time_points = problem.Nt + 1 (number of time knots including t=0 and t=T)
@@ -556,26 +556,26 @@ class HJBFDMSolver(BaseHJBSolver):
             U_guess = U_prev[n]
 
             # Extract or evaluate diffusion using CoefficientField abstraction
-            if tensor_diffusion_field is not None:
+            if tensor_volatility_field is not None:
                 # Evaluate tensor at current timestep
-                if callable(tensor_diffusion_field):
+                if callable(tensor_volatility_field):
                     # Callable: Σ(t, x, m)
                     t = n * self.problem.dt
                     Sigma_at_n = np.zeros((*self.shape, self.dimension, self.dimension))
                     for idx in np.ndindex(self.shape):
                         x_coords = np.array([self.grid.coordinates[d][idx[d]] for d in range(self.dimension)])
                         m_at_point = M_next[idx]
-                        Sigma_at_n[idx] = tensor_diffusion_field(t, x_coords, m_at_point)
+                        Sigma_at_n[idx] = tensor_volatility_field(t, x_coords, m_at_point)
                 else:
                     # Constant or spatially-varying
-                    Sigma_at_n = tensor_diffusion_field
+                    Sigma_at_n = tensor_volatility_field
             else:
                 Sigma_at_n = None
 
-            # Handle scalar diffusion_field
-            if diffusion_field is not None or Sigma_at_n is None:
+            # Handle scalar volatility_field
+            if volatility_field is not None or Sigma_at_n is None:
                 diffusion = CoefficientField(
-                    diffusion_field, self.problem.sigma, "diffusion_field", dimension=self.dimension
+                    volatility_field, self.problem.sigma, "volatility_field", dimension=self.dimension
                 )
                 sigma_at_n = diffusion.evaluate_at(
                     timestep_idx=n, grid=self.grid.coordinates, density=M_next, dt=self.problem.dt

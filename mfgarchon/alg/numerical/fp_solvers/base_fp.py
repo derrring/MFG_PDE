@@ -32,7 +32,7 @@ class BaseFPSolver(BaseNumericalSolver):
         - Prescribed field: α = v(t,x) (wind, currents)
         - Custom/state-dependent: α = f(t,x,m)
 
-    Diffusion Types (controlled by diffusion_field parameter):
+    Diffusion Types (controlled by volatility_field parameter):
         - Constant isotropic: D = σ²/2 (scalar, same in all directions)
         - Anisotropic: D = diag(σ₁², σ₂², ...) (different per direction)
         - Spatially varying: D(t,x) (depends on location)
@@ -251,18 +251,18 @@ class BaseFPSolver(BaseNumericalSolver):
 
             # Anisotropic diffusion
             >>> D = np.diag([0.1, 0.5])  # Different in x,y directions
-            >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=D)
+            >>> M = solver.solve_fp_system(m0, drift_field=drift, volatility_field=D)
 
             # State-dependent diffusion
             >>> D_func = lambda t, x, m: 0.1 * (1 + m)  # Increases with density
-            >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=D_func)
+            >>> M = solver.solve_fp_system(m0, drift_field=drift, volatility_field=D_func)
 
             # Pure advection (D=0, α≠0)
-            >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=0.0)
+            >>> M = solver.solve_fp_system(m0, drift_field=drift, volatility_field=0.0)
 
             # Spatially varying diffusion
             >>> D_field = create_spatially_varying_diffusion(...)  # (Nt, Nx)
-            >>> M = solver.solve_fp_system(m0, drift_field=drift, diffusion_field=D_field)
+            >>> M = solver.solve_fp_system(m0, drift_field=drift, volatility_field=D_field)
 
         Note:
             For MFG problems:
