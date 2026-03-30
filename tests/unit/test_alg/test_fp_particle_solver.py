@@ -769,7 +769,7 @@ class TestFPParticleSolverCallableDrift:
 
         # Solve with callable drift and constant scalar diffusion
         M = solver.solve_fp_system(
-            M_initial=m_initial, drift_field=simple_drift, diffusion_field=0.15, show_progress=False
+            M_initial=m_initial, drift_field=simple_drift, volatility_field=0.15, show_progress=False
         )
 
         assert np.all(np.isfinite(M))

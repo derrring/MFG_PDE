@@ -503,10 +503,10 @@ class TestHJBFDMSolverDiagonalTensor:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_diffusion_field=Sigma)
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_volatility_field=Sigma)
 
             # Check that no warning was raised for diagonal tensor
-            tensor_warnings = [warning for warning in w if "tensor_diffusion_field" in str(warning.message)]
+            tensor_warnings = [warning for warning in w if "tensor_volatility_field" in str(warning.message)]
             assert len(tensor_warnings) == 0, "Should not warn for diagonal tensor"
 
         # Verify solution shape and validity
@@ -541,7 +541,7 @@ class TestHJBFDMSolverDiagonalTensor:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_diffusion_field=Sigma)
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_volatility_field=Sigma)
 
             # Check that warning was raised
             tensor_warnings = [warning for warning in w if "non-diagonal" in str(warning.message).lower()]
@@ -609,10 +609,10 @@ class TestHJBFDMSolverDiagonalTensor:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_diffusion_field=Sigma_spatial)
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_volatility_field=Sigma_spatial)
 
             # No warnings for spatially-varying diagonal
-            tensor_warnings = [warning for warning in w if "tensor_diffusion_field" in str(warning.message)]
+            tensor_warnings = [warning for warning in w if "tensor_volatility_field" in str(warning.message)]
             assert len(tensor_warnings) == 0, "Should not warn for spatially-varying diagonal tensor"
 
         # Verify solution
@@ -649,7 +649,7 @@ class TestHJBFDMSolverDiagonalTensor:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
-            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_diffusion_field=tensor_func)
+            U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_volatility_field=tensor_func)
 
             # Callable tensors should produce a warning
             tensor_warnings = [warning for warning in w if "callable" in str(warning.message).lower()]
@@ -660,7 +660,7 @@ class TestHJBFDMSolverDiagonalTensor:
         assert not np.any(np.isnan(U_solution))
 
     def test_diagonal_tensor_mutual_exclusivity(self):
-        """Test that tensor_diffusion_field and diffusion_field are mutually exclusive."""
+        """Test that tensor_volatility_field and volatility_field are mutually exclusive."""
         domain = TensorProductGrid(
             bounds=[(0.0, 1.0), (0.0, 0.6)], Nx_points=[11, 9], boundary_conditions=no_flux_bc(dimension=2)
         )
@@ -684,7 +684,7 @@ class TestHJBFDMSolverDiagonalTensor:
         # Should raise ValueError
         with pytest.raises(ValueError, match="Cannot specify both"):
             solver.solve_hjb_system(
-                M_density, U_final, U_prev, diffusion_field=sigma_scalar, tensor_diffusion_field=Sigma
+                M_density, U_final, U_prev, volatility_field=sigma_scalar, tensor_volatility_field=Sigma
             )
 
 

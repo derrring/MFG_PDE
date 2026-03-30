@@ -73,6 +73,8 @@ if TYPE_CHECKING:
     from mfgarchon.geometry import BoundaryConditions
 
 # Import from responsibility-based modules per issue #388
+from mfgarchon.utils.mfg_logging import get_logger
+
 from .fp_fdm_advection import compute_advection_from_drift_nd, compute_advection_term_nd
 from .fp_fdm_alg_divergence_centered import (
     add_boundary_no_flux_entries_divergence_centered,
@@ -89,6 +91,8 @@ from .fp_fdm_alg_gradient_upwind import (
 )
 from .fp_fdm_bc import add_boundary_no_flux_entries_divergence_upwind
 from .fp_fdm_operators import is_boundary_point
+
+logger = get_logger(__name__)
 
 # =============================================================================
 # Scheme dispatch tables (Issue #859: replace if/elif chains)
@@ -791,8 +795,26 @@ def solve_fp_nd_full_system(
 
         M_solution[k + 1] = M_next
 
-        # Enforce non-negativity
-        M_solution[k + 1] = np.maximum(M_solution[k + 1], 0)
+        # Issue #881: NaN/Inf detection after each timestep
+        if not np.all(np.isfinite(M_next)):
+            nan_count = np.sum(~np.isfinite(M_next))
+            raise ValueError(
+                f"FP solver produced NaN/Inf at timestep {k + 1}/{Nt - 1} "
+                f"({nan_count} non-finite values). "
+                "Check CFL condition: dt * sigma^2 / dx^2 should be < 0.5 for explicit schemes."
+            )
+
+        # Issue #880: Enforce non-negativity with diagnostic warning
+        min_val = np.min(M_next)
+        if min_val < 0:
+            if min_val < -1e-10:
+                logger.warning(
+                    "FP solver: negative density clipped at timestep %d (min=%.2e). "
+                    "This may indicate discretization issues.",
+                    k + 1,
+                    min_val,
+                )
+            M_solution[k + 1] = np.maximum(M_solution[k + 1], 0)
 
         # Enforce Dirichlet BC (using unified/legacy compatible helper)
         if bc_type == "dirichlet" and ndim == 1:

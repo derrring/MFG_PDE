@@ -151,7 +151,7 @@ def test_mfg_problem_default_initialization():
 
     # Physical parameters (None → 0 for diffusion/drift)
     assert problem.sigma == 0.0
-    assert problem.diffusion_field == 0.0
+    assert problem.volatility_field == 0.0
     assert problem.drift_field == 0.0
     assert problem.coupling_coefficient == 0.5
 
@@ -854,40 +854,40 @@ def test_dual_geometry_legacy_mode_compatibility():
 
 
 @pytest.mark.unit
-def test_diffusion_field_none():
+def test_volatility_field_none():
     """Test MFGProblem with no diffusion (deterministic). None → 0."""
     problem = create_test_problem(diffusion=None)
 
-    assert problem.diffusion_field == 0.0
+    assert problem.volatility_field == 0.0
     assert problem.sigma == 0.0
     assert not problem.has_state_dependent_coefficients()
 
 
 @pytest.mark.unit
-def test_diffusion_field_scalar():
+def test_volatility_field_scalar():
     """Test MFGProblem with scalar diffusion D = sigma^2/2 (Issue #811)."""
     # diffusion=0.125 means D=0.125, so sigma = sqrt(2*0.125) = 0.5
     problem = create_test_problem(diffusion=0.125)
 
     assert problem.sigma == pytest.approx(0.5)
-    # diffusion_field stores SDE volatility (for solver compatibility)
-    assert problem.diffusion_field == pytest.approx(0.5)
+    # volatility_field stores SDE volatility (for solver compatibility)
+    assert problem.volatility_field == pytest.approx(0.5)
     # diffusion property returns PDE coefficient D
     assert problem.diffusion == pytest.approx(0.125)
     assert not problem.has_state_dependent_coefficients()
 
 
 @pytest.mark.unit
-def test_diffusion_field_array():
+def test_volatility_field_array():
     """Test MFGProblem with array diffusion coefficient (spatially varying)."""
     # Create a spatially varying diffusion array (11 points from default_geometry)
     sigma_array = np.linspace(0.1, 1.0, 11)
 
     problem = create_test_problem(sigma=sigma_array)
 
-    # Array should be stored in diffusion_field
-    assert isinstance(problem.diffusion_field, np.ndarray)
-    assert np.array_equal(problem.diffusion_field, sigma_array)
+    # Array should be stored in volatility_field
+    assert isinstance(problem.volatility_field, np.ndarray)
+    assert np.array_equal(problem.volatility_field, sigma_array)
 
     # Scalar sigma should be the mean for backward compatibility
     assert problem.sigma == pytest.approx(np.mean(sigma_array))
@@ -895,7 +895,7 @@ def test_diffusion_field_array():
 
 
 @pytest.mark.unit
-def test_diffusion_field_callable():
+def test_volatility_field_callable():
     """Test MFGProblem with callable diffusion coefficient (state-dependent)."""
 
     def sigma_func(t, x, m):
@@ -904,9 +904,9 @@ def test_diffusion_field_callable():
 
     problem = create_test_problem(sigma=sigma_func)
 
-    # Callable should be stored in diffusion_field
-    assert callable(problem.diffusion_field)
-    assert problem.diffusion_field is sigma_func
+    # Callable should be stored in volatility_field
+    assert callable(problem.volatility_field)
+    assert problem.volatility_field is sigma_func
 
     # Scalar sigma should default to 1.0 for callable
     assert problem.sigma == 1.0
@@ -923,8 +923,8 @@ def test_diffusion_primary_parameter():
 
     assert problem.sigma == pytest.approx(math.sqrt(2 * 0.3))
     assert problem.diffusion == pytest.approx(0.3)
-    # diffusion_field stores converted volatility
-    assert problem.diffusion_field == pytest.approx(math.sqrt(2 * 0.3))
+    # volatility_field stores converted volatility
+    assert problem.volatility_field == pytest.approx(math.sqrt(2 * 0.3))
 
 
 @pytest.mark.unit
@@ -935,7 +935,7 @@ def test_sigma_direct_sde_volatility():
 
     # sigma stored directly (no conversion)
     assert problem.sigma == 0.4
-    assert problem.diffusion_field == 0.4
+    assert problem.volatility_field == 0.4
     # diffusion property computes D = sigma^2/2
     assert problem.diffusion == pytest.approx(0.4**2 / 2.0)
     # volatility is alias for sigma
@@ -1082,7 +1082,7 @@ def test_has_state_dependent_coefficients_mixed():
 
 
 @pytest.mark.unit
-def test_diffusion_field_with_geometry():
+def test_volatility_field_with_geometry():
     """Test DiffusionField support works with geometry-based API."""
     grid = TensorProductGrid(
         bounds=[(0.0, 1.0), (0.0, 1.0)],
@@ -1102,6 +1102,6 @@ def test_diffusion_field_with_geometry():
     )
     problem = MFGProblem(geometry=grid, time_domain=(1.0, 50), sigma=sigma_func, components=components)
 
-    assert callable(problem.diffusion_field)
+    assert callable(problem.volatility_field)
     assert problem.has_state_dependent_coefficients()
     assert problem.dimension == 2

@@ -69,7 +69,7 @@ class TestMFGCallableCoefficients:
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
             damping_factor=0.5,
-            diffusion_field=porous_medium_diffusion,
+            volatility_field=porous_medium_diffusion,
         )
 
         # Solve
@@ -107,7 +107,7 @@ class TestMFGCallableCoefficients:
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
             damping_factor=0.5,
-            diffusion_field=crowd_diffusion,
+            volatility_field=crowd_diffusion,
         )
 
         # Solve
@@ -141,7 +141,7 @@ class TestMFGCallableCoefficients:
             hjb_solver=hjb_solver_callable,
             fp_solver=fp_solver_callable,
             damping_factor=0.5,
-            diffusion_field=constant_diffusion,
+            volatility_field=constant_diffusion,
         )
         result_callable = mfg_solver_callable.solve(max_iterations=5, tolerance=1e-3, verbose=False)
 
@@ -153,7 +153,7 @@ class TestMFGCallableCoefficients:
             hjb_solver=hjb_solver_constant,
             fp_solver=fp_solver_constant,
             damping_factor=0.5,
-            diffusion_field=None,  # Use problem.sigma
+            volatility_field=None,  # Use problem.sigma
         )
         result_constant = mfg_solver_constant.solve(max_iterations=5, tolerance=1e-3, verbose=False)
 
@@ -182,7 +182,7 @@ class TestMFGCallableCoefficients:
         diffusion_array = 0.1 + 0.05 * np.abs(x_grid - 0.5)
 
         # Broadcast to all timesteps
-        diffusion_field = np.tile(diffusion_array, (Nt_points, 1))
+        volatility_field = np.tile(diffusion_array, (Nt_points, 1))
 
         # Create solvers
         hjb_solver = HJBFDMSolver(problem)
@@ -194,7 +194,7 @@ class TestMFGCallableCoefficients:
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
             damping_factor=0.5,
-            diffusion_field=diffusion_field,
+            volatility_field=volatility_field,
         )
 
         # Solve
@@ -228,7 +228,7 @@ class TestMFGCallableCoefficients:
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
             damping_factor=0.5,
-            diffusion_field=state_diffusion,
+            volatility_field=state_diffusion,
         )
 
         # Solve with just 2 iterations

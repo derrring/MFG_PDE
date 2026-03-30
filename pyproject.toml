@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.0"  # v0.18.0: BC resolution layer, geometry traits, periodic SL diffusion, deprecation cleanup
+version = "0.18.1"  # v0.18.1: API v1.0 (Model/Conditions), FP solver safety, volatility_field rename
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

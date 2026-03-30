@@ -1048,9 +1048,18 @@ class FPFDMSolver(BaseFPSolver):
             if bc_type == "dirichlet":
                 m[k_idx_fp + 1, 0] = _get_bc_value(self.boundary_conditions, "x_min")
                 m[k_idx_fp + 1, -1] = _get_bc_value(self.boundary_conditions, "x_max")
-            elif bc_type == "no_flux":
-                # No additional enforcement needed - no-flux is built into the discretization
-                # Ensure non-negativity
+
+            # Issue #880: Enforce non-negativity with diagnostic warning
+            min_val = np.min(m[k_idx_fp + 1, :])
+            if min_val < 0:
+                if min_val < -1e-10:
+                    from mfgarchon.utils.mfg_logging import get_logger
+
+                    get_logger(__name__).warning(
+                        "FP solver: negative density clipped at timestep %d (min=%.2e)",
+                        k_idx_fp + 1,
+                        min_val,
+                    )
                 m[k_idx_fp + 1, :] = np.maximum(m[k_idx_fp + 1, :], 0)
 
             # Issue #640: Report progress to hierarchical progress bar
