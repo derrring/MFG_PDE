@@ -25,31 +25,36 @@ pip install -e .
 
 ```python
 import numpy as np
-from mfgarchon import MFGComponents, MFGProblem
+from mfgarchon import Conditions, MFGProblem, Model
 from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import neumann_bc
 
-# Define the MFG problem components
-H = SeparableHamiltonian(
-    control_cost=QuadraticControlCost(control_cost=1.0),
-    coupling=lambda m: 0.1 * m,
-    coupling_dm=lambda m: 0.1 * np.ones_like(m),
-)
-components = MFGComponents(
-    hamiltonian=H,
-    u_terminal=lambda x: np.zeros_like(x),
-    m_initial=lambda x: np.exp(-5 * (x - 0.5) ** 2),
+# Model: game rules (Hamiltonian + diffusion)
+model = Model(
+    hamiltonian=SeparableHamiltonian(
+        control_cost=QuadraticControlCost(control_cost=1.0),
+        coupling=lambda m: 0.1 * m,
+        coupling_dm=lambda m: 0.1 * np.ones_like(m),
+    ),
+    sigma=0.1,
 )
 
-# Create geometry with boundary conditions
+# Domain: spatial grid with boundary conditions
 domain = TensorProductGrid(
     bounds=[(0.0, 1.0)], Nx_points=[51],
     boundary_conditions=neumann_bc(dimension=1),
 )
 
+# Conditions: initial density + terminal cost + time horizon
+conditions = Conditions(
+    u_terminal=lambda x: np.zeros_like(x),
+    m_initial=lambda x: np.exp(-5 * (x - 0.5) ** 2),
+    T=1.0,
+)
+
 # Create and solve
-problem = MFGProblem(geometry=domain, T=1.0, Nt=20, components=components)
+problem = MFGProblem(model=model, domain=domain, conditions=conditions, Nt=20)
 result = problem.solve()
 print(f"Converged: {result.converged} in {result.iterations} iterations")
 ```
@@ -58,7 +63,7 @@ print(f"Converged: {result.converged} in {result.iterations} iterations")
 
 ## Key Features
 
-- **Simple API** - From problem definition to solution in a few lines
+- **Clean API** - `Model` (game rules) + `Domain` (space) + `Conditions` (data) = `Problem.solve()`
 - **Production-Ready** - 3,700+ tests passing, 10^-15 mass conservation error
 - **Modular** - Mix and match HJB + FP solvers (FDM, GFDM, Semi-Lagrangian, WENO, Particles, FEM, Neural)
 - **Multi-Dimensional** - 1D/2D/3D/nD support with TensorProductGrid and implicit domains
