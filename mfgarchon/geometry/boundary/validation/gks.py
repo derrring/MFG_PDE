@@ -42,8 +42,12 @@ import numpy as np
 from scipy.sparse import csr_matrix, issparse
 from scipy.sparse.linalg import eigs
 
+from mfgarchon.utils.mfg_logging import get_logger
+
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -159,6 +163,7 @@ def check_gks_stability(
             eigenvalues, _ = eigs(operator, k=num_eigenvalues, which="LM", tol=1e-6)
     except Exception:
         # If sparse solver fails (common for small N or ill-conditioned), use dense
+        logger.warning("Sparse eigensolver failed for N=%d, falling back to dense solver", N)
         eigenvalues = np.linalg.eigvals(operator.toarray())
 
     # Extract real and imaginary parts

@@ -343,6 +343,7 @@ class PoissonDiskSampler(MCSampler):
         self._domain_min = np.array([b[0] for b in domain])
         self._domain_max = np.array([b[1] for b in domain])
         self._domain_size = self._domain_max - self._domain_min
+        self._cached_offsets: list[tuple[int, ...]] | None = None
 
     def _estimate_min_distance(self, num_samples: int) -> float:
         """Estimate minimum distance from target sample count."""
@@ -423,7 +424,7 @@ class PoissonDiskSampler(MCSampler):
 
     def _get_neighbor_offsets(self) -> list[tuple[int, ...]]:
         """Generate all neighbor cell offsets within distance 2."""
-        if not hasattr(self, "_cached_offsets"):
+        if self._cached_offsets is None:
             # Generate all combinations of -2, -1, 0, 1, 2 for each dimension
             from itertools import product
 

@@ -1466,7 +1466,7 @@ class PreallocatedGhostBuffer:
                                 if np.any(face_mask):
                                     return segment
                     except Exception:
-                        pass  # Geometry query failed, skip this match method
+                        logger.debug("Geometry query failed during BC segment matching", exc_info=True)
 
         return None
 

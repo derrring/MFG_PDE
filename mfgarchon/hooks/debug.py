@@ -65,7 +65,7 @@ class DebugHook(SolverHooks):
 
         if self.level in ["verbose", "detailed"]:
             self._write(f"Initial state shape: u={initial_state.u.shape}, m={initial_state.m.shape}")
-            if hasattr(initial_state, "metadata"):
+            if initial_state.metadata:
                 self._write(f"Metadata: {initial_state.metadata}")
 
     def on_iteration_start(self, state: SpatialTemporalState) -> None:
@@ -105,12 +105,11 @@ class DebugHook(SolverHooks):
         self._write(f"Total iterations: {result.iterations}")
         self._write(f"Total time: {total_time:.3f}s")
 
-        if hasattr(result, "convergence_info"):
-            convergence_info = getattr(result, "convergence_info", None)
-            if convergence_info is not None and hasattr(convergence_info, "final_residual"):
-                final_residual = convergence_info.final_residual
-                if final_residual is not None:
-                    self._write(f"Final residual: {final_residual:.6e}")
+        convergence_info = getattr(result, "convergence_info", None)
+        if convergence_info is not None:
+            final_residual = getattr(convergence_info, "final_residual", None)
+            if final_residual is not None:
+                self._write(f"Final residual: {final_residual:.6e}")
 
         if self.level in ["verbose", "detailed"]:
             avg_iter_time = total_time / result.iterations if result.iterations > 0 else 0
@@ -343,7 +342,7 @@ class StateInspectionHook(SolverHooks):
         issues = []
         try:
             # Assuming m is density function - check if it integrates to approximately 1
-            if hasattr(state, "metadata") and "x_grid" in state.metadata:
+            if "x_grid" in state.metadata:
                 x_grid = state.metadata["x_grid"]
                 for t_idx in range(state.m.shape[0]):
                     mass = np.trapezoid(state.m[t_idx, :], x_grid)

@@ -144,20 +144,17 @@ class ConditionalHook(SolverHooks):
     def on_solve_end(self, result: MFGResult) -> MFGResult:
         # Note: For solve_end, we check the final state if available
         # Otherwise, we always execute (conservative approach)
-        try:
-            # Try to get final state information for condition checking
-            if hasattr(result, "final_state"):
-                final_state = getattr(result, "final_state", None)
-                if final_state is not None and hasattr(final_state, "iteration"):
-                    if self.condition(final_state):
-                        return self.hook.on_solve_end(result)
-                    else:
-                        return result
-            # If no final_state available, execute hook unconditionally
-            return self.hook.on_solve_end(result)
-        except (AttributeError, TypeError):
-            # If any attribute access fails, execute hook unconditionally (safe default)
-            return self.hook.on_solve_end(result)
+        # Try to get final state information for condition checking
+        final_state = getattr(result, "final_state", None)
+        if final_state is not None:
+            iteration = getattr(final_state, "iteration", None)
+            if iteration is not None:
+                if self.condition(final_state):
+                    return self.hook.on_solve_end(result)
+                else:
+                    return result
+        # If no final_state available, execute hook unconditionally
+        return self.hook.on_solve_end(result)
 
 
 class PriorityHook(SolverHooks):

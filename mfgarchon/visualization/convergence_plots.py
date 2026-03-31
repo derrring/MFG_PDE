@@ -491,24 +491,28 @@ def plot_from_monitor(
         Figure object
     """
     # Get plot data from monitor
-    if hasattr(monitor, "get_plot_data"):
-        data = monitor.get_plot_data()
-    elif hasattr(monitor, "convergence_history"):
+    get_plot_data = getattr(monitor, "get_plot_data", None)
+    convergence_history = getattr(monitor, "convergence_history", None)
+    if get_plot_data is not None and callable(get_plot_data):
+        data = get_plot_data()
+    elif convergence_history is not None:
         # Fallback for direct attribute access
         data = {
-            "iterations": [d["iteration"] for d in monitor.convergence_history],
-            "u_errors": [d["u_l2_error"] for d in monitor.convergence_history],
-            "wasserstein_distances": [d.get("wasserstein_distance", np.nan) for d in monitor.convergence_history],
+            "iterations": [d["iteration"] for d in convergence_history],
+            "u_errors": [d["u_l2_error"] for d in convergence_history],
+            "wasserstein_distances": [d.get("wasserstein_distance", np.nan) for d in convergence_history],
         }
     else:
         raise ValueError("Monitor must have get_plot_data() method or convergence_history attribute")
 
     # Get tolerances
     tolerances = {}
-    if hasattr(monitor, "u_magnitude_tol"):
-        tolerances["u"] = monitor.u_magnitude_tol
-    if hasattr(monitor, "wasserstein_tol"):
-        tolerances["wasserstein"] = monitor.wasserstein_tol
+    u_magnitude_tol = getattr(monitor, "u_magnitude_tol", None)
+    if u_magnitude_tol is not None:
+        tolerances["u"] = u_magnitude_tol
+    wasserstein_tol = getattr(monitor, "wasserstein_tol", None)
+    if wasserstein_tol is not None:
+        tolerances["wasserstein"] = wasserstein_tol
 
     return plot_convergence_summary(
         u_errors=data["u_errors"],

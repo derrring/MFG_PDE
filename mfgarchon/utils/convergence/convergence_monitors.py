@@ -351,7 +351,7 @@ class SolverTypeDetector:
 
         found_attributes = []
         for attr in particle_attributes:
-            if hasattr(solver, attr):
+            if getattr(solver, attr, None) is not None:
                 found_attributes.append(attr)
                 detection_info["particle_components"].append(f"attribute:{attr}")
 
@@ -395,7 +395,8 @@ class SolverTypeDetector:
 
         found_methods = []
         for method in particle_methods:
-            if hasattr(solver, method) and callable(getattr(solver, method)):
+            method_obj = getattr(solver, method, None)
+            if method_obj is not None and callable(method_obj):
                 found_methods.append(method)
                 detection_info["particle_components"].append(f"method:{method}")
 
@@ -404,7 +405,7 @@ class SolverTypeDetector:
             detection_info["confidence"] += 0.2
 
         # Check 4: Analyze solve method signature for particle-related parameters
-        if hasattr(solver, "solve"):
+        if getattr(solver, "solve", None) is not None:
             try:
                 sig = inspect.signature(solver.solve)
                 particle_params = [
@@ -516,7 +517,8 @@ class ConvergenceWrapper:
             self._convergence_monitor = create_distribution_monitor(**self.advanced_convergence_kwargs)
 
         # Wrap the solve method
-        if hasattr(solver, "solve") and callable(solver.solve):
+        solve_method = getattr(solver, "solve", None)
+        if solve_method is not None and callable(solve_method):
             self._original_solve = solver.solve
             solver.solve = self._adaptive_solve
 

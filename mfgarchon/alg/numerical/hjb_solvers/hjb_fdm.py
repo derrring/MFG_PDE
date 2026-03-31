@@ -304,6 +304,25 @@ class HJBFDMSolver(BaseHJBSolver):
             self._laplacian_op = self.problem.geometry.get_laplacian_operator(order=2, bc=bc)
         return self._laplacian_op
 
+    def _log_cfl_diagnostic(self, volatility_field: float | None = None) -> None:
+        """Log CFL diagnostic for accuracy/convergence guidance (Issue #882)."""
+        try:
+            dt = self.problem.dt
+            dx = self.problem.geometry.get_grid_spacing()[0]
+            sigma = volatility_field if isinstance(volatility_field, (int, float)) else self.problem.sigma
+            cfl_diffusive = sigma**2 * dt / dx**2
+            if cfl_diffusive > 0.5:
+                logger.info(
+                    "CFL diagnostic (HJB FDM): diffusive=%.2f (sigma=%.3g, dt=%.3g, dx=%.3g). "
+                    "Implicit scheme is stable but accuracy may degrade for CFL >> 1.",
+                    cfl_diffusive,
+                    sigma,
+                    dt,
+                    dx,
+                )
+        except (AttributeError, IndexError, TypeError):
+            pass  # Not enough info to compute CFL — skip silently
+
     @deprecated_parameter(
         param_name="M_density_evolution",
         since="v0.17.0",
@@ -434,6 +453,10 @@ class HJBFDMSolver(BaseHJBSolver):
                     UserWarning,
                     stacklevel=2,
                 )
+
+        # CFL diagnostic (Issue #882): implicit scheme is unconditionally stable,
+        # but large CFL numbers indicate potential accuracy/convergence issues
+        self._log_cfl_diagnostic(volatility_field)
 
         if self.dimension == 1:
             # Extract BC from geometry for Issue #542 fix

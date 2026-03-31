@@ -918,6 +918,11 @@ class UnstructuredMesh(Geometry):
         """
         self._dimension = dimension
         self.mesh_data: Any | None = None  # MeshData from meshes.mesh_data
+        self._fem_basis: Any | None = None
+        self._skfem_mesh: Any | None = None
+        self._fem_stiffness: Any | None = None
+        self._fem_mass: Any | None = None
+        self._fem_mass_lumped: Any | None = None
 
     @property
     def dimension(self) -> int:
@@ -1048,7 +1053,7 @@ class UnstructuredMesh(Geometry):
 
     def _ensure_fem_operators(self) -> None:
         """Lazily initialize scikit-fem basis and assemble operators on first use."""
-        if hasattr(self, "_fem_basis"):
+        if self._fem_basis is not None:
             return
 
         if self.mesh_data is None:
