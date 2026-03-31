@@ -160,6 +160,41 @@ def assemble_advection(
     return skfem.asm(advection_form, basis)
 
 
+def assemble_gradient_projection(basis: skfem.Basis) -> list[sparse.csr_matrix]:
+    """
+    Assemble gradient projection matrices R_d where R_d[i,j] = integral(dphi_j/dx_d * phi_i).
+
+    These matrices map nodal values to their weak-form gradient representation.
+    The nodal gradient is recovered via mass-lumped projection: grad_d(u) = diag(M_lumped)^{-1} @ R_d @ u.
+
+    Used for Newton iteration in HJBFEMSolver: the Jacobian of the Hamiltonian term
+    requires the gradient operator as a matrix (not just a function evaluation).
+
+    Args:
+        basis: scikit-fem Basis object.
+
+    Returns:
+        List of gradient projection matrices [R_0, R_1, ...], one per spatial dimension.
+        Each R_d is a scipy CSR matrix of shape (N_dof, N_dof).
+    """
+    skfem = _import_skfem()
+    from skfem import BilinearForm
+
+    dim = basis.mesh.dim()
+    R_list = []
+
+    for d in range(dim):
+
+        @BilinearForm
+        def grad_proj_form(u, v, w, dim_idx=d):
+            return u.grad[dim_idx] * v.value
+
+        R_d = skfem.asm(grad_proj_form, basis)
+        R_list.append(R_d)
+
+    return R_list
+
+
 def apply_dirichlet_bc(
     matrix: sparse.csr_matrix,
     rhs: NDArray,

@@ -18,6 +18,7 @@ Usage:
 from mfgarchon.alg.numerical.fem.assembly import (
     apply_dirichlet_bc,
     assemble_advection,
+    assemble_gradient_projection,
     assemble_mass,
     assemble_stiffness,
     create_basis,
@@ -36,6 +37,7 @@ __all__ = [
     "assemble_stiffness",
     "assemble_mass",
     "assemble_advection",
+    "assemble_gradient_projection",
     "apply_dirichlet_bc",
     "meshdata_to_skfem",
     "skfem_to_meshdata",
