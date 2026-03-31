@@ -23,6 +23,8 @@ import pytest
 import numpy as np
 
 from mfgarchon.alg.numerical.stochastic import CommonNoiseMFGSolver
+from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.mfg_components import MFGComponents
 from mfgarchon.core.stochastic import OrnsteinUhlenbeckProcess, StochasticMFGProblem
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
@@ -68,29 +70,39 @@ class TestLQCommonNoiseAnalytical:
             """
             return 0.5 * p**2 + 0.5 * x**2 + alpha * theta * x
 
-        # Create stochastic problem
+        # Create stochastic problem with v1.0 API components
         geometry = TensorProductGrid(bounds=[(-2.0, 2.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[42])
+        hamiltonian = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+            potential=lambda x, t: 0.5 * float(np.sum(x**2)),
+        )
+        components = MFGComponents(
+            hamiltonian=hamiltonian,
+            u_terminal=lambda x: 0.5 * x**2,
+            m_initial=lambda x: np.exp(-(x**2) / 0.5),
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
             Nt=21,
             noise_process=noise_process,
             conditional_hamiltonian=lq_hamiltonian,
+            components=components,
         )
 
-        # Set initial density (Gaussian)
-        bounds = problem.geometry.get_bounds()
-        Nx_points = problem.geometry.get_grid_shape()[0]
-        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
-        rho0 = np.exp(-(x**2) / 0.5)
-        rho0 /= np.trapezoid(rho0, x)  # Normalize
-        problem.rho0 = rho0
-
-        # Set terminal cost (quadratic)
+        # Set noise-dependent terminal cost (extends base u_terminal)
         def terminal_cost(x, theta):
             return 0.5 * x**2
 
         problem.terminal_cost = terminal_cost
+
+        # Set initial density from components (normalized)
+        bounds = problem.geometry.get_bounds()
+        Nx_points = problem.geometry.get_grid_shape()[0]
+        x = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
+        rho0 = np.exp(-(x**2) / 0.5)
+        rho0 /= np.trapezoid(rho0, x)
+        problem.rho0 = rho0
 
         return problem
 
@@ -179,12 +191,22 @@ class TestLQCommonNoiseAnalytical:
             return 0.5 * p**2 + 0.5 * x**2  # No noise coupling
 
         geometry = TensorProductGrid(bounds=[(-2.0, 2.0)], boundary_conditions=no_flux_bc(dimension=1), Nx_points=[42])
+        hamiltonian = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+            potential=lambda x, t: 0.5 * float(np.sum(x**2)),
+        )
+        components = MFGComponents(
+            hamiltonian=hamiltonian,
+            u_terminal=lambda x: 0.5 * x**2,
+            m_initial=lambda x: np.exp(-(x**2) / 0.5),
+        )
         problem = StochasticMFGProblem(
             geometry=geometry,
             T=0.5,
             Nt=21,
             noise_process=noise_process,
             conditional_hamiltonian=lq_hamiltonian,
+            components=components,
         )
 
         solver = CommonNoiseMFGSolver(problem, num_noise_samples=5, variance_reduction=False, seed=42)
