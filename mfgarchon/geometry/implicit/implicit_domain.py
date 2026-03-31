@@ -825,6 +825,8 @@ class ImplicitDomain(
     # Region Marking (SupportsRegionMarking protocol - Issue #590 Phase 1.3)
     # =========================================================================
 
+    _regions_dict: dict | None = None  # Lazy-initialized by _regions property
+
     @property
     def _regions(self) -> dict:
         """
@@ -836,7 +838,7 @@ class ImplicitDomain(
         Returns:
             Dictionary mapping region names to predicates
         """
-        if not hasattr(self, "_regions_dict"):
+        if self._regions_dict is None:
             self._regions_dict = {}
         return self._regions_dict
 

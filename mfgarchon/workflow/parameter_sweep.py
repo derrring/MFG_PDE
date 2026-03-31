@@ -98,6 +98,9 @@ class ParameterSweep:
         self.start_time: float | None = None
         self.end_time: float | None = None
 
+        # Retry tracking
+        self._retry_count: dict[int, int] = {}
+
         # Setup logging
         self.logger = self._setup_logging()
 
@@ -310,8 +313,6 @@ class ParameterSweep:
 
             # Retry if configured
             if self.config.retry_failed:
-                if not hasattr(self, "_retry_count"):
-                    self._retry_count: dict[int, int] = {}
                 if self._retry_count.get(run_id, 0) < self.config.max_retries:
                     self._retry_count[run_id] = self._retry_count.get(run_id, 0) + 1
                     self.logger.warning(f"Retrying run {run_id} (attempt {self._retry_count[run_id]})")

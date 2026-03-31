@@ -16,6 +16,10 @@ import warnings
 from collections.abc import Callable
 from typing import Any, TypeVar
 
+from mfgarchon.utils.mfg_logging import get_logger
+
+logger = get_logger(__name__)
+
 F = TypeVar("F", bound=Callable[..., Any])
 
 
@@ -640,6 +644,7 @@ def scan_deprecated(module: Any, *, recursive: bool = True) -> list[dict[str, An
             try:
                 obj = getattr(mod, attr_name)
             except Exception:
+                logger.debug("Cannot access %s.%s", mod_name, attr_name, exc_info=True)
                 continue
 
             _scan_object(obj, attr_name, mod_name, results)
@@ -652,6 +657,7 @@ def scan_deprecated(module: Any, *, recursive: bool = True) -> list[dict[str, An
                     try:
                         method = getattr(obj, method_name)
                     except Exception:
+                        logger.debug("Cannot access %s.%s.%s", mod_name, attr_name, method_name, exc_info=True)
                         continue
                     _scan_object(method, f"{attr_name}.{method_name}", mod_name, results)
 
@@ -663,9 +669,10 @@ def scan_deprecated(module: Any, *, recursive: bool = True) -> list[dict[str, An
                         submod = importlib.import_module(submod_name)
                         _scan_module(submod)
                     except Exception:
+                        logger.debug("Cannot import submodule %s", submod_name, exc_info=True)
                         continue
             except Exception:
-                pass
+                logger.debug("Cannot walk submodules of %s", mod_name, exc_info=True)
 
     _scan_module(module)
 

@@ -18,7 +18,10 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.validation.protocol import ValidationResult
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -681,6 +684,7 @@ def _evaluate_callable_on_grid(
 
         return values
     except Exception:
+        logger.debug("Failed to evaluate callable on grid, returning None", exc_info=True)
         return None
 
 

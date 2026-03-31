@@ -9,6 +9,7 @@ from mfgarchon.backends.compat import has_nan_or_inf
 from mfgarchon.geometry import BoundaryConditions
 from mfgarchon.utils.aux_func import npart, ppart
 from mfgarchon.utils.deprecation import deprecated, deprecated_parameter
+from mfgarchon.utils.mfg_logging import get_logger
 
 from .base_fp import BaseFPSolver
 from .fp_fdm_time_stepping import (
@@ -18,6 +19,8 @@ from .fp_fdm_time_stepping import (
 from .fp_fdm_time_stepping import (
     solve_fp_nd_full_system as _solve_fp_nd_full_system,
 )
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -228,6 +231,25 @@ class FPFDMSolver(BaseFPSolver):
                 self.boundary_conditions = no_flux_bc(dimension=self.dimension)
 
     # _detect_dimension() inherited from BaseNumericalSolver (Issue #633)
+
+    def _log_cfl_diagnostic(self, volatility_field: float | None = None) -> None:
+        """Log CFL diagnostic for accuracy/convergence guidance (Issue #882)."""
+        try:
+            dt = self.problem.dt
+            dx = self.problem.geometry.get_grid_spacing()[0]
+            sigma = volatility_field if isinstance(volatility_field, (int, float)) else self.problem.sigma
+            cfl_diffusive = sigma**2 * dt / dx**2
+            if cfl_diffusive > 0.5:
+                logger.info(
+                    "CFL diagnostic (FP FDM): diffusive=%.2f (sigma=%.3g, dt=%.3g, dx=%.3g). "
+                    "Implicit scheme is stable but accuracy may degrade for CFL >> 1.",
+                    cfl_diffusive,
+                    sigma,
+                    dt,
+                    dx,
+                )
+        except (AttributeError, IndexError, TypeError):
+            pass  # Not enough info to compute CFL — skip silently
 
     @deprecated_parameter(param_name="m_initial_condition", since="v0.17.0", replacement="M_initial")
     @deprecated_parameter(param_name="diffusion_field", since="v0.17.0", replacement="volatility_field")
@@ -498,6 +520,9 @@ class FPFDMSolver(BaseFPSolver):
             raise TypeError(
                 f"volatility_field must be None, float, np.ndarray, or Callable, got {type(volatility_field)}"
             )
+
+        # CFL diagnostic (Issue #882)
+        self._log_cfl_diagnostic(volatility_field)
 
         # Route tensor volatility to tensor path
         if is_tensor:
