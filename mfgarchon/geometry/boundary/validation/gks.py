@@ -117,7 +117,7 @@ def check_gks_stability(
         GKSResult containing stability verdict and eigenvalue data
 
     Example:
-        >>> from mfgarchon.geometry.operators import build_laplacian_1d
+        >>> # Build a 1D Laplacian operator (e.g., via geometry.get_laplacian_operator())
         >>> from mfgarchon.geometry.boundary import BoundaryConditions, BCType
         >>> # Build 1D Laplacian with Neumann BC
         >>> N = 50
