@@ -9,7 +9,7 @@ The canonical way to apply boundary conditions is via `FDMApplicator` or
 `pad_array_with_ghosts()`.
 
 .. deprecated:: v0.17.0
-    All functions in this module will be removed in v0.19.0.
+    All functions in this module will be removed in v0.25.0.
     See issue #577 for migration guide.
 """
 
@@ -1021,7 +1021,7 @@ def apply_boundary_conditions_nd(
         Padded field with ghost cells
 
     .. deprecated::
-        This function-based API will be removed in v0.19.0.
+        This function-based API will be removed in v0.25.0.
         Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
         See issue #577 for migration guide.
     """
@@ -1514,7 +1514,7 @@ def apply_boundary_conditions_1d(
         Padded field of shape (Nx+2,) with ghost cells
 
     .. deprecated::
-        This function-based API will be removed in v0.19.0.
+        This function-based API will be removed in v0.25.0.
         Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
         See issue #577 for migration guide.
     """
@@ -1554,7 +1554,7 @@ def apply_boundary_conditions_3d(
         Padded field of shape (Nz+2, Ny+2, Nx+2) with ghost cells
 
     .. deprecated::
-        This function-based API will be removed in v0.19.0.
+        This function-based API will be removed in v0.25.0.
         Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
         See issue #577 for migration guide.
     """
@@ -1624,7 +1624,7 @@ def get_ghost_values_nd(
         >>> ghosts[(1, 1)]  # Ghost for right boundary of dim 1 (shape: (2,))
 
     .. deprecated::
-        This function-based API will be removed in v0.19.0.
+        This function-based API will be removed in v0.25.0.
         Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead.
         See issue #577 for migration guide.
     """
