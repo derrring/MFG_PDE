@@ -1,8 +1,8 @@
 """
 Visualization utilities for MFGarchon.
 
-Provides convergence plotting and basic MFG solution visualization.
-For interactive/3D visualization, use Plotly or pyvista directly.
+Provides convergence and solver diagnostics plotting (matplotlib).
+For solution visualization, use matplotlib/plotly/pyvista directly.
 """
 
 from .convergence_plots import (
@@ -15,14 +15,8 @@ from .convergence_plots import (
     plot_multi_error_history,
     plot_wasserstein_history,
 )
-from .legacy_plotting import (
-    myplot3d,
-    plot_convergence,
-    plot_results,
-)
 
 __all__ = [
-    # Convergence plotting
     "plot_convergence_rate",
     "plot_convergence_summary",
     "plot_distribution_evolution",
@@ -31,8 +25,4 @@ __all__ = [
     "plot_mass_history",
     "plot_multi_error_history",
     "plot_wasserstein_history",
-    # Basic solution plotting
-    "myplot3d",
-    "plot_convergence",
-    "plot_results",
 ]
