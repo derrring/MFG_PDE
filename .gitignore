@@ -8,6 +8,7 @@
 /*.jpg
 /*.jpeg
 /*.pdf
+/*.vtk
 /*_analysis.py
 /*_demo.py
 /*_test.py
