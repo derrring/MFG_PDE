@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.2"  # v0.18.2: FEM Newton/semismooth, visualization trim, repo cleanup
+version = "0.18.3"  # v0.18.3: Module audit, deprecation cleanup, repo modernization
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
