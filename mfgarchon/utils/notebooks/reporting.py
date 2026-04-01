@@ -40,7 +40,8 @@ except ImportError:
     PLOTLY_AVAILABLE = False
 
 from mfgarchon.utils.mfg_logging import get_logger
-from mfgarchon.visualization import MFGMathematicalVisualizer
+
+logger = get_logger(__name__)
 
 
 class NotebookReportError(Exception):
@@ -90,9 +91,6 @@ class MFGNotebookReporter:
 
         # Configure Plotly for notebook rendering
         pio.renderers.default = plotly_renderer
-
-        # Initialize mathematical visualizer for consistency
-        self.visualizer = MFGMathematicalVisualizer(backend="plotly")
 
         self.logger.info("MFG Notebook Reporter initialized")
         self.logger.info(f"Output directory: {self.output_dir}")
