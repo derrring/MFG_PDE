@@ -265,6 +265,52 @@ class FixedPointIterator(BaseMFGSolver):
                 "  4. initial_density()/terminal_cost() callables"
             ) from e
 
+    def _compute_drift_field(self, U, M, H_class):
+        """Compute α* from U via H.optimal_control, return as synthetic U.
+
+        Issue #896: replaces the quadratic assumption (effective_drift = U).
+        Computes α* = H.optimal_control(x, m, ∇U, t) at each time step,
+        then integrates α* to produce a synthetic U field whose finite
+        differences reproduce the correct velocity in the legacy FP solver.
+
+        For quadratic H (α* = -∇U/λ), this is equivalent to U/λ.
+        For non-quadratic H, the synthetic U encodes the non-linear control.
+        """
+        import numpy as np
+
+        geometry = self.problem.geometry
+        grid_spacing = geometry.get_grid_spacing()
+        dx = grid_spacing[0]
+        dt = self.problem.dt
+        Nt = U.shape[0]
+        Nx = U.shape[-1]
+        coupling_coefficient = getattr(self.problem, "coupling_coefficient", 1.0)
+
+        # Compute ∇U via central differences
+        grad_U = np.gradient(U, dx, axis=-1)
+
+        # Compute α* at grid points for all time steps
+        bounds = geometry.get_bounds()
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx).reshape(-1, 1)
+
+        alpha_field = np.zeros_like(grad_U)
+        for n in range(Nt):
+            p = grad_U[n]
+            m_n = M[n] if n < M.shape[0] else M[-1]
+            alpha_field[n] = H_class.optimal_control(x_grid, m_n, p.reshape(-1, 1), t=n * dt).ravel()
+
+        # Construct synthetic U such that:
+        #   -coupling_coefficient * (U_syn[i+1] - U_syn[i]) / dx ≈ α*[i+1/2]
+        # => U_syn[i+1] - U_syn[i] = -α*[i+1/2] * dx / coupling_coefficient
+        # Using midpoint α*[i+1/2] ≈ (α*[i] + α*[i+1]) / 2
+        U_synthetic = np.zeros_like(U)
+        for n in range(Nt):
+            for i in range(Nx - 1):
+                alpha_mid = 0.5 * (alpha_field[n, i] + alpha_field[n, i + 1])
+                U_synthetic[n, i + 1] = U_synthetic[n, i] - alpha_mid * dx / coupling_coefficient
+
+        return U_synthetic
+
     def solve(
         self,
         config: MFGSolverConfig | None = None,
@@ -475,8 +521,14 @@ class FixedPointIterator(BaseMFGSolver):
                             # User-provided drift override (for non-MFG problems)
                             effective_drift = self.drift_field
                         else:
-                            # Standard MFG: drift from U
-                            effective_drift = U_new
+                            # Issue #896: compute α* from H.optimal_control,
+                            # then encode as synthetic U for the legacy FP solver.
+                            H_class = self.problem.hamiltonian_class
+                            if H_class is not None:
+                                effective_drift = self._compute_drift_field(U_new, M_old, H_class)
+                            else:
+                                # Legacy: pass U directly (quadratic assumption)
+                                effective_drift = U_new
 
                         if "drift_field" in params:
                             kwargs["drift_field"] = effective_drift
