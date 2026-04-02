@@ -936,5 +936,130 @@ class TestHamiltonianBaseRegularize:
         assert H_dual.regularize(0.1) is H_dual
 
 
+# ============================================================================
+# Issue #904: LagrangianBase redesign
+# ============================================================================
+
+
+class TestSeparableLagrangian:
+    """Tests for SeparableLagrangian with ControlCostBase."""
+
+    def test_quadratic_evaluate(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(control_cost=QuadraticControlCost(lambda_=2.0))
+        x, m = np.array([0.5]), 0.3
+        # L(alpha=1) = lambda/2 * |alpha|^2 = 1.0
+        np.testing.assert_allclose(L(x, np.array([1.0]), m, 0.0), 1.0)
+
+    def test_quadratic_optimal_control(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(control_cost=QuadraticControlCost(lambda_=2.0))
+        x, m = np.array([0.5]), 0.3
+        # alpha* = -p/lambda = -2/2 = -1
+        np.testing.assert_allclose(L.optimal_control(x, m, np.array([2.0]), 0.0), [-1.0])
+
+    def test_quadratic_evaluate_hamiltonian(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(control_cost=QuadraticControlCost(lambda_=2.0))
+        x, m = np.array([0.5]), 0.3
+        # H(p=2) = |p|^2 / (2*lambda) = 4/4 = 1
+        np.testing.assert_allclose(L.evaluate_hamiltonian(x, m, np.array([2.0]), 0.0), 1.0)
+
+    def test_quadratic_proximal(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(control_cost=QuadraticControlCost(lambda_=2.0))
+        # prox_{tau*L}(z) = z / (1 + tau*lambda) = 3/3 = 1
+        np.testing.assert_allclose(L.proximal(1.0, np.array([3.0])), [1.0])
+
+    def test_l1_optimal_control(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(control_cost=L1ControlCost(lambda_=0.5))
+        x, m = np.array([0.5]), 0.3
+        # |p| = 0.7 > lambda = 0.5, so alpha* = -sign(p) = -1
+        np.testing.assert_allclose(L.optimal_control(x, m, np.array([0.7]), 0.0), [-1.0])
+
+    def test_l1_evaluate_hamiltonian(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(control_cost=L1ControlCost(lambda_=0.5))
+        x, m = np.array([0.5]), 0.3
+        # H(p=0.7) = max(|0.7| - 0.5, 0) = 0.2
+        np.testing.assert_allclose(L.evaluate_hamiltonian(x, m, np.array([0.7]), 0.0), 0.2, atol=1e-10)
+
+    def test_l1_control_bounds(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(control_cost=L1ControlCost(lambda_=0.5))
+        assert L.control_bounds() == (-1.0, 1.0)
+
+    def test_bounded_control_bounds(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(control_cost=BoundedControlCost(lambda_=1.0, max_control=2.0))
+        assert L.control_bounds() == (-2.0, 2.0)
+
+    def test_as_hamiltonian(self):
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        L = SeparableLagrangian(
+            control_cost=QuadraticControlCost(lambda_=2.0),
+            coupling=lambda m: -(m**2),
+        )
+        H = L.as_hamiltonian()
+        assert isinstance(H, SeparableHamiltonian)
+        # Same control cost object
+        assert H.control_cost is L.control_cost
+
+    def test_optimal_control_matches_hamiltonian(self):
+        """L.optimal_control and H.optimal_control should agree."""
+        from mfgarchon.core.hamiltonian import SeparableLagrangian
+
+        cc = L1ControlCost(lambda_=0.5)
+        L = SeparableLagrangian(control_cost=cc)
+        H = SeparableHamiltonian(control_cost=cc)
+
+        x, m, p, t = np.array([0.5]), 0.3, np.array([0.7]), 0.0
+        np.testing.assert_allclose(
+            L.optimal_control(x, m, p, t),
+            H.optimal_control(x, m, p, t),
+        )
+
+
+class TestLagrangianBaseNumerical:
+    """Test LagrangianBase default numerical methods (non-separable case)."""
+
+    def test_numerical_optimal_control(self):
+        """Custom Lagrangian uses scipy fallback for optimal_control."""
+        from mfgarchon.core.hamiltonian import LagrangianBase, OptimizationSense
+
+        class QuarticLagrangian(LagrangianBase):
+            def __call__(self, x, alpha, m, t=0.0):
+                return 0.25 * np.sum(alpha**4)
+
+        L = QuarticLagrangian(sense=OptimizationSense.MINIMIZE)
+        x, m, p = np.array([0.0]), 0.0, np.array([1.0])
+        alpha = L.optimal_control(x, m, p, 0.0)
+        # For L = |alpha|^4/4, optimal: p = dL/dalpha = alpha^3, so alpha = p^(1/3) = 1
+        np.testing.assert_allclose(alpha, [1.0], atol=0.05)
+
+    def test_numerical_proximal(self):
+        """Custom Lagrangian uses scipy fallback for proximal."""
+        from mfgarchon.core.hamiltonian import LagrangianBase, OptimizationSense
+
+        class QuadLagrangian(LagrangianBase):
+            def __call__(self, x, alpha, m, t=0.0):
+                return 0.5 * np.sum(alpha**2)
+
+        L = QuadLagrangian(sense=OptimizationSense.MINIMIZE)
+        # prox_{tau*L}(z) = z/(1+tau) for L=|a|^2/2
+        result = L.proximal(1.0, np.array([3.0]))
+        np.testing.assert_allclose(result, [1.5], atol=0.05)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
