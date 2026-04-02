@@ -275,8 +275,32 @@ class FixedPointIterator(BaseMFGSolver):
 
         For quadratic H (α* = -∇U/λ), this is equivalent to U/λ.
         For non-quadratic H, the synthetic U encodes the non-linear control.
+
+        Currently 1D only. For nD problems, falls back to passing U directly
+        (correct for quadratic H; TODO: extend synthetic-U to nD).
         """
         import numpy as np
+
+        # For separable H with smooth (quadratic) control cost, the FP solver's
+        # internal drift extraction (-coupling_coefficient * ∇U) is already
+        # correct: it reproduces α* = -∇U/λ. The synthetic-U reconstruction
+        # introduces unnecessary numerical integration error.
+        # Only use synthetic-U for non-smooth or non-quadratic H.
+        from mfgarchon.core.hamiltonian import SeparableHamiltonian
+
+        if isinstance(H_class, SeparableHamiltonian) and H_class.control_cost.is_smooth():
+            return U
+
+        # Synthetic-U integration is 1D only. For nD with non-smooth H,
+        # the reconstruction requires solving ∇U_syn = -α*/c (a Poisson-like
+        # problem). This is deferred; for now, fall back to U (which is exact
+        # for quadratic H and approximate for others).
+        if U.ndim > 2:
+            logger.warning(
+                "Non-smooth H with nD problem: synthetic-U drift not yet supported. "
+                "Falling back to U as drift potential (exact only for quadratic H)."
+            )
+            return U
 
         geometry = self.problem.geometry
         grid_spacing = geometry.get_grid_spacing()
@@ -303,11 +327,10 @@ class FixedPointIterator(BaseMFGSolver):
         #   -coupling_coefficient * (U_syn[i+1] - U_syn[i]) / dx ≈ α*[i+1/2]
         # => U_syn[i+1] - U_syn[i] = -α*[i+1/2] * dx / coupling_coefficient
         # Using midpoint α*[i+1/2] ≈ (α*[i] + α*[i+1]) / 2
+        alpha_mid = 0.5 * (alpha_field[:, :-1] + alpha_field[:, 1:])  # (Nt, Nx-1)
+        increments = -alpha_mid * dx / coupling_coefficient
         U_synthetic = np.zeros_like(U)
-        for n in range(Nt):
-            for i in range(Nx - 1):
-                alpha_mid = 0.5 * (alpha_field[n, i] + alpha_field[n, i + 1])
-                U_synthetic[n, i + 1] = U_synthetic[n, i] - alpha_mid * dx / coupling_coefficient
+        U_synthetic[:, 1:] = np.cumsum(increments, axis=-1)
 
         return U_synthetic
 

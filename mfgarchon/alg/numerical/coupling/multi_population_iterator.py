@@ -196,6 +196,17 @@ class MultiPopulationIterator:
             # TODO (#913): FPNetworkSolver should use H.optimal_control()
             return U
 
+        # For smooth separable H, the FP solver's internal drift extraction
+        # (-coupling_coefficient * ∇U) is already correct. Skip synthetic-U.
+        from mfgarchon.core.hamiltonian import SeparableHamiltonian
+
+        if isinstance(H_class, SeparableHamiltonian) and H_class.control_cost.is_smooth():
+            return U
+
+        # Non-smooth H, 1D only: synthetic U approach
+        if U.ndim > 2:
+            return U  # nD non-smooth: deferred
+
         # Continuous problem: synthetic U approach (same as FixedPointIterator)
         geometry = problem.geometry
         grid_spacing = geometry.get_grid_spacing()
@@ -215,11 +226,10 @@ class MultiPopulationIterator:
             m_n = M[n] if n < M.shape[0] else M[-1]
             alpha_field[n] = H_class.optimal_control(x_grid, m_n, p.reshape(-1, 1), t=n * dt).ravel()
 
+        alpha_mid = 0.5 * (alpha_field[:, :-1] + alpha_field[:, 1:])
+        increments = -alpha_mid * dx / coupling_coefficient
         U_synthetic = np.zeros_like(U)
-        for n in range(Nt):
-            for i in range(Nx - 1):
-                alpha_mid = 0.5 * (alpha_field[n, i] + alpha_field[n, i + 1])
-                U_synthetic[n, i + 1] = U_synthetic[n, i] - alpha_mid * dx / coupling_coefficient
+        U_synthetic[:, 1:] = np.cumsum(increments, axis=-1)
         return U_synthetic
 
 
