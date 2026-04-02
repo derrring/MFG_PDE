@@ -1176,66 +1176,31 @@ class HamiltonianBase(MFGOperatorBase):
 
 class LagrangianBase(MFGOperatorBase):
     """
-    Abstract base for Lagrangian (running cost) L(x, α, m, t).
+    Abstract base for Lagrangian (running cost) L(x, alpha, m, t).
 
-    The Lagrangian represents the instantaneous cost of being at position x
-    with control α in density m at time t. It is related to the Hamiltonian
-    via Legendre transform:
+    First-class MFG specification, parallel to HamiltonianBase.
+    Users can specify either H or L; both provide optimal_control().
 
-        H(x, p, m, t) = sup_α { p·α - L(x, α, m, t) }   (for MINIMIZE)
-        L(x, α, m, t) = sup_p { p·α - H(x, p, m, t) }   (inverse transform)
+    Issue #904: Redesigned interface. Key additions:
+    - ``optimal_control(x, m, p, t)`` -- same signature as HamiltonianBase
+    - ``evaluate_hamiltonian(x, m, p, t)`` -- H value on-the-fly, no DualHamiltonian
+    - ``proximal(tau, z)`` -- for ADMM/variational solvers
+    - ``control_bounds()`` -- for semi-Lagrangian solver
 
-    This symmetric duality (Issue #651) allows users to specify either:
-    - The Hamiltonian directly (what solvers need)
-    - The Lagrangian (often more intuitive for cost specification)
-
-    Both can be converted to the other via Legendre transform.
-
-    Mathematical Structure
-    ----------------------
-    Common Lagrangian forms:
-
-    1. Separable: L(x, α, m, t) = L_control(α) + V(x, t) + f(m)
-       - L_control(α) = ½λ|α|² (quadratic)
-       - V(x, t): Potential energy / running state cost
-       - f(m): Density penalty (congestion)
-
-    2. Non-separable: L depends on (x, α, m, t) in coupled way
-       - E.g., state-dependent control cost
-       - Requires numerical Legendre transform
+    Duality: H(x, p, m, t) = sup_alpha { p . alpha - L(x, alpha, m, t) }
 
     Parameters
     ----------
     sense : OptimizationSense
-        Whether agents minimize cost (MINIMIZE) or maximize utility (MAXIMIZE)
-
-    Examples
-    --------
-    Define a quadratic running cost:
-
-    >>> class QuadraticLagrangian(LagrangianBase):
-    ...     def __init__(self, control_cost=1.0):
-    ...         super().__init__()
-    ...         self.lam = control_cost
-    ...
-    ...     def __call__(self, x, alpha, m, t=0.0):
-    ...         return 0.5 * self.lam * np.sum(alpha**2)  # L = ½λ|α|²
-
-    Convert to Hamiltonian and back:
-
-    >>> L = QuadraticLagrangian(control_cost=2.0)
-    >>> H = L.legendre_transform()  # L → H via Legendre transform
-    >>> L2 = H.legendre_transform()  # H → L via inverse Legendre transform
+        Whether agents minimize cost or maximize utility
     """
 
     @property
     def is_hamiltonian(self) -> bool:
-        """Return False - this is not a Hamiltonian operator."""
         return False
 
     @property
     def is_lagrangian(self) -> bool:
-        """Return True - this is a Lagrangian operator."""
         return True
 
     @abstractmethod
@@ -1246,68 +1211,221 @@ class LagrangianBase(MFGOperatorBase):
         m: float | NDArray,
         t: float = 0.0,
     ) -> float | NDArray:
-        """
-        Evaluate Lagrangian L(x, α, m, t).
-
-        Parameters
-        ----------
-        x : NDArray
-            Position, shape (d,)
-        alpha : NDArray
-            Control, shape (d,)
-        m : float | NDArray
-            Density at x
-        t : float
-            Time
-
-        Returns
-        -------
-        float | NDArray
-            Running cost value
-        """
+        """Evaluate L(x, alpha, m, t)."""
         ...
+
+    # === Optimal control (same signature as HamiltonianBase) ===
+
+    def optimal_control(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float = 0.0,
+    ) -> NDArray:
+        """Compute alpha* = argmax_alpha { p . alpha - L(x, alpha, m, t) }.
+
+        Same alpha* as HamiltonianBase.optimal_control(). Computed directly
+        from L without constructing DualHamiltonian.
+
+        Default: 1D scalar optimization via scipy. Override for analytic.
+        """
+        from scipy.optimize import minimize_scalar
+
+        p_arr = np.atleast_1d(p)
+        d = p_arr.shape[-1] if p_arr.ndim >= 2 else (1 if p_arr.ndim == 0 else len(p_arr))
+
+        bounds = self.control_bounds() or (-10.0, 10.0)
+
+        if d == 1:
+            p_val = float(p_arr.flat[0])
+
+            def neg_objective(a):
+                alpha = np.array([a])
+                return -(p_val * a - float(self(x, alpha, m, t)))
+
+            res = minimize_scalar(neg_objective, bounds=bounds, method="bounded")
+            return np.array([res.x])
+
+        # nD: scipy.optimize.minimize
+        from scipy.optimize import minimize as scipy_minimize
+
+        def neg_objective_nd(alpha):
+            return -(np.dot(p_arr.ravel(), alpha) - float(self(x, alpha, m, t)))
+
+        x0 = np.clip(p_arr.ravel(), bounds[0], bounds[1])
+        res = scipy_minimize(neg_objective_nd, x0, bounds=[bounds] * d, method="L-BFGS-B")
+        return res.x
+
+    # === On-the-fly H evaluation ===
+
+    def evaluate_hamiltonian(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float = 0.0,
+    ) -> float | NDArray:
+        """H(x, m, p, t) = p . alpha*(p) - L(x, alpha*(p), m, t).
+
+        Computes Hamiltonian value on-the-fly without DualHamiltonian.
+        """
+        alpha_star = self.optimal_control(x, m, p, t)
+        p_dot_alpha = float(np.sum(np.atleast_1d(p) * alpha_star))
+        return p_dot_alpha - float(self(x, alpha_star, m, t))
+
+    # === ADMM / variational interface ===
+
+    def proximal(
+        self,
+        tau: float,
+        z: np.ndarray,
+        x: NDArray | None = None,
+        m: float | NDArray | None = None,
+        t: float = 0.0,
+    ) -> np.ndarray:
+        """Proximal of L: prox_{tau*L}(z) = argmin_alpha { L(alpha) + |alpha-z|^2/(2*tau) }.
+
+        Required for ADMM and Chambolle-Pock variational solvers.
+        Default: numerical (scipy). Override for closed-form.
+
+        For separable L, only the control cost term matters (V, f don't
+        depend on alpha), so x and m are unused.
+        """
+        from scipy.optimize import minimize_scalar
+
+        z_arr = np.atleast_1d(z)
+        d = len(z_arr) if z_arr.ndim == 1 else 1
+        bounds = self.control_bounds() or (-10.0, 10.0)
+
+        # Dummy x, m if not provided
+        if x is None:
+            x = np.zeros(max(d, 1))
+        if m is None:
+            m = 0.0
+
+        if d == 1:
+            z_val = float(z_arr.flat[0])
+
+            def objective(a):
+                alpha = np.array([a])
+                return float(self(x, alpha, m, t)) + (a - z_val) ** 2 / (2 * tau)
+
+            res = minimize_scalar(objective, bounds=bounds, method="bounded")
+            return np.array([res.x])
+
+        from scipy.optimize import minimize as scipy_minimize
+
+        def objective_nd(alpha):
+            return float(self(x, alpha, m, t)) + np.sum((alpha - z_arr) ** 2) / (2 * tau)
+
+        x0 = np.clip(z_arr, bounds[0], bounds[1])
+        res = scipy_minimize(objective_nd, x0, bounds=[bounds] * d, method="L-BFGS-B")
+        return res.x
+
+    # === Semi-Lagrangian interface ===
+
+    def control_bounds(self) -> tuple[float, float] | None:
+        """Bounds on admissible control set A.
+
+        Returns (a_min, a_max) or None if A = R^d (unbounded).
+        Used by semi-Lagrangian solver and numerical optimization.
+        """
+        return None
+
+    # === Legacy: Legendre transform ===
 
     def legendre_transform(
         self,
         alpha_bounds: tuple[float, float] | None = None,
         n_search: int = 100,
     ) -> HamiltonianBase:
-        """
-        Convert Lagrangian to Hamiltonian via Legendre transform.
+        """Convert Lagrangian to Hamiltonian via numerical Legendre transform.
 
-        Computes H(x, p, m, t) = sup_α { p·α - L(x, α, m, t) }
-
-        The Legendre transform is involutive: applying it twice recovers
-        the original (up to convexification). This provides symmetric
-        duality between H and L (Issue #651).
-
-        For separable quadratic Lagrangians, this is done analytically.
-        For general Lagrangians, numerical optimization is used.
-
-        Parameters
-        ----------
-        alpha_bounds : tuple[float, float] | None
-            Bounds on control for numerical optimization.
-            If None, uses (-10, 10) as default.
-        n_search : int
-            Number of points for grid search (default: 100)
-
-        Returns
-        -------
-        HamiltonianBase
-            The Legendre-transformed Hamiltonian (DualHamiltonian)
-
-        Examples
-        --------
-        >>> L = MyLagrangian()
-        >>> H = L.legendre_transform()  # L → H
-        >>> L_back = H.legendre_transform()  # Involutive: back to Lagrangian
+        .. note::
+            For common control costs, prefer using ``evaluate_hamiltonian()``
+            or ``optimal_control()`` directly instead of constructing a
+            DualHamiltonian object.
         """
         return DualHamiltonian(
             lagrangian=self,
             sense=self.sense,
             alpha_bounds=alpha_bounds or (-10.0, 10.0),
             n_search=n_search,
+        )
+
+
+class SeparableLagrangian(LagrangianBase):
+    """Separable Lagrangian: L(x, alpha, m, t) = L_control(alpha) + V(x, t) + f(m).
+
+    Mirrors SeparableHamiltonian. Uses ControlCostBase for the control term,
+    providing closed-form optimal_control, evaluate_hamiltonian, and proximal.
+
+    Parameters
+    ----------
+    control_cost : ControlCostBase
+        Control cost specification (Quadratic, L1, Bounded, etc.)
+    potential : callable or None
+        V(x, t). If None, V = 0.
+    coupling : callable or None
+        f(m). If None, f = 0.
+    sense : OptimizationSense
+        Optimization direction.
+    """
+
+    def __init__(
+        self,
+        control_cost: ControlCostBase,
+        potential: callable | None = None,
+        coupling: callable | None = None,
+        sense: OptimizationSense = OptimizationSense.MINIMIZE,
+    ):
+        super().__init__(sense=sense)
+        self.control_cost = control_cost
+        self._potential = potential
+        self._coupling = coupling
+
+    def __call__(self, x, alpha, m, t=0.0):
+        """L = L_control(alpha) + V(x, t) + f(m)."""
+        L_ctrl = self.control_cost.lagrangian(np.atleast_1d(alpha))
+        V = float(self._potential(x, t)) if self._potential is not None else 0.0
+        f_m = float(self._coupling(m)) if self._coupling is not None else 0.0
+        return L_ctrl + V + f_m
+
+    def optimal_control(self, x, m, p, t=0.0):
+        """Delegates to control_cost.optimal_control(p). Analytic."""
+        return self.control_cost.optimal_control(np.atleast_1d(p))
+
+    def evaluate_hamiltonian(self, x, m, p, t=0.0):
+        """H = H_control(p) + V(x,t) + f(m). Uses control_cost.evaluate()."""
+        p_arr = np.atleast_1d(p)
+        H_ctrl = self.control_cost.evaluate(p_arr)
+        if not isinstance(H_ctrl, (int, float)):
+            H_ctrl = float(H_ctrl.sum()) if p_arr.ndim < 2 else H_ctrl
+        V = float(self._potential(x, t)) if self._potential is not None else 0.0
+        f_m = float(self._coupling(m)) if self._coupling is not None else 0.0
+        return H_ctrl + V + f_m
+
+    def proximal(self, tau, z, x=None, m=None, t=0.0):
+        """Delegates to control_cost.proximal(). V and f don't depend on alpha."""
+        return self.control_cost.proximal(tau, np.atleast_1d(z))
+
+    def control_bounds(self):
+        """Infer from control_cost if available."""
+        cc = self.control_cost
+        if isinstance(cc, BoundedControlCost):
+            return (-cc.max_control, cc.max_control)
+        if isinstance(cc, L1ControlCost):
+            return (-1.0, 1.0)  # bang-bang bounded to [-1, 1]
+        return None
+
+    def as_hamiltonian(self) -> SeparableHamiltonian:
+        """Return the corresponding SeparableHamiltonian (shared control_cost)."""
+        return SeparableHamiltonian(
+            control_cost=self.control_cost,
+            potential=self._potential,
+            coupling=self._coupling,
+            sense=self.sense,
         )
 
 
