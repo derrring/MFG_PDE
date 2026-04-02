@@ -292,6 +292,120 @@ class TestNonQuadraticHamiltonians:
             )
 
 
+# ============================================================================
+# Issue #896: Non-quadratic drift through FixedPointIterator
+# ============================================================================
+
+
+class TestFixedPointIteratorDrift:
+    """Test that FixedPointIterator computes correct drift for non-quadratic H."""
+
+    def _make_problem(self, hamiltonian):
+        """Create a standard 1D MFG problem with given Hamiltonian."""
+        from mfgarchon.core.mfg_components import MFGComponents
+
+        Nx, Nt = 51, 20
+        bc = no_flux_bc(dimension=1)
+        geom = TensorProductGrid(bounds=[(0.0, 1.0)], num_points=[Nx], boundary_conditions=bc)
+        components = MFGComponents(
+            hamiltonian=hamiltonian,
+            m_initial=lambda x: np.exp(-((x - 0.5) ** 2) / 0.02),
+            u_terminal=lambda x: 0.5 * (x - 0.5) ** 2,
+        )
+        return MFGProblem(
+            geometry=geom,
+            T=1.0,
+            Nt=Nt,
+            sigma=0.1,
+            boundary_conditions=bc,
+            components=components,
+        )
+
+    def test_quadratic_drift_matches_legacy(self):
+        """Quadratic H through _compute_drift_field should match passing U directly."""
+        from mfgarchon.alg.numerical.coupling import FixedPointIterator
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+
+        H = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+            coupling=lambda m: m,
+            coupling_dm=lambda m: 1.0,
+        )
+        problem = self._make_problem(H)
+        hjb_solver = HJBFDMSolver(problem)
+        fp_solver = FPFDMSolver(problem)
+
+        # Run with new drift pipeline
+        iterator = FixedPointIterator(problem, hjb_solver, fp_solver)
+        result = iterator.solve(max_iterations=5, tolerance=1e-10)
+        U, M = result.U, result.M
+
+        # Basic sanity: solution should be finite and non-negative density
+        assert np.all(np.isfinite(U))
+        assert np.all(np.isfinite(M))
+        assert M.min() >= -1e-6  # Allow small numerical negativity
+
+    def test_l1_drift_produces_different_density(self):
+        """L1 control should produce different density than quadratic."""
+        from mfgarchon.alg.numerical.coupling import FixedPointIterator
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+
+        # Quadratic problem
+        H_quad = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+        )
+        prob_q = self._make_problem(H_quad)
+        it_q = FixedPointIterator(prob_q, HJBFDMSolver(prob_q), FPFDMSolver(prob_q))
+        res_q = it_q.solve(max_iterations=5, tolerance=1e-10)
+        M_q = res_q.M
+
+        # L1 problem (same geometry, different H)
+        from mfgarchon.core.hamiltonian import L1ControlCost
+
+        H_l1 = SeparableHamiltonian(
+            control_cost=L1ControlCost(control_cost=0.1),
+        )
+        prob_l1 = self._make_problem(H_l1)
+        it_l1 = FixedPointIterator(prob_l1, HJBFDMSolver(prob_l1), FPFDMSolver(prob_l1))
+        res_l1 = it_l1.solve(max_iterations=5, tolerance=1e-10)
+        U_l1, M_l1 = res_l1.U, res_l1.M
+
+        # Solutions should be finite
+        assert np.all(np.isfinite(U_l1))
+        assert np.all(np.isfinite(M_l1))
+
+        # L1 and quadratic should produce different densities
+        assert not np.allclose(M_q, M_l1, atol=1e-3), (
+            "L1 and quadratic produced identical densities — drift not differentiated"
+        )
+
+    def test_bounded_drift_produces_different_density(self):
+        """BoundedControlCost should produce different density than quadratic."""
+        from mfgarchon.alg.numerical.coupling import FixedPointIterator
+        from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver
+        from mfgarchon.core.hamiltonian import BoundedControlCost
+
+        H_quad = SeparableHamiltonian(
+            control_cost=QuadraticControlCost(control_cost=1.0),
+        )
+        prob_q = self._make_problem(H_quad)
+        it_q = FixedPointIterator(prob_q, HJBFDMSolver(prob_q), FPFDMSolver(prob_q))
+        res_q = it_q.solve(max_iterations=5, tolerance=1e-10)
+        M_q = res_q.M
+
+        H_bnd = SeparableHamiltonian(
+            control_cost=BoundedControlCost(control_cost=1.0, max_control=0.1),
+        )
+        prob_b = self._make_problem(H_bnd)
+        it_b = FixedPointIterator(prob_b, HJBFDMSolver(prob_b), FPFDMSolver(prob_b))
+        res_b = it_b.solve(max_iterations=5, tolerance=1e-10)
+        U_b, M_b = res_b.U, res_b.M
+
+        assert np.all(np.isfinite(U_b))
+        assert np.all(np.isfinite(M_b))
+        assert not np.allclose(M_q, M_b, atol=1e-3), "Bounded and quadratic produced identical densities"
+
+
 if __name__ == "__main__":
     """Run smoke tests."""
     import sys

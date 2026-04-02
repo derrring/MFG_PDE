@@ -65,6 +65,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from mfgarchon.utils.deprecation import deprecated
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
@@ -110,6 +112,11 @@ def zero_drift() -> Callable:
     return _zero_drift
 
 
+@deprecated(
+    since="v0.19.0",
+    replacement="use H.optimal_control(x, m, grad_U, t) directly, or let FixedPointIterator handle it automatically",
+    reason="Hardcodes quadratic Hamiltonian assumption (Issue #896)",
+)
 def optimal_control_drift(
     U: np.ndarray,
     problem: MFGProblem,
@@ -118,8 +125,15 @@ def optimal_control_drift(
     """
     Create MFG optimal control drift field α = -∇U / λ.
 
-    This is the standard drift for Mean Field Games where agents follow
-    the optimal policy derived from the HJB value function.
+    .. deprecated:: 0.19.0
+        This function hardcodes the quadratic Hamiltonian assumption (α = -∇U/λ).
+        For general Hamiltonians, use the inline pipeline instead::
+
+            grad_U = np.gradient(U, dx, axis=-1)
+            alpha = H.optimal_control(x, m, grad_U, t)
+
+        The FixedPointIterator handles this automatically via
+        ``_compute_drift_field()``. Will be removed in v0.25.0.
 
     Equation:
         α(t,x) = -∇U(t,x) / λ
