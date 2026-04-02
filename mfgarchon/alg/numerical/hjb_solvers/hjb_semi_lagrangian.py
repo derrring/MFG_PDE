@@ -1193,6 +1193,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 - 1D: scalar float
                 - nD: array of shape (dimension,)
         """
+        # Issue #902: Infer control bounds from Lagrangian or Hamiltonian
+        _bounds = (-10.0, 10.0)  # default
+        L_class = self.problem.lagrangian_class
+        if L_class is not None:
+            cb = L_class.control_bounds()
+            if cb is not None:
+                _bounds = cb
+
         # Issue #902: Use HamiltonianBase.optimal_control() if available.
         # Note: _find_optimal_control finds p* that MINIMIZES H(x, p, m),
         # NOT the MFG drift alpha*. For quadratic H = |p|^2/2 + ..., p* = 0.
@@ -1230,14 +1238,14 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             if self.optimization_method == "brent":
                 result = minimize_scalar(
                     hamiltonian_objective,
-                    bounds=(-10.0, 10.0),
+                    bounds=_bounds,
                     method="bounded",
                     options={"xatol": self.tolerance},
                 )
             else:
                 result = minimize_scalar(
                     hamiltonian_objective,
-                    bounds=(-10.0, 10.0),
+                    bounds=_bounds,
                     method="golden",
                     options={"xtol": self.tolerance},
                 )
