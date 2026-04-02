@@ -674,5 +674,267 @@ class TestCongestionHamiltonian:
         np.testing.assert_allclose(alpha, -dp_val)
 
 
+# ============================================================================
+# Issue #898: New ControlCostBase interface tests
+# ============================================================================
+
+
+class TestControlCostEvaluate:
+    """Tests for evaluate() — must return finite values for all inputs."""
+
+    def test_quadratic_evaluate(self):
+        cost = QuadraticControlCost(lambda_=2.0)
+        p = np.array([1.0, 2.0, 3.0])
+        result = cost.evaluate(p)
+        # sum(p^2) / (2*lambda) = (1+4+9) / 4 = 3.5
+        expected = 0.5 * np.sum(p**2) / 2.0
+        np.testing.assert_allclose(result, expected)
+
+    def test_l1_evaluate_below_threshold(self):
+        cost = L1ControlCost(lambda_=0.5)
+        p = np.array([0.3, -0.2])
+        result = cost.evaluate(p)
+        np.testing.assert_allclose(result, [0.0, 0.0])
+
+    def test_l1_evaluate_above_threshold(self):
+        cost = L1ControlCost(lambda_=0.5)
+        p = np.array([0.7, -0.8, 1.5])
+        result = cost.evaluate(p)
+        expected = np.maximum(np.abs(p) - 0.5, 0.0)
+        np.testing.assert_allclose(result, expected)
+
+    def test_l1_evaluate_always_finite(self):
+        cost = L1ControlCost(lambda_=1.0)
+        p = np.array([0.0, 0.5, 1.0, 5.0, 100.0])
+        result = cost.evaluate(p)
+        assert np.all(np.isfinite(result))
+
+    def test_bounded_evaluate_unsaturated(self):
+        cost = BoundedControlCost(lambda_=1.0, max_control=2.0)
+        p = np.array([1.0])  # |p| < lambda * alpha_max = 2
+        result = cost.evaluate(p)
+        np.testing.assert_allclose(result, [0.5])
+
+    def test_bounded_evaluate_saturated(self):
+        cost = BoundedControlCost(lambda_=1.0, max_control=2.0)
+        p = np.array([5.0])  # |p| > lambda * alpha_max = 2
+        result = cost.evaluate(p)
+        expected = 2.0 * 5.0 - 0.5 * 1.0 * 4.0  # a_max*|p| - lam*a_max^2/2
+        np.testing.assert_allclose(result, [expected])
+
+
+class TestControlCostDp:
+    """Tests for dp() — gradient / subdifferential."""
+
+    def test_quadratic_dp(self):
+        cost = QuadraticControlCost(lambda_=2.0)
+        p = np.array([1.0, 2.0])
+        np.testing.assert_allclose(cost.dp(p), [0.5, 1.0])
+
+    def test_l1_dp_below_threshold(self):
+        cost = L1ControlCost(lambda_=0.5)
+        p = np.array([0.3, -0.2])
+        np.testing.assert_allclose(cost.dp(p), [0.0, 0.0])
+
+    def test_l1_dp_above_threshold(self):
+        cost = L1ControlCost(lambda_=0.5)
+        p = np.array([0.7, -0.8])
+        np.testing.assert_allclose(cost.dp(p), [1.0, -1.0])
+
+    def test_bounded_dp_unsaturated(self):
+        cost = BoundedControlCost(lambda_=1.0, max_control=2.0)
+        p = np.array([1.0])
+        np.testing.assert_allclose(cost.dp(p), [1.0])
+
+    def test_bounded_dp_saturated(self):
+        cost = BoundedControlCost(lambda_=1.0, max_control=2.0)
+        p = np.array([5.0, -5.0])
+        np.testing.assert_allclose(cost.dp(p), [2.0, -2.0])
+
+
+class TestControlCostProximal:
+    """Tests for proximal() — prox of Lagrangian for ADMM."""
+
+    def test_quadratic_proximal(self):
+        cost = QuadraticControlCost(lambda_=2.0)
+        z = np.array([3.0])
+        result = cost.proximal(1.0, z)
+        np.testing.assert_allclose(result, [1.0])  # 3 / (1 + 2)
+
+    def test_l1_proximal_soft_threshold(self):
+        cost = L1ControlCost(lambda_=0.5)
+        z = np.array([1.0, 0.2, -0.8])
+        result = cost.proximal(1.0, z)
+        # soft threshold: sign(z) * max(|z| - tau*lambda, 0), clipped to [-1, 1]
+        expected = np.sign(z) * np.maximum(np.abs(z) - 0.5, 0.0)
+        expected = np.clip(expected, -1.0, 1.0)
+        np.testing.assert_allclose(result, expected)
+
+    def test_bounded_proximal(self):
+        cost = BoundedControlCost(lambda_=1.0, max_control=2.0)
+        z = np.array([1.0, 5.0])
+        result = cost.proximal(0.5, z)
+        # z / (1 + tau*lam), clipped to [-2, 2]
+        expected = np.clip(z / 1.5, -2.0, 2.0)
+        np.testing.assert_allclose(result, expected)
+
+
+class TestControlCostRegularize:
+    """Tests for regularize() — Moreau-Yosida smoothing."""
+
+    def test_quadratic_regularize_returns_self(self):
+        cost = QuadraticControlCost(lambda_=1.0)
+        result = cost.regularize(0.1)
+        assert result is cost  # already smooth
+
+    def test_l1_regularize_returns_smooth(self):
+        cost = L1ControlCost(lambda_=0.5)
+        smooth = cost.regularize(0.1)
+        assert smooth.is_smooth()
+        assert smooth is not cost
+
+    def test_l1_regularize_evaluate_is_smooth(self):
+        """Regularized L1 should have smooth evaluate near the kink."""
+        cost = L1ControlCost(lambda_=0.5)
+        smooth = cost.regularize(0.1)
+        # At p = 0.5 (the kink), evaluate should be smooth
+        p_near = np.array([0.45, 0.5, 0.55])
+        vals = smooth.evaluate(p_near)
+        assert np.all(np.isfinite(vals))
+        # Gradient should be continuous (no jump)
+        grads = smooth.dp(p_near)
+        assert np.all(np.isfinite(grads))
+
+    def test_l1_regularize_dp_lipschitz(self):
+        """Regularized dp should be Lipschitz (no discontinuity)."""
+        cost = L1ControlCost(lambda_=0.5)
+        smooth = cost.regularize(0.1)
+        p = np.linspace(0.0, 1.0, 100)
+        grads = np.array([smooth.dp(np.array([pi]))[0] for pi in p])
+        # Check Lipschitz: |grad[i+1] - grad[i]| <= C * dp
+        diffs = np.abs(np.diff(grads))
+        dp = p[1] - p[0]
+        lip_const = np.max(diffs / dp)
+        assert lip_const < 1.0 / 0.1 + 1.0  # Lipschitz const <= 1/epsilon
+
+    def test_continuation_re_regularize(self):
+        """regularize().regularize() should use original base cost."""
+        cost = L1ControlCost(lambda_=0.5)
+        smooth1 = cost.regularize(0.1)
+        smooth2 = smooth1.regularize(0.01)
+        assert smooth2.epsilon == 0.01
+        assert smooth2.base is cost  # base is the ORIGINAL L1, not the first smoothed
+
+    def test_bounded_regularize(self):
+        cost = BoundedControlCost(lambda_=1.0, max_control=2.0)
+        smooth = cost.regularize(0.1)
+        assert smooth.is_smooth()
+
+
+class TestControlCostLambda:
+    """Tests for lambda_ attribute and deprecation."""
+
+    def test_lambda_via_keyword(self):
+        cost = QuadraticControlCost(lambda_=3.0)
+        assert cost.lambda_ == 3.0
+
+    def test_lambda_via_positional(self):
+        """Legacy: positional control_cost still works."""
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            cost = QuadraticControlCost(sense=OptimizationSense.MINIMIZE, control_cost=3.0)
+            assert cost.lambda_ == 3.0
+
+    def test_control_cost_property_deprecated(self):
+        import warnings
+
+        cost = QuadraticControlCost(lambda_=2.0)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            val = cost.control_cost
+            assert val == 2.0
+            assert any("deprecated" in str(x.message).lower() for x in w)
+
+    def test_hamiltonian_method_deprecated(self):
+        import warnings
+
+        cost = QuadraticControlCost(lambda_=2.0)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            cost.hamiltonian(np.array([1.0]))
+            assert any("deprecated" in str(x.message).lower() for x in w)
+
+    def test_cannot_specify_both(self):
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            QuadraticControlCost(control_cost=1.0, lambda_=2.0)
+
+
+class TestSeparableHamiltonianDp:
+    """Test that SeparableHamiltonian.dp() delegates correctly (no isinstance)."""
+
+    def test_dp_with_quadratic(self):
+        H = SeparableHamiltonian(control_cost=QuadraticControlCost(lambda_=2.0))
+        x, m, p = np.array([0.5]), 0.3, np.array([1.0])
+        np.testing.assert_allclose(H.dp(x, m, p, 0.0), [0.5])
+
+    def test_dp_with_l1(self):
+        H = SeparableHamiltonian(control_cost=L1ControlCost(lambda_=0.5))
+        x, m = np.array([0.5]), 0.3
+        # Below threshold
+        np.testing.assert_allclose(H.dp(x, m, np.array([0.3]), 0.0), [0.0])
+        # Above threshold
+        np.testing.assert_allclose(H.dp(x, m, np.array([0.7]), 0.0), [1.0])
+
+    def test_dp_with_bounded(self):
+        H = SeparableHamiltonian(control_cost=BoundedControlCost(lambda_=1.0, max_control=2.0))
+        x, m = np.array([0.5]), 0.3
+        # Unsaturated
+        np.testing.assert_allclose(H.dp(x, m, np.array([1.0]), 0.0), [1.0])
+        # Saturated
+        np.testing.assert_allclose(H.dp(x, m, np.array([5.0]), 0.0), [2.0])
+
+
+class TestHamiltonianBaseRegularize:
+    """Test HamiltonianBase.regularize() behavior."""
+
+    def test_smooth_hamiltonian_returns_self(self):
+        H = SeparableHamiltonian(control_cost=QuadraticControlCost(lambda_=1.0))
+        assert H.regularize(0.1) is H
+
+    def test_nonsmooth_separable_regularize(self):
+        H = SeparableHamiltonian(
+            control_cost=L1ControlCost(lambda_=0.5),
+            coupling=lambda m: -(m**2),
+            coupling_dm=lambda m: -2 * m,
+        )
+        Hs = H.regularize(0.1)
+        assert isinstance(Hs, SeparableHamiltonian)
+        assert Hs.is_smooth()
+        # Coupling preserved
+        assert Hs._coupling is H._coupling
+        assert Hs._coupling_dm is H._coupling_dm
+
+    def test_nonsmooth_congestion_regularize(self):
+        H = CongestionHamiltonian(
+            control_cost=L1ControlCost(lambda_=0.5),
+            congestion_factor=lambda m: 1.0 + m,
+            congestion_factor_dm=lambda m: 1.0,
+        )
+        Hs = H.regularize(0.1)
+        assert isinstance(Hs, CongestionHamiltonian)
+        assert Hs.is_smooth()
+
+    def test_dual_hamiltonian_regularize_raises(self):
+        """DualHamiltonian has no control_cost — regularize raises."""
+
+        H = SeparableHamiltonian(control_cost=QuadraticControlCost(lambda_=1.0))
+        L = H.legendre_transform()
+        H_dual = L.legendre_transform()
+        # DualHamiltonian is smooth (quadratic base) so returns self
+        assert H_dual.regularize(0.1) is H_dual
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

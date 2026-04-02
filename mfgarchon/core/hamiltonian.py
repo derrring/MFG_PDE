@@ -100,73 +100,143 @@ class OptimizationSense(Enum):
 
 class ControlCostBase(ABC):
     """
-    Abstract base for control cost specifications.
+    Kinetic/control cost component for MFG Hamiltonians.
 
-    This is the primary interface for defining how control effort translates
-    to cost. Subclasses implement specific cost structures (quadratic, L1, etc.).
+    Internal component used by SeparableHamiltonian, CongestionHamiltonian, etc.
+    NOT a standalone Hamiltonian -- use HamiltonianBase for full H(x,m,p,t).
 
-    The key method is `optimal_control(p)` which computes α* given momentum p.
-    This is THE SINGLE SOURCE OF TRUTH for drift direction in MFG coupling.
+    Subclasses must implement: optimal_control(), dp(), evaluate(), lagrangian().
+
+    Issue #898: Redesigned interface. Key changes from pre-v0.19:
+    - ``evaluate(p)`` replaces ``hamiltonian(p)`` -- always returns finite values
+    - ``dp(p)`` added -- gradient/subdifferential of H w.r.t. p
+    - ``lambda_`` replaces ``.control_cost`` attribute (naming collision fix)
+    - ``regularize(epsilon)`` -- Moreau-Yosida smoothing
+    - ``proximal(tau, z)`` -- proximal of Lagrangian for ADMM/variational solvers
 
     Parameters
     ----------
     sense : OptimizationSense
         Whether agents minimize cost or maximize utility
     control_cost : float
-        Control cost weight λ (always positive)
-
-    Attributes
-    ----------
-    sense : OptimizationSense
-        Optimization direction
-    control_cost : float
-        Control cost weight λ
-    sign : int
-        +1 for MINIMIZE, -1 for MAXIMIZE (internal use)
+        Control cost weight lambda. Deprecated: use ``lambda_`` instead.
+    lambda_ : float or None
+        Control cost weight lambda. Preferred over ``control_cost``.
     """
 
     def __init__(
         self,
         sense: OptimizationSense = OptimizationSense.MINIMIZE,
-        control_cost: float = 1.0,
+        control_cost: float | None = None,
+        *,
+        lambda_: float | None = None,
     ):
-        if control_cost <= 0:
-            raise ValueError(f"control_cost must be positive, got {control_cost}")
+        # Handle lambda_ vs control_cost (Issue #898: deprecation)
+        if lambda_ is not None and control_cost is not None:
+            raise ValueError("Cannot specify both 'lambda_' and 'control_cost'. Use 'lambda_' only.")
+        if lambda_ is not None:
+            lam = lambda_
+        elif control_cost is not None:
+            lam = control_cost
+        else:
+            lam = 1.0  # default
+
+        if lam <= 0:
+            raise ValueError(f"lambda_ must be positive, got {lam}")
 
         self.sense = sense
-        self.control_cost = control_cost
-        # Sign convention: MINIMIZE -> α = -∂H/∂p, MAXIMIZE -> α = +∂H/∂p
+        self._lambda = lam
+        # Sign convention: MINIMIZE -> alpha = -dH/dp, MAXIMIZE -> alpha = +dH/dp
         self.sign = 1 if sense == OptimizationSense.MINIMIZE else -1
+
+    @property
+    def lambda_(self) -> float:
+        """Control cost weight lambda."""
+        return self._lambda
+
+    @property
+    def control_cost(self) -> float:
+        """Control cost weight lambda.
+
+        .. deprecated:: 0.19.0
+            Use ``lambda_`` instead. Will be removed in v0.25.0.
+        """
+        import warnings
+
+        warnings.warn(
+            "ControlCostBase.control_cost is deprecated, use .lambda_ instead. Will be removed in v0.25.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._lambda
+
+    # === PRIMARY interface (solvers use these via HamiltonianBase delegation) ===
 
     @abstractmethod
     def optimal_control(self, p: np.ndarray) -> np.ndarray:
         """
-        Compute optimal control α* given momentum p.
+        Compute optimal control alpha*(p). Single source of truth for drift.
 
-        This is the PRIMARY interface for HJB-FP coupling. The FP solver
-        uses this to compute drift from the HJB solution gradient.
-
-        For cost minimization: α* = -∂H/∂p (gradient descent on value)
-        For utility maximization: α* = +∂H/∂p (gradient ascent on utility)
+        For cost minimization: alpha* = -dH/dp
+        For utility maximization: alpha* = +dH/dp
 
         Parameters
         ----------
         p : ndarray
-            Momentum field (typically ∇U from HJB solution)
-            Shape: (Nx,) for 1D, (Ny, Nx) for 2D, etc.
+            Momentum field (typically nabla U from HJB solution)
 
         Returns
         -------
         ndarray
-            Optimal control/velocity field α*
-            Same shape as p
+            Optimal control field, same shape as p
+        """
+        ...
+
+    @abstractmethod
+    def evaluate(self, p: np.ndarray) -> np.ndarray:
+        """
+        Evaluate H_control(p). Must return FINITE values for all p.
+
+        This is the numerical evaluation used in the HJB equation.
+        For non-smooth costs, returns the value obtained by substituting
+        the optimal control: H(p) = p * alpha*(p) - L(alpha*(p)).
+
+        Parameters
+        ----------
+        p : ndarray
+            Momentum field
+
+        Returns
+        -------
+        ndarray
+            Hamiltonian value at each point (always finite)
+        """
+        ...
+
+    @abstractmethod
+    def dp(self, p: np.ndarray) -> np.ndarray:
+        """
+        Gradient dH/dp (or Clarke subdifferential selection for non-smooth H).
+
+        Must return finite values for all p. For non-smooth H, return a
+        well-defined selection from the subdifferential (e.g., 0 at kinks).
+
+        Parameters
+        ----------
+        p : ndarray
+            Momentum field
+
+        Returns
+        -------
+        ndarray
+            Gradient of H w.r.t. p, same shape as p
         """
         ...
 
     @abstractmethod
     def lagrangian(self, alpha: np.ndarray) -> np.ndarray:
         """
-        Evaluate running cost L(α) for given control.
+        Evaluate running cost L(alpha).
 
         Parameters
         ----------
@@ -180,190 +250,400 @@ class ControlCostBase(ABC):
         """
         ...
 
-    @abstractmethod
+    # === DEPRECATED: hamiltonian() -> use evaluate() ===
+
     def hamiltonian(self, p: np.ndarray) -> np.ndarray:
         """
-        Evaluate Hamiltonian H(p) for given momentum.
+        Evaluate Hamiltonian H(p).
 
-        For MINIMIZE: H(p) = sup_α { p·α - L(α) }
-        For MAXIMIZE: H(p) = inf_α { p·α - L(α) }
+        .. deprecated:: 0.19.0
+            Use ``evaluate(p)`` instead. ``hamiltonian()`` may return +inf
+            for non-smooth costs (L1). ``evaluate()`` always returns finite
+            values. Will be removed in v0.25.0.
+        """
+        import warnings
+
+        warnings.warn(
+            "ControlCostBase.hamiltonian() is deprecated, use .evaluate() instead. "
+            "evaluate() always returns finite values. Will be removed in v0.25.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.evaluate(p)
+
+    # === REGULARIZATION ===
+
+    def is_smooth(self) -> bool:
+        """Whether H_control is C^1 in p. Default True, override for non-smooth."""
+        return True
+
+    def regularize(self, epsilon: float, method: str = "moreau-yosida") -> ControlCostBase:
+        """Return a C^{1,1} smooth approximation of this control cost.
+
+        Continuation-friendly: calling regularize() on an already-regularized
+        cost re-regularizes the ORIGINAL base cost with the new epsilon.
 
         Parameters
         ----------
-        p : ndarray
-            Momentum field
+        epsilon : float
+            Regularization parameter. Smaller = closer to original.
+        method : str
+            Regularization method. Currently: "moreau-yosida" (default).
+
+        Returns
+        -------
+        ControlCostBase
+            Smooth version. Returns self if already natively smooth.
+        """
+        if self.is_smooth() and not hasattr(self, "base"):
+            return self
+        base = getattr(self, "base", self)
+        return _make_regularized(base, epsilon, method)
+
+    # === VARIATIONAL / ADMM interface ===
+
+    def proximal(self, tau: float, z: np.ndarray) -> np.ndarray:
+        """Proximal of the Lagrangian: prox_{tau * L}(z).
+
+        prox_{tau*L}(z) = argmin_alpha { L(alpha) + |alpha - z|^2 / (2*tau) }
+
+        Required for ADMM and Chambolle-Pock variational solvers.
+        Closed-form for standard costs. NotImplementedError for custom.
+
+        NOTE: This is prox of L (Lagrangian), not prox of H (Hamiltonian).
+        regularize() uses prox_H internally; ADMM uses prox_L.
+
+        Parameters
+        ----------
+        tau : float
+            Step size parameter
+        z : ndarray
+            Point to compute proximal at
 
         Returns
         -------
         ndarray
-            Hamiltonian value at each point
+            Proximal point, same shape as z
         """
-        ...
+        raise NotImplementedError(
+            f"{type(self).__name__} does not provide an analytic proximal. "
+            "Implement proximal() or use a standard cost (Quadratic, L1, Bounded)."
+        )
 
 
 class QuadraticControlCost(ControlCostBase):
     """
-    Quadratic control cost: L(α) = ½λ|α|².
+    Quadratic control cost: L(alpha) = lambda/2 * |alpha|^2.
 
-    This is the most common choice in MFG, corresponding to:
-    - Lagrangian: L(α) = ½λ|α|²
-    - Hamiltonian: H(p) = ½|p|²/λ
-    - Optimal control: α* = ∓p/λ (sign depends on sense)
-
-    The quadratic structure gives closed-form Legendre transform.
+    The most common choice in MFG:
+    - Lagrangian: L(alpha) = lambda/2 * |alpha|^2
+    - Hamiltonian: H(p) = |p|^2 / (2*lambda)
+    - Optimal control: alpha* = -p/lambda (MINIMIZE), +p/lambda (MAXIMIZE)
 
     Parameters
     ----------
     sense : OptimizationSense
         Whether agents minimize cost or maximize utility
     control_cost : float
-        Control cost weight λ (higher = more costly to move)
+        Deprecated, use ``lambda_`` instead.
+    lambda_ : float
+        Control cost weight (higher = more costly to move). Default 1.0.
 
     Examples
     --------
-    Standard MFG (minimize cost):
-    >>> cost = QuadraticControlCost(sense=OptimizationSense.MINIMIZE, control_cost=1.0)
-    >>> grad_U = np.array([1.0, 2.0, 3.0])
-    >>> alpha = cost.optimal_control(grad_U)  # Returns [-1, -2, -3]
-
-    Economics (maximize utility):
-    >>> cost = QuadraticControlCost(sense=OptimizationSense.MAXIMIZE, control_cost=1.0)
-    >>> alpha = cost.optimal_control(grad_U)  # Returns [1, 2, 3]
+    >>> cost = QuadraticControlCost(lambda_=2.0)
+    >>> cost.evaluate(np.array([1.0, 2.0]))  # [0.25, 1.0]
+    >>> cost.dp(np.array([1.0, 2.0]))        # [0.5, 1.0]
     """
 
     def optimal_control(self, p: np.ndarray) -> np.ndarray:
-        """
-        Compute α* = -p/λ for MINIMIZE, +p/λ for MAXIMIZE.
+        """alpha* = -p/lambda (MINIMIZE) or +p/lambda (MAXIMIZE)."""
+        return -self.sign * p / self._lambda
 
-        Mathematical derivation (MINIMIZE case):
-            H(p) = sup_α { p·α - ½λ|α|² }
-            ∂/∂α = p - λα = 0  →  α* = p/λ
-            But we want -∂H/∂p for drift: α* = -p/λ
-        """
-        return -self.sign * p / self.control_cost
+    def evaluate(self, p: np.ndarray) -> np.ndarray:
+        """H(p) = |p|^2 / (2*lambda)."""
+        return 0.5 * np.sum(p**2, axis=-1) / self._lambda
+
+    def dp(self, p: np.ndarray) -> np.ndarray:
+        """dH/dp = p / lambda."""
+        return p / self._lambda
 
     def lagrangian(self, alpha: np.ndarray) -> np.ndarray:
-        """Evaluate L(α) = ½λ|α|²."""
-        return 0.5 * self.control_cost * np.sum(alpha**2, axis=-1)
+        """L(alpha) = lambda/2 * |alpha|^2."""
+        return 0.5 * self._lambda * np.sum(alpha**2, axis=-1)
 
-    def hamiltonian(self, p: np.ndarray) -> np.ndarray:
-        """Evaluate H(p) = ½|p|²/λ."""
-        return 0.5 * np.sum(p**2, axis=-1) / self.control_cost
+    def proximal(self, tau: float, z: np.ndarray) -> np.ndarray:
+        """prox_{tau * lambda/2 * |.|^2}(z) = z / (1 + tau * lambda)."""
+        return z / (1 + tau * self._lambda)
 
 
 class L1ControlCost(ControlCostBase):
     """
-    L1 (bang-bang) control cost: L(α) = λ|α|.
+    Bounded bang-bang control: L(alpha) = lambda * |alpha| + I_{|alpha|<=1}.
 
-    This models minimum fuel/effort problems where the cost is proportional
-    to the magnitude of control, not its square. Results in bang-bang control.
+    Models minimum fuel/effort with bounded control magnitude.
+    The control is bang-bang: alpha* in {-1, 0, +1}.
 
-    - Lagrangian: L(α) = λ|α|
-    - Hamiltonian: H(p) = 0 if |p| ≤ λ, else ∞
-    - Optimal control: α* = -sign(p) if |p| > λ, else 0
+    - Lagrangian: L(alpha) = lambda * |alpha| for |alpha| <= 1
+    - Hamiltonian: H(p) = max(|p| - lambda, 0)  -- finite for all p
+    - Optimal control: alpha* = -sign(p) if |p| > lambda, else 0
+
+    NOTE: This models bounded bang-bang, not unbounded L1. The unbounded
+    case (L = lambda*|alpha|, alpha in R) gives H = indicator (0 or +inf),
+    which is numerically unusable. The bounded interpretation is consistent
+    with optimal_control() returning +/-1.
 
     Parameters
     ----------
     sense : OptimizationSense
         Whether agents minimize cost or maximize utility
     control_cost : float
-        Control cost weight λ (threshold for activation)
+        Deprecated, use ``lambda_`` instead.
+    lambda_ : float
+        Control cost weight (activation threshold). Default 1.0.
 
     Examples
     --------
-    Minimum fuel problem:
-    >>> cost = L1ControlCost(control_cost=0.5)
-    >>> grad_U = np.array([0.3, 0.7, -0.8])
-    >>> alpha = cost.optimal_control(grad_U)
-    >>> # Returns [0, -1, 1] (bang-bang: no control below threshold)
+    >>> cost = L1ControlCost(lambda_=0.5)
+    >>> cost.optimal_control(np.array([0.3, 0.7, -0.8]))
+    array([ 0., -1.,  1.])
+    >>> cost.evaluate(np.array([0.3, 0.7, -0.8]))
+    array([0. , 0.2, 0.3])
     """
 
     def optimal_control(self, p: np.ndarray) -> np.ndarray:
-        """
-        Compute bang-bang control.
-
-        α* = -sign(p) where |p| > λ, else 0
-        """
-        # Bang-bang: control is ±1 or 0
+        """Bang-bang: alpha* = -sign(p) where |p| > lambda, else 0."""
         alpha = np.zeros_like(p)
-        active = np.abs(p) > self.control_cost
+        active = np.abs(p) > self._lambda
         alpha[active] = -self.sign * np.sign(p[active])
         return alpha
 
+    def evaluate(self, p: np.ndarray) -> np.ndarray:
+        """H(p) = max(|p| - lambda, 0). Always finite."""
+        return np.maximum(np.abs(np.atleast_1d(p)) - self._lambda, 0.0)
+
+    def dp(self, p: np.ndarray) -> np.ndarray:
+        """Clarke subdifferential: sign(p) where |p| > lambda, 0 otherwise."""
+        p_arr = np.atleast_1d(p)
+        result = np.zeros_like(p_arr, dtype=float)
+        active = np.abs(p_arr) > self._lambda
+        result[active] = np.sign(p_arr[active])
+        return result
+
     def lagrangian(self, alpha: np.ndarray) -> np.ndarray:
-        """Evaluate L(α) = λ|α|."""
-        return self.control_cost * np.sum(np.abs(alpha), axis=-1)
+        """L(alpha) = lambda * |alpha|."""
+        return self._lambda * np.sum(np.abs(alpha), axis=-1)
 
-    def hamiltonian(self, p: np.ndarray) -> np.ndarray:
-        """
-        Evaluate H(p).
+    def proximal(self, tau: float, z: np.ndarray) -> np.ndarray:
+        """prox_{tau * L}(z): soft-threshold then clip to [-1, 1]."""
+        soft = np.sign(z) * np.maximum(np.abs(z) - tau * self._lambda, 0.0)
+        return np.clip(soft, -1.0, 1.0)
 
-        For L1 cost, H(p) = 0 if |p| ≤ λ, else the Legendre transform
-        is not well-defined (would be +∞).
-        """
-        # Return 0 in feasible region, large value otherwise
-        h = np.zeros_like(p)
-        infeasible = np.abs(p) > self.control_cost
-        h[infeasible] = np.inf
-        return h
+    def is_smooth(self) -> bool:
+        return False
 
 
 class BoundedControlCost(ControlCostBase):
     """
-    Bounded control with quadratic cost: L(α) = ½λ|α|², |α| ≤ α_max.
+    Bounded control with quadratic cost: L(alpha) = lambda/2 * |alpha|^2, |alpha| <= alpha_max.
 
-    This models situations where control effort is limited (e.g., max speed).
+    Models speed-limited agents. Quadratic in the interior, saturates at bounds.
 
-    - Lagrangian: L(α) = ½λ|α|² for |α| ≤ α_max, else ∞
-    - Optimal control: α* = clip(-p/λ, -α_max, α_max)
+    - Lagrangian: L(alpha) = lambda/2 * |alpha|^2 for |alpha| <= alpha_max, else +inf
+    - Hamiltonian: H(p) = |p|^2/(2*lambda) for |p| <= lambda*alpha_max,
+                          alpha_max*|p| - lambda*alpha_max^2/2 beyond
+    - Optimal control: alpha* = clip(-p/lambda, -alpha_max, alpha_max)
 
     Parameters
     ----------
     sense : OptimizationSense
         Whether agents minimize cost or maximize utility
     control_cost : float
-        Control cost weight λ
+        Deprecated, use ``lambda_`` instead.
+    lambda_ : float
+        Control cost weight. Default 1.0.
     max_control : float
-        Maximum allowed control magnitude α_max
+        Maximum control magnitude alpha_max. Default 1.0.
 
     Examples
     --------
-    Speed-limited agents:
-    >>> cost = BoundedControlCost(control_cost=1.0, max_control=2.0)
-    >>> grad_U = np.array([1.0, 3.0, 5.0])
-    >>> alpha = cost.optimal_control(grad_U)
-    >>> # Returns [-1, -2, -2] (clipped at max_control)
+    >>> cost = BoundedControlCost(lambda_=1.0, max_control=2.0)
+    >>> cost.optimal_control(np.array([1.0, 3.0, 5.0]))
+    array([-1., -2., -2.])
     """
 
     def __init__(
         self,
         sense: OptimizationSense = OptimizationSense.MINIMIZE,
-        control_cost: float = 1.0,
+        control_cost: float | None = None,
         max_control: float = 1.0,
+        *,
+        lambda_: float | None = None,
     ):
-        super().__init__(sense, control_cost)
+        super().__init__(sense, control_cost, lambda_=lambda_)
         if max_control <= 0:
             raise ValueError(f"max_control must be positive, got {max_control}")
         self.max_control = max_control
 
     def optimal_control(self, p: np.ndarray) -> np.ndarray:
-        """Compute clipped quadratic optimal control."""
-        # Unconstrained optimum
-        alpha_unconstrained = -self.sign * p / self.control_cost
-        # Clip to bounds
+        """alpha* = clip(-p/lambda, -alpha_max, alpha_max)."""
+        alpha_unconstrained = -self.sign * p / self._lambda
         return np.clip(alpha_unconstrained, -self.max_control, self.max_control)
 
-    def lagrangian(self, alpha: np.ndarray) -> np.ndarray:
-        """Evaluate L(α) = ½λ|α|² (assumes α is feasible)."""
-        return 0.5 * self.control_cost * np.sum(alpha**2, axis=-1)
+    def evaluate(self, p: np.ndarray) -> np.ndarray:
+        """H(p) = sup_alpha { p . alpha - L(alpha) }. Always finite.
 
-    def hamiltonian(self, p: np.ndarray) -> np.ndarray:
-        """Evaluate H(p) with control bounds."""
-        # Optimal control
-        alpha_star = self.optimal_control(p)
-        # H = p·α* - L(α*)
-        p_dot_alpha = np.sum(p * alpha_star, axis=-1)
-        return p_dot_alpha - self.lagrangian(alpha_star)
+        Uses the unsigned optimizer (before MINIMIZE/MAXIMIZE sign convention)
+        to compute the Hamiltonian value.
+        """
+        p_arr = np.atleast_1d(p)
+        threshold = self._lambda * self.max_control
+        # Quadratic region: H = |p|^2 / (2*lambda)
+        h = 0.5 * p_arr**2 / self._lambda
+        # Saturated region: H = alpha_max * |p| - lambda * alpha_max^2 / 2
+        saturated = np.abs(p_arr) > threshold
+        h[saturated] = self.max_control * np.abs(p_arr[saturated]) - 0.5 * self._lambda * self.max_control**2
+        return h
+
+    def dp(self, p: np.ndarray) -> np.ndarray:
+        """dH/dp = p/lambda in unsaturated region, +/-alpha_max at saturation."""
+        p_arr = np.atleast_1d(p)
+        threshold = self._lambda * self.max_control
+        result = p_arr / self._lambda
+        saturated = np.abs(p_arr) > threshold
+        result[saturated] = self.max_control * np.sign(p_arr[saturated])
+        return result
+
+    def lagrangian(self, alpha: np.ndarray) -> np.ndarray:
+        """L(alpha) = lambda/2 * |alpha|^2 (assumes feasible)."""
+        return 0.5 * self._lambda * np.sum(alpha**2, axis=-1)
+
+    def proximal(self, tau: float, z: np.ndarray) -> np.ndarray:
+        """prox_{tau * L}(z) = clip(z / (1 + tau*lambda), -alpha_max, alpha_max)."""
+        return np.clip(z / (1 + tau * self._lambda), -self.max_control, self.max_control)
+
+    def is_smooth(self) -> bool:
+        return False  # C^1 but not C^2 at saturation boundary
+
+
+# ============================================================================
+# Regularization: Internal implementation (Issue #898)
+# ============================================================================
+
+
+def _make_regularized(base: ControlCostBase, epsilon: float, method: str) -> ControlCostBase:
+    """Factory for regularized control costs. Internal, not exported."""
+    if method == "moreau-yosida":
+        return _MoreauYosidaControlCost(base, epsilon)
+    raise ValueError(f"Unknown regularization method: {method!r}. Supported: 'moreau-yosida'")
+
+
+class _MoreauYosidaControlCost(ControlCostBase):
+    """Moreau-Yosida envelope of a ControlCostBase. C^{1,1} smooth. Internal.
+
+    H_eps(p) = inf_q { H(q) + |p-q|^2 / (2*epsilon) }
+    dH_eps/dp = (p - prox_{eps*H}(p)) / epsilon
+
+    For L1ControlCost: prox = clip to [-lambda, lambda] (projection).
+    For QuadraticControlCost: prox = p * lambda / (lambda + epsilon).
+    """
+
+    def __init__(self, base: ControlCostBase, epsilon: float):
+        if epsilon <= 0:
+            raise ValueError(f"epsilon must be positive, got {epsilon}")
+        super().__init__(sense=base.sense, lambda_=base._lambda)
+        self.base = base
+        self.epsilon = epsilon
+
+    def _prox_h(self, p: np.ndarray) -> np.ndarray:
+        """Proximal of H (Hamiltonian), not L. Used for Moreau-Yosida."""
+        p_arr = np.atleast_1d(p)
+        if isinstance(self.base, L1ControlCost):
+            # prox of max(|p|-lambda, 0): soft-threshold toward [-lambda, lambda]
+            # For p > lambda: prox = p - epsilon * sign(p), but clamped
+            # Actually: prox of H where H = max(|p|-lam, 0)
+            # prox_{eps*H}(p) = p - eps * dH/dp if |p| > lam+eps, else clip
+            lam = self.base._lambda
+            result = np.copy(p_arr)
+            above = p_arr > lam + self.epsilon
+            below = p_arr < -(lam + self.epsilon)
+            middle_pos = (p_arr > lam) & ~above
+            middle_neg = (p_arr < -lam) & ~below
+            result[above] = p_arr[above] - self.epsilon
+            result[below] = p_arr[below] + self.epsilon
+            result[middle_pos] = lam
+            result[middle_neg] = -lam
+            # |p| <= lam: prox = p (H=0, gradient=0)
+            return result
+        elif isinstance(self.base, QuadraticControlCost):
+            lam = self.base._lambda
+            return p_arr * lam / (lam + self.epsilon)
+        elif isinstance(self.base, BoundedControlCost):
+            # Proximal of bounded quadratic Hamiltonian
+            lam = self.base._lambda
+            a_max = self.base.max_control
+            threshold = lam * a_max
+            # Interior: prox of quadratic = rescale
+            result = p_arr * lam / (lam + self.epsilon)
+            # Saturated region: prox of linear = shift toward threshold
+            sat_pos = p_arr > threshold + self.epsilon * a_max
+            sat_neg = p_arr < -(threshold + self.epsilon * a_max)
+            result[sat_pos] = p_arr[sat_pos] - self.epsilon * a_max
+            result[sat_neg] = p_arr[sat_neg] + self.epsilon * a_max
+            return result
+        else:
+            # General: pointwise scalar optimization
+            from scipy.optimize import minimize_scalar
+
+            result = np.empty_like(p_arr, dtype=float)
+            for i in range(p_arr.size):
+                pi = float(p_arr.flat[i])
+                res = minimize_scalar(
+                    lambda q, _pi=pi: float(self.base.evaluate(np.array([q]))) + (_pi - q) ** 2 / (2 * self.epsilon)
+                )
+                result.flat[i] = res.x
+            return result
+
+    def optimal_control(self, p: np.ndarray) -> np.ndarray:
+        """Smooth optimal control from Moreau-Yosida gradient."""
+        return -self.sign * self.dp(p)
+
+    def evaluate(self, p: np.ndarray) -> np.ndarray:
+        """H_eps(p) = H(prox(p)) + |p - prox(p)|^2 / (2*eps)."""
+        p_arr = np.atleast_1d(p)
+        q = self._prox_h(p_arr)
+        return self.base.evaluate(q) + np.sum((p_arr - q) ** 2, axis=-1) / (2 * self.epsilon)
+
+    def dp(self, p: np.ndarray) -> np.ndarray:
+        """dH_eps/dp = (p - prox(p)) / epsilon. Always Lipschitz."""
+        p_arr = np.atleast_1d(p)
+        return (p_arr - self._prox_h(p_arr)) / self.epsilon
+
+    def lagrangian(self, alpha: np.ndarray) -> np.ndarray:
+        """L_eps(alpha) = L(alpha) + epsilon/2 * |alpha|^2."""
+        return self.base.lagrangian(alpha) + self.epsilon / 2 * np.sum(alpha**2, axis=-1)
+
+    def proximal(self, tau: float, z: np.ndarray) -> np.ndarray:
+        """prox_{tau * L_eps}(z). L_eps = L + eps/2 |.|^2."""
+        # prox of sum: for L + eps/2|.|^2, use Moreau decomposition or direct
+        # For L1 base: L_eps = lambda|a| + eps/2|a|^2
+        # prox_{tau*L_eps}(z) = soft_threshold(z/(1+tau*eps), tau*lambda/(1+tau*eps))
+        if isinstance(self.base, L1ControlCost):
+            denom = 1 + tau * self.epsilon
+            z_scaled = z / denom
+            thresh = tau * self.base._lambda / denom
+            soft = np.sign(z_scaled) * np.maximum(np.abs(z_scaled) - thresh, 0.0)
+            return np.clip(soft, -1.0, 1.0)
+        # General: compose proximals
+        # prox_{tau*(L + eps/2|.|^2)}(z) = prox_{tau'*L}(z/(1+tau*eps))
+        # where tau' = tau/(1+tau*eps)
+        denom = 1 + tau * self.epsilon
+        tau_prime = tau / denom
+        z_prime = z / denom
+        return self.base.proximal(tau_prime, z_prime)
+
+    def is_smooth(self) -> bool:
+        return True
 
 
 # Convenience aliases
@@ -810,6 +1090,40 @@ class HamiltonianBase(MFGOperatorBase):
         H_minus = self(x, m_scalar - eps, p, t)
 
         return float((H_plus - H_minus) / (2 * eps))
+
+    # === REGULARIZATION (Issue #898) ===
+
+    def is_smooth(self) -> bool:
+        """Whether H is C^1 in p. Default True. Subclasses override."""
+        return True
+
+    def regularize(self, epsilon: float, method: str = "moreau-yosida") -> HamiltonianBase:
+        """Return smoothed Hamiltonian. Subclasses with ControlCostBase override.
+
+        Raises NotImplementedError for HamiltonianBase subclasses that don't
+        have a control_cost component (e.g., DualHamiltonian, custom subclasses).
+        SeparableHamiltonian and CongestionHamiltonian override this to smooth
+        their control cost while preserving structure.
+
+        Parameters
+        ----------
+        epsilon : float
+            Regularization parameter.
+        method : str
+            Method name (default: "moreau-yosida").
+
+        Returns
+        -------
+        HamiltonianBase
+            Smoothed Hamiltonian. Returns self if already smooth.
+        """
+        if self.is_smooth():
+            return self
+        raise NotImplementedError(
+            f"{type(self).__name__}.regularize() is not implemented. "
+            "Hamiltonians with a control_cost component (SeparableHamiltonian, "
+            "CongestionHamiltonian) support this out of the box."
+        )
 
     # Issue #673: to_legacy_func() removed - use class-based API directly
 
@@ -1411,8 +1725,8 @@ class SeparableHamiltonian(HamiltonianBase):
         p_arr = np.atleast_1d(p)
         is_batch = p_arr.ndim == 2
 
-        # Control cost term: hamiltonian() uses axis=-1, batch-safe
-        H_control = self.control_cost.hamiltonian(p_arr)
+        # Control cost term: evaluate() always returns finite values (Issue #898)
+        H_control = self.control_cost.evaluate(p_arr)
         if not is_batch and isinstance(H_control, np.ndarray):
             H_control = float(H_control.sum())
 
@@ -1450,38 +1764,12 @@ class SeparableHamiltonian(HamiltonianBase):
         t: float = 0.0,
     ) -> NDArray:
         """
-        Analytic ∂H/∂p from control cost.
+        dH/dp from control cost component. No isinstance dispatch (Issue #898).
 
-        For separable H, ∂H/∂p = ∂H_control/∂p = α* (the unconstrained optimum).
+        For separable H, dH/dp depends only on p (not x, m, t).
+        Delegates to control_cost.dp(p) which each subclass implements.
         """
-        # For quadratic: ∂H/∂p = p/λ
-        # We derive from optimal_control: α* = -sign * ∂H/∂p
-        # So ∂H/∂p = -sign * α*
-
-        # Actually, for control_cost.optimal_control(p) = -sign * p/λ
-        # We have ∂H/∂p = p/λ (for quadratic)
-        # Let's compute directly
-
-        p_flat = np.atleast_1d(p)
-
-        if isinstance(self.control_cost, QuadraticControlCost):
-            # H_control = ½|p|²/λ → ∂H/∂p = p/λ
-            return p_flat / self.control_cost.control_cost
-
-        elif isinstance(self.control_cost, BoundedControlCost):
-            # Same as quadratic in interior, saturates at bounds
-            unconstrained = p_flat / self.control_cost.control_cost
-            # The derivative is still p/λ but limited by constraint activity
-            return unconstrained
-
-        else:
-            # Fallback to finite differences (with batch dispatch)
-            if p_flat.ndim == 2:
-                m_arr = np.asarray(m)
-                return np.stack(
-                    [self._finite_diff_dp(x[i], float(m_arr.flat[i]), p_flat[i], t) for i in range(p_flat.shape[0])]
-                )
-            return self._finite_diff_dp(x, m, p, t)
+        return self.control_cost.dp(np.atleast_1d(p))
 
     def dm(
         self,
@@ -1539,6 +1827,22 @@ class SeparableHamiltonian(HamiltonianBase):
         not on x, m, or t.
         """
         return self.control_cost.optimal_control(np.atleast_1d(p))
+
+    def is_smooth(self) -> bool:
+        """Delegates to control cost component."""
+        return self.control_cost.is_smooth()
+
+    def regularize(self, epsilon: float, method: str = "moreau-yosida") -> SeparableHamiltonian:
+        """Smooth the control cost, preserving separable structure."""
+        if self.is_smooth():
+            return self
+        return SeparableHamiltonian(
+            control_cost=self.control_cost.regularize(epsilon, method),
+            potential=self._potential,
+            coupling=self._coupling,
+            coupling_dm=self._coupling_dm,
+            sense=self.sense,
+        )
 
 
 class CongestionHamiltonian(HamiltonianBase):
@@ -1618,8 +1922,8 @@ class CongestionHamiltonian(HamiltonianBase):
         p_arr = np.atleast_1d(p)
         is_batch = p_arr.ndim == 2
 
-        # Kinetic term: |p|^2/(2*lambda) from control cost, divided by c(m)
-        H_kinetic = self.control_cost.hamiltonian(p_arr)
+        # Kinetic term: H_control(p) / c(m).  evaluate() always finite (Issue #898)
+        H_kinetic = self.control_cost.evaluate(p_arr)
         if not is_batch and isinstance(H_kinetic, np.ndarray):
             H_kinetic = float(H_kinetic.sum())
 
@@ -1693,21 +1997,11 @@ class CongestionHamiltonian(HamiltonianBase):
         else:
             c_m = float(self._congestion_factor(m))
 
-        if isinstance(self.control_cost, QuadraticControlCost):
-            # Analytic: dH/dp = p / (lambda * c(m))
-            lam = self.control_cost.control_cost
-            if is_batch:
-                # c_m shape (N,), need to broadcast to (N, d)
-                return p_arr / (lam * c_m[:, np.newaxis])
-            return p_arr / (lam * c_m)
-
-        # Fallback to finite differences
+        # Delegate to control_cost.dp(), then divide by c(m) (Issue #898)
+        base_dp = self.control_cost.dp(p_arr)
         if is_batch:
-            m_arr = np.asarray(m)
-            return np.stack(
-                [self._finite_diff_dp(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
-            )
-        return self._finite_diff_dp(x, m, p, t)
+            return base_dp / c_m[:, np.newaxis]
+        return base_dp / c_m
 
     def dm(
         self,
@@ -1717,20 +2011,23 @@ class CongestionHamiltonian(HamiltonianBase):
         t: float = 0.0,
     ) -> float | NDArray:
         """
-        Compute dH/dm = -c'(m) * |p|^2 / (2*lambda*c(m)^2) + f'(m).
+        Compute dH/dm = -c'(m) * H_control(p) / c(m)^2 + f'(m).
 
-        Returns float for single-point, shape (N,) for batch.
+        Uses control_cost.evaluate(p) instead of hardcoded |p|^2/(2*lambda).
+        No isinstance dispatch (Issue #898).
         """
         p_arr = np.asarray(p)
         is_batch = p_arr.ndim == 2
 
         # Kinetic contribution to dm (requires congestion_factor_dm)
-        if self._congestion_factor_dm is not None and isinstance(self.control_cost, QuadraticControlCost):
-            lam = self.control_cost.control_cost
+        if self._congestion_factor_dm is not None:
+            # H_control(p) via evaluate() -- works for any ControlCostBase
+            H_kin = self.control_cost.evaluate(p_arr)
+            if not is_batch and isinstance(H_kin, np.ndarray):
+                H_kin = float(H_kin.sum())
 
             if is_batch:
                 m_arr = np.asarray(m)
-                # c(m) and c'(m)
                 try:
                     c_m = np.asarray(self._congestion_factor(m_arr), dtype=float).ravel()
                     c_dm = np.asarray(self._congestion_factor_dm(m_arr), dtype=float).ravel()
@@ -1744,13 +2041,11 @@ class CongestionHamiltonian(HamiltonianBase):
                         [float(self._congestion_factor_dm(float(m_arr.flat[i]))) for i in range(p_arr.shape[0])]
                     )
 
-                grad_norm_sq = np.sum(p_arr**2, axis=1)
-                kinetic_dm = -c_dm * grad_norm_sq / (2.0 * lam * c_m**2)
+                kinetic_dm = -c_dm * H_kin / c_m**2
             else:
                 c_m = float(self._congestion_factor(m))
                 c_dm = float(self._congestion_factor_dm(m))
-                grad_norm_sq = float(np.sum(np.asarray(p) ** 2))
-                kinetic_dm = -c_dm * grad_norm_sq / (2.0 * lam * c_m**2)
+                kinetic_dm = -c_dm * H_kin / c_m**2
 
             # Coupling contribution f'(m)
             if self._coupling_dm is not None:
@@ -1795,6 +2090,24 @@ class CongestionHamiltonian(HamiltonianBase):
         (unlike separable case where it only depends on p).
         """
         return -self._sign * self.dp(x, m, p, t)
+
+    def is_smooth(self) -> bool:
+        """Delegates to control cost component."""
+        return self.control_cost.is_smooth()
+
+    def regularize(self, epsilon: float, method: str = "moreau-yosida") -> CongestionHamiltonian:
+        """Smooth the control cost, preserving congestion structure."""
+        if self.is_smooth():
+            return self
+        return CongestionHamiltonian(
+            control_cost=self.control_cost.regularize(epsilon, method),
+            congestion_factor=self._congestion_factor,
+            congestion_factor_dm=self._congestion_factor_dm,
+            potential=self._potential,
+            coupling=self._coupling,
+            coupling_dm=self._coupling_dm,
+            sense=self.sense,
+        )
 
 
 class QuadraticMFGHamiltonian(SeparableHamiltonian):
