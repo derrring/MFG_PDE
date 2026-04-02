@@ -93,6 +93,7 @@ class FPNetworkSolver(BaseFPSolver):
         self.max_iterations = max_iterations
         self.tolerance = tolerance
         self.enforce_mass_conservation = enforce_mass_conservation
+        self._current_rates: dict | None = None  # Issue #913: precomputed per timestep
 
         # Network properties
         self.num_nodes = problem.num_nodes
@@ -243,6 +244,9 @@ class FPNetworkSolver(BaseFPSolver):
                 # Current value function for drift computation
                 u_current = effective_U[n, :]
 
+                # Issue #913: precompute transition rates via H.optimal_control
+                self._current_rates = self._precompute_transition_rates(M[n, :], u_current, t)
+
                 # Solve single time step
                 if self.scheme == "explicit":
                     M[n + 1, :] = self._explicit_step(M[n, :], u_current, t)
@@ -356,27 +360,59 @@ class FPNetworkSolver(BaseFPSolver):
 
         return m_next
 
+    def _precompute_transition_rates(self, m: np.ndarray, u: np.ndarray, t: float) -> dict:
+        """Precompute transition rates alpha[i][j] for all nodes.
+
+        Issue #913: Uses H.optimal_control() when available.
+        Returns dict mapping node i -> {j: alpha_ij} for all neighbors j.
+        """
+        H_class = self.network_problem.hamiltonian_class
+        rates = {}
+        for i in range(self.num_nodes):
+            neighbors = self.divergence_ops.get(i, [])
+            if H_class is not None:
+                alpha = H_class.optimal_control(np.array([i]), m, u, t)
+                rates[i] = {j: float(alpha[j]) for j in neighbors if alpha[j] > 0}
+            else:
+                # Legacy: quadratic rates from value gradient
+                rates[i] = {}
+                for j in neighbors:
+                    du = u[j] - u[i]
+                    w = (
+                        self.network_problem.network_data.get_edge_weight(i, j)
+                        if self.network_problem.network_data is not None
+                        else 1.0
+                    )
+                    rate = w * max(du, 0.0)
+                    if rate > 0:
+                        rates[i][j] = rate
+        return rates
+
     def _compute_drift_term(self, node: int, m: np.ndarray, u: np.ndarray, t: float) -> float:
-        """Compute drift term for FP equation at given node."""
-        neighbors = self.divergence_ops[node]
+        """Compute drift term for FP equation at given node.
 
-        if not neighbors:
-            return 0.0
+        Uses precomputed rates from _precompute_transition_rates.
+        If rates not precomputed, falls back to legacy computation.
+        """
+        if self._current_rates is not None:
+            # Use precomputed rates: inflow - outflow
+            outflow = sum(rate * m[node] for rate in self._current_rates.get(node, {}).values())
+            inflow = sum(
+                self._current_rates.get(j, {}).get(node, 0.0) * m[j] for j in self.divergence_ops.get(node, [])
+            )
+            return inflow - outflow
 
-        # Simplified drift computation based on value function gradient
+        # Legacy fallback
+        neighbors = self.divergence_ops.get(node, [])
         drift = 0.0
         for neighbor in neighbors:
-            # Gradient of value function
             du = u[neighbor] - u[node]
-
-            # Flow along gradient (simplified)
-            edge_weight = (
+            w = (
                 self.network_problem.network_data.get_edge_weight(node, neighbor)
                 if self.network_problem.network_data is not None
-                else 1.0  # Default edge weight
+                else 1.0
             )
-            drift += edge_weight * m[node] * du
-
+            drift += w * m[node] * du
         return drift
 
     def _compute_edge_flow(self, node_from: int, node_to: int, m: np.ndarray, u: np.ndarray, t: float) -> float:
