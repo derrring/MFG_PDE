@@ -284,10 +284,10 @@ def add_boundary_no_flux_entries_conservative(
             data_values.append(-D / (dx * dx))
 
             # Conservative flux advection
-            # Issue #919: use pre-computed velocity when available
+            # Issue #919: interface_velocity[d][i] = face velocity at (i+1/2)
             if interface_velocity is not None:
-                alpha_right = 0.5 * (interface_velocity[d][multi_idx] + interface_velocity[d][tuple(multi_idx_plus)])
-                alpha_left = 0.5 * (interface_velocity[d][tuple(multi_idx_minus)] + interface_velocity[d][multi_idx])
+                alpha_right = float(interface_velocity[d][multi_idx])
+                alpha_left = float(interface_velocity[d][tuple(multi_idx_minus)])
             else:
                 alpha_right = -coupling_coefficient * (u_plus - u_center) / dx
                 alpha_left = -coupling_coefficient * (u_center - u_minus) / dx
@@ -330,10 +330,9 @@ def add_boundary_no_flux_entries_conservative(
             data_values.append(-D / (dx * dx))
 
             # Conservative flux advection: only F_{1/2}, no F_{-1/2} (zero flux at boundary)
+            # Issue #919: interface_velocity[d][i] = face velocity at (i+1/2)
             if interface_velocity is not None:
-                multi_idx_plus_d = list(multi_idx)
-                multi_idx_plus_d[d] = multi_idx[d] + 1
-                alpha_right = 0.5 * (interface_velocity[d][multi_idx] + interface_velocity[d][tuple(multi_idx_plus_d)])
+                alpha_right = float(interface_velocity[d][multi_idx])
             else:
                 alpha_right = -coupling_coefficient * (u_plus - u_center) / dx
 
@@ -369,10 +368,9 @@ def add_boundary_no_flux_entries_conservative(
             data_values.append(-D / (dx * dx))
 
             # Conservative flux advection: only -F_{N-1/2}, no F_{N+1/2} (zero flux at boundary)
+            # Issue #919: interface_velocity[d][i-1] = face velocity at (i-1/2)
             if interface_velocity is not None:
-                multi_idx_minus_d = list(multi_idx)
-                multi_idx_minus_d[d] = multi_idx[d] - 1
-                alpha_left = 0.5 * (interface_velocity[d][tuple(multi_idx_minus_d)] + interface_velocity[d][multi_idx])
+                alpha_left = float(interface_velocity[d][tuple(multi_idx_minus)])
             else:
                 alpha_left = -coupling_coefficient * (u_center - u_minus) / dx
 

@@ -756,18 +756,21 @@ def solve_fp_nd_full_system(
             drift_values = None
             U_current = drift.get_U_at(k)
 
-        # Issue #919 Phase 2: velocity_field → implicit solver with interface_velocity
+        # Issue #919: velocity_field → face-centered interface velocity
         vel_at_k = None
         if _velocity_array is not None:
             vel_idx = min(k, _velocity_array.shape[0] - 1)
             vel_slice = _velocity_array[vel_idx]
-            # Reshape to (ndim, *spatial_shape) if needed
-            if vel_slice.ndim == len(shape):
-                # 1D: (Nx,) → (1, Nx)
-                vel_at_k = vel_slice[np.newaxis, ...]
+            # Wrap in list for per-dimension indexing: interface_velocity[d][...]
+            if vel_slice.ndim == 1:
+                # 1D face-centered: (Nx-1,) → [array(Nx-1,)]
+                vel_at_k = [vel_slice]
+            elif vel_slice.ndim == len(shape):
+                # nD node-centered: (*shape) → [(shape,)] per dim (fallback)
+                vel_at_k = [vel_slice] * ndim
             else:
-                # nD: already (ndim, N1, N2, ...)
-                vel_at_k = vel_slice
+                # nD: (ndim, *face_shape) → list of per-dim arrays
+                vel_at_k = [vel_slice[d] for d in range(ndim)]
 
         if use_tensor_diffusion:
             # Tensor diffusion path - explicit timestepping

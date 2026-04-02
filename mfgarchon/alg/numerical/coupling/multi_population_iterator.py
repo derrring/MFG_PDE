@@ -140,15 +140,15 @@ class MultiPopulationIterator:
                 prob_k = self.multi_problem.get_population(k)
                 m0_k = M[k][0]
 
-                # Compute drift via H_k.optimal_control (Issue #896 pattern)
+                # Issue #919: compute velocity α* and pass directly
                 H_k = prob_k.hamiltonian_class
                 if H_k is not None:
-                    effective_drift = self._compute_drift_field(U[k], M[k], H_k, prob_k)
+                    velocity = self._compute_velocity_field(U[k], M[k], H_k, prob_k)
                 else:
-                    effective_drift = U[k]
+                    velocity = np.zeros_like(U[k])
 
                 try:
-                    M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, drift_field=effective_drift, show_progress=False)
+                    M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, velocity_field=velocity, show_progress=False)
                     # Damp
                     M[k] = (1 - omega) * M_old[k] + omega * M_new_k
                 except Exception as e:
@@ -180,13 +180,45 @@ class MultiPopulationIterator:
         )
 
     @staticmethod
-    def _compute_drift_field(U, M, H_class, problem):
-        """Compute drift field from H.optimal_control.
+    def _compute_velocity_field(U, M, H_class, problem):
+        """Compute velocity field α*(t, x) from H.optimal_control.
+
+        Issue #919 Phase 3: returns actual velocity, not synthetic U.
 
         Dispatches on problem type:
         - Network (spatial_dimension == 0): return U directly (FP network
-          solver handles drift extraction internally)
-        - Continuous: synthetic U whose differences reproduce alpha*
+          solver handles drift extraction internally via H.optimal_control)
+        - Continuous 1D: compute α* via ∇U → H.optimal_control
+        """
+        spatial_dim = getattr(problem, "spatial_dimension", None)
+        if spatial_dim == 0:
+            # Network: pass U (FPNetworkSolver extracts rates internally)
+            return U
+
+        geometry = problem.geometry
+        grid_spacing = geometry.get_grid_spacing()
+        dx = grid_spacing[0]
+        dt = problem.dt
+        Nt = U.shape[0]
+        Nx = U.shape[-1]
+
+        grad_U = np.gradient(U, dx, axis=-1)
+        bounds = geometry.get_bounds()
+        x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx).reshape(-1, 1)
+
+        alpha_field = np.zeros_like(grad_U)
+        for n in range(Nt):
+            p = grad_U[n]
+            m_n = M[n] if n < M.shape[0] else M[-1]
+            alpha_field[n] = H_class.optimal_control(x_grid, m_n, p.reshape(-1, 1), t=n * dt).ravel()
+
+        return alpha_field
+
+    @staticmethod
+    def _compute_drift_field(U, M, H_class, problem):
+        """Deprecated: use _compute_velocity_field instead.
+
+        Kept for backward compatibility. Returns synthetic U potential.
         """
         # Issue #915: dispatch on problem type
         spatial_dim = getattr(problem, "spatial_dimension", None)

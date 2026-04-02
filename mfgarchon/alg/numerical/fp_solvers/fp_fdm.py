@@ -430,8 +430,17 @@ class FPFDMSolver(BaseFPSolver):
                 effective_U = np.zeros((Nt, *grid_shape))
 
         elif isinstance(drift_field, np.ndarray):
-            # Precomputed drift field (including MFG drift = -∇U/λ)
-            # For FDM, we interpret scalar drift as -∇U and use existing upwind scheme
+            # Issue #919 Phase 3: ndarray drift_field is legacy U-potential usage.
+            # New callers should pass velocity via velocity_field parameter.
+            import warnings
+
+            warnings.warn(
+                "Passing ndarray as drift_field is deprecated since v0.18.6 and will be "
+                "removed in v0.25.0. drift_field with ndarray is interpreted as U-potential "
+                "(legacy). Pass velocity alpha* via velocity_field instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             effective_U = drift_field
         elif callable(drift_field):
             # Custom drift function - Phase 2

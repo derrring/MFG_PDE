@@ -152,8 +152,8 @@ def add_interior_entries_divergence_upwind(
 
         if has_plus or is_periodic:
             if interface_velocity is not None:
-                # Direct velocity: midpoint average of node velocities
-                alpha_right = 0.5 * (interface_velocity[d][multi_idx] + interface_velocity[d][tuple(multi_idx_plus)])
+                # Issue #919: interface_velocity[d][i] = velocity at face (i+1/2)
+                alpha_right = float(interface_velocity[d][multi_idx])
             else:
                 alpha_right = -coupling_coefficient * (u_plus - u_center) / dx
 
@@ -172,7 +172,8 @@ def add_interior_entries_divergence_upwind(
 
         if has_minus or is_periodic:
             if interface_velocity is not None:
-                alpha_left = 0.5 * (interface_velocity[d][tuple(multi_idx_minus)] + interface_velocity[d][multi_idx])
+                # interface_velocity[d][i-1] = velocity at face (i-1/2)
+                alpha_left = float(interface_velocity[d][tuple(multi_idx_minus)])
             else:
                 alpha_left = -coupling_coefficient * (u_center - u_minus) / dx
 

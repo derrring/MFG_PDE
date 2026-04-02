@@ -335,16 +335,18 @@ class FixedPointIterator(BaseMFGSolver):
         return U_synthetic
 
     def _compute_velocity_field(self, U, M, H_class):
-        """Compute velocity field α*(t, x) from U via H.optimal_control.
+        """Compute face-centered velocity α* via H.optimal_control.
 
-        Issue #919: Returns the actual velocity array for direct use by
-        FP solvers that accept velocity_field. No synthetic-U reconstruction.
+        Issue #919: evaluates H.optimal_control at cell interfaces (i+1/2),
+        using forward-difference gradient p_{i+1/2} = (U[i+1]-U[i])/dx.
+        This matches the FDM divergence-upwind stencil exactly.
 
         Returns
         -------
         np.ndarray
-            Velocity field α*(t, x). Shape (Nt+1, *spatial_shape) for 1D,
-            (Nt+1, ndim, *spatial_shape) for nD.
+            Face-centered velocity α* at cell interfaces.
+            1D: shape (Nt, Nx-1) — velocity at each face (i+1/2).
+            nD: shape (Nt, ndim, *spatial_shape) — node-centered (nD fallback).
         """
         geometry = self.problem.geometry
         grid_spacing = geometry.get_grid_spacing()
@@ -353,47 +355,49 @@ class FixedPointIterator(BaseMFGSolver):
         spatial_shape = U.shape[1:]
         ndim = len(spatial_shape)
 
+        bounds = geometry.get_bounds()
+
         if ndim == 1:
-            # 1D: scalar velocity at each point
             dx = grid_spacing[0]
             Nx = spatial_shape[0]
-            grad_U = np.gradient(U, dx, axis=-1)
 
-            bounds = geometry.get_bounds()
-            x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx).reshape(-1, 1)
+            # Face centers: x_{i+1/2}
+            x_nodes = np.linspace(bounds[0][0], bounds[1][0], Nx)
+            x_faces = 0.5 * (x_nodes[:-1] + x_nodes[1:])  # (Nx-1,)
 
-            alpha_field = np.zeros_like(grad_U)
+            # Face gradient: p_{i+1/2} = (U[i+1] - U[i]) / dx
+            p_faces = np.diff(U, axis=-1) / dx  # (Nt, Nx-1)
+
+            # Face density: m_{i+1/2} = (m[i] + m[i+1]) / 2
+            m_faces = 0.5 * (M[:, :-1] + M[:, 1:])  # (Nt, Nx-1)
+
+            alpha_faces = np.zeros((Nt, Nx - 1))
+            x_arr = x_faces.reshape(-1, 1)
             for n in range(Nt):
-                p = grad_U[n]
-                m_n = M[n] if n < M.shape[0] else M[-1]
-                alpha_field[n] = H_class.optimal_control(x_grid, m_n, p.reshape(-1, 1), t=n * dt).ravel()
+                m_n = m_faces[n] if n < m_faces.shape[0] else m_faces[-1]
+                p_n = p_faces[n].reshape(-1, 1)
+                alpha_faces[n] = H_class.optimal_control(x_arr, m_n, p_n, t=n * dt).ravel()
 
-            return alpha_field
+            return alpha_faces
         else:
-            # nD: compute gradient per dimension, evaluate optimal_control
-            # alpha_field shape: (Nt, ndim, N1, N2, ...)
+            # nD: node-centered fallback (face-centered nD deferred)
             grad_components = []
             for d in range(ndim):
                 grad_d = np.gradient(U, grid_spacing[d], axis=d + 1)
                 grad_components.append(grad_d)
 
-            # Stack into (Nt, N1, N2, ..., ndim) then evaluate
-            bounds = geometry.get_bounds()
             coords = [np.linspace(bounds[0][d], bounds[1][d], spatial_shape[d]) for d in range(ndim)]
             mesh = np.meshgrid(*coords, indexing="ij")
-            x_grid = np.stack(mesh, axis=-1)  # (*spatial_shape, ndim)
+            x_grid = np.stack(mesh, axis=-1)
 
             alpha_field = np.zeros((Nt, ndim, *spatial_shape))
             for n in range(Nt):
-                p_n = np.stack([grad_components[d][n] for d in range(ndim)], axis=-1)  # (*spatial, ndim)
+                p_n = np.stack([grad_components[d][n] for d in range(ndim)], axis=-1)
                 m_n = M[n] if n < M.shape[0] else M[-1]
                 alpha_n = H_class.optimal_control(x_grid, m_n, p_n, t=n * dt)
-                # alpha_n shape: (*spatial_shape, ndim) or (*spatial_shape,)
                 if alpha_n.ndim == ndim + 1:
-                    # (*spatial, ndim) -> (ndim, *spatial)
                     alpha_field[n] = np.moveaxis(alpha_n, -1, 0)
                 else:
-                    # Scalar output per point — replicate to ndim
                     for d in range(ndim):
                         alpha_field[n, d] = alpha_n
 
@@ -604,38 +608,27 @@ class FixedPointIterator(BaseMFGSolver):
                         if "show_progress" in params:
                             kwargs["show_progress"] = False  # Subtask replaces inner bar
 
-                        # Determine drift: velocity field (preferred) or legacy potential
-                        velocity = None
+                        # Issue #919 Phase 3: velocity_field for non-smooth H,
+                        # legacy drift_field (U potential) for smooth H
                         if self.drift_field is not None:
                             # User-provided drift override (for non-MFG problems)
-                            effective_drift = self.drift_field
+                            if "drift_field" in params:
+                                kwargs["drift_field"] = self.drift_field
                         else:
                             H_class = self.problem.hamiltonian_class
-                            if H_class is not None:
-                                # Issue #919: for non-smooth H, compute α* directly
-                                from mfgarchon.core.hamiltonian import SeparableHamiltonian
+                            from mfgarchon.core.hamiltonian import SeparableHamiltonian
 
-                                is_smooth = (
-                                    isinstance(H_class, SeparableHamiltonian) and H_class.control_cost.is_smooth()
-                                )
-                                if not is_smooth and "velocity_field" in params:
-                                    velocity = self._compute_velocity_field(U_new, M_old, H_class)
-                                # For smooth H, U is already the correct potential
-                                effective_drift = U_new
-                            else:
-                                # Legacy: pass U directly (quadratic assumption)
-                                effective_drift = U_new
-
-                        # Issue #919: prefer velocity_field for non-smooth H
-                        if velocity is not None:
-                            kwargs["velocity_field"] = velocity
-
-                        if "drift_field" in params:
-                            kwargs["drift_field"] = effective_drift
-                        else:
-                            # Legacy: positional argument for U
-                            # solve_fp_system(m_initial, U_drift, **kwargs)
-                            pass  # Will use positional argument below
+                            use_velocity = (
+                                H_class is not None
+                                and "velocity_field" in params
+                                and not (isinstance(H_class, SeparableHamiltonian) and H_class.control_cost.is_smooth())
+                            )
+                            if use_velocity:
+                                # Non-smooth H: face-centered velocity via H.optimal_control
+                                kwargs["velocity_field"] = self._compute_velocity_field(U_new, M_old, H_class)
+                            elif "drift_field" in params:
+                                # Smooth H or no velocity_field support: pass U as potential
+                                kwargs["drift_field"] = U_new
 
                         if "volatility_field" in params and self.volatility_field is not None:
                             kwargs["volatility_field"] = self.volatility_field
@@ -645,11 +638,11 @@ class FixedPointIterator(BaseMFGSolver):
                             kwargs["progress_callback"] = fp_subtask.advance
 
                         # Call with appropriate arguments
-                        if "drift_field" in params:
+                        if "drift_field" in params or "velocity_field" in params:
                             M_new = self.fp_solver.solve_fp_system(M_initial, **kwargs)
                         else:
                             # Legacy interface: second positional arg is U for drift
-                            M_new = self.fp_solver.solve_fp_system(M_initial, effective_drift, **kwargs)
+                            M_new = self.fp_solver.solve_fp_system(M_initial, U_new, **kwargs)
 
                         # If no callback support, advance all at once
                         if "progress_callback" not in params:
