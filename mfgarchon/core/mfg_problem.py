@@ -1345,6 +1345,26 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
             return getattr(self.components, "_hamiltonian_class", None)
         return None
 
+    @property
+    def lagrangian_class(self) -> Any | None:
+        """
+        Get the class-based Lagrangian object if available.
+
+        Returns the LagrangianBase instance for direct access to:
+        - L(x, alpha, m, t): Running cost value
+        - optimal_control(x, m, p, t): alpha* (same as HamiltonianBase)
+        - evaluate_hamiltonian(x, m, p, t): H value on-the-fly
+        - proximal(tau, z): For ADMM/variational solvers
+
+        Issue #899: LagrangianBase as first-class specification.
+
+        Returns:
+            LagrangianBase instance, or None
+        """
+        if self.components is not None:
+            return getattr(self.components, "_lagrangian_class", None)
+        return None
+
     # =========================================================================
     # Time Grid Properties
     # =========================================================================
