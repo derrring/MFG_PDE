@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.5"  # v0.18.5: LagrangianBase, multi-population, network solver fixes
+version = "0.18.6"  # v0.18.6: L-based DPP for Semi-Lagrangian solver (non-smooth H support)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.

@@ -823,7 +823,11 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             u_prev_idx = min(n, Nt_points - 1)
 
             # Compute CFL and determine substeps needed for this time step
-            cfl, n_substeps, dt_substep = self._compute_cfl_and_substeps(U_solution[n + 1], self.dt)
+            # DPP path doesn't use characteristics, so CFL substepping is not needed
+            if self._use_dpp:
+                cfl, n_substeps, dt_substep = 0.0, 1, self.dt
+            else:
+                cfl, n_substeps, dt_substep = self._compute_cfl_and_substeps(U_solution[n + 1], self.dt)
             total_substeps_used += n_substeps
 
             if n_substeps == 1:
@@ -906,6 +910,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             Value function at current time step (same shape as U_next)
         """
+        # Issue #909: L-based DPP path for non-smooth Lagrangians
+        if self._use_dpp:
+            return self._solve_timestep_dpp(U_next, M_next, time_idx)
+
         if self.dimension == 1:
             # 1D solve with operator splitting: characteristics + Crank-Nicolson diffusion
             Nx = len(U_next)
@@ -1071,6 +1079,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             Value function at current time step
         """
+        # Issue #909: L-based DPP path for non-smooth Lagrangians
+        if self._use_dpp:
+            return self._solve_timestep_dpp(U_next, M_next, time_idx, dt=dt)
+
         if self.dimension == 1:
             # 1D solve with operator splitting
             Nx = len(U_next)
@@ -1169,6 +1181,203 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 return U_current_shaped.ravel()
             else:
                 return U_current_shaped
+
+    # === L-based DPP formulation (Issue #909) ===
+
+    def _solve_timestep_dpp(
+        self,
+        U_next: np.ndarray,
+        M_next: np.ndarray,
+        time_idx: int,
+        dt: float | None = None,
+    ) -> np.ndarray:
+        """Solve one timestep via L-based Dynamic Programming Principle.
+
+        u^n(x_i) = min_alpha { dt * L(x_i, alpha, m, t) + u^{n+1}(x_i + alpha*dt) }
+
+        This avoids computing grad_u entirely — the optimization is over the
+        control alpha, not the momentum p. Handles non-smooth L naturally:
+        - Quadratic: closed-form alpha* = -p/lambda (falls back to H-based equivalent)
+        - L1 / bang-bang: compare values at alpha in {-1, 0, 1}
+        - Bounded: scalar optimization over [-a_max, a_max]
+        - Finite action set: compare K candidate values
+
+        Diffusion is handled identically via operator splitting after the
+        advection/optimization step.
+
+        Parameters
+        ----------
+        U_next : np.ndarray
+            Value function at next time step. Shape (Nx,) for 1D, grid_shape for nD.
+        M_next : np.ndarray
+            Density at next time step (same shape).
+        time_idx : int
+            Current time index.
+        dt : float or None
+            Time step. If None, uses self.dt.
+
+        Returns
+        -------
+        np.ndarray
+            Value function at current time step.
+        """
+        if dt is None:
+            dt = self.dt
+
+        L_class = self.problem.lagrangian_class
+        t_value = time_idx * self.problem.T / self.problem.Nt
+
+        bounds = L_class.control_bounds() or (-10.0, 10.0)
+
+        if self.dimension == 1:
+            Nx = len(U_next)
+            U_star = np.zeros(Nx)
+
+            # Detect special structure for fast paths
+            from mfgarchon.core.hamiltonian import (
+                BoundedControlCost,
+                L1ControlCost,
+                QuadraticControlCost,
+                SeparableLagrangian,
+            )
+
+            fast_candidates = None
+            if isinstance(L_class, SeparableLagrangian):
+                cc = L_class.control_cost
+                if isinstance(cc, L1ControlCost):
+                    # Bang-bang: compare alpha in {-1, 0, 1}
+                    fast_candidates = np.array([-1.0, 0.0, 1.0])
+                elif isinstance(cc, BoundedControlCost):
+                    # Sample endpoints + zero + a few interior points
+                    a_max = cc.max_control
+                    fast_candidates = np.linspace(-a_max, a_max, 11)
+                elif isinstance(cc, QuadraticControlCost):
+                    # Quadratic has closed-form: alpha* = -grad_u / lambda
+                    # DPP reduces to H-based SL. Use grad_u path for efficiency.
+                    fast_candidates = None  # fall through to scalar optimization
+
+            for i in range(Nx):
+                x_i = self.x_grid[i]
+                x_arr = np.array([x_i])
+                m_i = M_next[i]
+
+                if fast_candidates is not None:
+                    # Evaluate DPP cost at each candidate
+                    best_val = np.inf
+                    for alpha in fast_candidates:
+                        x_next = x_i + alpha * dt
+                        # Apply boundary handling
+                        x_next = self._apply_boundary_to_point(x_next)
+                        u_next = self._interpolate_value(U_next, x_next)
+                        L_val = float(L_class(x_arr, np.array([alpha]), m_i, t_value))
+                        cost = dt * L_val + u_next
+                        if cost < best_val:
+                            best_val = cost
+                    U_star[i] = best_val
+                else:
+                    # Scalar optimization over alpha
+                    def dpp_cost(alpha, _xi=x_i, _xa=x_arr, _mi=m_i):
+                        x_next = _xi + alpha * dt
+                        x_next = self._apply_boundary_to_point(x_next)
+                        u_next = self._interpolate_value(U_next, x_next)
+                        L_val = float(L_class(_xa, np.array([alpha]), _mi, t_value))
+                        return dt * L_val + u_next
+
+                    result = minimize_scalar(
+                        dpp_cost, bounds=bounds, method="bounded", options={"xatol": self.tolerance}
+                    )
+                    U_star[i] = result.fun
+
+            # Diffusion step (same as H-based)
+            U_current = self._apply_diffusion(U_star, dt)
+
+            # Enforce boundary conditions
+            bc = self.get_boundary_conditions()
+            if bc:
+                time = time_idx * self.dt
+                U_current = self.bc_applicator.enforce_values(
+                    U_current, boundary_conditions=bc, spacing=(self.dx,), time=time
+                )
+
+            return U_current
+
+        else:
+            # nD DPP
+            if U_next.ndim == 1:
+                total_points = U_next.size
+                expected_full = int(np.prod(self._grid_shape))
+                grid_shape = (
+                    tuple(self._grid_shape) if total_points == expected_full else tuple(n - 1 for n in self._grid_shape)
+                )
+                U_next_shaped = U_next.reshape(grid_shape)
+                M_next_shaped = M_next.reshape(grid_shape)
+            else:
+                U_next_shaped = U_next
+                M_next_shaped = M_next
+                grid_shape = U_next_shaped.shape
+
+            U_star = np.zeros_like(U_next_shaped)
+
+            for multi_idx in np.ndindex(grid_shape):
+                x_current = np.array([self.grid.coordinates[d][multi_idx[d]] for d in range(self.dimension)])
+                m_current = M_next_shaped[multi_idx]
+
+                def dpp_cost_nd(alpha_vec, _xc=x_current, _mc=m_current):
+                    x_next = _xc + alpha_vec * dt
+                    # Clip to domain bounds
+                    for d in range(self.dimension):
+                        x_next[d] = np.clip(x_next[d], self.grid.bounds[0][d], self.grid.bounds[1][d])
+                    u_next = self._interpolate_value(U_next_shaped, x_next)
+                    L_val = float(L_class(_xc, alpha_vec, _mc, t_value))
+                    return dt * L_val + u_next
+
+                alpha0 = np.zeros(self.dimension)
+                result = minimize(
+                    dpp_cost_nd,
+                    alpha0,
+                    bounds=[bounds] * self.dimension,
+                    method="L-BFGS-B",
+                    options={"ftol": self.tolerance, "maxiter": 100},
+                )
+
+                U_star[multi_idx] = result.fun if result.success else self._interpolate_value(U_next_shaped, x_current)
+
+            U_current_shaped = self._apply_diffusion(U_star, dt)
+            U_current_shaped = self._enforce_boundary_conditions(U_current_shaped)
+
+            return U_current_shaped.ravel() if U_next.ndim == 1 else U_current_shaped
+
+    def _apply_boundary_to_point(self, x: float) -> float:
+        """Apply 1D boundary handling to a single point (reflect or clip)."""
+        bounds = self.problem.geometry.get_bounds()
+        xmin, xmax = bounds[0][0], bounds[1][0]
+
+        bc = self.get_boundary_conditions()
+        bc_type = get_bc_type_string(bc)
+        bc_op = bc_type_to_geometric_operation(bc_type)
+
+        return apply_boundary_conditions_1d(x, xmin=xmin, xmax=xmax, bc_type=bc_op)
+
+    @property
+    def _use_dpp(self) -> bool:
+        """Whether to use L-based DPP instead of H-based characteristics.
+
+        Uses DPP when:
+        1. problem.lagrangian_class is available, AND
+        2. Either no hamiltonian_class, or the Lagrangian's control cost is non-smooth
+        """
+        L_class = self.problem.lagrangian_class
+        if L_class is None:
+            return False
+
+        # If no H available, DPP is the only option
+        H_class = self.problem.hamiltonian_class
+        if H_class is None:
+            return True
+
+        # If H is non-smooth, prefer DPP (avoids grad_u at kinks)
+        is_smooth = getattr(H_class, "is_smooth", lambda: True)
+        return bool(callable(is_smooth) and not is_smooth())
 
     def _find_optimal_control(self, x: np.ndarray | float, m: float, time_idx: int) -> np.ndarray | float:
         """
