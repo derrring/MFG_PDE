@@ -65,7 +65,7 @@ from mfgarchon.geometry.boundary import no_flux_bc
 from mfgarchon.geometry.boundary.applicator_base import (
     LinearConstraint,
 )
-from mfgarchon.utils.pde_coefficients import CoefficientField, _DriftDispatcher
+from mfgarchon.utils.pde_coefficients import CoefficientField, _DriftDispatcher, _VelocityArrayDispatcher
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -524,6 +524,8 @@ def solve_fp_nd_full_system(
     progress_callback: Callable[[int], None] | None = None,
     # MMS verification support
     source_term: Callable | None = None,
+    # Issue #919: Direct velocity field input
+    velocity_field: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Solve multi-dimensional FP equation using full-dimensional sparse linear system.
@@ -541,7 +543,11 @@ def solve_fp_nd_full_system(
     U_solution_for_drift : np.ndarray | None
         Value function over time-space grid. Shape: (Nt+1, N1, N2, ..., Nd)
         Used to compute drift velocity v = -coupling_coefficient * grad(U)
-        Can be None if drift_field is provided.
+        Can be None if drift_field or velocity_field is provided.
+    velocity_field : np.ndarray | None
+        Precomputed velocity field α*(t, x). Shape: (Nt+1, *spatial_shape)
+        for 1D, or (Nt+1, ndim, *spatial_shape) for nD.
+        When provided, used directly without U→α conversion. (Issue #919)
     problem : MFGProblem
         The MFG problem definition with geometry and parameters
     boundary_conditions : BoundaryConditions | None
@@ -616,23 +622,49 @@ def solve_fp_nd_full_system(
     # Determine if using callable drift (Phase 2 - Issue #487)
     use_callable_drift = drift_field is not None and callable(drift_field)
 
-    # Determine timestep count
-    if U_solution_for_drift is not None:
+    # Issue #919: velocity_field → use as callable drift (explicit solver path),
+    # or for 1D convert to potential for implicit solver.
+    if velocity_field is not None:
+        Nt = velocity_field.shape[0]
+        if ndim == 1:
+            # 1D: convert velocity to virtual potential for implicit solver.
+            # The implicit solver uses -(coupling * (U[i+1]-U[i])/dx) as velocity.
+            # Invert: U[i+1] = U[i] - alpha[i+1/2] * dx / coupling_coefficient
+            alpha_mid = 0.5 * (velocity_field[:, :-1] + velocity_field[:, 1:])
+            increments = -alpha_mid * spacing[0] / coupling_coefficient
+            U_from_vel = np.zeros_like(velocity_field)
+            U_from_vel[:, 1:] = np.cumsum(increments, axis=-1)
+            drift = _DriftDispatcher(drift_field=U_from_vel, Nt=Nt, spatial_shape=shape, dimension=ndim)
+        else:
+            # nD: use VelocityArrayDispatcher → explicit solver path
+            drift = _VelocityArrayDispatcher(
+                velocity_array=velocity_field,
+                Nt=Nt,
+                spatial_shape=shape,
+                dimension=ndim,
+            )
+    elif U_solution_for_drift is not None:
+        # Determine timestep count
         # Use U_solution shape for timestep count (allows flexible input sizes)
         Nt = U_solution_for_drift.shape[0]
+        # Issue #641: Create unified _DriftDispatcher for cleaner time loop
+        drift = _DriftDispatcher(
+            drift_field=drift_field if use_callable_drift else U_solution_for_drift,
+            Nt=Nt,
+            spatial_shape=shape,
+            dimension=ndim,
+        )
     elif use_callable_drift:
         # When using callable drift, get Nt from problem
         Nt = problem.Nt + 1
+        drift = _DriftDispatcher(
+            drift_field=drift_field,
+            Nt=Nt,
+            spatial_shape=shape,
+            dimension=ndim,
+        )
     else:
-        raise ValueError("Either U_solution_for_drift must be provided or drift_field must be callable")
-
-    # Issue #641: Create unified _DriftDispatcher for cleaner time loop
-    drift = _DriftDispatcher(
-        drift_field=drift_field if use_callable_drift else U_solution_for_drift,
-        Nt=Nt,
-        spatial_shape=shape,
-        dimension=ndim,
-    )
+        raise ValueError("Either velocity_field, U_solution_for_drift, or callable drift_field must be provided")
 
     # Handle tensor diffusion (Phase 3.0) vs scalar diffusion
     use_tensor_diffusion = tensor_diffusion_field is not None

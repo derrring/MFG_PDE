@@ -334,6 +334,71 @@ class FixedPointIterator(BaseMFGSolver):
 
         return U_synthetic
 
+    def _compute_velocity_field(self, U, M, H_class):
+        """Compute velocity field α*(t, x) from U via H.optimal_control.
+
+        Issue #919: Returns the actual velocity array for direct use by
+        FP solvers that accept velocity_field. No synthetic-U reconstruction.
+
+        Returns
+        -------
+        np.ndarray
+            Velocity field α*(t, x). Shape (Nt+1, *spatial_shape) for 1D,
+            (Nt+1, ndim, *spatial_shape) for nD.
+        """
+        geometry = self.problem.geometry
+        grid_spacing = geometry.get_grid_spacing()
+        dt = self.problem.dt
+        Nt = U.shape[0]
+        spatial_shape = U.shape[1:]
+        ndim = len(spatial_shape)
+
+        if ndim == 1:
+            # 1D: scalar velocity at each point
+            dx = grid_spacing[0]
+            Nx = spatial_shape[0]
+            grad_U = np.gradient(U, dx, axis=-1)
+
+            bounds = geometry.get_bounds()
+            x_grid = np.linspace(bounds[0][0], bounds[1][0], Nx).reshape(-1, 1)
+
+            alpha_field = np.zeros_like(grad_U)
+            for n in range(Nt):
+                p = grad_U[n]
+                m_n = M[n] if n < M.shape[0] else M[-1]
+                alpha_field[n] = H_class.optimal_control(x_grid, m_n, p.reshape(-1, 1), t=n * dt).ravel()
+
+            return alpha_field
+        else:
+            # nD: compute gradient per dimension, evaluate optimal_control
+            # alpha_field shape: (Nt, ndim, N1, N2, ...)
+            grad_components = []
+            for d in range(ndim):
+                grad_d = np.gradient(U, grid_spacing[d], axis=d + 1)
+                grad_components.append(grad_d)
+
+            # Stack into (Nt, N1, N2, ..., ndim) then evaluate
+            bounds = geometry.get_bounds()
+            coords = [np.linspace(bounds[0][d], bounds[1][d], spatial_shape[d]) for d in range(ndim)]
+            mesh = np.meshgrid(*coords, indexing="ij")
+            x_grid = np.stack(mesh, axis=-1)  # (*spatial_shape, ndim)
+
+            alpha_field = np.zeros((Nt, ndim, *spatial_shape))
+            for n in range(Nt):
+                p_n = np.stack([grad_components[d][n] for d in range(ndim)], axis=-1)  # (*spatial, ndim)
+                m_n = M[n] if n < M.shape[0] else M[-1]
+                alpha_n = H_class.optimal_control(x_grid, m_n, p_n, t=n * dt)
+                # alpha_n shape: (*spatial_shape, ndim) or (*spatial_shape,)
+                if alpha_n.ndim == ndim + 1:
+                    # (*spatial, ndim) -> (ndim, *spatial)
+                    alpha_field[n] = np.moveaxis(alpha_n, -1, 0)
+                else:
+                    # Scalar output per point — replicate to ndim
+                    for d in range(ndim):
+                        alpha_field[n, d] = alpha_n
+
+            return alpha_field
+
     def solve(
         self,
         config: MFGSolverConfig | None = None,
@@ -539,19 +604,31 @@ class FixedPointIterator(BaseMFGSolver):
                         if "show_progress" in params:
                             kwargs["show_progress"] = False  # Subtask replaces inner bar
 
-                        # Determine drift field: override or MFG drift from U
+                        # Determine drift: velocity field (preferred) or legacy potential
+                        velocity = None
                         if self.drift_field is not None:
                             # User-provided drift override (for non-MFG problems)
                             effective_drift = self.drift_field
                         else:
-                            # Issue #896: compute α* from H.optimal_control,
-                            # then encode as synthetic U for the legacy FP solver.
                             H_class = self.problem.hamiltonian_class
                             if H_class is not None:
-                                effective_drift = self._compute_drift_field(U_new, M_old, H_class)
+                                # Issue #919: for non-smooth H, compute α* directly
+                                from mfgarchon.core.hamiltonian import SeparableHamiltonian
+
+                                is_smooth = (
+                                    isinstance(H_class, SeparableHamiltonian) and H_class.control_cost.is_smooth()
+                                )
+                                if not is_smooth and "velocity_field" in params:
+                                    velocity = self._compute_velocity_field(U_new, M_old, H_class)
+                                # For smooth H, U is already the correct potential
+                                effective_drift = U_new
                             else:
                                 # Legacy: pass U directly (quadratic assumption)
                                 effective_drift = U_new
+
+                        # Issue #919: prefer velocity_field for non-smooth H
+                        if velocity is not None:
+                            kwargs["velocity_field"] = velocity
 
                         if "drift_field" in params:
                             kwargs["drift_field"] = effective_drift

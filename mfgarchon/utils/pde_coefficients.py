@@ -840,6 +840,48 @@ class _DriftDispatcher:
         return result
 
 
+class _VelocityArrayDispatcher(_DriftDispatcher):
+    """Wraps a precomputed velocity array as a callable-like dispatcher.
+
+    Issue #919: Allows FP solvers to receive velocity directly (not potential U).
+    Reports is_callable()=True so the time-stepping loop routes through
+    the explicit drift path (solve_timestep_explicit_with_drift), which
+    accepts velocity directly.
+
+    Parameters
+    ----------
+    velocity_array : np.ndarray
+        Precomputed velocity field α*(t, x).
+        1D: shape (Nt+1, Nx) — scalar velocity at each point.
+        nD: shape (Nt+1, ndim, N1, N2, ...) — vector velocity per dimension.
+    """
+
+    def __init__(self, velocity_array: np.ndarray, Nt: int, spatial_shape: tuple, dimension: int = 1):
+        # Don't call super().__init__ with the array — override behavior entirely
+        self.field = velocity_array
+        self.Nt = Nt
+        self.spatial_shape = spatial_shape
+        self.dimension = dimension
+        self._is_none = False
+        self._is_array = False  # Not a U-potential array
+        self._is_callable = True  # Route through callable path
+        self._zero_U = None
+
+    def evaluate_velocity_at(
+        self,
+        timestep_idx: int,
+        grid: np.ndarray | tuple[np.ndarray, ...],
+        density: np.ndarray,
+        dt: float | None = None,
+    ) -> np.ndarray:
+        """Return velocity slice at timestep (no computation needed)."""
+        idx = min(timestep_idx, self.field.shape[0] - 1)
+        return self.field[idx]
+
+    def get_U_at(self, timestep_idx: int) -> np.ndarray:
+        raise ValueError("_VelocityArrayDispatcher provides velocity, not potential U.")
+
+
 class DriftField:
     """
     MFG drift field: computes optimal control α* from value function U (Issue #623).

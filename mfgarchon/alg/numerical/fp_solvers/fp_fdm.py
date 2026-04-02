@@ -262,6 +262,8 @@ class FPFDMSolver(BaseFPSolver):
         volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
+        # Issue #919: Direct velocity field input
+        velocity_field: np.ndarray | None = None,
         # Deprecated parameter names for backward compatibility
         m_initial_condition: np.ndarray | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,  # Issue #717: deprecated
@@ -407,8 +409,10 @@ class FPFDMSolver(BaseFPSolver):
         if M_initial is None:
             raise ValueError("M_initial is required")
 
-        # Handle drift field
-        if drift_field is None:
+        # Issue #919: velocity_field takes priority — skip drift_field processing
+        if velocity_field is not None:
+            effective_U = None  # Not needed when velocity is provided directly
+        elif drift_field is None:
             # Zero drift (pure diffusion): create zero U field for internal use
             # Issue #543 Phase 2: Replace hasattr with try/except
             try:
@@ -444,6 +448,7 @@ class FPFDMSolver(BaseFPSolver):
                 advection_scheme=self.advection_scheme,
                 progress_callback=progress_callback,
                 source_term=source_term,
+                velocity_field=velocity_field,
             )
         else:
             raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
@@ -543,6 +548,7 @@ class FPFDMSolver(BaseFPSolver):
                 advection_scheme=self.advection_scheme,
                 progress_callback=progress_callback,
                 source_term=source_term,
+                velocity_field=velocity_field,
             )
 
         # Issue #641: Always route to unified nD solver (works for all dimensions)
@@ -558,6 +564,7 @@ class FPFDMSolver(BaseFPSolver):
             advection_scheme=self.advection_scheme,
             progress_callback=progress_callback,
             source_term=source_term,
+            velocity_field=velocity_field,
         )
 
     # =========================================================================

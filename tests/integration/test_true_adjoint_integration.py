@@ -58,6 +58,7 @@ def _create_lq_problem(Nx=31, Nt=15, T=0.5, sigma=0.3):
 
 
 @pytest.mark.integration
+@pytest.mark.slow
 class TestTrueAdjointMFGSolve:
     """End-to-end MFG solve with jacobian_transpose adjoint mode."""
 
