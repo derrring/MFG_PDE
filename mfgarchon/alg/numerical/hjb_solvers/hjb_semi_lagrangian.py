@@ -1193,27 +1193,39 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 - 1D: scalar float
                 - nD: array of shape (dimension,)
         """
+        # Issue #902: Use HamiltonianBase.optimal_control() if available.
+        # Note: _find_optimal_control finds p* that MINIMIZES H(x, p, m),
+        # NOT the MFG drift alpha*. For quadratic H = |p|^2/2 + ..., p* = 0.
+        # This is used for characteristic tracing, not for FP drift.
+
+        # Priority 1: hamiltonian_class — if H has a known minimum (e.g., quadratic at p=0)
+        H_class = self.problem.hamiltonian_class
+        if H_class is not None:
+            # For separable H: minimum of H_control(p) w.r.t. p
+            # Quadratic: dp=0 at p=0. L1: H=0 for |p|<=lambda, min at p=0.
+            # General: use scipy.
+            try:
+                _ = H_class.control_cost  # check if separable (has control_cost)
+                # ControlCostBase: minimum of evaluate(p) is at p=0 for all standard costs
+                if self.dimension == 1:
+                    return 0.0
+                return np.zeros(self.dimension)
+            except AttributeError:
+                pass  # Not separable, fall through to optimization
+
         if self.dimension == 1:
-            # 1D optimal control
             x_scalar = float(x) if np.ndim(x) > 0 else x
 
-            # For standard MFG problems with quadratic Hamiltonian, analytical solution is p* = 0
-            # Issue #545: Use try/except instead of hasattr
+            # Legacy: quadratic shortcut
             try:
                 _ = self.problem.coupling_coefficient
-                return 0.0  # Standard quadratic Hamiltonian H = |p|²/2 + C*m
+                return 0.0
             except AttributeError:
-                pass  # Continue to numerical optimization
+                pass
 
-            # For general Hamiltonians, use numerical optimization
+            # Numerical optimization using _evaluate_hamiltonian
             def hamiltonian_objective(p):
-                derivs = {(0,): 0.0, (1,): p}
-                bounds = self.problem.geometry.get_bounds()
-                xmin = bounds[0][0]
-                Nx = self.problem.geometry.get_grid_shape()[0] - 1
-                x_idx = int((x_scalar - xmin) / self.dx)
-                x_idx = np.clip(x_idx, 0, Nx)
-                return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
+                return self._evaluate_hamiltonian(x_scalar, p, m, time_idx)
 
             if self.optimization_method == "brent":
                 result = minimize_scalar(
@@ -1233,31 +1245,16 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             return result.x if result.success else 0.0
 
         else:
-            # nD optimal control
-            # For standard quadratic Hamiltonian: H = |p|²/2 + ..., optimal p* = 0
-            # Issue #545: Use try/except instead of hasattr
+            # Legacy: quadratic shortcut
             try:
                 _ = self.problem.coupling_coefficient
-                return np.zeros(self.dimension)  # Standard quadratic Hamiltonian
+                return np.zeros(self.dimension)
             except AttributeError:
-                pass  # Continue to vector optimization
+                pass
 
-            # Vector optimization using scipy.optimize.minimize
-            # Objective: minimize H(x, p, m) over p ∈ ℝ^d
             def hamiltonian_objective(p_vec):
-                """Objective function for vector optimization: H(x, p, m)"""
-                # Issue #545: Use try/except instead of hasattr
-                # Call problem's Hamiltonian function if available
-                try:
-                    t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
-                    return self.problem.hamiltonian(x, m, p_vec, t_value)
-                except AttributeError:
-                    # Fallback: standard quadratic Hamiltonian H = |p|²/2 + C*m
-                    p_norm_sq = np.sum(p_vec**2)
-                    coef_CT = getattr(self.problem, "coupling_coefficient", 0.5)
-                    return 0.5 * p_norm_sq + coef_CT * m
+                return self._evaluate_hamiltonian(x, p_vec, m, time_idx)
 
-            # Initial guess: zero vector
             p0 = np.zeros(self.dimension)
 
             try:
@@ -1549,37 +1546,35 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         Returns:
             Hamiltonian value
         """
-        # Build DerivativeTensors from gradient p
-        derivs = self._build_derivative_tensors(p)
-
-        # Compute x_idx for grid-based Hamiltonian calls
-        x_idx = self._position_to_index(x)
-
         # Compute time value
         t_value = time_idx * self.problem.T / self.problem.Nt if time_idx is not None else 0.0
 
-        # Issue #545: Use try/except instead of hasattr for Hamiltonian interface detection
-        # Priority 1: problem.H() with DerivativeTensors (preferred)
+        # Issue #902: Use HamiltonianBase class API first
+        H_class = self.problem.hamiltonian_class
+        if H_class is not None:
+            x_vec = np.atleast_1d(x)
+            p_vec = np.atleast_1d(p)
+            return float(H_class(x_vec, m, p_vec, t_value))
+
+        # Legacy fallbacks for problems without hamiltonian_class
+        derivs = self._build_derivative_tensors(p)
+        x_idx = self._position_to_index(x)
+
         try:
             return self.problem.H(x_idx, m, derivs=derivs, t_idx=time_idx)
         except AttributeError:
             pass
 
-        # Priority 2: problem.hamiltonian() with derivs kwarg
         try:
             return self.problem.hamiltonian(x_idx, m, derivs=derivs, t=t_value)
         except (AttributeError, TypeError):
             pass
 
-        # Priority 3: Legacy signature hamiltonian(x, m, p, t)
         try:
-            x_vec = np.atleast_1d(x)
-            p_vec = np.atleast_1d(p)
-            return self.problem.hamiltonian(x_vec, m, p_vec, t_value)
+            return self.problem.hamiltonian(np.atleast_1d(x), m, np.atleast_1d(p), t_value)
         except (AttributeError, TypeError) as e:
             logger.debug(f"Legacy Hamiltonian signature failed: {e}")
 
-        # Fallback: Default quadratic Hamiltonian H = |p|²/2 + C*m
         return self._default_hamiltonian(derivs, m)
 
     def _build_derivative_tensors(self, p: np.ndarray | float) -> DerivativeTensors:
