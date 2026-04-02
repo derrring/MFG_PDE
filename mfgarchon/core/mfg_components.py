@@ -112,14 +112,19 @@ class MFGComponents:
     description: str = "MFG Problem"
     problem_type: str = "mfg"
 
-    # Internal: stores the validated Hamiltonian class
+    # Internal: stores validated Hamiltonian and Lagrangian classes
     _hamiltonian_class: Any = field(default=None, init=False, repr=False)
+    _lagrangian_class: Any = field(default=None, init=False, repr=False)
 
     def __post_init__(self):
-        """Validate and setup Hamiltonian from class-based specification."""
+        """Validate and setup Hamiltonian/Lagrangian from class-based specification."""
         import warnings
 
-        from mfgarchon.core.hamiltonian import HamiltonianBase, LagrangianBase
+        from mfgarchon.core.hamiltonian import (
+            HamiltonianBase,
+            LagrangianBase,
+            SeparableLagrangian,
+        )
 
         # Handle u_final -> u_terminal deprecation
         if self.u_final is not None:
@@ -132,43 +137,54 @@ class MFGComponents:
                 self.u_terminal = self.u_final
             self.u_final = None  # Clear deprecated field
 
-        # Convert Lagrangian to Hamiltonian via Legendre transform (Issue #651)
-        if self.lagrangian is not None:
+        # Validate Lagrangian if provided
+        if self.lagrangian is not None and isinstance(self.lagrangian, LagrangianBase):
+            self._lagrangian_class = self.lagrangian
+
+        # Issue #899: Accept either H or L (or both).
+        # If only L is provided, derive H for PDE solvers.
+        # If only H is provided, derive L if it's separable.
+        if self.hamiltonian is not None and self.lagrangian is not None:
+            # Both provided: use as-is, no conversion
+            pass
+        elif self.lagrangian is not None and self.hamiltonian is None:
+            # L only: derive H for PDE solvers
             if isinstance(self.lagrangian, LagrangianBase):
-                if self.hamiltonian is not None:
-                    import warnings
-
-                    warnings.warn(
-                        "Both 'hamiltonian' and 'lagrangian' provided. Using 'hamiltonian' (lagrangian ignored).",
-                        UserWarning,
-                        stacklevel=2,
-                    )
+                if hasattr(self.lagrangian, "as_hamiltonian"):
+                    # SeparableLagrangian: analytic conversion, no DualHamiltonian
+                    self.hamiltonian = self.lagrangian.as_hamiltonian()
                 else:
-                    # Convert Lagrangian to Hamiltonian via Legendre transform
+                    # General: numerical Legendre transform (legacy path)
                     self.hamiltonian = self.lagrangian.legendre_transform()
+        elif self.hamiltonian is not None and self.lagrangian is None:
+            # H only: derive L if separable (for ADMM/variational)
+            if hasattr(self.hamiltonian, "control_cost") and hasattr(self.hamiltonian, "_potential"):
+                self._lagrangian_class = SeparableLagrangian(
+                    control_cost=self.hamiltonian.control_cost,
+                    potential=getattr(self.hamiltonian, "_potential", None),
+                    coupling=getattr(self.hamiltonian, "_coupling", None),
+                    sense=self.hamiltonian.sense,
+                )
 
-        # Issue #673: Validate class-based Hamiltonian is provided
-        if self.hamiltonian is None:
+        # Validate: at least one of H or L must be provided
+        if self.hamiltonian is None and self.lagrangian is None:
             raise ValueError(
-                "MFGComponents requires a class-based Hamiltonian.\n\n"
+                "MFGComponents requires a Hamiltonian or Lagrangian.\n\n"
                 "Example:\n"
                 "  from mfgarchon.core.hamiltonian import SeparableHamiltonian, QuadraticControlCost\n\n"
                 "  H = SeparableHamiltonian(\n"
                 "      control_cost=QuadraticControlCost(control_cost=1.0),\n"
                 "      coupling=lambda m: -m**2,\n"
-                "      coupling_dm=lambda m: -2*m,\n"
                 "  )\n"
                 "  components = MFGComponents(hamiltonian=H, m_initial=..., u_terminal=...)"
             )
 
-        if not isinstance(self.hamiltonian, HamiltonianBase):
-            raise TypeError(
-                f"hamiltonian must be a HamiltonianBase instance, got {type(self.hamiltonian).__name__}.\n\n"
-                "Use SeparableHamiltonian, QuadraticMFGHamiltonian, or a custom HamiltonianBase subclass."
-            )
-
-        # Store the validated Hamiltonian class
-        self._hamiltonian_class = self.hamiltonian
+        if self.hamiltonian is not None:
+            if not isinstance(self.hamiltonian, HamiltonianBase):
+                raise TypeError(
+                    f"hamiltonian must be a HamiltonianBase instance, got {type(self.hamiltonian).__name__}."
+                )
+            self._hamiltonian_class = self.hamiltonian
 
 
 # ============================================================================
