@@ -110,8 +110,10 @@ class NetworkHamiltonian(HamiltonianBase):
     def optimal_control(self, x, m, p, t=0.0):
         """Optimal transition rates from node x.
 
-        For quadratic H: alpha_{ij} = -w_ij * (p_j - p_i).
-        Returns array of rates to neighbors.
+        For quadratic H: alpha_{ij} = w_ij * (p_j - p_i)_+ (upwind).
+        Transition rates are non-negative by construction, ensuring
+        the generator Q preserves positivity of m.
+        Returns array of rates to neighbors (zero for non-neighbors).
         """
         node = int(np.asarray(x).flat[0])
         p_arr = np.atleast_1d(p)
@@ -120,7 +122,9 @@ class NetworkHamiltonian(HamiltonianBase):
         alpha = np.zeros_like(p_arr)
         for neighbor in neighbors:
             w = self.network_data.get_edge_weight(node, neighbor)
-            alpha[neighbor] = -self._sign * w * (p_arr[neighbor] - p_arr[node])
+            dp = p_arr[neighbor] - p_arr[node]
+            # Issue #914: upwind truncation ensures alpha >= 0
+            alpha[neighbor] = w * max(dp, 0.0)
         return alpha
 
     def dp(self, x, m, p, t=0.0):

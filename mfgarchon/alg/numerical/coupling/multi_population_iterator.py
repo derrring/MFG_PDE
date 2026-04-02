@@ -181,7 +181,22 @@ class MultiPopulationIterator:
 
     @staticmethod
     def _compute_drift_field(U, M, H_class, problem):
-        """Compute synthetic U from H.optimal_control (same as FixedPointIterator)."""
+        """Compute drift field from H.optimal_control.
+
+        Dispatches on problem type:
+        - Network (spatial_dimension == 0): return U directly (FP network
+          solver handles drift extraction internally)
+        - Continuous: synthetic U whose differences reproduce alpha*
+        """
+        # Issue #915: dispatch on problem type
+        spatial_dim = getattr(problem, "spatial_dimension", None)
+        if spatial_dim == 0:
+            # Network problem: pass U directly.
+            # FPNetworkSolver computes flows from U differences.
+            # TODO (#913): FPNetworkSolver should use H.optimal_control()
+            return U
+
+        # Continuous problem: synthetic U approach (same as FixedPointIterator)
         geometry = problem.geometry
         grid_spacing = geometry.get_grid_spacing()
         dx = grid_spacing[0]
