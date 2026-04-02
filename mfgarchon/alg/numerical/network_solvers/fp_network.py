@@ -281,11 +281,7 @@ class FPNetworkSolver(BaseFPSolver):
             # Diffusion term: -σ²/2 * Δ_G m
             diffusion_term = 0.0
             for j in neighbors:
-                edge_weight = (
-                    self.network_problem.network_data.get_edge_weight(i, j)
-                    if self.network_problem.network_data is not None
-                    else 1.0  # Default edge weight
-                )
+                edge_weight = self.network_problem.network_data.get_edge_weight(i, j)
                 diffusion_term += edge_weight * (m_current[j] - m_current[i])
             diffusion_term *= self.diffusion_coefficient
 
@@ -311,11 +307,7 @@ class FPNetworkSolver(BaseFPSolver):
 
             # Diffusion terms (implicit)
             for j in neighbors:
-                edge_weight = (
-                    self.network_problem.network_data.get_edge_weight(i, j)
-                    if self.network_problem.network_data is not None
-                    else 1.0  # Default edge weight
-                )
+                edge_weight = self.network_problem.network_data.get_edge_weight(i, j)
                 coeff = self.dt * self.diffusion_coefficient * edge_weight
 
                 A[i, i] += coeff
@@ -378,12 +370,8 @@ class FPNetworkSolver(BaseFPSolver):
                 rates[i] = {}
                 for j in neighbors:
                     du = u[j] - u[i]
-                    w = (
-                        self.network_problem.network_data.get_edge_weight(i, j)
-                        if self.network_problem.network_data is not None
-                        else 1.0
-                    )
-                    rate = w * max(du, 0.0)
+                    edge_weight = self.network_problem.network_data.get_edge_weight(i, j)
+                    rate = edge_weight * max(du, 0.0)
                     if rate > 0:
                         rates[i][j] = rate
         return rates
@@ -407,12 +395,8 @@ class FPNetworkSolver(BaseFPSolver):
         drift = 0.0
         for neighbor in neighbors:
             du = u[neighbor] - u[node]
-            w = (
-                self.network_problem.network_data.get_edge_weight(node, neighbor)
-                if self.network_problem.network_data is not None
-                else 1.0
-            )
-            drift += w * m[node] * du
+            edge_weight = self.network_problem.network_data.get_edge_weight(node, neighbor)
+            drift += edge_weight * m[node] * du
         return drift
 
     def _compute_edge_flow(self, node_from: int, node_to: int, m: np.ndarray, u: np.ndarray, t: float) -> float:
@@ -421,11 +405,7 @@ class FPNetworkSolver(BaseFPSolver):
             return 0.0
 
         # Check if edge exists
-        edge_weight = (
-            self.network_problem.network_data.get_edge_weight(node_from, node_to)
-            if self.network_problem.network_data is not None
-            else 1.0  # Default edge weight
-        )
+        edge_weight = self.network_problem.network_data.get_edge_weight(node_from, node_to)
         if edge_weight == 0:
             return 0.0
 
