@@ -196,7 +196,7 @@ for iteration in range(max_iterations):
     # Solve FP with diagonal tensor
     M_new = fp_solver.solve_fp_system(
         M_initial=m0,
-        drift_field=U_new,
+        potential_field=U_new,
         tensor_diffusion_field=Sigma,
         show_progress=False,
     )

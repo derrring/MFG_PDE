@@ -260,7 +260,7 @@ class TestMMSFokkerPlanck1D:
             U_zero = np.zeros((problem.Nt + 1, Nx))
 
             # Solve
-            M_numerical = solver.solve_fp_system(M_initial=m_init, drift_field=U_zero, show_progress=False)
+            M_numerical = solver.solve_fp_system(M_initial=m_init, potential_field=U_zero, show_progress=False)
 
             # Compare final time solution
             m_exact_final = manufactured.solution(T, x_grid)
@@ -324,7 +324,7 @@ class TestMMSFokkerPlanck1D:
         U_zero = np.zeros((problem.Nt + 1, Nx))
 
         # Solve
-        M_numerical = solver.solve_fp_system(M_initial=m_init, drift_field=U_zero, show_progress=False)
+        M_numerical = solver.solve_fp_system(M_initial=m_init, potential_field=U_zero, show_progress=False)
 
         # Compare at final time
         m_exact_final = manufactured.solution(T, x_grid)
@@ -381,7 +381,7 @@ class TestMMSFokkerPlanck1D:
 
             M_numerical = solver.solve_fp_system(
                 M_initial=m_init,
-                drift_field=U_zero,
+                potential_field=U_zero,
                 show_progress=False,
                 source_term=source_fn,
             )
@@ -430,7 +430,7 @@ class TestMMSFokkerPlanck1D:
         solver = FPFDMSolver(problem, boundary_conditions=bc)
 
         U_zero = np.zeros((problem.Nt + 1, Nx))
-        M_numerical = solver.solve_fp_system(M_initial=m_init, drift_field=U_zero, show_progress=False)
+        M_numerical = solver.solve_fp_system(M_initial=m_init, potential_field=U_zero, show_progress=False)
 
         # Final mass
         mass_final = np.trapezoid(M_numerical[-1, :], dx=dx)
@@ -497,7 +497,7 @@ class TestMMSConvergenceRates:
             solver = FPFDMSolver(problem, boundary_conditions=bc)
 
             U_zero = np.zeros((problem.Nt + 1, Nx))
-            M_numerical = solver.solve_fp_system(M_initial=m_init, drift_field=U_zero, show_progress=False)
+            M_numerical = solver.solve_fp_system(M_initial=m_init, potential_field=U_zero, show_progress=False)
 
             m_exact_final = manufactured.solution(T, x_grid)
 
@@ -550,7 +550,7 @@ class TestMassConservationStress:
         solver = FPFDMSolver(problem, boundary_conditions=bc)
 
         U_zero = np.zeros((problem.Nt + 1, Nx))
-        M_numerical = solver.solve_fp_system(M_initial=m_init, drift_field=U_zero, show_progress=False)
+        M_numerical = solver.solve_fp_system(M_initial=m_init, potential_field=U_zero, show_progress=False)
 
         # Check mass at every time step
         masses = np.array([np.trapezoid(M_numerical[t, :], dx=dx) for t in range(Nt + 1)])
@@ -602,7 +602,7 @@ class TestMassConservationStress:
         for t in range(Nt + 1):
             U_field[t, :] = (x_grid - 0.5) ** 2
 
-        M_numerical = solver.solve_fp_system(M_initial=m_init, drift_field=U_field, show_progress=False)
+        M_numerical = solver.solve_fp_system(M_initial=m_init, potential_field=U_field, show_progress=False)
 
         # Check mass conservation - allow for numerical discretization error
         mass_final = np.trapezoid(M_numerical[-1, :], dx=dx)

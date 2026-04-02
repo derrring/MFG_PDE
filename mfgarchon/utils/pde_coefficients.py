@@ -840,7 +840,7 @@ class _DriftDispatcher:
         return result
 
 
-class _VelocityArrayDispatcher(_DriftDispatcher):
+class _DriftArrayDispatcher(_DriftDispatcher):
     """Wraps a precomputed velocity array as a callable-like dispatcher.
 
     Issue #919: Allows FP solvers to receive velocity directly (not potential U).
@@ -879,7 +879,7 @@ class _VelocityArrayDispatcher(_DriftDispatcher):
         return self.field[idx]
 
     def get_U_at(self, timestep_idx: int) -> np.ndarray:
-        raise ValueError("_VelocityArrayDispatcher provides velocity, not potential U.")
+        raise ValueError("_DriftArrayDispatcher provides velocity, not potential U.")
 
 
 class DriftField:

@@ -93,7 +93,7 @@ class TestNonQuadraticHamiltonians:
         # Solve with legacy drift_field API
         M_legacy = solver_1d.solve_fp_system(
             M_initial=initial_density_1d,
-            drift_field=U_hjb,
+            potential_field=U_hjb,
         )
 
         # Should produce valid density
@@ -127,7 +127,7 @@ class TestNonQuadraticHamiltonians:
         # Solve with drift_field (legacy)
         M_legacy = solver_1d.solve_fp_system(
             M_initial=initial_density_1d,
-            drift_field=U_hjb,
+            potential_field=U_hjb,
         )
 
         # Solve with drift_field (new API)

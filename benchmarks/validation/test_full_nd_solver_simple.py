@@ -72,7 +72,7 @@ def test_fp_2d_pure_diffusion():
     print("Running FP solver (pure diffusion)...")
     M_solution = fp_solver.solve_fp_system(
         M_initial=m0,
-        drift_field=U_zero,
+        potential_field=U_zero,
         show_progress=True,
     )
 
@@ -165,7 +165,7 @@ def test_fp_2d_with_advection():
     print("Running FP solver (with advection)...")
     M_solution = fp_solver.solve_fp_system(
         M_initial=m0,
-        drift_field=U_velocity,
+        potential_field=U_velocity,
         show_progress=True,
     )
 

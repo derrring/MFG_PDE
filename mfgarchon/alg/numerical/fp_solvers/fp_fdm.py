@@ -255,6 +255,8 @@ class FPFDMSolver(BaseFPSolver):
     @deprecated_parameter(param_name="diffusion_field", since="v0.17.0", replacement="volatility_field")
     @deprecated_parameter(param_name="tensor_diffusion_field", since="v0.17.0", replacement="volatility_field")
     @deprecated_parameter(param_name="volatility_matrix", since="v0.17.0", replacement="volatility_field")
+    @deprecated_parameter(param_name="velocity_field", since="v0.18.6", replacement="drift_field")
+    @deprecated_parameter(param_name="potential_field", since="v0.18.6", replacement="drift_field")
     def solve_fp_system(
         self,
         M_initial: np.ndarray | None = None,
@@ -262,13 +264,15 @@ class FPFDMSolver(BaseFPSolver):
         volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
-        # Issue #919: Direct velocity field input
-        velocity_field: np.ndarray | None = None,
         # Deprecated parameter names for backward compatibility
         m_initial_condition: np.ndarray | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,  # Issue #717: deprecated
         tensor_diffusion_field: np.ndarray | Callable | None = None,  # Issue #717: deprecated
         volatility_matrix: np.ndarray | Callable | None = None,  # Deprecated: use volatility_field
+        # Deprecated: velocity_field renamed to drift_field (v0.18.6)
+        velocity_field: np.ndarray | None = None,
+        # Deprecated: old drift_field (U-potential) renamed to potential_field (v0.18.6)
+        potential_field: np.ndarray | None = None,
         # MMS verification support
         source_term: Callable | None = None,
     ) -> np.ndarray:
@@ -409,12 +413,48 @@ class FPFDMSolver(BaseFPSolver):
         if M_initial is None:
             raise ValueError("M_initial is required")
 
-        # Issue #919: velocity_field takes priority — skip drift_field processing
+        # Handle deprecated velocity_field -> drift_field (v0.18.6)
         if velocity_field is not None:
-            effective_U = None  # Not needed when velocity is provided directly
-        elif drift_field is None:
+            if drift_field is not None:
+                raise ValueError(
+                    "Cannot specify both drift_field and velocity_field. "
+                    "Use drift_field (velocity_field is deprecated)."
+                )
+            drift_field = velocity_field
+
+        # Handle deprecated potential_field (old drift_field with U-potential)
+        if potential_field is not None:
+            if drift_field is not None:
+                raise ValueError(
+                    "Cannot specify both drift_field and potential_field. "
+                    "potential_field is deprecated; pass velocity via drift_field instead."
+                )
+            # potential_field is U-potential — route through internal U path
+            effective_U = potential_field
+        elif drift_field is not None:
+            # drift_field is velocity α*(t,x) — route through velocity path
+            if isinstance(drift_field, np.ndarray):
+                effective_U = None  # Not needed when velocity is provided directly
+            elif callable(drift_field):
+                # Custom drift function - Phase 2
+                # Route to unified nD solver (works for all dimensions including 1D)
+                return _solve_fp_nd_full_system(
+                    m_initial_condition=M_initial,
+                    U_solution_for_drift=None,
+                    problem=self.problem,
+                    boundary_conditions=self.boundary_conditions,
+                    show_progress=show_progress,
+                    backend=self.backend,
+                    diffusion_field=volatility_field,
+                    drift_field=drift_field,  # callable velocity → internal drift_field
+                    advection_scheme=self.advection_scheme,
+                    progress_callback=progress_callback,
+                    source_term=source_term,
+                )
+            else:
+                raise TypeError(f"drift_field must be np.ndarray or Callable, got {type(drift_field)}")
+        else:
             # Zero drift (pure diffusion): create zero U field for internal use
-            # Issue #543 Phase 2: Replace hasattr with try/except
             try:
                 Nt = self.problem.Nt + 1
             except AttributeError as e:
@@ -428,39 +468,6 @@ class FPFDMSolver(BaseFPSolver):
             else:
                 grid_shape = self.problem.geometry.get_grid_shape()
                 effective_U = np.zeros((Nt, *grid_shape))
-
-        elif isinstance(drift_field, np.ndarray):
-            # Issue #919 Phase 3: ndarray drift_field is legacy U-potential usage.
-            # New callers should pass velocity via velocity_field parameter.
-            import warnings
-
-            warnings.warn(
-                "Passing ndarray as drift_field is deprecated since v0.18.6 and will be "
-                "removed in v0.25.0. drift_field with ndarray is interpreted as U-potential "
-                "(legacy). Pass velocity alpha* via velocity_field instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            effective_U = drift_field
-        elif callable(drift_field):
-            # Custom drift function - Phase 2
-            # Route to unified nD solver (works for all dimensions including 1D)
-            return _solve_fp_nd_full_system(
-                m_initial_condition=M_initial,
-                U_solution_for_drift=None,  # Not needed when drift_field is provided
-                problem=self.problem,
-                boundary_conditions=self.boundary_conditions,
-                show_progress=show_progress,
-                backend=self.backend,
-                diffusion_field=volatility_field,  # Internal API still uses old name
-                drift_field=drift_field,
-                advection_scheme=self.advection_scheme,
-                progress_callback=progress_callback,
-                source_term=source_term,
-                velocity_field=velocity_field,
-            )
-        else:
-            raise TypeError(f"drift_field must be None, np.ndarray, or Callable, got {type(drift_field)}")
 
         # Issue #717: Handle deprecated parameter names
         if diffusion_field is not None:
@@ -538,6 +545,10 @@ class FPFDMSolver(BaseFPSolver):
         # CFL diagnostic (Issue #882)
         self._log_cfl_diagnostic(volatility_field)
 
+        # Resolve velocity for internal routing:
+        # drift_field (after deprecation handling) is velocity when effective_U is None
+        _internal_velocity = drift_field if (effective_U is None and isinstance(drift_field, np.ndarray)) else None
+
         # Route tensor volatility to tensor path
         if is_tensor:
             if self.dimension == 1:
@@ -557,7 +568,7 @@ class FPFDMSolver(BaseFPSolver):
                 advection_scheme=self.advection_scheme,
                 progress_callback=progress_callback,
                 source_term=source_term,
-                velocity_field=velocity_field,
+                velocity_field=_internal_velocity,
             )
 
         # Issue #641: Always route to unified nD solver (works for all dimensions)
@@ -573,7 +584,7 @@ class FPFDMSolver(BaseFPSolver):
             advection_scheme=self.advection_scheme,
             progress_callback=progress_callback,
             source_term=source_term,
-            velocity_field=velocity_field,
+            velocity_field=_internal_velocity,
         )
 
     # =========================================================================

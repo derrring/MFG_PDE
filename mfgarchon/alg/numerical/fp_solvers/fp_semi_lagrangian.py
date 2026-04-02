@@ -189,15 +189,17 @@ class FPSLJacobianSolver(BaseFPSolver):
 
     @deprecated_parameter(param_name="m_initial_condition", since="v0.17.0", replacement="M_initial")
     @deprecated_parameter(param_name="diffusion_field", since="v0.17.0", replacement="volatility_field")
+    @deprecated_parameter(param_name="drift_field", since="v0.18.6", replacement="potential_field")
     def solve_fp_system(
         self,
         M_initial: np.ndarray | None = None,
-        drift_field: np.ndarray | Callable | None = None,
+        potential_field: np.ndarray | Callable | None = None,
         volatility_field: float | np.ndarray | Callable | None = None,
         show_progress: bool = True,
         # Deprecated parameters
         m_initial_condition: np.ndarray | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,
+        drift_field: np.ndarray | Callable | None = None,  # Deprecated: renamed to potential_field
     ) -> np.ndarray:
         """
         Solve FP system forward in time using Semi-Lagrangian method.
@@ -210,9 +212,10 @@ class FPSLJacobianSolver(BaseFPSolver):
 
         Args:
             M_initial: Initial density m0(x). Shape: (Nx,)
-            drift_field: Drift field (value function U from HJB).
+            potential_field: Value function U from HJB (potential for drift).
                 - np.ndarray: Shape (Nt+1, Nx) - U values at each time step
                   The drift velocity is computed as alpha = -grad(U)
+            drift_field: DEPRECATED. Renamed to potential_field.
             volatility_field: Optional volatility coefficient σ (SDE noise) override.
                 - None: Use problem.sigma
                 - float: Constant volatility
@@ -224,7 +227,7 @@ class FPSLJacobianSolver(BaseFPSolver):
             Density evolution M(t,x). Shape: (Nt+1, Nx)
 
         Note:
-            drift_field is the VALUE FUNCTION U, not the velocity alpha.
+            potential_field is the VALUE FUNCTION U, not the velocity alpha.
             The velocity is computed internally as alpha = -grad(U).
         """
         # Handle deprecated parameter
@@ -236,14 +239,20 @@ class FPSLJacobianSolver(BaseFPSolver):
         if M_initial is None:
             raise ValueError("M_initial is required")
 
-        if drift_field is None:
+        # Handle deprecated drift_field -> potential_field (v0.18.6)
+        if drift_field is not None:
+            if potential_field is not None:
+                raise ValueError("Cannot specify both potential_field and drift_field")
+            potential_field = drift_field
+
+        if potential_field is None:
             raise ValueError(
-                "drift_field (value function U) is required for Semi-Lagrangian FP. "
+                "potential_field (value function U) is required for Semi-Lagrangian FP. "
                 "Pass the U solution from HJB solver."
             )
 
-        if callable(drift_field):
-            raise NotImplementedError("Callable drift_field not yet supported for FPSLSolver")
+        if callable(potential_field):
+            raise NotImplementedError("Callable potential_field not yet supported for FPSLSolver")
 
         # Handle deprecated diffusion_field parameter (Issue #717)
         if diffusion_field is not None:
@@ -262,8 +271,8 @@ class FPSLJacobianSolver(BaseFPSolver):
         else:
             raise NotImplementedError("Array/callable volatility_field not yet supported for FPSLSolver")
 
-        # Determine number of time steps from drift_field
-        Nt_points = drift_field.shape[0]
+        # Determine number of time steps from potential_field
+        Nt_points = potential_field.shape[0]
         Nx = len(self.x_grid)
 
         # Allocate solution array
@@ -285,7 +294,7 @@ class FPSLJacobianSolver(BaseFPSolver):
         # Forward time stepping
         for n in timestep_range:
             # Compute velocity field alpha = -grad(U) at current time
-            U_n = drift_field[n, :]
+            U_n = potential_field[n, :]
             alpha = self._compute_velocity(U_n)
             # Issue #579 fix: Use direct Laplacian instead of compound gradient
             # div(alpha) = div(-grad(U)) = -Laplacian(U)

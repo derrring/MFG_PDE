@@ -485,7 +485,7 @@ class TestFPFDMSolverArrayDiffusion:
         U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve with array diffusion
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, volatility_field=diffusion_array)
+        M = solver.solve_fp_system(m_initial, potential_field=U_solution, volatility_field=diffusion_array)
 
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
@@ -518,7 +518,7 @@ class TestFPFDMSolverArrayDiffusion:
         U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve with array diffusion
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, volatility_field=volatility_field)
+        M = solver.solve_fp_system(m_initial, potential_field=U_solution, volatility_field=volatility_field)
 
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
@@ -547,7 +547,7 @@ class TestFPFDMSolverArrayDiffusion:
             U_solution[t, :] = -0.2 * x_grid  # Moderate drift
 
         # Solve with array diffusion and drift
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, volatility_field=diffusion_array)
+        M = solver.solve_fp_system(m_initial, potential_field=U_solution, volatility_field=diffusion_array)
 
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
@@ -574,7 +574,7 @@ class TestFPFDMSolverArrayDiffusion:
         U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, volatility_field=diffusion_array)
+        M = solver.solve_fp_system(m_initial, potential_field=U_solution, volatility_field=diffusion_array)
 
         # Check mass conservation at all timesteps
         masses = np.sum(M, axis=1)
@@ -609,7 +609,7 @@ class TestFPFDMSolverCallableDiffusion:
         U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve with callable diffusion
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, volatility_field=porous_medium_diffusion)
+        M = solver.solve_fp_system(m_initial, potential_field=U_solution, volatility_field=porous_medium_diffusion)
 
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
@@ -639,7 +639,7 @@ class TestFPFDMSolverCallableDiffusion:
         U_solution = np.zeros((Nt_points, Nx_points))
 
         # Solve
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, volatility_field=crowd_diffusion)
+        M = solver.solve_fp_system(m_initial, potential_field=U_solution, volatility_field=crowd_diffusion)
 
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
@@ -668,7 +668,7 @@ class TestFPFDMSolverCallableDiffusion:
             U_solution[t, :] = -0.1 * x_grid
 
         # Solve
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, volatility_field=state_diffusion)
+        M = solver.solve_fp_system(m_initial, potential_field=U_solution, volatility_field=state_diffusion)
 
         assert M.shape == (Nt_points, Nx_points)
         assert np.all(M >= 0)
@@ -759,7 +759,7 @@ class TestFPFDMSolverTensorDiffusion:
         U_solution = np.zeros((Nt, Nx, Ny))
 
         # Solve with tensor diffusion
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, tensor_diffusion_field=Sigma)
+        M = solver.solve_fp_system(m_initial, potential_field=U_solution, tensor_diffusion_field=Sigma)
 
         assert M.shape == (Nt, Nx, Ny)
         assert np.all(M >= 0)
@@ -898,7 +898,9 @@ class TestFPFDMSolverTensorDiffusion:
             U_solution[k] = X**2 + Y**2
 
         # Solve
-        M = solver.solve_fp_system(m_initial, drift_field=U_solution, tensor_diffusion_field=Sigma, show_progress=False)
+        M = solver.solve_fp_system(
+            m_initial, potential_field=U_solution, tensor_diffusion_field=Sigma, show_progress=False
+        )
 
         assert M.shape == (Nt, Nx, Ny)
         assert np.all(M >= 0)

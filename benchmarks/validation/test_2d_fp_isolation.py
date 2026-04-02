@@ -93,7 +93,7 @@ def test_pure_diffusion():
     fp_solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
     M_solution = fp_solver.solve_fp_system(
         M_initial=m0,
-        drift_field=U_zero,
+        potential_field=U_zero,
         show_progress=True,
     )
 
@@ -192,7 +192,7 @@ def test_with_constant_velocity():
     fp_solver = FPFDMSolver(problem, boundary_conditions=boundary_conditions)
     M_solution = fp_solver.solve_fp_system(
         M_initial=m0,
-        drift_field=U_linear,
+        potential_field=U_linear,
         show_progress=True,
     )
 

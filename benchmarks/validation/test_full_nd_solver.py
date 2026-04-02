@@ -152,7 +152,7 @@ def test_pure_diffusion():
     print("Running FP solver...")
     M_solution = fp_solver.solve_fp_system(
         M_initial=m0,
-        drift_field=U_zero,
+        potential_field=U_zero,
         show_progress=True,
     )
 

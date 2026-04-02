@@ -148,7 +148,7 @@ class MultiPopulationIterator:
                     velocity = np.zeros_like(U[k])
 
                 try:
-                    M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, velocity_field=velocity, show_progress=False)
+                    M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, drift_field=velocity, show_progress=False)
                     # Damp
                     M[k] = (1 - omega) * M_old[k] + omega * M_new_k
                 except Exception as e:

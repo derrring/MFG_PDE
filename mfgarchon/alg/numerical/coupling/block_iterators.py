@@ -278,13 +278,16 @@ class BlockIterator(BaseMFGSolver):
 
             effective_drift = self.drift_field if self.drift_field is not None else U
 
-            if "drift_field" in self._fp_sig_params:
+            # Issue #919: pass U as potential_field (drift_field now means velocity)
+            if "potential_field" in self._fp_sig_params:
+                kwargs["potential_field"] = effective_drift
+            elif "drift_field" in self._fp_sig_params:
+                # Fallback for FP solvers without potential_field (e.g. GFDM)
                 kwargs["drift_field"] = effective_drift
-                if "volatility_field" in self._fp_sig_params and self.volatility_field is not None:
-                    kwargs["volatility_field"] = self.volatility_field
-                return self.fp_solver.solve_fp_system(M_initial, **kwargs)
-            else:
-                return self.fp_solver.solve_fp_system(M_initial, effective_drift, **kwargs)
+
+            if "volatility_field" in self._fp_sig_params and self.volatility_field is not None:
+                kwargs["volatility_field"] = self.volatility_field
+            return self.fp_solver.solve_fp_system(M_initial, **kwargs)
         else:
             return self.fp_solver.solve_fp_system(M_initial, U)
 

@@ -608,8 +608,8 @@ class FixedPointIterator(BaseMFGSolver):
                         if "show_progress" in params:
                             kwargs["show_progress"] = False  # Subtask replaces inner bar
 
-                        # Issue #919 Phase 3: velocity_field for non-smooth H,
-                        # legacy drift_field (U potential) for smooth H
+                        # Pass drift/potential to FP solver.
+                        # drift_field = velocity alpha*, potential_field = U-potential (deprecated).
                         if self.drift_field is not None:
                             # User-provided drift override (for non-MFG problems)
                             if "drift_field" in params:
@@ -620,14 +620,17 @@ class FixedPointIterator(BaseMFGSolver):
 
                             use_velocity = (
                                 H_class is not None
-                                and "velocity_field" in params
+                                and "drift_field" in params
                                 and not (isinstance(H_class, SeparableHamiltonian) and H_class.control_cost.is_smooth())
                             )
                             if use_velocity:
                                 # Non-smooth H: face-centered velocity via H.optimal_control
-                                kwargs["velocity_field"] = self._compute_velocity_field(U_new, M_old, H_class)
+                                kwargs["drift_field"] = self._compute_velocity_field(U_new, M_old, H_class)
+                            elif "potential_field" in params:
+                                # Smooth H: pass U as potential (deprecated path)
+                                kwargs["potential_field"] = U_new
                             elif "drift_field" in params:
-                                # Smooth H or no velocity_field support: pass U as potential
+                                # FP solver without potential_field (e.g. GFDM): pass U as drift
                                 kwargs["drift_field"] = U_new
 
                         if "volatility_field" in params and self.volatility_field is not None:
@@ -638,7 +641,7 @@ class FixedPointIterator(BaseMFGSolver):
                             kwargs["progress_callback"] = fp_subtask.advance
 
                         # Call with appropriate arguments
-                        if "drift_field" in params or "velocity_field" in params:
+                        if "drift_field" in params or "potential_field" in params:
                             M_new = self.fp_solver.solve_fp_system(M_initial, **kwargs)
                         else:
                             # Legacy interface: second positional arg is U for drift
