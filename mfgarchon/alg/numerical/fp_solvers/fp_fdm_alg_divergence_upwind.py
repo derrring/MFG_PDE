@@ -55,6 +55,7 @@ def add_interior_entries_divergence_upwind(
     u_flat: np.ndarray,
     grid: Any,
     boundary_conditions: Any,
+    interface_velocity: np.ndarray | None = None,
 ) -> None:
     """
     Add matrix entries for interior grid point using CONSERVATIVE Flux FDM.
@@ -146,11 +147,15 @@ def add_interior_entries_divergence_upwind(
 
         # ===== CONSERVATIVE FLUX ADVECTION =====
         # Interface velocities (at cell faces, not centers)
-        # alpha_{i+1/2} = -coupling * (U_{i+1} - U_i) / dx
-        # alpha_{i-1/2} = -coupling * (U_i - U_{i-1}) / dx
+        # Default: alpha_{i+1/2} = -coupling * (U_{i+1} - U_i) / dx
+        # Issue #919: when interface_velocity provided, use directly
 
         if has_plus or is_periodic:
-            alpha_right = -coupling_coefficient * (u_plus - u_center) / dx
+            if interface_velocity is not None:
+                # Direct velocity: midpoint average of node velocities
+                alpha_right = 0.5 * (interface_velocity[d][multi_idx] + interface_velocity[d][tuple(multi_idx_plus)])
+            else:
+                alpha_right = -coupling_coefficient * (u_plus - u_center) / dx
 
             # Flux F_{i+1/2} contribution to row i (outgoing flux with +1/dx)
             if alpha_right >= 0:
@@ -166,7 +171,10 @@ def add_interior_entries_divergence_upwind(
                 data_values.append(alpha_right / dx)
 
         if has_minus or is_periodic:
-            alpha_left = -coupling_coefficient * (u_center - u_minus) / dx
+            if interface_velocity is not None:
+                alpha_left = 0.5 * (interface_velocity[d][tuple(multi_idx_minus)] + interface_velocity[d][multi_idx])
+            else:
+                alpha_left = -coupling_coefficient * (u_center - u_minus) / dx
 
             # Flux -F_{i-1/2} contribution to row i (incoming flux with -1/dx)
             if alpha_left >= 0:

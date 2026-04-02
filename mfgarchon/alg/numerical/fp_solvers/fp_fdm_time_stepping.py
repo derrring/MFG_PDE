@@ -65,7 +65,7 @@ from mfgarchon.geometry.boundary import no_flux_bc
 from mfgarchon.geometry.boundary.applicator_base import (
     LinearConstraint,
 )
-from mfgarchon.utils.pde_coefficients import CoefficientField, _DriftDispatcher, _VelocityArrayDispatcher
+from mfgarchon.utils.pde_coefficients import CoefficientField, _DriftDispatcher
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -622,27 +622,13 @@ def solve_fp_nd_full_system(
     # Determine if using callable drift (Phase 2 - Issue #487)
     use_callable_drift = drift_field is not None and callable(drift_field)
 
-    # Issue #919: velocity_field → use as callable drift (explicit solver path),
-    # or for 1D convert to potential for implicit solver.
+    # Issue #919 Phase 2: velocity_field → pass to implicit solver directly
+    # via interface_velocity. No virtual-U conversion needed.
+    _velocity_array = velocity_field  # Store for per-timestep slicing
     if velocity_field is not None:
         Nt = velocity_field.shape[0]
-        if ndim == 1:
-            # 1D: convert velocity to virtual potential for implicit solver.
-            # The implicit solver uses -(coupling * (U[i+1]-U[i])/dx) as velocity.
-            # Invert: U[i+1] = U[i] - alpha[i+1/2] * dx / coupling_coefficient
-            alpha_mid = 0.5 * (velocity_field[:, :-1] + velocity_field[:, 1:])
-            increments = -alpha_mid * spacing[0] / coupling_coefficient
-            U_from_vel = np.zeros_like(velocity_field)
-            U_from_vel[:, 1:] = np.cumsum(increments, axis=-1)
-            drift = _DriftDispatcher(drift_field=U_from_vel, Nt=Nt, spatial_shape=shape, dimension=ndim)
-        else:
-            # nD: use VelocityArrayDispatcher → explicit solver path
-            drift = _VelocityArrayDispatcher(
-                velocity_array=velocity_field,
-                Nt=Nt,
-                spatial_shape=shape,
-                dimension=ndim,
-            )
+        # Create a zero-U dispatcher (U is unused when interface_velocity is set)
+        drift = _DriftDispatcher(drift_field=None, Nt=Nt, spatial_shape=shape, dimension=ndim)
     elif U_solution_for_drift is not None:
         # Determine timestep count
         # Use U_solution shape for timestep count (allows flexible input sizes)
@@ -770,6 +756,19 @@ def solve_fp_nd_full_system(
             drift_values = None
             U_current = drift.get_U_at(k)
 
+        # Issue #919 Phase 2: velocity_field → implicit solver with interface_velocity
+        vel_at_k = None
+        if _velocity_array is not None:
+            vel_idx = min(k, _velocity_array.shape[0] - 1)
+            vel_slice = _velocity_array[vel_idx]
+            # Reshape to (ndim, *spatial_shape) if needed
+            if vel_slice.ndim == len(shape):
+                # 1D: (Nx,) → (1, Nx)
+                vel_at_k = vel_slice[np.newaxis, ...]
+            else:
+                # nD: already (ndim, N1, N2, ...)
+                vel_at_k = vel_slice
+
         if use_tensor_diffusion:
             # Tensor diffusion path - explicit timestepping
             M_next = solve_timestep_tensor_explicit(
@@ -805,7 +804,7 @@ def solve_fp_nd_full_system(
                 source_term=source_values,
             )
         else:
-            # MFG-coupled mode: scalar diffusion + U-based drift - use implicit solver
+            # MFG-coupled mode: scalar diffusion + U/velocity-based drift - implicit solver
             diffusion = CoefficientField(sigma_base, problem.sigma, "volatility_field", dimension=ndim)
             sigma_at_k = diffusion.evaluate_at(timestep_idx=k, grid=grid.coordinates, density=M_current, dt=dt)
 
@@ -823,6 +822,7 @@ def solve_fp_nd_full_system(
                 boundary_conditions,
                 advection_scheme=advection_scheme,
                 source_term=source_values,
+                interface_velocity=vel_at_k,
             )
 
         M_solution[k + 1] = M_next
@@ -989,6 +989,7 @@ def solve_timestep_full_nd(
     boundary_conditions: Any,
     advection_scheme: str = "divergence_upwind",
     source_term: np.ndarray | None = None,
+    interface_velocity: np.ndarray | None = None,
 ) -> np.ndarray:
     """
     Solve one timestep of the full nD FP equation.
@@ -1114,6 +1115,7 @@ def solve_timestep_full_nd(
                 spacing,
                 u_flat,
                 grid,
+                interface_velocity=interface_velocity,
             )
         else:
             # Interior point or periodic boundary
@@ -1132,6 +1134,7 @@ def solve_timestep_full_nd(
                 u_flat,
                 grid,
                 boundary_conditions,
+                interface_velocity=interface_velocity,
             )
 
     # Assemble sparse matrix
