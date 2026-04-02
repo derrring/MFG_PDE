@@ -24,7 +24,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from mfgarchon.core.hamiltonian import QuadraticControlCost, SeparableHamiltonian
+from mfgarchon.core.hamiltonian import (
+    HamiltonianBase,
+    OptimizationSense,
+)
 from mfgarchon.core.mfg_components import MFGComponents
 from mfgarchon.core.mfg_problem import MFGProblem
 
@@ -34,6 +37,113 @@ if TYPE_CHECKING:
     from scipy.sparse import csr_matrix
 
     from mfgarchon.geometry.graph.network_geometry import BaseNetworkGeometry
+
+
+class NetworkHamiltonian(HamiltonianBase):
+    """HamiltonianBase subclass for finite-state MFG on graphs.
+
+    Issue #910: Wraps network Hamiltonian logic in the class-based API.
+    Accepts either a callable H(node, neighbors, m, p, t) or provides
+    a default quadratic Hamiltonian on edges.
+
+    Parameters
+    ----------
+    network_data : NetworkData
+        Graph structure (adjacency, edge weights).
+    hamiltonian_func : callable or None
+        Custom H(node, neighbors, m, p, t) -> float.
+        If None, uses default quadratic: sum_{j in N(i)} w_ij/2 * (p_j - p_i)^2.
+    hamiltonian_dm_func : callable or None
+        Custom dH/dm.
+    node_potential_func : callable or None
+        V(node, t) -> float.
+    congestion_func : callable or None
+        f(node, m, t) -> float.
+    """
+
+    def __init__(
+        self,
+        network_data,
+        hamiltonian_func=None,
+        hamiltonian_dm_func=None,
+        node_potential_func=None,
+        congestion_func=None,
+        sense=OptimizationSense.MINIMIZE,
+    ):
+        super().__init__(sense=sense)
+        self.network_data = network_data
+        self._hamiltonian_func = hamiltonian_func
+        self._hamiltonian_dm_func = hamiltonian_dm_func
+        self._node_potential = node_potential_func
+        self._congestion = congestion_func
+
+    def __call__(self, x, m, p, t=0.0):
+        """Evaluate H at node x with density m and costate p.
+
+        x: node index (int or array with single int)
+        m: density vector at all nodes, shape (N,)
+        p: costate vector at all nodes, shape (N,)
+        """
+        node = int(np.asarray(x).flat[0])
+        m_arr = np.atleast_1d(m)
+        p_arr = np.atleast_1d(p)
+
+        if self._hamiltonian_func is not None:
+            neighbors = self.network_data.get_neighbors(node)
+            return float(self._hamiltonian_func(node, neighbors, m_arr, p_arr, t))
+
+        return self._default_hamiltonian(node, m_arr, p_arr, t)
+
+    def _default_hamiltonian(self, node, m, p, t):
+        """Default: quadratic control on edges + potential + congestion."""
+        neighbors = self.network_data.get_neighbors(node)
+        control_cost = 0.0
+        for neighbor in neighbors:
+            w = self.network_data.get_edge_weight(node, neighbor)
+            dp = p[neighbor] - p[node]
+            control_cost += 0.5 * w * dp**2
+
+        V = float(self._node_potential(node, t)) if self._node_potential else 0.0
+        f_m = float(self._congestion(node, m, t)) if self._congestion else 0.0
+        return control_cost + V + f_m
+
+    def optimal_control(self, x, m, p, t=0.0):
+        """Optimal transition rates from node x.
+
+        For quadratic H: alpha_{ij} = -w_ij * (p_j - p_i).
+        Returns array of rates to neighbors.
+        """
+        node = int(np.asarray(x).flat[0])
+        p_arr = np.atleast_1d(p)
+        neighbors = self.network_data.get_neighbors(node)
+
+        alpha = np.zeros_like(p_arr)
+        for neighbor in neighbors:
+            w = self.network_data.get_edge_weight(node, neighbor)
+            alpha[neighbor] = -self._sign * w * (p_arr[neighbor] - p_arr[node])
+        return alpha
+
+    def dp(self, x, m, p, t=0.0):
+        """dH/dp at node x. For quadratic: sum_j w_ij * (p_j - p_i) per component."""
+        node = int(np.asarray(x).flat[0])
+        p_arr = np.atleast_1d(p)
+        neighbors = self.network_data.get_neighbors(node)
+
+        grad = np.zeros_like(p_arr)
+        for neighbor in neighbors:
+            w = self.network_data.get_edge_weight(node, neighbor)
+            dp = p_arr[neighbor] - p_arr[node]
+            grad[neighbor] += w * dp
+            grad[node] -= w * dp
+        return grad
+
+    def dm(self, x, m, p, t=0.0):
+        """dH/dm at node x."""
+        if self._hamiltonian_dm_func is not None:
+            node = int(np.asarray(x).flat[0])
+            neighbors = self.network_data.get_neighbors(node)
+            return float(self._hamiltonian_dm_func(node, neighbors, np.atleast_1d(m), np.atleast_1d(p), t))
+        return self._finite_diff_dm(x, m, p, t)
 
 
 @dataclass
@@ -128,20 +238,21 @@ class NetworkMFGProblem(MFGProblem):
         self.network_geometry = network_geometry
         self.network_data = network_geometry.network_data
 
-        # Issue #670, #673: Create default MFGComponents for parent class validation
-        # Network problems use NetworkMFGComponents internally, but parent MFGProblem
-        # requires explicit hamiltonian, m_initial, and u_terminal. Provide defaults that
-        # will be overridden by network-specific methods (get_initial_density, get_terminal_value).
+        # Issue #910: Create NetworkHamiltonian for parent class validation.
+        # Uses the real network Hamiltonian instead of a dummy placeholder.
         num_nodes = network_geometry.num_nodes
-        default_hamiltonian = SeparableHamiltonian(
-            control_cost=QuadraticControlCost(control_cost=1.0),
-            coupling=lambda m: m,
-            coupling_dm=lambda m: 1.0,
+        net_components = components or NetworkMFGComponents()
+        network_hamiltonian = NetworkHamiltonian(
+            network_data=network_geometry.network_data,
+            hamiltonian_func=net_components.hamiltonian_func,
+            hamiltonian_dm_func=net_components.hamiltonian_dm_func,
+            node_potential_func=net_components.node_potential_func,
+            congestion_func=net_components.congestion_func,
         )
         parent_components = MFGComponents(
-            hamiltonian=default_hamiltonian,
-            m_initial=lambda x: 1.0 / num_nodes,  # Uniform initial density
-            u_terminal=lambda x: 0.0,  # Zero terminal value
+            hamiltonian=network_hamiltonian,
+            m_initial=lambda x: 1.0 / num_nodes,
+            u_terminal=lambda x: 0.0,
         )
 
         # Initialize parent with geometry (not deprecated xmin/xmax/Nx)
