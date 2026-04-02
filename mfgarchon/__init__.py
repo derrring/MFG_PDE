@@ -25,12 +25,13 @@ from .core.hamiltonian import (  # noqa: E402
     DualLagrangian,
     # Full MFG Hamiltonian classes (Issue #673)
     HamiltonianBase,
-    # Lagrangian classes (Issue #651)
+    # Lagrangian classes (Issue #651, #904)
     LagrangianBase,
     OptimizationSense,
     QuadraticControlCost,
     QuadraticMFGHamiltonian,
     SeparableHamiltonian,
+    SeparableLagrangian,
     create_hamiltonian,
 )
 from .core.mfg_problem import (  # noqa: E402
@@ -151,6 +152,7 @@ __all__ = [
     "QuadraticMFGHamiltonian",
     "create_hamiltonian",
     "LagrangianBase",
+    "SeparableLagrangian",
     "DualHamiltonian",
     "DualLagrangian",
     # Configuration
