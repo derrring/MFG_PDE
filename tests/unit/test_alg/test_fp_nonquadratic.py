@@ -297,6 +297,7 @@ class TestNonQuadraticHamiltonians:
 # ============================================================================
 
 
+@pytest.mark.slow
 class TestFixedPointIteratorDrift:
     """Test that FixedPointIterator computes correct drift for non-quadratic H."""
 
