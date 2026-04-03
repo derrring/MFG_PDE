@@ -2003,12 +2003,17 @@ class SeparableHamiltonian(HamiltonianBase):
         N = x_batch.shape[0]
 
         if self._potential_is_vectorized is None:
-            # Probe with 2-point batch
-            try:
-                probe = np.asarray(self._potential(x_batch[:2], t), dtype=float)
-                self._potential_is_vectorized = probe.shape == (2,)
-            except (TypeError, IndexError, ValueError):
+            # Probe with small batch (at least 2 points needed for shape check)
+            probe_size = min(2, N)
+            if probe_size < 2:
+                # Single-point batch — can't distinguish scalar from vectorized
                 self._potential_is_vectorized = False
+            else:
+                try:
+                    probe = np.asarray(self._potential(x_batch[:2], t), dtype=float)
+                    self._potential_is_vectorized = probe.shape == (2,)
+                except (TypeError, IndexError, ValueError):
+                    self._potential_is_vectorized = False
 
         if self._potential_is_vectorized:
             return np.asarray(self._potential(x_batch, t), dtype=float)
