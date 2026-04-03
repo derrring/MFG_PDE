@@ -113,23 +113,25 @@ class MultiPopulationIterator:
         for iteration in range(max_iterations):
             M_old = [m.copy() for m in M]
 
-            # Inject stacked density into each H_k for cross-population coupling.
-            # H_k sees M[k] from the solver (correct N-node grid), plus
-            # _m_all_current for cross-coupling in custom Hamiltonians.
+            # Validate all populations have hamiltonian_class
             for k in range(K):
-                H_k = self.multi_problem.get_population(k).hamiltonian_class
-                if H_k is None:
+                if self.multi_problem.get_population(k).hamiltonian_class is None:
                     raise ValueError(
                         f"Population {k} ({self.multi_problem.population_names[k]}) "
                         "has no hamiltonian_class. Cannot compute drift velocity."
                     )
 
+            # Build per-timestep stacked density for cross-coupling.
+            # m_all_per_t[n] = concat(M[0][n], M[1][n], ..., M[K-1][n])
+            m_all = np.concatenate(M, axis=-1)  # (Nt+1, K*Nx)
+
             # Step 1: Solve K HJB equations
             for k in range(K):
-                # Inject full density state into H_k for cross-coupling
-                H_k = self.multi_problem.get_population(k).hamiltonian_class
-                m_all_concat = np.concatenate([M[j][: M[k].shape[0]] for j in range(K)], axis=-1)
-                H_k._m_all_current = m_all_concat
+                prob_k = self.multi_problem.get_population(k)
+                H_k = prob_k.hamiltonian_class
+
+                # Bind cross-population density (no mutation of H_k)
+                H_bound = H_k.bind_cross_density(m_all) if hasattr(H_k, "bind_cross_density") else H_k
 
                 U_terminal_k = U[k][-1]
                 U[k] = self.hjb_solvers[k].solve_hjb_system(M[k], U_terminal_k, U[k])
@@ -140,17 +142,12 @@ class MultiPopulationIterator:
                 m0_k = M[k][0]
                 H_k = prob_k.hamiltonian_class
 
-                # Velocity computed with M[k] (own density); H_k accesses
-                # _m_all_current internally for cross-coupling.
-                velocity = self._compute_velocity_field(U[k], M[k], H_k, prob_k)
+                # Use bound H for velocity computation (sees cross-pop density)
+                H_bound = H_k.bind_cross_density(m_all) if hasattr(H_k, "bind_cross_density") else H_k
+                velocity = self._compute_velocity_field(U[k], M[k], H_bound, prob_k)
 
                 M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, drift_field=velocity, show_progress=False)
                 M[k] = (1 - omega) * M_old[k] + omega * M_new_k
-
-            # Clear injected state after iteration
-            for k in range(K):
-                H_k = self.multi_problem.get_population(k).hamiltonian_class
-                H_k._m_all_current = None
 
             # Check convergence
             errors = []

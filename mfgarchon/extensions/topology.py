@@ -79,9 +79,7 @@ class NetworkHamiltonian(HamiltonianBase):
         self._congestion = congestion_func
         self.population_index = population_index
         self._num_nodes: int | None = None  # Set lazily from network_data
-        # Multi-population: injected by MultiPopulationIterator each Picard step.
-        # Shape (K*N,) at a given timestep, or None for single-population.
-        self._m_all_current: np.ndarray | None = None
+        self._m_all_bound: np.ndarray | None = None  # Set by bind_cross_density
 
     @property
     def num_nodes(self) -> int:
@@ -103,15 +101,33 @@ class NetworkHamiltonian(HamiltonianBase):
         k = self.population_index
         return m[k * N : (k + 1) * N]
 
+    def bind_cross_density(self, m_all: np.ndarray) -> _BoundNetworkHamiltonian:
+        """Return a lightweight wrapper that binds cross-population density.
+
+        The wrapper delegates all methods to this H_k. Custom hamiltonian_func
+        receives m_all (for cross-coupling). Default hamiltonian uses
+        _extract_own_density for congestion.
+
+        No mutation of the original object. Thread-safe.
+
+        Parameters
+        ----------
+        m_all : np.ndarray
+            Stacked density (Nt+1, K*N) from all K populations.
+
+        Returns
+        -------
+        _BoundNetworkHamiltonian
+            Wrapper with bound cross-population density.
+        """
+        return _BoundNetworkHamiltonian(self, m_all)
+
     def __call__(self, x, m, p, t=0.0):
         """Evaluate H at node x with density m and costate p.
 
         x: node index (int or array with single int)
         m: density vector, shape (N,) — this population's density.
         p: costate vector at all nodes, shape (N,)
-
-        For multi-population cross-coupling, _m_all_current is injected
-        by MultiPopulationIterator and available to the Hamiltonian.
         """
         node = int(np.asarray(x).flat[0])
         m_arr = np.atleast_1d(m)
@@ -119,9 +135,8 @@ class NetworkHamiltonian(HamiltonianBase):
 
         if self._hamiltonian_func is not None:
             neighbors = self.network_data.get_neighbors(node)
-            # Custom H receives m_all if available (for cross-coupling)
-            m_for_H = self._m_all_current if self._m_all_current is not None else m_arr
-            return float(self._hamiltonian_func(node, neighbors, m_for_H, p_arr, t))
+            # Single-pop: custom H gets own density only
+            return float(self._hamiltonian_func(node, neighbors, m_arr, p_arr, t))
 
         return self._default_hamiltonian(node, m_arr, p_arr, t)
 
@@ -186,6 +201,55 @@ class NetworkHamiltonian(HamiltonianBase):
             neighbors = self.network_data.get_neighbors(node)
             return float(self._hamiltonian_dm_func(node, neighbors, np.atleast_1d(m), np.atleast_1d(p), t))
         return self._finite_diff_dm(x, m, p, t)
+
+
+class _BoundNetworkHamiltonian:
+    """Lightweight wrapper binding cross-population density to a NetworkHamiltonian.
+
+    Delegates all methods to the wrapped H_k. Custom hamiltonian_func
+    receives m_all (for cross-coupling). No mutation of the original.
+
+    Created by NetworkHamiltonian.bind_cross_density(m_all).
+    """
+
+    def __init__(self, inner: NetworkHamiltonian, m_all: np.ndarray):
+        self._inner = inner
+        self._m_all = m_all
+
+    def __call__(self, x, m, p, t=0.0):
+        node = int(np.asarray(x).flat[0])
+        m_arr = np.atleast_1d(m)
+        p_arr = np.atleast_1d(p)
+
+        if self._inner._hamiltonian_func is not None:
+            neighbors = self._inner.network_data.get_neighbors(node)
+            # Cross-coupling: pass full m_all to custom H
+            return float(self._inner._hamiltonian_func(node, neighbors, self._m_all, p_arr, t))
+
+        return self._inner._default_hamiltonian(node, m_arr, p_arr, t)
+
+    def optimal_control(self, x, m, p, t=0.0):
+        return self._inner.optimal_control(x, m, p, t)
+
+    def dp(self, x, m, p, t=0.0):
+        return self._inner.dp(x, m, p, t)
+
+    def dm(self, x, m, p, t=0.0):
+        return self._inner.dm(x, m, p, t)
+
+    def dx(self, x, m, p, t=0.0):
+        return self._inner.dx(x, m, p, t)
+
+    @property
+    def population_index(self):
+        return self._inner.population_index
+
+    @property
+    def num_nodes(self):
+        return self._inner.num_nodes
+
+    def is_smooth(self):
+        return self._inner.is_smooth()
 
 
 @dataclass
