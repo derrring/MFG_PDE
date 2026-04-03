@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.8"  # v0.18.8: tensor merge, GFDM mass drift, network policy H.optimal_control
+version = "0.18.9"  # v0.18.9: HJB source_term API, MFGProblem extended fields, progress bar terminal detection
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
