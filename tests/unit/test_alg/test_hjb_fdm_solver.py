@@ -505,8 +505,14 @@ class TestHJBFDMSolverDiagonalTensor:
 
             U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_volatility_field=Sigma)
 
-            # Check that no warning was raised for diagonal tensor
-            tensor_warnings = [warning for warning in w if "tensor_volatility_field" in str(warning.message)]
+            # Check that no non-deprecation warning was raised for diagonal tensor
+            # (DeprecationWarning from @deprecated_parameter is expected)
+            tensor_warnings = [
+                warning
+                for warning in w
+                if "tensor_volatility_field" in str(warning.message)
+                and not issubclass(warning.category, DeprecationWarning)
+            ]
             assert len(tensor_warnings) == 0, "Should not warn for diagonal tensor"
 
         # Verify solution shape and validity
@@ -611,8 +617,13 @@ class TestHJBFDMSolverDiagonalTensor:
 
             U_solution = solver.solve_hjb_system(M_density, U_final, U_prev, tensor_volatility_field=Sigma_spatial)
 
-            # No warnings for spatially-varying diagonal
-            tensor_warnings = [warning for warning in w if "tensor_volatility_field" in str(warning.message)]
+            # No non-deprecation warnings for spatially-varying diagonal
+            tensor_warnings = [
+                warning
+                for warning in w
+                if "tensor_volatility_field" in str(warning.message)
+                and not issubclass(warning.category, DeprecationWarning)
+            ]
             assert len(tensor_warnings) == 0, "Should not warn for spatially-varying diagonal tensor"
 
         # Verify solution

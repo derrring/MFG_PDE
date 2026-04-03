@@ -353,6 +353,11 @@ class HJBFDMSolver(BaseHJBSolver):
         since="v0.17.0",
         replacement="BCValueProvider in BoundaryConditions",
     )
+    @deprecated_parameter(
+        param_name="tensor_volatility_field",
+        since="v0.18.7",
+        replacement="volatility_field (pass (d,d) array or callable returning (d,d))",
+    )
     def solve_hjb_system(
         self,
         M_density: NDArray | None = None,
@@ -424,35 +429,15 @@ class HJBFDMSolver(BaseHJBSolver):
             raise ValueError("U_terminal is required")
         if U_coupling_prev is None:
             raise ValueError("U_coupling_prev is required")
-        # Validate mutual exclusivity
-        if volatility_field is not None and tensor_volatility_field is not None:
-            raise ValueError(
-                "Cannot specify both volatility_field and tensor_volatility_field. "
-                "Use volatility_field for scalar or tensor_volatility_field for anisotropic."
-            )
-
-        # Check tensor type and warn if non-diagonal (not fully implemented yet)
+        # Issue #889: merge tensor_volatility_field into volatility_field
+        # Deprecation warning issued by @deprecated_parameter decorator
         if tensor_volatility_field is not None:
-            import warnings
-
-            # Check if diagonal
-            if callable(tensor_volatility_field):
-                # Cannot easily check callable tensors without evaluation
-                warnings.warn(
-                    "Callable tensor_volatility_field in HJB solver is not yet fully implemented. "
-                    "If the tensor is diagonal, it will be handled correctly. "
-                    "Full tensor (non-diagonal) support requires Hamiltonian refactoring.",
-                    UserWarning,
-                    stacklevel=2,
+            if volatility_field is not None:
+                raise ValueError(
+                    "Cannot specify both volatility_field and tensor_volatility_field. "
+                    "Use volatility_field (tensor_volatility_field is deprecated)."
                 )
-            elif not is_diagonal_tensor(tensor_volatility_field):
-                warnings.warn(
-                    "Full tensor (non-diagonal) diffusion in HJB solver is not yet implemented. "
-                    "The parameter is accepted for API compatibility but only diagonal tensors "
-                    "are currently supported. Full tensor support requires Hamiltonian refactoring.",
-                    UserWarning,
-                    stacklevel=2,
-                )
+            volatility_field = tensor_volatility_field
 
         # CFL diagnostic (Issue #882): implicit scheme is unconditionally stable,
         # but large CFL numbers indicate potential accuracy/convergence issues
@@ -512,7 +497,6 @@ class HJBFDMSolver(BaseHJBSolver):
                 U_terminal,
                 U_coupling_prev,
                 volatility_field,
-                tensor_volatility_field,
                 progress_callback=progress_callback,
                 source_term=source_term,
             )
@@ -523,20 +507,13 @@ class HJBFDMSolver(BaseHJBSolver):
         U_final: NDArray,
         U_prev: NDArray,
         volatility_field: float | NDArray | None = None,
-        tensor_volatility_field: NDArray | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
         source_term: Callable | None = None,  # MMS verification
     ) -> NDArray:
-        """Solve nD HJB using centralized nonlinear solvers with variable diffusion support.
+        """Solve nD HJB using centralized nonlinear solvers with variable diffusion.
 
-        Supports scalar, array, and callable diffusion coefficients.
-
-        Args:
-            progress_callback: Optional callback called after each timestep.
-                If provided, internal progress bar is suppressed.
-                Typically a subtask.advance callable from HierarchicalProgress.
-
-        Note: tensor_volatility_field is accepted but not yet fully implemented.
+        volatility_field accepts scalar, array, (d,d) tensor, or callable.
+        Shape-based auto-detection dispatches to scalar or tensor path.
         """
         # Validate shapes
         # n_time_points = problem.Nt + 1 (number of time knots including t=0 and t=T)
@@ -578,33 +555,36 @@ class HJBFDMSolver(BaseHJBSolver):
             M_next = M_density[n + 1]
             U_guess = U_prev[n]
 
-            # Extract or evaluate diffusion using CoefficientField abstraction
-            if tensor_volatility_field is not None:
-                # Evaluate tensor at current timestep
-                if callable(tensor_volatility_field):
-                    # Callable: Σ(t, x, m)
-                    t = n * self.problem.dt
-                    Sigma_at_n = np.zeros((*self.shape, self.dimension, self.dimension))
-                    for idx in np.ndindex(self.shape):
-                        x_coords = np.array([self.grid.coordinates[d][idx[d]] for d in range(self.dimension)])
-                        m_at_point = M_next[idx]
-                        Sigma_at_n[idx] = tensor_volatility_field(t, x_coords, m_at_point)
-                else:
-                    # Constant or spatially-varying
-                    Sigma_at_n = tensor_volatility_field
-            else:
-                Sigma_at_n = None
+            # Issue #889: unified volatility_field with shape-based dispatch
+            d = self.dimension
+            Sigma_at_n = None
+            sigma_at_n = None
 
-            # Handle scalar volatility_field
-            if volatility_field is not None or Sigma_at_n is None:
-                diffusion = CoefficientField(
-                    volatility_field, self.problem.sigma, "volatility_field", dimension=self.dimension
-                )
+            if volatility_field is not None and isinstance(volatility_field, np.ndarray):
+                # Auto-detect tensor vs scalar from shape
+                if volatility_field.ndim >= 2 and volatility_field.shape[-2:] == (d, d):
+                    Sigma_at_n = volatility_field
+                elif volatility_field.ndim == 1 and len(volatility_field) == d:
+                    Sigma_at_n = np.diag(volatility_field)
+            elif callable(volatility_field):
+                # Callable: evaluate and check shape
+                t = n * self.problem.dt
+                test_x = np.array([self.grid.coordinates[dd][0] for dd in range(d)])
+                test_val = volatility_field(t, test_x, float(M_next.flat[0]))
+                test_arr = np.asarray(test_val)
+                if test_arr.ndim >= 2 and test_arr.shape[-2:] == (d, d):
+                    # Tensor callable — evaluate at all points
+                    Sigma_at_n = np.zeros((*self.shape, d, d))
+                    for idx in np.ndindex(self.shape):
+                        x_coords = np.array([self.grid.coordinates[dd][idx[dd]] for dd in range(d)])
+                        Sigma_at_n[idx] = volatility_field(t, x_coords, float(M_next[idx]))
+
+            if Sigma_at_n is None:
+                # Scalar path (CoefficientField handles float, array, callable)
+                diffusion = CoefficientField(volatility_field, self.problem.sigma, "volatility_field", dimension=d)
                 sigma_at_n = diffusion.evaluate_at(
                     timestep_idx=n, grid=self.grid.coordinates, density=M_next, dt=self.problem.dt
                 )
-            else:
-                sigma_at_n = None
 
             # Compute current time for time-dependent BCs
             t_current = n * self.dt
