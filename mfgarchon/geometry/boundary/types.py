@@ -129,6 +129,123 @@ class BCType(Enum):
     EXTRAPOLATION_QUADRATIC = "extrapolation_quadratic"
 
 
+class BoundaryFace:
+    """Dimension-agnostic boundary face identifier.
+
+    Canonical representation of a codimension-1 face on a rectangular domain.
+    Replaces dimension-specific strings like "x_min", "y_max" with structured
+    (axis, side) pairs that work for any dimension.
+
+    Parameters
+    ----------
+    axis : int
+        Dimension index (0 = first spatial dim, 1 = second, etc.)
+    side : str
+        "min" or "max" — which end of the axis.
+
+    Examples
+    --------
+    >>> BoundaryFace(0, "min")   # left boundary in 1D, x_min in 2D
+    >>> BoundaryFace(1, "max")   # y_max in 2D, second axis upper bound in nD
+    >>> BoundaryFace(3, "min")   # 4th dimension lower bound — no letter needed
+    """
+
+    __slots__ = ("axis", "side")
+
+    def __init__(self, axis: int, side: str):
+        if side not in ("min", "max"):
+            msg = f"side must be 'min' or 'max', got '{side}'"
+            raise ValueError(msg)
+        self.axis = axis
+        self.side = side
+
+    def __repr__(self) -> str:
+        return f"BoundaryFace(axis={self.axis}, side='{self.side}')"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, BoundaryFace):
+            return self.axis == other.axis and self.side == other.side
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash((self.axis, self.side))
+
+    def to_string(self, axis_names: dict[int, str] | None = None) -> str:
+        """Convert to legacy string format for backward compatibility.
+
+        >>> BoundaryFace(0, "min").to_string()  # "x_min"
+        >>> BoundaryFace(3, "max").to_string()  # "axis3_max"
+        """
+        if axis_names is None:
+            axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
+        name = axis_names.get(self.axis, f"axis{self.axis}")
+        return f"{name}_{self.side}"
+
+
+# String aliases for backward compatibility
+_BOUNDARY_STRING_TO_FACE: dict[str, BoundaryFace] = {
+    # 1D
+    "left": BoundaryFace(0, "min"),
+    "right": BoundaryFace(0, "max"),
+    "x_min": BoundaryFace(0, "min"),
+    "x_max": BoundaryFace(0, "max"),
+    # 2D
+    "bottom": BoundaryFace(1, "min"),
+    "top": BoundaryFace(1, "max"),
+    "y_min": BoundaryFace(1, "min"),
+    "y_max": BoundaryFace(1, "max"),
+    # 3D
+    "front": BoundaryFace(2, "min"),
+    "back": BoundaryFace(2, "max"),
+    "z_min": BoundaryFace(2, "min"),
+    "z_max": BoundaryFace(2, "max"),
+    # 4D
+    "w_min": BoundaryFace(3, "min"),
+    "w_max": BoundaryFace(3, "max"),
+}
+
+
+def parse_boundary_face(boundary: str | int | BoundaryFace | None) -> BoundaryFace | None:
+    """Normalize any boundary identifier to BoundaryFace.
+
+    Accepts:
+    - BoundaryFace: pass through
+    - str: look up in alias table, or parse "axis{N}_{side}" format
+    - int: Gmsh physical group tag (returned as-is, not a BoundaryFace)
+    - None: return None
+
+    >>> parse_boundary_face("x_min")        # BoundaryFace(axis=0, side='min')
+    >>> parse_boundary_face("left")         # BoundaryFace(axis=0, side='min')
+    >>> parse_boundary_face("axis5_max")    # BoundaryFace(axis=5, side='max')
+    >>> parse_boundary_face(BoundaryFace(0, "min"))  # pass through
+    """
+    if boundary is None:
+        return None
+    if isinstance(boundary, BoundaryFace):
+        return boundary
+    if isinstance(boundary, int):
+        return None  # Gmsh tag, not a face identifier
+    if isinstance(boundary, str):
+        # Check alias table first
+        if boundary in _BOUNDARY_STRING_TO_FACE:
+            return _BOUNDARY_STRING_TO_FACE[boundary]
+        # Try "axis{N}_{side}" format
+        if boundary.startswith("axis") and "_" in boundary:
+            parts = boundary.split("_", 1)
+            try:
+                axis = int(parts[0][4:])  # "axis5" -> 5
+                side = parts[1]
+                if side in ("min", "max"):
+                    return BoundaryFace(axis, side)
+            except (ValueError, IndexError):
+                pass
+        # Try "{letter}_{side}" for unknown letters
+        if len(boundary) > 2 and boundary[-4:] in ("_min", "_max"):
+            side = boundary[-3:]
+            return BoundaryFace(0, side)  # Default to axis 0 for unknown
+    return None
+
+
 @dataclass
 class BCSegment:
     """
@@ -235,6 +352,20 @@ class BCSegment:
     # Units: mass/time for density methods, particles/time for Lagrangian methods
     # None = unlimited (instant absorption)
     flux_capacity: float | None = None
+
+    @property
+    def face(self) -> BoundaryFace | None:
+        """Dimension-agnostic boundary face identifier.
+
+        Parses the string `boundary` field into a structured BoundaryFace.
+        Returns None if boundary is not a rectangular face (e.g., SDF region).
+
+        >>> seg = BCSegment(name="left", bc_type=BCType.NEUMANN, boundary="x_min")
+        >>> seg.face  # BoundaryFace(axis=0, side='min')
+        >>> seg.face.axis  # 0
+        >>> seg.face.side  # 'min'
+        """
+        return parse_boundary_face(self.boundary)
 
     def __post_init__(self) -> None:
         """Validate BCSegment specification (Issue #596 Phase 2.5)."""
