@@ -508,6 +508,13 @@ class FPGFDMSolver(BaseFPSolver):
         # Storage for density evolution
         M_solution = np.zeros((n_time_points, self.n_points))
         M_solution[0, :] = m_init.copy()
+        mass_initial = np.sum(m_init)
+
+        # Issue #886: track raw mass drift before normalization
+        from mfgarchon.utils.mfg_logging import get_logger
+
+        _logger = get_logger(__name__)
+        max_mass_drift = 0.0
 
         # Time stepping loop (forward Euler)
         for t_idx in range(n_time_points - 1):
@@ -537,11 +544,20 @@ class FPGFDMSolver(BaseFPSolver):
             # Physical constraints
             M_solution[t_idx + 1, :] = np.maximum(M_solution[t_idx + 1, :], 0.0)
 
-            # Mass conservation (renormalize)
+            # Issue #886: log raw mass drift before normalization
             mass_current = np.sum(M_solution[t_idx + 1, :])
+            if mass_initial > 0:
+                mass_drift = abs(mass_current - mass_initial) / mass_initial
+                max_mass_drift = max(max_mass_drift, mass_drift)
+                if mass_drift > 0.01:
+                    _logger.warning("GFDM mass drift %.2e at t_idx=%d (before renorm)", mass_drift, t_idx + 1)
+
+            # Renormalize to conserve mass
             if mass_current > 0:
-                mass_initial = np.sum(m_init)
                 M_solution[t_idx + 1, :] *= mass_initial / mass_current
+
+        if max_mass_drift > 1e-6:
+            _logger.debug("GFDM max mass drift: %.2e (renormalized each step)", max_mass_drift)
 
         return M_solution
 
