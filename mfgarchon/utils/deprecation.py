@@ -27,7 +27,7 @@ def deprecated(
     since: str,
     replacement: str,
     reason: str = "",
-    removal: str = "v1.0.0",
+    removal: str = "v0.25.0",
     removal_blockers: list[str] | None = None,
 ) -> Callable[[F], F]:
     """
@@ -106,7 +106,7 @@ def deprecated_parameter(
     param_name: str,
     since: str,
     replacement: str,
-    removal: str = "v1.0.0",
+    removal: str = "v0.25.0",
     removal_blockers: list[str] | None = None,
 ) -> Callable[[F], F]:
     """
@@ -203,7 +203,7 @@ def deprecated_value(
     param_name: str,
     deprecated_values: dict[Any, Any],
     since: str,
-    removal: str = "v1.0.0",
+    removal: str = "v0.25.0",
 ) -> Callable[[F], F]:
     """
     Mark specific parameter values as deprecated, with automatic remapping.
