@@ -418,6 +418,7 @@ def solve_timestep_explicit_with_drift(
     ndim: int,
     boundary_conditions: BoundaryConditions | None = None,
     source_term: np.ndarray | None = None,
+    cached_laplacian: Any | None = None,  # Issue #927: pre-computed Laplacian sparse matrix
 ) -> np.ndarray:
     """
     Solve one timestep using semi-implicit scheme with direct drift.
@@ -479,10 +480,14 @@ def solve_timestep_explicit_with_drift(
         boundary_conditions = no_flux_bc(dimension=ndim)
 
     # Step 1: Implicit diffusion using LaplacianOperator (Issue #597 Milestone 2B)
-    from mfgarchon.operators.differential.laplacian import LaplacianOperator
+    # Issue #927: Use cached Laplacian if available (constant sigma across time steps)
+    if cached_laplacian is not None:
+        L_matrix = cached_laplacian
+    else:
+        from mfgarchon.operators.differential.laplacian import LaplacianOperator
 
-    L_op = LaplacianOperator(spacings=list(spacing), field_shape=shape, bc=boundary_conditions)
-    L_matrix = L_op.as_scipy_sparse()
+        L_op = LaplacianOperator(spacings=list(spacing), field_shape=shape, bc=boundary_conditions)
+        L_matrix = L_op.as_scipy_sparse()
 
     # Build implicit system matrix: (I/dt - D*Δ) m^{k+1} = m^k/dt
     # Note: Laplacian has NEGATIVE diagonal, so we SUBTRACT
@@ -729,6 +734,24 @@ def solve_fp_nd_full_system(
     if source_term is not None:
         x_grid = grid.get_spatial_grid()  # (N, d) ndarray
 
+    # Issue #927: Pre-compute Laplacian matrix for constant-coefficient diffusion.
+    # For constant sigma, the Laplacian matrix is the same at every time step.
+    # Caching it avoids Nt redundant sparse matrix assemblies.
+    _cached_laplacian = None
+    _is_constant_sigma = not callable(getattr(problem, "volatility_field", None)) and not isinstance(
+        getattr(problem, "volatility_field", None), np.ndarray
+    )
+    # Only cache for uniform BCs (LaplacianOperator doesn't support mixed/Dirichlet)
+    _bc_is_uniform = getattr(boundary_conditions, "is_uniform", False) if boundary_conditions is not None else False
+    if _is_constant_sigma and _bc_is_uniform:
+        try:
+            from mfgarchon.operators.differential.laplacian import LaplacianOperator
+
+            _L_op = LaplacianOperator(spacings=list(spacing), field_shape=shape, bc=boundary_conditions)
+            _cached_laplacian = _L_op.as_scipy_sparse()
+        except (ValueError, AttributeError):
+            _cached_laplacian = None  # Fallback: rebuild each step
+
     # Time evolution loop (forward in time)
     for k in timestep_range:
         M_current = M_solution[k]
@@ -802,6 +825,7 @@ def solve_fp_nd_full_system(
                 ndim,
                 boundary_conditions,
                 source_term=source_values,
+                cached_laplacian=_cached_laplacian,  # Issue #927
             )
         else:
             # MFG-coupled mode: scalar diffusion + U/velocity-based drift - implicit solver
