@@ -94,26 +94,16 @@ class MultiPopulationIterator:
             prob_k = self.multi_problem.get_population(k)
             Nt = prob_k.Nt
             grid_shape = prob_k.geometry.get_grid_shape()
-            Nx = grid_shape[0] if grid_shape else getattr(prob_k, "num_nodes", 10)
+            Nx = grid_shape[0]
 
-            # Initial density from problem (or uniform fallback)
-            try:
-                m0_k = prob_k.get_initial_m()
-            except Exception:
-                m0_k = np.ones(Nx) / Nx
-
+            m0_k = prob_k.get_initial_m()
             M_k = np.zeros((Nt + 1, Nx))
             M_k[0] = m0_k
             for n in range(1, Nt + 1):
                 M_k[n] = m0_k
             M.append(M_k)
 
-            # Terminal value from problem (or zero fallback)
-            try:
-                U_terminal_k = prob_k.get_final_u()
-            except Exception:
-                U_terminal_k = np.zeros(Nx)
-
+            U_terminal_k = prob_k.get_final_u()
             U_k = np.zeros((Nt + 1, Nx))
             U_k[-1] = U_terminal_k
             U.append(U_k)
@@ -130,10 +120,7 @@ class MultiPopulationIterator:
             # Step 1: Solve K HJB equations (each sees all K densities)
             for k in range(K):
                 U_terminal_k = U[k][-1]
-                try:
-                    U[k] = self.hjb_solvers[k].solve_hjb_system(M_all, U_terminal_k, U[k])
-                except Exception as e:
-                    logger.warning(f"HJB solver for population {k} failed: {e}")
+                U[k] = self.hjb_solvers[k].solve_hjb_system(M_all, U_terminal_k, U[k])
 
             # Step 2: Solve K FP equations with drift from H_k
             for k in range(K):
@@ -142,17 +129,16 @@ class MultiPopulationIterator:
 
                 # Compute velocity using ALL densities (cross-coupling)
                 H_k = prob_k.hamiltonian_class
-                if H_k is not None:
-                    velocity = self._compute_velocity_field(U[k], M_all, H_k, prob_k)
-                else:
-                    velocity = np.zeros_like(U[k])
+                if H_k is None:
+                    raise ValueError(
+                        f"Population {k} ({self.multi_problem.population_names[k]}) "
+                        "has no hamiltonian_class. Cannot compute drift velocity."
+                    )
+                velocity = self._compute_velocity_field(U[k], M_all, H_k, prob_k)
 
-                try:
-                    M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, drift_field=velocity, show_progress=False)
-                    # Damp
-                    M[k] = (1 - omega) * M_old[k] + omega * M_new_k
-                except Exception as e:
-                    logger.warning(f"FP solver for population {k} failed: {e}")
+                M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, drift_field=velocity, show_progress=False)
+                # Damp
+                M[k] = (1 - omega) * M_old[k] + omega * M_new_k
 
             # Check convergence
             errors = []
