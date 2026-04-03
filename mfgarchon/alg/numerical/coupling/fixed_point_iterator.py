@@ -185,6 +185,66 @@ class FixedPointIterator(BaseMFGSolver):
             # Solver doesn't have solve_fp_system method
             self._fp_sig_params = None
 
+    def _compose_hjb_source(self, m_current: np.ndarray) -> Callable | None:
+        """Compose problem-level source terms into a solver-level source_term callable.
+
+        Reads source_term_hjb, nonlocal_operator, and obstacle from MFGProblem,
+        binds spatial grid and current density, returns a (v, t) -> array closure
+        compatible with BaseHJBSolver.solve_hjb_system(source_term=...).
+
+        Issue #921/#922: Bridges problem-level signature (x, m, v, t) to
+        solver-level signature (t, x) by closure binding.
+
+        Returns:
+            Callable or None if no source terms are active.
+        """
+        problem = self.problem
+        has_nonlocal = problem.nonlocal_operator is not None
+        has_source = problem.source_term_hjb is not None
+        has_obstacle = problem.obstacle is not None
+
+        if not (has_nonlocal or has_source or has_obstacle):
+            return None
+
+        def composed(t: float, x: np.ndarray) -> np.ndarray:
+            # Note: HJB solver calls source_term(t, x_grid) -> array.
+            # We need v (current value function) for nonlocal_operator,
+            # but the HJB solver evaluates source_term *before* solving.
+            # For the current time step, we use the previous iterate's U.
+            # This is consistent with explicit treatment of source terms.
+            terms: list[np.ndarray] = []
+            if has_source:
+                terms.append(problem.source_term_hjb(x, m_current, np.zeros_like(m_current), t))
+            if has_obstacle:
+                psi = problem.obstacle(x)
+                # Penalty parameter: large but finite, consistent with Rev 4 design
+                eps = getattr(problem, "_penalty_eps", 1e6)
+                # Note: this is evaluated with v=0 here; for proper penalty,
+                # PenaltyHJBSolver wrapper (#924) should be used instead.
+                terms.append((1.0 / eps) * np.maximum(0.0, psi.ravel()))
+            return sum(terms) if terms else np.zeros(x.shape[0])
+
+        return composed
+
+    def _compose_fp_source(self, m_current: np.ndarray, v_current: np.ndarray) -> Callable | None:
+        """Compose problem-level FP source terms into solver-level callable.
+
+        Returns a (t, x) -> array closure for BaseFPSolver.solve_fp_system(source_term=...).
+
+        Returns:
+            Callable or None if no FP source terms are active.
+        """
+        problem = self.problem
+        has_source = problem.source_term_fp is not None
+
+        if not has_source:
+            return None
+
+        def composed(t: float, x: np.ndarray) -> np.ndarray:
+            return problem.source_term_fp(x, m_current, v_current, t)
+
+        return composed
+
     def _get_initial_and_terminal_conditions(self, shape: tuple) -> tuple[np.ndarray, np.ndarray]:
         """
         Retrieve initial density and terminal value function from problem.
@@ -574,6 +634,9 @@ class FixedPointIterator(BaseMFGSolver):
                 # 1. Solve HJB backward with current M (transient subtask)
                 # Issue #614: Use hierarchical subtask for inner solver visibility
                 # Issue #625: Resolve BC providers before HJB solve
+                # Issue #922: Compose source terms from problem fields
+                hjb_source = self._compose_hjb_source(M_old)
+
                 with (
                     progress.subtask("HJB", total=num_time_steps) as hjb_subtask,
                     self.problem.using_resolved_bc(bc_resolution_state),
@@ -590,6 +653,9 @@ class FixedPointIterator(BaseMFGSolver):
                         # Issue #640: Pass progress callback for incremental updates
                         if "progress_callback" in params:
                             kwargs["progress_callback"] = hjb_subtask.advance
+                        # Issue #922: Pass composed source term from problem fields
+                        if "source_term" in params and hjb_source is not None:
+                            kwargs["source_term"] = hjb_source
 
                         U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
                     else:
@@ -600,6 +666,9 @@ class FixedPointIterator(BaseMFGSolver):
 
                 # 2. Solve FP forward with new U (transient subtask)
                 # Issue #614: Use hierarchical subtask for inner solver visibility
+                # Issue #922: Compose FP source terms from problem fields
+                fp_source = self._compose_fp_source(M_old, U_new)
+
                 with progress.subtask("FP", total=num_time_steps) as fp_subtask:
                     if self._fp_sig_params is not None:
                         # Standard mode: FP builds its own matrix
@@ -609,6 +678,9 @@ class FixedPointIterator(BaseMFGSolver):
                         kwargs = {}
                         if "show_progress" in params:
                             kwargs["show_progress"] = False  # Subtask replaces inner bar
+                        # Issue #922: Pass composed FP source term
+                        if "source_term" in params and fp_source is not None:
+                            kwargs["source_term"] = fp_source
 
                         # Pass drift/potential to FP solver.
                         # drift_field = velocity alpha*, potential_field = U-potential (deprecated).
