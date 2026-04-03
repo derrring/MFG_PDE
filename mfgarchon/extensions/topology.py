@@ -79,6 +79,9 @@ class NetworkHamiltonian(HamiltonianBase):
         self._congestion = congestion_func
         self.population_index = population_index
         self._num_nodes: int | None = None  # Set lazily from network_data
+        # Multi-population: injected by MultiPopulationIterator each Picard step.
+        # Shape (K*N,) at a given timestep, or None for single-population.
+        self._m_all_current: np.ndarray | None = None
 
     @property
     def num_nodes(self) -> int:
@@ -104,10 +107,11 @@ class NetworkHamiltonian(HamiltonianBase):
         """Evaluate H at node x with density m and costate p.
 
         x: node index (int or array with single int)
-        m: density vector — (N,) for single pop, (K*N,) for multi-pop.
-            Cross-population coupling receives full m_all.
-            Own population density extracted via population_index.
+        m: density vector, shape (N,) — this population's density.
         p: costate vector at all nodes, shape (N,)
+
+        For multi-population cross-coupling, _m_all_current is injected
+        by MultiPopulationIterator and available to the Hamiltonian.
         """
         node = int(np.asarray(x).flat[0])
         m_arr = np.atleast_1d(m)
@@ -115,7 +119,9 @@ class NetworkHamiltonian(HamiltonianBase):
 
         if self._hamiltonian_func is not None:
             neighbors = self.network_data.get_neighbors(node)
-            return float(self._hamiltonian_func(node, neighbors, m_arr, p_arr, t))
+            # Custom H receives m_all if available (for cross-coupling)
+            m_for_H = self._m_all_current if self._m_all_current is not None else m_arr
+            return float(self._hamiltonian_func(node, neighbors, m_for_H, p_arr, t))
 
         return self._default_hamiltonian(node, m_arr, p_arr, t)
 

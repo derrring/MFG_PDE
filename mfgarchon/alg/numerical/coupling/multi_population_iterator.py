@@ -113,32 +113,44 @@ class MultiPopulationIterator:
         for iteration in range(max_iterations):
             M_old = [m.copy() for m in M]
 
-            # Build stacked density: M_all[n] = concatenate(M[0][n], M[1][n], ...)
-            # Shape: (Nt+1, K*Nx). Each H_k uses population_index to find its slice.
-            M_all = self._stack_densities(M)
-
-            # Step 1: Solve K HJB equations (each sees all K densities)
+            # Inject stacked density into each H_k for cross-population coupling.
+            # H_k sees M[k] from the solver (correct N-node grid), plus
+            # _m_all_current for cross-coupling in custom Hamiltonians.
             for k in range(K):
-                U_terminal_k = U[k][-1]
-                U[k] = self.hjb_solvers[k].solve_hjb_system(M_all, U_terminal_k, U[k])
-
-            # Step 2: Solve K FP equations with drift from H_k
-            for k in range(K):
-                prob_k = self.multi_problem.get_population(k)
-                m0_k = M[k][0]
-
-                # Compute velocity using ALL densities (cross-coupling)
-                H_k = prob_k.hamiltonian_class
+                H_k = self.multi_problem.get_population(k).hamiltonian_class
                 if H_k is None:
                     raise ValueError(
                         f"Population {k} ({self.multi_problem.population_names[k]}) "
                         "has no hamiltonian_class. Cannot compute drift velocity."
                     )
-                velocity = self._compute_velocity_field(U[k], M_all, H_k, prob_k)
+
+            # Step 1: Solve K HJB equations
+            for k in range(K):
+                # Inject full density state into H_k for cross-coupling
+                H_k = self.multi_problem.get_population(k).hamiltonian_class
+                m_all_concat = np.concatenate([M[j][: M[k].shape[0]] for j in range(K)], axis=-1)
+                H_k._m_all_current = m_all_concat
+
+                U_terminal_k = U[k][-1]
+                U[k] = self.hjb_solvers[k].solve_hjb_system(M[k], U_terminal_k, U[k])
+
+            # Step 2: Solve K FP equations with drift from H_k
+            for k in range(K):
+                prob_k = self.multi_problem.get_population(k)
+                m0_k = M[k][0]
+                H_k = prob_k.hamiltonian_class
+
+                # Velocity computed with M[k] (own density); H_k accesses
+                # _m_all_current internally for cross-coupling.
+                velocity = self._compute_velocity_field(U[k], M[k], H_k, prob_k)
 
                 M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, drift_field=velocity, show_progress=False)
-                # Damp
                 M[k] = (1 - omega) * M_old[k] + omega * M_new_k
+
+            # Clear injected state after iteration
+            for k in range(K):
+                H_k = self.multi_problem.get_population(k).hamiltonian_class
+                H_k._m_all_current = None
 
             # Check convergence
             errors = []
@@ -166,30 +178,11 @@ class MultiPopulationIterator:
         )
 
     @staticmethod
-    def _stack_densities(M: list[np.ndarray]) -> np.ndarray:
-        """Stack K density arrays into (Nt+1, K*Nx) for cross-population coupling.
+    def _compute_velocity_field(U, M, H_class, problem):
+        """Compute velocity α*(t, x) from H.optimal_control.
 
-        H_k uses population_index to extract its own density slice:
-            m_k = m_all[k*N : (k+1)*N]
-
-        Parameters
-        ----------
-        M : list[np.ndarray]
-            K density arrays, each shape (Nt+1, Nx).
-
-        Returns
-        -------
-        np.ndarray
-            Stacked density, shape (Nt+1, K*Nx).
-        """
-        return np.concatenate(M, axis=-1)
-
-    @staticmethod
-    def _compute_velocity_field(U, M_all, H_class, problem):
-        """Compute velocity α*(t, x) from H.optimal_control with full density.
-
-        M_all is the stacked density (Nt+1, K*Nx) from all K populations.
-        H_k receives M_all so cross-population coupling is visible.
+        M is the own-population density (Nt+1, Nx). H_k accesses
+        cross-population density via _m_all_current (injected by iterator).
 
         Dispatches on problem type:
         - Network (spatial_dimension == 0): return U directly (FP network
@@ -215,7 +208,7 @@ class MultiPopulationIterator:
         alpha_field = np.zeros_like(grad_U)
         for n in range(Nt):
             p = grad_U[n]
-            m_n = M_all[n] if n < M_all.shape[0] else M_all[-1]
+            m_n = M[n] if n < M.shape[0] else M[-1]
             alpha_field[n] = H_class.optimal_control(x_grid, m_n, p.reshape(-1, 1), t=n * dt).ravel()
 
         return alpha_field
