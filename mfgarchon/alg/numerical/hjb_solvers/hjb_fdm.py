@@ -536,18 +536,13 @@ class HJBFDMSolver(BaseHJBSolver):
         # Issue #640: Use progress_callback if provided, else show own progress bar
         use_external_progress = progress_callback is not None
 
-        if use_external_progress:
-            # External progress manager - just iterate, callback handles updates
-            timestep_iter = range(n_time_points - 2, -1, -1)
-        else:
-            # Standalone mode - show own progress bar
-            from mfgarchon.utils.progress import RichProgressBar
+        from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
-            timestep_iter = RichProgressBar(
-                range(n_time_points - 2, -1, -1),
-                desc=f"HJB {self.dimension}D-FDM ({self.solver_type})",
-                unit="step",
-            )
+        timestep_iter = create_progress_bar(
+            range(n_time_points - 2, -1, -1),
+            verbose=should_show_progress(True) and not use_external_progress,
+            desc=f"HJB {self.dimension}D-FDM ({self.solver_type})",
+        )
 
         # Backward time loop
         for n in timestep_iter:

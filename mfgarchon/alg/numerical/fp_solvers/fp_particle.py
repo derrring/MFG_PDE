@@ -691,20 +691,16 @@ class FPParticleSolver(BaseFPSolver):
 
         Returns
         -------
-        range or RichProgressBar
+        Iterable[int]
             Iterator over timestep indices
         """
-        from mfgarchon.utils.progress import RichProgressBar
+        from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
-        timestep_range = range(n_steps)
-        if self._show_progress:
-            timestep_range = RichProgressBar(
-                timestep_range,
-                desc=desc,
-                unit="step",
-                disable=False,
-            )
-        return timestep_range
+        return create_progress_bar(
+            range(n_steps),
+            verbose=should_show_progress(self._show_progress),
+            desc=desc,
+        )
 
     def _normalize_density(self, M_array, Dx: float, use_backend: bool = False):
         """
@@ -1171,7 +1167,7 @@ class FPParticleSolver(BaseFPSolver):
         M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         volatility_field: float | np.ndarray | Callable | None = None,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         drift_is_precomputed: bool = False,
         initial_particles: np.ndarray | None = None,
         drift_needs_density: bool = True,
@@ -1843,7 +1839,7 @@ class FPParticleSolver(BaseFPSolver):
         M_initial: np.ndarray | None,
         drift_callable: Callable,
         volatility_field: float | np.ndarray | Callable | None = None,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         initial_particles: np.ndarray | None = None,
         drift_needs_density: bool = True,
     ) -> np.ndarray:
@@ -1953,16 +1949,13 @@ class FPParticleSolver(BaseFPSolver):
                 M_density_on_grid[0] = self._normalize_density_nd(M_density_on_grid[0], spacings)
 
         # Progress bar
-        from mfgarchon.utils.progress import RichProgressBar
+        from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
-        timestep_range = range(Nt)
-        if show_progress:
-            timestep_range = RichProgressBar(
-                timestep_range,
-                desc="FP Particle (callable drift)",
-                unit="step",
-                disable=False,
-            )
+        timestep_range = create_progress_bar(
+            range(Nt),
+            verbose=should_show_progress(show_progress),
+            desc="FP Particle (callable drift)",
+        )
 
         # Time evolution with callable drift
         for t_idx in timestep_range:

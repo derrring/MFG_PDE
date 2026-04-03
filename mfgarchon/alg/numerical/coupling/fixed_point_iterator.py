@@ -464,9 +464,9 @@ class FixedPointIterator(BaseMFGSolver):
             final_schedule = self.damping_schedule  # Issue #719 Phase 2
             final_schedule_M = self.damping_schedule_M
             final_adaptive_damping = self.adaptive_damping
-            from mfgarchon.utils.progress import is_interactive_terminal
+            from mfgarchon.utils.progress import should_show_progress
 
-            verbose = is_interactive_terminal()
+            verbose = should_show_progress()
 
         # Get problem dimensions - handle both old 1D and new nD interfaces
         num_time_steps = self.problem.Nt + 1  # Renamed from Nt

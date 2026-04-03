@@ -385,7 +385,7 @@ class FPGFDMSolver(BaseFPSolver):
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
         volatility_field: float | np.ndarray | Callable | None = None,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         # Deprecated parameter
         diffusion_field: float | np.ndarray | Callable | None = None,
     ) -> np.ndarray:

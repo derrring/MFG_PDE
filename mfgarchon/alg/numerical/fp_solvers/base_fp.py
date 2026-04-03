@@ -159,7 +159,7 @@ class BaseFPSolver(BaseNumericalSolver):
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | Callable | None = None,
         volatility_field: float | np.ndarray | Callable | None = None,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
         # Deprecated parameter (Issue #717)
         diffusion_field: float | np.ndarray | Callable | None = None,
