@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.7"  # v0.18.7: drift_field API rename, dH/dx, deprecate MAXIMIZE
+version = "0.18.8"  # v0.18.8: tensor merge, GFDM mass drift, network policy H.optimal_control
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
