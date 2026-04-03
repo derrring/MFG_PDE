@@ -325,6 +325,7 @@ class BaseHJBSolver(BaseNumericalSolver):
         U_final_condition_at_T: np.ndarray,
         U_from_prev_picard: np.ndarray,
         volatility_field: float | np.ndarray | None = None,
+        source_term: Callable | None = None,
     ) -> np.ndarray:
         """
         Solve the HJB system given density evolution and boundary conditions.
@@ -332,12 +333,16 @@ class BaseHJBSolver(BaseNumericalSolver):
         This is the main method that specific HJB solvers must implement.
 
         The HJB equation is:
-            -∂u/∂t + H(∇u, x, t, m) - σ²(x,t)/2 Δu = 0
+            -∂u/∂t + H(∇u, x, t, m) - S(t, x) = 0
 
-        where σ²(x,t) is the diffusion coefficient that can be:
-        - Constant (scalar): σ² = constant (classical MFG)
-        - Spatially varying: σ²(x,t) varies in space/time
-        - None: Use problem.sigma (backward compatible)
+        where S is an optional source term (default: 0), and H includes the
+        diffusion term -(σ²/2)Δu internally.
+
+        The source_term enables:
+        - Non-local operators: J[v] for jump-diffusion MFG
+        - Regime-switching cross-terms: λ_{kj}(v^k - v^j)
+        - Penalty for variational inequalities: (1/ε)max(0, Ψ-v)
+        - Common Noise Lions derivative correction (Layer 2)
 
         Args:
             M_density_evolution_from_FP: Density field m(t,x) from Fokker-Planck equation
@@ -348,11 +353,15 @@ class BaseHJBSolver(BaseNumericalSolver):
                                For MFG: actual previous iterate U^{k-1}
                                For standalone: initial guess (zeros, terminal condition, etc.)
             volatility_field: Diffusion coefficient specification (optional):
-                - None: Use problem.sigma (backward compatible)
-                - float: Constant diffusion σ²
-                - np.ndarray: Spatially/temporally varying diffusion σ²(t,x)
-                  Shape: (Nt+1, Nx+1) for 1D, (Nt+1, Nx+1, Ny+1) for 2D, etc.
-                Default: None
+                              None: use problem.sigma (backward compatible)
+                              float: constant isotropic σ
+                              ndarray: spatially/temporally varying
+                              Callable: state-dependent σ(t, x, m)
+            source_term: Optional source/sink term S(t, x) in the HJB equation.
+                         Callable signature: source_term(t: float, x: ndarray) -> ndarray
+                         where x has shape (N, d) and return has shape (N,) or matching grid.
+                         Subtracted from H in the residual: F(u) = (u-u_next)/dt + H - S = 0.
+                         Default: None (classical MFG, no source term).
 
         Returns:
             np.ndarray: Value function U(t,x) solution

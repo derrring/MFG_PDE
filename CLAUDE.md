@@ -327,28 +327,56 @@ Always anchor output paths to **project root**, never to CWD:
 - ✅ `${hydra:runtime.cwd}/results` — fixed to launch location (Hydra/OmegaConf)
 - ❌ `Path("results")` or `os.getcwd()` — changes with `cd`, causes recursive nesting
 
-### **Documentation: Two-Repo Policy** ⚠️ **CRITICAL**
+### **Documentation: Three-Tier Policy** ⚠️ **CRITICAL**
 
-MFGArchon documentation is split across two repositories:
+MFGArchon documentation is split across three systems:
 
 | Content | Location | Audience |
 |---------|----------|----------|
 | **User docs** (tutorials, guides, API) | `mfgarchon/docs/user/` | Public (future book) |
-| **Theory** (mathematical foundations) | `mfg-research/docs/archon-notes/theory/` | Private |
-| **Internal notes** (architecture, roadmaps, design) | `mfg-research/docs/archon-notes/` | Private |
+| **Theory & design** (math foundations, architecture, roadmaps) | **Joplin MFG notebook** | Private |
+| **Development guides** (coding style, CI/CD, tooling) | `mfg-research/docs/archon-notes/development/` | Private |
 | **Research notes** (experiments, analysis) | `mfg-research/docs/`, `experiments/*/docs/` | Private |
+| **Completed/historical work** | `mfg-research/docs/archon-notes/archive/` | Private |
+
+**Joplin MFG notebook** is the primary knowledge base. Folders are organized by mathematical topic (HJB, FP, Hamiltonian, Coupling, etc.), with a **Dev** folder for architecture notes and the active development plan, and an **Archive** folder for completed/superseded documents. Joplin API token is stored in Claude memory.
 
 **Rules**:
 - ✅ User-facing docs (tutorials, guides) → `mfgarchon/docs/user/`
-- ✅ Theory, design notes, roadmaps, issue analysis → `mfg-research/docs/archon-notes/`
+- ✅ Theory, design notes, roadmaps → **Joplin MFG notebook**
+- ✅ Development guides (coding conventions, CI/CD) → `mfg-research/docs/archon-notes/development/`
 - ❌ Do NOT create `docs/theory/`, `docs/development/`, or `docs/architecture/` in mfgarchon
 - ❌ Do NOT put internal planning or theory docs in the public repo
+- ❌ Do NOT create markdown design docs in repos — use Joplin for cross-referenced knowledge
 
 **Cross-repo workflow** (design → implementation):
-1. Design and analyze in `mfg-research/docs/archon-notes/`
+1. Design and analyze in **Joplin** (Dev folder for architecture, topic folders for theory)
 2. Create GitHub issue in mfgarchon with summary
 3. Implement in mfgarchon with issue reference
 4. Update user docs in mfgarchon if user-facing behavior changed
+5. Link Joplin note and GitHub issue bidirectionally
+
+### **Development Plan Management** ⚠️ **CRITICAL**
+
+Development plans live in Joplin Dev folder with lifecycle management:
+
+**Naming**: `{焦点} Plan — {日期范围}` (e.g., "Generalized PDE & Institutional MFG Plan — 2026 Q2-Q3")
+
+**Rules**:
+- ✅ **Scope**: 2-4 months of work. Longer → split into multiple plans
+- ✅ **Uniqueness**: Only 1 active Plan in Dev folder at any time
+- ✅ **Completion**: All Phase issues closed → Plan marked `[COMPLETED]` and moved to Archive
+- ✅ **Succession**: Old Plan moved to Archive with `[SUPERSEDED by ...]` when replaced
+- ✅ **Plan vs Issue**: Plan explains "why this order"; Issues define "what to do"
+- ✅ **`[Principle]` prefix**: For permanent design philosophy docs (no lifecycle, never archived)
+
+**Document types in Dev folder**:
+
+| Prefix/Pattern | Lifecycle | Example |
+|---|---|---|
+| `[Principle] ...` | Permanent | Architecture Reflection: From Features to Ψ |
+| `{焦点} Plan — {dates}` | 2-4 months | Generalized PDE & Institutional MFG Plan — 2026 Q2-Q3 |
+| Other | Same as code | Hamiltonian Vectorization 技术債, 性能热点全景 |
 
 ### **Logging and Progress Bars**
 ```python
@@ -873,6 +901,6 @@ Before marking an issue as complete or creating a PR:
 
 ---
 
-**Last Updated**: 2026-03-28
+**Last Updated**: 2026-04-03
 **Repository Version**: v0.17.16 (Pre-1.0.0)
 **Claude Code**: Always reference this file for MFGArchon conventions

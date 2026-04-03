@@ -543,6 +543,18 @@ class MFGProblem(HamiltonianMixin, ConditionsMixin):
         self.volatility_field = vola_value
         self.drift_field = drift
 
+        # Extended PDE form fields (Issue #921).
+        # These enable generalized MFG equations beyond the classical form:
+        #   HJB: -du/dt + H(x,m,Du) - S_hjb = 0
+        #   FP:  dm/dt - (sigma^2/2)Dm - div(m*alpha*) - S_fp = 0
+        # source_term_hjb/fp: Callable(x, m, v, t) -> array (problem-level signature)
+        # nonlocal_operator: LinearOperator for integro-differential terms J[v]
+        # obstacle: Callable(x) -> array for variational inequality v >= Psi(x)
+        self.source_term_hjb: Callable | None = kwargs.pop("source_term_hjb", None)
+        self.source_term_fp: Callable | None = kwargs.pop("source_term_fp", None)
+        self.nonlocal_operator: Any | None = kwargs.pop("nonlocal_operator", None)
+        self.obstacle: Callable | None = kwargs.pop("obstacle", None)
+
         # Extract scalar sigma for backward compatibility.
         # If volatility is callable or array, use a representative scalar value.
         if callable(vola_value):
