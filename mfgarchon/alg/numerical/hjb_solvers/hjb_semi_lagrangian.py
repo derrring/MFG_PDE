@@ -917,34 +917,66 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         if self.dimension == 1:
             # 1D solve with operator splitting: characteristics + Crank-Nicolson diffusion
             Nx = len(U_next)
-            U_star = np.zeros(Nx)  # Intermediate solution after advection
 
             # Compute gradient for optimal control: α* = ∇u
             # Pass timestep and density for gradient clipping monitoring (Issue #583)
             grad_u = self._compute_gradient(U_next, check_cfl=True, t_idx=time_idx, m_density=M_next)
 
-            # Step 1: Advection along characteristics (explicit)
-            for i in range(Nx):
-                x_current = self.x_grid[i]
-                m_current = M_next[i]
+            # Issue #930: Vectorized advection — batch characteristic tracing + interpolation
+            # For explicit_euler/rk2, characteristic is x_departure = x - p*dt (vectorizable)
+            if self.characteristic_solver in ("explicit_euler", "rk2"):
+                # Step 1a: Batch departure points
+                x_departures = self.x_grid - grad_u * self.dt
 
-                try:
-                    # Optimal control from gradient
-                    p_optimal = grad_u[i]
-                    x_departure = self._trace_characteristic_backward(x_current, p_optimal, self.dt)
-                    u_departure = self._interpolate_value(U_next, x_departure)
-                    hamiltonian_value = self._evaluate_hamiltonian(x_current, p_optimal, m_current, time_idx)
+                # Apply boundary conditions (vectorized)
+                bc = self.get_boundary_conditions()
+                bc_type_str = get_bc_type_string(bc)
+                bc_op = bc_type_to_geometric_operation(bc_type_str)
+                bounds = self.problem.geometry.get_bounds()
+                xmin, xmax = bounds[0][0], bounds[1][0]
+                if bc_op == "reflect":
+                    # Reflect: fold back into domain
+                    x_departures = np.clip(x_departures, xmin, xmax)
+                elif bc_op == "wrap":
+                    # Periodic: wrap around
+                    L = xmax - xmin
+                    x_departures = xmin + (x_departures - xmin) % L
 
-                    # Advection step for backward HJB solve:
-                    # HJB: -∂u/∂t + H(x,∇u,m) - σ²/2 Δu = 0
-                    # Rearranging: ∂u/∂t = H - σ²/2 Δu
-                    # Backward discretization: u^n = u^{n+1} - dt * H (diffusion handled separately)
-                    # Issue #575: Sign was wrong (+ instead of -)
-                    U_star[i] = u_departure - self.dt * hamiltonian_value
+                # Step 1b: Batch interpolation
+                from scipy.interpolate import CubicSpline, interp1d
 
-                except Exception as e:
-                    logger.warning(f"Error at grid point {i}: {e}")
-                    U_star[i] = U_next[i]
+                if self.interpolation_method == "cubic":
+                    interp_fn = CubicSpline(self.x_grid, U_next, bc_type="not-a-knot")
+                    u_departures = interp_fn(x_departures)
+                else:
+                    interp_fn = interp1d(self.x_grid, U_next, kind="linear", fill_value="extrapolate")
+                    u_departures = interp_fn(x_departures)
+
+                # Step 1c: Batch Hamiltonian evaluation
+                x_batch = self.x_grid.reshape(-1, 1)  # (Nx, 1)
+                p_batch = grad_u.reshape(-1, 1)  # (Nx, 1)
+                H_class = self.problem.hamiltonian_class
+                if H_class is not None:
+                    H_values = np.asarray(H_class(x_batch, M_next, p_batch, t=time_idx * self.dt), dtype=float).ravel()
+                else:
+                    H_values = np.zeros(Nx)
+
+                # Step 1d: Advection update (vectorized)
+                U_star = u_departures - self.dt * H_values
+
+            else:
+                # Fallback: per-point loop for rk4 or other methods
+                U_star = np.zeros(Nx)
+                for i in range(Nx):
+                    try:
+                        p_optimal = grad_u[i]
+                        x_departure = self._trace_characteristic_backward(self.x_grid[i], p_optimal, self.dt)
+                        u_departure = self._interpolate_value(U_next, x_departure)
+                        hamiltonian_value = self._evaluate_hamiltonian(self.x_grid[i], p_optimal, M_next[i], time_idx)
+                        U_star[i] = u_departure - self.dt * hamiltonian_value
+                    except Exception as e:
+                        logger.warning(f"Error at grid point {i}: {e}")
+                        U_star[i] = U_next[i]
 
             # Step 2: Diffusion (using configured method)
             U_current = self._apply_diffusion(U_star, self.dt)
