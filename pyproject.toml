@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.12"  # v0.18.12: FP Laplacian caching, vectorized Laplacian assembly, code audit fixes
+version = "0.18.13"  # v0.18.13: Hamiltonian batch vectorization, SL 1D vectorization
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
