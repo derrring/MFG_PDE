@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import scipy.sparse.linalg
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -251,7 +252,8 @@ class HomotopyContinuation:
         try:
             _, svs, _ = svds(J_op, k=min(self._n_svs, N - 2), which="SM")
             return np.sort(svs)
-        except Exception:
+        except (np.linalg.LinAlgError, scipy.sparse.linalg.ArpackNoConvergence, ValueError):
+            # SVD may fail for near-singular or ill-conditioned Jacobians
             return np.array([float("inf")] * self._n_svs)
 
     def trace(self, initial_solution: NDArray) -> ContinuationResult:
