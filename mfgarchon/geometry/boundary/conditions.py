@@ -36,7 +36,7 @@ import numpy as np
 from mfgarchon.geometry.protocols import SupportsRegionMarking
 from mfgarchon.utils.deprecation import deprecated
 
-from .types import BCSegment, BCType, _compute_sdf_gradient
+from .types import BCSegment, BCType, BoundaryFace, _compute_sdf_gradient
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -411,12 +411,56 @@ class BoundaryConditions:
         # No match - return default value
         return self.default_value
 
+    def identify_boundary_face(self, point: np.ndarray, tolerance: float = 1e-8) -> BoundaryFace | None:
+        """
+        Identify which boundary face a point lies on (dimension-agnostic).
+
+        Returns a BoundaryFace(axis, side) for rectangular domains,
+        or normal-based face for SDF domains.
+
+        Args:
+            point: Spatial coordinates
+            tolerance: Tolerance for boundary detection
+
+        Returns:
+            BoundaryFace or None if not on boundary
+        """
+        dimension = self._require_dimension("identify_boundary_face")
+        point = np.asarray(point, dtype=float)
+
+        # Method 1: Rectangular domain (axis-aligned detection)
+        if self.domain_bounds is not None:
+            for axis_idx in range(dimension):
+                if abs(point[axis_idx] - self.domain_bounds[axis_idx, 0]) < tolerance:
+                    return BoundaryFace(axis_idx, "min")
+                if abs(point[axis_idx] - self.domain_bounds[axis_idx, 1]) < tolerance:
+                    return BoundaryFace(axis_idx, "max")
+            return None
+
+        # Method 2: SDF domain (normal-based detection)
+        if self.domain_sdf is not None:
+            phi = self.domain_sdf(point)
+            if abs(phi) > tolerance:
+                return None
+
+            normal = _compute_sdf_gradient(point, self.domain_sdf, epsilon=1e-5)
+            normal_norm = np.linalg.norm(normal)
+            if normal_norm < 1e-12:
+                return BoundaryFace(0, "min")  # Degenerate case fallback
+
+            normal = normal / normal_norm
+            dominant_axis = int(np.argmax(np.abs(normal)))
+            side = "max" if normal[dominant_axis] > 0 else "min"
+            return BoundaryFace(dominant_axis, side)
+
+        raise ValueError("Either domain_bounds or domain_sdf must be set")
+
     def identify_boundary_id(self, point: np.ndarray, tolerance: float = 1e-8) -> str | None:
         """
-        Identify which boundary a point lies on.
+        Identify which boundary a point lies on (legacy string interface).
 
         For rectangular domains, returns axis-aligned boundary IDs (e.g., "x_min", "y_max").
-        For SDF domains, returns normal-based boundary IDs based on the dominant normal direction.
+        Delegates to identify_boundary_face() and converts to string.
 
         Args:
             point: Spatial coordinates
@@ -425,69 +469,16 @@ class BoundaryConditions:
         Returns:
             Boundary identifier string or None if not on boundary
         """
-        dimension = self._require_dimension("identify_boundary_id")
-        point = np.asarray(point, dtype=float)
-
-        # Method 1: Rectangular domain (axis-aligned detection)
-        if self.domain_bounds is not None:
-            axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
-
-            for axis_idx in range(dimension):
-                axis_name = axis_names.get(axis_idx, f"axis{axis_idx}")
-
-                # Check if on min boundary for this axis
-                if abs(point[axis_idx] - self.domain_bounds[axis_idx, 0]) < tolerance:
-                    return f"{axis_name}_min"
-
-                # Check if on max boundary for this axis
-                if abs(point[axis_idx] - self.domain_bounds[axis_idx, 1]) < tolerance:
-                    return f"{axis_name}_max"
-
+        face = self.identify_boundary_face(point, tolerance)
+        if face is None:
             return None
-
-        # Method 2: SDF domain (normal-based detection)
-        if self.domain_sdf is not None:
-            # Check if point is on boundary (|phi| < tolerance)
-            phi = self.domain_sdf(point)
-            if abs(phi) > tolerance:
-                return None  # Not on boundary
-
-            # Compute outward normal via SDF gradient
-            normal = _compute_sdf_gradient(point, self.domain_sdf, epsilon=1e-5)
-            normal_norm = np.linalg.norm(normal)
-            if normal_norm < 1e-12:
-                return "boundary"  # Degenerate case
-
-            normal = normal / normal_norm
-
-            # Map normal to boundary ID based on dominant component
-            return self._normal_to_boundary_id(normal)
-
-        raise ValueError("Either domain_bounds or domain_sdf must be set")
+        return face.to_string()
 
     def _normal_to_boundary_id(self, normal: np.ndarray) -> str:
-        """
-        Map outward normal vector to a boundary identifier string.
-
-        Args:
-            normal: Unit outward normal vector
-
-        Returns:
-            Boundary identifier based on dominant normal direction
-        """
-        axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
-
-        # Find axis with largest absolute normal component
-        abs_normal = np.abs(normal)
-        dominant_axis = int(np.argmax(abs_normal))
-
-        axis_name = axis_names.get(dominant_axis, f"axis{dominant_axis}")
-
-        # Determine direction (min or max)
-        if normal[dominant_axis] > 0:
-            return f"{axis_name}_max"
-        else:
-            return f"{axis_name}_min"
+        """Map outward normal vector to a boundary identifier string (legacy)."""
+        dominant_axis = int(np.argmax(np.abs(normal)))
+        side = "max" if normal[dominant_axis] > 0 else "min"
+        return BoundaryFace(dominant_axis, side).to_string()
 
     def is_on_boundary(self, point: np.ndarray, tolerance: float = 1e-8) -> bool:
         """
@@ -541,21 +532,15 @@ class BoundaryConditions:
                 return normal / normal_norm
             return None
 
-        # Rectangular domain: compute based on boundary ID
+        # Rectangular domain: compute based on boundary face
         if self.domain_bounds is not None:
-            boundary_id = self.identify_boundary_id(point)
-            if boundary_id is None:
+            face = self.identify_boundary_face(point)
+            if face is None:
                 return None
 
             normal = np.zeros(dimension)
-            for axis_idx in range(dimension):
-                axis_name = ["x", "y", "z", "w"][axis_idx] if axis_idx < 4 else f"axis{axis_idx}"
-                if boundary_id == f"{axis_name}_min":
-                    normal[axis_idx] = -1.0
-                    return normal
-                elif boundary_id == f"{axis_name}_max":
-                    normal[axis_idx] = 1.0
-                    return normal
+            normal[face.axis] = 1.0 if face.side == "max" else -1.0
+            return normal
 
         return None
 
@@ -712,47 +697,33 @@ class BoundaryConditions:
         # Warn if no segments cover certain boundaries (may indicate incomplete BC specification)
         if self.dimension is not None and self.domain_bounds is not None and not self.is_uniform:
             # Map axis index to standard names
-            axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
-
             for axis_idx in range(self.dimension):
-                axis_name = axis_names.get(axis_idx, f"axis{axis_idx}")
+                # Check if min and max boundaries on this axis have at least one segment.
+                # Uses BoundaryFace for dimension-agnostic matching (Issue #946).
+                target_min = BoundaryFace(axis_idx, "min")
+                target_max = BoundaryFace(axis_idx, "max")
 
-                # Check if min and max boundaries on this axis have at least one segment
-                # A segment covers a boundary if:
-                # 1. boundary is None (applies to all boundaries)
-                # 2. boundary explicitly names this boundary (e.g., "x_min", "left")
-                # 3. No region constraint (applies to entire boundary)
+                def _seg_covers_face(seg: BCSegment, target: BoundaryFace) -> bool:
+                    """Check if a segment covers a specific boundary face."""
+                    if seg.boundary is None or seg.boundary == "all":
+                        return True
+                    face = seg.face
+                    return face is not None and face == target
 
-                min_boundary_names = {f"{axis_name}_min", "left", "bottom", "front"}
-                max_boundary_names = {f"{axis_name}_max", "right", "top", "back"}
+                has_min_coverage = any(_seg_covers_face(seg, target_min) for seg in self.segments)
+                has_max_coverage = any(_seg_covers_face(seg, target_max) for seg in self.segments)
 
-                has_min_coverage = any(
-                    seg.boundary is None
-                    or seg.boundary == "all"
-                    or (axis_idx == 0 and seg.boundary in min_boundary_names)
-                    or (axis_idx == 1 and seg.boundary in min_boundary_names)
-                    or (axis_idx == 2 and seg.boundary in min_boundary_names)
-                    for seg in self.segments
-                )
-
-                has_max_coverage = any(
-                    seg.boundary is None
-                    or seg.boundary == "all"
-                    or (axis_idx == 0 and seg.boundary in max_boundary_names)
-                    or (axis_idx == 1 and seg.boundary in max_boundary_names)
-                    or (axis_idx == 2 and seg.boundary in max_boundary_names)
-                    for seg in self.segments
-                )
-
-                # If no explicit segment coverage, default BC will be used - issue info warning
+                # If no explicit segment coverage, default BC will be used
+                face_label_min = target_min.to_string()
+                face_label_max = target_max.to_string()
                 if not has_min_coverage:
                     warnings.append(
-                        f"No explicit BC segment for {axis_name}_min boundary. "
+                        f"No explicit BC segment for {face_label_min} boundary. "
                         f"Default BC ({self.default_bc.value}) will be used."
                     )
                 if not has_max_coverage:
                     warnings.append(
-                        f"No explicit BC segment for {axis_name}_max boundary. "
+                        f"No explicit BC segment for {face_label_max} boundary. "
                         f"Default BC ({self.default_bc.value}) will be used."
                     )
 
