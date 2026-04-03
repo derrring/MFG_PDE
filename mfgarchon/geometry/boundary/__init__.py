@@ -86,6 +86,7 @@ from .resolution import (
 from .types import (
     BCSegment,
     BCType,
+    BoundaryEntity,
     BoundaryFace,
     create_standard_boundary_names,
     parse_boundary_face,
@@ -108,6 +109,7 @@ __all__ = [
     "BCType",
     "BCSegment",
     "BoundaryConditions",
+    "BoundaryEntity",
     "BoundaryFace",
     "parse_boundary_face",
     "create_standard_boundary_names",

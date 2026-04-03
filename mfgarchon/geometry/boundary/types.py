@@ -129,12 +129,89 @@ class BCType(Enum):
     EXTRAPOLATION_QUADRATIC = "extrapolation_quadratic"
 
 
-class BoundaryFace:
-    """Dimension-agnostic boundary face identifier.
+class BoundaryEntity:
+    """Dimension-agnostic boundary entity identifier for any codimension.
 
-    Canonical representation of a codimension-1 face on a rectangular domain.
-    Replaces dimension-specific strings like "x_min", "y_max" with structured
-    (axis, side) pairs that work for any dimension.
+    Represents a boundary entity on a rectangular domain by specifying
+    which axes are constrained and to which side:
+
+    - codim-1 (face): one axis constrained  (e.g., x_min plane in 3D)
+    - codim-2 (edge): two axes constrained  (e.g., x_min AND y_max edge)
+    - codim-d (vertex): all d axes constrained (corner point)
+
+    Use the ``BoundaryFace`` subclass for the common codim-1 case,
+    which provides convenient ``.axis`` and ``.side`` scalar properties.
+
+    Parameters
+    ----------
+    axes : tuple[int, ...]
+        Dimension indices that define the entity.
+    sides : tuple[str, ...]
+        "min" or "max" for each constrained axis.
+
+    Examples
+    --------
+    >>> BoundaryEntity((0,), ("min",))                    # codim-1 face
+    >>> BoundaryEntity((0, 1), ("min", "max"))            # codim-2 edge
+    >>> BoundaryEntity((0, 1, 2), ("min", "min", "max"))  # codim-3 vertex
+    """
+
+    __slots__ = ("axes", "sides")
+
+    def __init__(self, axes: tuple[int, ...], sides: tuple[str, ...]):
+        if len(axes) != len(sides):
+            msg = f"axes and sides must have same length, got {len(axes)} and {len(sides)}"
+            raise ValueError(msg)
+        for s in sides:
+            if s not in ("min", "max"):
+                msg = f"Each side must be 'min' or 'max', got '{s}'"
+                raise ValueError(msg)
+        self.axes = axes
+        self.sides = sides
+
+    @property
+    def codim(self) -> int:
+        """Codimension of this boundary entity."""
+        return len(self.axes)
+
+    @property
+    def is_face(self) -> bool:
+        """True if this is a codim-1 entity (face)."""
+        return self.codim == 1
+
+    def __repr__(self) -> str:
+        if self.is_face:
+            return f"BoundaryFace(axis={self.axes[0]}, side='{self.sides[0]}')"
+        return f"BoundaryEntity(axes={self.axes}, sides={self.sides})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, BoundaryEntity):
+            return self.axes == other.axes and self.sides == other.sides
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash((self.axes, self.sides))
+
+    def to_string(self, axis_names: dict[int, str] | None = None) -> str:
+        """Convert to legacy string format.
+
+        >>> BoundaryEntity((0,), ("min",)).to_string()           # "x_min"
+        >>> BoundaryEntity((0, 1), ("min", "max")).to_string()   # "x_min_y_max"
+        """
+        if axis_names is None:
+            axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
+        parts = []
+        for ax, sd in zip(self.axes, self.sides, strict=True):
+            name = axis_names.get(ax, f"axis{ax}")
+            parts.append(f"{name}_{sd}")
+        return "_".join(parts)
+
+
+class BoundaryFace(BoundaryEntity):
+    """Codimension-1 boundary face (the common case).
+
+    Convenience subclass of BoundaryEntity for faces. Provides scalar
+    ``.axis`` and ``.side`` properties instead of tuple access.
 
     Parameters
     ----------
@@ -146,40 +223,23 @@ class BoundaryFace:
     Examples
     --------
     >>> BoundaryFace(0, "min")   # left boundary in 1D, x_min in 2D
-    >>> BoundaryFace(1, "max")   # y_max in 2D, second axis upper bound in nD
-    >>> BoundaryFace(3, "min")   # 4th dimension lower bound — no letter needed
+    >>> BoundaryFace(1, "max")   # y_max in 2D
+    >>> BoundaryFace(3, "min")   # 4th dimension lower bound
+    >>> isinstance(BoundaryFace(0, "min"), BoundaryEntity)  # True
     """
 
-    __slots__ = ("axis", "side")
-
     def __init__(self, axis: int, side: str):
-        if side not in ("min", "max"):
-            msg = f"side must be 'min' or 'max', got '{side}'"
-            raise ValueError(msg)
-        self.axis = axis
-        self.side = side
+        super().__init__((axis,), (side,))
 
-    def __repr__(self) -> str:
-        return f"BoundaryFace(axis={self.axis}, side='{self.side}')"
+    @property
+    def axis(self) -> int:
+        """The constrained axis index."""
+        return self.axes[0]
 
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, BoundaryFace):
-            return self.axis == other.axis and self.side == other.side
-        return NotImplemented
-
-    def __hash__(self) -> int:
-        return hash((self.axis, self.side))
-
-    def to_string(self, axis_names: dict[int, str] | None = None) -> str:
-        """Convert to legacy string format for backward compatibility.
-
-        >>> BoundaryFace(0, "min").to_string()  # "x_min"
-        >>> BoundaryFace(3, "max").to_string()  # "axis3_max"
-        """
-        if axis_names is None:
-            axis_names = {0: "x", 1: "y", 2: "z", 3: "w"}
-        name = axis_names.get(self.axis, f"axis{self.axis}")
-        return f"{name}_{self.side}"
+    @property
+    def side(self) -> str:
+        """The side: 'min' or 'max'."""
+        return self.sides[0]
 
 
 # String aliases for backward compatibility
