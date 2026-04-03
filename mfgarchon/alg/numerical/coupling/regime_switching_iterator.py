@@ -155,6 +155,10 @@ class RegimeSwitchingIterator(BaseMFGSolver):
 
         Captures current state via explicit arguments (not closures over
         loop variables) to satisfy ruff B023.
+
+        Note: Us_new is a mutable list reference. For Gauss-Seidel, this is
+        intentional — when solving regime k, Us_new[j] for j < k contains
+        the already-updated value function, providing the sequential update.
         """
         update_scheme = self._update_scheme
         dt_k = self._problems[k].dt
