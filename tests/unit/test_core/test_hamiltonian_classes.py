@@ -45,9 +45,8 @@ class TestControlCostBase:
         np.testing.assert_allclose(alpha, expected)
 
     def test_quadratic_control_cost_maximize(self):
-        """Test quadratic control cost with MAXIMIZE sense (deprecated)."""
-        with pytest.warns(DeprecationWarning, match="MAXIMIZE.*deprecated"):
-            cost = QuadraticControlCost(sense=OptimizationSense.MAXIMIZE, control_cost=2.0)
+        """Test quadratic control cost with MAXIMIZE sense (RL convention)."""
+        cost = QuadraticControlCost(sense=OptimizationSense.MAXIMIZE, control_cost=2.0)
         p = np.array([1.0, 2.0, -3.0])
 
         alpha = cost.optimal_control(p)

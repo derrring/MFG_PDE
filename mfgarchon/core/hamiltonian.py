@@ -94,8 +94,8 @@ class OptimizationSense(Enum):
     >>> alpha = hamiltonian.optimal_control(grad_U)  # Returns +grad_U/lambda
     """
 
-    MINIMIZE = "minimize"  # Control theory: min ∫L dt, α = -∂H/∂p
-    MAXIMIZE = "maximize"  # Economics: max ∫U dt, α = +∂H/∂p (DEPRECATED v0.18.6)
+    MINIMIZE = "minimize"  # Control theory / HJB-FP: min ∫L dt, α = -∂H/∂p
+    MAXIMIZE = "maximize"  # RL / Economics: max ∫R dt, α = +∂H/∂p
 
 
 class ControlCostBase(ABC):
@@ -143,18 +143,6 @@ class ControlCostBase(ABC):
 
         if lam <= 0:
             raise ValueError(f"lambda_ must be positive, got {lam}")
-
-        # Issue #906: MAXIMIZE deprecated — use MINIMIZE with negated cost
-        if sense == OptimizationSense.MAXIMIZE:
-            import warnings
-
-            warnings.warn(
-                "OptimizationSense.MAXIMIZE is deprecated since v0.18.6 and will be "
-                "removed in v0.25.0. Use MINIMIZE with negated cost/utility instead: "
-                "max U(x) = -min(-U(x)).",
-                DeprecationWarning,
-                stacklevel=3,
-            )
 
         self.sense = sense
         self._lambda = lam
@@ -702,17 +690,6 @@ class MFGOperatorBase(ABC):
         finite_diff_eps: float = 1e-6,
         population_index: int = 0,
     ):
-        # Issue #906: MAXIMIZE deprecated
-        if sense == OptimizationSense.MAXIMIZE:
-            import warnings
-
-            warnings.warn(
-                "OptimizationSense.MAXIMIZE is deprecated since v0.18.6 and will be "
-                "removed in v0.25.0. Use MINIMIZE with negated cost/utility instead.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-
         self.sense = sense
         self.finite_diff_eps = finite_diff_eps
         self.population_index = population_index
