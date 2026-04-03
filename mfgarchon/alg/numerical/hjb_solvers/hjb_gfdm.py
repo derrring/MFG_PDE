@@ -2067,7 +2067,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         M_density: np.ndarray | None = None,
         U_terminal: np.ndarray | None = None,
         U_coupling_prev: np.ndarray | None = None,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         volatility_field: float | np.ndarray | None = None,
         running_cost: np.ndarray | Callable[[int], np.ndarray] | None = None,
         # Deprecated parameter names for backward compatibility

@@ -513,7 +513,7 @@ def solve_fp_nd_full_system(
     U_solution_for_drift: np.ndarray | None,
     problem: Any,
     boundary_conditions: BoundaryConditions | None = None,
-    show_progress: bool = True,
+    show_progress: bool | None = None,
     backend: Any | None = None,
     diffusion_field: float | np.ndarray | Any | None = None,
     tensor_diffusion_field: np.ndarray | Callable | None = None,
@@ -717,16 +717,13 @@ def solve_fp_nd_full_system(
     # Issue #640: When progress_callback is provided (from HierarchicalProgress),
     # suppress internal bar to avoid duplicate progress display
     use_external_progress = progress_callback is not None
-    timestep_range = range(Nt - 1)
-    if show_progress and not use_external_progress:
-        from mfgarchon.utils.progress import RichProgressBar
+    from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
-        timestep_range = RichProgressBar(
-            timestep_range,
-            desc=f"FP {ndim}D (full system)",
-            unit="step",
-            disable=False,
-        )
+    timestep_range = create_progress_bar(
+        range(Nt - 1),
+        verbose=should_show_progress(show_progress) and not use_external_progress,
+        desc=f"FP {ndim}D (full system)",
+    )
 
     # Pre-compute spatial grid for source term evaluation (if needed)
     if source_term is not None:

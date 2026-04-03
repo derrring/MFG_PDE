@@ -133,6 +133,31 @@ def is_interactive_terminal() -> bool:
     return sys.stdout.isatty()
 
 
+def should_show_progress(explicit: bool | None = None) -> bool:
+    """Centralized decision: should progress bars be shown?
+
+    Use this instead of hardcoding show_progress=True in solver code.
+    Respects terminal detection, environment variables, and explicit overrides.
+
+    Args:
+        explicit: User override.
+            - None: Auto-detect via is_interactive_terminal()
+            - True: Force show (interactive notebook, explicit user request)
+            - False: Force hide (called from coupling loop, background job)
+
+    Returns:
+        True if Rich progress bars should be rendered.
+
+    Example:
+        >>> def solve(self, ..., show_progress: bool | None = None):
+        ...     verbose = should_show_progress(show_progress)
+        ...     timestep_range = create_progress_bar(range(Nt), verbose=verbose)
+    """
+    if explicit is not None:
+        return explicit
+    return is_interactive_terminal()
+
+
 def get_console(force_terminal: bool | None = None) -> Console:
     """
     Get a Rich Console with smart terminal detection.
@@ -159,9 +184,10 @@ def get_console(force_terminal: bool | None = None) -> Console:
 console = get_console()
 
 __all__ = [
-    # Terminal detection (Issue #709)
+    # Terminal detection (Issue #709, #934)
     "is_interactive_terminal",
     "is_captured_output_env",
+    "should_show_progress",
     "get_console",
     # Rich components
     "console",

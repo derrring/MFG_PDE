@@ -262,7 +262,7 @@ class FPFDMSolver(BaseFPSolver):
         M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         volatility_field: float | np.ndarray | Callable | None = None,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
         # Deprecated parameter names for backward compatibility
         m_initial_condition: np.ndarray | None = None,
@@ -703,7 +703,7 @@ class FPFDMSolver(BaseFPSolver):
         self,
         m_initial_condition: np.ndarray,
         U_solution_for_drift: np.ndarray,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
     ) -> np.ndarray:
         """
@@ -770,15 +770,13 @@ class FPFDMSolver(BaseFPSolver):
         # suppress internal bar to avoid duplicate progress display
         use_external_progress = progress_callback is not None
         timestep_range = range(n_time_points - 1)
-        if show_progress and not use_external_progress:
-            from mfgarchon.utils.progress import RichProgressBar
+        from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
-            timestep_range = RichProgressBar(
-                timestep_range,
-                desc="FP (forward)",
-                unit="step",
-                disable=False,
-            )
+        timestep_range = create_progress_bar(
+            timestep_range,
+            verbose=should_show_progress(show_progress) and not use_external_progress,
+            desc="FP (forward)",
+        )
 
         for k_idx_fp in timestep_range:
             if Dt < 1e-14:
@@ -1180,7 +1178,7 @@ class FPFDMSolver(BaseFPSolver):
         m_initial_condition: np.ndarray,
         drift_field: np.ndarray | None,
         diffusion_callable: callable,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
     ) -> np.ndarray:
         """
         Solve 1D FP equation with callable (state-dependent) diffusion.
@@ -1249,16 +1247,13 @@ class FPFDMSolver(BaseFPSolver):
 
         # Progress bar for forward timesteps with callable diffusion
         # n_time_points - 1 steps to go from t=0 to t=T
-        from mfgarchon.utils.progress import RichProgressBar
+        from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
-        timestep_range = range(Nt - 1)
-        if show_progress:
-            timestep_range = RichProgressBar(
-                timestep_range,
-                desc="FP (callable diffusion)",
-                unit="step",
-                disable=False,
-            )
+        timestep_range = create_progress_bar(
+            range(Nt - 1),
+            verbose=should_show_progress(show_progress),
+            desc="FP (callable diffusion)",
+        )
 
         # Bootstrap forward iteration: use m[k] to evaluate callable and compute m[k+1]
         for k in timestep_range:

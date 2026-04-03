@@ -223,7 +223,7 @@ class FPSLSolver(BaseFPSolver):
         M_initial: np.ndarray | None = None,
         potential_field: np.ndarray | None = None,
         volatility_field: float | np.ndarray | None = None,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         # Deprecated parameters
         m_initial_condition: np.ndarray | None = None,
         diffusion_field: float | np.ndarray | None = None,
@@ -301,16 +301,13 @@ class FPSLSolver(BaseFPSolver):
         M[0] = M_initial.copy().reshape(self.grid_shape if self.dimension > 1 else -1)
 
         # Progress bar
-        if show_progress:
-            from mfgarchon.utils.progress import RichProgressBar
+        from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
-            timestep_range = RichProgressBar(
-                range(Nt_points - 1),
-                desc="FP-SL Adjoint",
-                unit="step",
-            )
-        else:
-            timestep_range = range(Nt_points - 1)
+        timestep_range = create_progress_bar(
+            range(Nt_points - 1),
+            verbose=should_show_progress(show_progress),
+            desc="FP-SL Adjoint",
+        )
 
         # Forward time stepping (dimension-agnostic dispatch)
         for n in timestep_range:

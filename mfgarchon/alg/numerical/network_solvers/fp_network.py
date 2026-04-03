@@ -131,7 +131,7 @@ class FPNetworkSolver(BaseFPSolver):
         M_initial: np.ndarray | None = None,
         drift_field: np.ndarray | Callable | None = None,
         volatility_field: float | np.ndarray | Callable | None = None,
-        show_progress: bool = True,
+        show_progress: bool | None = None,
         # Deprecated parameter name for backward compatibility
         m_initial_condition: np.ndarray | None = None,
     ) -> np.ndarray:
@@ -226,17 +226,14 @@ class FPNetworkSolver(BaseFPSolver):
                     M[0, :] /= total_mass
 
             # Forward time stepping with progress bar
-            from mfgarchon.utils.progress import RichProgressBar
+            from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
             # Forward FP loop: n_intervals steps (problem.Nt) from t=0 to t=T
-            timestep_range = range(n_intervals)
-            if show_progress:
-                timestep_range = RichProgressBar(
-                    timestep_range,
-                    desc="FP (forward)",
-                    unit="step",
-                    disable=False,
-                )
+            timestep_range = create_progress_bar(
+                range(n_intervals),
+                verbose=should_show_progress(show_progress),
+                desc="FP (forward)",
+            )
 
             for n in timestep_range:
                 t = self.times[n]
