@@ -1178,6 +1178,7 @@ class FPParticleSolver(BaseFPSolver):
         # Deprecated parameter names for backward compatibility
         m_initial_condition: np.ndarray | None = None,
         diffusion_field: float | np.ndarray | Callable | None = None,  # DEPRECATED
+        potential_field: np.ndarray | None = None,  # DEPRECATED: use drift_field
     ) -> np.ndarray:
         """
         Solve FP system using particle method with unified API.
@@ -1234,6 +1235,15 @@ class FPParticleSolver(BaseFPSolver):
                     "Use volatility_field (diffusion_field is deprecated)."
                 )
             volatility_field = diffusion_field
+
+        # Handle deprecated potential_field -> drift_field
+        if potential_field is not None:
+            if drift_field is not None:
+                raise ValueError(
+                    "Cannot specify both drift_field and potential_field. "
+                    "Use drift_field (potential_field is deprecated)."
+                )
+            drift_field = potential_field
 
         # Validate required parameter - either M_initial or initial_particles
         if M_initial is None and initial_particles is None:

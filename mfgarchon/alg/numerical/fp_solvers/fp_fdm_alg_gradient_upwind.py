@@ -52,6 +52,7 @@ def add_interior_entries_gradient_upwind(
     u_flat: np.ndarray,
     grid: Any,
     boundary_conditions: Any,
+    interface_velocity: np.ndarray | None = None,
 ) -> None:
     """
     Add matrix entries for interior point using UPWIND differences.
@@ -198,6 +199,7 @@ def add_boundary_no_flux_entries_gradient_upwind(
     spacing: tuple[float, ...],
     u_flat: np.ndarray,
     grid: Any,
+    interface_velocity: np.ndarray | None = None,
 ) -> None:
     """
     Add matrix entries for boundary point with no-flux BC using UPWIND scheme.

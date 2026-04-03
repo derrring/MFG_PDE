@@ -54,6 +54,7 @@ def add_interior_entries_divergence_centered(
     u_flat: np.ndarray,
     grid: Any,
     boundary_conditions: Any,
+    interface_velocity: np.ndarray | None = None,
 ) -> None:
     """
     Add matrix entries for interior point using DIVERGENCE form with CENTERED fluxes.
@@ -262,6 +263,7 @@ def add_boundary_no_flux_entries_divergence_centered(
     spacing: tuple[float, ...],
     u_flat: np.ndarray,
     grid: Any,
+    interface_velocity: np.ndarray | None = None,
 ) -> None:
     """
     Add matrix entries for boundary point with no-flux BC using divergence form + centered.
