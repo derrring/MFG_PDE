@@ -456,86 +456,115 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
         return u_current
 
     def _initialize_policy(self, u: np.ndarray, m: np.ndarray, t: float) -> None:
-        """Initialize policy greedily."""
+        """Initialize policy via H.optimal_control (Issue #916).
+
+        Uses NetworkHamiltonian.optimal_control() to compute transition rates,
+        then extracts the dominant action (node with highest rate) as discrete policy.
+        Falls back to greedy neighbor search if no hamiltonian_class.
+        """
+        H = self.network_problem.hamiltonian_class
         for i in range(self.num_nodes):
             neighbors = self.gradient_ops[i]
-
             if not neighbors:
-                self.current_policy[i] = i  # Stay at current node
+                self.current_policy[i] = i
                 continue
 
-            # Choose neighbor that minimizes cost
-            best_action = i
-            best_cost = float("inf")
-
-            for neighbor in neighbors:
-                cost = self._compute_action_cost(i, neighbor, u, m, t)
-                if cost < best_cost:
-                    best_cost = cost
-                    best_action = neighbor
-
-            self.current_policy[i] = best_action
+            if H is not None:
+                # Issue #916: use H.optimal_control for transition rates
+                rates = H.optimal_control(np.array([i]), m, u, t)
+                rates_arr = np.atleast_1d(rates)
+                # Pick neighbor with highest rate (dominant transition)
+                best_action = i
+                best_rate = 0.0
+                for neighbor in neighbors:
+                    if neighbor < len(rates_arr) and rates_arr[neighbor] > best_rate:
+                        best_rate = rates_arr[neighbor]
+                        best_action = neighbor
+                self.current_policy[i] = best_action
+            else:
+                # Legacy: greedy cost minimization
+                best_action = i
+                best_cost = float("inf")
+                for neighbor in neighbors:
+                    cost = self._compute_action_cost(i, neighbor, u, m, t)
+                    if cost < best_cost:
+                        best_cost = cost
+                        best_action = neighbor
+                self.current_policy[i] = best_action
 
     def _policy_evaluation(self, u_next: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
-        """Evaluate current policy by solving linear system."""
-        # Build linear system for policy evaluation
+        """Evaluate current policy by solving linear system.
+
+        Issue #916: uses H.optimal_control for transition rates when available,
+        falling back to edge_cost for the rate coefficient.
+        """
+        H = self.network_problem.hamiltonian_class
+
         A = sp.lil_matrix((self.num_nodes, self.num_nodes))
         b = np.zeros(self.num_nodes)
 
         for i in range(self.num_nodes):
             action = self.current_policy[i]
-
-            # Policy evaluation equation
             A[i, i] = 1.0 / self.dt
 
-            if action != i:  # Moving to a different node
-                edge_cost = self.network_problem.edge_cost(i, action, t)
-                A[i, action] -= 1.0 / self.dt
-                b[i] = edge_cost
+            if action != i:
+                if H is not None:
+                    # Rate from H.optimal_control
+                    rates = H.optimal_control(np.array([i]), m, u_next, t)
+                    rate = float(np.atleast_1d(rates)[action])
+                    A[i, i] += rate
+                    A[i, action] -= rate
+                else:
+                    # Legacy: edge cost
+                    edge_cost = self.network_problem.edge_cost(i, action, t)
+                    A[i, action] -= 1.0 / self.dt
+                    b[i] = edge_cost
 
-            # Add potential and coupling terms
+            # Potential and coupling
             potential = self.network_problem.node_potential(i, t)
             coupling = self.network_problem.density_coupling(i, m, t)
             b[i] += potential + coupling + u_next[i] / self.dt
 
-        # Solve linear system
         A = A.tocsr()
         u_evaluated = spsolve(A, b)
-
         return np.asarray(u_evaluated)
 
     def _policy_improvement(self, u: np.ndarray, m: np.ndarray, t: float) -> None:
-        """Improve policy greedily."""
+        """Improve policy using H.optimal_control (Issue #916)."""
+        H = self.network_problem.hamiltonian_class
         for i in range(self.num_nodes):
-            neighbors = self.gradient_ops[i] + [i]  # Include staying at node
+            neighbors = self.gradient_ops[i] + [i]
 
-            best_action = self.current_policy[i]
-            best_cost = self._compute_action_cost(i, best_action, u, m, t)
-
-            for action in neighbors:
-                cost = self._compute_action_cost(i, action, u, m, t)
-                if cost < best_cost:
-                    best_cost = cost
-                    best_action = action
-
-            self.current_policy[i] = best_action
+            if H is not None:
+                rates = H.optimal_control(np.array([i]), m, u, t)
+                rates_arr = np.atleast_1d(rates)
+                best_action = i
+                best_rate = 0.0
+                for action in neighbors:
+                    if action < len(rates_arr) and rates_arr[action] > best_rate:
+                        best_rate = rates_arr[action]
+                        best_action = action
+                self.current_policy[i] = best_action
+            else:
+                best_action = self.current_policy[i]
+                best_cost = self._compute_action_cost(i, best_action, u, m, t)
+                for action in neighbors:
+                    cost = self._compute_action_cost(i, action, u, m, t)
+                    if cost < best_cost:
+                        best_cost = cost
+                        best_action = action
+                self.current_policy[i] = best_action
 
     def _compute_action_cost(self, node: int, action: int, u: np.ndarray, m: np.ndarray, t: float) -> float:
-        """Compute cost of taking action from node."""
+        """Legacy: compute cost of taking action from node (no H.optimal_control)."""
         if action == node:
-            # Cost of staying at node
             return self.network_problem.node_potential(node, t) + self.network_problem.density_coupling(node, m, t)
-        else:
-            # Cost of moving to action node
-            edge_cost = self.network_problem.edge_cost(node, action, t)
-            return edge_cost + u[action]
+        edge_cost = self.network_problem.edge_cost(node, action, t)
+        return edge_cost + u[action]
 
     def _policies_equal(self, policy1: dict[int, int], policy2: dict[int, int]) -> bool:
         """Check if two policies are equal."""
-        if len(policy1) != len(policy2):
-            return False
-
-        return all(policy1[node] == policy2.get(node) for node in policy1)
+        return len(policy1) == len(policy2) and all(policy1[node] == policy2.get(node) for node in policy1)
 
 
 # Factory function for network HJB solvers
