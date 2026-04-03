@@ -927,6 +927,47 @@ class HamiltonianBase(MFGOperatorBase):
             )
         return self._finite_diff_dm(x, m, p, t)
 
+    def dx(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float = 0.0,
+    ) -> NDArray:
+        """Compute dH/dx (gradient w.r.t. position).
+
+        Required for the full characteristic ODE system:
+            dx/dt = dH/dp,  dp/dt = -dH/dx
+
+        Default: central finite differences on __call__.
+        Override for analytic (e.g., SeparableHamiltonian differentiates
+        only the potential V(x,t)).
+
+        Parameters
+        ----------
+        x : NDArray
+            Position, shape (d,) or (N, d) for batch
+        m : float | NDArray
+            Density at x
+        p : NDArray
+            Momentum at x, shape (d,) or (N, d) for batch
+        t : float
+            Time
+
+        Returns
+        -------
+        NDArray
+            Gradient dH/dx, shape (d,) or (N, d)
+        """
+        x_arr = np.asarray(x)
+        if x_arr.ndim == 2:
+            p_arr = np.asarray(p)
+            m_arr = np.asarray(m)
+            return np.stack(
+                [self._finite_diff_dx(x_arr[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(x_arr.shape[0])]
+            )
+        return self._finite_diff_dx(x, m, p, t)
+
     def optimal_control(
         self,
         x: NDArray,
@@ -1090,6 +1131,31 @@ class HamiltonianBase(MFGOperatorBase):
         H_minus = self(x, m_scalar - eps, p, t)
 
         return float((H_plus - H_minus) / (2 * eps))
+
+    def _finite_diff_dx(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float,
+    ) -> NDArray:
+        """Compute dH/dx using central finite differences."""
+        eps = self.finite_diff_eps
+        x_flat = np.atleast_1d(x).astype(float)
+        d = len(x_flat)
+        grad = np.zeros(d)
+
+        for i in range(d):
+            x_plus = x_flat.copy()
+            x_minus = x_flat.copy()
+            x_plus[i] += eps
+            x_minus[i] -= eps
+
+            H_plus = self(x_plus, m, p, t)
+            H_minus = self(x_minus, m, p, t)
+            grad[i] = (H_plus - H_minus) / (2 * eps)
+
+        return grad
 
     # === REGULARIZATION (Issue #898) ===
 
@@ -1930,6 +1996,37 @@ class SeparableHamiltonian(HamiltonianBase):
                 [self._finite_diff_dm(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
             )
         return self._finite_diff_dm(x, m, p, t)
+
+    def dx(
+        self,
+        x: NDArray,
+        m: float | NDArray,
+        p: NDArray,
+        t: float = 0.0,
+    ) -> NDArray:
+        """dH/dx = grad_V(x, t) for separable H.
+
+        Only the potential V(x,t) depends on x. The control cost H_kin(p)
+        and coupling f(m) are independent of x.
+
+        Uses FD on the potential callable. Returns zero if no potential.
+        """
+        if self._potential is None:
+            x_arr = np.atleast_1d(x)
+            return np.zeros(x_arr.shape[-1] if x_arr.ndim >= 2 else len(x_arr))
+
+        # FD on V(x, t)
+        eps = self.finite_diff_eps
+        x_flat = np.atleast_1d(x).astype(float)
+        d = len(x_flat)
+        grad = np.zeros(d)
+        for i in range(d):
+            x_plus = x_flat.copy()
+            x_minus = x_flat.copy()
+            x_plus[i] += eps
+            x_minus[i] -= eps
+            grad[i] = (float(self._potential(x_plus, t)) - float(self._potential(x_minus, t))) / (2 * eps)
+        return grad
 
     def optimal_control(
         self,
