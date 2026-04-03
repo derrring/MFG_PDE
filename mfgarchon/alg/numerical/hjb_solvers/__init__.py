@@ -9,6 +9,7 @@ numerical analysis approaches:
 - HJBGFDMSolver: Generalized finite difference method (meshfree, nD)
 - HJBSemiLagrangianSolver: Semi-Lagrangian approach (characteristic-based, nD)
 - HJBWenoSolver: WENO (Weighted Essentially Non-Oscillatory) method (1D/2D/3D)
+- PenaltyHJBSolver: Variational inequality wrapper (obstacle/optimal stopping)
 
 All solvers inherit from BaseNumericalSolver and follow the new paradigm structure.
 """
@@ -16,6 +17,7 @@ All solvers inherit from BaseNumericalSolver and follow the new paradigm structu
 from .base_hjb import BaseHJBSolver
 from .hjb_fdm import ConvergenceError, HJBFDMSolver
 from .hjb_gfdm import HJBGFDMSolver
+from .hjb_penalty import PenaltyHJBSolver
 from .hjb_semi_lagrangian import HJBSemiLagrangianSolver
 from .hjb_weno import HJBWenoSolver
 
@@ -26,4 +28,5 @@ __all__ = [
     "HJBGFDMSolver",
     "HJBSemiLagrangianSolver",
     "HJBWenoSolver",
+    "PenaltyHJBSolver",
 ]
