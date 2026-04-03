@@ -69,6 +69,7 @@ class NetworkHamiltonian(HamiltonianBase):
         node_potential_func=None,
         congestion_func=None,
         sense=OptimizationSense.MINIMIZE,
+        population_index: int = 0,
     ):
         super().__init__(sense=sense)
         self.network_data = network_data
@@ -76,12 +77,36 @@ class NetworkHamiltonian(HamiltonianBase):
         self._hamiltonian_dm_func = hamiltonian_dm_func
         self._node_potential = node_potential_func
         self._congestion = congestion_func
+        self.population_index = population_index
+        self._num_nodes: int | None = None  # Set lazily from network_data
+
+    @property
+    def num_nodes(self) -> int:
+        if self._num_nodes is None:
+            self._num_nodes = self.network_data.num_nodes
+        return self._num_nodes
+
+    def _extract_own_density(self, m: np.ndarray) -> np.ndarray:
+        """Extract this population's density from stacked m_all.
+
+        If m has length N (single population), return as-is.
+        If m has length K*N (stacked multi-population), extract slice
+        [population_index*N : (population_index+1)*N].
+        """
+        N = self.num_nodes
+        if len(m) == N:
+            return m
+        # Multi-population stacked density
+        k = self.population_index
+        return m[k * N : (k + 1) * N]
 
     def __call__(self, x, m, p, t=0.0):
         """Evaluate H at node x with density m and costate p.
 
         x: node index (int or array with single int)
-        m: density vector at all nodes, shape (N,)
+        m: density vector — (N,) for single pop, (K*N,) for multi-pop.
+            Cross-population coupling receives full m_all.
+            Own population density extracted via population_index.
         p: costate vector at all nodes, shape (N,)
         """
         node = int(np.asarray(x).flat[0])
@@ -95,7 +120,11 @@ class NetworkHamiltonian(HamiltonianBase):
         return self._default_hamiltonian(node, m_arr, p_arr, t)
 
     def _default_hamiltonian(self, node, m, p, t):
-        """Default: quadratic control on edges + potential + congestion."""
+        """Default: quadratic control on edges + potential + congestion.
+
+        For multi-population: congestion uses own density slice.
+        Custom hamiltonian_func receives full m_all for cross-coupling.
+        """
         neighbors = self.network_data.get_neighbors(node)
         control_cost = 0.0
         for neighbor in neighbors:
@@ -104,7 +133,10 @@ class NetworkHamiltonian(HamiltonianBase):
             control_cost += 0.5 * w * dp**2
 
         V = float(self._node_potential(node, t)) if self._node_potential else 0.0
-        f_m = float(self._congestion(node, m, t)) if self._congestion else 0.0
+        # Extract own population density for congestion (avoids silent wrong result
+        # when m is stacked K*N from multi-population)
+        m_own = self._extract_own_density(m)
+        f_m = float(self._congestion(node, m_own, t)) if self._congestion else 0.0
         return control_cost + V + f_m
 
     def optimal_control(self, x, m, p, t=0.0):
