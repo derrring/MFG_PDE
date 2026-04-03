@@ -700,6 +700,7 @@ class MFGOperatorBase(ABC):
         self,
         sense: OptimizationSense = OptimizationSense.MINIMIZE,
         finite_diff_eps: float = 1e-6,
+        population_index: int = 0,
     ):
         # Issue #906: MAXIMIZE deprecated
         if sense == OptimizationSense.MAXIMIZE:
@@ -714,6 +715,7 @@ class MFGOperatorBase(ABC):
 
         self.sense = sense
         self.finite_diff_eps = finite_diff_eps
+        self.population_index = population_index
         # Sign convention: MINIMIZE -> α = -∂H/∂p, MAXIMIZE -> α = +∂H/∂p
         self._sign = 1 if sense == OptimizationSense.MINIMIZE else -1
 
@@ -991,6 +993,30 @@ class HamiltonianBase(MFGOperatorBase):
             )
         return self._finite_diff_dx(x, m, p, t)
 
+    # === Multi-population support ===
+
+    def bind_cross_density(self, m_all: np.ndarray) -> BoundHamiltonian:
+        """Return a wrapper that binds cross-population density.
+
+        The wrapper delegates all methods to this Hamiltonian. When called,
+        it passes m_all (stacked K-population density) instead of the
+        single-population m from the solver.
+
+        No mutation of the original object. Thread-safe.
+
+        Parameters
+        ----------
+        m_all : np.ndarray
+            Stacked density from all K populations.
+            Shape (K*N,) per timestep, or (Nt+1, K*N) for full trajectory.
+
+        Returns
+        -------
+        BoundHamiltonian
+            Wrapper with bound cross-population density.
+        """
+        return BoundHamiltonian(self, m_all)
+
     def optimal_control(
         self,
         x: NDArray,
@@ -1259,8 +1285,58 @@ class HamiltonianBase(MFGOperatorBase):
 
 
 # ============================================================================
+# =============================================================================
+# BoundHamiltonian: Multi-population wrapper (Issue #910)
+# =============================================================================
+
+
+class BoundHamiltonian:
+    """Lightweight wrapper binding cross-population density to a HamiltonianBase.
+
+    Created by HamiltonianBase.bind_cross_density(m_all). Delegates all
+    methods to the inner Hamiltonian. __call__ passes m_all instead of
+    single-population m — enabling cross-population coupling.
+
+    No mutation of the original Hamiltonian. Thread-safe.
+    """
+
+    def __init__(self, inner: HamiltonianBase, m_all: np.ndarray):
+        self._inner = inner
+        self._m_all = m_all
+
+    def __call__(self, x, m, p, t=0.0):
+        """Evaluate H with cross-population density m_all."""
+        return self._inner(x, self._m_all, p, t)
+
+    def optimal_control(self, x, m, p, t=0.0):
+        """Compute α* using m_all for cross-coupling."""
+        return self._inner.optimal_control(x, self._m_all, p, t)
+
+    def dp(self, x, m, p, t=0.0):
+        return self._inner.dp(x, m, p, t)
+
+    def dm(self, x, m, p, t=0.0):
+        return self._inner.dm(x, self._m_all, p, t)
+
+    def dx(self, x, m, p, t=0.0):
+        return self._inner.dx(x, m, p, t)
+
+    def is_smooth(self):
+        return self._inner.is_smooth()
+
+    @property
+    def population_index(self):
+        return self._inner.population_index
+
+    @property
+    def control_cost(self):
+        """Forward to inner (for SeparableHamiltonian compatibility)."""
+        return self._inner.control_cost
+
+
+# =============================================================================
 # Lagrangian: Running cost L(x, α, m, t) with Legendre transform - Issue #651
-# ============================================================================
+# =============================================================================
 
 
 class LagrangianBase(MFGOperatorBase):
@@ -1908,8 +1984,9 @@ class SeparableHamiltonian(HamiltonianBase):
         coupling: callable | None = None,
         coupling_dm: callable | None = None,
         sense: OptimizationSense = OptimizationSense.MINIMIZE,
+        population_index: int = 0,
     ):
-        super().__init__(sense=sense)
+        super().__init__(sense=sense, population_index=population_index)
         self.control_cost = control_cost
         self._potential = potential
         self._coupling = coupling
@@ -2134,8 +2211,9 @@ class CongestionHamiltonian(HamiltonianBase):
         coupling: callable | None = None,
         coupling_dm: callable | None = None,
         sense: OptimizationSense = OptimizationSense.MINIMIZE,
+        population_index: int = 0,
     ):
-        super().__init__(sense=sense)
+        super().__init__(sense=sense, population_index=population_index)
         self.control_cost = control_cost
         self._congestion_factor = congestion_factor
         self._congestion_factor_dm = congestion_factor_dm

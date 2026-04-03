@@ -71,15 +71,13 @@ class NetworkHamiltonian(HamiltonianBase):
         sense=OptimizationSense.MINIMIZE,
         population_index: int = 0,
     ):
-        super().__init__(sense=sense)
+        super().__init__(sense=sense, population_index=population_index)
         self.network_data = network_data
         self._hamiltonian_func = hamiltonian_func
         self._hamiltonian_dm_func = hamiltonian_dm_func
         self._node_potential = node_potential_func
         self._congestion = congestion_func
-        self.population_index = population_index
-        self._num_nodes: int | None = None  # Set lazily from network_data
-        self._m_all_bound: np.ndarray | None = None  # Set by bind_cross_density
+        self._num_nodes: int | None = None
 
     @property
     def num_nodes(self) -> int:
@@ -91,36 +89,13 @@ class NetworkHamiltonian(HamiltonianBase):
         """Extract this population's density from stacked m_all.
 
         If m has length N (single population), return as-is.
-        If m has length K*N (stacked multi-population), extract slice
-        [population_index*N : (population_index+1)*N].
+        If m has length K*N (stacked multi-population), extract slice.
         """
         N = self.num_nodes
         if len(m) == N:
             return m
-        # Multi-population stacked density
         k = self.population_index
         return m[k * N : (k + 1) * N]
-
-    def bind_cross_density(self, m_all: np.ndarray) -> _BoundNetworkHamiltonian:
-        """Return a lightweight wrapper that binds cross-population density.
-
-        The wrapper delegates all methods to this H_k. Custom hamiltonian_func
-        receives m_all (for cross-coupling). Default hamiltonian uses
-        _extract_own_density for congestion.
-
-        No mutation of the original object. Thread-safe.
-
-        Parameters
-        ----------
-        m_all : np.ndarray
-            Stacked density (Nt+1, K*N) from all K populations.
-
-        Returns
-        -------
-        _BoundNetworkHamiltonian
-            Wrapper with bound cross-population density.
-        """
-        return _BoundNetworkHamiltonian(self, m_all)
 
     def __call__(self, x, m, p, t=0.0):
         """Evaluate H at node x with density m and costate p.
@@ -201,55 +176,6 @@ class NetworkHamiltonian(HamiltonianBase):
             neighbors = self.network_data.get_neighbors(node)
             return float(self._hamiltonian_dm_func(node, neighbors, np.atleast_1d(m), np.atleast_1d(p), t))
         return self._finite_diff_dm(x, m, p, t)
-
-
-class _BoundNetworkHamiltonian:
-    """Lightweight wrapper binding cross-population density to a NetworkHamiltonian.
-
-    Delegates all methods to the wrapped H_k. Custom hamiltonian_func
-    receives m_all (for cross-coupling). No mutation of the original.
-
-    Created by NetworkHamiltonian.bind_cross_density(m_all).
-    """
-
-    def __init__(self, inner: NetworkHamiltonian, m_all: np.ndarray):
-        self._inner = inner
-        self._m_all = m_all
-
-    def __call__(self, x, m, p, t=0.0):
-        node = int(np.asarray(x).flat[0])
-        m_arr = np.atleast_1d(m)
-        p_arr = np.atleast_1d(p)
-
-        if self._inner._hamiltonian_func is not None:
-            neighbors = self._inner.network_data.get_neighbors(node)
-            # Cross-coupling: pass full m_all to custom H
-            return float(self._inner._hamiltonian_func(node, neighbors, self._m_all, p_arr, t))
-
-        return self._inner._default_hamiltonian(node, m_arr, p_arr, t)
-
-    def optimal_control(self, x, m, p, t=0.0):
-        return self._inner.optimal_control(x, m, p, t)
-
-    def dp(self, x, m, p, t=0.0):
-        return self._inner.dp(x, m, p, t)
-
-    def dm(self, x, m, p, t=0.0):
-        return self._inner.dm(x, m, p, t)
-
-    def dx(self, x, m, p, t=0.0):
-        return self._inner.dx(x, m, p, t)
-
-    @property
-    def population_index(self):
-        return self._inner.population_index
-
-    @property
-    def num_nodes(self):
-        return self._inner.num_nodes
-
-    def is_smooth(self):
-        return self._inner.is_smooth()
 
 
 @dataclass
