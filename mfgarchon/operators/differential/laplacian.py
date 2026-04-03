@@ -26,7 +26,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import scipy.sparse as sparse  # noqa: TC002
+import scipy.sparse as sparse
 from scipy.sparse.linalg import LinearOperator
 
 if TYPE_CHECKING:
@@ -228,193 +228,142 @@ class LaplacianOperator(LinearOperator):
 
     def _build_sparse_laplacian_direct(self) -> sparse.spmatrix:
         """
-        Build sparse Laplacian via direct assembly with correct BC handling.
+        Build sparse Laplacian via vectorized assembly with correct BC handling.
 
-        This method implements the fix for Issue #597 Milestone 2, ensuring
-        that Neumann boundary conditions use one-sided stencils to match
-        coefficient folding behavior in FP solver.
+        Issue #928: Replaced point-by-point Python loop with NumPy vectorized
+        index computation. Assembly cost: O(ndim) NumPy operations instead of
+        O(N * ndim) Python operations.
+
+        For each dimension d, computes strides and masks for interior/boundary
+        points, then assembles all (row, col, val) triples via array operations.
 
         Returns:
             Sparse CSR matrix with correct boundary stencils
         """
-        import scipy.sparse as sparse
-
         N = int(np.prod(self.field_shape))
         ndim = len(self.field_shape)
-
-        # COO format for efficient construction
-        row_indices = []
-        col_indices = []
-        data_values = []
 
         # Determine BC type
         bc_type = None
         if self.bc is not None:
             try:
                 bc_type = self.bc.bc_type.value if hasattr(self.bc.bc_type, "value") else str(self.bc.bc_type)
-            except AttributeError:
+            except (AttributeError, ValueError):
                 bc_type = None
 
-        # Build matrix by iterating over grid points
-        for flat_idx in range(N):
-            # Convert flat index to multi-index
-            multi_idx = np.unravel_index(flat_idx, self.field_shape)
+        # All flat indices
+        all_idx = np.arange(N)
+        # Multi-index array: (N, ndim)
+        multi_indices = np.array(np.unravel_index(all_idx, self.field_shape)).T
 
-            # Iterate over dimensions
-            for d in range(ndim):
-                h = self.spacings[d]
-                n_d = self.field_shape[d]
-                i_d = multi_idx[d]
+        rows_list: list[np.ndarray] = []
+        cols_list: list[np.ndarray] = []
+        vals_list: list[np.ndarray] = []
 
-                # Determine if boundary point in dimension d
-                at_min = i_d == 0
-                at_max = i_d == n_d - 1
-                is_boundary = at_min or at_max
+        for d in range(ndim):
+            h = self.spacings[d]
+            h2 = h**2
+            n_d = self.field_shape[d]
+            i_d = multi_indices[:, d]  # (N,) index in dimension d
 
-                # Get neighbor indices in dimension d
-                im1 = i_d - 1  # Left neighbor
-                ip1 = i_d + 1  # Right neighbor
+            # Compute strides: flat index offset for +-1 in dimension d
+            stride = int(np.prod(self.field_shape[d + 1 :])) if d < ndim - 1 else 1
 
-                # Handle BC
-                if bc_type in ("neumann", "no_flux") and is_boundary:
-                    # Neumann BC: Use ghost point method (Issue #668 fix)
-                    # At boundary, ∂u/∂n = 0 means ghost point mirrors interior:
-                    #   u_{-1} = u_1 (left boundary), u_{n} = u_{n-2} (right boundary)
-                    #
-                    # Laplacian at left boundary (i=0):
-                    #   Δu = (u_1 - 2u_0 + u_{-1})/h² = (u_1 - 2u_0 + u_1)/h² = 2(u_1 - u_0)/h²
-                    #
-                    # Coefficients: diagonal = -2/h², neighbor = +2/h²
-                    if at_min:
-                        # Diagonal contribution: -2/h² (Issue #668 fix: was -1/h²)
-                        row_indices.append(flat_idx)
-                        col_indices.append(flat_idx)
-                        data_values.append(-2.0 / (h**2))
+            # Boundary masks
+            at_min = i_d == 0
+            at_max = i_d == n_d - 1
+            interior = ~at_min & ~at_max
 
-                        # Right neighbor contribution: +2/h² (Issue #668 fix: was +1/h²)
-                        neighbor_idx = list(multi_idx)
-                        neighbor_idx[d] = ip1
-                        neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.field_shape)
-                        row_indices.append(flat_idx)
-                        col_indices.append(neighbor_flat)
-                        data_values.append(+2.0 / (h**2))
+            if bc_type in ("neumann", "no_flux"):
+                # ALL points get diagonal -2/h² (interior and boundary)
+                rows_list.append(all_idx)
+                cols_list.append(all_idx)
+                vals_list.append(np.full(N, -2.0 / h2))
 
-                    elif at_max:
-                        # Diagonal contribution: -2/h² (Issue #668 fix: was -1/h²)
-                        row_indices.append(flat_idx)
-                        col_indices.append(flat_idx)
-                        data_values.append(-2.0 / (h**2))
+                # Interior: left and right neighbors, each +1/h²
+                rows_list.append(all_idx[interior])
+                cols_list.append(all_idx[interior] - stride)
+                vals_list.append(np.full(int(interior.sum()), 1.0 / h2))
 
-                        # Left neighbor contribution: +2/h² (Issue #668 fix: was +1/h²)
-                        neighbor_idx = list(multi_idx)
-                        neighbor_idx[d] = im1
-                        neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.field_shape)
-                        row_indices.append(flat_idx)
-                        col_indices.append(neighbor_flat)
-                        data_values.append(+2.0 / (h**2))
+                rows_list.append(all_idx[interior])
+                cols_list.append(all_idx[interior] + stride)
+                vals_list.append(np.full(int(interior.sum()), 1.0 / h2))
 
-                elif bc_type == "periodic" or bc_type is None:
-                    # Periodic BC: Wrap indices
-                    # Interior standard stencil: -2/h² diagonal, +1/h² off-diagonal
+                # Neumann boundary: mirror ghost → neighbor gets +2/h² (Issue #668 fix)
+                rows_list.append(all_idx[at_min])
+                cols_list.append(all_idx[at_min] + stride)
+                vals_list.append(np.full(int(at_min.sum()), 2.0 / h2))
 
-                    # Diagonal contribution: -2/h²
-                    row_indices.append(flat_idx)
-                    col_indices.append(flat_idx)
-                    data_values.append(-2.0 / (h**2))
+                rows_list.append(all_idx[at_max])
+                cols_list.append(all_idx[at_max] - stride)
+                vals_list.append(np.full(int(at_max.sum()), 2.0 / h2))
 
-                    # Left neighbor
-                    im1_wrapped = (im1 + n_d) % n_d
-                    neighbor_idx_left = list(multi_idx)
-                    neighbor_idx_left[d] = im1_wrapped
-                    neighbor_flat_left = np.ravel_multi_index(tuple(neighbor_idx_left), self.field_shape)
-                    row_indices.append(flat_idx)
-                    col_indices.append(neighbor_flat_left)
-                    data_values.append(+1.0 / (h**2))
+            elif bc_type == "periodic" or bc_type is None:
+                # ALL points: diagonal -2/h²
+                rows_list.append(all_idx)
+                cols_list.append(all_idx)
+                vals_list.append(np.full(N, -2.0 / h2))
 
-                    # Right neighbor
-                    ip1_wrapped = ip1 % n_d
-                    neighbor_idx_right = list(multi_idx)
-                    neighbor_idx_right[d] = ip1_wrapped
-                    neighbor_flat_right = np.ravel_multi_index(tuple(neighbor_idx_right), self.field_shape)
-                    row_indices.append(flat_idx)
-                    col_indices.append(neighbor_flat_right)
-                    data_values.append(+1.0 / (h**2))
+                # Left neighbor (wrapped for periodic)
+                left_idx = multi_indices.copy()
+                left_idx[:, d] = (i_d - 1 + n_d) % n_d
+                left_flat = np.ravel_multi_index(left_idx.T, self.field_shape)
+                rows_list.append(all_idx)
+                cols_list.append(left_flat)
+                vals_list.append(np.full(N, 1.0 / h2))
 
-                elif bc_type == "dirichlet":
-                    # Dirichlet BC: Homogeneous (u=0 at boundary)
-                    # Coefficient folding with LinearConstraint(weights={}, bias=0.0):
-                    # - Empty weights means no folding occurs
-                    # - Ghost contribution is simply omitted
-                    # - Leaves full centered stencil diagonal: -2/dx²
-                    # - Only one neighbor contributes: +1/dx²
-                    if is_boundary:
-                        # Diagonal contribution: -2/dx² (full centered)
-                        row_indices.append(flat_idx)
-                        col_indices.append(flat_idx)
-                        data_values.append(-2.0 / (h**2))
+                # Right neighbor (wrapped for periodic)
+                right_idx = multi_indices.copy()
+                right_idx[:, d] = (i_d + 1) % n_d
+                right_flat = np.ravel_multi_index(right_idx.T, self.field_shape)
+                rows_list.append(all_idx)
+                cols_list.append(right_flat)
+                vals_list.append(np.full(N, 1.0 / h2))
 
-                        # Only interior neighbor contributes
-                        if at_min:
-                            neighbor_idx = list(multi_idx)
-                            neighbor_idx[d] = ip1
-                            neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.field_shape)
-                            row_indices.append(flat_idx)
-                            col_indices.append(neighbor_flat)
-                            data_values.append(+1.0 / (h**2))
+            elif bc_type == "dirichlet":
+                # ALL points: diagonal -2/h²
+                rows_list.append(all_idx)
+                cols_list.append(all_idx)
+                vals_list.append(np.full(N, -2.0 / h2))
 
-                        elif at_max:
-                            neighbor_idx = list(multi_idx)
-                            neighbor_idx[d] = im1
-                            neighbor_flat = np.ravel_multi_index(tuple(neighbor_idx), self.field_shape)
-                            row_indices.append(flat_idx)
-                            col_indices.append(neighbor_flat)
-                            data_values.append(+1.0 / (h**2))
-                    else:
-                        # Interior: Standard centered stencil
-                        row_indices.append(flat_idx)
-                        col_indices.append(flat_idx)
-                        data_values.append(-2.0 / (h**2))
+                # Interior: both neighbors +1/h²
+                rows_list.append(all_idx[interior])
+                cols_list.append(all_idx[interior] - stride)
+                vals_list.append(np.full(int(interior.sum()), 1.0 / h2))
 
-                        neighbor_idx_left = list(multi_idx)
-                        neighbor_idx_left[d] = im1
-                        neighbor_flat_left = np.ravel_multi_index(tuple(neighbor_idx_left), self.field_shape)
-                        row_indices.append(flat_idx)
-                        col_indices.append(neighbor_flat_left)
-                        data_values.append(+1.0 / (h**2))
+                rows_list.append(all_idx[interior])
+                cols_list.append(all_idx[interior] + stride)
+                vals_list.append(np.full(int(interior.sum()), 1.0 / h2))
 
-                        neighbor_idx_right = list(multi_idx)
-                        neighbor_idx_right[d] = ip1
-                        neighbor_flat_right = np.ravel_multi_index(tuple(neighbor_idx_right), self.field_shape)
-                        row_indices.append(flat_idx)
-                        col_indices.append(neighbor_flat_right)
-                        data_values.append(+1.0 / (h**2))
+                # Boundary: only interior-side neighbor +1/h² (ghost omitted)
+                rows_list.append(all_idx[at_min])
+                cols_list.append(all_idx[at_min] + stride)
+                vals_list.append(np.full(int(at_min.sum()), 1.0 / h2))
 
-                else:
-                    # Interior or unsupported BC: Standard centered stencil
-                    if not is_boundary:
-                        # Interior: -2/h² diagonal, +1/h² off-diagonal
-                        row_indices.append(flat_idx)
-                        col_indices.append(flat_idx)
-                        data_values.append(-2.0 / (h**2))
+                rows_list.append(all_idx[at_max])
+                cols_list.append(all_idx[at_max] - stride)
+                vals_list.append(np.full(int(at_max.sum()), 1.0 / h2))
 
-                        neighbor_idx_left = list(multi_idx)
-                        neighbor_idx_left[d] = im1
-                        neighbor_flat_left = np.ravel_multi_index(tuple(neighbor_idx_left), self.field_shape)
-                        row_indices.append(flat_idx)
-                        col_indices.append(neighbor_flat_left)
-                        data_values.append(+1.0 / (h**2))
+            else:
+                # Unknown BC: interior-only standard stencil
+                rows_list.append(all_idx[interior])
+                cols_list.append(all_idx[interior])
+                vals_list.append(np.full(int(interior.sum()), -2.0 / h2))
 
-                        neighbor_idx_right = list(multi_idx)
-                        neighbor_idx_right[d] = ip1
-                        neighbor_flat_right = np.ravel_multi_index(tuple(neighbor_idx_right), self.field_shape)
-                        row_indices.append(flat_idx)
-                        col_indices.append(neighbor_flat_right)
-                        data_values.append(+1.0 / (h**2))
+                rows_list.append(all_idx[interior])
+                cols_list.append(all_idx[interior] - stride)
+                vals_list.append(np.full(int(interior.sum()), 1.0 / h2))
 
-        # Build sparse matrix
-        L_sparse = sparse.coo_matrix((data_values, (row_indices, col_indices)), shape=(N, N)).tocsr()
+                rows_list.append(all_idx[interior])
+                cols_list.append(all_idx[interior] + stride)
+                vals_list.append(np.full(int(interior.sum()), 1.0 / h2))
 
-        return L_sparse
+        # Single concatenation + single sparse construction
+        rows = np.concatenate(rows_list)
+        cols = np.concatenate(cols_list)
+        vals = np.concatenate(vals_list)
+
+        return sparse.coo_matrix((vals, (rows, cols)), shape=(N, N)).tocsr()
 
     def __repr__(self) -> str:
         """String representation for debugging."""
