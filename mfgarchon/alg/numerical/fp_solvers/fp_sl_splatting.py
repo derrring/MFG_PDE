@@ -341,58 +341,46 @@ def splat_linear_nd(
     m_star = np.zeros(N_points)
 
     # Grid spacings
-    dx = [(grid_coordinates[d][1] - grid_coordinates[d][0]) for d in range(dimension)]
+    dx = np.array([(grid_coordinates[d][1] - grid_coordinates[d][0]) for d in range(dimension)])
+    xmin = np.array([bounds[d][0] for d in range(dimension)])
 
     # Reshape x_dest if needed: (N_points,) for 1D -> (N_points, 1)
     if x_dest.ndim == 1 and dimension == 1:
         x_dest = x_dest.reshape(-1, 1)
 
-    # Process each source point
-    for flat_idx in range(N_points):
-        # Destination position for this point
-        x_d = x_dest[flat_idx]
+    # Issue #931: Vectorized splatting — eliminate per-point Python loop.
+    # Compute cell indices and weights for ALL points at once.
+    # pos_cont[i, d] = (x_dest[i, d] - xmin[d]) / dx[d]
+    pos_cont = (x_dest - xmin) / dx  # (N_points, dimension)
 
-        # Compute cell indices and weights for each dimension
-        j_list = []  # Lower corner indices
-        w_list = []  # Weights for upper corner
+    # Lower corner indices, clamped to valid range
+    j_base = np.floor(pos_cont).astype(int)  # (N_points, dimension)
+    for d in range(dimension):
+        j_base[:, d] = np.clip(j_base[:, d], 0, grid_shape[d] - 2)
+
+    # Interpolation weights, clamped to [0, 1]
+    w = np.clip(pos_cont - j_base, 0.0, 1.0)  # (N_points, dimension)
+
+    # Scatter to 2^d corners (loop over corners, not over points)
+    for corner in range(1 << dimension):
+        # Compute corner indices and weight for all points at once
+        corner_indices = j_base.copy()  # (N_points, dimension)
+        weight = np.ones(N_points)
 
         for d in range(dimension):
-            xmin_d, _ = bounds[d]  # xmax not needed; clipping handles bounds
-            pos_cont = (x_d[d] - xmin_d) / dx[d]
+            if corner & (1 << d):  # Upper corner in dimension d
+                corner_indices[:, d] += 1
+                weight *= w[:, d]
+            else:  # Lower corner
+                weight *= 1.0 - w[:, d]
 
-            # Lower index
-            j_d = int(np.floor(pos_cont))
-            j_d = max(0, min(j_d, grid_shape[d] - 2))
+        # Clamp to grid bounds
+        for d in range(dimension):
+            corner_indices[:, d] = np.clip(corner_indices[:, d], 0, grid_shape[d] - 1)
 
-            # Weight
-            w_d = pos_cont - j_d
-            w_d = max(0.0, min(1.0, w_d))
-
-            j_list.append(j_d)
-            w_list.append(w_d)
-
-        # Scatter to 2^d corners
-        # Iterate over all corner combinations using binary representation
-        for corner in range(1 << dimension):  # 0 to 2^d - 1
-            corner_idx = []
-            weight = 1.0
-
-            for d in range(dimension):
-                if corner & (1 << d):  # Bit d is set -> upper corner
-                    corner_idx.append(j_list[d] + 1)
-                    weight *= w_list[d]
-                else:  # Lower corner
-                    corner_idx.append(j_list[d])
-                    weight *= 1.0 - w_list[d]
-
-            # Clamp indices to valid range
-            corner_idx = [min(max(0, idx), grid_shape[d] - 1) for d, idx in enumerate(corner_idx)]
-
-            # Convert to flat index
-            dest_flat_idx = np.ravel_multi_index(corner_idx, grid_shape)
-
-            # Accumulate
-            m_star[dest_flat_idx] += weight * m_flat[flat_idx]
+        # Convert to flat indices and accumulate
+        flat_indices = np.ravel_multi_index(corner_indices.T, grid_shape)
+        np.add.at(m_star, flat_indices, weight * m_flat)
 
     return m_star.reshape(grid_shape)
 
