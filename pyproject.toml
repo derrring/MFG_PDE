@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.11"  # v0.18.11: HomotopyContinuation, Dev Plan Phase 0-3 complete
+version = "0.18.12"  # v0.18.12: FP Laplacian caching, vectorized Laplacian assembly, code audit fixes
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
