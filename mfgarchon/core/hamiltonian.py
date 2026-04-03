@@ -879,10 +879,25 @@ class HamiltonianBase(MFGOperatorBase):
         """
         p_arr = np.asarray(p)
         if p_arr.ndim == 2:
-            m_arr = np.asarray(m)
-            return np.stack(
-                [self._finite_diff_dp(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
-            )
+            # Issue #929: Try vectorized batch FD first (2d batch evals),
+            # fall back to per-point loop if __call__ doesn't support batch
+            eps = self.finite_diff_eps
+            N, d = p_arr.shape
+            try:
+                grad = np.zeros((N, d))
+                for i in range(d):
+                    p_plus = p_arr.copy()
+                    p_plus[:, i] += eps
+                    p_minus = p_arr.copy()
+                    p_minus[:, i] -= eps
+                    H_plus = np.asarray(self(x, m, p_plus, t), dtype=float).ravel()
+                    H_minus = np.asarray(self(x, m, p_minus, t), dtype=float).ravel()
+                    grad[:, i] = (H_plus - H_minus) / (2 * eps)
+                return grad
+            except (TypeError, ValueError):
+                # __call__ doesn't support batch m — fall back to per-point loop
+                m_arr = np.asarray(m)
+                return np.stack([self._finite_diff_dp(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(N)])
         return self._finite_diff_dp(x, m, p, t)
 
     def dm(
@@ -923,10 +938,17 @@ class HamiltonianBase(MFGOperatorBase):
         """
         p_arr = np.asarray(p)
         if p_arr.ndim == 2:
+            # Issue #929: Try vectorized batch FD first, fall back to per-point
             m_arr = np.asarray(m)
-            return np.array(
-                [self._finite_diff_dm(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
-            )
+            eps = self.finite_diff_eps
+            try:
+                H_plus = np.asarray(self(x, m_arr + eps, p_arr, t), dtype=float).ravel()
+                H_minus = np.asarray(self(x, m_arr - eps, p_arr, t), dtype=float).ravel()
+                return (H_plus - H_minus) / (2 * eps)
+            except (TypeError, ValueError):
+                return np.array(
+                    [self._finite_diff_dm(x[i], float(m_arr.flat[i]), p_arr[i], t) for i in range(p_arr.shape[0])]
+                )
         return self._finite_diff_dm(x, m, p, t)
 
     def dx(
@@ -1968,6 +1990,34 @@ class SeparableHamiltonian(HamiltonianBase):
         self._potential = potential
         self._coupling = coupling
         self._coupling_dm = coupling_dm
+        # Issue #929: Cache vectorized-callable detection result
+        self._potential_is_vectorized: bool | None = None
+
+    def _evaluate_potential_batch(self, x_batch: NDArray, t: float) -> NDArray:
+        """Evaluate V(x, t) at N points with auto-detected vectorization.
+
+        Issue #929: First call probes whether the potential callable supports
+        batch input (N, d) -> (N,). If yes, uses fast path. If no, falls back
+        to per-point loop. Detection result is cached for subsequent calls.
+        """
+        N = x_batch.shape[0]
+
+        if self._potential_is_vectorized is None:
+            # Probe with small batch (at least 2 points needed for shape check)
+            probe_size = min(2, N)
+            if probe_size < 2:
+                # Single-point batch — can't distinguish scalar from vectorized
+                self._potential_is_vectorized = False
+            else:
+                try:
+                    probe = np.asarray(self._potential(x_batch[:2], t), dtype=float)
+                    self._potential_is_vectorized = probe.shape == (2,)
+                except (TypeError, IndexError, ValueError):
+                    self._potential_is_vectorized = False
+
+        if self._potential_is_vectorized:
+            return np.asarray(self._potential(x_batch, t), dtype=float)
+        return np.array([float(self._potential(x_batch[i], t)) for i in range(N)])
 
     def __call__(
         self,
@@ -1991,10 +2041,10 @@ class SeparableHamiltonian(HamiltonianBase):
         if not is_batch and isinstance(H_control, np.ndarray):
             H_control = float(H_control.sum())
 
-        # Potential term
+        # Potential term (Issue #929: auto-detect vectorized callable)
         if self._potential is not None:
             if is_batch:
-                V = np.array([float(self._potential(x[i], t)) for i in range(x.shape[0])])
+                V = self._evaluate_potential_batch(x, t)
             else:
                 V = float(self._potential(x, t))
         else:
