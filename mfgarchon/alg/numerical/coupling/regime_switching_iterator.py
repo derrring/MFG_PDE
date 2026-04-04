@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from mfgarchon.alg.base_solver import BaseMFGSolver
+from mfgarchon.alg.numerical.coupling.base_mfg import BaseCouplingIterator
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -61,7 +61,7 @@ class RegimeSwitchingResult:
     """The regime switching configuration used."""
 
 
-class RegimeSwitchingIterator(BaseMFGSolver):
+class RegimeSwitchingIterator(BaseCouplingIterator):
     """Picard iteration for Markov-switching MFG systems.
 
     Solves K coupled HJB equations (backward) and K coupled FP equations
@@ -142,6 +142,7 @@ class RegimeSwitchingIterator(BaseMFGSolver):
             raise ValueError(msg)
 
         regime_config.validate()
+        self._last_result: RegimeSwitchingResult | None = None
 
     def _make_hjb_source(
         self,
@@ -217,7 +218,7 @@ class RegimeSwitchingIterator(BaseMFGSolver):
         Q = self._regime.transition_matrix
 
         # Initialize: terminal conditions and initial densities
-        Us = [p.get_final_u() for p in self._problems]
+        Us = [p.get_u_terminal() for p in self._problems]
         # Expand terminal to full time-space arrays
         Us_full = []
         for k in range(K):
@@ -228,7 +229,7 @@ class RegimeSwitchingIterator(BaseMFGSolver):
             U_k[-1] = u_terminal
             Us_full.append(U_k)
 
-        Ms = [p.get_initial_density() for p in self._problems]
+        Ms = [p.get_m_initial() for p in self._problems]
 
         error_history = []
 
@@ -277,7 +278,7 @@ class RegimeSwitchingIterator(BaseMFGSolver):
             Ms = Ms_new
 
             if error < self._tol:
-                return RegimeSwitchingResult(
+                self._last_result = RegimeSwitchingResult(
                     values=Us_full,
                     densities=Ms,
                     converged=True,
@@ -285,8 +286,9 @@ class RegimeSwitchingIterator(BaseMFGSolver):
                     error_history=error_history,
                     regime_config=self._regime,
                 )
+                return self._last_result
 
-        return RegimeSwitchingResult(
+        self._last_result = RegimeSwitchingResult(
             values=Us_full,
             densities=Ms,
             converged=False,
@@ -294,6 +296,13 @@ class RegimeSwitchingIterator(BaseMFGSolver):
             error_history=error_history,
             regime_config=self._regime,
         )
+        return self._last_result
+
+    def get_results(self) -> tuple:
+        """Get computed solution arrays (required by BaseCouplingIterator)."""
+        if self._last_result is not None:
+            return self._last_result.values[0], self._last_result.densities[0]
+        raise RuntimeError("No solution computed yet. Call solve() first.")
 
     def validate_solution(self) -> dict[str, Any]:
         """Placeholder for solution validation."""
