@@ -133,6 +133,33 @@ def is_interactive_terminal() -> bool:
     return sys.stdout.isatty()
 
 
+def _format_metrics(metrics: dict[str, Any]) -> str:
+    """Format metrics dict as compact display string.
+
+    Shared by HierarchicalProgress and _TransientSubtask.
+    Automatically uses scientific notation for very small or large values.
+
+    Args:
+        metrics: Dictionary of metric name -> value pairs
+
+    Returns:
+        Formatted string like "error_U=1.20e-04 | error_M=3.50e-05"
+    """
+    if not metrics:
+        return ""
+    parts = []
+    for key, value in metrics.items():
+        if isinstance(value, float):
+            if value != 0 and (abs(value) < 1e-3 or abs(value) > 1e3):
+                formatted = f"{value:.2e}"
+            else:
+                formatted = f"{value:.4f}"
+        else:
+            formatted = str(value)
+        parts.append(f"{key}={formatted}")
+    return " | ".join(parts)
+
+
 def should_show_progress(explicit: bool | None = None) -> bool:
     """Centralized decision: should progress bars be shown?
 
@@ -552,6 +579,7 @@ class HierarchicalProgress:
         self.verbose = verbose
         self._progress: Progress | None = None
         self._entry_count: int = 0  # Reentrant counter for nested context managers
+        self._task_metrics: dict[int, dict[str, Any]] = {}  # Accumulated metrics per task
 
     def __enter__(self) -> HierarchicalProgress:
         """
@@ -634,7 +662,10 @@ class HierarchicalProgress:
             return
         updates: dict[str, Any] = {"advance": advance}
         if metrics:
-            updates["metrics_str"] = self._format_metrics(metrics)
+            if task_id not in self._task_metrics:
+                self._task_metrics[task_id] = {}
+            self._task_metrics[task_id].update(metrics)
+            updates["metrics_str"] = _format_metrics(self._task_metrics[task_id])
         self._progress.update(task_id, **updates)
 
     def subtask(self, description: str, total: int) -> _TransientSubtask | _NullSubtask:
@@ -696,33 +727,6 @@ class HierarchicalProgress:
         prefix = "  └─ " if transient else ""
         return _TransientSubtask(self._progress, f"{prefix}{description}", total, transient=transient)
 
-    def _format_metrics(self, metrics: dict[str, Any]) -> str:
-        """
-        Format metrics dict as compact display string.
-
-        Automatically uses scientific notation for very small or large values.
-
-        Args:
-            metrics: Dictionary of metric name -> value pairs
-
-        Returns:
-            Formatted string like "error_U=1.20e-04 | error_M=3.50e-05"
-        """
-        if not metrics:
-            return ""
-        parts = []
-        for key, value in metrics.items():
-            if isinstance(value, float):
-                # Scientific notation for very small/large values
-                if value != 0 and (abs(value) < 1e-3 or abs(value) > 1e3):
-                    formatted = f"{value:.2e}"
-                else:
-                    formatted = f"{value:.4f}"
-            else:
-                formatted = str(value)
-            parts.append(f"{key}={formatted}")
-        return " | ".join(parts)
-
 
 class _TransientSubtask:
     """
@@ -782,24 +786,7 @@ class _TransientSubtask:
         """
         if self._task_id is not None:
             self._metrics.update(kwargs)
-            metrics_str = self._format_metrics(self._metrics)
-            self._progress.update(self._task_id, metrics_str=metrics_str)
-
-    def _format_metrics(self, metrics: dict[str, Any]) -> str:
-        """Format metrics dict as compact display string."""
-        if not metrics:
-            return ""
-        parts = []
-        for key, value in metrics.items():
-            if isinstance(value, float):
-                if value != 0 and (abs(value) < 1e-3 or abs(value) > 1e3):
-                    formatted = f"{value:.2e}"
-                else:
-                    formatted = f"{value:.4f}"
-            else:
-                formatted = str(value)
-            parts.append(f"{key}={formatted}")
-        return " | ".join(parts)
+            self._progress.update(self._task_id, metrics_str=_format_metrics(self._metrics))
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """
@@ -836,6 +823,40 @@ class _NullSubtask:
 
     def advance(self, steps: int = 1) -> None:
         """No-op advance (for API compatibility)."""
+
+    def update_metrics(self, **kwargs: Any) -> None:
+        """No-op metrics update (protocol compliance with _TransientSubtask)."""
+
+
+def get_progress(
+    progress: HierarchicalProgress | None = None,
+    *,
+    show_progress: bool | None = None,
+) -> tuple[HierarchicalProgress, bool]:
+    """Resolve a progress manager for solver use.
+
+    Implements the Optional Injection pattern: if a progress manager is
+    injected, reuse it (coupled mode); otherwise create a new one (standalone).
+
+    Args:
+        progress: Injected progress manager from coupling iterator, or None.
+        show_progress: Explicit show/hide override (used when progress=None).
+
+    Returns:
+        (manager, is_owned) where is_owned=True means the caller created it
+        and must use it as a context manager.
+
+    Example:
+        mgr, owned = get_progress(progress, show_progress=show_progress)
+        ctx = mgr if owned else contextlib.nullcontext(mgr)
+        with ctx:
+            with mgr.transient_subtask("HJB", total=Nt, transient=not owned) as task:
+                for n in range(Nt):
+                    task.advance()
+    """
+    if progress is not None:
+        return progress, False
+    return HierarchicalProgress(verbose=should_show_progress(show_progress)), True
 
 
 def create_progress_bar(
