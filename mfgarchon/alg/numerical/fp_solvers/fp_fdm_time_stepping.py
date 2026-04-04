@@ -65,6 +65,7 @@ from mfgarchon.geometry.boundary import no_flux_bc
 from mfgarchon.geometry.boundary.applicator_base import (
     LinearConstraint,
 )
+from mfgarchon.geometry.boundary.types import BoundaryFace
 from mfgarchon.utils.pde_coefficients import CoefficientField, _DriftDispatcher
 
 if TYPE_CHECKING:
@@ -211,7 +212,7 @@ def _get_bc_type(boundary_conditions: Any) -> str | None:
         return getattr(boundary_conditions, "type", None)
 
 
-def _get_bc_value(boundary_conditions: Any, boundary: str) -> float:
+def _get_bc_value(boundary_conditions: Any, face: BoundaryFace) -> float:
     """
     Get BC value at a specific boundary.
 
@@ -219,22 +220,23 @@ def _get_bc_value(boundary_conditions: Any, boundary: str) -> float:
     - Unified BoundaryConditions with get_bc_value_at_boundary()
     - Legacy BoundaryConditions1DFDM with left_value/right_value
 
+    Issue #946: Uses BoundaryFace instead of string identifiers for internal dispatch.
+
     Args:
         boundary_conditions: Any BC object
-        boundary: Boundary identifier ("x_min" or "x_max")
+        face: Boundary face identifier
 
     Returns:
         BC value at the specified boundary
     """
-    # Issue #543 Phase 2: Replace hasattr with try/except
-    # Try unified BC first (modern API)
+    # Try unified BC first (modern API) — still takes string
     try:
-        return boundary_conditions.get_bc_value_at_boundary(boundary)
+        return boundary_conditions.get_bc_value_at_boundary(face.to_string())
     except AttributeError:
         # Fall back to legacy BC: use left_value/right_value
-        if boundary == "x_min":
+        if face.side == "min":
             return getattr(boundary_conditions, "left_value", 0.0)
-        elif boundary == "x_max":
+        elif face.side == "max":
             return getattr(boundary_conditions, "right_value", 0.0)
 
     return 0.0
@@ -706,8 +708,8 @@ def solve_fp_nd_full_system(
     # Uses helper functions for unified/legacy BC compatibility
     bc_type = _get_bc_type(boundary_conditions)
     if bc_type == "dirichlet" and ndim == 1:
-        M_solution[0, 0] = _get_bc_value(boundary_conditions, "x_min")
-        M_solution[0, -1] = _get_bc_value(boundary_conditions, "x_max")
+        M_solution[0, 0] = _get_bc_value(boundary_conditions, BoundaryFace(0, "min"))
+        M_solution[0, -1] = _get_bc_value(boundary_conditions, BoundaryFace(0, "max"))
 
     # Edge cases
     if Nt <= 1:
@@ -874,8 +876,8 @@ def solve_fp_nd_full_system(
 
         # Enforce Dirichlet BC (using unified/legacy compatible helper)
         if bc_type == "dirichlet" and ndim == 1:
-            M_solution[k + 1, 0] = _get_bc_value(boundary_conditions, "x_min")
-            M_solution[k + 1, -1] = _get_bc_value(boundary_conditions, "x_max")
+            M_solution[k + 1, 0] = _get_bc_value(boundary_conditions, BoundaryFace(0, "min"))
+            M_solution[k + 1, -1] = _get_bc_value(boundary_conditions, BoundaryFace(0, "max"))
 
         # Issue #640: Report progress to hierarchical progress bar
         if progress_callback is not None:
