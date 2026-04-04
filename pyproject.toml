@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.13"  # v0.18.13: Hamiltonian batch vectorization, SL 1D vectorization
+version = "0.18.14"  # v0.18.14: BoundaryFace migration, Layer 1 tests, context-based progress routing
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
