@@ -53,6 +53,12 @@ if TYPE_CHECKING:
 
 WenoVariant = Literal["weno5", "weno-z", "weno-m", "weno-js"]
 
+# Dimension-dependent stability limits (Issue #967)
+# Advection CFL: for Strang/Godunov splitting, stable CFL ~ 0.5/d.
+_CFL_CAP_1D: float = 0.5
+# Diffusion: forward Euler stability limit 0.5/2^d (conservative halving per dimension).
+_DIFFUSION_CAP_1D: float = 0.25
+
 
 class HJBWenoSolver(BaseHJBSolver):
     """
@@ -176,18 +182,20 @@ class HJBWenoSolver(BaseHJBSolver):
         self.dimension = self._detect_problem_dimension()
         self.hjb_method_name = f"{self.dimension}D-WENO-{weno_variant.upper()}"
 
-        # Adjust parameters for multi-dimensional problems
-        self.cfl_number = self._adjust_cfl_for_dimension(cfl_number)
-        self.diffusion_stability_factor = self._adjust_diffusion_factor_for_dimension(diffusion_stability_factor)
-
-        # WENO parameters
+        # Store raw parameters for validation, then adjust for dimension
+        self.cfl_number = cfl_number
+        self.diffusion_stability_factor = diffusion_stability_factor
         self.weno_epsilon = weno_epsilon
         self.weno_z_parameter = weno_z_parameter
         self.weno_m_parameter = weno_m_parameter
         self.time_integration = time_integration
 
-        # Validate parameters
+        # Validate user-provided parameters before dimension adjustment
         self._validate_parameters()
+
+        # Apply dimension-dependent stability caps
+        self.cfl_number = self._adjust_cfl_for_dimension(cfl_number)
+        self.diffusion_stability_factor = self._adjust_diffusion_factor_for_dimension(diffusion_stability_factor)
 
         # Setup dimension-specific grid information
         self._setup_dimensional_grid()
@@ -234,22 +242,22 @@ class HJBWenoSolver(BaseHJBSolver):
         )
 
     def _adjust_cfl_for_dimension(self, base_cfl: float) -> float:
-        """Adjust CFL number based on problem dimension for stability."""
-        if self.dimension == 1:
-            return base_cfl
-        elif self.dimension == 2:
-            return min(base_cfl, 0.25)  # More conservative for 2D
-        else:  # 3D and higher
-            return min(base_cfl, 0.15)  # Very conservative for 3D+
+        """Adjust CFL number based on problem dimension for stability.
+
+        For dimensional splitting, the stable CFL scales as ~1/d.
+        Cap = _CFL_CAP_1D / dimension.
+        """
+        cap = _CFL_CAP_1D / self.dimension
+        return min(base_cfl, cap)
 
     def _adjust_diffusion_factor_for_dimension(self, base_factor: float) -> float:
-        """Adjust diffusion stability factor based on problem dimension."""
-        if self.dimension == 1:
-            return base_factor
-        elif self.dimension == 2:
-            return min(base_factor, 0.125)  # More restrictive for 2D
-        else:  # 3D and higher
-            return min(base_factor, 0.0625)  # Very restrictive for 3D+
+        """Adjust diffusion stability factor based on problem dimension.
+
+        For forward Euler diffusion with splitting, the stable factor
+        halves per added dimension: _DIFFUSION_CAP_1D / 2^(d-1).
+        """
+        cap = _DIFFUSION_CAP_1D / (2 ** (self.dimension - 1))
+        return min(base_factor, cap)
 
     def _setup_dimensional_grid(self) -> None:
         """Setup grid information from geometry (standard interface, NO hasattr)."""
