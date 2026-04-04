@@ -236,14 +236,8 @@ class BlockIterator(BaseCouplingIterator):
         U_prev: NDArray,
     ) -> NDArray:
         """Solve HJB equation with given density."""
-        kwargs: dict[str, Any] = {}
-
-        if self._hjb_sig_params is not None:
-            if "show_progress" in self._hjb_sig_params:
-                kwargs["show_progress"] = False
-            if "volatility_field" in self._hjb_sig_params and self.volatility_field is not None:
-                kwargs["volatility_field"] = self.volatility_field
-
+        # Issue #934: Progress handled via context routing
+        kwargs = self._build_hjb_kwargs(volatility_field=self.volatility_field)
         return self.hjb_solver.solve_hjb_system(M, U_terminal, U_prev, **kwargs)
 
     def _solve_fp(self, M_initial: NDArray, U: NDArray) -> NDArray:
@@ -252,23 +246,14 @@ class BlockIterator(BaseCouplingIterator):
         if self.adjoint_mode != "off":
             return self._solve_fp_strict_adjoint(M_initial, U)
 
-        kwargs: dict[str, Any] = {}
-
         if self._fp_sig_params is not None:
-            if "show_progress" in self._fp_sig_params:
-                kwargs["show_progress"] = False
-
             effective_drift = self.drift_field if self.drift_field is not None else U
-
-            # Issue #919: pass U as potential_field (drift_field now means velocity)
+            kwargs = self._build_fp_kwargs(volatility_field=self.volatility_field)
+            # Issue #919: prefer potential_field over drift_field
             if "potential_field" in self._fp_sig_params:
                 kwargs["potential_field"] = effective_drift
             elif "drift_field" in self._fp_sig_params:
-                # Fallback for FP solvers without potential_field (e.g. GFDM)
                 kwargs["drift_field"] = effective_drift
-
-            if "volatility_field" in self._fp_sig_params and self.volatility_field is not None:
-                kwargs["volatility_field"] = self.volatility_field
             return self.fp_solver.solve_fp_system(M_initial, **kwargs)
         else:
             return self.fp_solver.solve_fp_system(M_initial, U)

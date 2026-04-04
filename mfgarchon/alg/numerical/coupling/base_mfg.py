@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
     from mfgarchon.core.mfg_problem import MFGProblem
     from mfgarchon.types.solver_types import SolverReturnTuple
-    from mfgarchon.utils.progress import HierarchicalProgress
 else:
     pass
 
@@ -61,27 +60,18 @@ class BaseCouplingIterator(ABC):
     def _build_hjb_kwargs(
         self,
         *,
-        progress: HierarchicalProgress | None = None,
         volatility_field: float | np.ndarray | Any | None = None,
         source_term: Callable | None = None,
     ) -> dict[str, Any]:
         """Build kwargs for solve_hjb_system, respecting solver capabilities.
 
-        Uses cached signature to pass only parameters the solver accepts.
-        Prefers ``progress`` injection; falls back to ``show_progress=False``
-        for legacy solvers.
+        Progress is handled automatically via context routing (Issue #934) —
+        solver's ``create_progress_bar`` detects the parent ``HierarchicalProgress``.
         """
         kwargs: dict[str, Any] = {}
         params = self._hjb_sig_params
         if params is None:
             return kwargs
-        # Progress injection (Issue #934)
-        if "progress" in params:
-            kwargs["progress"] = progress
-        elif "show_progress" in params:
-            kwargs["show_progress"] = False
-        # Legacy progress callback — skip if progress injection is used
-        # (solver handles its own subtask via get_progress)
         if "volatility_field" in params and volatility_field is not None:
             kwargs["volatility_field"] = volatility_field
         if "source_term" in params and source_term is not None:
@@ -91,24 +81,18 @@ class BaseCouplingIterator(ABC):
     def _build_fp_kwargs(
         self,
         *,
-        progress: HierarchicalProgress | None = None,
         drift_field: np.ndarray | Callable | Any | None = None,
         volatility_field: float | np.ndarray | Any | None = None,
         source_term: Callable | None = None,
     ) -> dict[str, Any]:
         """Build kwargs for solve_fp_system, respecting solver capabilities.
 
-        Uses cached signature to pass only parameters the solver accepts.
-        Prefers ``progress`` injection; falls back to ``show_progress=False``.
+        Progress is handled automatically via context routing (Issue #934).
         """
         kwargs: dict[str, Any] = {}
         params = self._fp_sig_params
         if params is None:
             return kwargs
-        if "progress" in params:
-            kwargs["progress"] = progress
-        elif "show_progress" in params:
-            kwargs["show_progress"] = False
         if "drift_field" in params and drift_field is not None:
             kwargs["drift_field"] = drift_field
         if "volatility_field" in params and volatility_field is not None:

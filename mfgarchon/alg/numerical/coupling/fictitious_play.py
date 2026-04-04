@@ -381,51 +381,22 @@ class FictitiousPlayIterator(BaseCouplingIterator):
             alpha = self.get_learning_rate(k)
             self.learning_rate_history.append(alpha)
 
-            # 1. Solve HJB backward - FULL best response (no damping on U)
-            # Issue #543 Phase 2: Use cached signature instead of hasattr
-            # Note: Inner solver progress is disabled when outer verbose=True (to avoid nested bars)
-            # When verbose=False (non-TTY), we also disable inner progress (use iteration_callback instead)
-            show_hjb_progress = False  # Always suppress inner progress bars
-            if self._hjb_sig_params is not None:
-                # Method exists and signature is cached
-                params = self._hjb_sig_params
-                hjb_kwargs: dict[str, Any] = {}
-                if "show_progress" in params:
-                    hjb_kwargs["show_progress"] = show_hjb_progress
-                if "volatility_field" in params and self.volatility_field is not None:
-                    hjb_kwargs["volatility_field"] = self.volatility_field
-
-                # Solve HJB with current averaged M
-                U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **hjb_kwargs)
-            else:
-                # No signature cached - use basic call
-                U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
+            # 1. Solve HJB backward — progress handled via context routing (#934)
+            hjb_kwargs = self._build_hjb_kwargs(volatility_field=self.volatility_field)
+            U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **hjb_kwargs)
 
             # 2. Solve FP forward with new U
-            # Issue #543 Phase 2: Use cached signature instead of hasattr
-            # Note: Inner solver progress is disabled - use iteration_callback for custom logging
-            show_fp_progress = False  # Always suppress inner progress bars
-            if self._fp_sig_params is not None:
-                # Method exists and signature is cached
-                params = self._fp_sig_params
-                fp_kwargs: dict[str, Any] = {}
-                if "show_progress" in params:
-                    fp_kwargs["show_progress"] = show_fp_progress
-
-                effective_drift = self.drift_field if self.drift_field is not None else U_new
-
-                if "drift_field" in params:
-                    fp_kwargs["drift_field"] = effective_drift
-                if "volatility_field" in params and self.volatility_field is not None:
-                    fp_kwargs["volatility_field"] = self.volatility_field
-
-                if "drift_field" in params:
-                    M_candidate = self.fp_solver.solve_fp_system(M_initial, **fp_kwargs)
-                else:
-                    M_candidate = self.fp_solver.solve_fp_system(M_initial, effective_drift, **fp_kwargs)
+            effective_drift = self.drift_field if self.drift_field is not None else U_new
+            fp_kwargs = self._build_fp_kwargs(
+                drift_field=effective_drift,
+                volatility_field=self.volatility_field,
+            )
+            if self._fp_sig_params is not None and (
+                "drift_field" in self._fp_sig_params or "potential_field" in self._fp_sig_params
+            ):
+                M_candidate = self.fp_solver.solve_fp_system(M_initial, **fp_kwargs)
             else:
-                # No signature cached - use basic call
-                M_candidate = self.fp_solver.solve_fp_system(M_initial, U_new)
+                M_candidate = self.fp_solver.solve_fp_system(M_initial, effective_drift, **fp_kwargs)
 
             # 3. Fictitious Play update: average M with decaying learning rate
             # This is the key difference from fixed-point iteration
