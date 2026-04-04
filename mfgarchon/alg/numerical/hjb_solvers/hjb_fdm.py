@@ -201,8 +201,10 @@ class HJBFDMSolver(BaseHJBSolver):
             newton_tolerance = newton_tolerance or l2errBoundNewton
 
         # Set defaults (use None check to avoid treating 0 as falsy)
-        self.max_newton_iterations = max_newton_iterations if max_newton_iterations is not None else 30
-        self.newton_tolerance = newton_tolerance if newton_tolerance is not None else 1e-6
+        self.max_newton_iterations = (
+            max_newton_iterations if max_newton_iterations is not None else base_hjb.DEFAULT_NEWTON_MAX_ITERATIONS
+        )
+        self.newton_tolerance = newton_tolerance if newton_tolerance is not None else base_hjb.DEFAULT_NEWTON_TOLERANCE
         self.solver_type = solver_type
         self.damping_factor = damping_factor
         self.constraint = constraint  # Variational inequality constraint (Issue #591)

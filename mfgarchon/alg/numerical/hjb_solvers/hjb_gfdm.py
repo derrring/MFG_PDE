@@ -30,7 +30,11 @@ from mfgarchon.utils.deprecation import deprecated_parameter, deprecated_value
 from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.numerical.qp_utils import QPCache, QPSolver
 
-from .base_hjb import BaseHJBSolver
+from .base_hjb import (
+    DEFAULT_NEWTON_MAX_ITERATIONS,
+    DEFAULT_NEWTON_TOLERANCE,
+    BaseHJBSolver,
+)
 
 logger = get_logger(__name__)
 
@@ -397,9 +401,9 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Set defaults if still None
         if max_newton_iterations is None:
-            max_newton_iterations = 30
+            max_newton_iterations = DEFAULT_NEWTON_MAX_ITERATIONS
         if newton_tolerance is None:
-            newton_tolerance = 1e-6
+            newton_tolerance = DEFAULT_NEWTON_TOLERANCE
 
         # Collocation parameters
         self.collocation_points = collocation_points

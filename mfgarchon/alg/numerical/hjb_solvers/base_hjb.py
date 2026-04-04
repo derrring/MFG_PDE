@@ -39,6 +39,10 @@ if TYPE_CHECKING:
 # Clipping limit for p_values ONLY when using numerical FD for Jacobian H-part (fallback)
 P_VALUE_CLIP_LIMIT_FD_JAC = 1e6
 
+# Default Newton solver parameters shared across HJB solvers (Issue #966)
+DEFAULT_NEWTON_MAX_ITERATIONS: int = 30
+DEFAULT_NEWTON_TOLERANCE: float = 1e-6
+
 
 def _compute_gradient_array_1d(
     U_array: np.ndarray,
@@ -1066,9 +1070,9 @@ def solve_hjb_timestep_newton(
 
     # Set defaults if still None
     if max_newton_iterations is None:
-        max_newton_iterations = 30
+        max_newton_iterations = DEFAULT_NEWTON_MAX_ITERATIONS
     if newton_tolerance is None:
-        newton_tolerance = 1e-6
+        newton_tolerance = DEFAULT_NEWTON_TOLERANCE
 
     # Initial guess for Newton for U_n is U_{n+1} (from current HJB backward step)
     # Use backend-aware copy from compatibility layer
@@ -1272,9 +1276,9 @@ def solve_hjb_system_backward(
 
     # Set defaults if still None
     if max_newton_iterations is None:
-        max_newton_iterations = 30
+        max_newton_iterations = DEFAULT_NEWTON_MAX_ITERATIONS
     if newton_tolerance is None:
-        newton_tolerance = 1e-6
+        newton_tolerance = DEFAULT_NEWTON_TOLERANCE
 
     Nt = problem.Nt + 1
     Nx = problem.geometry.get_grid_shape()[0]
