@@ -40,7 +40,7 @@ from mfgarchon.geometry.boundary import no_flux_bc
 from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.solver_result import SolverResult
 
-from .base_mfg import BaseMFGSolver
+from .base_mfg import BaseCouplingIterator
 from .fixed_point_utils import (
     apply_damping,
     check_convergence_criteria,
@@ -66,7 +66,7 @@ class BlockMethod(Enum):
     GAUSS_SEIDEL = "gauss_seidel"
 
 
-class BlockIterator(BaseMFGSolver):
+class BlockIterator(BaseCouplingIterator):
     """
     Block iteration solver for coupled MFG systems.
 
@@ -716,7 +716,7 @@ if __name__ == "__main__":
     # Issue #757: Removed sys.path manipulation - use proper package installation
     print("Testing BlockIterator...")
 
-    from mfgarchon.alg.numerical.coupling.base_mfg import BaseMFGSolver
+    from mfgarchon.alg.numerical.coupling.base_mfg import BaseCouplingIterator
     from mfgarchon.alg.numerical.coupling.block_iterators import (
         BlockGaussSeidelIterator,
         BlockJacobiIterator,

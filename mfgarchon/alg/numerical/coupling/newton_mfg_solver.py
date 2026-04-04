@@ -36,7 +36,7 @@ from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.numerical.nonlinear_solvers import NewtonSolver, SolverInfo
 from mfgarchon.utils.solver_result import SolverResult
 
-from .base_mfg import BaseMFGSolver
+from .base_mfg import BaseCouplingIterator
 from .mfg_residual import MFGResidual
 
 if TYPE_CHECKING:
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-class NewtonMFGSolver(BaseMFGSolver):
+class NewtonMFGSolver(BaseCouplingIterator):
     """
     Newton's method solver for coupled MFG systems.
 
@@ -339,7 +339,7 @@ if __name__ == "__main__":
     # Issue #757: Removed sys.path manipulation - use proper package installation
     print("Testing NewtonMFGSolver...")
 
-    from mfgarchon.alg.numerical.coupling.base_mfg import BaseMFGSolver
+    from mfgarchon.alg.numerical.coupling.base_mfg import BaseCouplingIterator
     from mfgarchon.alg.numerical.coupling.mfg_residual import MFGResidual
     from mfgarchon.alg.numerical.fp_solvers import FPFDMSolver
     from mfgarchon.alg.numerical.hjb_solvers import HJBFDMSolver

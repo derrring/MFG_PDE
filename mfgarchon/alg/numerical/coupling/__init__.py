@@ -11,7 +11,7 @@ solvers to solve the coupled MFG system using classical numerical approaches:
 Note: Particle-collocation methods have been removed from core package.
 """
 
-from .base_mfg import BaseMFGSolver
+from .base_mfg import BaseCouplingIterator
 
 # Block iterators (Issue #492 Phase 2)
 from .block_iterators import (
@@ -41,8 +41,12 @@ from .newton_mfg_solver import NewtonMFGSolver
 
 # Note: ParticleCollocationSolver has been removed from core package
 
+# Backward compatibility alias
+BaseMFGSolver = BaseCouplingIterator
+
 __all__ = [
-    "BaseMFGSolver",
+    "BaseCouplingIterator",
+    "BaseMFGSolver",  # backward compat alias
     "FixedPointIterator",
     "FictitiousPlayIterator",
     # Block iterators (Issue #492 Phase 2)

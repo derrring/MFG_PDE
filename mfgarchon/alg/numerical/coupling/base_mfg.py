@@ -12,17 +12,13 @@ else:
     pass
 
 
-class BaseMFGSolver(ABC):
+class BaseCouplingIterator(ABC):
     """
-    Abstract base class for coupled MFG system solvers.
+    Abstract base class for iterative coupling solvers (Picard, block, fictitious play).
 
-    This class provides the interface for complete Mean Field Games solvers
-    that combine HJB and FP solvers to solve the coupled system. It maintains
-    backward compatibility with the original MFGSolver interface while being
-    part of the new numerical methods paradigm.
-
-    Note: This class maintains the original interface for backward compatibility
-    while being organized under the numerical paradigm.
+    Provides the interface for MFG solvers that iterate between HJB and FP
+    sub-solvers to solve the coupled system. Distinguished from
+    ``alg.base_solver.BaseMFGSolver`` which is the cross-paradigm base.
     """
 
     def __init__(self, problem: MFGProblem) -> None:
@@ -131,13 +127,13 @@ class BaseMFGSolver(ABC):
 
 if __name__ == "__main__":
     """Quick smoke test for development."""
-    print("Testing BaseMFGSolver...")
+    print("Testing BaseCouplingIterator...")
 
     # Test base class availability
-    assert BaseMFGSolver is not None
-    print("  BaseMFGSolver class available")
+    assert BaseCouplingIterator is not None
+    print("  BaseCouplingIterator class available")
 
-    # Note: BaseMFGSolver is abstract and requires implementation
+    # Note: BaseCouplingIterator is abstract and requires implementation
     # See FixedPointMFGSolver for concrete implementation
 
     print("Smoke tests passed!")

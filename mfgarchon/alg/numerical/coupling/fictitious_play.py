@@ -42,7 +42,7 @@ from mfgarchon.alg.iterative.schedules import (
 )
 from mfgarchon.utils.solver_result import SolverResult
 
-from .base_mfg import BaseMFGSolver
+from .base_mfg import BaseCouplingIterator
 from .fixed_point_utils import (
     check_convergence_criteria,
     initialize_cold_start,
@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from mfgarchon.problem.base_mfg_problem import MFGProblem
 
 
-class FictitiousPlayIterator(BaseMFGSolver):
+class FictitiousPlayIterator(BaseCouplingIterator):
     """
     Fictitious Play iterator for MFG systems.
 
