@@ -2164,11 +2164,11 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Backward time stepping: Nt steps from index (n_time_points-2) down to 0
         # This covers all Nt intervals in the backward direction (Issue #587 Protocol pattern)
-        from mfgarchon.utils.progress import create_progress_bar
+        from mfgarchon.utils.progress import create_progress_bar, should_show_progress
 
         timestep_range = create_progress_bar(
             range(n_time_points - 2, -1, -1),
-            verbose=show_progress,
+            verbose=should_show_progress(show_progress),
             desc="HJB (backward)",
         )
 

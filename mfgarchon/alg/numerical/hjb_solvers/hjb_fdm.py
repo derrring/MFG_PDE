@@ -367,6 +367,7 @@ class HJBFDMSolver(BaseHJBSolver):
         tensor_volatility_field: NDArray | None = None,
         bc_values: dict[str, float] | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
+        show_progress: bool | None = None,  # Issue #934
         # MMS verification support
         source_term: Callable | None = None,
         # Deprecated parameter names for backward compatibility (decorators handle warnings)
@@ -499,6 +500,7 @@ class HJBFDMSolver(BaseHJBSolver):
                 volatility_field,
                 progress_callback=progress_callback,
                 source_term=source_term,
+                show_progress=show_progress,
             )
 
     def _solve_hjb_nd(
@@ -509,6 +511,7 @@ class HJBFDMSolver(BaseHJBSolver):
         volatility_field: float | NDArray | None = None,
         progress_callback: Callable[[int], None] | None = None,  # Issue #640
         source_term: Callable | None = None,  # MMS verification
+        show_progress: bool | None = None,  # Issue #934
     ) -> NDArray:
         """Solve nD HJB using centralized nonlinear solvers with variable diffusion.
 
@@ -540,7 +543,7 @@ class HJBFDMSolver(BaseHJBSolver):
 
         timestep_iter = create_progress_bar(
             range(n_time_points - 2, -1, -1),
-            verbose=should_show_progress(True) and not use_external_progress,
+            verbose=should_show_progress(show_progress) and not use_external_progress,
             desc=f"HJB {self.dimension}D-FDM ({self.solver_type})",
         )
 
