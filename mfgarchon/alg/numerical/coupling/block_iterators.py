@@ -182,10 +182,8 @@ class BlockIterator(BaseCouplingIterator):
         self.error_history_M: list[float] = []
         self.iterations_run = 0
 
-        # Cache solver signatures
-        self._hjb_sig_params: set[str] | None = None
-        self._fp_sig_params: set[str] | None = None
-        self._cache_solver_signatures()
+        # Cache solver signatures via base class (Issue #934)
+        self._init_solver_signatures(self.hjb_solver, self.fp_solver)
 
         # Cache initial/terminal conditions
         self._M_initial: NDArray | None = None
@@ -200,22 +198,6 @@ class BlockIterator(BaseCouplingIterator):
         from mfgarchon.alg.numerical.adjoint import validate_adjoint_capability
 
         validate_adjoint_capability(self.hjb_solver, self.fp_solver, strict=True)
-
-    def _cache_solver_signatures(self) -> None:
-        """Cache solver method signatures for parameter passing."""
-        import inspect
-
-        try:
-            sig = inspect.signature(self.hjb_solver.solve_hjb_system)
-            self._hjb_sig_params = set(sig.parameters.keys())
-        except AttributeError:
-            self._hjb_sig_params = None
-
-        try:
-            sig = inspect.signature(self.fp_solver.solve_fp_system)
-            self._fp_sig_params = set(sig.parameters.keys())
-        except AttributeError:
-            self._fp_sig_params = None
 
     def _initialize_conditions(self, shape: tuple[int, ...]) -> tuple[NDArray, NDArray]:
         """Initialize initial density and terminal value from problem."""
