@@ -642,7 +642,7 @@ class HierarchicalProgress:
         """
         if not self._progress:
             return None
-        metrics_str = self._format_metrics(initial_metrics)
+        metrics_str = _format_metrics(initial_metrics)
         return self._progress.add_task(description, total=total, metrics_str=metrics_str)
 
     def update(self, task_id: int | None, advance: int = 1, **metrics: Any) -> None:
