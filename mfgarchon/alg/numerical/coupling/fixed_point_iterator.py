@@ -19,7 +19,7 @@ import numpy as np
 from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.solver_result import SolverResult
 
-from .base_mfg import BaseMFGSolver
+from .base_mfg import BaseCouplingIterator
 from .fixed_point_utils import (
     check_convergence_criteria,
     initialize_cold_start,
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 IterationCallback = Callable[[int, np.ndarray, np.ndarray, float, float], bool | None]
 
 
-class FixedPointIterator(BaseMFGSolver):
+class FixedPointIterator(BaseCouplingIterator):
     """
     Fixed-point iterator for MFG systems with full feature support.
 
