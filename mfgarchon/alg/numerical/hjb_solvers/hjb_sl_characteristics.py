@@ -38,6 +38,8 @@ def trace_characteristic_backward_1d(
     method: str = "explicit_euler",
     use_jax: bool = False,
     jax_solve_fn: object | None = None,
+    ode_rtol: float = 1e-6,
+    ode_atol: float = 1e-8,
 ) -> float:
     """
     Trace characteristic backward in time for 1D problems.
@@ -52,6 +54,8 @@ def trace_characteristic_backward_1d(
         method: Integration method ('explicit_euler', 'rk2', 'rk4')
         use_jax: Whether to use JAX acceleration
         jax_solve_fn: JAX solve function if available
+        ode_rtol: Relative tolerance for solve_ivp (rk4 method). Default 1e-6.
+        ode_atol: Absolute tolerance for solve_ivp (rk4 method). Default 1e-8.
 
     Returns:
         Departure point X(t-dt)
@@ -88,8 +92,8 @@ def trace_characteristic_backward_1d(
             t_span=[0, dt],
             y0=[x_scalar],
             method="RK45",
-            rtol=1e-6,
-            atol=1e-8,
+            rtol=ode_rtol,
+            atol=ode_atol,
         )
         x_departure = sol.y[0, -1]
 
@@ -106,6 +110,8 @@ def trace_characteristic_backward_nd(
     dt: float,
     dimension: int,
     method: str = "explicit_euler",
+    ode_rtol: float = 1e-6,
+    ode_atol: float = 1e-8,
 ) -> np.ndarray:
     """
     Trace characteristic backward in time for nD problems.
@@ -119,6 +125,8 @@ def trace_characteristic_backward_nd(
         dt: Time step size
         dimension: Spatial dimension
         method: Integration method ('explicit_euler', 'rk2', 'rk4')
+        ode_rtol: Relative tolerance for solve_ivp (rk4 method). Default 1e-6.
+        ode_atol: Absolute tolerance for solve_ivp (rk4 method). Default 1e-8.
 
     Returns:
         Departure point X(t-dt), shape (dimension,)
@@ -151,8 +159,8 @@ def trace_characteristic_backward_nd(
             t_span=[0, dt],
             y0=x_vec,
             method="RK45",
-            rtol=1e-6,
-            atol=1e-8,
+            rtol=ode_rtol,
+            atol=ode_atol,
         )
         x_departure = sol.y[:, -1]
 
@@ -168,6 +176,7 @@ def apply_boundary_conditions_1d(
     xmin: float,
     xmax: float,
     bc_type: str | None = None,
+    max_reflections: int = 10,
 ) -> float:
     """
     Apply boundary conditions to ensure x is in valid domain (1D).
@@ -182,6 +191,8 @@ def apply_boundary_conditions_1d(
             - 'periodic': Wrap around domain
             - 'reflect' / 'no_flux' / 'neumann': Mirror about boundary (default for MFG)
             - 'clamp' / 'dirichlet' / None: Clamp to boundary
+        max_reflections: Maximum number of boundary reflections for reflect/neumann BC.
+            Large displacements may require multiple reflections. Default 10.
 
     Returns:
         Position within domain bounds
@@ -197,7 +208,7 @@ def apply_boundary_conditions_1d(
     if bc_type in ("reflect", "no_flux", "neumann"):
         # Mirror reflection about boundaries
         # Handles multiple reflections for large displacements
-        for _ in range(10):  # Max 10 reflections
+        for _ in range(max_reflections):
             if x < xmin:
                 x = 2 * xmin - x
             elif x > xmax:
@@ -215,6 +226,7 @@ def apply_boundary_conditions_nd(
     x: np.ndarray,
     bounds: list[tuple[float, float]],
     bc_type: str | None = None,
+    max_reflections: int = 10,
 ) -> np.ndarray:
     """
     Apply boundary conditions to ensure x is in valid domain (nD).
@@ -228,6 +240,8 @@ def apply_boundary_conditions_nd(
             - 'periodic': Wrap around domain
             - 'reflect' / 'no_flux' / 'neumann': Mirror about boundary (default for MFG)
             - 'clamp' / 'dirichlet' / None: Clamp to boundary
+        max_reflections: Maximum number of boundary reflections per dimension
+            for reflect/neumann BC. Default 10.
 
     Returns:
         Position within domain bounds, shape (dimension,)
@@ -245,7 +259,7 @@ def apply_boundary_conditions_nd(
                 x_bounded[d] -= length
         elif bc_type in ("reflect", "no_flux", "neumann"):
             # Mirror reflection about boundaries
-            for _ in range(10):  # Max 10 reflections
+            for _ in range(max_reflections):
                 if x_bounded[d] < xmin:
                     x_bounded[d] = 2 * xmin - x_bounded[d]
                 elif x_bounded[d] > xmax:

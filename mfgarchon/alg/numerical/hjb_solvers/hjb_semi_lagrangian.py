@@ -122,6 +122,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         cfl_target: float = 0.9,
         gradient_clip_threshold: float | None = None,
         enable_gradient_monitoring: bool = True,
+        ode_rtol: float = 1e-6,
+        ode_atol: float = 1e-8,
     ):
         """
         Initialize semi-Lagrangian HJB solver.
@@ -169,6 +171,10 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
             enable_gradient_monitoring: Enable detailed gradient statistics tracking (default: True).
                 Records when and where gradient clipping occurs for debugging. Disable for
                 performance if clipping monitoring is not needed.
+            ode_rtol: Relative tolerance for scipy.solve_ivp when characteristic_solver='rk4'.
+                Default 1e-6.
+            ode_atol: Absolute tolerance for scipy.solve_ivp when characteristic_solver='rk4'.
+                Default 1e-8.
         """
         super().__init__(problem)
         self.hjb_method_name = "Semi-Lagrangian"
@@ -186,6 +192,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
         self.enable_adaptive_substepping = enable_adaptive_substepping
         self.max_substeps = max_substeps
         self.cfl_target = cfl_target
+        self.ode_rtol = ode_rtol
+        self.ode_atol = ode_atol
 
         # Gradient clipping configuration (Issue #583)
         self.gradient_clip_threshold = gradient_clip_threshold
@@ -1557,6 +1565,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 method=self.characteristic_solver,
                 use_jax=self.use_jax,
                 jax_solve_fn=jax_fn,
+                ode_rtol=self.ode_rtol,
+                ode_atol=self.ode_atol,
             )
 
             # Apply boundary conditions
@@ -1582,6 +1592,8 @@ class HJBSemiLagrangianSolver(BaseHJBSolver):
                 dt,
                 dimension=self.dimension,
                 method=self.characteristic_solver,
+                ode_rtol=self.ode_rtol,
+                ode_atol=self.ode_atol,
             )
 
             # Issue #702: Use centralized bc_utils for consistent BC handling
