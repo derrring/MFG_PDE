@@ -32,8 +32,8 @@ if TYPE_CHECKING:
 def create_network_mfg_solver(
     problem: NetworkMFGProblem,
     solver_type: str = "fixed_point",
-    hjb_solver_type: str = "explicit",
-    fp_solver_type: str = "explicit",
+    hjb_solver_type: str | type = "RK45",
+    fp_solver_type: str = "explicit",  # FP network solver not yet refactored
     damping_factor: float = 0.5,
     hjb_kwargs: dict[str, Any] | None = None,
     fp_kwargs: dict[str, Any] | None = None,
@@ -108,35 +108,29 @@ def create_network_mfg_solver(
 
 def create_simple_network_solver(
     problem: NetworkMFGProblem,
-    scheme: str = "explicit",
+    scheme: str | type = "RK45",
     damping: float = 0.5,
-    cfl_factor: float = 0.5,
 ) -> FixedPointIterator:
     """
     Create a simple network MFG solver with minimal configuration.
 
-    This is a convenience function for quick setup with default parameters.
-
     Args:
         problem: NetworkMFGProblem instance
-        scheme: Both HJB and FP scheme ("explicit" or "implicit")
+        scheme: Any scipy solve_ivp method for HJB. FP uses "explicit".
         damping: Fixed-point damping factor
-        cfl_factor: CFL stability factor for explicit schemes
 
     Returns:
         Configured network MFG solver
 
     Example:
-        >>> solver = create_simple_network_solver(problem, scheme="implicit")
+        >>> solver = create_simple_network_solver(problem)
         >>> U, M, info = solver.solve()
     """
     return create_network_mfg_solver(
         problem=problem,
         hjb_solver_type=scheme,
-        fp_solver_type=scheme,
+        fp_solver_type="explicit",  # FP network solver not yet refactored
         damping_factor=damping,
-        hjb_kwargs={"cfl_factor": cfl_factor} if scheme == "explicit" else {},
-        fp_kwargs={"cfl_factor": cfl_factor} if scheme == "explicit" else {},
     )
 
 

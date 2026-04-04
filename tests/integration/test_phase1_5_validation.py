@@ -187,7 +187,7 @@ class TestNetworkSolverIntegration:
         from mfgarchon.alg.numerical.network_solvers.hjb_network import NetworkHJBSolver
 
         problem = self._make_network_problem()
-        solver = NetworkHJBSolver(problem, scheme="explicit")
+        solver = NetworkHJBSolver(problem, scheme="RK45")
 
         M = np.ones((problem.Nt + 1, problem.num_nodes)) / problem.num_nodes
         U_terminal = np.zeros(problem.num_nodes)
@@ -212,12 +212,26 @@ class TestNetworkSolverIntegration:
         for t in range(M.shape[0]):
             assert abs(M[t].sum() - 1.0) < 0.1  # Approximate conservation
 
+    def test_network_hjb_multiple_schemes(self):
+        """Multiple scipy ODE methods produce finite solutions (#960)."""
+        from mfgarchon.alg.numerical.network_solvers.hjb_network import NetworkHJBSolver
+
+        problem = self._make_network_problem()
+        M = np.ones((problem.Nt + 1, problem.num_nodes)) / problem.num_nodes
+        U_terminal = np.zeros(problem.num_nodes)
+
+        for scheme in ["RK45", "BDF"]:
+            solver = NetworkHJBSolver(problem, scheme=scheme)
+            U = solver.solve_hjb_system(M, U_terminal, np.zeros_like(M))
+            assert U.shape == M.shape
+            assert np.all(np.isfinite(U)), f"scheme={scheme} produced non-finite values"
+
     def test_network_hjb_with_source_term(self):
         """Verify source_term flows through network HJB solver."""
         from mfgarchon.alg.numerical.network_solvers.hjb_network import NetworkHJBSolver
 
         problem = self._make_network_problem()
-        solver = NetworkHJBSolver(problem, scheme="explicit")
+        solver = NetworkHJBSolver(problem, scheme="RK45")
 
         M = np.ones((problem.Nt + 1, problem.num_nodes)) / problem.num_nodes
         U_terminal = np.zeros(problem.num_nodes)
