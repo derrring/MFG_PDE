@@ -23,6 +23,7 @@ Usage:
 
 from __future__ import annotations
 
+import contextvars
 import functools
 import os
 import sys
@@ -47,6 +48,11 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 T = TypeVar("T")
+
+# Context variable for hierarchical progress routing (Issue #934).
+# When a HierarchicalProgress is active, create_progress_bar() auto-routes
+# to it as a transient subtask instead of creating a standalone bar.
+_progress_context: contextvars.ContextVar[Any] = contextvars.ContextVar("_progress_context", default=None)
 
 
 # =============================================================================
@@ -580,6 +586,7 @@ class HierarchicalProgress:
         self._progress: Progress | None = None
         self._entry_count: int = 0  # Reentrant counter for nested context managers
         self._task_metrics: dict[int, dict[str, Any]] = {}  # Accumulated metrics per task
+        self._ctx_token: contextvars.Token[Any] | None = None
 
     def __enter__(self) -> HierarchicalProgress:
         """
@@ -603,6 +610,8 @@ class HierarchicalProgress:
                 transient=False,
             )
             self._progress.start()
+            # Register as active context for create_progress_bar auto-routing
+            self._ctx_token = _progress_context.set(self)
         # Else: Already active (passed from parent), reuse display
         return self
 
@@ -617,6 +626,10 @@ class HierarchicalProgress:
         self._entry_count -= 1
 
         if self._progress and self._entry_count == 0:
+            # Reset context before stopping display
+            if self._ctx_token is not None:
+                _progress_context.reset(self._ctx_token)
+                self._ctx_token = None
             self._progress.stop()
             self._progress = None
 
@@ -859,6 +872,51 @@ def get_progress(
     return HierarchicalProgress(verbose=should_show_progress(show_progress)), True
 
 
+class _ChildProgressBar:
+    """ProgressTracker that routes to a parent HierarchicalProgress subtask.
+
+    Created by ``create_progress_bar`` when a ``HierarchicalProgress`` context
+    is active (Issue #934). Implements the same interface as ``RichProgressBar``
+    so solver code works unchanged.
+
+    The subtask is transient: it appears indented under the parent task and
+    auto-removes when iteration completes.
+    """
+
+    def __init__(
+        self,
+        parent: HierarchicalProgress,
+        iterable: Any,
+        desc: str = "",
+        total: int | None = None,
+    ):
+        self._parent = parent
+        self._iterable = iterable
+        self._desc = desc
+        self._total = total
+        self._subtask: _TransientSubtask | None = None
+
+    def __iter__(self) -> Any:
+        """Iterate with automatic subtask lifecycle."""
+        self._subtask = self._parent.transient_subtask(self._desc, total=self._total or 0, transient=True)
+        ctx = self._subtask.__enter__()
+        try:
+            for item in self._iterable:
+                yield item
+                ctx.advance()
+        finally:
+            self._subtask.__exit__(None, None, None)
+            self._subtask = None
+
+    def update_metrics(self, **kwargs: Any) -> None:
+        """Route metrics to parent subtask."""
+        if self._subtask is not None:
+            self._subtask.update_metrics(**kwargs)
+
+    def log(self, message: str) -> None:
+        """Suppress log in child mode (parent controls display)."""
+
+
 def create_progress_bar(
     iterable: Any,
     *,
@@ -869,24 +927,24 @@ def create_progress_bar(
     """
     Factory function ensuring consistent ProgressTracker return type (Issue #587).
 
-    Replaces the pattern: `tqdm(iterable) if verbose else iterable`
-    with type-safe polymorphism: Both branches return ProgressTracker Protocol.
+    Automatically routes to a parent ``HierarchicalProgress`` when one is active
+    in the current context (Issue #934). This enables zero-parameter progress
+    coordination between coupling iterators and inner solvers.
 
-    Polymorphism guarantees:
-        - verbose=True → RichProgressBar (renders UI with metrics)
-        - verbose=False → NoOpProgressBar (silent pass-through)
-        - Both satisfy ProgressTracker Protocol
-        - Solver code works identically with either implementation
-        - No hasattr checks needed (methods always available)
+    Routing logic:
+        1. Parent context active + verbose → _ChildProgressBar (transient subtask)
+        2. No parent + verbose=True → RichProgressBar (standalone)
+        3. verbose=False → NoOpProgressBar (silent, regardless of context)
 
     Args:
         iterable: Sequence to iterate over
-        verbose: If True, show progress bar; if False, silent pass-through
-        desc: Progress bar description
+        verbose: If True, show progress bar; if False, silent pass-through.
+            When False, overrides parent context (solver can still opt out).
+        desc: Progress bar description (used as subtask label in child mode)
         total: Total iterations (auto-detected if iterable has __len__)
 
     Returns:
-        ProgressTracker instance (RichProgressBar or NoOpProgressBar)
+        ProgressTracker instance
 
     Example:
         progress = create_progress_bar(range(100), verbose=True, desc="Solving")
@@ -896,10 +954,21 @@ def create_progress_bar(
                 progress.log("Converged!")  # Always works
                 break
     """
-    if verbose:
-        return RichProgressBar(iterable, desc=desc, total=total, disable=False)
-    else:
+    if not verbose:
         return NoOpProgressBar(iterable, desc=desc, total=total, disable=True)
+
+    # Check for parent HierarchicalProgress context (Issue #934)
+    parent = _progress_context.get(None)
+    if parent is not None and parent.verbose:
+        effective_total = total
+        if effective_total is None:
+            try:
+                effective_total = len(iterable)
+            except TypeError:
+                effective_total = 0
+        return _ChildProgressBar(parent, iterable, desc=desc, total=effective_total)
+
+    return RichProgressBar(iterable, desc=desc, total=total, disable=False)
 
 
 # tqdm-like interface using rich
