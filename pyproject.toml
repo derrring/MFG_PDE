@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.15"  # v0.18.15: MeasureRepresentation Protocol, Phase 1.5 validation, RegimeSwitching bugfixes
+version = "0.18.16"  # v0.18.16: Hard-coded refactors (SL/Newton/WENO), Layer 1 test hardening (33 tests)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
