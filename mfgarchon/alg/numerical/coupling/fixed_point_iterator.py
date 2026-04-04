@@ -611,98 +611,54 @@ class FixedPointIterator(BaseCouplingIterator):
                 # Issue #922: Compose source terms from problem fields
                 hjb_source = self._compose_hjb_source(M_old)
 
-                with (
-                    progress.subtask("HJB", total=num_time_steps) as hjb_subtask,
-                    self.problem.using_resolved_bc(bc_resolution_state),
-                ):
-                    # Issue #543 Phase 2: Use cached signature instead of hasattr
-                    if self._hjb_sig_params is not None:
-                        # Method exists and signature is cached
-                        params = self._hjb_sig_params
-                        kwargs = {}
-                        if "show_progress" in params:
-                            kwargs["show_progress"] = False  # Subtask replaces inner bar
-                        if "volatility_field" in params and self.volatility_field is not None:
-                            kwargs["volatility_field"] = self.volatility_field
-                        # Issue #640: Pass progress callback for incremental updates
-                        if "progress_callback" in params:
-                            kwargs["progress_callback"] = hjb_subtask.advance
-                        # Issue #922: Pass composed source term from problem fields
-                        if "source_term" in params and hjb_source is not None:
-                            kwargs["source_term"] = hjb_source
-
-                        U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
-                    else:
-                        # No signature cached - use basic call
-                        U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old)
-                        # Fallback: advance all at once if no callback support
-                        hjb_subtask.advance(num_time_steps)
+                # Issue #934: Context routing handles progress automatically —
+                # solver's create_progress_bar detects parent HierarchicalProgress
+                with self.problem.using_resolved_bc(bc_resolution_state):
+                    kwargs = self._build_hjb_kwargs(
+                        volatility_field=self.volatility_field,
+                        source_term=hjb_source,
+                    )
+                    U_new = self.hjb_solver.solve_hjb_system(M_old, U_terminal, U_old, **kwargs)
 
                 # 2. Solve FP forward with new U (transient subtask)
                 # Issue #614: Use hierarchical subtask for inner solver visibility
                 # Issue #922: Compose FP source terms from problem fields
                 fp_source = self._compose_fp_source(M_old, U_new)
 
-                with progress.subtask("FP", total=num_time_steps) as fp_subtask:
-                    if self._fp_sig_params is not None:
-                        # Standard mode: FP builds its own matrix
-                        # Issue #543 Phase 2: Use cached signature instead of hasattr
-                        # Method exists and signature is cached
-                        params = self._fp_sig_params
-                        kwargs = {}
-                        if "show_progress" in params:
-                            kwargs["show_progress"] = False  # Subtask replaces inner bar
-                        # Issue #922: Pass composed FP source term
-                        if "source_term" in params and fp_source is not None:
-                            kwargs["source_term"] = fp_source
+                # Issue #934: Context routing handles progress automatically
+                kwargs = self._build_fp_kwargs(
+                    volatility_field=self.volatility_field,
+                    source_term=fp_source,
+                )
 
-                        # Pass drift/potential to FP solver.
-                        # drift_field = velocity alpha*, potential_field = U-potential (deprecated).
-                        if self.drift_field is not None:
-                            # User-provided drift override (for non-MFG problems)
-                            if "drift_field" in params:
-                                kwargs["drift_field"] = self.drift_field
-                        else:
-                            H_class = self.problem.hamiltonian_class
-                            from mfgarchon.core.hamiltonian import SeparableHamiltonian
-
-                            use_velocity = (
-                                H_class is not None
-                                and "drift_field" in params
-                                and not (isinstance(H_class, SeparableHamiltonian) and H_class.control_cost.is_smooth())
-                            )
-                            if use_velocity:
-                                # Non-smooth H: face-centered velocity via H.optimal_control
-                                kwargs["drift_field"] = self._compute_velocity_field(U_new, M_old, H_class)
-                            elif "potential_field" in params:
-                                # Smooth H: pass U as potential (deprecated path)
-                                kwargs["potential_field"] = U_new
-                            elif "drift_field" in params:
-                                # FP solver without potential_field (e.g. GFDM): pass U as drift
-                                kwargs["drift_field"] = U_new
-
-                        if "volatility_field" in params and self.volatility_field is not None:
-                            kwargs["volatility_field"] = self.volatility_field
-
-                        # Issue #640: Pass progress callback for incremental updates
-                        if "progress_callback" in params:
-                            kwargs["progress_callback"] = fp_subtask.advance
-
-                        # Call with appropriate arguments
-                        if "drift_field" in params or "potential_field" in params:
-                            M_new = self.fp_solver.solve_fp_system(M_initial, **kwargs)
-                        else:
-                            # Legacy interface: second positional arg is U for drift
-                            M_new = self.fp_solver.solve_fp_system(M_initial, U_new, **kwargs)
-
-                        # If no callback support, advance all at once
-                        if "progress_callback" not in params:
-                            fp_subtask.advance(num_time_steps)
+                # Drift/potential logic (FP-specific, not in _build_fp_kwargs)
+                if self._fp_sig_params is not None:
+                    params = self._fp_sig_params
+                    if self.drift_field is not None:
+                        if "drift_field" in params:
+                            kwargs["drift_field"] = self.drift_field
                     else:
-                        # No signature cached - use basic call
-                        M_new = self.fp_solver.solve_fp_system(M_initial, U_new)
-                        # Fallback: advance all at once
-                        fp_subtask.advance(num_time_steps)
+                        H_class = self.problem.hamiltonian_class
+                        from mfgarchon.core.hamiltonian import SeparableHamiltonian
+
+                        use_velocity = (
+                            H_class is not None
+                            and "drift_field" in params
+                            and not (isinstance(H_class, SeparableHamiltonian) and H_class.control_cost.is_smooth())
+                        )
+                        if use_velocity:
+                            kwargs["drift_field"] = self._compute_velocity_field(U_new, M_old, H_class)
+                        elif "potential_field" in params:
+                            kwargs["potential_field"] = U_new
+                        elif "drift_field" in params:
+                            kwargs["drift_field"] = U_new
+
+                    if "drift_field" in params or "potential_field" in params:
+                        M_new = self.fp_solver.solve_fp_system(M_initial, **kwargs)
+                    else:
+                        M_new = self.fp_solver.solve_fp_system(M_initial, U_new, **kwargs)
+                else:
+                    M_new = self.fp_solver.solve_fp_system(M_initial, U_new)
 
                 # 3. Apply damping or Anderson acceleration
                 # Issue #719: Per-variable damping + Phase 2 schedule support
