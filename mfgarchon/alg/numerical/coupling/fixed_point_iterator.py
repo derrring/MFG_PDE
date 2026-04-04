@@ -156,34 +156,8 @@ class FixedPointIterator(BaseCouplingIterator):
         self._warm_start_U: np.ndarray | None = None
         self._warm_start_M: np.ndarray | None = None
 
-        # Cache signature info for solver interfaces (performance optimization)
-        self._hjb_sig_params: set[str] | None = None
-        self._fp_sig_params: set[str] | None = None
-        self._cache_solver_signatures()
-
-    def _cache_solver_signatures(self) -> None:
-        """
-        Cache solver method signatures to avoid repeated inspect calls.
-
-        Issue #543 Phase 2: Eliminates hasattr checks for solver methods.
-        """
-        import inspect
-
-        # Try to get HJB solver signature
-        try:
-            sig = inspect.signature(self.hjb_solver.solve_hjb_system)
-            self._hjb_sig_params = set(sig.parameters.keys())
-        except AttributeError:
-            # Solver doesn't have solve_hjb_system method
-            self._hjb_sig_params = None
-
-        # Try to get FP solver signature
-        try:
-            sig = inspect.signature(self.fp_solver.solve_fp_system)
-            self._fp_sig_params = set(sig.parameters.keys())
-        except AttributeError:
-            # Solver doesn't have solve_fp_system method
-            self._fp_sig_params = None
+        # Cache solver signatures via base class (Issue #934)
+        self._init_solver_signatures(self.hjb_solver, self.fp_solver)
 
     def _compose_hjb_source(self, m_current: np.ndarray) -> Callable | None:
         """Compose problem-level source terms into a solver-level source_term callable.
