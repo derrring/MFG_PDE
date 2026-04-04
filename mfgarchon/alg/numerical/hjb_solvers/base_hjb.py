@@ -157,20 +157,21 @@ def _get_bc_info_1d(
     Returns:
         Tuple (BCType, value, alpha, beta)
     """
-    from mfgarchon.geometry.boundary.types import BCType
+    from mfgarchon.geometry.boundary.types import BCType, BoundaryFace
 
-    boundary_key = "x_min" if side == "left" else "x_max"
+    target_face = BoundaryFace(0, "min" if side == "left" else "max")
     default_alpha, default_beta = 1.0, 0.0
 
     # Priority 1: Try segment-based access (supports Robin with alpha/beta)
+    # Issue #946: Match via seg.face instead of string comparison
     try:
         for seg in bc.segments:
-            if seg.boundary == boundary_key:
+            seg_face = seg.face
+            if seg_face is not None and seg_face == target_face:
                 value = seg.value
                 if callable(value):
                     value = value(time)
                 value = value if value is not None else 0.0
-                # Extract Robin coefficients if present
                 alpha = getattr(seg, "alpha", default_alpha)
                 beta = getattr(seg, "beta", default_beta)
                 return seg.bc_type, value, alpha, beta
@@ -181,6 +182,8 @@ def _get_bc_info_1d(
         pass  # No segments attribute, try unified interface
 
     # Priority 2: Try unified interface (get_boundary_type method)
+    # These methods still take string keys (public API)
+    boundary_key = target_face.to_string()
     try:
         bc_type = bc.get_boundary_type(boundary_key)
         bc_value = bc.get_boundary_value(boundary_key, time=time)

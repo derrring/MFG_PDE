@@ -93,7 +93,7 @@ from .conditions import BoundaryConditions
 from .enforcement import enforce_dirichlet_value_nd, enforce_neumann_value_nd
 from .fdm_bc_1d import BoundaryConditions as BoundaryConditions1DFDM
 from .ghost_cells import GhostCellConfig
-from .types import BCSegment, BCType
+from .types import BCSegment, BCType, BoundaryFace, parse_boundary_face
 
 logger = get_logger(__name__)
 
@@ -334,10 +334,7 @@ class FDMApplicator(BaseStructuredApplicator):
         """
         Parse boundary identifier string to (dimension, side).
 
-        Supports standard tensor-product grid boundary naming:
-        - "x_min", "x_max" → (0, 'min'), (0, 'max')
-        - "y_min", "y_max" → (1, 'min'), (1, 'max')
-        - "z_min", "z_max" → (2, 'min'), (2, 'max')
+        Uses BoundaryFace for dimension-agnostic parsing (Issue #946).
 
         Args:
             boundary_id: Boundary identifier string
@@ -345,28 +342,10 @@ class FDMApplicator(BaseStructuredApplicator):
         Returns:
             (dimension_index, 'min' or 'max') or (None, None) if unrecognized
         """
-        if not isinstance(boundary_id, str):
+        face = parse_boundary_face(boundary_id)
+        if face is None:
             return None, None
-
-        # Parse format: "{axis}_{side}" e.g., "x_min", "y_max"
-        parts = boundary_id.lower().split("_")
-        if len(parts) != 2:
-            return None, None
-
-        axis, side = parts
-
-        # Map axis to dimension index
-        axis_map = {"x": 0, "y": 1, "z": 2}
-        if axis not in axis_map:
-            return None, None
-
-        dim = axis_map[axis]
-
-        # Validate side
-        if side not in ["min", "max"]:
-            return None, None
-
-        return dim, side
+        return face.axis, face.side
 
     def _apply_dirichlet_enforcement(self, field: NDArray[np.floating], dim: int, side: str, value: float) -> None:
         """
@@ -1377,19 +1356,12 @@ class PreallocatedGhostBuffer:
         g = self._ghost_depth
         buf = self._buffer
 
-        # Standard boundary names for FDM grids
-        axis_names = ["x", "y", "z", "w", "v"]  # Extend as needed
-
         for axis in range(d):
             for side in ["min", "max"]:
-                # Construct standard boundary name (e.g., "x_min", "y_max")
-                if axis < len(axis_names):
-                    boundary_name = f"{axis_names[axis]}_{side}"
-                else:
-                    boundary_name = f"dim{axis}_{side}"
+                target_face = BoundaryFace(axis, side)
 
-                # Find matching BC segment for this face
-                segment = self._find_segment_for_face(bc, boundary_name, axis, side)
+                # Find matching BC segment for this face (Issue #946)
+                segment = self._find_segment_for_face(bc, target_face)
 
                 if segment is None:
                     # No explicit segment - use default BC (first segment or Neumann)
@@ -1403,47 +1375,36 @@ class PreallocatedGhostBuffer:
     def _find_segment_for_face(
         self,
         bc: BoundaryConditions,
-        boundary_name: str,
-        axis: int,
-        side: str,
+        target_face: BoundaryFace,
     ) -> BCSegment | None:
         """
         Find the BC segment that applies to a specific face.
 
+        Uses BoundaryFace for dimension-agnostic matching (Issue #946).
+
         Matching priority:
-        1. boundary field matches exactly (e.g., "x_min")
-        2. region_name matches standard boundary name
+        1. seg.face matches target_face (handles all string aliases: "left", "x_min", etc.)
+        2. region_name matches face string label
         3. region_name matches via geometry.get_region_mask()
 
         Args:
             bc: Boundary conditions
-            boundary_name: Standard face name (e.g., "x_min")
-            axis: Axis index (0=x, 1=y, ...)
-            side: "min" or "max"
+            target_face: Target boundary face
 
         Returns:
             Matching BCSegment or None if no explicit match
         """
-
         for segment in bc.segments:
-            # Method 1: Direct boundary field match
+            # Method 1: Structured face match via seg.face (Issue #946)
             if segment.boundary is not None:
-                seg_boundary = segment.boundary.lower()
-                # Normalize: "left"/"right" → "x_min"/"x_max" for 1D
-                if seg_boundary in ["left", "bottom", "back"]:
-                    seg_boundary = f"{['x', 'y', 'z'][min(axis, 2)]}_{side}" if side == "min" else None
-                elif seg_boundary in ["right", "top", "front"]:
-                    seg_boundary = f"{['x', 'y', 'z'][min(axis, 2)]}_{side}" if side == "max" else None
-                # Check exact match
-                if seg_boundary == boundary_name:
-                    return segment
-                # Also check if segment.boundary matches boundary_name directly
-                if segment.boundary.lower() == boundary_name:
+                seg_face = segment.face
+                if seg_face is not None and seg_face == target_face:
                     return segment
 
-            # Method 2: region_name matches standard boundary name
+            # Method 2: region_name matches standard face label
             if segment.region_name is not None:
-                if segment.region_name.lower() == boundary_name:
+                face_label = target_face.to_string()
+                if segment.region_name.lower() == face_label:
                     return segment
 
                 # Method 3: Use geometry to check if region covers this boundary face
@@ -1454,14 +1415,10 @@ class PreallocatedGhostBuffer:
                         if isinstance(self._geometry, SupportsRegionMarking):
                             region_names = self._geometry.get_region_names()
                             if segment.region_name in region_names:
-                                # Get region mask and check if boundary point is in region
                                 mask = self._geometry.get_region_mask(segment.region_name)
-                                # For FDM, check boundary index
-                                # side="min" -> index 0, side="max" -> index -1
                                 d = self._dimension
                                 boundary_idx = [slice(None)] * d
-                                boundary_idx[axis] = 0 if side == "min" else -1
-                                # Check if any point on this face is in the region
+                                boundary_idx[target_face.axis] = 0 if target_face.side == "min" else -1
                                 face_mask = mask[tuple(boundary_idx)]
                                 if np.any(face_mask):
                                     return segment
