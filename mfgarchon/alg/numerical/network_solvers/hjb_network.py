@@ -61,9 +61,7 @@ class NetworkHJBSolver(BaseHJBSolver):
     def __init__(
         self,
         problem: NetworkMFGProblem,
-        scheme: str = "explicit",
-        cfl_factor: float = 0.5,
-        max_iterations: int = 1000,
+        scheme: str | type = "RK45",
         tolerance: float = 1e-6,
     ):
         """
@@ -71,17 +69,15 @@ class NetworkHJBSolver(BaseHJBSolver):
 
         Args:
             problem: Network MFG problem instance
-            scheme: Time discretization ("explicit", "implicit", "semi_implicit")
-            cfl_factor: CFL stability factor for explicit schemes
-            max_iterations: Maximum iterations for implicit schemes
-            tolerance: Convergence tolerance
+            scheme: Any ``scipy.integrate.solve_ivp`` method — either a name
+                string ("RK45", "BDF", etc.) or an ``OdeSolver`` subclass
+                for custom integrators. Default "RK45" (adaptive, O(dt^5)).
+            tolerance: ODE solver tolerance (rtol for solve_ivp)
         """
         super().__init__(problem)
 
         self.network_problem = problem
         self.scheme = scheme
-        self.cfl_factor = cfl_factor
-        self.max_iterations = max_iterations
         self.tolerance = tolerance
 
         # Network properties
@@ -94,25 +90,13 @@ class NetworkHJBSolver(BaseHJBSolver):
         self.times = np.linspace(0, problem.T, problem.Nt + 1)
 
         # Solver name
-        self.hjb_method_name = f"NetworkHJB_{scheme}"
+        scheme_name = scheme if isinstance(scheme, str) else scheme.__name__
+        self.hjb_method_name = f"NetworkHJB_{scheme_name}"
 
-        # Initialize discrete operators
-        self._initialize_network_operators()
-
-    def _initialize_network_operators(self):
-        """Initialize network-specific discrete operators."""
-        # Graph gradient operator (simplified representation)
-        self.gradient_ops = {}
+        # Precompute neighbor lists for Hamiltonian evaluation
+        self.gradient_ops: dict[int, list[int]] = {}
         for i in range(self.num_nodes):
-            neighbors = self.network_problem.get_node_neighbors(i)
-            self.gradient_ops[i] = neighbors
-
-        # Stability constraint for explicit schemes
-        if self.scheme == "explicit":
-            max_degree = np.max(np.array(self.adjacency_matrix.sum(axis=1)).flatten())
-            self.dt_stable = self.cfl_factor / (max_degree + 1e-12)
-            if self.dt > self.dt_stable:
-                print(f"Warning: dt={self.dt:.2e} > dt_stable={self.dt_stable:.2e}")
+            self.gradient_ops[i] = self.network_problem.get_node_neighbors(i)
 
     @deprecated_parameter(param_name="M_density_evolution_from_FP", since="v0.17.0", replacement="M_density")
     @deprecated_parameter(param_name="M_density_evolution", since="v0.17.0", replacement="M_density")
@@ -188,134 +172,83 @@ class NetworkHJBSolver(BaseHJBSolver):
         # Extract dimensions from input
         # M_density has shape (n_time_points, num_nodes) where n_time_points = problem.Nt + 1
         n_time_points = M_density.shape[0]
-        U = np.zeros((n_time_points, self.num_nodes))
+        return self._solve_ode(U_terminal, M_density, n_time_points)
 
-        # Set terminal condition (last time index)
-        U[n_time_points - 1, :] = U_terminal
+    def _evaluate_hamiltonian_batch(self, u: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
+        """Evaluate Hamiltonian at all nodes (Issue #960).
 
-        # Backward time stepping
-        for n in range(n_time_points - 2, -1, -1):
-            t = self.times[n]
+        Returns H_i for i = 0, ..., N-1 as a single array.
+        Eliminates per-node Python loop from caller.
+        """
+        H = np.zeros(self.num_nodes)
+        for i in range(self.num_nodes):
+            neighbors = self.gradient_ops[i]
+            H[i] = self.network_problem.hamiltonian(i, neighbors, m, u, t)
+        return H
 
-            # Current density
-            m_current = M_density[n, :]
+    def _solve_ode(
+        self,
+        U_terminal: np.ndarray,
+        M_density: np.ndarray,
+        n_time_points: int,
+    ) -> np.ndarray:
+        """Solve HJB backward via scipy.integrate.solve_ivp (Issue #960).
 
-            # Solve single time step
-            if self.scheme == "explicit":
-                U[n, :] = self._explicit_step(U[n + 1, :], m_current, t)
-            elif self.scheme == "implicit":
-                U[n, :] = self._implicit_step(U[n + 1, :], m_current, t)
-            elif self.scheme == "semi_implicit":
-                U[n, :] = self._semi_implicit_step(U[n + 1, :], m_current, t)
-            else:
-                raise ValueError(f"Unknown scheme: {self.scheme}")
+        Reformulates the backward HJB system as an ODE:
+            du/ds = H(u, m(T-s), T-s),  s in [0, T],  u(0) = U_terminal
 
-            # Apply boundary conditions
-            U[n, :] = self.network_problem.apply_boundary_conditions(U[n, :], t)
+        where s = T - t is the reversed time variable.
+
+        Benefits over hand-coded Euler:
+        - Adaptive time stepping (no CFL constraint)
+        - Higher-order accuracy (RK45 = O(dt^5))
+        - Stiff solvers available (BDF, Radau)
+        """
+        from scipy.integrate import solve_ivp
+
+        T = self.network_problem.T
+
+        def rhs(s, u_flat):
+            # s is forward time in the reversed system: t = T - s
+            t_physical = T - s
+            # Interpolate density at physical time t
+            t_idx = min(int(t_physical / self.dt), n_time_points - 1)
+            m = M_density[t_idx, :]
+            # HJB: du/dt + H = 0  =>  du/ds = H (sign flip from time reversal)
+            return self._evaluate_hamiltonian_batch(u_flat, m, t_physical)
+
+        sol = solve_ivp(
+            rhs,
+            [0, T],
+            U_terminal,
+            method=self.scheme,
+            t_eval=np.linspace(0, T, n_time_points),
+            rtol=self.tolerance,
+            atol=self.tolerance * 0.1,
+        )
+
+        if not sol.success:
+            import warnings
+
+            warnings.warn(
+                f"Network HJB ODE solver did not converge: {sol.message}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        # sol.y shape: (num_nodes, n_time_points) — reversed time
+        # Flip back to physical time: index 0 = t=0, index -1 = t=T
+        U = sol.y.T[::-1]  # (n_time_points, num_nodes)
+
+        # Ensure correct shape (solve_ivp may return fewer points if adaptive)
+        if U.shape[0] != n_time_points:
+            from scipy.interpolate import interp1d
+
+            s_eval = np.linspace(0, T, n_time_points)
+            interp = interp1d(sol.t, sol.y, axis=1, fill_value="extrapolate")
+            U = interp(s_eval).T[::-1]
 
         return U
-
-    def _explicit_step(self, u_next: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
-        """Explicit time step for network HJB."""
-        u_current = u_next.copy()
-
-        # For each node, compute Hamiltonian and update
-        for i in range(self.num_nodes):
-            neighbors = self.gradient_ops[i]
-
-            # Compute network Hamiltonian
-            hamiltonian = self.network_problem.hamiltonian(i, neighbors, m, u_next, t)
-
-            # Forward Euler step
-            u_current[i] = u_next[i] - self.dt * hamiltonian
-
-        return u_current
-
-    def _implicit_step(self, u_next: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
-        """Implicit time step for network HJB using fixed point iteration."""
-        u_current = u_next.copy()
-
-        # Fixed point iteration for implicit step
-        for _iteration in range(self.max_iterations):
-            u_old = u_current.copy()
-
-            # Update each node
-            for i in range(self.num_nodes):
-                neighbors = self.gradient_ops[i]
-                hamiltonian = self.network_problem.hamiltonian(i, neighbors, m, u_current, t)
-
-                # Implicit update
-                u_current[i] = u_next[i] - self.dt * hamiltonian
-
-            # Check convergence
-            error = np.max(np.abs(u_current - u_old))
-            if error < self.tolerance:
-                break
-
-        return u_current
-
-    def _semi_implicit_step(self, u_next: np.ndarray, m: np.ndarray, t: float) -> np.ndarray:
-        """Semi-implicit time step handling diffusion implicitly."""
-        # Split Hamiltonian into diffusion and reaction parts
-        u_current = u_next.copy()
-
-        # Explicit treatment of non-linear terms
-        for i in range(self.num_nodes):
-            neighbors = self.gradient_ops[i]
-            hamiltonian = self.network_problem.hamiltonian(i, neighbors, m, u_next, t)
-            u_current[i] = u_next[i] - self.dt * hamiltonian
-
-        # Implicit treatment of diffusion (graph Laplacian)
-        diffusion_coeff = getattr(self.network_problem.components, "diffusion_coefficient", 1.0)
-        if diffusion_coeff > 0:
-            # Solve (I + dt * D * L) u = u_temp
-            L = self.laplacian_matrix
-            system_matrix = sp.identity(self.num_nodes) + self.dt * diffusion_coeff * L
-
-            try:
-                u_current = spsolve(system_matrix, u_current)
-            except Exception as e:
-                error_msg = (
-                    f"Implicit diffusion solve failed in HJBNetworkSolver: {e}\n"
-                    "Possible causes:\n"
-                    "  1. System matrix is singular or poorly conditioned\n"
-                    "  2. Graph structure has numerical issues\n"
-                    "  3. Time step dt too large for diffusion coefficient\n"
-                    "Suggestion: Try reducing dt or checking graph connectivity"
-                )
-                raise RuntimeError(error_msg) from e
-
-        return np.asarray(u_current)
-
-    def backward_step(self, u_next: np.ndarray, m_current: np.ndarray, dt: float) -> np.ndarray:
-        """
-        Single backward time step (interface compatibility).
-
-        Args:
-            u_next: Value function at next time step
-            m_current: Current density distribution
-            dt: Time step size
-
-        Returns:
-            Updated value function
-        """
-        # Temporarily adjust dt for this step
-        original_dt = self.dt
-        self.dt = dt
-
-        t = 0.0  # Dummy time (should be passed properly in full implementation)
-
-        if self.scheme == "explicit":
-            result = self._explicit_step(u_next, m_current, t)
-        elif self.scheme == "implicit":
-            result = self._implicit_step(u_next, m_current, t)
-        else:
-            result = self._semi_implicit_step(u_next, m_current, t)
-
-        # Restore original dt
-        self.dt = original_dt
-
-        return result
 
 
 class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
@@ -343,7 +276,7 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
             policy_tolerance: Policy convergence tolerance
             **kwargs: Additional arguments for base solver
         """
-        super().__init__(problem, scheme="implicit", **kwargs)
+        super().__init__(problem, scheme="BDF", **kwargs)  # Scheme unused — policy iteration overrides solve
 
         self.max_policy_iterations = max_policy_iterations
         self.policy_tolerance = policy_tolerance
@@ -568,15 +501,13 @@ class NetworkPolicyIterationHJBSolver(NetworkHJBSolver):
 
 
 # Factory function for network HJB solvers
-def create_network_hjb_solver(
-    problem: NetworkMFGProblem, solver_type: str = "explicit", **kwargs: Any
-) -> NetworkHJBSolver:
+def create_network_hjb_solver(problem: NetworkMFGProblem, solver_type: str = "RK45", **kwargs: Any) -> NetworkHJBSolver:
     """
     Create network HJB solver with specified type.
 
     Args:
         problem: Network MFG problem
-        solver_type: Type of solver ("explicit", "implicit", "semi_implicit", "policy_iteration")
+        solver_type: Any scipy solve_ivp method, or "policy_iteration"
         **kwargs: Additional solver parameters
 
     Returns:
@@ -584,8 +515,7 @@ def create_network_hjb_solver(
     """
     if solver_type == "policy_iteration":
         return NetworkPolicyIterationHJBSolver(problem, **kwargs)
-    else:
-        return NetworkHJBSolver(problem, scheme=solver_type, **kwargs)
+    return NetworkHJBSolver(problem, scheme=solver_type, **kwargs)
 
 
 if __name__ == "__main__":

@@ -231,8 +231,7 @@ class TestNetworkMFGSolverExecution:
 
         solver = create_simple_network_solver(
             problem,
-            scheme="explicit",
-            cfl_factor=0.4,  # Stability
+            scheme="RK45",
         )
 
         result = solver.solve(max_iterations=5, tolerance=1e-3)

@@ -34,14 +34,12 @@ class TestNetworkHJBSolverInitialization:
 
         solver = NetworkHJBSolver(problem)
 
-        assert solver.hjb_method_name == "NetworkHJB_explicit"
-        assert solver.scheme == "explicit"
-        assert solver.cfl_factor == 0.5
-        assert solver.max_iterations == 1000
+        assert solver.hjb_method_name == "NetworkHJB_RK45"
+        assert solver.scheme == "RK45"
         assert solver.tolerance == 1e-6
 
-    def test_explicit_scheme_initialization(self):
-        """Test initialization with explicit scheme."""
+    def test_bdf_scheme_initialization(self):
+        """Test initialization with BDF (stiff) scheme."""
         network = GridNetwork(width=3, height=3)
         network.create_network()
 
@@ -51,13 +49,13 @@ class TestNetworkHJBSolverInitialization:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="explicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
-        assert solver.scheme == "explicit"
-        assert solver.hjb_method_name == "NetworkHJB_explicit"
+        assert solver.scheme == "BDF"
+        assert solver.hjb_method_name == "NetworkHJB_BDF"
 
-    def test_implicit_scheme_initialization(self):
-        """Test initialization with implicit scheme."""
+    def test_custom_tolerance(self):
+        """Test initialization with custom tolerance."""
         network = GridNetwork(width=3, height=3)
         network.create_network()
 
@@ -67,61 +65,7 @@ class TestNetworkHJBSolverInitialization:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
-
-        assert solver.scheme == "implicit"
-        assert solver.hjb_method_name == "NetworkHJB_implicit"
-
-    def test_semi_implicit_scheme_initialization(self):
-        """Test initialization with semi-implicit scheme."""
-        network = GridNetwork(width=3, height=3)
-        network.create_network()
-
-        problem = NetworkMFGProblem(
-            network_geometry=network,
-            T=1.0,
-            Nt=10,
-        )
-
-        solver = NetworkHJBSolver(problem, scheme="semi_implicit")
-
-        assert solver.scheme == "semi_implicit"
-        assert solver.hjb_method_name == "NetworkHJB_semi_implicit"
-
-    def test_custom_cfl_factor(self):
-        """Test initialization with custom CFL factor."""
-        network = GridNetwork(width=3, height=3)
-        network.create_network()
-
-        problem = NetworkMFGProblem(
-            network_geometry=network,
-            T=1.0,
-            Nt=10,
-        )
-
-        solver = NetworkHJBSolver(problem, scheme="explicit", cfl_factor=0.3)
-
-        assert solver.cfl_factor == 0.3
-
-    def test_custom_iteration_parameters(self):
-        """Test initialization with custom iteration parameters."""
-        network = GridNetwork(width=3, height=3)
-        network.create_network()
-
-        problem = NetworkMFGProblem(
-            network_geometry=network,
-            T=1.0,
-            Nt=10,
-        )
-
-        solver = NetworkHJBSolver(
-            problem,
-            scheme="implicit",
-            max_iterations=500,
-            tolerance=1e-8,
-        )
-
-        assert solver.max_iterations == 500
+        solver = NetworkHJBSolver(problem, tolerance=1e-8)
         assert solver.tolerance == 1e-8
 
     def test_network_properties_extracted(self):
@@ -190,7 +134,7 @@ class TestNetworkHJBSolverSolveHJBSystem:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -216,7 +160,7 @@ class TestNetworkHJBSolverSolveHJBSystem:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -242,7 +186,7 @@ class TestNetworkHJBSolverSolveHJBSystem:
             Nt=20,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="explicit", cfl_factor=0.3)
+        solver = NetworkHJBSolver(problem, scheme="RK45")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -265,7 +209,7 @@ class TestNetworkHJBSolverSolveHJBSystem:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -288,7 +232,7 @@ class TestNetworkHJBSolverSolveHJBSystem:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="semi_implicit")
+        solver = NetworkHJBSolver(problem, scheme="Radau")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -311,7 +255,7 @@ class TestNetworkHJBSolverSolveHJBSystem:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -337,7 +281,7 @@ class TestNetworkHJBSolverSolveHJBSystem:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="explicit")
+        solver = NetworkHJBSolver(problem, scheme="RK45")
         solver.scheme = "invalid_scheme"  # Manually set invalid scheme
 
         Nt = problem.Nt + 1
@@ -346,7 +290,7 @@ class TestNetworkHJBSolverSolveHJBSystem:
         M_density = np.ones((Nt, num_nodes))
         U_final = np.zeros(num_nodes)
 
-        with pytest.raises(ValueError, match="Unknown scheme"):
+        with pytest.raises((ValueError, RuntimeError)):
             solver.solve_hjb_system(M_density, U_final)
 
 
@@ -364,7 +308,7 @@ class TestNetworkHJBSolverNumericalProperties:
             Nt=15,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -388,7 +332,7 @@ class TestNetworkHJBSolverNumericalProperties:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -416,7 +360,7 @@ class TestNetworkHJBSolverDifferentNetworks:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -440,7 +384,7 @@ class TestNetworkHJBSolverDifferentNetworks:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -464,7 +408,7 @@ class TestNetworkHJBSolverDifferentNetworks:
             Nt=10,
         )
 
-        solver = NetworkHJBSolver(problem, scheme="implicit")
+        solver = NetworkHJBSolver(problem, scheme="BDF")
 
         Nt = problem.Nt + 1
         num_nodes = problem.num_nodes
@@ -506,9 +450,9 @@ class TestNetworkHJBSolverIntegration:
         network.create_network()
 
         configs = [
-            {"scheme": "explicit", "cfl_factor": 0.4},
-            {"scheme": "implicit", "max_iterations": 500},
-            {"scheme": "semi_implicit", "tolerance": 1e-7},
+            {"scheme": "RK45"},
+            {"scheme": "BDF", "tolerance": 1e-7},
+            {"scheme": "Radau"},
         ]
 
         for config in configs:
