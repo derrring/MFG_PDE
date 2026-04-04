@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.14"  # v0.18.14: BoundaryFace migration, Layer 1 tests, context-based progress routing
+version = "0.18.15"  # v0.18.15: MeasureRepresentation Protocol, Phase 1.5 validation, RegimeSwitching bugfixes
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
