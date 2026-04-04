@@ -400,6 +400,12 @@ class TaylorOperator(DifferentialOperator):
         self._build_taylor_matrices()
         self._validate_stencils()
 
+        # Pre-assemble global sparse derivative matrices (Issue #932)
+        # Runtime gradient/laplacian become single sparse matmuls
+        self._gradient_matrices: list | None = None
+        self._laplacian_matrix = None
+        self._preassemble_sparse_matrices()
+
     @property
     def n_points(self) -> int:
         return self._n_points
@@ -853,28 +859,109 @@ class TaylorOperator(DifferentialOperator):
         """
         return self._approximate_derivatives_at_point(u, point_idx)
 
-    def gradient(self, u: np.ndarray) -> np.ndarray:
-        """Compute gradient at all points."""
-        grad = np.zeros((self._n_points, self._dimension))
+    def _preassemble_sparse_matrices(self) -> None:
+        """Pre-assemble global sparse gradient and Laplacian matrices (Issue #932).
 
+        Each row i of the sparse matrix encodes:
+            deriv[i] = sum_j w_ij * (u[j] - u[i])
+                     = sum_j w_ij * u[j] - u[i] * sum_j w_ij
+
+        So: diagonal = -sum(weights), off-diagonal = weights.
+        Runtime gradient/laplacian become single sparse matmuls: ``W @ u``.
+        """
+        import scipy.sparse
+
+        N = self._n_points
+        d = self._dimension
+
+        # Collect COO entries for gradient matrices (one per dimension)
+        grad_rows: list[list[int]] = [[] for _ in range(d)]
+        grad_cols: list[list[int]] = [[] for _ in range(d)]
+        grad_vals: list[list[float]] = [[] for _ in range(d)]
+
+        # COO entries for Laplacian matrix
+        lap_rows: list[int] = []
+        lap_cols: list[int] = []
+        lap_vals: list[float] = []
+
+        for i in range(N):
+            dw = self.get_derivative_weights(i)
+            if dw is None:
+                continue
+
+            neighbor_indices = dw["neighbor_indices"]
+            g_weights = dw["grad_weights"]  # (dimension, n_neighbors)
+            l_weights = dw["lap_weights"]  # (n_neighbors,)
+
+            # Gradient: for each dimension, row i has weights on neighbors
+            # and -sum(weights) on diagonal (from b = u_neighbor - u_center)
+            for dim in range(d):
+                w = g_weights[dim]
+                diag_val = -w.sum()
+                for j_local, j_global in enumerate(neighbor_indices):
+                    if j_global == i:
+                        # Neighbor is center point — combine with diagonal correction
+                        grad_rows[dim].append(i)
+                        grad_cols[dim].append(i)
+                        grad_vals[dim].append(w[j_local] + diag_val)
+                    else:
+                        grad_rows[dim].append(i)
+                        grad_cols[dim].append(j_global)
+                        grad_vals[dim].append(w[j_local])
+                # If center not in neighbors, add pure diagonal
+                if i not in neighbor_indices:
+                    grad_rows[dim].append(i)
+                    grad_cols[dim].append(i)
+                    grad_vals[dim].append(diag_val)
+
+            # Laplacian: same pattern
+            diag_val = -l_weights.sum()
+            for j_local, j_global in enumerate(neighbor_indices):
+                if j_global == i:
+                    lap_rows.append(i)
+                    lap_cols.append(i)
+                    lap_vals.append(l_weights[j_local] + diag_val)
+                else:
+                    lap_rows.append(i)
+                    lap_cols.append(j_global)
+                    lap_vals.append(l_weights[j_local])
+            if i not in neighbor_indices:
+                lap_rows.append(i)
+                lap_cols.append(i)
+                lap_vals.append(diag_val)
+
+        self._gradient_matrices = [
+            scipy.sparse.csr_matrix((grad_vals[dim], (grad_rows[dim], grad_cols[dim])), shape=(N, N))
+            for dim in range(d)
+        ]
+        self._laplacian_matrix = scipy.sparse.csr_matrix((lap_vals, (lap_rows, lap_cols)), shape=(N, N))
+
+    def gradient(self, u: np.ndarray) -> np.ndarray:
+        """Compute gradient at all points via pre-assembled sparse matrices."""
+        if self._gradient_matrices is not None:
+            return np.column_stack([G @ u for G in self._gradient_matrices])
+
+        # Fallback: per-point loop (should not be reached after init)
+        grad = np.zeros((self._n_points, self._dimension))
         for i in range(self._n_points):
             derivs = self._approximate_derivatives_at_point(u, i)
             for d in range(self._dimension):
                 multi_idx = tuple(1 if j == d else 0 for j in range(self._dimension))
                 grad[i, d] = derivs.get(multi_idx, 0.0)
-
         return grad
 
     def laplacian(self, u: np.ndarray) -> np.ndarray:
-        """Compute Laplacian at all points."""
-        lap = np.zeros(self._n_points)
+        """Compute Laplacian at all points via pre-assembled sparse matrix."""
+        if self._laplacian_matrix is not None:
+            return self._laplacian_matrix @ u
 
+        # Fallback: per-point loop
+        lap = np.zeros(self._n_points)
         for i in range(self._n_points):
             derivs = self._approximate_derivatives_at_point(u, i)
             for d in range(self._dimension):
                 multi_idx = tuple(2 if j == d else 0 for j in range(self._dimension))
                 lap[i] += derivs.get(multi_idx, 0.0)
-
         return lap
 
     def hessian(self, u: np.ndarray) -> np.ndarray:
