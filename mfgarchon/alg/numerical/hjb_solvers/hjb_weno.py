@@ -53,6 +53,14 @@ if TYPE_CHECKING:
 
 WenoVariant = Literal["weno5", "weno-z", "weno-m", "weno-js"]
 
+# Dimension-dependent stability caps (Issue #967)
+# Von Neumann analysis: explicit scheme stable CFL ~ 1/d for d-dimensional splitting.
+# These caps prevent user-specified CFL from exceeding the stability limit.
+_CFL_CAP_2D: float = 0.25
+_CFL_CAP_3D: float = 0.15
+_DIFFUSION_CAP_2D: float = 0.125
+_DIFFUSION_CAP_3D: float = 0.0625
+
 
 class HJBWenoSolver(BaseHJBSolver):
     """
@@ -238,18 +246,18 @@ class HJBWenoSolver(BaseHJBSolver):
         if self.dimension == 1:
             return base_cfl
         elif self.dimension == 2:
-            return min(base_cfl, 0.25)  # More conservative for 2D
+            return min(base_cfl, _CFL_CAP_2D)
         else:  # 3D and higher
-            return min(base_cfl, 0.15)  # Very conservative for 3D+
+            return min(base_cfl, _CFL_CAP_3D)
 
     def _adjust_diffusion_factor_for_dimension(self, base_factor: float) -> float:
         """Adjust diffusion stability factor based on problem dimension."""
         if self.dimension == 1:
             return base_factor
         elif self.dimension == 2:
-            return min(base_factor, 0.125)  # More restrictive for 2D
+            return min(base_factor, _DIFFUSION_CAP_2D)
         else:  # 3D and higher
-            return min(base_factor, 0.0625)  # Very restrictive for 3D+
+            return min(base_factor, _DIFFUSION_CAP_3D)
 
     def _setup_dimensional_grid(self) -> None:
         """Setup grid information from geometry (standard interface, NO hasattr)."""
