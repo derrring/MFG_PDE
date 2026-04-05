@@ -243,15 +243,39 @@ class ParticleMeasure:
             # Approximate via sorted weighted quantiles
             return self._wasserstein_1d_weighted(other, p)
 
-        # nD unequal weights: fall back to linear_sum_assignment with
-        # replicated particles (approximate for unequal weights)
-        from scipy.optimize import linear_sum_assignment
+        # nD unequal weights: Sinkhorn-regularized OT (pure numpy)
+        if p == 1:
+            return self._sinkhorn_distance(cost, self._weights, other._weights, reg=0.1)
+        # p=2: cost matrix is squared distances, Sinkhorn on it gives W_2^2
+        return float(np.sqrt(self._sinkhorn_distance(cost, self._weights, other._weights, reg=0.1)))
 
-        row_ind, col_ind = linear_sum_assignment(cost)
-        total_cost = cost[row_ind, col_ind].mean()
-        if p == 2:
-            return float(np.sqrt(total_cost))
-        return float(total_cost ** (1.0 / p))
+    @staticmethod
+    def _sinkhorn_distance(
+        cost: NDArray, a: NDArray, b: NDArray, reg: float = 0.1, max_iter: int = 500, tol: float = 1e-9
+    ) -> float:
+        """Sinkhorn-regularized OT distance (pure numpy, no external deps).
+
+        For large N where Hungarian O(N^3) is too slow. Complexity O(N^2 / reg).
+        Approximation improves as reg -> 0 (but numerical stability degrades).
+
+        Args:
+            cost: Cost matrix, shape (N, M).
+            a: Source weights, shape (N,), sum to 1.
+            b: Target weights, shape (M,), sum to 1.
+            reg: Entropic regularization. Smaller = more accurate.
+            max_iter: Maximum Sinkhorn iterations.
+            tol: Convergence tolerance on marginal error.
+        """
+        K = np.exp(-cost / reg)
+        u = np.ones_like(a)
+        for _ in range(max_iter):
+            u_prev = u
+            u = a / (K @ (b / (K.T @ u)))
+            if np.max(np.abs(u - u_prev)) < tol:
+                break
+        v = b / (K.T @ u)
+        P = u[:, None] * K * v[None, :]
+        return float(np.sum(P * cost))
 
     def _wasserstein_1d_weighted(self, other: ParticleMeasure, p: int) -> float:
         """1D Wasserstein-p for weighted empirical measures via quantile matching."""

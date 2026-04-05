@@ -148,6 +148,20 @@ class TestWassersteinDistance:
         d = mu.wasserstein_distance(nu, p=1)
         assert 0 < d < 1.0
 
+    def test_2d_unequal_weights_sinkhorn(self):
+        """nD unequal weights should use Sinkhorn path and give valid distance."""
+        mu = ParticleMeasure(
+            np.array([[0.0, 0.0], [1.0, 0.0], [0.5, 0.5]]),
+            weights=np.array([0.5, 0.3, 0.2]),
+        )
+        nu = ParticleMeasure(
+            np.array([[0.0, 1.0], [1.0, 1.0], [0.5, 0.5]]),
+            weights=np.array([0.2, 0.5, 0.3]),
+        )
+        d = mu.wasserstein_distance(nu, p=2)
+        assert d > 0
+        assert np.isfinite(d)
+
 
 class TestFromDensity:
     def test_basic_1d(self):
