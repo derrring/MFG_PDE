@@ -444,6 +444,7 @@ class FixedPointIterator(BaseCouplingIterator):
         tolerance: float | None = None,
         return_tuple: bool = False,
         iteration_callback: IterationCallback | None = None,
+        track_measure_field: bool = False,
         **kwargs: Any,
     ) -> SolverResult | tuple[np.ndarray, np.ndarray, int, np.ndarray, np.ndarray]:
         """
@@ -458,6 +459,10 @@ class FixedPointIterator(BaseCouplingIterator):
                 Signature: callback(iteration, U, M, error_U, error_M) -> bool
                 Return True to continue, False to stop early.
                 If None (default), no callback is invoked.
+            track_measure_field: If True, store each Picard iterate as a
+                MeasureField snapshot for sensitivity analysis. The resulting
+                GridMeasureField is attached to SolverResult.metadata["measure_field"].
+                Each snapshot stores (ParticleMeasure from M_k, U_k). Default False.
             **kwargs: Additional parameters for backward compatibility
 
         Returns:
@@ -570,6 +575,18 @@ class FixedPointIterator(BaseCouplingIterator):
         # Reset Anderson accelerator if using it
         if self.anderson_accelerator is not None:
             self.anderson_accelerator.reset()
+
+        # Layer 2: Initialize MeasureField for sensitivity tracking (#956)
+        measure_field = None
+        if track_measure_field:
+            from mfgarchon.core.measure import ParticleMeasure
+            from mfgarchon.core.measure_field import GridMeasureField
+
+            grid_1d = self.problem.geometry.get_spatial_grid().ravel()
+            measure_field = GridMeasureField(grid_1d, np.linspace(0, self.problem.T, num_time_steps))
+            # Store initial iterate (use terminal density as measure representative)
+            mu_init = ParticleMeasure.from_density(self.M[-1], grid_1d)
+            measure_field.add_snapshot(mu_init, self.U.copy())
 
         # Main fixed-point iteration loop
         converged = False
@@ -696,6 +713,16 @@ class FixedPointIterator(BaseCouplingIterator):
                 self.M = preserve_initial_condition(self.M, M_initial)
                 self.U = preserve_terminal_condition(self.U, U_terminal)
 
+                # Layer 2: Record MeasureField snapshot (#956)
+                # Use terminal density M[-1] as the measure representative —
+                # it varies most across Picard iterates (M[0] is fixed by IC).
+                if measure_field is not None:
+                    from mfgarchon.core.measure import ParticleMeasure
+
+                    grid_1d = self.problem.geometry.get_spatial_grid().ravel()
+                    mu_k = ParticleMeasure.from_density(self.M[-1], grid_1d)
+                    measure_field.add_snapshot(mu_k, self.U.copy())
+
                 # Issue #688: Early termination on NaN/Inf (runtime safety)
                 if not np.all(np.isfinite(self.U)) or not np.all(np.isfinite(self.M)):
                     convergence_reason = "diverged_nan"
@@ -800,6 +827,10 @@ class FixedPointIterator(BaseCouplingIterator):
                 "schedule_U": final_schedule,
                 "schedule_M": final_schedule_M if final_schedule_M is not None else final_schedule,
             }
+
+        # Layer 2: Attach MeasureField to metadata (#956)
+        if measure_field is not None:
+            metadata["measure_field"] = measure_field
 
         if final_adaptive_damping:
             _final_base_theta_M = final_damping_factor_M if final_damping_factor_M is not None else final_damping_factor
