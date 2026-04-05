@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.16"  # v0.18.16: Hard-coded refactors (SL/Newton/WENO), Layer 1 test hardening (33 tests)
+version = "0.18.17"  # v0.18.17: Layer 2 entry (Lions correction, Wasserstein distance), deps simplified to 3 tiers
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
