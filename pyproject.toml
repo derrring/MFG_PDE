@@ -24,172 +24,123 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    # Core scientific computing with NumPy 2.0+
-    "numpy>=2.0",           # Native NumPy 2.0+ with trapezoid
-    "scipy>=1.13",          # NumPy 2.0+ compatible
-    "matplotlib>=3.8",      # Updated for NumPy 2.0+
+    # ==================== DEFAULT INSTALL ====================
+    # pip install mfgarchon -> batteries included for research
+    # Covers: FDM, FEM, GFDM, variational, visualization, notebooks
 
-    # Data processing
-    "pandas>=2.1",          # NumPy 2.0+ compatible
-    "h5py>=3.9",            # HDF5 files
-
-    # Interactive computing
-    "jupyter>=1.0",
-    "jupyterlab>=4.0",
-    "ipython>=8.12",
-    "nbformat>=5.0",
-
-    # Visualization
-    "plotly>=5.17",         # Interactive plotting
-    "seaborn>=0.13",        # Statistical plotting
+    # Core scientific computing
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "matplotlib>=3.8",
 
     # Progress and utilities
-    "rich>=13.0",           # Progress bars and console output (required)
-    "psutil>=5.9",          # System monitoring
+    "rich>=13.0",              # Progress bars (required by all solvers)
+    "pydantic>=2.0,<3.0",     # Config validation
+    "typing-inspection",       # Runtime type inspection
 
-    # Data validation
-    "pydantic>=2.0,<3.0",   # Data validation and serialization (v2)
+    # Data processing and I/O
+    "pandas>=2.1",             # Data utilities
+    "h5py>=3.9",               # Incremental result saving
+    "nbformat>=5.0",           # Notebook result export
 
-    # Network analysis
-    "igraph>=0.10.0",       # Primary network backend (C-based, fast)
+    # Interactive computing and visualization
+    "jupyter>=1.0",
+    "jupyterlab>=4.0",
+    "plotly>=5.17",            # Interactive plots in notebooks
+    "seaborn>=0.13",           # Statistical plotting
 
-    # Text utilities
-    "texttable",            # Text tables
-    "typing-inspection",    # Runtime type inspection
+    # FEM support (used by HJBFEMSolver, FPFEMSolver)
+    "scikit-fem>=9.0",         # FEM assembly
+    "meshio>=5.3",             # Mesh I/O (Gmsh, VTK)
+
+    # GFDM monotone stencils (used by HJBGFDMSolver)
+    "osqp>=0.6",               # QP solver for monotonicity enforcement
+
+    # Network MFG (used by NetworkGeometry)
+    "igraph>=0.10.0",          # Graph backend (C-based, fast)
+
+    # Configuration management
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+
+    # System monitoring
+    "psutil>=5.9",
 ]
 
-# Optional dependencies for development and advanced features
+# ==================== OPTIONAL DEPENDENCY TIERS ====================
+# Three user-facing tiers + dev (Issue #978)
+#
+#   pip install mfgarchon          -> default (batteries included)
+#   pip install mfgarchon[core]    -> minimal (CI, Docker, embedding)
+#   pip install mfgarchon[nn]      -> + PyTorch, RL
+#   pip install mfgarchon[all]     -> + JAX, performance, everything
+#   pip install mfgarchon[dev]     -> development tools
+
 [project.optional-dependencies]
-# Development tools (modern unified tooling - Ruff standard)
-dev = [
-    "pytest>=7.0",          # Testing framework
-    "pytest-cov>=4.0",      # Coverage reporting
-    "pytest-benchmark",     # Performance testing
-    "pytest-mypy-plugins",  # MyPy plugin testing support
-    "ruff>=0.6.0",          # Fast unified linting and formatting
-    "mypy>=1.5",            # Type checking
-    "pre-commit>=2.0",      # Pre-commit hooks
+
+# Minimal install: only numpy/scipy/matplotlib/rich/pydantic
+# Use for CI pipelines, Docker images, or embedding in other packages.
+# Note: pip doesn't support "fewer than default" extras directly.
+# To get a minimal install, use: pip install mfgarchon --no-deps
+# then: pip install numpy scipy matplotlib rich pydantic typing-inspection
+core = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "matplotlib>=3.8",
+    "rich>=13.0",
+    "pydantic>=2.0,<3.0",
+    "typing-inspection",
 ]
 
-# ==================== PARADIGM-SPECIFIC DEPENDENCIES ====================
-# Algorithm paradigm-specific dependencies for new structure
-
-# Classical numerical methods
-numerical = [
-    "scipy>=1.13",          # Advanced numerical algorithms
-    "scikit-sparse",        # Sparse matrix operations
-    "scikit-umfpack",       # UMFPACK sparse solver
+# Neural network and reinforcement learning solvers
+# Adds: DGM, PINN, Actor-Critic, PPO
+nn = [
+    "torch>=2.0",              # PyTorch (DGM, PINN)
+    "gymnasium>=0.29",         # RL environments
+    "stable-baselines3>=2.0",  # RL algorithms (AC, PPO)
+    "tensorboard>=2.13",       # Training visualization
 ]
 
-# Finite element methods (Issue #773)
-fem = [
-    "scikit-fem>=9.0",      # FEM assembly: basis functions, quadrature, sparse matrices
-    "meshio>=5.3",          # Mesh I/O (Gmsh, VTK, etc.)
-]
-
-# Neural network approaches
-neural = [
-    "torch>=2.0",           # PyTorch for neural networks
-    "optax>=0.1.5",         # JAX optimization library
-    "tensorboard>=2.13",    # Training visualization
-    "torchvision",          # Vision utilities
-]
-
-# Reinforcement learning methods
-reinforcement = [
-    "gymnasium>=0.29",      # RL environments (successor to gym)
-    "stable-baselines3>=2.0", # RL algorithms
-    "tensorboard>=2.13",    # Training logs
-    "wandb",                # Experiment tracking (planned)
-]
-
-# Optimization approaches
-optimization = [
-    "cvxpy>=1.4",           # Convex optimization (planned)
-    "mosek",                # Commercial solver (planned, optional)
-    "osqp>=0.6",            # OSQP solver (used in qp_utils.py)
-    "clarabel>=0.5",        # Conic optimization (planned)
-]
-
-# Configuration management
-config = [
-    "hydra-core>=1.3",      # Configuration management
-    "omegaconf>=2.3",       # Configuration files
-]
-
-# Documentation
-docs = [
-    "sphinx>=7.0",          # Documentation generation
-    "sphinx-rtd-theme",     # RTD theme
-    "nbsphinx",             # Jupyter notebook docs
-]
-
-# Performance libraries
-performance = [
-    "numba>=0.59",          # NumPy 2.0+ support
-    "jax>=0.4.20",          # Latest with NumPy 2.0+ support
-    "jaxlib",               # JAX support library
-    "polars>=0.20",         # Fast data processing
-    "pyarrow>=10.0",        # Parquet backend for Polars
-    "memory-profiler",      # Memory profiling
-    "line-profiler",        # Line-by-line profiling
-]
-
-# Optimized performance build (equivalent to conda_performance.yml)
-performance-optimized = [
-    "numba>=0.59",          # NumPy 2.0+ support
-    "cython>=3.0",          # C extensions
-    "joblib>=1.3",          # Parallel processing
+# Everything: default + nn + JAX + performance + advanced viz
+all = [
+    # Neural/RL (same as nn)
+    "torch>=2.0",
+    "gymnasium>=0.29",
+    "stable-baselines3>=2.0",
+    "tensorboard>=2.13",
+    # JAX acceleration
     "jax>=0.4.20",
     "jaxlib",
+    # Performance
+    "numba>=0.59",
+    "polars>=0.20",
+    "joblib>=1.3",
+    # Advanced visualization
+    "bokeh>=3.3",
+    # Extended network analysis
+    "networkx>=3.0",
+    # Profiling
     "memory-profiler",
     "line-profiler",
-    "mpi4py",               # MPI support for parallel computing
-    "zarr",                 # Cloud-optimized data storage
 ]
 
-# Advanced visualization
-viz = [
-    "bokeh>=3.3",           # Advanced visualizations
-]
-
-# Network analysis
-networks = [
-    "networkit>=10.0",      # Large-scale networks (parallel algorithms)
-    "networkx>=3.0",        # Comprehensive algorithm library
-]
-
-# GPU acceleration
-gpu = [
-    "jax[cuda12_pip]>=0.4.20",  # Fixed underscore for CUDA extra
-    "cupy",                     # CUDA GPU support
-]
-
-# Typing support
-typing = [
+# Development tools (not user-facing)
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-benchmark",
+    "ruff>=0.6.0",
+    "mypy>=1.5",
+    "pre-commit>=2.0",
     "types-setuptools",
     "types-psutil",
-    # rich has built-in type hints, no stub package needed
 ]
 
-# All extras combined (Ruff unified tooling)
-all = [
-    "pytest>=7.0",
-    "pytest-benchmark",
-    "ruff>=0.6.0",          # Unified linting and formatting
-    "mypy>=1.5",
+# Documentation (not user-facing)
+docs = [
     "sphinx>=7.0",
     "sphinx-rtd-theme",
     "nbsphinx",
-    "numba>=0.59",
-    "jax>=0.4.20",
-    "jaxlib",
-    "polars>=0.20",
-    "bokeh>=3.3",
-    "memory-profiler",
-    "line-profiler",
-    "networkit>=10.0",
-    "networkx>=3.0",
 ]
 
 # Optional: URLs for your project
