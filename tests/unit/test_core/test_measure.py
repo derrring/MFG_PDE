@@ -94,6 +94,104 @@ class TestParticleMeasureToDensity:
         assert d_narrow.max() > d_wide.max()
 
 
+class TestWassersteinDistance:
+    def test_identical_measures_zero(self):
+        mu = ParticleMeasure(np.array([0.2, 0.5, 0.8]))
+        assert mu.wasserstein_distance(mu) == pytest.approx(0.0, abs=1e-12)
+
+    def test_1d_dirac_distance(self):
+        """W_2(delta_0, delta_1) = 1."""
+        mu = ParticleMeasure(np.array([0.0]))
+        nu = ParticleMeasure(np.array([1.0]))
+        assert mu.wasserstein_distance(nu, p=2) == pytest.approx(1.0, abs=1e-10)
+
+    def test_1d_translation(self):
+        """W_2(mu, mu + shift) = shift for any mu."""
+        x = np.array([0.1, 0.3, 0.5, 0.7, 0.9])
+        mu = ParticleMeasure(x)
+        nu = ParticleMeasure(x + 0.5)
+        assert mu.wasserstein_distance(nu, p=2) == pytest.approx(0.5, abs=1e-10)
+
+    def test_w1_triangle_inequality(self):
+        """W_1(mu, rho) <= W_1(mu, nu) + W_1(nu, rho)."""
+        mu = ParticleMeasure(np.array([0.0, 0.1, 0.2]))
+        nu = ParticleMeasure(np.array([0.3, 0.4, 0.5]))
+        rho = ParticleMeasure(np.array([0.7, 0.8, 0.9]))
+        d_mr = mu.wasserstein_distance(rho, p=1)
+        d_mn = mu.wasserstein_distance(nu, p=1)
+        d_nr = nu.wasserstein_distance(rho, p=1)
+        assert d_mr <= d_mn + d_nr + 1e-10
+
+    def test_symmetric(self):
+        mu = ParticleMeasure(np.array([0.1, 0.5]))
+        nu = ParticleMeasure(np.array([0.3, 0.8]))
+        assert mu.wasserstein_distance(nu) == pytest.approx(nu.wasserstein_distance(mu))
+
+    def test_2d_distance(self):
+        """2D distance should be non-negative and symmetric."""
+        mu = ParticleMeasure(np.array([[0.0, 0.0], [1.0, 0.0]]))
+        nu = ParticleMeasure(np.array([[0.0, 1.0], [1.0, 1.0]]))
+        d = mu.wasserstein_distance(nu, p=2)
+        assert d > 0
+        assert d == pytest.approx(nu.wasserstein_distance(mu, p=2))
+
+    def test_dimension_mismatch_raises(self):
+        mu = ParticleMeasure(np.array([0.5]))
+        nu = ParticleMeasure(np.array([[0.5, 0.5]]))
+        with pytest.raises(ValueError, match="Dimension mismatch"):
+            mu.wasserstein_distance(nu)
+
+    def test_weighted_1d(self):
+        """Weighted measures: heavier weight at 0 vs 1 should give distance < 1."""
+        mu = ParticleMeasure(np.array([0.0, 1.0]), weights=np.array([0.9, 0.1]))
+        nu = ParticleMeasure(np.array([0.0, 1.0]), weights=np.array([0.1, 0.9]))
+        d = mu.wasserstein_distance(nu, p=1)
+        assert 0 < d < 1.0
+
+    def test_2d_unequal_weights_sinkhorn(self):
+        """nD unequal weights should use Sinkhorn path and give valid distance."""
+        mu = ParticleMeasure(
+            np.array([[0.0, 0.0], [1.0, 0.0], [0.5, 0.5]]),
+            weights=np.array([0.5, 0.3, 0.2]),
+        )
+        nu = ParticleMeasure(
+            np.array([[0.0, 1.0], [1.0, 1.0], [0.5, 0.5]]),
+            weights=np.array([0.2, 0.5, 0.3]),
+        )
+        d = mu.wasserstein_distance(nu, p=2)
+        assert d > 0
+        assert np.isfinite(d)
+
+
+class TestFromDensity:
+    def test_basic_1d(self):
+        x = np.linspace(0, 1, 51)
+        m = np.exp(-((x - 0.5) ** 2) / 0.02)
+        mu = ParticleMeasure.from_density(m, x)
+        assert mu.n_particles > 0
+        assert mu.dimension == 1
+        assert mu.total_mass() == pytest.approx(1.0)
+
+    def test_2d_grid(self):
+        x = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+        m = np.array([0.1, 0.3, 0.2, 0.4])
+        mu = ParticleMeasure.from_density(m, x)
+        assert mu.n_particles == 4
+        assert mu.dimension == 2
+
+    def test_subsampling(self):
+        x = np.linspace(0, 1, 100)
+        m = np.ones(100)
+        mu = ParticleMeasure.from_density(m, x, n_particles=20)
+        assert mu.n_particles == 20
+
+    def test_zero_density_filtered(self):
+        x = np.linspace(0, 1, 10)
+        m = np.array([0, 0, 0, 1, 2, 3, 0, 0, 0, 0], dtype=float)
+        mu = ParticleMeasure.from_density(m, x)
+        assert mu.n_particles == 3
+
+
 class TestParticleMeasureRepr:
     def test_repr(self):
         mu = ParticleMeasure(np.zeros((10, 3)))
