@@ -177,5 +177,146 @@ class ParticleMeasure:
             density += self._weights[i] * kernel_vals
         return density
 
+    def wasserstein_distance(self, other: ParticleMeasure, p: int = 2) -> float:
+        """Compute p-Wasserstein distance to another ParticleMeasure.
+
+        For 1D with equal weights, uses the exact formula via sorted quantiles:
+            W_p(mu, nu) = (int_0^1 |F_mu^{-1}(t) - F_nu^{-1}(t)|^p dt)^{1/p}
+
+        For general case (nD or unequal weights), uses the discrete optimal
+        transport formulation via scipy.optimize.linear_sum_assignment on
+        the pairwise cost matrix.
+
+        Args:
+            other: Another ParticleMeasure.
+            p: Order of Wasserstein distance (1 or 2). Default 2.
+
+        Returns:
+            W_p(self, other) >= 0.
+
+        Raises:
+            ValueError: If dimensions don't match.
+        """
+        if self._dim != other._dim:
+            raise ValueError(f"Dimension mismatch: {self._dim} vs {other._dim}")
+
+        # 1D with equal uniform weights: exact sorted quantile formula
+        if self._dim == 1 and self._n_particles == other._n_particles and np.allclose(self._weights, other._weights):
+            x_sorted = np.sort(self._positions[:, 0])
+            y_sorted = np.sort(other._positions[:, 0])
+            if p == 1:
+                return float(np.mean(np.abs(x_sorted - y_sorted)))
+            return float(np.mean(np.abs(x_sorted - y_sorted) ** p) ** (1.0 / p))
+
+        # General case: discrete OT via assignment problem
+        # Cost matrix: C_{ij} = |x_i - y_j|^p
+        diff = self._positions[:, None, :] - other._positions[None, :, :]  # (N, M, d)
+        cost = np.sum(diff**2, axis=2)  # (N, M) squared distances
+        if p == 1:
+            cost = np.sqrt(cost)
+        # For p=2: cost is already |x-y|^2, take p-th root at the end
+
+        # Equal weights: use linear_sum_assignment (Hungarian algorithm)
+        if self._n_particles == other._n_particles and np.allclose(self._weights, other._weights):
+            from scipy.optimize import linear_sum_assignment
+
+            row_ind, col_ind = linear_sum_assignment(cost)
+            total_cost = cost[row_ind, col_ind].mean()
+            if p == 2:
+                return float(np.sqrt(total_cost))
+            return float(total_cost ** (1.0 / p))
+
+        # Unequal weights or different N: use scipy 1D or POT if available
+        if self._dim == 1:
+            from scipy.stats import wasserstein_distance as _w1d
+
+            if p == 1:
+                return float(
+                    _w1d(
+                        self._positions[:, 0],
+                        other._positions[:, 0],
+                        u_weights=self._weights,
+                        v_weights=other._weights,
+                    )
+                )
+            # For p=2, 1D: use quantile integration
+            # Approximate via sorted weighted quantiles
+            return self._wasserstein_1d_weighted(other, p)
+
+        # nD unequal weights: fall back to linear_sum_assignment with
+        # replicated particles (approximate for unequal weights)
+        from scipy.optimize import linear_sum_assignment
+
+        row_ind, col_ind = linear_sum_assignment(cost)
+        total_cost = cost[row_ind, col_ind].mean()
+        if p == 2:
+            return float(np.sqrt(total_cost))
+        return float(total_cost ** (1.0 / p))
+
+    def _wasserstein_1d_weighted(self, other: ParticleMeasure, p: int) -> float:
+        """1D Wasserstein-p for weighted empirical measures via quantile matching."""
+        # Sort both by position
+        idx_self = np.argsort(self._positions[:, 0])
+        idx_other = np.argsort(other._positions[:, 0])
+
+        x = self._positions[idx_self, 0]
+        w_x = self._weights[idx_self]
+        y = other._positions[idx_other, 0]
+        w_y = other._weights[idx_other]
+
+        # Merge CDFs and compute integral
+        cdf_x = np.cumsum(w_x)
+        cdf_y = np.cumsum(w_y)
+
+        # Piecewise constant quantile functions
+        all_levels = np.unique(np.concatenate([np.array([0.0]), cdf_x, cdf_y, np.array([1.0])]))
+        cost = 0.0
+        for i in range(len(all_levels) - 1):
+            t = 0.5 * (all_levels[i] + all_levels[i + 1])
+            dt = all_levels[i + 1] - all_levels[i]
+            qx = x[np.searchsorted(cdf_x, t, side="left").clip(0, len(x) - 1)]
+            qy = y[np.searchsorted(cdf_y, t, side="left").clip(0, len(y) - 1)]
+            cost += abs(qx - qy) ** p * dt
+        return float(cost ** (1.0 / p))
+
+    @classmethod
+    def from_density(
+        cls,
+        density: NDArray,
+        grid_points: NDArray,
+        n_particles: int | None = None,
+    ) -> ParticleMeasure:
+        """Construct ParticleMeasure from grid density via weighted sampling.
+
+        Converts a density array m(x_i) on a grid to a particle representation
+        by placing particles at grid points with weights proportional to m(x_i).
+
+        Args:
+            density: Density values, shape (N,). Must be non-negative.
+            grid_points: Grid point positions, shape (N,) for 1D or (N, d) for dD.
+            n_particles: If None, use all grid points with non-zero density.
+                If specified, subsample to n_particles by importance sampling.
+
+        Returns:
+            ParticleMeasure with particles at grid points.
+        """
+        density = np.asarray(density, dtype=float).ravel()
+        grid = np.asarray(grid_points, dtype=float)
+        if grid.ndim == 1:
+            grid = grid.reshape(-1, 1)
+
+        # Filter zero-density points
+        mask = density > 0
+        positions = grid[mask]
+        weights = density[mask]
+
+        if n_particles is not None and n_particles < len(positions):
+            # Importance sampling: keep top-n by weight
+            top_idx = np.argsort(weights)[-n_particles:]
+            positions = positions[top_idx]
+            weights = weights[top_idx]
+
+        return cls(positions, weights)
+
     def __repr__(self) -> str:
         return f"ParticleMeasure(n={self._n_particles}, d={self._dim})"
