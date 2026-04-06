@@ -1,38 +1,30 @@
 """
-New algorithm structure for MFGarchon.
+Algorithm structure for MFGarchon.
 
-This module implements the reorganized algorithm structure with paradigm-based organization:
-- numerical: Classical numerical analysis methods
-- optimization: Direct optimization approaches
-- neural: Neural network-based methods
-- reinforcement: Reinforcement learning paradigm
-- iterative: High-level iteration schemes (Picard, multi-population)
+Paradigm-based organization:
+- numerical: Classical numerical analysis methods (FDM, FEM, GFDM, SL)
+- optimization: Direct optimization approaches (variational, OT)
+- neural: Neural network-based methods (PINN, DGM, operator learning)
+- reinforcement: Reinforcement learning paradigm (AC, PPO, multi-population)
 
-The structure emphasizes interconnections between paradigms and supports
-hybrid methods that combine multiple approaches.
+Iteration infrastructure (schedules, convergence) lives in utils/convergence/,
+not here. See Issue #985 and Joplin Dev: "alg/ Directory Structure Audit".
 """
 
 from __future__ import annotations
 
 # Import paradigm modules
-from . import iterative, neural, numerical, optimization, reinforcement
+from . import neural, numerical, optimization, reinforcement
 
 # Import base types (Issue #580)
 from .base_solver import SchemeFamily
 
-# Import commonly used iterative solvers for convenience
-from .iterative import FixedPointSolver, MultiPopulationFixedPointSolver
-
 __all__ = [
     # Paradigm modules
-    "iterative",
     "neural",
     "numerical",
     "optimization",
     "reinforcement",
     # Base types
     "SchemeFamily",
-    # Commonly used solvers
-    "FixedPointSolver",
-    "MultiPopulationFixedPointSolver",
 ]
