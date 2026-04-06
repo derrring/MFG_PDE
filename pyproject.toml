@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.18.18"  # v0.18.18: Layer 2 foundation complete (MeasureField, iterator wiring, sensitivity diagnostics)
+version = "0.18.19"  # v0.18.19: GraphMFGSolver, alg/scripts cleanup, auto-generated deprecation guide
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
