@@ -64,12 +64,13 @@ print(f"Converged: {result.converged} in {result.iterations} iterations")
 ## Key Features
 
 - **Clean API** - `Model` (game rules) + `Domain` (space) + `Conditions` (data) = `Problem.solve()`
-- **Production-Ready** - 3,700+ tests passing, 10^-15 mass conservation error
+- **Production-Ready** - 3,900+ tests passing, 10^-15 mass conservation error
 - **Modular** - Mix and match HJB + FP solvers (FDM, GFDM, Semi-Lagrangian, WENO, Particles, FEM, Neural)
 - **Multi-Dimensional** - 1D/2D/3D/nD support with TensorProductGrid and implicit domains
 - **Geometry Traits** - 12 protocol-based traits for solver-geometry compatibility validation
-- **Unified BC Framework** - 4-layer architecture (Specification, Resolution, Enforcement, Application)
-- **Dual Geometry** - Separate HJB/FP discretizations with automatic projection
+- **Unified BC Framework** - 4-layer architecture with adjoint-consistent provider pattern
+- **Network MFG** - Graph-coupled multi-node solvers with pluggable coupling operators
+- **Measure-Dependent MFG** - MeasureField, Lions derivative, Wasserstein distance (Layer 2)
 - **Reinforcement Learning** - Complete RL framework (DDPG, TD3, SAC)
 - **GPU Acceleration** - PyTorch, JAX, Numba backends
 
@@ -114,6 +115,9 @@ print(f"Converged: {result.converged} in {result.iterations} iterations")
 - **Fictitious Play** - Decaying learning rates for potential games
 - **Block Iterators** - Jacobi and Gauss-Seidel with true adjoint mode
 - **Newton** - Quadratic convergence near solution
+- **Regime Switching** - Markov-chain coupled multi-regime systems
+- **Graph MFG** - N-node graph with pluggable coupling (adjacency, Laplacian)
+- **Homotopy Continuation** - Predictor-corrector for equilibrium branch tracing
 
 ### Geometry & Boundaries
 - **TensorProductGrid** - Structured nD grids with 12 trait protocols
@@ -126,20 +130,17 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ---
 
-## Optional Dependencies
+## Installation
 
-- **FEM solvers**: `pip install mfgarchon[fem]` (scikit-fem)
-- **Neural solvers** (PINNs, DGM): PyTorch
-- **Reinforcement learning** (DDPG, TD3, SAC): Stable-Baselines3
-- **GPU acceleration**: JAX with CUDA, PyTorch CUDA
-- **Mesh generation**: Gmsh (for Mesh2D/Mesh3D)
+```bash
+pip install mfgarchon          # Batteries included (FDM, FEM, GFDM, viz, config)
+pip install mfgarchon[nn]      # + PyTorch, RL (DGM, PINN, Actor-Critic, PPO)
+pip install mfgarchon[all]     # + JAX, Numba, profiling tools
+```
 
----
+**Default install** includes: NumPy, SciPy, Matplotlib, Rich, scikit-fem, meshio, osqp, igraph, Hydra/OmegaConf, Jupyter, Plotly.
 
-## Requirements
-
-- Python 3.12+
-- NumPy, SciPy, Matplotlib, Rich (installed automatically)
+**Requires**: Python 3.12+
 
 ---
 
