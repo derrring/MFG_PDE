@@ -64,7 +64,6 @@ print(f"Converged: {result.converged} in {result.iterations} iterations")
 ## Key Features
 
 - **Clean API** - `Model` (game rules) + `Domain` (space) + `Conditions` (data) = `Problem.solve()`
-- **Production-Ready** - 3,900+ tests passing, 10^-15 mass conservation error
 - **Modular** - Mix and match HJB + FP solvers (FDM, GFDM, Semi-Lagrangian, WENO, Particles, FEM, Neural)
 - **Multi-Dimensional** - 1D/2D/3D/nD support with TensorProductGrid and implicit domains
 - **Geometry Traits** - 12 protocol-based traits for solver-geometry compatibility validation
