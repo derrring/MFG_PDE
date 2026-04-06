@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 # Import shared iteration utilities (Issue #630, migrated #985)
-from mfgarchon.utils.convergence.schedules import (
+from mfgarchon.utils.iteration.schedules import (
     LEARNING_RATE_SCHEDULES,
     get_schedule,
     harmonic_schedule,

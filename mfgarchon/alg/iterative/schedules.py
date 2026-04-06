@@ -13,4 +13,4 @@ warnings.warn(
     stacklevel=2,
 )
 
-from mfgarchon.utils.convergence.schedules import *  # noqa: E402, F403
+from mfgarchon.utils.iteration.schedules import *  # noqa: E402, F403
