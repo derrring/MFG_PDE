@@ -1,1084 +1,307 @@
 # Deprecation Modernization Guide
 
-**Last Updated**: 2026-03-26
-**Current Version**: v0.17.11
-**Target**: v1.0.0 (deprecated patterns will be removed)
-**Status**: ✅ Operator framework migration complete, tensor_calculus internalized
+**Auto-generated** by `scripts/generate_deprecation_guide.py`
+**Total deprecated items**: 158
+**Versions covered**: v0.19.0, v0.18.7, v0.18.6, v0.18.0, v0.17.6, v0.17.12, v0.17.1, v0.17.0, v0.16.11, v0.16.0, v0.14.0, v0.12.0
 
 ---
 
 ## Overview
 
-This guide documents deprecated usage patterns in MFGArchon and provides migration paths to modern APIs. All deprecated patterns will continue to work until v1.0.0 but will emit deprecation warnings.
+This guide documents deprecated usage patterns in MFGArchon and provides
+migration paths to modern APIs. All deprecated patterns emit warnings at
+runtime and will be removed at the version specified.
 
----
-
-## Deprecation Timeline
-
-| Version | Milestone |
-|:--------|:----------|
-| v0.16.x | Previous - deprecation warnings active |
-| v0.17.0 | Consolidate deprecations, stricter warnings |
-| **v0.16.15** | **Progress bars: tqdm eliminated, Rich-only** |
-| **v0.18.0** | **Tensor calculus unification, numerical utils cleanup** |
-| v0.19.x | Final warning period |
-| v1.0.0 | Remove all deprecated patterns |
-
----
-
-## v0.16.15 Modernization: Progress Bars (tqdm → Rich)
-
-### ✅ COMPLETED: tqdm Dependency Eliminated
-
-The `tqdm` external dependency has been fully removed. All progress bars now use Rich exclusively.
-
-| Old (Removed) | New (Current) | Status |
-|:--------------|:--------------|:-------|
-| `from tqdm import tqdm` | `from mfgarchon.utils.progress import tqdm` | **COMPLETED** |
-| `from tqdm.auto import tqdm` | `from mfgarchon.utils.progress import tqdm` | **COMPLETED** |
-| External tqdm dependency | Rich-based `RichProgressBar` | **COMPLETED** |
-
-**What Changed**:
-
-1. **No external tqdm**: The `tqdm` package is no longer a dependency
-2. **Rich-only backend**: All progress bars use `rich.progress` exclusively
-3. **Backward-compatible alias**: `tqdm = RichProgressBar` preserved for existing code
-4. **Enhanced API**: New `solver_progress()`, `SolverTimer`, and `IterationProgress` utilities
-
-**Current Progress Bar API**:
-
-```python
-# Simple tqdm-like interface (backward compatible)
-from mfgarchon.utils.progress import tqdm, trange
-for i in tqdm(range(100), desc="Processing"):
-    ...
-
-# Preferred: Solver-specific utilities
-from mfgarchon.utils.progress import solver_progress, SolverTimer
-
-# For iterative solvers with convergence tracking
-with solver_progress(max_iterations, "Picard Iteration") as progress:
-    for i in range(max_iterations):
-        error = step()
-        progress.update(1, error=error)
-
-# For timing operations
-with SolverTimer("HJB Solve"):
-    result = solver.solve()
-
-# Advanced: Direct Rich components
-from mfgarchon.utils.progress import console, Progress, Panel, Table
-```
-
-**Migration Path**:
-
-```python
-# Old external tqdm (no longer supported)
-from tqdm import tqdm
-from tqdm.auto import tqdm
-
-# New MFGArchon progress (use this)
-from mfgarchon.utils.progress import tqdm  # Alias for RichProgressBar
-from mfgarchon.utils.progress import solver_progress  # Preferred for solvers
-```
-
-**Benefits**:
-- ✅ Consistent Rich-based UI across all MFGArchon tools
-- ✅ No fallback complexity (Rich is required, not optional)
-- ✅ Enhanced solver-specific utilities with error tracking
-- ✅ Unified console output with panels and tables
-
----
-
-## v0.17.0 Modernization: Progress Bar Protocol Pattern (Issue #587)
-
-### ✅ COMPLETED: Protocol Pattern Eliminates hasattr Checks
-
-The progress bar API has been refactored to use Python's Protocol pattern with Null Object and Adapter patterns. All 7 hasattr duck typing patterns have been eliminated from numerical solvers.
-
-| Old (Deprecated) | New (Current) | Status |
-|:----------------|:--------------|:-------|
-| `picard_range = tqdm(...) if verbose else range(...)` | `create_progress_bar(range(...), verbose=...)` | **COMPLETED** |
-| `if verbose and hasattr(progress, "set_postfix"):` | `progress.update_metrics(...)` (always works) | **COMPLETED** |
-| `if verbose and hasattr(progress, "write"):` | `progress.log(...)` (always works) | **COMPLETED** |
-| `progress.set_postfix(error=err)` | `progress.update_metrics(error=err)` | Deprecated |
-
-**What Changed**:
-
-1. **ProgressTracker Protocol**: Explicit contract defining `__iter__()`, `update_metrics()`, `log()`
-2. **create_progress_bar() Factory**: Type-safe factory ensuring consistent ProgressTracker return type
-3. **NoOpProgressBar**: Null Object pattern for `verbose=False` with zero overhead
-4. **RichProgressBar Enhanced**: Implements Protocol with `update_metrics()` and `log()` methods
-5. **Deprecated Methods**: `set_postfix()` now calls `update_metrics()` (kept for compatibility until v1.0.0)
-
-**Migration Path**:
-
-```python
-# Old pattern (deprecated - hasattr checks)
-from mfgarchon.utils.progress import RichProgressBar
-
-picard_range = range(max_iterations)
-if verbose:
-    picard_range = RichProgressBar(picard_range, desc="Picard")
-
-for i in picard_range:
-    # Duck typing with hasattr
-    if verbose and hasattr(picard_range, "set_postfix"):
-        picard_range.set_postfix(error=error, norm=norm)
-    if converged and verbose and hasattr(picard_range, "write"):
-        picard_range.write("Converged!")
-        break
-
-# New pattern (Protocol - no hasattr needed)
-from mfgarchon.utils.progress import create_progress_bar
-
-progress = create_progress_bar(range(max_iterations), verbose=verbose, desc="Picard")
-
-for i in progress:
-    # Type-safe - methods always available
-    progress.update_metrics(error=error, norm=norm)  # Always works
-    if converged:
-        progress.log("Converged!")  # Always works
-        break
-```
-
-**Files Migrated** (Issue #587 Phase 2):
-- `fixed_point_iterator.py` - 2 hasattr patterns eliminated
-- `fictitious_play.py` - 2 hasattr patterns eliminated
-- `block_iterators.py` - 2 hasattr patterns eliminated
-- `hjb_gfdm.py` - 1 hasattr pattern eliminated
-
-**Benefits**:
-- ✅ Type safety: Mypy verifies all ProgressTracker calls
-- ✅ Zero hasattr checks: Protocol guarantees method availability
-- ✅ Performance: NoOpProgressBar is zero-overhead pass-through
-- ✅ Testability: NoOpProgressBar is built-in test double
-- ✅ Extensibility: Easy to add WebSocketProgressBar, JupyterProgressBar, etc.
-- ✅ Separation of concerns: UI logic isolated from algorithms
-
-**Behavior Change**:
-- `verbose=False` is now completely silent (no print statements)
-- Previously, `verbose=False` would print traditional text output
-
-**Architecture Documentation**: `docs/development/progress_bar_protocol_design.md`
-
-**Deprecation Timeline**:
-- v0.17.0: Protocol pattern implemented, `set_postfix()` deprecated
-- v0.19.0: Remove `set_postfix()` and legacy methods
-- v1.0.0: Remove all backward compatibility shims
-
----
-
-## v0.16.11 Deprecation Summary (BC Architecture)
-
-### New Deprecations in v0.16.11
-
-#### 8. BC Calculator Renaming (PR #520, Issue #516)
-
-Physics-based naming for boundary condition calculators:
-
-| Old Name | New Name | Semantics |
-|:---------|:---------|:----------|
-| `NoFluxCalculator` | `ZeroGradientCalculator` | du/dn = 0 (edge extension) |
-| `FPNoFluxCalculator` | `ZeroFluxCalculator` | J·n = 0 (mass conservation) |
-
-**Why renamed**: The old names conflated two different physics:
-- `ZeroGradientCalculator`: Neumann BC, extends edge value (suitable for HJB)
-- `ZeroFluxCalculator`: Robin BC, ensures J·n = 0 (suitable for Fokker-Planck)
-
-These are equivalent only when drift velocity μ = 0.
-
-**Migration**:
-```python
-# Old (deprecated, will work until v0.19)
-from mfgarchon.geometry.boundary import NoFluxCalculator, FPNoFluxCalculator
-
-# New (preferred)
-from mfgarchon.geometry.boundary import ZeroGradientCalculator, ZeroFluxCalculator
-```
-
-#### 9. Legacy 1D FDM BoundaryConditions (Issue #516)
-
-| Old Name | New Name | Status |
-|:---------|:---------|:-------|
-| `BoundaryConditions1DFDM` | `BoundaryConditions` | Deprecated |
-| `LegacyBoundaryConditions1D` | `BoundaryConditions` | Deprecated |
-
-**Migration**:
-```python
-# Old (deprecated)
-from mfgarchon.geometry.boundary import BoundaryConditions1DFDM
-
-# New (preferred)
-from mfgarchon.geometry.boundary import BoundaryConditions, neumann_bc
-bc = neumann_bc(dimension=1)
+To find deprecated usage in your code:
+```bash
+python -W error::DeprecationWarning -c 'import mfgarchon; ...'
 ```
 
 ---
 
-## v0.16.16 Deprecation Summary (Ghost Cell Consolidation)
+## Deprecated since v0.19.0
 
-### New Deprecations in v0.16.16 (Issue #577)
+*1 items*
 
-**Status**: ✅ Phase 1 complete (deprecation warnings), ✅ Phase 2 complete (solver migrations)
+### Functions / Classes
 
-Function-based ghost cell APIs are deprecated in favor of concrete alternatives:
-
-| Deprecated Function | Replacement | Status |
-|:-------------------|:------------|:-------|
-| `apply_boundary_conditions_1d()` | `pad_array_with_ghosts()` | Deprecated |
-| `apply_boundary_conditions_2d()` | `pad_array_with_ghosts()` | Deprecated |
-| `apply_boundary_conditions_3d()` | `pad_array_with_ghosts()` | Deprecated |
-| `apply_boundary_conditions_nd()` | `pad_array_with_ghosts()` | Deprecated |
-| `get_ghost_values_nd()` | `PreallocatedGhostBuffer` | Deprecated |
-| `pad_with_ghost_cells()` | `pad_array_with_ghosts()` | Deprecated |
-
-**Why deprecated**: Multiple implementations led to inconsistent behavior and O(h^1) bugs. The new API provides:
-- Clear, concrete function name: `pad_array_with_ghosts()`
-- Zero-allocation option: `PreallocatedGhostBuffer` for time-stepping loops
-- Correct O(h^2) reflection formula for Neumann BC
-- Extended coordinate arrays via `get_padded_coordinates()`
-- Single source of truth for all solvers
-
-**Migration**:
-```python
-# Old (deprecated) - abstract name
-from mfgarchon.geometry.boundary import apply_boundary_conditions_nd
-u_padded = apply_boundary_conditions_nd(u, bc, domain_bounds)
-
-# New (preferred) - simple one-time use
-from mfgarchon.geometry.boundary import pad_array_with_ghosts, neumann_bc
-bc = neumann_bc(dimension=1)
-u_padded = pad_array_with_ghosts(u, bc)
-
-# New (preferred) - zero-allocation for time-stepping
-from mfgarchon.geometry.boundary import PreallocatedGhostBuffer
-ghost_buffer = PreallocatedGhostBuffer(
-    interior_shape=u.shape,
-    boundary_conditions=bc,
-    ghost_depth=1,
-)
-ghost_buffer.interior[:] = u  # Work on interior view
-ghost_buffer.update_ghosts()  # Update ghosts in-place
-u_padded = ghost_buffer.padded  # Access full array
-```
-
-**Phase 2 Migration Complete** (2026-01-16):
-- ✅ HJB FDM Solver → Migrated `_get_ghost_values()` from `get_ghost_values_nd` to `pad_array_with_ghosts`
-- ✅ Tensor Calculus → Migrated `_apply_ghost_cells_nd` and tensor diffusion to `pad_array_with_ghosts`
-- ✅ Neumann BC Bug Fix → Corrected right boundary reflection formula (buf[-1] = buf[-3])
-- ✅ Test Updates → All 40 HJB FDM solver tests passing
-- ✅ WENO & Semi-Lagrangian → No changes needed (don't use deprecated APIs)
-
-**Removal**: v0.19.0 (after paper publication)
+- **`optimal_control_drift()`** — use `use H.optimal_control(x, m, grad_U, t) directly, or let FixedPointIterator handle it automatically` instead (remove by v0.25.0)
 
 ---
 
-## v0.18.0 Deprecation Summary (Operator Framework Migration)
+## Deprecated since v0.18.7
 
-### ✅ COMPLETED: Numerical Utilities → Operators Framework
+*1 items*
 
-#### 19. Differential Operators Migration
+### Parameters
 
-The function-based differential operators have been replaced by the `mfgarchon.operators` framework (LinearOperator classes). The old modules are now internal infrastructure, no longer publicly re-exported.
-
-| Old Module | New Module | Status |
-|:-----------|:-----------|:-------|
-| `grid_operators.py` | `mfgarchon.operators` | **Internal** |
-| `tensor_operators.py` | `mfgarchon.operators` | **Internal** |
-| `tensor_calculus.py` | `mfgarchon.operators` | **Internal** |
-| `differential_utils.py` | `scipy.optimize` + `mfgarchon.operators` | **Internal** |
-
-**Public API** (`mfgarchon.operators`):
-
-| Operator Class | Description |
-|:---------------|:------------|
-| `LaplacianOperator` | Δu = ∇·∇u |
-| `PartialDerivOperator` | ∂u/∂xᵢ |
-| `DivergenceOperator` | ∇·F |
-| `AdvectionOperator` | v·∇m or ∇·(vm) |
-
-**Migration**:
-```python
-# Old (no longer re-exported from utils.numerical)
-from mfgarchon.utils.numerical.tensor_calculus import gradient, laplacian
-
-# New (preferred)
-from mfgarchon.operators import LaplacianOperator, PartialDerivOperator
-L = LaplacianOperator(spacings=[dx, dy], field_shape=u.shape, bc=bc)
-lap_u = L(u)
-
-# For low-level stencils:
-from mfgarchon.operators.stencils import gradient_central, laplacian_stencil_nd
-```
-
-**Migration Status** (as of v0.17.11):
-- ✅ All solver code migrated to `mfgarchon.operators`
-- ✅ `tensor_calculus.py` internalized (no public re-export, no deprecation warning)
-- ✅ Old shim modules (`grid_operators.py`, `tensor_operators.py`) are internal only
-- ✅ Examples and benchmarks updated
-
-#### 20. HJB GFDM Solver Mixin Refactoring
-
-The monolithic `HJBGFDMSolver` (3,208 lines) has been split into focused mixins:
-
-| Mixin | Lines | Responsibility |
-|:------|:------|:---------------|
-| `GFDMBoundaryMixin` | 679 | Boundary normals, LCR rotation, ghost nodes |
-| `GFDMStencilMixin` | 571 | Neighborhoods, Taylor matrices, weight functions |
-| `GFDMInterpolationMixin` | 245 | Grid↔collocation point mapping |
-| `HJBGFDMSolver` (main) | 1,927 | Core HJB solving logic |
-
-**Impact**: This is an internal refactoring with no API changes. The class MRO is now:
-```
-HJBGFDMSolver → GFDMInterpolationMixin → GFDMStencilMixin → GFDMBoundaryMixin → MonotonicityMixin → BaseHJBSolver
-```
-
-**No migration needed** - existing code continues to work unchanged.
+- **`tensor_volatility_field`** in `HJBFDMSolver.solve_hjb_system()` — use `volatility_field (pass (d,d) array or callable returning (d,d))` instead (remove by v0.25.0)
 
 ---
 
-## v0.17.0 Deprecation Summary
+## Deprecated since v0.18.6
 
-### New Deprecations in v0.17
+*5 items*
 
-#### 7. Convergence Module Renaming (PR #457)
+### Parameters
 
-| Old Name | New Name | Status |
-|:---------|:---------|:-------|
-| `StochasticConvergenceMonitor` | `RollingConvergenceMonitor` | Deprecated |
-| `AdvancedConvergenceMonitor` | `DistributionConvergenceMonitor` | Deprecated |
-| `ParticleMethodDetector` | `SolverTypeDetector` | Deprecated |
-| `AdaptiveConvergenceWrapper` | `ConvergenceWrapper` | Deprecated |
-| `OscillationDetector` | `_ErrorHistoryTracker` (internal) | Deprecated |
-| `create_default_monitor()` | `create_distribution_monitor()` | Deprecated |
-| `create_stochastic_monitor()` | `create_rolling_monitor()` | Deprecated |
-
-**Migration**:
-```python
-# Old (deprecated)
-from mfgarchon.utils.numerical.convergence import (
-    StochasticConvergenceMonitor,
-    AdvancedConvergenceMonitor,
-    create_default_monitor,
-)
-
-# New (preferred)
-from mfgarchon.utils.numerical.convergence import (
-    RollingConvergenceMonitor,
-    DistributionConvergenceMonitor,
-    create_distribution_monitor,
-)
-```
-
-### Existing Deprecations (Carried Forward)
-
-| Category | Deprecated | Modern | Priority |
-|:---------|:-----------|:-------|:---------|
-| Problem Construction | `ExampleMFGProblem(Nx=50, ...)` | `MFGProblem(geometry=domain, ...)` | High |
-| Legacy Attributes | `problem.xmin`, `problem.Nx`, etc. | `problem.geometry.get_bounds()` | High |
-| Scalar Parameters | `Nx=50` (scalar) | `Nx=[50]` (array) | Medium |
-| solve_mfg method | `solve_mfg(problem, method='accurate')` | `create_accurate_solver(problem, ...)` | Medium |
-| Profiling API | `enable_profiling=True` | `profiling_mode=ProfilingMode.SILENT` | Low |
-| Legacy Problems | `ExampleMFGProblem`, etc. | `MFGProblem` + geometry | Low |
-| Geometry Aliases | `Domain1D`, `Domain2D`, `Domain3D` | `TensorProductGrid`, `Mesh2D`, `Mesh3D` | Low |
-| p_values parameter | `hamiltonian(t, x, m, p_values=...)` | `hamiltonian(t, x, m, derivs=...)` | Medium |
-| Lowercase params | `nx=50`, `nt=25` | `Nx=50`, `Nt=25` | Low |
+- **`potential_field`** in `FPFDMSolver.solve_fp_system()` — use `drift_field` instead (remove by v0.25.0)
+- **`velocity_field`** in `FPFDMSolver.solve_fp_system()` — use `drift_field` instead (remove by v0.25.0)
+- **`drift_field`** in `FPSLAdjointSolver.solve_fp_system()` — use `potential_field` instead (remove by v0.25.0)
+- **`drift_field`** in `FPSLJacobianSolver.solve_fp_system()` — use `potential_field` instead (remove by v0.25.0)
+- **`drift_field`** in `FPSLSolver.solve_fp_system()` — use `potential_field` instead (remove by v0.25.0)
 
 ---
 
-## 1. Manual Grid Construction (High Priority)
+## Deprecated since v0.18.0
 
-### Deprecated Pattern
+*14 items*
 
-```python
-from mfgarchon import ExampleMFGProblem
+### Functions / Classes
 
-problem = ExampleMFGProblem(Nx=50, xmin=0.0, xmax=1.0, Nt=25, T=1.0, sigma=0.1)
-```
-
-**Issues**:
-- Manual grid construction bypasses geometry system
-- Scalar notation (`Nx=50`) instead of array notation (`Nx=[50]`)
-- Limited to 1D problems
-- Cannot leverage unified geometry infrastructure
-
-### Modern Pattern
-
-```python
-from mfgarchon import MFGProblem
-from mfgarchon.geometry import TensorProductGrid
-
-# Step 1: Create geometry with boundary conditions
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
-# Note: TensorProductGrid replaces SimpleGrid1D/2D/3D (removed in v0.15.3)
-
-# Step 2: Create problem with geometry
-problem = MFGProblem(geometry=domain, T=1.0, Nt=25, sigma=0.1)
-```
-
-### Benefits
-- ✅ Explicit boundary condition specification
-- ✅ Works with dimension-agnostic solvers
-- ✅ Integrates with boundary handler system (Issue #272)
-- ✅ Extensible to 2D/3D via `TensorProductGrid`
-- ✅ Supports advanced geometries (AMR, FEM meshes)
-
-### Migration Impact
-- **Files affected**: 22 test files in `tests/unit/`
-- **Breaking change**: v1.0.0 (manual construction will be restricted)
-- **Effort**: Low (mechanical replacement)
+- **`GradientComponentOperator()`** — use `PartialDerivOperator` instead (remove by v1.0.0)
+- **`_compute_sdf_gradient()`** — use `use mfgarchon.operators.differential.function_gradient() instead` instead (remove by v0.25.0)
+- **`_compute_upwind_advection()`** — use `AdvectionOperator` instead (remove by v0.25.0)
+- **`mfgarchon.geometry.operators.AdvectionOperator()`** — use `AdvectionOperator` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.DivergenceOperator()`** — use `DivergenceOperator` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.GeometryProjector()`** — use `GeometryProjector` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.GradientComponentOperator()`** — use `PartialDerivOperator` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.InterfaceJumpOperator()`** — use `InterfaceJumpOperator` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.InterpolationOperator()`** — use `InterpolationOperator` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.LaplacianOperator()`** — use `LaplacianOperator` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.PartialDerivOperator()`** — use `PartialDerivOperator` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.ProjectionRegistry()`** — use `ProjectionRegistry` instead (remove by v1.0.0)
+- **`mfgarchon.geometry.operators.schemes.compute_weno5_derivative_1d()`** — use `compute_weno5_derivative_1d` instead (remove by v1.0.0)
+- **`mixed_bc()`** — use `Use BoundaryConditions(segments=[...]) directly` instead (remove by v0.25.0)
 
 ---
 
-## 2. Scalar Parameter Notation (Medium Priority)
+## Deprecated since v0.17.6
 
-### Deprecated Pattern
+*2 items*
 
-```python
-problem = ExampleMFGProblem(Nx=50, xmin=0.0, xmax=1.0)  # Scalars
-```
+### Functions / Classes
 
-**Deprecation warning**: `mfgarchon/core/mfg_problem.py:113`
-
-### Modern Pattern
-
-```python
-problem = MFGProblem(Nx=[50], xmin=[0.0], xmax=[1.0])  # Arrays
-```
-
-**Rationale**: Array notation is dimension-agnostic and consistent with nD problems.
-
-### Migration
-- Replace `Nx=50` → `Nx=[50]`
-- Replace `xmin=0.0` → `xmin=[0.0]`
-- Replace `xmax=1.0` → `xmax=[1.0]`
-
-**Note**: If using geometry-first API (pattern #1), this is automatically handled.
+- **`FPSLAdjointSolver()`** — use `FPSLSolver` instead (remove by v1.0.0)
+- **`__init__()`** — use `FPSLSolver` instead (remove by v0.25.0)
 
 ---
 
-## 3. Legacy Attribute Access (High Priority) - NEW
+## Deprecated since v0.17.12
 
-### Deprecated Pattern
+*2 items*
 
-```python
-problem = MFGProblem(Nx=[50], xmin=[0.0], xmax=[1.0], T=1.0, Nt=10)
+### Parameters
 
-# Accessing legacy attributes directly
-x_min = problem.xmin      # DeprecationWarning
-x_max = problem.xmax      # DeprecationWarning
-grid_size = problem.Nx    # DeprecationWarning
-spacing = problem.dx      # DeprecationWarning
-```
-
-**Deprecation**: These attributes now emit `DeprecationWarning` when accessed from external code. They will be removed in v1.0.0.
-
-### Modern Pattern
-
-```python
-from mfgarchon import MFGProblem
-from mfgarchon.geometry import TensorProductGrid
-
-# Create problem with geometry-first API
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[51])
-problem = MFGProblem(geometry=domain, T=1.0, Nt=10)
-
-# Access spatial information via geometry
-bounds = problem.geometry.get_bounds()        # (min_array, max_array)
-grid = problem.geometry.get_spatial_grid()    # Spatial grid points
-num_points = problem.geometry.num_spatial_points  # Total grid points
-dim = problem.geometry.dimension              # Spatial dimension
-
-# Use helper properties
-if problem.is_cartesian:
-    # Cartesian grid-specific logic
-    pass
-elif problem.is_network:
-    # Network-specific logic
-    pass
-```
-
-### What Changed (Issue #435, PRs #436-#443)
-
-1. **`problem.geometry` is never None** - Always set after initialization
-2. **Legacy attributes are computed properties** - Derive values from `self.geometry`
-3. **Legacy attributes hidden from autocomplete** - `__dir__()` excludes them
-4. **Write protection** - Setting `problem.xmin = value` emits warning (but works for backward compatibility)
-5. **Type safety** - `geometry` is typed as `GeometryProtocol`
-6. **Helper properties** - `is_cartesian`, `is_network`, `is_implicit` for type dispatch
-
-### Migration
-
-| Old | New |
-|:----|:----|
-| `problem.xmin` | `problem.geometry.get_bounds()[0][0]` |
-| `problem.xmax` | `problem.geometry.get_bounds()[1][0]` |
-| `problem.Nx` | `problem.geometry.num_spatial_points` |
-| `problem.dx` | Compute from bounds and num_points |
-| `problem.xSpace` | `problem.geometry.get_spatial_grid()` |
+- **`format_type`** in `Mesh1D.export_mesh()` — use `file_format` instead (remove by v0.25.0)
+- **`format_type`** in `Mesh3D.export_mesh()` — use `file_format` instead (remove by v0.25.0)
 
 ---
 
-## 4. StrategySelector Parameters (Low Priority)
+## Deprecated since v0.17.1
 
-### Deprecated Pattern
+*7 items*
 
-```python
-from mfgarchon.backends.strategies.strategy_selector import StrategySelector
+### Parameters
 
-selector = StrategySelector(enable_profiling=True, verbose=False)
-```
+- **`Lx`** in `MFGProblem.__init__()` — use `geometry=TensorProductGrid(...)` instead (remove by v0.25.0)
+- **`Nx`** in `MFGProblem.__init__()` — use `geometry=TensorProductGrid(...)` instead (remove by v0.25.0)
+- **`xmax`** in `MFGProblem.__init__()` — use `geometry=TensorProductGrid(...)` instead (remove by v0.25.0)
+- **`xmin`** in `MFGProblem.__init__()` — use `geometry=TensorProductGrid(...)` instead (remove by v0.25.0)
 
-**Deprecation location**: `mfgarchon/backends/strategies/strategy_selector.py`
+### Functions / Classes
 
-### Modern Pattern
-
-```python
-from mfgarchon.backends.strategies.strategy_selector import StrategySelector, ProfilingMode
-
-selector = StrategySelector(profiling_mode=ProfilingMode.SILENT)
-```
-
-**Profiling modes**:
-- `ProfilingMode.DISABLED`: No profiling
-- `ProfilingMode.SILENT`: Profile but don't print
-- `ProfilingMode.VERBOSE`: Profile and print stats
-
-### Migration Impact
-- **Files affected**: `mfgarchon/alg/numerical/fp_solvers/fp_particle.py` (already fixed)
-- **Breaking change**: v1.0.0
-- **Effort**: Minimal (enum-based API)
+- **`MFGDriftField()`** — use `DriftField` instead (remove by v1.0.0)
+- **`_solve_fp_1d()`** — use `solve_fp_system` instead (remove by v0.25.0)
+- **`_solve_fp_1d_with_callable()`** — use `solve_fp_system` instead (remove by v0.25.0)
 
 ---
 
-## 5. solve_mfg() Method Parameter (Medium Priority)
+## Deprecated since v0.17.0
 
-### Deprecated Pattern
+*117 items*
 
-```python
-from mfgarchon import solve_mfg
+### Parameters
 
-# Ambiguous "method" parameter
-result = solve_mfg(problem, method='accurate')
-```
+- **`enable_curriculum`** in `AdaptiveTrainingConfig.__init__()` — use `training_mode` instead (remove by v0.25.0)
+- **`enable_multiscale`** in `AdaptiveTrainingConfig.__init__()` — use `training_mode` instead (remove by v0.25.0)
+- **`enable_refinement`** in `AdaptiveTrainingConfig.__init__()` — use `training_mode` instead (remove by v0.25.0)
+- **`sigma`** in `AdjointConsistentProvider.__init__()` — use `diffusion` instead (remove by v0.25.0)
+- **`use_control_variates`** in `DGMConfig.__init__()` — use `variance_reduction` instead (remove by v0.25.0)
+- **`use_importance_sampling`** in `DGMConfig.__init__()` — use `variance_reduction` instead (remove by v0.25.0)
+- **`use_batch_norm`** in `DeepONetConfig.__init__()` — use `normalization` instead (remove by v0.25.0)
+- **`use_layer_norm`** in `DeepONetConfig.__init__()` — use `normalization` instead (remove by v0.25.0)
+- **`diffusion_field`** in `FPFDMSolver.solve_fp_system()` — use `volatility_field` instead (remove by v0.25.0)
+- **`m_initial_condition`** in `FPFDMSolver.solve_fp_system()` — use `M_initial` instead (remove by v0.25.0)
+- **`tensor_diffusion_field`** in `FPFDMSolver.solve_fp_system()` — use `volatility_field` instead (remove by v0.25.0)
+- **`volatility_matrix`** in `FPFDMSolver.solve_fp_system()` — use `volatility_field` instead (remove by v0.25.0)
+- **`diffusion_field`** in `FPGFDMSolver.solve_fp_system()` — use `volatility_field` instead (remove by v0.25.0)
+- **`m_initial_condition`** in `FPNetworkSolver.solve_fp_system()` — use `M_initial` instead (remove by v0.25.0)
+- **`external_particles`** in `FPParticleSolver.__init__()` — use `num_particles` instead (remove by v0.25.0)
+- **`mode`** in `FPParticleSolver.__init__()` — use `density_mode` instead (remove by v0.25.0)
+- **`normalize_kde_output`** in `FPParticleSolver.__init__()` — use `kde_normalization` instead (remove by v0.25.0)
+- **`normalize_only_initial`** in `FPParticleSolver.__init__()` — use `kde_normalization` instead (remove by v0.25.0)
+- **`diffusion_field`** in `FPParticleSolver.solve_fp_system()` — use `volatility_field` instead (remove by v0.25.0)
+- **`m_initial_condition`** in `FPParticleSolver.solve_fp_system()` — use `M_initial` instead (remove by v0.25.0)
+- **`diffusion_field`** in `FPSLAdjointSolver.solve_fp_system()` — use `volatility_field` instead (remove by v0.25.0)
+- **`m_initial_condition`** in `FPSLAdjointSolver.solve_fp_system()` — use `M_initial` instead (remove by v0.25.0)
+- **`diffusion_field`** in `FPSLJacobianSolver.solve_fp_system()` — use `volatility_field` instead (remove by v0.25.0)
+- **`m_initial_condition`** in `FPSLJacobianSolver.solve_fp_system()` — use `M_initial` instead (remove by v0.25.0)
+- **`diffusion_field`** in `FPSLSolver.solve_fp_system()` — use `volatility_field` instead (remove by v0.25.0)
+- **`m_initial_condition`** in `FPSLSolver.solve_fp_system()` — use `M_initial` instead (remove by v0.25.0)
+- **`M_density_evolution`** in `HJBFDMSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`M_density_evolution_from_FP`** in `HJBFDMSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`U_final_condition`** in `HJBFDMSolver.solve_hjb_system()` — use `U_terminal` instead (remove by v0.25.0)
+- **`U_final_condition_at_T`** in `HJBFDMSolver.solve_hjb_system()` — use `U_terminal` instead (remove by v0.25.0)
+- **`U_from_prev_picard`** in `HJBFDMSolver.solve_hjb_system()` — use `U_coupling_prev` instead (remove by v0.25.0)
+- **`bc_values`** in `HJBFDMSolver.solve_hjb_system()` — use `BCValueProvider in BoundaryConditions` instead (remove by v0.25.0)
+- **`NiterNewton`** in `HJBGFDMSolver.__init__()` — use `max_newton_iterations` instead (remove by v0.25.0)
+- **`l2errBoundNewton`** in `HJBGFDMSolver.__init__()` — use `newton_tolerance` instead (remove by v0.25.0)
+- **`M_density_evolution_from_FP`** in `HJBGFDMSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`U_final_condition_at_T`** in `HJBGFDMSolver.solve_hjb_system()` — use `U_terminal` instead (remove by v0.25.0)
+- **`U_from_prev_picard`** in `HJBGFDMSolver.solve_hjb_system()` — use `U_coupling_prev` instead (remove by v0.25.0)
+- **`M_density_evolution`** in `HJBNetworkSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`M_density_evolution_from_FP`** in `HJBNetworkSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`U_final_condition_at_T`** in `HJBNetworkSolver.solve_hjb_system()` — use `U_terminal` instead (remove by v0.25.0)
+- **`U_from_prev_picard`** in `HJBNetworkSolver.solve_hjb_system()` — use `U_coupling_prev` instead (remove by v0.25.0)
+- **`M_density_evolution_from_FP`** in `HJBSemiLagrangianSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`U_final_condition_at_T`** in `HJBSemiLagrangianSolver.solve_hjb_system()` — use `U_terminal` instead (remove by v0.25.0)
+- **`U_from_prev_picard`** in `HJBSemiLagrangianSolver.solve_hjb_system()` — use `U_coupling_prev` instead (remove by v0.25.0)
+- **`M_density_evolution_from_FP`** in `HJBWenoSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`U_final_condition_at_T`** in `HJBWenoSolver.solve_hjb_system()` — use `U_terminal` instead (remove by v0.25.0)
+- **`U_from_prev_picard`** in `HJBWenoSolver.solve_hjb_system()` — use `U_coupling_prev` instead (remove by v0.25.0)
+- **`nt`** in `HamiltonianBuilder.domain()` — use `Nt` instead (remove by v0.25.0)
+- **`nx`** in `HamiltonianBuilder.domain()` — use `Nx` instead (remove by v0.25.0)
+- **`nt`** in `LagrangianBuilder.domain()` — use `Nt` instead (remove by v0.25.0)
+- **`nx`** in `LagrangianBuilder.domain()` — use `Nx` instead (remove by v0.25.0)
+- **`nt`** in `MFGSystemBuilder.domain()` — use `Nt` instead (remove by v0.25.0)
+- **`nx`** in `MFGSystemBuilder.domain()` — use `Nx` instead (remove by v0.25.0)
+- **`show_edges`** in `Mesh1D.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`show_quality`** in `Mesh1D.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`show_edges`** in `Mesh2D.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`show_quality`** in `Mesh2D.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`show_edges`** in `Mesh3D.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`show_quality`** in `Mesh3D.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`m_initial_condition`** in `NetworkFPSolver.solve_fp_system()` — use `M_initial` instead (remove by v0.25.0)
+- **`M_density_evolution`** in `NetworkHJBSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`M_density_evolution_from_FP`** in `NetworkHJBSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`U_final_condition_at_T`** in `NetworkHJBSolver.solve_hjb_system()` — use `U_terminal` instead (remove by v0.25.0)
+- **`U_from_prev_picard`** in `NetworkHJBSolver.solve_hjb_system()` — use `U_coupling_prev` instead (remove by v0.25.0)
+- **`M_density_evolution`** in `NetworkPolicyIterationHJBSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`M_density_evolution_from_FP`** in `NetworkPolicyIterationHJBSolver.solve_hjb_system()` — use `M_density` instead (remove by v0.25.0)
+- **`U_final_condition_at_T`** in `NetworkPolicyIterationHJBSolver.solve_hjb_system()` — use `U_terminal` instead (remove by v0.25.0)
+- **`U_from_prev_picard`** in `NetworkPolicyIterationHJBSolver.solve_hjb_system()` — use `U_coupling_prev` instead (remove by v0.25.0)
+- **`use_batch_norm`** in `PINNConfig.__init__()` — use `normalization` instead (remove by v0.25.0)
+- **`use_layer_norm`** in `PINNConfig.__init__()` — use `normalization` instead (remove by v0.25.0)
+- **`nx`** in `SparseMatrixOptimizer.create_laplacian_3d()` — use `Nx` instead (remove by v0.25.0)
+- **`ny`** in `SparseMatrixOptimizer.create_laplacian_3d()` — use `Ny` instead (remove by v0.25.0)
+- **`nz`** in `SparseMatrixOptimizer.create_laplacian_3d()` — use `Nz` instead (remove by v0.25.0)
+- **`dimension`** in `TensorProductGrid.__init__()` — use `len(bounds) (dimension is inferred from bounds)` instead (remove by v0.25.0)
+- **`num_points`** in `TensorProductGrid.__init__()` — use `Nx_points` instead (remove by v0.25.0)
+- **`show_edges`** in `UnstructuredMesh.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`show_quality`** in `UnstructuredMesh.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`show_edges`** in `_MeshGeneratorBase.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`show_quality`** in `_MeshGeneratorBase.visualize_mesh()` — use `mode` instead (remove by v0.25.0)
+- **`bc_values`** in `_compute_laplacian_1d()` — use `Robin BC segments via AdjointConsistentProvider` instead (remove by v0.25.0)
+- **`auto_progress`** in `enhanced_solver_method()` — use `options=SolverMonitoringOptions.PROGRESS` instead (remove by v0.25.0)
+- **`monitor_convergence`** in `enhanced_solver_method()` — use `options=SolverMonitoringOptions.CONVERGENCE` instead (remove by v0.25.0)
+- **`timing`** in `enhanced_solver_method()` — use `options=SolverMonitoringOptions.TIMING` instead (remove by v0.25.0)
+- **`NiterNewton`** in `solve_hjb_system_backward()` — use `max_newton_iterations` instead (remove by v0.25.0)
+- **`l2errBoundNewton`** in `solve_hjb_system_backward()` — use `newton_tolerance` instead (remove by v0.25.0)
+- **`NiterNewton`** in `solve_hjb_timestep_newton()` — use `max_newton_iterations` instead (remove by v0.25.0)
+- **`l2errBoundNewton`** in `solve_hjb_timestep_newton()` — use `newton_tolerance` instead (remove by v0.25.0)
 
-**Issues**:
-- Ambiguous name: "method" could mean algorithm, coupling scheme, or preset
-- Hidden complexity: Single parameter controls multiple settings
-- Redundant: Users can already set `max_iterations` and `tolerance` directly
-- Opaque: Doesn't show what's actually being configured
+### Functions / Classes
 
-### Modern Pattern
+- **`AdaptiveConvergenceWrapper()`** — use `ConvergenceWrapper` instead (remove by v1.0.0)
+- **`AdvancedConvergenceMonitor()`** — use `DistributionConvergenceMonitor` instead (remove by v1.0.0)
+- **`OscillationDetector()`** — use `_ErrorHistoryTracker` instead (remove by v1.0.0)
+- **`StochasticConvergenceMonitor()`** — use `RollingConvergenceMonitor` instead (remove by v1.0.0)
+- **`__init__()`** — use `Use TaylorOperator from gfdm_strategies instead: from mfgarchon.alg.numerical.gfdm_components.gfdm_strategies import TaylorOperator` instead (remove by v0.25.0)
+- **`_deprecated_xp_zeros()`** — use `Use backend.zeros() instead for device consistency.` instead (remove by v0.25.0)
+- **`_init_1d_legacy()`** — use `geometry-first API with TensorProductGrid` instead (remove by v0.25.0)
+- **`_init_nd()`** — use `geometry-first API with TensorProductGrid` instead (remove by v0.25.0)
+- **`apply_boundary_conditions_1d()`** — use `Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.` instead (remove by v0.25.0)
+- **`apply_boundary_conditions_2d()`** — use `Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.` instead (remove by v0.25.0)
+- **`apply_boundary_conditions_3d()`** — use `Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.` instead (remove by v0.25.0)
+- **`apply_boundary_conditions_nd()`** — use `Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.` instead (remove by v0.25.0)
+- **`compute_adjoint_consistent_bc_values()`** — use `Use mfgarchon.alg.numerical.adjoint.compute_adjoint_consistent_bc_values instead.` instead (remove by v0.25.0)
+- **`compute_boundary_log_density_gradient_1d()`** — use `Use mfgarchon.alg.numerical.adjoint.compute_boundary_log_density_gradient_1d instead.` instead (remove by v0.25.0)
+- **`create_adjoint_consistent_bc_1d()`** — use `Use mfgarchon.alg.numerical.adjoint.create_adjoint_consistent_bc_1d instead.` instead (remove by v0.25.0)
+- **`create_default_monitor()`** — use `Use create_distribution_monitor() instead.` instead (remove by v0.25.0)
+- **`create_solver()`** — use `Use the new three-mode solving API instead (Issue #580):
+  - Safe Mode: problem.solve(scheme=NumericalScheme.FDM_UPWIND)
+  - Expert Mode: problem.solve(hjb_solver=hjb, fp_solver=fp)
+  - Auto Mode: problem.solve()
+See examples/basic/three_mode_api_demo.py for details.` instead (remove by v0.25.0)
+- **`create_stochastic_monitor()`** — use `Use create_rolling_monitor() instead.` instead (remove by v0.25.0)
+- **`get_ghost_values_nd()`** — use `Use pad_array_with_ghosts() or PreallocatedGhostBuffer instead. See issue #577.` instead (remove by v0.25.0)
+- **`validate_adjoint_capability()`** — use `validate_scheme_pairing` instead (remove by v0.25.0)
+- **`wrap_positions()`** — use `Use mfgarchon.geometry.boundary.periodic.wrap_positions instead.` instead (remove by v0.25.0)
 
-```python
-from mfgarchon.factory import create_accurate_solver
+### Properties
 
-# Explicit factory function + direct parameter control
-solver = create_accurate_solver(
-    problem,
-    max_iterations=500,  # Clear and explicit
-    tolerance=1e-6
-)
-result = solver.solve()
-```
+- **`Lx`** (property) — use `compute from geometry bounds` instead (remove by v0.25.0)
+- **`Nx`** (property) — use `problem.geometry.num_spatial_points - 1` instead (remove by v0.25.0)
+- **`_grid`** (property) — use `problem.geometry` instead (remove by v0.25.0)
+- **`dx`** (property) — use `compute from geometry bounds and num_points` instead (remove by v0.25.0)
+- **`num_points`** (property) — use `Use Nx_points instead.` instead (remove by v0.25.0)
+- **`xSpace`** (property) — use `problem.geometry.get_spatial_grid()` instead (remove by v0.25.0)
+- **`xmax`** (property) — use `problem.geometry.get_bounds()[1][0]` instead (remove by v0.25.0)
+- **`xmin`** (property) — use `problem.geometry.get_bounds()[0][0]` instead (remove by v0.25.0)
 
-**What the presets actually do**:
-- `method='fast'`: Uses `create_standard_solver()`, max_iterations=100
-- `method='accurate'`: Uses `create_accurate_solver()`, max_iterations=500
-- `method='research'`: Uses `create_research_solver()`, max_iterations=1000, auto-creates HJB/FP solvers
+### Value
 
-### Benefits of Modern Pattern
-
-- ✅ **Explicit**: Clear which factory function is used
-- ✅ **Transparent**: All parameters visible at call site
-- ✅ **Flexible**: Direct control over all solver settings
-- ✅ **Discoverable**: IDE autocomplete shows available factories
-- ✅ **No magic**: User controls solver selection, not hidden preset
-
-### Migration Strategy
-
-**Phase 1** (v0.x.x): Keep `method` parameter with deprecation warning
-
-**Phase 2** (v1.0.0): Remove `method` parameter, force explicit factory usage
-
-**For now**: Document modern pattern, update examples to use factory functions directly
-
----
-
-## 6. Legacy Problem Classes (Low Priority)
-
-### Deprecated Classes
-
-All classes in `mfgarchon/compat/legacy_problems.py`:
-- `ExampleMFGProblem` → Use `MFGProblem` with geometry
-- `CrowdDynamicsProblem` → Use `MFGProblem` with factory
-- `TrafficFlowProblem` → Use `MFGProblem` with factory
-- `PortfolioOptimizationProblem` → Use `MFGProblem` with factory
-- `CustomMFGProblem` → Inherit from `MFGProblem` directly
-
-### Modern Approach
-
-```python
-from mfgarchon import MFGProblem
-from mfgarchon.geometry import TensorProductGrid
-
-# Example: Crowd dynamics problem
-domain = TensorProductGrid(dimension=1, bounds=[(0.0, 1.0)], Nx_points=[101])
-# Note: TensorProductGrid replaces SimpleGrid1D/2D/3D (removed in v0.15.3)
-
-problem = MFGProblem(
-    geometry=domain,
-    T=1.0,
-    Nt=50,
-    sigma=0.1,
-    coupling_coefficient=1.0
-)
-```
-
-**For custom problems**: Inherit from `MFGProblem` and override methods:
-
-```python
-from mfgarchon import MFGProblem
-
-class MyCustomProblem(MFGProblem):
-    def potential(self, t, x, m):
-        # Custom potential implementation
-        return 0.5 * x**2
-
-    def terminal_condition(self, x, m):
-        # Custom terminal condition
-        return 0.0
-```
-
----
-
-## Additional Deprecations (Comprehensive Audit)
-
-### 10. Neural Network Configuration (PINN/DGM/DeepONet)
-
-#### PINN Normalization (base_pinn.py)
-
-| Old Parameter | New Parameter | Status |
-|:--------------|:--------------|:-------|
-| `use_batch_norm=True` | `normalization=NormalizationType.BATCH` | Deprecated |
-| `use_layer_norm=True` | `normalization=NormalizationType.LAYER` | Deprecated |
-
-#### PINN Training Mode (adaptive_training.py)
-
-| Old Parameter | New Parameter | Status |
-|:--------------|:--------------|:-------|
-| `enable_curriculum=True` | `training_mode=TrainingMode.CURRICULUM` | Deprecated |
-| `enable_multiscale=True` | `training_mode=TrainingMode.MULTISCALE` | Deprecated |
-| `enable_refinement=True` | `training_mode=TrainingMode.REFINEMENT` | Deprecated |
-
-#### DGM Variance Reduction (base_dgm.py)
-
-| Old Parameter | New Parameter | Status |
-|:--------------|:--------------|:-------|
-| `use_control_variates=True` | `variance_reduction=VarianceReduction.CONTROL_VARIATES` | Deprecated |
-| `use_importance_sampling=True` | `variance_reduction=VarianceReduction.IMPORTANCE_SAMPLING` | Deprecated |
-
-#### DeepONet Normalization (deeponet.py)
-
-| Old Parameter | New Parameter | Status |
-|:--------------|:--------------|:-------|
-| `use_batch_norm=True` | `normalization=NormalizationType.BATCH` | Deprecated |
-| `use_layer_norm=True` | `normalization=NormalizationType.LAYER` | Deprecated |
-
-**Migration**:
-```python
-# Old (deprecated)
-config = PINNConfig(use_batch_norm=True)
-config = AdaptiveTrainingConfig(enable_curriculum=True)
-config = DGMConfig(use_control_variates=True)
-
-# New (preferred)
-from mfgarchon.alg.neural import NormalizationType, TrainingMode, VarianceReduction
-config = PINNConfig(normalization=NormalizationType.BATCH)
-config = AdaptiveTrainingConfig(training_mode=TrainingMode.CURRICULUM)
-config = DGMConfig(variance_reduction=VarianceReduction.CONTROL_VARIATES)
-```
+- **`HJBGFDMSolver.__init__.qp_optimization_level`** (value) — use `values [smart, tuned, basic] -> [auto, auto, auto]` instead (remove by v0.25.0)
 
 ---
 
-### 11. HJB Solver Parameters (hjb_fdm.py, hjb_gfdm.py)
+## Deprecated since v0.16.11
 
-| Old Parameter | New Parameter | Status |
-|:--------------|:--------------|:-------|
-| `NiterNewton` | `max_newton_iterations` | Deprecated |
-| `l2errBoundNewton` | `newton_tolerance` | Deprecated |
-| `M_density_evolution_from_FP` | `M_density` | Deprecated |
-| `M_density_evolution` | `M_density` | Deprecated |
-| `U_final_condition_at_T` | `U_terminal` | Deprecated |
-| `U_final_condition` | `U_terminal` | Deprecated |
-| `U_from_prev_picard` | `U_coupling_prev` | Deprecated |
-| `qp_optimization_level='balanced'` | `qp_optimization_level='auto'` | Deprecated |
+*1 items*
 
-**Migration**:
-```python
-# Old (deprecated)
-solver = HJBSolver(NiterNewton=10, l2errBoundNewton=1e-6)
-result = solver.solve(M_density_evolution_from_FP=density, U_final_condition_at_T=terminal)
+### Functions / Classes
 
-# New (preferred)
-solver = HJBSolver(max_newton_iterations=10, newton_tolerance=1e-6)
-result = solver.solve(M_density=density, U_terminal=terminal)
-```
+- **`__init__()`** — use `Use ZeroFluxCalculator instead for J*n = 0 (mass conservation).` instead (remove by v0.25.0)
 
 ---
 
-### 12. Gradient Notation Module (compat/gradient_notation.py)
+## Deprecated since v0.16.0
 
-The entire `mfgarchon.compat.gradient_notation` module is deprecated since v0.17.0.
+*2 items*
 
-| Old | New | Status |
-|:----|:----|:-------|
-| `mfgarchon.compat.gradient_notation` | `mfgarchon.core.DerivativeTensors` | Deprecated |
-| `dict[tuple[int,...], float]` format | `DerivativeTensors` class | Deprecated |
-| `p_values` parameter | `derivs` parameter | Deprecated |
+### Parameters
 
-**Migration**:
-```python
-# Old (deprecated)
-from mfgarchon.compat.gradient_notation import tuple_to_string_keys
-p_values = {(1,): u_x, (2,): u_xx}  # Legacy dict format
-
-# New (preferred)
-from mfgarchon.core import DerivativeTensors, from_multi_index_dict
-derivs = DerivativeTensors(gradient=np.array([u_x]), hessian_diag=np.array([u_xx]))
-# Or convert: derivs = from_multi_index_dict(p_values)
-```
+- **`NiterNewton`** in `HJBFDMSolver.__init__()` — use `max_newton_iterations` instead (remove by v0.25.0)
+- **`l2errBoundNewton`** in `HJBFDMSolver.__init__()` — use `newton_tolerance` instead (remove by v0.25.0)
 
 ---
 
-### 13. Problem Parameter: sigma → diffusion (mfg_problem.py)
+## Deprecated since v0.14.0
 
-| Old Parameter | New Parameter | Status |
-|:--------------|:--------------|:-------|
-| `sigma=0.1` | `diffusion=0.1` | Deprecated |
+*5 items*
 
-**Migration**:
-```python
-# Old (deprecated)
-problem = MFGProblem(sigma=0.1, ...)
+### Functions / Classes
 
-# New (preferred)
-problem = MFGProblem(diffusion=0.1, ...)
-```
+- **`dirichlet_bc()`** — use `Use from mfgarchon.geometry import dirichlet_bc; bc = dirichlet_bc(value=..., dimension=1).` instead (remove by v0.25.0)
+- **`neumann_bc()`** — use `Use from mfgarchon.geometry import neumann_bc; bc = neumann_bc(value=..., dimension=1).` instead (remove by v0.25.0)
+- **`no_flux_bc()`** — use `Use from mfgarchon.geometry import no_flux_bc; bc = no_flux_bc(dimension=1).` instead (remove by v0.25.0)
+- **`periodic_bc()`** — use `Use from mfgarchon.geometry import periodic_bc; bc = periodic_bc(dimension=1).` instead (remove by v0.25.0)
+- **`robin_bc()`** — use `Use from mfgarchon.geometry import robin_bc; bc = robin_bc(alpha=..., beta=..., dimension=1).` instead (remove by v0.25.0)
 
 ---
 
-### 14. Type Aliases (types/arrays.py, types/solver_types.py)
+## Deprecated since v0.12.0
 
-| Old Name | New Name | Status |
-|:---------|:---------|:-------|
-| `SpatialCoordinates` | `SpatialGrid` | Deprecated |
-| `TemporalCoordinates` | `TimeGrid` | Deprecated |
-| `LegacySolverReturn` | `SolverReturnTuple` | Deprecated |
+*1 items*
 
-**Migration**:
-```python
-# Old (deprecated)
-from mfgarchon.types import SpatialCoordinates, TemporalCoordinates
+### Functions / Classes
 
-# New (preferred)
-from mfgarchon.types import SpatialGrid, TimeGrid
-```
+- **`apply_boundary_conditions()`** — use `Use MeshfreeApplicator from mfgarchon.geometry.boundary instead.` instead (remove by v0.25.0)
 
 ---
 
-### 15. Backend Functions (backends/__init__.py)
+## Migration Help
 
-| Old Function | New Function | Status |
-|:-------------|:-------------|:-------|
-| `get_legacy_backend_list()` | `get_available_backends()` | Deprecated (v0.10) |
-
-**Migration**:
-```python
-# Old (deprecated)
-from mfgarchon.backends import get_legacy_backend_list
-backends = get_legacy_backend_list()
-
-# New (preferred)
-from mfgarchon.backends import get_available_backends
-backends = get_available_backends()
-```
-
----
-
-### 16. Geometry Visualization Parameters (geometry/base.py)
-
-| Old Parameter | New Parameter | Status |
-|:--------------|:--------------|:-------|
-| `show_edges=True` | `mode='edges'` | Deprecated |
-| `show_quality=True` | `mode='quality'` | Deprecated |
-
-**Migration**:
-```python
-# Old (deprecated)
-geometry.plot(show_edges=True, show_quality=True)
-
-# New (preferred)
-geometry.plot(mode='edges')
-geometry.plot(mode='quality')
-```
-
----
-
-### 17. Visualization Legacy Functions (visualization/legacy_plotting.py)
-
-| Old Function | New Function | Status |
-|:-------------|:-------------|:-------|
-| `legacy_myplot3d()` | Modern visualization system | Deprecated |
-| `legacy_plot_convergence()` | `plot_convergence()` with modern backend | Deprecated |
-| `legacy_plot_results()` | `plot_results()` with modern backend | Deprecated |
-
----
-
-### 18. Dependencies Module (utils/dependencies.py)
-
-| Old Parameter | New Parameter | Status |
-|:--------------|:--------------|:-------|
-| `feature='plotting'` | `purpose='plotting'` | Deprecated |
-
----
-
-## Migration Strategy
-
-### Phase 1: Documentation (✅ Complete)
-- Document modern patterns (this guide)
-- Create migration examples in `examples/tutorials/`
-- Update README with modern usage
-
-### Phase 2: Controlled Test Conversion (✅ Complete)
-- Convert 2-3 test files as reference examples
-- Verify no regressions
-- Document conversion pattern
-
-### Phase 3: Systematic Migration (✅ Complete - 2025-12-18)
-- ✅ Batch convert remaining test files (55 files in MFGArchon)
-- ✅ Update all `examples/` to use modern API
-- ✅ Migrate mfg-research repository (8 files)
-- ✅ Issue deprecation warnings for all legacy patterns
-
-**Migration patterns applied**:
-- `problem.xmin` → `problem.geometry.get_bounds()[0][0]`
-- `problem.xmax` → `problem.geometry.get_bounds()[1][0]`
-- `problem.dx` → `problem.geometry.get_grid_spacing()[0]`
-- `problem.Nx + 1` → `problem.geometry.get_grid_shape()[0]`
-- `sigma` → `diffusion` (parameter rename)
-
-### Phase 4: Enforcement (v1.0.0) - Pending
-- Remove deprecated constructors
-- Restrict manual grid construction
-- Legacy problem classes raise errors with migration hints
-
----
-
-## Quick Reference
-
-| Category | Deprecated | Modern | Priority | Since |
-|:---------|:-----------|:-------|:---------|:------|
-| Problem | `ExampleMFGProblem(Nx=50, ...)` | `MFGProblem(geometry=domain, ...)` | High | v0.15 |
-| Problem | `problem.xmin`, `problem.Nx`, etc. | `problem.geometry.get_bounds()` | High | v0.16 |
-| Problem | `Nx=50` (scalar) | `Nx=[50]` (array) | Medium | v0.15 |
-| Problem | `hamiltonian(..., p_values=...)` | `hamiltonian(..., derivs=...)` | Medium | v0.16 |
-| Problem | `nx=50`, `nt=25` (lowercase) | `Nx=50`, `Nt=25` | Low | v0.16 |
-| Factory | `solve_mfg(problem, method='accurate')` | `create_accurate_solver(problem, ...)` | Medium | v0.15 |
-| ~~Strategy~~ | ~~`enable_profiling=True`~~ | ~~`profiling_mode=ProfilingMode.SILENT`~~ | ~~Low~~ | ~~v0.15~~ **REMOVED v0.16.12** |
-| Legacy | `ExampleMFGProblem`, etc. | `MFGProblem` + geometry | Low | v0.15 |
-| ~~Geometry~~ | ~~`Domain1D`, `Domain2D`, `Domain3D`~~ | ~~`TensorProductGrid`, `Mesh2D`, `Mesh3D`~~ | ~~Low~~ | ~~v0.15.3~~ **REMOVED v0.16.12** |
-| Convergence | `StochasticConvergenceMonitor` | `RollingConvergenceMonitor` | Low | v0.17 |
-| Convergence | `AdvancedConvergenceMonitor` | `DistributionConvergenceMonitor` | Low | v0.17 |
-| Convergence | `ParticleMethodDetector` | `SolverTypeDetector` | Low | v0.17 |
-| Convergence | `AdaptiveConvergenceWrapper` | `ConvergenceWrapper` | Low | v0.17 |
-| Convergence | `create_default_monitor()` | `create_distribution_monitor()` | Low | v0.17 |
-| Convergence | `create_stochastic_monitor()` | `create_rolling_monitor()` | Low | v0.17 |
-| BC | `NoFluxCalculator` | `ZeroGradientCalculator` | Low | v0.16.11 |
-| BC | `FPNoFluxCalculator` | `ZeroFluxCalculator` | Low | v0.16.11 |
-| BC | `BoundaryConditions1DFDM` | `BoundaryConditions` | Low | v0.16.11 |
-| BC | `LegacyBoundaryConditions1D` | `BoundaryConditions` | Low | v0.16.11 |
-| BC | `apply_boundary_conditions_*()` | `PreallocatedGhostBuffer` | Medium | v0.16.16 |
-| BC | `get_ghost_values_nd()` | `PreallocatedGhostBuffer` | Medium | v0.16.16 |
-| BC | `pad_with_ghost_cells()` | `PreallocatedGhostBuffer` | Medium | v0.16.16 |
-| Neural | `use_batch_norm`, `use_layer_norm` | `normalization=...` | Low | v0.16 |
-| Neural | `enable_curriculum/multiscale/refinement` | `training_mode=...` | Low | v0.16 |
-| Neural | `use_control_variates/importance_sampling` | `variance_reduction=...` | Low | v0.16 |
-| HJB | `NiterNewton` | `max_newton_iterations` | Low | v0.16 |
-| HJB | `l2errBoundNewton` | `newton_tolerance` | Low | v0.16 |
-| HJB | `M_density_evolution_from_FP` | `M_density` | Low | v0.16 |
-| HJB | `U_final_condition_at_T` | `U_terminal` | Low | v0.16 |
-| HJB | `U_from_prev_picard` | `U_coupling_prev` | Low | v0.16 |
-| Compat | `mfgarchon.compat.gradient_notation` | `mfgarchon.core.DerivativeTensors` | Medium | v0.17 |
-| Problem | `sigma=0.1` | `diffusion=0.1` | Medium | v0.16 |
-| Types | `SpatialCoordinates` | `SpatialGrid` | Low | v0.16 |
-| Types | `TemporalCoordinates` | `TimeGrid` | Low | v0.16 |
-| Types | `LegacySolverReturn` | `SolverReturnTuple` | Low | v0.16 |
-| ~~Backend~~ | ~~`get_legacy_backend_list()`~~ | ~~`get_available_backends()`~~ | ~~Low~~ | ~~v0.10~~ **REMOVED v0.16.12** |
-| Geometry | `show_edges`, `show_quality` | `mode='edges'/'quality'` | Low | v0.16 |
-| Viz | `legacy_myplot3d()` etc. | Modern viz system | Low | v0.15 |
-| Deps | `feature='...'` | `purpose='...'` | Low | v0.16 |
-| Numerical | `grid_operators.gradient` | `tensor_calculus.gradient` | Medium | v0.18 |
-| Numerical | `grid_operators.laplacian` | `tensor_calculus.laplacian` | Medium | v0.18 |
-| Numerical | `tensor_operators.divergence_*` | `tensor_calculus.tensor_diffusion` | Medium | v0.18 |
-| Numerical | `differential_utils.gradient_fd` | `scipy.optimize.approx_fprime` | Medium | v0.18 |
-| Numerical | `differential_utils.gradient_grid_nd` | `tensor_calculus.gradient_simple` | Medium | v0.18 |
-
----
-
-## Testing Modernized Code
-
-After migrating to modern API:
-
-```python
-# Verify geometry integration
-assert hasattr(problem, 'geometry')
-assert problem.geometry.dimension == 1
-
-# Verify boundary handler works
-bc_handler = problem.geometry.get_boundary_handler(bc_type='periodic')
-assert bc_handler is not None
-
-# Run existing tests to ensure backward compatibility
-pytest tests/unit/your_test_file.py
-```
-
----
-
-## Getting Help
-
-- **Migration questions**: Open GitHub discussion
-- **Bugs in modern API**: Report via GitHub issues with label `area: geometry`
-- **Examples**: See `examples/tutorials/` for modern usage patterns
-
----
-
-## Tracking Progress
-
-**Current Status** (as of 2026-03-26):
-- ✅ Modern API fully implemented
-- ✅ Geometry-first unification complete
-- ✅ Operator framework migration complete (tensor_calculus internalized)
-- ✅ Progress bars: tqdm eliminated, Rich-only
-- ✅ Package renamed: mfg_pde → mfgarchon (#821)
-- ✅ Zero deprecation warnings on `import mfgarchon`
-- ⏳ v1.0.0 enforcement: Not yet implemented
-
-**Deprecation Counts by Version** (updated 2026-03-26):
-| Version | Category | Count | Status |
-|:--------|:---------|:------|:-------|
-| ~~v0.10~~ | ~~Backend~~ | ~~1~~ | **REMOVED in v0.16.12** |
-| ~~v0.15.x~~ | ~~Problem, Factory, Legacy~~ | ~~4~~ | **REMOVED in v0.16.12** |
-| ~~v0.15.x~~ | ~~Utils (logging, bandwidth)~~ | ~~2~~ | **REMOVED in v0.17.0** |
-| ~~v0.16.x~~ | ~~Progress (tqdm)~~ | ~~1~~ | **COMPLETED in v0.16.15** |
-| ~~v0.18.x~~ | ~~Numerical Utils (tensor_calculus)~~ | ~~5~~ | **INTERNALIZED in v0.17.11** |
-| v0.16.x | Problem, HJB, Neural, Types, Geometry | 20 | Active |
-| v0.16.11 | BC Calculators | 4 | Active |
-| v0.16.16 | Ghost Cell Functions (Issue #577) | 6 | Active |
-| v0.17.x | Convergence, Gradient Notation | 7 | Active |
-
-**Total Active**: 37 patterns
-
-**Removed in v0.16.12**:
-- `get_legacy_backend_list()` → Use `get_available_backends()` (v0.10)
-- `Domain1D`, `Domain2D`, `Domain3D` → Use `TensorProductGrid`, `Mesh2D`, `Mesh3D` (v0.15)
-- `enable_profiling`, `verbose` params → Use `profiling_mode` enum (v0.15)
-
-**Completed in v0.16.15**:
-- External `tqdm` dependency eliminated → Use `mfgarchon.utils.progress` (Rich-only)
-- `from tqdm import tqdm` → `from mfgarchon.utils.progress import tqdm` (alias for `RichProgressBar`)
-- Deprecated fallback logic removed → Rich is now required, no optional fallback
-
-**Removed in v0.17.0**:
-- `adaptive_bandwidth_selection` alias → Use `estimate_kde_bandwidth` (v0.15)
-- `from . import mfg_logging as logging` alias → Import from `mfgarchon.utils.mfg_logging` directly (v0.15)
-- Unconditional deprecation warnings that fired on every import of `mfgarchon.utils` (fixed)
-- Unconditional warning in `gradient_notation.py` → Warnings now fire when functions are called (fixed)
-- Updated internal code to use `mfgarchon.utils.convergence` instead of `mfgarchon.utils.numerical.convergence`
-- `kernel_rbf_operators.py` module → Use `LocalRBFOperator` from `gfdm_strategies.py` (v0.17)
-- `RBFOperator`, `create_rbf_operator` exports removed from `utils.numerical`
-
-**Deprecation Timeline**:
-- v0.16.x deprecations → Remove in v0.19 or v1.0.0
-- v0.17.x deprecations → Remove in v0.20 or v1.0.0
-- v0.18.x deprecations → Remove in v1.0.0
-
-**Next Milestone**: v0.19.0 release with final warning period
-
----
-
-## v0.16.17 New Features (BC Modernization)
-
-### ✅ COMPLETED: Region-Based Boundary Conditions (Issue #596 Phase 2.5)
-
-**Status**: Feature complete, all tests passing
-
-Modern approach for specifying boundary conditions on complex geometries using marked regions instead of boundary identifiers.
-
-**What's New**:
-
-1. **Region Marking**: Mark arbitrary regions on geometry using predicates or boundaries
-2. **BC from Regions**: Define BCs referencing region names via `mixed_bc_from_regions()`
-3. **Priority Resolution**: Handle overlapping regions with priority-based precedence
-4. **Performance**: <5% overhead compared to standard boundary-based BCs
-
-**Basic Usage**:
-
-```python
-from mfgarchon.geometry import TensorProductGrid
-from mfgarchon.geometry.boundary import mixed_bc_from_regions, BCSegment, BCType
-
-# Create geometry and mark regions
-geometry = TensorProductGrid(dimension=2, bounds=[(0, 2), (0, 1)], Nx_points=[41, 21])
-geometry.mark_region("inlet", predicate=lambda x: x[:, 0] < 0.1)
-geometry.mark_region("outlet", predicate=lambda x: x[:, 0] > 1.9)
-geometry.mark_region("walls", boundary="y_min")
-
-# Define BCs referencing regions
-bc_config = {
-    "inlet": BCSegment(name="inlet_bc", bc_type=BCType.DIRICHLET, value=1.0),
-    "outlet": BCSegment(name="outlet_bc", bc_type=BCType.NEUMANN, value=0.0),
-    "walls": BCSegment(name="wall_bc", bc_type=BCType.NO_FLUX),
-    "default": BCSegment(name="periodic_bc", bc_type=BCType.PERIODIC),
-}
-
-bc = mixed_bc_from_regions(geometry, bc_config)
-
-# Apply BCs (must pass geometry parameter)
-from mfgarchon.geometry.boundary import FDMApplicator
-applicator = FDMApplicator(dimension=2)
-padded = applicator.apply(field, bc, domain_bounds=geometry.bounds, geometry=geometry)
-```
-
-**Use Cases**:
-
-| Scenario | Old Approach | New Approach |
-|:---------|:-------------|:-------------|
-| Partial boundary BC | Split into multiple segments | Single region with predicate |
-| Complex inlet shape | Manual masking | `mark_region()` with predicate |
-| Overlapping regions | Manual priority logic | Built-in priority resolution |
-
-**Benefits**:
-
-- ✅ **Flexible**: Define BCs on arbitrary spatial regions, not just full boundaries
-- ✅ **Composable**: Combine boundary-based and region-based segments in one BC
-- ✅ **Priority-aware**: Automatic resolution when regions overlap (higher number wins)
-- ✅ **Performant**: Minimal overhead (<5%) via cached region masks
-- ✅ **Backward compatible**: Existing code continues to work without changes
-
-**See Also**:
-
-- `docs/user/guides/boundary_conditions.md` - Full guide with examples
-- `tests/integration/test_region_based_bc.py` - Comprehensive test suite
-- Issue #596 Phase 2.5 - Implementation details
-
-**Next Milestone**: v0.19.0 release with final warning period
-
----
-
-## See Also
-
-- `docs/development/GEOMETRY_PARAMETER_MIGRATION.md` - Detailed geometry API docs
-- `docs/development/CONSISTENCY_GUIDE.md` - Code style and naming conventions
-- `mfgarchon/geometry/README.md` - Geometry system overview
+If you encounter a deprecation warning not listed here,
+please file an issue at https://github.com/derrring/MFGArchon/issues
