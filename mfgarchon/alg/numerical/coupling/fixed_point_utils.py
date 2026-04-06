@@ -332,7 +332,7 @@ def compute_scheduled_damping(
     if schedule == "constant":
         return base_damping
 
-    from mfgarchon.utils.convergence.schedules import harmonic_schedule, sqrt_schedule
+    from mfgarchon.utils.iteration.schedules import harmonic_schedule, sqrt_schedule
 
     if schedule == "harmonic":
         value = base_damping * harmonic_schedule(iteration)
