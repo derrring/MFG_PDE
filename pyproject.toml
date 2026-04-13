@@ -1,7 +1,7 @@
 # pyproject.toml
 
 [build-system]
-requires = ["setuptools>=61.0"] # Minimum version of setuptools
+requires = ["setuptools>=82.0.1"] # Minimum version of setuptools
 build-backend = "setuptools.build_meta"
 #backend-path = ["."] # Optional: If you have a custom build backend, you can specify it here.
 # Optional: If you want to use PEP 517/518, you can specify the backend requirements here.
