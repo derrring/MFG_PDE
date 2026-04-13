@@ -95,7 +95,7 @@ core = [
 # Neural network and reinforcement learning solvers
 # Adds: DGM, PINN, Actor-Critic, PPO
 nn = [
-    "torch>=2.0",              # PyTorch (DGM, PINN)
+    "torch>=2.11.0",              # PyTorch (DGM, PINN)
     "gymnasium>=0.29",         # RL environments
     "stable-baselines3>=2.0",  # RL algorithms (AC, PPO)
     "tensorboard>=2.13",       # Training visualization
@@ -104,7 +104,7 @@ nn = [
 # Everything: default + nn + JAX + performance + advanced viz
 all = [
     # Neural/RL (same as nn)
-    "torch>=2.0",
+    "torch>=2.11.0",
     "gymnasium>=0.29",
     "stable-baselines3>=2.0",
     "tensorboard>=2.13",
