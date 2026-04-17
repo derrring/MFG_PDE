@@ -39,6 +39,13 @@ listed here with their scope.
   single-letter aliases (`omega = self.damping_factor`) removed in favor of direct
   `self.relaxation` use per internal style preference. 7 equivalence tests in
   `tests/unit/test_alg/test_network_multipop_relaxation_alias.py`.
+- **B1.5b.4** (PR #1015): `HJBFDMSolver` + `FixedPointSolver` (utils/numerical).
+  Same pattern: `damping_factor` → `relaxation` ctor kwarg, silent `@property`
+  alias. HJBFDMSolver's internal construction of `FixedPointSolver` now forwards
+  `relaxation=...` (canonical), and docstring "recommend 0.5-0.8" numerical
+  guidance removed per the no-opinionated-numerical-recommendations style. 12
+  equivalence tests in
+  `tests/unit/test_alg/test_hjb_fdm_fp_solver_relaxation_alias.py`.
 
 ## [0.19.1] - 2026-04-17
 

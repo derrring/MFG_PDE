@@ -31,6 +31,7 @@ import numpy as np
 import scipy.sparse as sparse
 from scipy.sparse.linalg import spsolve
 
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
@@ -132,7 +133,7 @@ class FixedPointSolver(NonlinearSolver):
 
     Example:
         >>> G = lambda x: np.cos(x)  # Solve x = cos(x)
-        >>> solver = FixedPointSolver(damping_factor=0.8, tol=1e-6)
+        >>> solver = FixedPointSolver(relaxation=0.8, tol=1e-6)
         >>> x, info = solver.solve(G, x0=0.5)
         >>> print(f"Solution: {x}, converged: {info.converged}")
 
@@ -142,35 +143,46 @@ class FixedPointSolver(NonlinearSolver):
         - Use Anderson acceleration for faster convergence
     """
 
+    @deprecated_parameter(param_name="damping_factor", since="v0.19.2", replacement="relaxation")
     def __init__(
         self,
-        damping_factor: float = 1.0,
+        relaxation: float = 1.0,
         max_iterations: int = 100,
         tolerance: float = 1e-6,
         norm_type: Literal["relative", "absolute"] = "relative",
+        # Legacy kwarg (deprecated since v0.19.2, removal v0.25.0)
+        damping_factor: float | None = None,
     ):
         """
         Initialize fixed-point solver.
 
         Args:
-            damping_factor: Damping ω ∈ (0, 1]
-                - 1.0 = full update (fast but may oscillate)
-                - 0.5-0.8 = damped (stable, recommended)
+            relaxation: Under-relaxation factor ω ∈ (0, 1].
+                ω = 1.0 applies the full update; ω < 1 averages new and old iterates.
             max_iterations: Maximum iterations
             tolerance: Convergence tolerance
             norm_type: 'relative' or 'absolute' residual norm
+
+            Legacy `damping_factor` kwarg still accepted with DeprecationWarning.
         """
-        if not 0 < damping_factor <= 1.0:
-            raise ValueError(f"damping_factor must be in (0,1], got {damping_factor}")
+        if damping_factor is not None:
+            relaxation = damping_factor
+        if not 0 < relaxation <= 1.0:
+            raise ValueError(f"relaxation must be in (0,1], got {relaxation}")
         if max_iterations < 1:
             raise ValueError(f"max_iterations must be >= 1, got {max_iterations}")
         if tolerance <= 0:
             raise ValueError(f"tolerance must be > 0, got {tolerance}")
 
-        self.damping_factor = damping_factor
+        self.relaxation = relaxation
         self.max_iterations = max_iterations
         self.tolerance = tolerance
         self.norm_type = norm_type
+
+    @property
+    def damping_factor(self) -> float:
+        """Deprecated alias for `relaxation` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation
 
     def solve(  # type: ignore[override]
         self,
@@ -202,14 +214,13 @@ class FixedPointSolver(NonlinearSolver):
         is_scalar = original_shape == ()
 
         residual_history = []
-        omega = self.damping_factor
 
         for iteration in range(self.max_iterations):
             # Evaluate fixed-point map
             x_new = G(x_current)
 
-            # Apply damping
-            x_updated = (1 - omega) * x_current + omega * x_new
+            # Apply under-relaxation
+            x_updated = (1 - self.relaxation) * x_current + self.relaxation * x_new
 
             # Compute residual: ||x_updated - x_current||
             diff = x_updated - x_current
@@ -668,7 +679,7 @@ if __name__ == "__main__":
 
     # Test 1: Fixed-point solver
     print("\n1. Testing FixedPointSolver...")
-    fp_solver = FixedPointSolver(damping_factor=0.5, max_iterations=100, tolerance=1e-6)
+    fp_solver = FixedPointSolver(relaxation=0.5, max_iterations=100, tolerance=1e-6)
 
     # Simple fixed-point problem: x = cos(x)
     def G_fixedpoint(x):
