@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-04-17
+
+### Changed
+
+- **`PicardConfig` field rename** (naming abstraction): the five damping-related
+  fields are renamed from `damping_*` to `relaxation_*`:
+
+  | Legacy field (deprecated) | Canonical field |
+  |---|---|
+  | `damping_factor` | `relaxation` |
+  | `damping_factor_M` | `relaxation_M` |
+  | `damping_schedule` | `relaxation_schedule` |
+  | `damping_schedule_M` | `relaxation_schedule_M` |
+  | `adaptive_damping` | `adaptive_relaxation` |
+
+  `relaxation` is the more abstract name — it extends cleanly to over-relaxation
+  (omega > 1) if the range constraint is loosened in future work, whereas
+  "damping" is conceptually under-relaxation only. `FixedPointIterator` reads
+  of `config.picard.*` updated to canonical names.
+
+### Deprecated
+
+- Legacy `damping_*` kwargs on `PicardConfig(...)` still accepted via
+  `@model_validator(mode="before")` translation, with `DeprecationWarning`
+  emitted. Removal scheduled for **v0.25.0** per standard 3-version window.
+  Passing both legacy and canonical names for the same concept raises
+  `ValueError` immediately (e.g. `PicardConfig(damping_factor=0.5, relaxation=0.8)`).
+
+### Tests
+
+- New `tests/unit/test_config/test_picard_relaxation_alias.py` (15 tests)
+  provides the mandatory equivalence tests per CLAUDE.md deprecation policy:
+  each legacy kwarg produces an instance `==` to the canonical kwarg.
+
+### Out of scope (future patches)
+
+- Solver constructor kwargs (`FixedPointIterator(damping_factor=...)`,
+  `HJBFDMSolver(damping_factor=...)`, etc.) are **not** renamed in this
+  release. The runtime-layer rename via `@deprecated_parameter` is B1.5b,
+  tracked in #1010.
+
 ## [0.19.0] - 2026-04-17
 
 ### Removed (BREAKING)

@@ -13,7 +13,7 @@ Key Principle
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -83,7 +83,7 @@ class BackendConfig(BaseModel):
 
 class PicardConfig(BaseModel):
     """
-    Configuration for Picard (fixed-point) iteration with damping.
+    Configuration for Picard (fixed-point) iteration with under-relaxation.
 
     Attributes
     ----------
@@ -91,36 +91,85 @@ class PicardConfig(BaseModel):
         Maximum number of iterations (default: 100)
     tolerance : float
         Convergence tolerance (default: 1e-6)
-    damping_factor : float
-        Damping factor θ ∈ (0, 1] for update: u^{n+1} = θu_new + (1-θ)u^n
-        - 1.0: No damping (faster but may diverge)
-        - 0.5: Moderate damping (balanced, default)
-        - <0.3: Heavy damping (slower but more stable)
-    damping_factor_M : float | None
-        Separate damping factor for M (None = use damping_factor for both).
-        Issue #719: Per-variable damping support.
-    damping_schedule : str
-        Iteration-based damping schedule for U: "constant", "harmonic",
+    relaxation : float
+        Relaxation (under-relaxation) factor omega in (0, 1] for the update:
+        u^{n+1} = omega * u_new + (1 - omega) * u^n.
+        - 1.0: No relaxation (faster but may diverge)
+        - 0.5: Moderate relaxation (balanced, default)
+        - <0.3: Heavy relaxation (slower but more stable)
+    relaxation_M : float | None
+        Separate relaxation factor for M (None = use `relaxation` for both).
+        Issue #719: Per-variable relaxation support.
+    relaxation_schedule : str
+        Iteration-based relaxation schedule for U: "constant", "harmonic",
         "sqrt", or "exponential". Issue #719 Phase 2.
-    damping_schedule_M : str | None
+    relaxation_schedule_M : str | None
         Separate schedule for M (None = follow U schedule).
-    adaptive_damping : bool
-        Enable error-reactive adaptive damping (Issue #583).
+    adaptive_relaxation : bool
+        Enable error-reactive adaptive relaxation (Issue #583).
     anderson_memory : int
         Anderson acceleration memory depth (0 = disabled, default: 0)
     verbose : bool
         Print iteration progress (default: True)
+
+    Legacy field names
+    ------------------
+    The fields were renamed from `damping_*` to `relaxation_*` in v0.19.1 for
+    naming abstraction (`relaxation` extends cleanly to over-relaxation ω>1 if
+    the range constraint is loosened in future work). Legacy names are still
+    accepted with a `DeprecationWarning` via a `mode="before"` validator.
+
+    Mapping: damping_factor -> relaxation, damping_factor_M -> relaxation_M,
+    damping_schedule -> relaxation_schedule, damping_schedule_M ->
+    relaxation_schedule_M, adaptive_damping -> adaptive_relaxation.
     """
 
     max_iterations: int = Field(default=100, ge=1)
     tolerance: float = Field(default=1e-6, gt=0)
-    damping_factor: float = Field(default=0.5, gt=0, le=1.0)
-    damping_factor_M: float | None = Field(default=None, gt=0, le=1.0)
-    damping_schedule: Literal["constant", "harmonic", "sqrt", "exponential"] = "constant"
-    damping_schedule_M: Literal["constant", "harmonic", "sqrt", "exponential"] | None = None
-    adaptive_damping: bool = False
+    relaxation: float = Field(default=0.5, gt=0, le=1.0)
+    relaxation_M: float | None = Field(default=None, gt=0, le=1.0)
+    relaxation_schedule: Literal["constant", "harmonic", "sqrt", "exponential"] = "constant"
+    relaxation_schedule_M: Literal["constant", "harmonic", "sqrt", "exponential"] | None = None
+    adaptive_relaxation: bool = False
     anderson_memory: int = Field(default=0, ge=0)
     verbose: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def _translate_legacy_damping_names(cls, values: Any) -> Any:
+        """Accept legacy `damping_*` field names with DeprecationWarning (v0.19.1).
+
+        Translates old names to canonical `relaxation_*` before Pydantic
+        validation. Users hitting this path are on the deprecated API surface
+        that will be removed per the standard 3-version deprecation window.
+        """
+        import warnings
+
+        if not isinstance(values, dict):
+            return values
+        data = dict(values)
+        legacy_map = {
+            "damping_factor": "relaxation",
+            "damping_factor_M": "relaxation_M",
+            "damping_schedule": "relaxation_schedule",
+            "damping_schedule_M": "relaxation_schedule_M",
+            "adaptive_damping": "adaptive_relaxation",
+        }
+        for legacy, canonical in legacy_map.items():
+            if legacy in data:
+                if canonical in data:
+                    raise ValueError(
+                        f"PicardConfig: received both legacy '{legacy}' and canonical "
+                        f"'{canonical}'. Pass only the canonical name."
+                    )
+                warnings.warn(
+                    f"PicardConfig field '{legacy}' is deprecated since v0.19.1. "
+                    f"Use '{canonical}' instead.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+                data[canonical] = data.pop(legacy)
+        return data
 
     @model_validator(mode="after")
     def validate_anderson(self) -> PicardConfig:
