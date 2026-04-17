@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.3] - 2026-04-17
+
+### Changed
+
+- **Block iterators kwarg rename** (B1.5b.2): applies the `damping_* → relaxation_*`
+  rename to the block-iteration solver family — `BlockIterator` (base),
+  `BlockJacobiIterator`, and `BlockGaussSeidelIterator`. Parameters and attribute
+  storage now use `relaxation` / `relaxation_M`.
+- **`SolverResult.metadata` key rename**: the "damping_factor" key produced by
+  block iterators is now "relaxation". This is a breaking change for code that
+  inspected the metadata dict, but no user-facing warnings are available for
+  string-keyed dict reads — the change is documented here and in the migration
+  guide. Impact is narrow: only code that does
+  `result.metadata["damping_factor"]` on a block-iterator result.
+
+### Deprecated
+
+- Legacy `damping_factor` / `damping_factor_M` ctor kwargs accepted via
+  `@deprecated_parameter` on each of the three classes — emits
+  `DeprecationWarning`, redirects internally. Removal v0.25.0.
+- Silent `@property` aliases on `BlockIterator` for `damping_factor` and
+  `damping_factor_M` attribute access. Removal v0.25.0.
+
+### Tests
+
+- New `tests/unit/test_alg/test_block_iterators_relaxation_alias.py` (18 tests):
+  equivalence, warning semantics, silent property reads, and metadata-key
+  verification across all three classes via `@pytest.mark.parametrize`.
+
+### Out of scope (next PRs)
+
+Remaining solvers in the B1.5b series: `NetworkMFGSolver`,
+`MultiPopulationIterator`, `HJBFDMSolver`, `FixedPointSolver`. Tracked in #1010.
+
 ## [0.19.1] - 2026-04-17
 
 ### Changed
