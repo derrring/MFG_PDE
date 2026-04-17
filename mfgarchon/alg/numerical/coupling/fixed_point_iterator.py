@@ -484,13 +484,13 @@ class FixedPointIterator(BaseCouplingIterator):
         if solve_config is not None:
             final_max_iterations = solve_config.picard.max_iterations
             final_tolerance = solve_config.picard.tolerance
-            final_damping_factor = solve_config.picard.damping_factor
-            # Issue #719: Per-variable damping and schedules from config
-            # damping_factor_M / damping_schedule_M use `or` because None means "follow U"
-            final_damping_factor_M = solve_config.picard.damping_factor_M or self.damping_factor_M
-            final_schedule = solve_config.picard.damping_schedule
-            final_schedule_M = solve_config.picard.damping_schedule_M or self.damping_schedule_M
-            final_adaptive_damping = solve_config.picard.adaptive_damping or self.adaptive_damping
+            final_damping_factor = solve_config.picard.relaxation
+            # Issue #719: Per-variable relaxation and schedules from config
+            # relaxation_M / relaxation_schedule_M use `or` because None means "follow U"
+            final_damping_factor_M = solve_config.picard.relaxation_M or self.damping_factor_M
+            final_schedule = solve_config.picard.relaxation_schedule
+            final_schedule_M = solve_config.picard.relaxation_schedule_M or self.damping_schedule_M
+            final_adaptive_damping = solve_config.picard.adaptive_relaxation or self.adaptive_damping
             verbose = solve_config.picard.verbose
         else:
             # Legacy parameter precedence

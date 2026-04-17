@@ -206,7 +206,7 @@ class TestLoadEffectiveConfig:
             picard=PicardConfig(
                 tolerance=1e-10,
                 max_iterations=500,
-                damping_factor=0.8,
+                relaxation=0.8,
             )
         )
 
@@ -216,4 +216,4 @@ class TestLoadEffectiveConfig:
 
             assert loaded.picard.tolerance == 1e-10
             assert loaded.picard.max_iterations == 500
-            assert loaded.picard.damping_factor == 0.8
+            assert loaded.picard.relaxation == 0.8
