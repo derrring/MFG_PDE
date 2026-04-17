@@ -8,10 +8,7 @@ blocks for:
 - Common Noise PDE: conditional measures mu^theta evolving in measure space
 - Lions derivative: delta U / delta m computed via measure perturbation
 
-Design reference:
-    Joplin Dev: "Generalized PDE & Institutional MFG Plan" Layer 2 section
-    Joplin Dev: "Layer 2 Readiness Assessment"
-    Issue #956: Layer 2 alignment
+Issue #956: Layer 2 alignment.
 
 Current implementations:
     - ParticleMeasure: empirical measure m_N = (1/N) sum_i w_i delta_{y_i}

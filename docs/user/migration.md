@@ -147,23 +147,15 @@ result = solve_mfg("custom",
 
 ### Solver Configuration
 ```python
-# Old: Manual config objects
-from mfgarchon.config.solver_config import SolverConfig
-from mfgarchon.config.pydantic_config import create_enhanced_config
+# v0.19.0+: single canonical Pydantic config path
+from mfgarchon.config import MFGSolverConfig, PicardConfig, BackendConfig
 
-config = SolverConfig(
-    max_iterations=500,
-    tolerance=1e-8,
-    damping_parameter=0.8,
-    backend="numpy",
-    convergence_criteria="residual"
+config = MFGSolverConfig(
+    picard=PicardConfig(max_iterations=500, tolerance=1e-8, damping_factor=0.8),
+    backend=BackendConfig(name="numpy"),
 )
-
-enhanced_config = create_enhanced_config(
-    base_config=config,
-    use_adaptive_damping=True,
-    enable_debugging=True
-)
+# (legacy `create_enhanced_config` / `solver_config.SolverConfig` / `pydantic_config.*`
+# were removed in v0.19.0 — see migration_v0.19.md for full field mapping)
 
 # New: Automatic configuration
 result = solve_mfg("crowd_dynamics", accuracy="high")  # Automatic

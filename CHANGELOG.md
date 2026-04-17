@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-04-17
+
+### Removed (BREAKING)
+
+- **`mfgarchon.config.pydantic_config`** — the legacy parallel config hierarchy.
+  All 7 exported classes (`NewtonConfig`, `PicardConfig`, `GFDMConfig`, `ParticleConfig`,
+  `HJBConfig`, `FPConfig`, `MFGSolverConfig`) are now available exclusively from
+  `mfgarchon.config`. See `docs/user/migration_v0.19.md` for import updates and
+  field-by-field mapping (legacy defaults differed from canonical by up to 1000x in
+  some fields, e.g. `PicardConfig.tolerance: 1e-3 -> 1e-6`).
+- Phantom factory functions removed from user docs: `create_fast_config`,
+  `create_accurate_config`, `create_research_config`, `create_enhanced_config`
+  (never existed as public API; docs referenced them in error). Use
+  `create_fast_solver` / `create_accurate_solver` / `create_research_solver` from
+  `mfgarchon.factory` for preset patterns, or `MFGSolverConfig()` for direct config.
+- **`hydra-core>=1.3`** dependency (declared but unused — zero `@hydra.main`,
+  `from hydra`, or `HydraConfig` references in the codebase). Can be reintroduced
+  deliberately if HPC sweep workflows or config-group based solver selection
+  become priorities.
+
+### Fixed
+
+- **GraphMFGSolver source_term alignment** (Issue #1006): `_get_time_slice` in
+  `graph_coupling.py` had a hardcoded `dt=0.05` default. Any problem with
+  `dt != 0.05` silently indexed wrong time slices — invisible to tests that
+  happened to use `dt=0.05`. `dt` is now threaded through
+  `compute_hjb_source` / `compute_fp_source` and required at the indexing site.
+- **GraphMFGSolver source composability**: per-node `problem.source_term_hjb`,
+  `problem.source_term_fp`, and `problem.nonlocal_operator` were ignored when
+  combined with graph coupling (only the graph source was injected into the
+  HJB/FP solvers). New `_compose_hjb_source` / `_compose_fp_source` methods
+  layer problem-level sources on top of the graph coupling source, matching
+  the Layer 1 design's composability promise.
+- `GraphMFGSolver.__init__` now validates that all nodes share the same `dt`
+  (required for coupling to be well-defined); raises `ValueError` otherwise.
+
+### Changed
+
+- `pyproject.toml`: version bumped `0.18.19` -> `0.19.0`.
+- `mfgarchon/config/omegaconf_manager.py`: `MFGSolverConfig` now imported from
+  canonical `.core` module (was `.pydantic_config`).
+- User docs (`plugin_development.md`, `migration.md`, `usage_patterns.md`):
+  updated 6 import statements to canonical `from mfgarchon.config import ...`
+  path.
+- `GraphCouplingOperator.compute_hjb_source` / `compute_fp_source`: signature
+  changed from `(..., t: float)` (vestigial, never used) to `(..., dt: float)`
+  (load-bearing, used for time indexing). Callers of the protocol need to
+  update their kwarg name.
+
+### Audit context
+
+Driven by a dual-config-system audit that revealed every legacy/canonical class
+pair had diverged — both in schema (different fields) and in defaults (up to 1000x,
+e.g. `PicardConfig.tolerance`). A simple deprecation-redirect was impossible since
+the hierarchies were different APIs rather than versions of one API. v0.19.0 is a
+hard break; subsequent v0.19.x patches will complete the internal consolidation
+(canonical-module tests, YAML loader migration, removal of the remaining OmegaConf
+dataclass mirrors, and `ExperimentConfig` NDArray forward-ref fix). Umbrella
+tracking issue: #1010.
+
 ## [0.18.0] - 2026-03-29
 
 ### Added

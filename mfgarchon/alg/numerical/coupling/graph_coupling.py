@@ -16,10 +16,6 @@ The coupling enters each node's HJB/FP equations via source_term injection:
 where S_hjb^k, S_fp^k encode the inter-node interaction.
 
 Issue #961: GraphCouplingOperator Protocol for inter-node coupling.
-
-Design reference:
-    Joplin: "Unified Network MFG Solver Architecture" (Graph MFG folder)
-    Joplin: "Graphon MFG: From Finite Graph to Continuum Limit"
 """
 
 from __future__ import annotations

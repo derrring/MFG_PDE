@@ -102,7 +102,7 @@ else:
         ConfigAttributeError = Exception
         UnsupportedInterpolationType = Exception
 
-from .pydantic_config import MFGSolverConfig
+from .core import MFGSolverConfig
 from .structured_schemas import (
     BeachProblemSchema,
     MFGSchema,
