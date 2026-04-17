@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.19.1"  # v0.19.1: PicardConfig damping_* -> relaxation_* rename (backward-compat aliasing)
+version = "0.19.2"  # v0.19.2: B1.5b solver kwarg rename damping_* -> relaxation_* (backward-compat aliasing)
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
