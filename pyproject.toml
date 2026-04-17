@@ -35,7 +35,7 @@ dependencies = [
 
     # Progress and utilities
     "rich>=13.0",              # Progress bars (required by all solvers)
-    "pydantic>=2.0,<3.0",     # Config validation
+    "pydantic>=2.12.5,<3.0",     # Config validation
     "typing-inspection",       # Runtime type inspection
 
     # Data processing and I/O
@@ -88,7 +88,7 @@ core = [
     "scipy>=1.13",
     "matplotlib>=3.8",
     "rich>=13.0",
-    "pydantic>=2.0,<3.0",
+    "pydantic>=2.12.5,<3.0",
     "typing-inspection",
 ]
 
