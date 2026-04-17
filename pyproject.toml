@@ -98,7 +98,7 @@ nn = [
     "torch>=2.0",              # PyTorch (DGM, PINN)
     "gymnasium>=0.29",         # RL environments
     "stable-baselines3>=2.0",  # RL algorithms (AC, PPO)
-    "tensorboard>=2.13",       # Training visualization
+    "tensorboard>=2.20.0",       # Training visualization
 ]
 
 # Everything: default + nn + JAX + performance + advanced viz
@@ -107,7 +107,7 @@ all = [
     "torch>=2.0",
     "gymnasium>=0.29",
     "stable-baselines3>=2.0",
-    "tensorboard>=2.13",
+    "tensorboard>=2.20.0",
     # JAX acceleration
     "jax>=0.4.20",
     "jaxlib",
