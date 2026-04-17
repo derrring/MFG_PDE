@@ -55,7 +55,7 @@ class GraphCouplingOperator(Protocol):
         node_idx: int,
         values: list[NDArray],
         densities: list[NDArray],
-        t: float,
+        dt: float,
     ) -> Callable[[float, NDArray], NDArray]:
         """Build HJB source term for node_idx given all nodes' state.
 
@@ -63,7 +63,8 @@ class GraphCouplingOperator(Protocol):
             node_idx: Index of the node being solved.
             values: Value functions v^k for all nodes, each shape (Nt+1, Nx).
             densities: Densities m^k for all nodes, each shape (Nt+1, Nx) or (Nx,).
-            t: Current time (for time-dependent coupling).
+            dt: Time step of the (shared) time grid, used to index into
+                values/densities at the physical time the solver requests.
 
         Returns:
             source_term(t, x) -> NDArray compatible with HJB solver.
@@ -75,7 +76,7 @@ class GraphCouplingOperator(Protocol):
         node_idx: int,
         values: list[NDArray],
         densities: list[NDArray],
-        t: float,
+        dt: float,
     ) -> Callable[[float, NDArray], NDArray]:
         """Build FP source term for node_idx given all nodes' state.
 
@@ -83,7 +84,7 @@ class GraphCouplingOperator(Protocol):
             node_idx: Index of the node being solved.
             values: Value functions v^k for all nodes.
             densities: Densities m^k for all nodes.
-            t: Current time.
+            dt: Time step of the (shared) time grid.
 
         Returns:
             source_term(t, x) -> NDArray compatible with FP solver.
@@ -157,7 +158,7 @@ class AdjacencyCoupling:
         node_idx: int,
         values: list[NDArray],
         densities: list[NDArray],
-        t: float,
+        dt: float,
     ) -> Callable[[float, NDArray], NDArray]:
         i = node_idx
         A_row = self._A[i]
@@ -170,15 +171,13 @@ class AdjacencyCoupling:
             for j in range(len(values)):
                 if j == i or A_row[j] == 0:
                     continue
-                # Extract time slice
-                v_i = _get_time_slice(values[i], t_eval)
-                v_j = _get_time_slice(values[j], t_eval)
-                m_j = _get_time_slice(densities[j], t_eval)
+                v_i = _get_time_slice(values[i], t_eval, dt)
+                v_j = _get_time_slice(values[j], t_eval, dt)
+                m_j = _get_time_slice(densities[j], t_eval, dt)
                 if custom is not None:
                     s += A_row[j] * custom(i, j, v_j, m_j, t_eval)
                 else:
                     # Default: value difference (migration incentive)
-                    # Truncate to match spatial dimension
                     n = min(len(v_i), len(v_j), Nx)
                     s[:n] += A_row[j] * alpha * (v_i[:n] - v_j[:n])
             return s
@@ -190,7 +189,7 @@ class AdjacencyCoupling:
         node_idx: int,
         values: list[NDArray],
         densities: list[NDArray],
-        t: float,
+        dt: float,
     ) -> Callable[[float, NDArray], NDArray]:
         i = node_idx
         A_row = self._A[i]
@@ -203,9 +202,9 @@ class AdjacencyCoupling:
             for j in range(len(densities)):
                 if j == i or A_row[j] == 0:
                     continue
-                v_j = _get_time_slice(values[j], t_eval)
-                m_i = _get_time_slice(densities[i], t_eval)
-                m_j = _get_time_slice(densities[j], t_eval)
+                v_j = _get_time_slice(values[j], t_eval, dt)
+                m_i = _get_time_slice(densities[i], t_eval, dt)
+                m_j = _get_time_slice(densities[j], t_eval, dt)
                 if custom is not None:
                     s += A_row[j] * custom(i, j, v_j, m_j, t_eval)
                 else:
@@ -254,7 +253,7 @@ class LaplacianCoupling:
         node_idx: int,
         values: list[NDArray],
         densities: list[NDArray],
-        t: float,
+        dt: float,
     ) -> Callable[[float, NDArray], NDArray]:
         i = node_idx
         L_row = self._L[i]
@@ -266,7 +265,7 @@ class LaplacianCoupling:
             for j in range(len(values)):
                 if L_row[j] == 0:
                     continue
-                v_j = _get_time_slice(values[j], t_eval)
+                v_j = _get_time_slice(values[j], t_eval, dt)
                 n = min(len(v_j), Nx)
                 s[:n] += kappa * L_row[j] * v_j[:n]
             return s
@@ -278,7 +277,7 @@ class LaplacianCoupling:
         node_idx: int,
         values: list[NDArray],
         densities: list[NDArray],
-        t: float,
+        dt: float,
     ) -> Callable[[float, NDArray], NDArray]:
         i = node_idx
         L_row = self._L[i]
@@ -290,7 +289,7 @@ class LaplacianCoupling:
             for j in range(len(densities)):
                 if L_row[j] == 0:
                     continue
-                m_j = _get_time_slice(densities[j], t_eval)
+                m_j = _get_time_slice(densities[j], t_eval, dt)
                 n = min(len(m_j), Nx)
                 s[:n] += kappa * L_row[j] * m_j[:n]
             return s
@@ -298,9 +297,16 @@ class LaplacianCoupling:
         return source
 
 
-def _get_time_slice(arr: NDArray, t: float, dt: float = 0.05) -> NDArray:
-    """Extract spatial slice from (Nt+1, Nx) or (Nx,) array at time t."""
+def _get_time_slice(arr: NDArray, t: float, dt: float) -> NDArray:
+    """Extract spatial slice from (Nt+1, Nx) or (Nx,) array at time t.
+
+    Uses `dt` to convert physical time to array index (round-to-nearest).
+    Clamped to valid range [0, Nt].
+    """
     if arr.ndim == 1:
         return arr
-    n = min(round(t / dt) if dt > 0 else 0, arr.shape[0] - 1)
+    if dt <= 0:
+        return arr[0]
+    n = min(round(t / dt), arr.shape[0] - 1)
+    n = max(n, 0)
     return arr[n]

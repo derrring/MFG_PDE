@@ -242,3 +242,107 @@ class TestGraphMFGSolverGetResults:
         )
         with pytest.raises(RuntimeError, match="No solution"):
             solver.get_results()
+
+
+class TestIssue1006Regression:
+    """Regression tests for Issue #1006.
+
+    Bug 1 (hardcoded dt in _get_time_slice) is covered unit-side in
+    test_graph_coupling.py::TestGetTimeSliceRegression. This class covers:
+
+    - dt consistency validation across nodes (new check in __init__)
+    - Bug 2: per-node problem.source_term_hjb/source_term_fp composition
+      with graph coupling source (new _compose_*_source methods)
+    """
+
+    def test_mismatched_dt_raises(self):
+        """All nodes must share the same dt for coupling to be well-defined."""
+        # Node 0: T=0.5, Nt=10 -> dt=0.05
+        p_ok = _make_node_problem()
+        # Node 1: T=1.0, Nt=10 -> dt=0.1 (different!)
+        H = p_ok.components.hamiltonian
+        p_bad = MFGProblem(
+            Nx=21, xmin=0.0, xmax=1.0, T=1.0, Nt=10, sigma=0.3,
+            components=MFGComponents(
+                hamiltonian=H,
+                u_terminal=lambda x: 0.0,
+                m_initial=lambda x: 1.0,
+            ),
+        )
+        A = np.array([[0, 1], [1, 0]], dtype=float)
+        coupling = AdjacencyCoupling(A)
+        hjbs = [HJBFDMSolver(p_ok), HJBFDMSolver(p_bad)]
+        fps = [FPFDMSolver(p_ok), FPFDMSolver(p_bad)]
+        with pytest.raises(ValueError, match="same dt"):
+            GraphMFGSolver(
+                problems=[p_ok, p_bad],
+                coupling=coupling,
+                hjb_solvers=hjbs,
+                fp_solvers=fps,
+            )
+
+    def test_hjb_source_composition_with_problem_source(self):
+        """_compose_hjb_source must layer problem.source_term_hjb on top of graph coupling."""
+        problems, coupling, hjbs, fps = _make_3node_system()
+        # Attach a trivial per-node source_term_hjb to node 0: returns constant 7.0
+        problems[0].source_term_hjb = lambda x, m, v, t: np.full_like(x, 7.0)
+
+        solver = GraphMFGSolver(
+            problems=problems, coupling=coupling,
+            hjb_solvers=hjbs, fp_solvers=fps,
+        )
+
+        # Prepare fake state to invoke _compose_hjb_source directly
+        Nt, Nx = problems[0].Nt, 21
+        Us = [np.ones((Nt + 1, Nx)) for _ in range(3)]
+        Ms = [np.ones((Nt + 1, Nx)) for _ in range(3)]
+
+        # Raw graph coupling source (no problem contribution yet)
+        raw = coupling.compute_hjb_source(0, Us, Ms, solver._dt)
+        composed = solver._compose_hjb_source(0, Us, Ms, raw)
+
+        # At any (t, x), composed = raw + 7.0 everywhere (problem source is constant)
+        x = np.linspace(0.0, 1.0, Nx)
+        raw_val = raw(0.1, x)
+        composed_val = composed(0.1, x)
+        np.testing.assert_allclose(composed_val - raw_val, 7.0, atol=1e-10)
+
+    def test_hjb_source_passthrough_when_problem_source_absent(self):
+        """Without problem-level source, composed == raw coupling (identity passthrough)."""
+        problems, coupling, hjbs, fps = _make_3node_system()
+        # Ensure no problem-level source set
+        for p in problems:
+            assert p.source_term_hjb is None
+            assert p.nonlocal_operator is None
+
+        solver = GraphMFGSolver(
+            problems=problems, coupling=coupling,
+            hjb_solvers=hjbs, fp_solvers=fps,
+        )
+        Nt, Nx = problems[0].Nt, 21
+        Us = [np.ones((Nt + 1, Nx)) for _ in range(3)]
+        Ms = [np.ones((Nt + 1, Nx)) for _ in range(3)]
+        raw = coupling.compute_hjb_source(0, Us, Ms, solver._dt)
+        composed = solver._compose_hjb_source(0, Us, Ms, raw)
+        # The passthrough optimization returns the same callable
+        assert composed is raw
+
+    def test_fp_source_composition_with_problem_source(self):
+        """_compose_fp_source must layer problem.source_term_fp on top of graph coupling."""
+        problems, coupling, hjbs, fps = _make_3node_system()
+        problems[1].source_term_fp = lambda x, m, v, t: np.full_like(x, -2.0)
+
+        solver = GraphMFGSolver(
+            problems=problems, coupling=coupling,
+            hjb_solvers=hjbs, fp_solvers=fps,
+        )
+        Nt, Nx = problems[1].Nt, 21
+        Us = [np.ones((Nt + 1, Nx)) for _ in range(3)]
+        Ms = [np.ones((Nt + 1, Nx)) for _ in range(3)]
+        raw = coupling.compute_fp_source(1, Us, Ms, solver._dt)
+        composed = solver._compose_fp_source(1, Us, Ms, raw)
+
+        x = np.linspace(0.0, 1.0, Nx)
+        composed_val = composed(0.2, x)
+        raw_val = raw(0.2, x)
+        np.testing.assert_allclose(composed_val - raw_val, -2.0, atol=1e-10)
