@@ -511,7 +511,7 @@ class ExperimentConfig(BaseModel):
             "description": self.description,
             "researcher": self.researcher,
             "tags": self.tags,
-            "grid_config": self.grid_config.dict(),
+            "grid_config": self.grid_config.model_dump(),
         }
 
         if self.arrays:

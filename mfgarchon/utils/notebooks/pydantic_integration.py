@@ -75,7 +75,7 @@ class PydanticNotebookReporter(MFGNotebookReporter):
                 raise NotebookReportError("experiment_config must be ExperimentConfig instance")
 
             # Extract validated configuration
-            validated_config = experiment_config.dict()
+            validated_config = experiment_config.model_dump()
             notebook_metadata = experiment_config.to_notebook_metadata()
 
             # Create enhanced problem configuration
@@ -279,10 +279,10 @@ SUCCESS: **CFL Condition**: Satisfied with safety margin of {0.5 - grid_config.c
         return f"""# Configuration Management with Pydantic
 
 # Experiment configuration (validated)
-experiment_config = {experiment_config.dict()!r}
+experiment_config = {experiment_config.model_dump()!r}
 
 # Grid configuration with automatic validation
-grid_config = {experiment_config.grid_config.dict()!r}
+grid_config = {experiment_config.grid_config.model_dump()!r}
 
 # Computed grid properties
 print(f"Grid spacing: dx = {experiment_config.grid_config.dx:.6f}, dt = {experiment_config.grid_config.dt:.6f}")
@@ -291,7 +291,7 @@ print(f"Expected array shape: {{experiment_config.grid_config.grid_shape}}")
 
 # JSON serialization (automatic with Pydantic)
 import json
-config_json = experiment_config.json(indent=2)
+config_json = experiment_config.model_dump_json(indent=2)
 print("\\nJSON-serialized configuration:")
 print(config_json[:200] + "..." if len(config_json) > 200 else config_json)
 """
@@ -483,10 +483,10 @@ This experiment uses **Pydantic configuration management** ensuring:
 - Version control compatibility
 - Environment variable support
 
-**Configuration Hash**: `{hash(str(experiment_config.dict()))}`
+**Configuration Hash**: `{hash(str(experiment_config.model_dump()))}`
 
 ### Next Steps
-- Configuration can be saved with: `experiment_config.json()`
+- Configuration can be saved with: `experiment_config.model_dump_json()`
 - Arrays can be reloaded with full validation
 - Parameters can be modified with automatic re-validation
 - Results are ready for publication or further analysis
