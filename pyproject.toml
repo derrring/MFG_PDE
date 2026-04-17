@@ -60,7 +60,6 @@ dependencies = [
     "igraph>=0.10.0",          # Graph backend (C-based, fast)
 
     # Configuration management
-    "hydra-core>=1.3",
     "omegaconf>=2.3",
 
     # System monitoring
