@@ -27,7 +27,7 @@ This document analyzes the successful patterns demonstrated in the MFGArchon pro
 #### What Made This Successful:
 ```python
 # MFGArchon Success Pattern
-from mfgarchon.config.pydantic_config import create_research_config
+from mfgarchon.config import MFGSolverConfig
 from mfgarchon.config.array_validation import MFGGridConfig
 
 # Type-safe configuration with automatic validation
@@ -208,15 +208,14 @@ class MFGPhysicalConstraints(PhysicalConstraints):
 #### What Made This Successful:
 ```python
 # MFGArchon Success Pattern
-from mfgarchon.factory.pydantic_solver_factory import create_validated_solver
-from mfgarchon.config.pydantic_config import create_research_config
+from mfgarchon.factory import create_research_solver
+from mfgarchon.config import MFGSolverConfig
 
 # Simple, type-safe solver creation
-config = create_research_config()
-solver = create_validated_solver(
+config = MFGSolverConfig()  # sensible defaults
+solver = create_research_solver(
     problem=problem,
-    solver_type="particle_collocation", 
-    config=config
+    config=config,
 )
 
 # The factory handles:
@@ -441,16 +440,19 @@ class DomainReportingPlugin(ABC):
 #### What Made This Successful:
 ```python
 # MFGArchon Success Pattern
-from mfgarchon.config.pydantic_config import (
-    create_fast_config,
-    create_accurate_config, 
-    create_research_config
+from mfgarchon.factory import (
+    create_fast_solver,
+    create_accurate_solver,
+    create_research_solver,
 )
+from mfgarchon.config import MFGSolverConfig
 
-# Presets reduce cognitive load and encode best practices
-fast_config = create_fast_config()        # Quick results, reasonable accuracy
-accurate_config = create_accurate_config()  # High accuracy, longer runtime  
-research_config = create_research_config()  # Maximum accuracy, full logging
+# Preset solver factories (the real API — construct directly with your problem)
+# fast_solver     = create_fast_solver(problem)       # Quick results, reasonable accuracy
+# accurate_solver = create_accurate_solver(problem)   # High accuracy, longer runtime
+# research_solver = create_research_solver(problem)   # Maximum accuracy, full logging
+#
+# For explicit config control use MFGSolverConfig(...) directly.
 
 # Each preset encodes domain expertise:
 # - Appropriate tolerance values

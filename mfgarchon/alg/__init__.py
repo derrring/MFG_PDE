@@ -8,7 +8,7 @@ Paradigm-based organization:
 - reinforcement: Reinforcement learning paradigm (AC, PPO, multi-population)
 
 Iteration infrastructure (schedules, convergence) lives in utils/convergence/,
-not here. See Issue #985 and Joplin Dev: "alg/ Directory Structure Audit".
+not here. See Issue #985.
 """
 
 from __future__ import annotations

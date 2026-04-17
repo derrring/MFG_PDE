@@ -11,7 +11,6 @@ These are cross-paradigm infrastructure, consumed by:
 Architectural note (Issue #985):
     Schedules are iteration *infrastructure* (parameter control policy),
     not algorithms. They belong in ``utils/``, not ``alg/``.
-    See Joplin Dev: "alg/ Directory Structure Audit".
 """
 
 from __future__ import annotations

@@ -32,7 +32,7 @@ MFGArchon supports two main types of plugins:
 
 ```python
 from mfgarchon.core.plugin_system import SolverPlugin, PluginMetadata
-from mfgarchon.config.pydantic_config import MFGSolverConfig
+from mfgarchon.config import MFGSolverConfig
 from typing import List, Optional, Dict, Any
 
 class YourSolverPlugin(SolverPlugin):
@@ -106,7 +106,7 @@ from typing import List, Optional, Dict, Any
 
 from mfgarchon.core.plugin_system import SolverPlugin, PluginMetadata
 from mfgarchon.core.solver_result import SolverResult
-from mfgarchon.config.pydantic_config import MFGSolverConfig
+from mfgarchon.config import MFGSolverConfig
 
 class GradientDescentSolver:
     """Custom gradient descent MFG solver."""

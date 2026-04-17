@@ -16,9 +16,6 @@ This is the **Type 2** network MFG solver:
 - Type 3 (hybrid): Type 2 + RegimeSwitchingIterator per node
 
 Issue #962: GraphMFGSolver — unified orchestrator for network MFG types 2 and 3.
-
-Design reference:
-    Joplin: "Unified Network MFG Solver Architecture" (Graph MFG folder)
 """
 
 from __future__ import annotations
