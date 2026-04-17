@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — B1.5b series (solver ctor kwargs damping_* → relaxation_*)
+
+Incremental rename propagating the naming change landed in v0.19.1 (`PicardConfig`)
+through the solver constructors. The whole B1.5b arc will ship as one version bump
+(`v0.19.2`) once complete; individual sub-PRs land under `[Unreleased]` and are
+listed here with their scope.
+
+- **B1.5b.3** (PR TBD): `NetworkMFGSolver` factory functions + `MultiPopulationIterator`.
+  `MultiPopulationIterator.__init__(damping_factor=)` → `relaxation=` with
+  `@deprecated_parameter` + silent `@property` alias for attribute access.
+  `create_network_mfg_solver(damping_factor=)` → `relaxation=`, and
+  `create_simple_network_solver(damping=)` → `relaxation=` (same `@deprecated_parameter`
+  pattern applied to factory functions, not just classes). Internal
+  `self.damping_factor` attribute reads rewritten to `self.relaxation`;
+  single-letter aliases (`omega = self.damping_factor`) removed in favor of direct
+  `self.relaxation` use per internal style preference. 7 equivalence tests in
+  `tests/unit/test_alg/test_network_multipop_relaxation_alias.py`.
+
 ## [0.19.1] - 2026-04-17
 
 ### Changed
