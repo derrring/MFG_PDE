@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 
 if TYPE_CHECKING:
@@ -39,7 +40,7 @@ class MultiPopulationIterator:
     fp_solvers : list[BaseFPSolver]
         One FP solver per population.
     damping_factor : float
-        Picard damping parameter omega in (0, 1]. Default 0.5.
+        Picard under-relaxation factor in (0, 1]. Default 0.5.
 
     Examples
     --------
@@ -53,23 +54,33 @@ class MultiPopulationIterator:
     >>> result.M  # list of K density fields
     """
 
+    @deprecated_parameter(param_name="damping_factor", since="v0.19.2", replacement="relaxation")
     def __init__(
         self,
         multi_problem: MultiPopulationProblem,
         hjb_solvers: list[BaseHJBSolver],
         fp_solvers: list[BaseFPSolver],
-        damping_factor: float = 0.5,
+        relaxation: float = 0.5,
+        # Legacy kwarg (deprecated since v0.19.2, removal v0.25.0)
+        damping_factor: float | None = None,
     ):
+        if damping_factor is not None:
+            relaxation = damping_factor
         self.multi_problem = multi_problem
         self.hjb_solvers = hjb_solvers
         self.fp_solvers = fp_solvers
-        self.damping_factor = damping_factor
+        self.relaxation = relaxation
         K = multi_problem.K
 
         if len(hjb_solvers) != K:
             raise ValueError(f"Need {K} HJB solvers, got {len(hjb_solvers)}")
         if len(fp_solvers) != K:
             raise ValueError(f"Need {K} FP solvers, got {len(fp_solvers)}")
+
+    @property
+    def damping_factor(self) -> float:
+        """Deprecated alias for `relaxation` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation
 
     def solve(
         self,
@@ -85,7 +96,6 @@ class MultiPopulationIterator:
             iterations, and convergence info.
         """
         K = self.multi_problem.K
-        omega = self.damping_factor
 
         # Initialize from each population's problem
         M = []
@@ -147,7 +157,7 @@ class MultiPopulationIterator:
                 velocity = self._compute_velocity_field(U[k], M[k], H_bound, prob_k)
 
                 M_new_k = self.fp_solvers[k].solve_fp_system(m0_k, drift_field=velocity, show_progress=False)
-                M[k] = (1 - omega) * M_old[k] + omega * M_new_k
+                M[k] = (1 - self.relaxation) * M_old[k] + self.relaxation * M_new_k
 
             # Check convergence
             errors = []
