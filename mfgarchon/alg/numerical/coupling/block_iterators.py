@@ -37,6 +37,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfgarchon.geometry.boundary import no_flux_bc
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.solver_result import SolverResult
 
@@ -107,6 +108,8 @@ class BlockIterator(BaseCouplingIterator):
         >>> result = solver.solve(max_iterations=100, tolerance=1e-5)
     """
 
+    @deprecated_parameter(param_name="damping_factor", since="v0.19.2", replacement="relaxation")
+    @deprecated_parameter(param_name="damping_factor_M", since="v0.19.2", replacement="relaxation_M")
     def __init__(
         self,
         problem: MFGProblem,
@@ -114,22 +117,34 @@ class BlockIterator(BaseCouplingIterator):
         fp_solver: BaseFPSolver,
         *,
         method: str | BlockMethod = BlockMethod.GAUSS_SEIDEL,
-        damping_factor: float = 1.0,
-        damping_factor_M: float | None = None,
+        relaxation: float = 1.0,
+        relaxation_M: float | None = None,
         volatility_field: float | NDArray | Any | None = None,
         drift_field: NDArray | Any | None = None,
         adjoint_mode: str = "off",
         adjoint_verify: bool = False,
+        # Legacy damping_* kwargs (deprecated since v0.19.2, removal v0.25.0)
+        damping_factor: float | None = None,
+        damping_factor_M: float | None = None,
     ):
         """Initialize block iterator.
 
         Args:
-            damping_factor: Damping for U (theta_U). Default 1.0 = no damping.
-            damping_factor_M: Damping for M (theta_M). If None, uses damping_factor.
-                Issue #719: Per-variable damping support.
-                Recommended for MFG: damping_factor=1.0, damping_factor_M=0.2
-                (U adapts fully, M filters particle noise)
+            relaxation: Under-relaxation factor for U (omega_U). Default 1.0 = no relaxation.
+            relaxation_M: Under-relaxation factor for M (omega_M). If None, uses `relaxation`.
+                Issue #719: Per-variable relaxation support.
+                Recommended for MFG: relaxation=1.0, relaxation_M=0.2
+                (U adapts fully, M filters particle noise).
+
+            Legacy `damping_factor` / `damping_factor_M` kwargs still accepted with
+            DeprecationWarning.
         """
+        # Redirect legacy kwargs -> canonical (decorator already warned)
+        if damping_factor is not None:
+            relaxation = damping_factor
+        if damping_factor_M is not None:
+            relaxation_M = damping_factor_M
+
         super().__init__(problem)
 
         self.hjb_solver = hjb_solver
@@ -140,9 +155,9 @@ class BlockIterator(BaseCouplingIterator):
             method = BlockMethod(method.lower())
         self.method = method
 
-        # Iteration parameters - Issue #719: Per-variable damping
-        self.damping_factor = damping_factor
-        self.damping_factor_M = damping_factor_M  # None = use damping_factor for both
+        # Canonical relaxation state - Issue #719: Per-variable relaxation
+        self.relaxation = relaxation
+        self.relaxation_M = relaxation_M  # None = use `relaxation` for both
 
         # PDE coefficient overrides
         self.volatility_field = volatility_field
@@ -188,6 +203,23 @@ class BlockIterator(BaseCouplingIterator):
         # Cache initial/terminal conditions
         self._M_initial: NDArray | None = None
         self._U_terminal: NDArray | None = None
+
+    # ------------------------------------------------------------------
+    # Backward-compat attribute aliases (damping_* -> relaxation_*)
+    # Added in v0.19.2. Silent (no DeprecationWarning on read) to avoid
+    # log flooding in block iteration loops. Removal in v0.25.0;
+    # the ctor kwargs already emit DeprecationWarning via @deprecated_parameter.
+    # ------------------------------------------------------------------
+
+    @property
+    def damping_factor(self) -> float:
+        """Deprecated alias for `relaxation` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation
+
+    @property
+    def damping_factor_M(self) -> float | None:
+        """Deprecated alias for `relaxation_M` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation_M
 
     def _validate_strict_adjoint_capability(self) -> None:
         """
@@ -487,7 +519,7 @@ class BlockIterator(BaseCouplingIterator):
             method_name = "Block Gauss-Seidel"
 
         if verbose:
-            print(f"Starting {method_name} iteration (damping={self.damping_factor})")
+            print(f"Starting {method_name} iteration (relaxation={self.relaxation})")
 
         # Progress bar (Issue #587 Protocol pattern)
         from mfgarchon.utils.progress import create_progress_bar
@@ -517,8 +549,8 @@ class BlockIterator(BaseCouplingIterator):
                 U_old,
                 M_new,
                 M_old,
-                theta=self.damping_factor,
-                theta_M=self.damping_factor_M,
+                theta=self.relaxation,
+                theta_M=self.relaxation_M,
             )
 
             # Preserve boundary conditions
@@ -568,7 +600,7 @@ class BlockIterator(BaseCouplingIterator):
         # Build metadata
         metadata = {
             "method": self.method.value,
-            "damping_factor": self.damping_factor,
+            "relaxation": self.relaxation,
             "convergence_reason": convergence_reason,
             "elapsed_time": elapsed,
             "adjoint_mode": self.adjoint_mode,
@@ -624,21 +656,25 @@ class BlockJacobiIterator(BlockIterator):
         >>> result = solver.solve(max_iterations=100)
     """
 
+    @deprecated_parameter(param_name="damping_factor", since="v0.19.2", replacement="relaxation")
     def __init__(
         self,
         problem: MFGProblem,
         hjb_solver: BaseHJBSolver,
         fp_solver: BaseFPSolver,
         *,
-        damping_factor: float = 0.5,
+        relaxation: float = 0.5,
+        damping_factor: float | None = None,
         **kwargs: Any,
     ):
+        if damping_factor is not None:
+            relaxation = damping_factor
         super().__init__(
             problem,
             hjb_solver,
             fp_solver,
             method=BlockMethod.JACOBI,
-            damping_factor=damping_factor,
+            relaxation=relaxation,
             **kwargs,
         )
 
@@ -655,21 +691,25 @@ class BlockGaussSeidelIterator(BlockIterator):
         >>> result = solver.solve(max_iterations=50)
     """
 
+    @deprecated_parameter(param_name="damping_factor", since="v0.19.2", replacement="relaxation")
     def __init__(
         self,
         problem: MFGProblem,
         hjb_solver: BaseHJBSolver,
         fp_solver: BaseFPSolver,
         *,
-        damping_factor: float = 0.5,
+        relaxation: float = 0.5,
+        damping_factor: float | None = None,
         **kwargs: Any,
     ):
+        if damping_factor is not None:
+            relaxation = damping_factor
         super().__init__(
             problem,
             hjb_solver,
             fp_solver,
             method=BlockMethod.GAUSS_SEIDEL,
-            damping_factor=damping_factor,
+            relaxation=relaxation,
             **kwargs,
         )
 
@@ -703,7 +743,7 @@ if __name__ == "__main__":
 
     # Test Block Gauss-Seidel
     print("\nTesting Block Gauss-Seidel...")
-    gs_solver = BlockGaussSeidelIterator(problem, hjb_solver, fp_solver, damping_factor=0.5)
+    gs_solver = BlockGaussSeidelIterator(problem, hjb_solver, fp_solver, relaxation=0.5)
     result_gs = gs_solver.solve(max_iterations=10, tolerance=1e-4, verbose=True)
     print(f"  Converged: {result_gs.converged}, iterations: {result_gs.iterations}")
 
