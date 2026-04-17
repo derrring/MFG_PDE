@@ -139,12 +139,17 @@ class HJBFDMSolver(BaseHJBSolver):
         since="v0.16.0",
         replacement="newton_tolerance",
     )
+    @deprecated_parameter(
+        param_name="damping_factor",
+        since="v0.19.2",
+        replacement="relaxation",
+    )
     def __init__(
         self,
         problem: MFGProblem,
         solver_type: Literal["fixed_point", "newton"] = "newton",
         advection_scheme: HJBAdvectionScheme = "gradient_upwind",
-        damping_factor: float = 1.0,
+        relaxation: float = 1.0,
         max_newton_iterations: int | None = None,
         newton_tolerance: float | None = None,
         constraint: ConstraintProtocol | None = None,
@@ -152,6 +157,7 @@ class HJBFDMSolver(BaseHJBSolver):
         # Deprecated parameters (decorator handles warnings)
         NiterNewton: int | None = None,
         l2errBoundNewton: float | None = None,
+        damping_factor: float | None = None,
         backend: str | None = None,
     ):
         """
@@ -164,7 +170,8 @@ class HJBFDMSolver(BaseHJBSolver):
                 - 'gradient_upwind': Godunov upwind (default, monotone, first-order)
                 - 'gradient_centered': Central differences (second-order, may oscillate)
                 For MFG coupling, use 'gradient_upwind' with FP 'divergence_upwind'.
-            damping_factor: Damping ω ∈ (0,1] for fixed-point (recommend 0.5-0.8)
+            relaxation: Under-relaxation factor ω ∈ (0,1] for fixed-point iteration.
+                Legacy `damping_factor` kwarg still accepted with DeprecationWarning.
             max_newton_iterations: Max iterations per timestep
             newton_tolerance: Convergence tolerance
             constraint: Variational inequality constraint (Issue #591):
@@ -199,6 +206,8 @@ class HJBFDMSolver(BaseHJBSolver):
             max_newton_iterations = max_newton_iterations or NiterNewton
         if l2errBoundNewton is not None:
             newton_tolerance = newton_tolerance or l2errBoundNewton
+        if damping_factor is not None:
+            relaxation = damping_factor
 
         # Set defaults (use None check to avoid treating 0 as falsy)
         self.max_newton_iterations = (
@@ -206,7 +215,7 @@ class HJBFDMSolver(BaseHJBSolver):
         )
         self.newton_tolerance = newton_tolerance if newton_tolerance is not None else base_hjb.DEFAULT_NEWTON_TOLERANCE
         self.solver_type = solver_type
-        self.damping_factor = damping_factor
+        self.relaxation = relaxation
         self.constraint = constraint  # Variational inequality constraint (Issue #591)
         self.on_newton_failure: NewtonFailurePolicy = on_newton_failure  # Issue #669
 
@@ -215,8 +224,8 @@ class HJBFDMSolver(BaseHJBSolver):
             raise ValueError(f"max_newton_iterations must be >= 1, got {self.max_newton_iterations}")
         if self.newton_tolerance <= 0:
             raise ValueError(f"newton_tolerance must be > 0, got {self.newton_tolerance}")
-        if not 0 < damping_factor <= 1.0:
-            raise ValueError(f"damping_factor must be in (0,1], got {damping_factor}")
+        if not 0 < relaxation <= 1.0:
+            raise ValueError(f"relaxation must be in (0,1], got {relaxation}")
 
         # Backward compatibility: Store Newton config
         self._newton_config = {
@@ -269,7 +278,7 @@ class HJBFDMSolver(BaseHJBSolver):
             # Create nonlinear solver
             if solver_type == "fixed_point":
                 self.nonlinear_solver = FixedPointSolver(
-                    damping_factor=damping_factor,
+                    relaxation=relaxation,
                     max_iterations=self.max_newton_iterations,
                     tolerance=self.newton_tolerance,
                 )
@@ -298,6 +307,11 @@ class HJBFDMSolver(BaseHJBSolver):
         self._laplacian_op: object | None = None
 
     # _detect_dimension() inherited from BaseNumericalSolver (Issue #633)
+
+    @property
+    def damping_factor(self) -> float:
+        """Deprecated alias for `relaxation` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation
 
     def _get_laplacian_op(self):
         """Get (or create) cached Laplacian operator for diffusion term."""
@@ -697,7 +711,7 @@ class HJBFDMSolver(BaseHJBSolver):
                         return U_next - self.dt * rhs
 
                     fallback_solver = FixedPointSolver(
-                        damping_factor=self.damping_factor,
+                        relaxation=self.relaxation,
                         max_iterations=self.max_newton_iterations * 10,
                         tolerance=self.newton_tolerance,
                     )
