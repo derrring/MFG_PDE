@@ -29,8 +29,11 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from mfgarchon.alg.numerical.coupling.base_mfg import BaseCouplingIterator
+from mfgarchon.alg.numerical.coupling.graph_coupling import _get_time_slice
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from numpy.typing import NDArray
 
     from mfgarchon.alg.numerical.coupling.graph_coupling import GraphCouplingOperator
@@ -135,6 +138,19 @@ class GraphMFGSolver(BaseCouplingIterator):
         if len(fp_solvers) != N:
             raise ValueError(f"Need {N} FP solvers for {N} nodes, got {len(fp_solvers)}")
 
+        # All nodes must share the same time grid for coupling to be well-defined.
+        # dt enters _get_time_slice when the coupling callable is invoked by each
+        # HJB/FP solver at its current time step.
+        dt0 = problems[0].T / problems[0].Nt
+        for k, p in enumerate(problems):
+            dt_k = p.T / p.Nt
+            if not np.isclose(dt_k, dt0):
+                raise ValueError(
+                    f"All nodes must share the same dt for graph coupling. "
+                    f"Node 0: dt={dt0:.6g}; Node {k}: dt={dt_k:.6g}"
+                )
+        self._dt = dt0
+
         self._N = N
         self._last_result: GraphMFGResult | None = None
 
@@ -169,14 +185,13 @@ class GraphMFGSolver(BaseCouplingIterator):
             Ms_new: list[NDArray | None] = [None] * N
 
             # --- HJB step: solve N backward equations with coupling ---
+            Ms_expanded = [self._expand_density(k, Ms[k]) for k in range(N)]
             for k in range(N):
-                hjb_source = self._coupling.compute_hjb_source(
-                    k, Us_full, [self._expand_density(k, Ms[k]) for k in range(N)], 0.0
-                )
+                raw_coupling = self._coupling.compute_hjb_source(k, Us_full, Ms_expanded, self._dt)
+                hjb_source = self._compose_hjb_source(k, Us_full, Ms_expanded, raw_coupling)
 
-                M_k_full = self._expand_density(k, Ms[k])
                 U_k = self._hjb[k].solve_hjb_system(
-                    M_k_full,
+                    Ms_expanded[k],
                     Us_full[k][-1],  # terminal condition
                     Us_full[k],  # previous iterate
                     source_term=hjb_source,
@@ -185,9 +200,8 @@ class GraphMFGSolver(BaseCouplingIterator):
 
             # --- FP step: solve N forward equations with coupling ---
             for k in range(N):
-                fp_source = self._coupling.compute_fp_source(
-                    k, Us_new, [self._expand_density(k, Ms[k]) for k in range(N)], 0.0
-                )
+                raw_coupling = self._coupling.compute_fp_source(k, Us_new, Ms_expanded, self._dt)
+                fp_source = self._compose_fp_source(k, Us_new, Ms_expanded, raw_coupling)
 
                 m0_k = Ms[k][0] if isinstance(Ms[k], np.ndarray) and Ms[k].ndim == 2 else Ms[k]
                 M_k = self._fp[k].solve_fp_system(
@@ -240,6 +254,68 @@ class GraphMFGSolver(BaseCouplingIterator):
             return m
         Nt = self._problems[k].Nt
         return np.tile(m, (Nt + 1, 1))
+
+    def _compose_hjb_source(
+        self,
+        k: int,
+        Us_full: list[NDArray],
+        Ms_expanded: list[NDArray],
+        coupling_source: Callable[[float, NDArray], NDArray],
+    ) -> Callable[[float, NDArray], NDArray]:
+        """Compose per-node problem sources with the graph coupling source.
+
+        The graph coupling source from `GraphCouplingOperator` is layered on top
+        of any per-node `problem.source_term_hjb` and `problem.nonlocal_operator`
+        so that all Layer 1 feature dimensions (Levy, custom sources, graph)
+        compose at each node, matching Binding Constraint #1 of the Plan.
+
+        Obstacle / penalty VI composition is handled by wrapping each node's
+        HJB solver in PenaltyHJBSolver, not here.
+        """
+        p = self._problems[k]
+        has_problem_source = p.source_term_hjb is not None
+        has_nonlocal = p.nonlocal_operator is not None
+        if not (has_problem_source or has_nonlocal):
+            return coupling_source
+
+        dt = self._dt
+
+        def composed(t: float, x_eval: NDArray) -> NDArray:
+            s = coupling_source(t, x_eval)
+            if has_problem_source:
+                v_t = _get_time_slice(Us_full[k], t, dt)
+                m_t = _get_time_slice(Ms_expanded[k], t, dt)
+                s = s + p.source_term_hjb(x_eval, m_t, v_t, t)
+            if has_nonlocal:
+                v_t = _get_time_slice(Us_full[k], t, dt)
+                s = s + p.nonlocal_operator @ v_t
+            return s
+
+        return composed
+
+    def _compose_fp_source(
+        self,
+        k: int,
+        Us_new: list[NDArray],
+        Ms_expanded: list[NDArray],
+        coupling_source: Callable[[float, NDArray], NDArray],
+    ) -> Callable[[float, NDArray], NDArray]:
+        """Compose per-node problem sources with the graph coupling source (FP side)."""
+        p = self._problems[k]
+        has_problem_source = p.source_term_fp is not None
+        if not has_problem_source:
+            return coupling_source
+
+        dt = self._dt
+
+        def composed(t: float, x_eval: NDArray) -> NDArray:
+            s = coupling_source(t, x_eval)
+            v_t = _get_time_slice(Us_new[k], t, dt)
+            m_t = _get_time_slice(Ms_expanded[k], t, dt)
+            s = s + p.source_term_fp(x_eval, m_t, v_t, t)
+            return s
+
+        return composed
 
     def get_results(self) -> tuple:
         """Get computed solution arrays (required by BaseCouplingIterator)."""
