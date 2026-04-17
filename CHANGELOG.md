@@ -21,7 +21,15 @@ listed here with their scope.
   preserve `iter.damping_factor` attribute reads without warning-flooding Picard
   hot loops. 16 equivalence tests in
   `tests/unit/test_alg/test_fixed_point_iterator_relaxation_alias.py`.
-- **B1.5b.4** (PR TBD): `HJBFDMSolver` + `FixedPointSolver` (utils/numerical).
+- **B1.5b.2** (PR #1013): Block iterators — `BlockIterator` (base),
+  `BlockJacobiIterator`, `BlockGaussSeidelIterator`. Renames `damping_factor` →
+  `relaxation` and `damping_factor_M` → `relaxation_M` on all three. Legacy kwargs
+  accepted via `@deprecated_parameter`. Silent `@property` aliases on base
+  class. Plus `SolverResult.metadata` key `"damping_factor"` → `"relaxation"`
+  (narrow break; no bridge available for dict-key reads; impact limited to code
+  that inspects `result.metadata["damping_factor"]`). 18 equivalence tests in
+  `tests/unit/test_alg/test_block_iterators_relaxation_alias.py`.
+- **B1.5b.4** (PR #1015): `HJBFDMSolver` + `FixedPointSolver` (utils/numerical).
   Same pattern: `damping_factor` → `relaxation` ctor kwarg, silent `@property`
   alias. HJBFDMSolver's internal construction of `FixedPointSolver` now forwards
   `relaxation=...` (canonical), and docstring "recommend 0.5-0.8" numerical
