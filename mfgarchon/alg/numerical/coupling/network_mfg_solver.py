@@ -24,19 +24,23 @@ from typing import TYPE_CHECKING, Any
 from mfgarchon.alg.numerical.coupling.fixed_point_iterator import FixedPointIterator
 from mfgarchon.alg.numerical.network_solvers.fp_network import FPNetworkSolver
 from mfgarchon.alg.numerical.network_solvers.hjb_network import NetworkHJBSolver
+from mfgarchon.utils.deprecation import deprecated_parameter
 
 if TYPE_CHECKING:
     from mfgarchon.extensions.topology import NetworkMFGProblem
 
 
+@deprecated_parameter(param_name="damping_factor", since="v0.19.2", replacement="relaxation")
 def create_network_mfg_solver(
     problem: NetworkMFGProblem,
     solver_type: str = "fixed_point",
     hjb_solver_type: str | type = "RK45",
     fp_solver_type: str = "explicit",  # FP network solver not yet refactored
-    damping_factor: float = 0.5,
+    relaxation: float = 0.5,
     hjb_kwargs: dict[str, Any] | None = None,
     fp_kwargs: dict[str, Any] | None = None,
+    # Legacy kwarg (deprecated since v0.19.2, removal v0.25.0)
+    damping_factor: float | None = None,
     **solver_kwargs,
 ) -> FixedPointIterator:
     """
@@ -47,13 +51,15 @@ def create_network_mfg_solver(
         solver_type: Type of MFG solver ("fixed_point" currently supported)
         hjb_solver_type: HJB scheme ("explicit", "implicit", "semi_implicit")
         fp_solver_type: FP scheme ("explicit", "implicit", "upwind", "flow")
-        damping_factor: Fixed-point iteration damping (0.5 = balanced)
+        relaxation: Fixed-point iteration under-relaxation factor (0.5 = balanced)
         hjb_kwargs: Additional arguments for NetworkHJBSolver
         fp_kwargs: Additional arguments for FPNetworkSolver
         **solver_kwargs: Additional arguments for FixedPointIterator
             - use_anderson: bool = False (Anderson acceleration)
             - anderson_depth: int = 5 (Anderson memory depth)
             - backend: str = None (computational backend)
+
+        Legacy `damping_factor` kwarg still accepted with DeprecationWarning.
 
     Returns:
         Configured MFG solver for network problems
@@ -68,11 +74,15 @@ def create_network_mfg_solver(
         ...     problem,
         ...     hjb_solver_type="implicit",
         ...     fp_solver_type="implicit",
-        ...     damping_factor=0.7,
+        ...     relaxation=0.7,
         ... )
         >>> # Solve
         >>> U, M, info = solver.solve(max_iterations=50, tolerance=1e-6)
     """
+    # Redirect legacy kwarg -> canonical (decorator already warned)
+    if damping_factor is not None:
+        relaxation = damping_factor
+
     # Default kwargs
     hjb_kwargs = hjb_kwargs or {}
     fp_kwargs = fp_kwargs or {}
@@ -93,11 +103,15 @@ def create_network_mfg_solver(
 
     # Create fixed-point iterator
     if solver_type == "fixed_point":
+        # NOTE: uses legacy kwarg `damping_factor` internally so this factory works
+        # whether or not PR #1012 (FixedPointIterator rename) has landed. After #1012
+        # merges, update to `relaxation=relaxation`; the internal DeprecationWarning
+        # will then vanish.
         solver = FixedPointIterator(
             problem=problem,
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
-            damping_factor=damping_factor,
+            damping_factor=relaxation,
             **solver_kwargs,
         )
     else:
@@ -106,10 +120,13 @@ def create_network_mfg_solver(
     return solver
 
 
+@deprecated_parameter(param_name="damping", since="v0.19.2", replacement="relaxation")
 def create_simple_network_solver(
     problem: NetworkMFGProblem,
     scheme: str | type = "RK45",
-    damping: float = 0.5,
+    relaxation: float = 0.5,
+    # Legacy kwarg (deprecated since v0.19.2, removal v0.25.0)
+    damping: float | None = None,
 ) -> FixedPointIterator:
     """
     Create a simple network MFG solver with minimal configuration.
@@ -117,7 +134,9 @@ def create_simple_network_solver(
     Args:
         problem: NetworkMFGProblem instance
         scheme: Any scipy solve_ivp method for HJB. FP uses "explicit".
-        damping: Fixed-point damping factor
+        relaxation: Fixed-point under-relaxation factor.
+
+        Legacy `damping` kwarg still accepted with DeprecationWarning.
 
     Returns:
         Configured network MFG solver
@@ -126,11 +145,13 @@ def create_simple_network_solver(
         >>> solver = create_simple_network_solver(problem)
         >>> U, M, info = solver.solve()
     """
+    if damping is not None:
+        relaxation = damping
     return create_network_mfg_solver(
         problem=problem,
         hjb_solver_type=scheme,
         fp_solver_type="explicit",  # FP network solver not yet refactored
-        damping_factor=damping,
+        relaxation=relaxation,
     )
 
 

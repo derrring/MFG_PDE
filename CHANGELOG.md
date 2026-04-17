@@ -29,6 +29,16 @@ listed here with their scope.
   (narrow break; no bridge available for dict-key reads; impact limited to code
   that inspects `result.metadata["damping_factor"]`). 18 equivalence tests in
   `tests/unit/test_alg/test_block_iterators_relaxation_alias.py`.
+- **B1.5b.3** (PR #1014): `NetworkMFGSolver` factory functions + `MultiPopulationIterator`.
+  `MultiPopulationIterator.__init__(damping_factor=)` → `relaxation=` with
+  `@deprecated_parameter` + silent `@property` alias for attribute access.
+  `create_network_mfg_solver(damping_factor=)` → `relaxation=`, and
+  `create_simple_network_solver(damping=)` → `relaxation=` (same `@deprecated_parameter`
+  pattern applied to factory functions, not just classes). Internal
+  `self.damping_factor` attribute reads rewritten to `self.relaxation`;
+  single-letter aliases (`omega = self.damping_factor`) removed in favor of direct
+  `self.relaxation` use per internal style preference. 7 equivalence tests in
+  `tests/unit/test_alg/test_network_multipop_relaxation_alias.py`.
 - **B1.5b.4** (PR #1015): `HJBFDMSolver` + `FixedPointSolver` (utils/numerical).
   Same pattern: `damping_factor` → `relaxation` ctor kwarg, silent `@property`
   alias. HJBFDMSolver's internal construction of `FixedPointSolver` now forwards
