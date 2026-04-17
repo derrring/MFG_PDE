@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — B1.5b series (solver ctor kwargs damping_* → relaxation_*)
+
+Incremental rename propagating the naming change landed in v0.19.1 (`PicardConfig`)
+through the solver constructors. The whole B1.5b arc will ship as one version bump
+(`v0.19.2`) once complete; individual sub-PRs land under `[Unreleased]` and are
+listed here with their scope.
+
+- **B1.5b.1** (PR #1012): `FixedPointIterator` — 7 ctor kwargs renamed
+  (`damping_factor`, `damping_factor_M`, `adaptive_damping`, `adaptive_damping_decay`,
+  `adaptive_damping_min`, `damping_schedule`, `damping_schedule_M`). Legacy kwargs
+  accepted via `@deprecated_parameter` + body redirect. Silent `@property` aliases
+  preserve `iter.damping_factor` attribute reads without warning-flooding Picard
+  hot loops. 16 equivalence tests in
+  `tests/unit/test_alg/test_fixed_point_iterator_relaxation_alias.py`.
+
 ## [0.19.1] - 2026-04-17
 
 ### Changed
