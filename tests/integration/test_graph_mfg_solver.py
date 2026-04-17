@@ -262,7 +262,12 @@ class TestIssue1006Regression:
         # Node 1: T=1.0, Nt=10 -> dt=0.1 (different!)
         H = p_ok.components.hamiltonian
         p_bad = MFGProblem(
-            Nx=21, xmin=0.0, xmax=1.0, T=1.0, Nt=10, sigma=0.3,
+            Nx=21,
+            xmin=0.0,
+            xmax=1.0,
+            T=1.0,
+            Nt=10,
+            sigma=0.3,
             components=MFGComponents(
                 hamiltonian=H,
                 u_terminal=lambda x: 0.0,
@@ -288,8 +293,10 @@ class TestIssue1006Regression:
         problems[0].source_term_hjb = lambda x, m, v, t: np.full_like(x, 7.0)
 
         solver = GraphMFGSolver(
-            problems=problems, coupling=coupling,
-            hjb_solvers=hjbs, fp_solvers=fps,
+            problems=problems,
+            coupling=coupling,
+            hjb_solvers=hjbs,
+            fp_solvers=fps,
         )
 
         # Prepare fake state to invoke _compose_hjb_source directly
@@ -316,8 +323,10 @@ class TestIssue1006Regression:
             assert p.nonlocal_operator is None
 
         solver = GraphMFGSolver(
-            problems=problems, coupling=coupling,
-            hjb_solvers=hjbs, fp_solvers=fps,
+            problems=problems,
+            coupling=coupling,
+            hjb_solvers=hjbs,
+            fp_solvers=fps,
         )
         Nt, Nx = problems[0].Nt, 21
         Us = [np.ones((Nt + 1, Nx)) for _ in range(3)]
@@ -333,8 +342,10 @@ class TestIssue1006Regression:
         problems[1].source_term_fp = lambda x, m, v, t: np.full_like(x, -2.0)
 
         solver = GraphMFGSolver(
-            problems=problems, coupling=coupling,
-            hjb_solvers=hjbs, fp_solvers=fps,
+            problems=problems,
+            coupling=coupling,
+            hjb_solvers=hjbs,
+            fp_solvers=fps,
         )
         Nt, Nx = problems[1].Nt, 21
         Us = [np.ones((Nt + 1, Nx)) for _ in range(3)]

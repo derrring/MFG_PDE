@@ -92,7 +92,7 @@ class TestPicardRelaxationAliasWarnings:
     """Verify DeprecationWarning semantics."""
 
     @pytest.mark.parametrize(
-        "legacy_name,canonical_name,value",
+        ("legacy_name", "canonical_name", "value"),
         [
             ("damping_factor", "relaxation", 0.7),
             ("damping_factor_M", "relaxation_M", 0.3),
@@ -106,9 +106,7 @@ class TestPicardRelaxationAliasWarnings:
             warnings.simplefilter("always")
             PicardConfig(**{legacy_name: value})
             dep_warnings = [
-                x for x in w
-                if issubclass(x.category, DeprecationWarning)
-                and legacy_name in str(x.message)
+                x for x in w if issubclass(x.category, DeprecationWarning) and legacy_name in str(x.message)
             ]
         assert len(dep_warnings) == 1, f"Expected 1 DeprecationWarning for '{legacy_name}', got {len(dep_warnings)}"
         assert canonical_name in str(dep_warnings[0].message)
@@ -125,13 +123,13 @@ class TestPicardRelaxationAliasCollision:
     """Passing both the legacy name and canonical name must raise."""
 
     def test_both_damping_factor_and_relaxation_raises(self):
-        with pytest.raises(ValueError, match="both legacy .* and canonical"):
+        with pytest.raises(ValueError, match=r"both legacy .* and canonical"):
             PicardConfig(damping_factor=0.5, relaxation=0.8)
 
     def test_both_damping_factor_M_and_relaxation_M_raises(self):
-        with pytest.raises(ValueError, match="both legacy .* and canonical"):
+        with pytest.raises(ValueError, match=r"both legacy .* and canonical"):
             PicardConfig(damping_factor_M=0.5, relaxation_M=0.8)
 
     def test_both_damping_schedule_and_relaxation_schedule_raises(self):
-        with pytest.raises(ValueError, match="both legacy .* and canonical"):
+        with pytest.raises(ValueError, match=r"both legacy .* and canonical"):
             PicardConfig(damping_schedule="harmonic", relaxation_schedule="sqrt")

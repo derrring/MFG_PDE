@@ -163,8 +163,7 @@ class PicardConfig(BaseModel):
                         f"'{canonical}'. Pass only the canonical name."
                     )
                 warnings.warn(
-                    f"PicardConfig field '{legacy}' is deprecated since v0.19.1. "
-                    f"Use '{canonical}' instead.",
+                    f"PicardConfig field '{legacy}' is deprecated since v0.19.1. Use '{canonical}' instead.",
                     DeprecationWarning,
                     stacklevel=3,
                 )
