@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from mfgarchon.utils.deprecation import deprecated_parameter
 from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.solver_result import SolverResult
 
@@ -81,34 +82,68 @@ class FixedPointIterator(BaseCouplingIterator):
             - Callable: State-dependent drift α(t, x, m) -> ndarray
     """
 
+    @deprecated_parameter(param_name="damping_factor", since="v0.19.2", replacement="relaxation")
+    @deprecated_parameter(param_name="damping_factor_M", since="v0.19.2", replacement="relaxation_M")
+    @deprecated_parameter(param_name="adaptive_damping", since="v0.19.2", replacement="adaptive_relaxation")
+    @deprecated_parameter(param_name="adaptive_damping_decay", since="v0.19.2", replacement="adaptive_relaxation_decay")
+    @deprecated_parameter(param_name="adaptive_damping_min", since="v0.19.2", replacement="adaptive_relaxation_min")
+    @deprecated_parameter(param_name="damping_schedule", since="v0.19.2", replacement="relaxation_schedule")
+    @deprecated_parameter(param_name="damping_schedule_M", since="v0.19.2", replacement="relaxation_schedule_M")
     def __init__(
         self,
         problem: MFGProblem,
         hjb_solver: BaseHJBSolver,
         fp_solver: BaseFPSolver,
         config: MFGSolverConfig | None = None,
-        damping_factor: float = 0.5,  # Renamed from thetaUM
-        damping_factor_M: float | None = None,  # Issue #719: Per-variable damping
+        # Canonical relaxation parameters (v0.19.2+)
+        relaxation: float = 0.5,
+        relaxation_M: float | None = None,
         use_anderson: bool = False,
         anderson_depth: int = 5,
         anderson_beta: float = 1.0,
         backend: str | None = None,
         volatility_field: float | np.ndarray | Any | None = None,  # Phase 2.3
         drift_field: np.ndarray | Any | None = None,  # Phase 2.3
-        adaptive_damping: bool = False,  # Issue #583: Adaptive Picard damping
-        adaptive_damping_decay: float = 0.5,  # Damping reduction on oscillation
-        adaptive_damping_min: float = 0.05,  # Minimum damping bound
-        damping_schedule: str = "constant",  # Issue #719: "constant", "harmonic", "sqrt", "exponential"
-        damping_schedule_M: str | None = None,  # Separate M schedule (None = follow U)
+        adaptive_relaxation: bool = False,
+        adaptive_relaxation_decay: float = 0.5,
+        adaptive_relaxation_min: float = 0.05,
+        relaxation_schedule: str = "constant",
+        relaxation_schedule_M: str | None = None,
+        # Legacy damping_* kwargs (deprecated since v0.19.2, removal v0.25.0)
+        damping_factor: float | None = None,
+        damping_factor_M: float | None = None,
+        adaptive_damping: bool | None = None,
+        adaptive_damping_decay: float | None = None,
+        adaptive_damping_min: float | None = None,
+        damping_schedule: str | None = None,
+        damping_schedule_M: str | None = None,
     ):
         """
         Args:
-            damping_factor: Damping for U (theta_U). Default 0.5.
-            damping_factor_M: Damping for M (theta_M). If None, uses damping_factor.
-                Issue #719: Per-variable damping support.
-                Recommended for MFG: damping_factor=1.0, damping_factor_M=0.2
-                (U adapts fully, M filters particle noise)
+            relaxation: Under-relaxation factor for U (omega_U) in (0, 1]. Default 0.5.
+            relaxation_M: Under-relaxation factor for M (omega_M). If None, uses `relaxation`
+                for both. Issue #719: Per-variable relaxation support.
+                Recommended for MFG: relaxation=1.0, relaxation_M=0.2 (U adapts fully,
+                M filters particle noise).
+
+            Legacy `damping_*` kwargs are still accepted with DeprecationWarning.
         """
+        # Redirect legacy kwargs -> canonical (decorator already warned)
+        if damping_factor is not None:
+            relaxation = damping_factor
+        if damping_factor_M is not None:
+            relaxation_M = damping_factor_M
+        if adaptive_damping is not None:
+            adaptive_relaxation = adaptive_damping
+        if adaptive_damping_decay is not None:
+            adaptive_relaxation_decay = adaptive_damping_decay
+        if adaptive_damping_min is not None:
+            adaptive_relaxation_min = adaptive_damping_min
+        if damping_schedule is not None:
+            relaxation_schedule = damping_schedule
+        if damping_schedule_M is not None:
+            relaxation_schedule_M = damping_schedule_M
+
         super().__init__(problem)
         self.backend = backend
         self.hjb_solver = hjb_solver
@@ -127,19 +162,19 @@ class FixedPointIterator(BaseCouplingIterator):
 
             self.anderson_accelerator = AndersonAccelerator(depth=anderson_depth, beta=anderson_beta)
 
-        # Damping parameters (overridden by config if provided)
-        # Issue #719: Per-variable damping support
-        self.damping_factor = damping_factor
-        self.damping_factor_M = damping_factor_M  # None = use damping_factor for both
+        # Canonical relaxation state (config can override at solve() time)
+        # Issue #719: Per-variable relaxation support
+        self.relaxation = relaxation
+        self.relaxation_M = relaxation_M  # None = use `relaxation` for both
 
-        # Issue #583: Adaptive Picard damping
-        self.adaptive_damping = adaptive_damping
-        self.adaptive_damping_decay = adaptive_damping_decay
-        self.adaptive_damping_min = adaptive_damping_min
+        # Issue #583: Adaptive Picard relaxation
+        self.adaptive_relaxation = adaptive_relaxation
+        self.adaptive_relaxation_decay = adaptive_relaxation_decay
+        self.adaptive_relaxation_min = adaptive_relaxation_min
 
-        # Issue #719 Phase 2: Damping schedules
-        self.damping_schedule = damping_schedule
-        self.damping_schedule_M = damping_schedule_M
+        # Issue #719 Phase 2: Relaxation schedules
+        self.relaxation_schedule = relaxation_schedule
+        self.relaxation_schedule_M = relaxation_schedule_M
 
         # State arrays (initialized in solve)
         self.U: np.ndarray | None = None
@@ -158,6 +193,48 @@ class FixedPointIterator(BaseCouplingIterator):
 
         # Cache solver signatures via base class (Issue #934)
         self._init_solver_signatures(self.hjb_solver, self.fp_solver)
+
+    # ------------------------------------------------------------------
+    # Backward-compat attribute aliases (damping_* -> relaxation_*)
+    # Added in v0.19.2. Silent (no DeprecationWarning on read) to avoid
+    # log flooding inside Picard iteration hot loops. Removal in v0.25.0;
+    # the ctor kwargs already emit DeprecationWarning via @deprecated_parameter.
+    # ------------------------------------------------------------------
+
+    @property
+    def damping_factor(self) -> float:
+        """Deprecated alias for `relaxation` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation
+
+    @property
+    def damping_factor_M(self) -> float | None:
+        """Deprecated alias for `relaxation_M` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation_M
+
+    @property
+    def adaptive_damping(self) -> bool:
+        """Deprecated alias for `adaptive_relaxation` (v0.19.2+). Removal in v0.25.0."""
+        return self.adaptive_relaxation
+
+    @property
+    def adaptive_damping_decay(self) -> float:
+        """Deprecated alias for `adaptive_relaxation_decay` (v0.19.2+). Removal in v0.25.0."""
+        return self.adaptive_relaxation_decay
+
+    @property
+    def adaptive_damping_min(self) -> float:
+        """Deprecated alias for `adaptive_relaxation_min` (v0.19.2+). Removal in v0.25.0."""
+        return self.adaptive_relaxation_min
+
+    @property
+    def damping_schedule(self) -> str:
+        """Deprecated alias for `relaxation_schedule` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation_schedule
+
+    @property
+    def damping_schedule_M(self) -> str | None:
+        """Deprecated alias for `relaxation_schedule_M` (v0.19.2+). Removal in v0.25.0."""
+        return self.relaxation_schedule_M
 
     def _compose_hjb_source(self, m_current: np.ndarray) -> Callable | None:
         """Compose problem-level source terms into a solver-level source_term callable.
@@ -487,10 +564,10 @@ class FixedPointIterator(BaseCouplingIterator):
             final_damping_factor = solve_config.picard.relaxation
             # Issue #719: Per-variable relaxation and schedules from config
             # relaxation_M / relaxation_schedule_M use `or` because None means "follow U"
-            final_damping_factor_M = solve_config.picard.relaxation_M or self.damping_factor_M
+            final_damping_factor_M = solve_config.picard.relaxation_M or self.relaxation_M
             final_schedule = solve_config.picard.relaxation_schedule
-            final_schedule_M = solve_config.picard.relaxation_schedule_M or self.damping_schedule_M
-            final_adaptive_damping = solve_config.picard.adaptive_relaxation or self.adaptive_damping
+            final_schedule_M = solve_config.picard.relaxation_schedule_M or self.relaxation_schedule_M
+            final_adaptive_damping = solve_config.picard.adaptive_relaxation or self.adaptive_relaxation
             verbose = solve_config.picard.verbose
         else:
             # Legacy parameter precedence
@@ -498,11 +575,11 @@ class FixedPointIterator(BaseCouplingIterator):
                 max_iterations or kwargs.get("max_picard_iterations") or kwargs.get("Niter_max") or 100
             )
             final_tolerance = tolerance or kwargs.get("picard_tolerance") or kwargs.get("l2errBoundPicard") or 1e-6
-            final_damping_factor = self.damping_factor
-            final_damping_factor_M = self.damping_factor_M  # Issue #719
-            final_schedule = self.damping_schedule  # Issue #719 Phase 2
-            final_schedule_M = self.damping_schedule_M
-            final_adaptive_damping = self.adaptive_damping
+            final_damping_factor = self.relaxation
+            final_damping_factor_M = self.relaxation_M  # Issue #719
+            final_schedule = self.relaxation_schedule  # Issue #719 Phase 2
+            final_schedule_M = self.relaxation_schedule_M
+            final_adaptive_damping = self.adaptive_relaxation
             from mfgarchon.utils.progress import should_show_progress
 
             verbose = should_show_progress()
@@ -686,13 +763,13 @@ class FixedPointIterator(BaseCouplingIterator):
                     iiter,
                     final_damping_factor,
                     final_schedule,
-                    self.adaptive_damping_min,
+                    self.adaptive_relaxation_min,
                 )
                 effective_theta_M = compute_scheduled_damping(
                     iiter,
                     base_theta_M,
                     final_schedule_M if final_schedule_M is not None else final_schedule,
-                    self.adaptive_damping_min,
+                    self.adaptive_relaxation_min,
                 )
 
                 if self.use_anderson and self.anderson_accelerator is not None:
@@ -768,8 +845,8 @@ class FixedPointIterator(BaseCouplingIterator):
                         error_history_M=_error_history_M,
                         theta_U_initial=_theta_U_initial,
                         theta_M_initial=_theta_M_initial,
-                        decay=self.adaptive_damping_decay,
-                        min_damping=self.adaptive_damping_min,
+                        decay=self.adaptive_relaxation_decay,
+                        min_damping=self.adaptive_relaxation_min,
                     )
                     # Update base M damping for next iteration
                     if final_damping_factor_M is not None:

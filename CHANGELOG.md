@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-04-17
+
+### Changed
+
+- **`FixedPointIterator` kwarg rename** (B1.5b.1): the seven damping-related
+  constructor kwargs and instance attributes are renamed from `damping_*` to
+  `relaxation_*`, matching the `PicardConfig` naming landed in v0.19.1:
+
+  | Legacy kwarg (deprecated) | Canonical kwarg |
+  |---|---|
+  | `damping_factor` | `relaxation` |
+  | `damping_factor_M` | `relaxation_M` |
+  | `adaptive_damping` | `adaptive_relaxation` |
+  | `adaptive_damping_decay` | `adaptive_relaxation_decay` |
+  | `adaptive_damping_min` | `adaptive_relaxation_min` |
+  | `damping_schedule` | `relaxation_schedule` |
+  | `damping_schedule_M` | `relaxation_schedule_M` |
+
+  All internal attribute reads within the iterator now use `self.relaxation_*`.
+
+### Deprecated
+
+- Legacy `damping_*` ctor kwargs accepted via `@deprecated_parameter`
+  decorators — emits `DeprecationWarning` at construction, then redirects
+  internally to the canonical kwarg. Removal scheduled for v0.25.0.
+- Backward-compat attribute access (`iter.damping_factor` etc.) provided by
+  silent `@property` aliases (no warning on read, to avoid log-flooding
+  inside Picard iteration hot loops). Also removal in v0.25.0.
+
+### Tests
+
+- New `tests/unit/test_alg/test_fixed_point_iterator_relaxation_alias.py`
+  (16 tests): equivalence, warning semantics, and backward-compat property
+  reads. Existing 3744 unit tests continue to pass — the rename is fully
+  backward-compatible, only the DeprecationWarning is new.
+
+### Out of scope (future B1.5b.x PRs)
+
+The same rename pattern will be applied incrementally to remaining solvers:
+`BlockGaussSeidelIterator`, `BlockJacobiIterator`, `NetworkMFGSolver`,
+`MultiPopulationIterator`, `HJBFDMSolver`, `FixedPointSolver`. Tracked in
+#1010 as B1.5b.
+
 ## [0.19.1] - 2026-04-17
 
 ### Changed
