@@ -14,6 +14,16 @@ through the solver constructors. The whole B1.5b arc will ship as one version bu
 (`v0.19.2`) once complete; individual sub-PRs land under `[Unreleased]` and are
 listed here with their scope.
 
+<<<<<<< HEAD
+- **B1.5b.2** (PR #1013): Block iterators — `BlockIterator` (base),
+  `BlockJacobiIterator`, `BlockGaussSeidelIterator`. Renames `damping_factor` →
+  `relaxation` and `damping_factor_M` → `relaxation_M` on all three. Legacy kwargs
+  accepted via `@deprecated_parameter`. Silent `@property` aliases on base
+  class. Plus `SolverResult.metadata` key `"damping_factor"` → `"relaxation"`
+  (narrow break; no bridge available for dict-key reads; impact limited to code
+  that inspects `result.metadata["damping_factor"]`). 18 equivalence tests in
+  `tests/unit/test_alg/test_block_iterators_relaxation_alias.py`.
+=======
 - **B1.5b.1** (PR #1012): `FixedPointIterator` — 7 ctor kwargs renamed
   (`damping_factor`, `damping_factor_M`, `adaptive_damping`, `adaptive_damping_decay`,
   `adaptive_damping_min`, `damping_schedule`, `damping_schedule_M`). Legacy kwargs
@@ -21,6 +31,7 @@ listed here with their scope.
   preserve `iter.damping_factor` attribute reads without warning-flooding Picard
   hot loops. 16 equivalence tests in
   `tests/unit/test_alg/test_fixed_point_iterator_relaxation_alias.py`.
+>>>>>>> origin/main
 
 ## [0.19.1] - 2026-04-17
 

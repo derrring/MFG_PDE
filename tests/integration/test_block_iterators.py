@@ -242,7 +242,7 @@ class TestBlockIteratorParameters:
 
         assert np.all(np.isfinite(result.U))
         assert np.all(np.isfinite(result.M))
-        assert result.metadata["damping_factor"] == 0.3
+        assert result.metadata["relaxation"] == 0.3
 
     def test_density_nonnegative(self, param_problem):
         """Test that density remains non-negative."""
