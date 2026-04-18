@@ -21,6 +21,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ExperimentConfig.model_rebuild()` workaround calls in `test_array_validation.py`
   are no longer needed and have been removed.
 
+### Tests
+
+- **Canonical config module coverage** (Issue #1010 B2):
+  Added dedicated unit tests for `mfgarchon/config/core.py` and
+  `mfgarchon/config/mfg_methods.py`, which previously had only indirect
+  coverage via factory tests and integration tests. Two new files (58 tests):
+  - `tests/unit/test_config/test_core.py` — 23 tests covering
+    `LoggingConfig`, `BackendConfig`, canonical-path `PicardConfig`, and
+    `MFGSolverConfig` (defaults, range validators, `@model_validator` hooks,
+    `save_intermediate`-requires-`output_dir`, `numpy`-cannot-use-`gpu`,
+    `anderson_memory <= max_iterations`, `model_dump` round-trip).
+  - `tests/unit/test_config/test_mfg_methods.py` — 35 tests covering the 14
+    method configs: default instantiation, Literal/enum rejection of
+    invalid values, range-bound enforcement, `@model_validator` hooks
+    (e.g., `wind_dependent_bc` requires `ghost_nodes`, FEM auto-quadrature).
+
 ## [0.19.2] - 2026-04-18
 
 ### Changed — B1.5b series (solver ctor kwargs damping_* → relaxation_*)
