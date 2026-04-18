@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.3] - 2026-04-18
+
 ### Changed
 
 - **Internal cleanup** (B1.5b follow-up): `create_network_mfg_solver` now
