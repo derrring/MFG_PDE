@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Internal cleanup** (B1.5b follow-up): `create_network_mfg_solver` now
+  forwards the canonical `relaxation` kwarg to `FixedPointIterator` internally
+  instead of the legacy `damping_factor`. The legacy-forwarding was a
+  deliberate temporary measure to keep the B1.5b.3 PR mergeable before B1.5b.1
+  (FixedPointIterator rename) landed. With both now on main, the factory no
+  longer emits a self-generated `DeprecationWarning` from its own codebase.
+
 ### Fixed
 
 - **`ExperimentConfig` forward-ref crash under pydantic 2.12.5** (Issue #1010 B5):

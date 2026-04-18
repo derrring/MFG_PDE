@@ -103,15 +103,11 @@ def create_network_mfg_solver(
 
     # Create fixed-point iterator
     if solver_type == "fixed_point":
-        # NOTE: uses legacy kwarg `damping_factor` internally so this factory works
-        # whether or not PR #1012 (FixedPointIterator rename) has landed. After #1012
-        # merges, update to `relaxation=relaxation`; the internal DeprecationWarning
-        # will then vanish.
         solver = FixedPointIterator(
             problem=problem,
             hjb_solver=hjb_solver,
             fp_solver=fp_solver,
-            damping_factor=relaxation,
+            relaxation=relaxation,
             **solver_kwargs,
         )
     else:
