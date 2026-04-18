@@ -11,17 +11,8 @@ import pytest
 from pydantic import ValidationError
 
 import numpy as np
-from numpy.typing import NDArray
 
-# Import NDArray into the module's namespace before importing models
-# This allows Pydantic to resolve the NDArray annotation at runtime
-import mfgarchon.config.array_validation as av_module
-
-# Make NDArray available in the array_validation module's namespace
-av_module.NDArray = NDArray
-
-# Now import the models - order is important for Pydantic+NumPy validation
-from mfgarchon.config.array_validation import (  # noqa: E402
+from mfgarchon.config.array_validation import (
     ArrayValidationConfig,
     CollocationConfig,
     ExperimentConfig,
@@ -29,10 +20,8 @@ from mfgarchon.config.array_validation import (  # noqa: E402
     MFGGridConfig,
 )
 
-# Rebuild Pydantic models after NDArray is available
-MFGArrays.model_rebuild()
-CollocationConfig.model_rebuild()
-ExperimentConfig.model_rebuild()
+# NDArray is imported at module level in mfgarchon/config/array_validation.py
+# (Issue #1010 B5), so `model_rebuild()` is no longer needed at import time.
 
 
 class TestArrayValidationConfig:

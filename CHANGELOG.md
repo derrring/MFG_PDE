@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`ExperimentConfig` forward-ref crash under pydantic 2.12.5** (Issue #1010 B5):
+  `NDArray` was imported under `TYPE_CHECKING` in `mfgarchon/config/array_validation.py`
+  but used as an annotation on the `MFGArrays.U_solution` / `M_solution` fields.
+  Pydantic 2.12.5+ resolves field annotations at model-build time and rejected the
+  unresolved forward reference with `PydanticUserError: class-not-fully-defined`,
+  breaking any instantiation of `ExperimentConfig`, `MFGArrays`, or
+  `CollocationConfig`. Fixed by importing `NDArray` at runtime (not under
+  `TYPE_CHECKING`), with a `noqa: TC002` on the import explaining why the
+  runtime import is deliberate. The `MFGArrays.model_rebuild()` and
+  `ExperimentConfig.model_rebuild()` workaround calls in `test_array_validation.py`
+  are no longer needed and have been removed.
+
 ### Tests
 
 - **Canonical config module coverage** (Issue #1010 B2):
