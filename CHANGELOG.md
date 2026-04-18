@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.4] - 2026-04-18
+
+### Removed (BREAKING)
+
+- **`mfgarchon.config.structured_schemas`** module deleted (Issue #1010 B4).
+  It defined 13 OmegaConf dataclass schemas (`MFGSchema`, `BeachProblemSchema`,
+  `NewtonSchema`, `HJBSchema`, etc.) that encoded a tree shape different from
+  the canonical Pydantic `MFGSolverConfig` (nested `solver.hjb.method` vs
+  flat `hjb.method`). These schemas were used only by test code and by a
+  handful of loader methods on `OmegaConfManager`; no production code loaded
+  them. Keeping them alongside the canonical Pydantic hierarchy was the
+  dual-schema smell the v0.19.0–v0.19.3 renovation was eliminating elsewhere.
+- **Dataclass-tied methods removed from `OmegaConfManager`** (Issue #1010 B3):
+  `load_structured_config`, `load_mfg_config`, `load_beach_config_structured`,
+  `create_default_mfg_config`, `validate_structured_config`. All returned
+  `TypedMFGConfig` / `TypedBeachConfig` dataclass-shaped objects that are
+  now gone. The `TypedMFGConfig` / `TypedBeachConfig` type aliases were
+  removed along with them.
+- **Module-level dataclass wrappers removed**: `load_structured_mfg_config`,
+  `load_structured_beach_config`, `create_default_structured_config` (all in
+  `mfgarchon.config.omegaconf_manager`).
+
+### Kept (no change)
+
+- **Generic OmegaConf functionality**: `OmegaConfManager.{load_config,
+  compose_config, create_pydantic_config, save_config, create_parameter_sweep,
+  validate_config, get_config_template}`. These operate on plain YAML /
+  DictConfig and do not depend on dataclass schemas. Parameter sweeps and
+  CLI overrides keep working via these methods.
+- **`bridge_to_pydantic`**: the one-way gate between OmegaConf DictConfig and
+  Pydantic `MFGSolverConfig` remains the canonical validation point. Users
+  wanting validated configs should call `OmegaConf.load(...)` then pipe the
+  result through `bridge_to_pydantic`.
+- **YAML example files** in `configs/*.yaml`: kept as user-facing examples.
+  These use the OmegaConf-style tree (`problem.T`, `solver.hjb.method`);
+  users who want Pydantic validation should transform to the flat Pydantic
+  shape first or use them as OmegaConf-only loads.
+
+### Tests
+
+- **Removed** `tests/unit/test_config/test_structured_configs.py` (247 lines)
+  and `tests/unit/test_config/test_structured_schemas.py` (632 lines). These
+  tested the dataclass tree that no longer exists. Pydantic-side coverage
+  lives in `test_core.py`, `test_mfg_methods.py`, and `test_bridge.py` added
+  in v0.19.3.
+
+### Migration
+
+User code that called the removed APIs (unlikely — internal audit found zero
+production callers outside `mfgarchon/config/` itself) should migrate to the
+OmegaConf + bridge pattern:
+
+```python
+# Old (removed):
+from mfgarchon.config.omegaconf_manager import load_structured_mfg_config
+config = load_structured_mfg_config("config.yaml")
+# config was a DictConfig with MFGSchema tree shape
+
+# New:
+from omegaconf import OmegaConf
+from mfgarchon.config import MFGSolverConfig
+from mfgarchon.config.bridge import bridge_to_pydantic
+
+raw = OmegaConf.load("config.yaml")
+config = bridge_to_pydantic(raw, MFGSolverConfig)  # Pydantic validation at this point
+```
+
+Note that the YAML file's tree shape may need adjustment to match Pydantic's
+flat `{hjb, fp, picard, backend, logging}` structure; the legacy YAMLs use
+`{problem, solver, experiment}` nesting.
+
+### Context
+
+Closes the B3+B4 items of Issue #1010. With this release, the config system
+has **one canonical schema authority** (Pydantic models in `core.py`,
+`mfg_methods.py`, `array_validation.py`) and **one validation crossing**
+(`bridge_to_pydantic`). OmegaConf handles YAML transport only — no schemas.
+The North Star design from v0.19.0 is now fully realized.
+
 ## [0.19.3] - 2026-04-18
 
 ### Changed
