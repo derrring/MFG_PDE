@@ -8,19 +8,24 @@ numerical properties, and physical constraints specific to MFG problems.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 import numpy as np
 
+# NDArray must be imported at runtime (not TYPE_CHECKING) because Pydantic 2.12.5+
+# resolves annotation strings at model build time. Under `from __future__ import
+# annotations`, the `NDArray[np.floating]` field annotation on `MFGArrays` becomes
+# a forward reference that pydantic cannot resolve from a TYPE_CHECKING-only import,
+# raising `PydanticUserError: class-not-fully-defined` at instance construction.
+# See Issue #1010 (B5).
+from numpy.typing import NDArray  # noqa: TC002  (pydantic 2.12.5 needs runtime resolution)
+
 from mfgarchon.utils.mfg_logging import get_logger
 from mfgarchon.utils.numerical.integration import trapezoid
 
 logger = get_logger(__name__)
-
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
 
 
 class ArrayValidationConfig(BaseModel):
