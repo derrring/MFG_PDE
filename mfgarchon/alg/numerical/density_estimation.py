@@ -22,37 +22,62 @@ except ImportError:
     SCIPY_AVAILABLE = False
 
 
+# Kernel options for kde_gpu (Issue #1028)
+SUPPORTED_KERNELS = ("gaussian", "wendland_c2")
+
+
+def _wendland_c2_normalization_1d(delta: float) -> float:
+    """1D normalization Z_1 for Wendland C^2 kernel with support radius delta.
+
+    K_unnorm(r) = (1 - |r|/delta)_+^4 (4|r|/delta + 1)
+    Z_1 = int_{-delta}^{delta} K_unnorm(r) dr = 2 * delta * int_0^1 phi(u) du
+        = 2 * delta * 1/3 = 2 delta / 3
+
+    where the inner integral is computed via direct expansion:
+    int_0^1 (1-u)^4 (4u + 1) du = int_0^1 (1 - 10 u^2 + 20 u^3 - 15 u^4 + 4 u^5) du = 1/3.
+    """
+    return 2.0 * delta / 3.0
+
+
 def gaussian_kde_gpu(
     particles: np.ndarray,
     grid: np.ndarray,
     bandwidth: float,
     backend: "BaseBackend",
+    kernel: str = "gaussian",
 ) -> np.ndarray:
     """
-    GPU-accelerated Gaussian kernel density estimation.
+    GPU-accelerated 1D kernel density estimation.
 
     Converts N particles to density estimate on Nx grid points using
     vectorized GPU operations. This is the critical bottleneck for
     particle-based MFG solvers (typically 70% of compute time).
 
     Mathematical formulation:
-        ρ(x) = (1/N) Σ_{i=1}^N K_h(x - X_i)
+        rho(x) = (1/N) sum_{i=1}^N K_h(x - X_i)
 
-    where K_h is the Gaussian kernel with bandwidth h:
-        K_h(z) = (1/(h√(2π))) exp(-z²/(2h²))
+    where K_h is the chosen kernel.
 
-    Note: To match scipy.stats.gaussian_kde behavior, this function
-    interprets numeric bandwidth as factor * std(particles).
+    Supported kernels (Issue #1028):
+
+    - "gaussian" (default): K_h(z) = (1/(h * sqrt(2 pi))) exp(-z^2 / (2 h^2)).
+      Infinite support; bandwidth interpreted as factor * std(particles)
+      (scipy.stats.gaussian_kde compatible).
+
+    - "wendland_c2": K_h(r) = (3 / (2 h)) * (1 - |r|/h)_+^4 * (4 |r|/h + 1).
+      Compact support [-h, h]; bandwidth h interpreted directly as support
+      radius (NOT multiplied by std). C^2 continuity. Same kernel form as
+      the GFDM Wendland weights, enabling kernel-matched FP / HJB pipelines.
 
     GPU Acceleration Strategy:
         - Broadcast particles and grid to form (Nx, N) distance matrix
         - Compute all kernel values in parallel
         - Reduce over particles dimension
 
-    Complexity: O(Nx × N) but fully parallelized on GPU
+    Complexity: O(Nx * N) but fully parallelized on GPU
 
-    Expected Speedup:
-        - N=10k:   10-15x vs scipy.stats.gaussian_kde
+    Expected Speedup (Gaussian path, vs scipy.stats.gaussian_kde):
+        - N=10k:   10-15x
         - N=50k:   20-30x
         - N=100k:  30-50x
 
@@ -63,9 +88,12 @@ def gaussian_kde_gpu(
     grid : np.ndarray
         Grid points for density evaluation, shape (Nx,)
     bandwidth : float
-        Bandwidth factor (multiplied by data std), matching scipy behavior
+        For "gaussian": bandwidth factor (multiplied by data std).
+        For "wendland_c2": support radius delta (used directly).
     backend : BaseBackend
         Backend providing tensor operations (PyTorch/JAX)
+    kernel : str
+        One of "gaussian", "wendland_c2". See module-level SUPPORTED_KERNELS.
 
     Returns
     -------
@@ -76,12 +104,21 @@ def gaussian_kde_gpu(
     ----------
     - Silverman, B.W. (1986). Density Estimation for Statistics and Data Analysis
     - Scott, D.W. (2015). Multivariate Density Estimation: Theory, Practice, and Visualization
+    - Wendland, H. (1995). Piecewise polynomial, positive definite and compactly
+      supported radial functions of minimal degree. Adv. Comput. Math. 4, 389-396.
     """
+    if kernel not in SUPPORTED_KERNELS:
+        raise ValueError(f"Unknown kernel '{kernel}'. Supported: {SUPPORTED_KERNELS}")
+
     N = len(particles)
 
-    # Match scipy.stats.gaussian_kde: bandwidth = factor * std
-    data_std = np.std(particles, ddof=1)
-    actual_bandwidth = bandwidth * data_std
+    if kernel == "gaussian":
+        # Match scipy.stats.gaussian_kde: bandwidth = factor * std
+        data_std = np.std(particles, ddof=1)
+        actual_bandwidth = bandwidth * data_std
+    else:  # wendland_c2
+        # Bandwidth IS the support radius; no std multiplication.
+        actual_bandwidth = float(bandwidth)
 
     # Get tensor module (torch or jax.numpy)
     xp = backend.array_module
@@ -108,12 +145,23 @@ def gaussian_kde_gpu(
         particles_2d = particles_tensor[None, :]  # (1, N)
         grid_2d = grid_tensor[:, None]  # (Nx, 1)
 
-    distances = (grid_2d - particles_2d) / actual_bandwidth  # (Nx, N)
-
-    # Gaussian kernel: K(z) = (1/(h√(2π))) exp(-z²/2)
-    kernel_vals = xp.exp(-0.5 * distances**2)
-    normalization = actual_bandwidth * np.sqrt(2 * np.pi)
-    kernel_vals = kernel_vals / normalization
+    if kernel == "gaussian":
+        distances = (grid_2d - particles_2d) / actual_bandwidth  # (Nx, N)
+        # Gaussian kernel: K(z) = (1/(h * sqrt(2 pi))) exp(-z^2 / 2)
+        kernel_vals = xp.exp(-0.5 * distances**2)
+        normalization = actual_bandwidth * np.sqrt(2 * np.pi)
+        kernel_vals = kernel_vals / normalization
+    else:  # wendland_c2
+        # Wendland C^2: K(r) = (3 / (2 delta)) * (1 - |r|/delta)_+^4 * (4 |r|/delta + 1)
+        # Z_1 = 2 delta / 3 (see _wendland_c2_normalization_1d)
+        raw_distances = grid_2d - particles_2d  # (Nx, N), unscaled
+        u = xp.abs(raw_distances) / actual_bandwidth  # (Nx, N), in [0, inf)
+        one_minus_u = 1.0 - u
+        # Compactly supported: zero outside [0, 1]
+        positive_part = xp.maximum(one_minus_u, 0.0)
+        kernel_vals = (positive_part**4) * (4.0 * u + 1.0)
+        normalization = _wendland_c2_normalization_1d(actual_bandwidth)
+        kernel_vals = kernel_vals / normalization
 
     # Sum over particles, normalize by N
     # Check for PyTorch tensor specifically (has 'dim' parameter)
@@ -135,11 +183,12 @@ def gaussian_kde_gpu_internal(
     grid_tensor,
     bandwidth: float,
     backend: "BaseBackend",
+    kernel: str = "gaussian",
 ):
     """
     Internal GPU KDE that accepts GPU tensors directly (Phase 2.1).
 
-    This eliminates GPU↔CPU transfers in the particle evolution loop.
+    This eliminates GPU<->CPU transfers in the particle evolution loop.
     Used by _solve_fp_system_gpu() to keep all data on GPU.
 
     Key difference from gaussian_kde_gpu():
@@ -156,15 +205,21 @@ def gaussian_kde_gpu_internal(
     grid_tensor : backend tensor
         Grid points on GPU, shape (Nx,)
     bandwidth : float
-        Absolute bandwidth (NOT factor * std)
+        For "gaussian": absolute bandwidth (NOT factor * std).
+        For "wendland_c2": support radius delta.
     backend : BaseBackend
         Backend providing tensor operations
+    kernel : str
+        One of "gaussian", "wendland_c2" (Issue #1028).
 
     Returns
     -------
     backend tensor
         Estimated density on grid, shape (Nx,)
     """
+    if kernel not in SUPPORTED_KERNELS:
+        raise ValueError(f"Unknown kernel '{kernel}'. Supported: {SUPPORTED_KERNELS}")
+
     xp = backend.array_module
 
     # Backend compatibility - tensor shape access (Issue #543 acceptable)
@@ -181,13 +236,21 @@ def gaussian_kde_gpu_internal(
         particles_2d = particles_tensor[None, :]  # (1, N)
         grid_2d = grid_tensor[:, None]  # (Nx, 1)
 
-    # Compute distances
-    distances = (grid_2d - particles_2d) / bandwidth  # (Nx, N)
-
-    # Gaussian kernel: K(z) = (1/(h√(2π))) exp(-z²/2)
-    kernel_vals = xp.exp(-0.5 * distances**2)
-    normalization = float(bandwidth * np.sqrt(2 * np.pi))
-    kernel_vals = kernel_vals / normalization
+    if kernel == "gaussian":
+        # Compute distances
+        distances = (grid_2d - particles_2d) / bandwidth  # (Nx, N)
+        # Gaussian kernel: K(z) = (1/(h * sqrt(2 pi))) exp(-z^2 / 2)
+        kernel_vals = xp.exp(-0.5 * distances**2)
+        normalization = float(bandwidth * np.sqrt(2 * np.pi))
+        kernel_vals = kernel_vals / normalization
+    else:  # wendland_c2
+        raw_distances = grid_2d - particles_2d
+        u = xp.abs(raw_distances) / bandwidth  # in [0, inf)
+        one_minus_u = 1.0 - u
+        positive_part = xp.maximum(one_minus_u, 0.0)
+        kernel_vals = (positive_part**4) * (4.0 * u + 1.0)
+        normalization = float(_wendland_c2_normalization_1d(bandwidth))
+        kernel_vals = kernel_vals / normalization
 
     # Sum over particles, normalize by N
     # Check for PyTorch tensor specifically (has 'dim' parameter)
