@@ -721,5 +721,211 @@ class TestEnhancementsIntegration:
         assert rel_error < 0.20  # Within 20% (updated after gradient fix)
 
 
+class TestStochasticCharacteristicSL:
+    """Issue #1026: Carlini-Silva (2014) stochastic-characteristic SL.
+
+    Tests the diffusion_method="stochastic" branch that incorporates the
+    diffusion term into the SL update via 2*d Brownian departure points,
+    instead of the operator-splitting (ADI/Crank-Nicolson) default.
+
+    Validation experiment: mfg-research/experiments/crowd_evacuation_2d/
+    minors/archive/exp14_towel_1d_benchmark/subs/exp14e_solver_comparison/
+    """
+
+    def test_linear_plus_stochastic_rejected(self):
+        """Linear interpolation caps global error at O(h); incompatible with CS."""
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)],
+            Nx_points=[51],
+            boundary_conditions=no_flux_bc(dimension=1),
+        )
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, components=_default_components())
+
+        with pytest.raises(ValueError, match="cubic or higher-order"):
+            HJBSemiLagrangianSolver(
+                problem,
+                interpolation_method="linear",
+                diffusion_method="stochastic",
+            )
+
+    def test_cubic_plus_stochastic_instantiates(self):
+        """Cubic + stochastic is the supported configuration."""
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)],
+            Nx_points=[51],
+            boundary_conditions=no_flux_bc(dimension=1),
+        )
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, components=_default_components())
+
+        solver = HJBSemiLagrangianSolver(
+            problem,
+            interpolation_method="cubic",
+            diffusion_method="stochastic",
+            check_cfl=False,
+        )
+
+        assert solver.diffusion_method == "stochastic"
+        assert solver.interpolation_method == "cubic"
+
+    def test_apply_diffusion_raises_under_stochastic(self):
+        """Reaching _apply_diffusion under stochastic dispatch is a programming error."""
+        geometry = TensorProductGrid(
+            bounds=[(0.0, 1.0)],
+            Nx_points=[51],
+            boundary_conditions=no_flux_bc(dimension=1),
+        )
+        problem = MFGProblem(geometry=geometry, T=1.0, Nt=50, components=_default_components())
+        solver = HJBSemiLagrangianSolver(
+            problem,
+            interpolation_method="cubic",
+            diffusion_method="stochastic",
+            check_cfl=False,
+        )
+
+        with pytest.raises(NotImplementedError, match="should not be called"):
+            solver._apply_diffusion(np.zeros(51), 0.01)
+
+    def test_constant_terminal_preserved(self):
+        """H=0 with constant U_T must give constant U[0] (no spurious drift)."""
+        from mfgarchon.core.hamiltonian import HamiltonianBase, OptimizationSense
+
+        class ZeroH(HamiltonianBase):
+            def __init__(self):
+                super().__init__(sense=OptimizationSense.MINIMIZE)
+
+            def __call__(self, x, m, p, t=0.0):
+                p_arr = np.atleast_1d(np.asarray(p, dtype=float))
+                if p_arr.ndim > 0:
+                    return np.zeros(p_arr.shape[:-1])
+                return 0.0
+
+            def gradient_p(self, x, m, p, t=0.0):
+                return np.zeros_like(np.asarray(p, dtype=float))
+
+            def density_derivative(self, x, m, p, t=0.0):
+                return 0.0
+
+        geometry = TensorProductGrid(
+            dimension=1,
+            bounds=[(-1.0, 1.0)],
+            Nx_points=[31],
+            boundary_conditions=no_flux_bc(dimension=1),
+        )
+        components = MFGComponents(
+            hamiltonian=ZeroH(),
+            m_initial=lambda x: 1.0,
+            u_terminal=lambda x: 1.0,
+        )
+        problem = MFGProblem(
+            geometry=geometry,
+            T=0.1,
+            Nt=10,
+            diffusion=0.045,
+            components=components,
+        )
+        solver = HJBSemiLagrangianSolver(
+            problem,
+            interpolation_method="cubic",
+            diffusion_method="stochastic",
+            check_cfl=False,
+        )
+
+        Nx = 31
+        Nt = problem.Nt
+        M_density = np.ones((Nt + 1, Nx))
+        U_terminal = np.ones(Nx)
+
+        U = solver.solve_hjb_system(
+            M_density=M_density,
+            U_terminal=U_terminal,
+            U_coupling_prev=np.zeros((Nt + 1, Nx)),
+        )
+
+        np.testing.assert_allclose(U[0], 1.0, atol=1e-10)
+
+    def test_consistency_with_default_adi(self):
+        """Stochastic and default ADI must converge to the same numerical solution.
+
+        Both schemes solve the same backward HJB; only the discretization
+        path differs (Brownian quadrature vs. operator splitting). On a
+        smooth Gaussian terminal with H=0, the difference should be
+        within a few units of the local truncation error of either scheme.
+        """
+        from mfgarchon.core.hamiltonian import HamiltonianBase, OptimizationSense
+
+        class ZeroH(HamiltonianBase):
+            def __init__(self):
+                super().__init__(sense=OptimizationSense.MINIMIZE)
+
+            def __call__(self, x, m, p, t=0.0):
+                p_arr = np.atleast_1d(np.asarray(p, dtype=float))
+                if p_arr.ndim > 0:
+                    return np.zeros(p_arr.shape[:-1])
+                return 0.0
+
+            def gradient_p(self, x, m, p, t=0.0):
+                return np.zeros_like(np.asarray(p, dtype=float))
+
+            def density_derivative(self, x, m, p, t=0.0):
+                return 0.0
+
+        sigma_test = 0.3
+        T_test = 0.5
+        beta_T = 1.0
+        N, Nt = 100, 200
+
+        geometry = TensorProductGrid(
+            dimension=1,
+            bounds=[(-5.0, 5.0)],
+            Nx_points=[N + 1],
+            boundary_conditions=no_flux_bc(dimension=1),
+        )
+        x_grid = geometry.get_spatial_grid().flatten()
+        components = MFGComponents(
+            hamiltonian=ZeroH(),
+            m_initial=lambda x: 1.0,
+            u_terminal=lambda x: float(np.exp(-(x[0] ** 2) / (2 * beta_T)) / np.sqrt(2 * np.pi * beta_T)),
+        )
+        problem = MFGProblem(
+            geometry=geometry,
+            T=T_test,
+            Nt=Nt,
+            diffusion=sigma_test**2 / 2,
+            components=components,
+        )
+
+        U_terminal = np.exp(-(x_grid**2) / (2 * beta_T)) / np.sqrt(2 * np.pi * beta_T)
+        M_density = np.ones((Nt + 1, N + 1))
+
+        solver_st = HJBSemiLagrangianSolver(
+            problem,
+            interpolation_method="cubic",
+            diffusion_method="stochastic",
+            check_cfl=False,
+        )
+        solver_adi = HJBSemiLagrangianSolver(
+            problem,
+            interpolation_method="cubic",
+            diffusion_method="adi",
+            check_cfl=False,
+        )
+
+        U_st = solver_st.solve_hjb_system(
+            M_density=M_density,
+            U_terminal=U_terminal,
+            U_coupling_prev=np.zeros((Nt + 1, N + 1)),
+        )
+        U_adi = solver_adi.solve_hjb_system(
+            M_density=M_density,
+            U_terminal=U_terminal,
+            U_coupling_prev=np.zeros((Nt + 1, N + 1)),
+        )
+
+        max_diff = np.max(np.abs(U_st[0] - U_adi[0]))
+        # Both schemes are 2nd-order accurate on smooth Gaussians; their
+        # difference should be a few units of the local truncation error.
+        assert max_diff < 5e-3, f"Stochastic and ADI diverge on smooth Gaussian: max diff = {max_diff:.3e}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
