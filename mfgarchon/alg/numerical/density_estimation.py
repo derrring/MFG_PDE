@@ -27,14 +27,25 @@ SUPPORTED_KERNELS = ("gaussian", "wendland_c2")
 
 
 def _wendland_c2_normalization_1d(delta: float) -> float:
-    """1D normalization Z_1 for Wendland C^2 kernel with support radius delta.
+    """1D normalization for the Wendland phi_{3,1} kernel with support radius delta.
 
-    K_unnorm(r) = (1 - |r|/delta)_+^4 (4|r|/delta + 1)
-    Z_1 = int_{-delta}^{delta} K_unnorm(r) dr = 2 * delta * int_0^1 phi(u) du
-        = 2 * delta * 1/3 = 2 delta / 3
+    Polynomial: K_unnorm(r) = (1 - |r|/delta)_+^4 (4|r|/delta + 1).
+    1D integral on [-delta, delta]:
+        Z_1 = int_{-delta}^{delta} K_unnorm(r) dr
+            = 2 * delta * int_0^1 (1-u)^4 (4u + 1) du
+            = 2 * delta * 1/3
+            = 2 delta / 3
 
-    where the inner integral is computed via direct expansion:
-    int_0^1 (1-u)^4 (4u + 1) du = int_0^1 (1 - 10 u^2 + 20 u^3 - 15 u^4 + 4 u^5) du = 1/3.
+    inner integral expansion: (1-u)^4 (4u+1) = 1 - 10 u^2 + 20 u^3 - 15 u^4 + 4 u^5,
+    so int_0^1 = 1 - 10/3 + 5 - 3 + 4/6 = 1/3.
+
+    Note on naming: this polynomial is Wendland's phi_{3,1}, positive definite
+    in R^d for d <= 3. mfgarchon's GFDM uses the same phi_{3,1} dimension-
+    independently (see WendlandKernel in mfgarchon.utils.numerical.kernels).
+    The canonical 1D-minimal-degree Wendland C^2 is the different polynomial
+    phi_{1,1} = (1-q)^3 (3q+1), with normalization alpha_1 = 5/(4h). That form
+    is not used here because the goal is kernel-matching with the GFDM
+    weight function, not minimal-degree in 1D.
     """
     return 2.0 * delta / 3.0
 
@@ -66,8 +77,12 @@ def gaussian_kde_gpu(
 
     - "wendland_c2": K_h(r) = (3 / (2 h)) * (1 - |r|/h)_+^4 * (4 |r|/h + 1).
       Compact support [-h, h]; bandwidth h interpreted directly as support
-      radius (NOT multiplied by std). C^2 continuity. Same kernel form as
-      the GFDM Wendland weights, enabling kernel-matched FP / HJB pipelines.
+      radius (NOT multiplied by std). C^2 continuity. This is Wendland's
+      phi_{3,1} polynomial (positive definite in R^d for d <= 3), matching
+      mfgarchon's GFDM WendlandKernel (used dimension-independently). The
+      canonical 1D-minimal-degree Wendland C^2 polynomial phi_{1,1} =
+      (1-q)^3 (3q+1) is NOT used; the choice here is to enable kernel-
+      matching with the GFDM stencil.
 
     GPU Acceleration Strategy:
         - Broadcast particles and grid to form (Nx, N) distance matrix
