@@ -161,24 +161,12 @@ from mfgarchon.utils.mfg_logging import get_logger, configure_research_logging
 - Reference code locations: `file_path:line_number`
 - Follow `mfg-research/docs/archon-notes/development/guides/CONSISTENCY_GUIDE.md`
 
-### **Mathematical Typesetting**
-- **Theory docs (.md)**: Full LaTeX using `$...$` delimiters
-- **Docstrings**: UTF-8 math symbols allowed (e.g., `∂u/∂t + H(∇u) = 0`)
-- **Code output/logging**: ASCII only for terminal compatibility
+### **Mathematical Typesetting & Emoji**
 
-### **Text and Symbol Standards** ⚠️ **CRITICAL**
-**NO emojis in Python files** (code comments, docstrings, output):
-```python
-# ✅ GOOD - Plain ASCII
-# Solve the HJB equation using Newton iteration
-print("Convergence: ||u - u_prev|| < 1e-6")
-
-# ❌ BAD - No emojis
-# 🚀 Solve the HJB equation
-print("Convergence: ‖u - u_prev‖ < 1e-6")
-```
-
-**Emoji usage**: ✅ Markdown docs | ❌ Python files, output, docstrings
+**Graduated to `agent_axiom`** (2026-05-01):
+- Markdown LaTeX-only (no Unicode 𝒯/ℝ substitution): `core/00_kernel.md`
+- Python docstring UTF-8 math + log ASCII + no emojis in code: `domains/cs/python.md` § Math symbols and emoji
+- This project follows those rules without local override.
 
 ### **Fail Fast & Surface Problems** ⚠️ **CRITICAL**
 Prioritize surfacing problems early during development:
