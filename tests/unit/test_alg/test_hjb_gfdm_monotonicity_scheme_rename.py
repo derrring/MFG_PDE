@@ -213,15 +213,90 @@ def test_legacy_emits_deprecation_warning(setup):
             f"Expected DeprecationWarning naming qp_optimization_level + monotonicity_scheme; got: {[str(w.message) for w in caught]}"
 
 
-def test_joint_socp_placeholder_warns(setup):
-    """joint_socp scheme is reserved (Phase 1B) — currently behaves as 'none'
-    with a warning."""
+def test_joint_socp_precompute_active(setup):
+    """joint_socp with precompute application: PrecomputedJointSocpStencils
+    is built at construction; reports feasibility stats."""
+    problem, pts, bdry = setup
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s = HJBGFDMSolver(problem, collocation_points=pts, boundary_indices=bdry,
+                         delta=0.3, monotonicity_scheme="joint_socp",
+                         adaptive_neighborhoods=True)
+    # New attribute exists with feasibility stats
+    assert s._joint_socp_stencils is not None, \
+        "Expected _joint_socp_stencils to be initialized for joint_socp scheme"
+    stats = s._joint_socp_stencils.stats
+    # On a quasi-uniform 11x11 grid, all interior nodes should be SOCP-feasible
+    # (paper Theorem `thm:joint_socp_feasibility`)
+    assert stats["n_feasible"] == stats["n_interior"], \
+        f"Expected all {stats['n_interior']} interior nodes feasible, got {stats['n_feasible']}"
+    # Application defaults to precompute for joint_socp
+    assert s.monotonicity_application == "precompute"
+    # Internally: legacy qp_optimization_level forced to "none" so M-matrix QP
+    # paths don't fire; joint SOCP weights override at derivative-matrix build.
+    assert s.qp_optimization_level == "none"
+
+
+def test_joint_socp_weights_satisfy_constraints(setup):
+    """Joint SOCP weights at every feasible stencil satisfy:
+    (a) 2nd-order Taylor consistency (A^T L = e_lap, A^T D = e_grad)
+    (b) M-matrix on -Δ_h (L_off ≥ 0)
+    (c) Per-edge cone (||D_j||_2 ≤ C h_i L_j)
+    """
+    from mfgarchon.alg.numerical.gfdm_components.joint_socp import build_taylor_matrix_2d
+
+    problem, pts, bdry = setup
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s = HJBGFDMSolver(problem, collocation_points=pts, boundary_indices=bdry,
+                         delta=0.3, monotonicity_scheme="joint_socp",
+                         adaptive_neighborhoods=True)
+
+    socp = s._joint_socp_stencils
+    C = 1.0  # cone constant used internally
+    for i in s._joint_socp_stencils._interior_indices[:20]:   # sample 20 stencils
+        i = int(i)
+        if not socp.has_stencil(i):
+            continue
+        sd = socp.stencils[i]
+        offsets = pts[sd.neighbor_indices] - pts[i]
+        A, _ = build_taylor_matrix_2d(offsets)
+
+        # 2nd-order consistency
+        e_lap = np.array([0., 0., 0., 1., 0., 1.])
+        np.testing.assert_allclose(A.T @ sd.L, e_lap, atol=1e-7, err_msg=f"L consistency at i={i}")
+        e_dx = np.array([0., 1., 0., 0., 0., 0.])
+        e_dy = np.array([0., 0., 1., 0., 0., 0.])
+        np.testing.assert_allclose(A.T @ sd.D[0], e_dx, atol=1e-7, err_msg=f"D[0] consistency at i={i}")
+        np.testing.assert_allclose(A.T @ sd.D[1], e_dy, atol=1e-7, err_msg=f"D[1] consistency at i={i}")
+
+        # M-matrix
+        L_off = np.delete(sd.L, sd.center_in_neighbors)
+        assert np.all(L_off >= -1e-9), f"L_off must be ≥ 0 at i={i}: min(L_off)={L_off.min()}"
+
+        # Per-edge cone
+        h_i = float(np.median(np.linalg.norm(offsets[offsets.any(axis=1)], axis=1)))
+        for j in range(len(sd.neighbor_indices)):
+            if j == sd.center_in_neighbors:
+                continue
+            if sd.L[j] <= 1e-12:
+                continue
+            kappa = h_i * np.linalg.norm(sd.D[:, j]) / sd.L[j]
+            assert kappa <= C + 1e-7, \
+                f"Cone violated at i={i}, j={j}: kappa={kappa:.4e} > C={C}"
+
+
+def test_joint_socp_unsupported_application_warns(setup):
+    """joint_socp with adaptive/always application warns (precompute is the
+    only supported strategy in v0.18.0)."""
     problem, pts, bdry = setup
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        s = HJBGFDMSolver(problem, collocation_points=pts, boundary_indices=bdry, delta=0.3,
-                         monotonicity_scheme="joint_socp")
-        joint_warns = [w for w in caught if "joint_socp" in str(w.message)]
-        assert len(joint_warns) >= 1, "Expected warning about joint_socp not yet implemented"
-    # Behaves as none for legacy field
-    assert s.qp_optimization_level == "none"
+        HJBGFDMSolver(
+            problem, collocation_points=pts, boundary_indices=bdry, delta=0.3,
+            monotonicity_scheme="joint_socp", monotonicity_application="adaptive",
+            adaptive_neighborhoods=True,
+        )
+    fb = [w for w in caught if "joint_socp" in str(w.message) and "precompute" in str(w.message)]
+    assert len(fb) >= 1, \
+        f"Expected fallback warning when joint_socp + non-precompute application is requested"

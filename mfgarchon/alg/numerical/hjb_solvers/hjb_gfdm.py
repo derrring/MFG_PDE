@@ -489,15 +489,19 @@ class HJBGFDMSolver(BaseHJBSolver):
             if application == "adaptive":
                 self.qp_optimization_level = "auto"
         elif scheme == "joint_socp":
-            # Phase 1A: joint_socp not yet implemented (Phase 1B follow-up).
-            # Behave as "none" until shared/socp.py is ported into mfgarchon proper.
+            # joint_socp uses no built-in QP correction (cf. PrecomputedMonotoneStencils
+            # which is for qp_m_matrix). Joint SOCP weights are precomputed below
+            # after _gfdm_operator is built; legacy `qp_optimization_level` is set to
+            # "none" so the existing M-matrix QP code paths don't fire.
             self.qp_optimization_level = "none"
-            warnings.warn(
-                "monotonicity_scheme='joint_socp' is reserved for the upcoming joint SOCP "
-                "implementation (audit-major contribution; Phase 1B PR). Currently behaves "
-                "as 'none'. Use shared/socp.py + patch_operator from mfg-research for now.",
-                stacklevel=2,
-            )
+            if application not in ("precompute", "ignored"):
+                warnings.warn(
+                    f"monotonicity_scheme='joint_socp' currently supports only "
+                    f"application='precompute'; got '{application}'. Falling back to "
+                    f"'precompute'. Adaptive/always strategies are tracked for a "
+                    f"follow-up PR.",
+                    stacklevel=2,
+                )
 
         # Method name
         if scheme == "none":
@@ -871,6 +875,35 @@ class HJBGFDMSolver(BaseHJBSolver):
             logger.info(
                 f"Precomputed monotone stencils: {self._precomputed_stencils.stats['n_monotonized']}/{self._precomputed_stencils.stats['n_boundary']} "
                 f"boundary points in {self._precomputed_stencils.stats['time_ms']:.1f}ms"
+            )
+
+        # Initialize precomputed joint SOCP stencils for monotonicity_scheme="joint_socp"
+        # Audit-major Phase 1B: enforce M-matrix + per-edge cone at all interior nodes
+        # where the joint SOCP is feasible (paper Theorem `thm:joint_socp_feasibility`).
+        # Boundary buffer where (S1)–(S3) fail uses Phase 2 fallback (mfgarchon defaults).
+        self._joint_socp_stencils = None
+        if self.monotonicity_scheme == "joint_socp":
+            from mfgarchon.alg.numerical.gfdm_components.joint_socp import (
+                PrecomputedJointSocpStencils,
+            )
+            interior_indices = np.setdiff1d(
+                np.arange(self.n_points), self.boundary_indices
+            )
+            self._joint_socp_stencils = PrecomputedJointSocpStencils(
+                operator=self._gfdm_operator,
+                points=self.collocation_points,
+                interior_indices=interior_indices,
+                delta=delta,
+                cone_constant_C=1.0,         # within $C_\\star \\in [0.5, 1]$ for Wendland C^2
+                eps_pos=0.0,
+            )
+            stats = self._joint_socp_stencils.stats
+            logger.info(
+                f"Precomputed joint SOCP stencils: feasible {stats['n_feasible']}/"
+                f"{stats['n_interior']} interior "
+                f"({stats['n_fast_path']} via Wendland-LSQ fast-path, "
+                f"{stats['n_socp']} via CLARABEL SOCP) in {stats['time_ms']:.1f}ms; "
+                f"infeasible {stats['n_infeasible']} fall back to default Wendland-Taylor"
             )
 
         # Lazy-initialized cache attributes
@@ -1327,6 +1360,21 @@ class HJBGFDMSolver(BaseHJBSolver):
                 if precomputed is not None:
                     lap_weights = precomputed[0]  # (weights, neighbor_indices)
                     # Note: neighbor_indices should match, we only replace weights
+
+            # Override BOTH Laplacian and gradient weights with joint SOCP weights at
+            # interior nodes where SOCP is feasible (audit-major Phase 1B). Boundary
+            # buffer nodes where (S1)–(S3) of paper prop:soft_monotonicity fail use
+            # the default Wendland-Taylor weights (Phase 2 fallback per paper §831).
+            if (
+                self._joint_socp_stencils is not None
+                and self._joint_socp_stencils.has_stencil(i)
+            ):
+                socp_weights = self._joint_socp_stencils.get_weights_dict(i)
+                if socp_weights is not None:
+                    # Joint SOCP guarantees same neighbor_indices + center as the
+                    # operator's stencil (it uses op.get_derivative_weights to build).
+                    lap_weights = socp_weights["lap_weights"]
+                    grad_weights = socp_weights["grad_weights"]
 
             # Fill gradient matrices
             for dim in range(d):
