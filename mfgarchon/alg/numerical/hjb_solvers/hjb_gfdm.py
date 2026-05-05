@@ -858,44 +858,9 @@ class HJBGFDMSolver(BaseHJBSolver):
                 "osqp_failures": 0,
             }
 
-        # Initialize precomputed monotone stencils.
-        #
-        # Two activation paths:
-        #   (1) monotonicity_scheme == "qp_m_matrix" with application "precompute"
-        #       (legacy `qp_optimization_level == "precompute"`): boundary M-matrix QP only.
-        #   (2) monotonicity_scheme == "joint_socp": joint SOCP at SOCP-feasible
-        #       interior nodes + M-matrix QP fallback at boundary buffer (paper §831
-        #       Phase 2 hybrid). The boundary M-matrix QP is built UNCONDITIONALLY
-        #       under joint_socp because per the paper, SOCP-infeasible buffer nodes
-        #       must still satisfy the M-matrix property to keep the discrete
-        #       comparison principle proof's per-edge absorption bound.
-        self._precomputed_stencils: PrecomputedMonotoneStencils | None = None
-        _build_qp_m_matrix_precompute = (
-            self.qp_optimization_level == "precompute"
-            or self.monotonicity_scheme == "joint_socp"
-        )
-        if _build_qp_m_matrix_precompute:
-            is_boundary = np.zeros(self.n_points, dtype=bool)
-            is_boundary[self.boundary_indices] = True
-
-            self._precomputed_stencils = PrecomputedMonotoneStencils(
-                operator=self._gfdm_operator,
-                is_boundary=is_boundary,
-                tolerance=1e-6,
-            )
-            logger.info(
-                f"Precomputed monotone stencils: {self._precomputed_stencils.stats['n_monotonized']}/{self._precomputed_stencils.stats['n_boundary']} "
-                f"boundary points in {self._precomputed_stencils.stats['time_ms']:.1f}ms"
-            )
-
-        # Initialize precomputed joint SOCP stencils for monotonicity_scheme="joint_socp"
+        # Initialize precomputed joint SOCP stencils first (joint_socp scheme only).
         # Audit-major Phase 1B: enforce M-matrix + per-edge cone at all interior nodes
         # where the joint SOCP is feasible (paper Theorem `thm:joint_socp_feasibility`).
-        # Boundary buffer where (S1)–(S3) fail uses Phase 2 fallback — combination of:
-        #   (a) PrecomputedMonotoneStencils above for boundary nodes (M-matrix QP)
-        #   (b) default Wendland-Taylor for the rest
-        # This three-tier dispatch (joint_socp > qp_m_matrix precompute > default)
-        # mirrors paper §831 algorithmic prescription.
         self._joint_socp_stencils = None
         if self.monotonicity_scheme == "joint_socp":
             from mfgarchon.alg.numerical.gfdm_components.joint_socp import (
@@ -920,6 +885,45 @@ class HJBGFDMSolver(BaseHJBSolver):
                 f"{stats['n_socp']} via CLARABEL SOCP) in {stats['time_ms']:.1f}ms; "
                 f"SOCP-infeasible {stats['n_infeasible']} fall back to "
                 f"M-matrix QP (Phase 2)"
+            )
+
+        # Initialize precomputed M-matrix QP stencils.
+        #
+        # Two activation paths:
+        #   (1) qp_m_matrix scheme + precompute application (legacy
+        #       `qp_optimization_level == "precompute"`): boundary nodes only.
+        #   (2) joint_socp scheme: boundary nodes PLUS SOCP-infeasible interior
+        #       buffer (paper §831 Phase 2 hybrid). Treating SOCP-infeasible
+        #       interior nodes as "buffer" for M-matrix QP purposes ensures
+        #       every interior node has either joint SOCP weights or M-matrix-
+        #       corrected weights — never bare unconstrained Wendland-Taylor
+        #       which can violate M-matrix at anisotropic near-buffer stencils.
+        self._precomputed_stencils: PrecomputedMonotoneStencils | None = None
+        _build_qp_m_matrix_precompute = (
+            self.qp_optimization_level == "precompute"
+            or self.monotonicity_scheme == "joint_socp"
+        )
+        if _build_qp_m_matrix_precompute:
+            is_buffer = np.zeros(self.n_points, dtype=bool)
+            is_buffer[self.boundary_indices] = True
+            # Under joint_socp: also treat SOCP-infeasible interior nodes as
+            # "buffer" so they get M-matrix QP correction (paper §831 Phase 2).
+            if self._joint_socp_stencils is not None:
+                socp_feasible = set(self._joint_socp_stencils.stencils.keys())
+                interior_idx = np.setdiff1d(
+                    np.arange(self.n_points), self.boundary_indices
+                )
+                infeasible_interior = [i for i in interior_idx if int(i) not in socp_feasible]
+                is_buffer[infeasible_interior] = True
+
+            self._precomputed_stencils = PrecomputedMonotoneStencils(
+                operator=self._gfdm_operator,
+                is_boundary=is_buffer,    # extended set: boundary + SOCP-infeasible interior
+                tolerance=1e-6,
+            )
+            logger.info(
+                f"Precomputed monotone stencils: {self._precomputed_stencils.stats['n_monotonized']}/{self._precomputed_stencils.stats['n_boundary']} "
+                f"buffer points in {self._precomputed_stencils.stats['time_ms']:.1f}ms"
             )
 
         # Lazy-initialized cache attributes
