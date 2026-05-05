@@ -232,9 +232,11 @@ def test_joint_socp_precompute_active(setup):
         f"Expected all {stats['n_interior']} interior nodes feasible, got {stats['n_feasible']}"
     # Application defaults to precompute for joint_socp
     assert s.monotonicity_application == "precompute"
-    # Internally: legacy qp_optimization_level forced to "none" so M-matrix QP
-    # paths don't fire; joint SOCP weights override at derivative-matrix build.
-    assert s.qp_optimization_level == "none"
+    # Internally: legacy qp_optimization_level aliased to "precompute" — joint_socp
+    # IS a precompute application, and this routes the HJB Newton through the
+    # per-point Hamiltonian path, matching the legacy precompute_socp_weights +
+    # patch_operator workflow numerically.
+    assert s.qp_optimization_level == "precompute"
 
 
 def test_joint_socp_weights_satisfy_constraints(setup):

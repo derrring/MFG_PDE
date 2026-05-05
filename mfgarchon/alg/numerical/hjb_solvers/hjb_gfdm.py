@@ -489,11 +489,15 @@ class HJBGFDMSolver(BaseHJBSolver):
             if application == "adaptive":
                 self.qp_optimization_level = "auto"
         elif scheme == "joint_socp":
-            # joint_socp uses no built-in QP correction (cf. PrecomputedMonotoneStencils
-            # which is for qp_m_matrix). Joint SOCP weights are precomputed below
-            # after _gfdm_operator is built; legacy `qp_optimization_level` is set to
-            # "none" so the existing M-matrix QP code paths don't fire.
-            self.qp_optimization_level = "none"
+            # joint_socp precomputes weights at __init__ (per-edge cone + M-matrix
+            # via SOCP); semantically this IS a precompute application. Setting
+            # legacy `qp_optimization_level = "precompute"` selects the per-point
+            # HJB Newton path (line ~2425), matching the qp_m_matrix+precompute
+            # path. Setting it to "none" instead would route through the batch
+            # Hamiltonian path which evaluates H(x,m,p,t) differently and breaks
+            # numerical equivalence with the legacy `precompute_socp_weights +
+            # patch_operator` workflow used in research code.
+            self.qp_optimization_level = "precompute"
             if application not in ("precompute", "ignored"):
                 warnings.warn(
                     f"monotonicity_scheme='joint_socp' currently supports only "
@@ -887,38 +891,20 @@ class HJBGFDMSolver(BaseHJBSolver):
                 f"M-matrix QP (Phase 2)"
             )
 
-        # Initialize precomputed M-matrix QP stencils.
-        #
-        # Two activation paths:
-        #   (1) qp_m_matrix scheme + precompute application (legacy
-        #       `qp_optimization_level == "precompute"`): boundary nodes only.
-        #   (2) joint_socp scheme: boundary nodes PLUS SOCP-infeasible interior
-        #       buffer (paper §831 Phase 2 hybrid). Treating SOCP-infeasible
-        #       interior nodes as "buffer" for M-matrix QP purposes ensures
-        #       every interior node has either joint SOCP weights or M-matrix-
-        #       corrected weights — never bare unconstrained Wendland-Taylor
-        #       which can violate M-matrix at anisotropic near-buffer stencils.
+        # Initialize precomputed M-matrix QP stencils at boundary nodes.
+        # Activated under both `qp_optimization_level == "precompute"` (legacy
+        # qp_m_matrix scheme) and `monotonicity_scheme == "joint_socp"` (which
+        # internally aliases qp_optimization_level to "precompute" — see above).
+        # SOCP-infeasible interior nodes fall through to bare Wendland-Taylor;
+        # extending the buffer set to cover them was empirically destabilizing
+        # (Lap-only correction creates Lap/Grad inconsistency at those nodes).
         self._precomputed_stencils: PrecomputedMonotoneStencils | None = None
-        _build_qp_m_matrix_precompute = (
-            self.qp_optimization_level == "precompute"
-            or self.monotonicity_scheme == "joint_socp"
-        )
-        if _build_qp_m_matrix_precompute:
+        if self.qp_optimization_level == "precompute":
             is_buffer = np.zeros(self.n_points, dtype=bool)
             is_buffer[self.boundary_indices] = True
-            # Under joint_socp: also treat SOCP-infeasible interior nodes as
-            # "buffer" so they get M-matrix QP correction (paper §831 Phase 2).
-            if self._joint_socp_stencils is not None:
-                socp_feasible = set(self._joint_socp_stencils.stencils.keys())
-                interior_idx = np.setdiff1d(
-                    np.arange(self.n_points), self.boundary_indices
-                )
-                infeasible_interior = [i for i in interior_idx if int(i) not in socp_feasible]
-                is_buffer[infeasible_interior] = True
-
             self._precomputed_stencils = PrecomputedMonotoneStencils(
                 operator=self._gfdm_operator,
-                is_boundary=is_buffer,    # extended set: boundary + SOCP-infeasible interior
+                is_boundary=is_buffer,
                 tolerance=1e-6,
             )
             logger.info(
@@ -2017,8 +2003,28 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Lazy initialization: Pre-cache all derivative weights (expensive computation)
         # self._cached_derivative_weights initialized as None in __init__
+        #
+        # Override precedence (joint SOCP > M-matrix QP > default operator weights):
+        # this keeps the per-point HJB Jacobian consistent with the differentiation
+        # matrices `_D_lap` / `_D_grad` (which apply the same precedence in
+        # `_build_derivative_matrices`). v3 research code achieved this by monkey-
+        # patching `_gfdm_operator.get_derivative_weights`; the precomputed-stencil
+        # path replaces that hack with explicit dispatch here.
         if self._cached_derivative_weights is None:
             self._cached_derivative_weights = [self._gfdm_operator.get_derivative_weights(i) for i in range(n)]
+            if self._joint_socp_stencils is not None:
+                for i in range(n):
+                    if self._joint_socp_stencils.has_stencil(i):
+                        socp_w = self._joint_socp_stencils.get_weights_dict(i)
+                        if socp_w is not None:
+                            self._cached_derivative_weights[i] = socp_w
+            if self._precomputed_stencils is not None:
+                for i in range(n):
+                    if self._precomputed_stencils.has_stencil(i):
+                        pre = self._precomputed_stencils.get_laplacian_weights(i)
+                        base = self._cached_derivative_weights[i]
+                        if pre is not None and base is not None:
+                            base["lap_weights"] = pre[0]
 
         # Use LIL format for efficient construction
         jacobian = lil_matrix((n, n))
