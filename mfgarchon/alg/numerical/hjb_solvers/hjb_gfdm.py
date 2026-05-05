@@ -858,12 +858,23 @@ class HJBGFDMSolver(BaseHJBSolver):
                 "osqp_failures": 0,
             }
 
-        # Initialize precomputed monotone stencils for "precompute" level
-        # This precomputes M-matrix compliant Laplacian weights at initialization,
-        # eliminating the need for runtime QP optimization.
+        # Initialize precomputed monotone stencils.
+        #
+        # Two activation paths:
+        #   (1) monotonicity_scheme == "qp_m_matrix" with application "precompute"
+        #       (legacy `qp_optimization_level == "precompute"`): boundary M-matrix QP only.
+        #   (2) monotonicity_scheme == "joint_socp": joint SOCP at SOCP-feasible
+        #       interior nodes + M-matrix QP fallback at boundary buffer (paper §831
+        #       Phase 2 hybrid). The boundary M-matrix QP is built UNCONDITIONALLY
+        #       under joint_socp because per the paper, SOCP-infeasible buffer nodes
+        #       must still satisfy the M-matrix property to keep the discrete
+        #       comparison principle proof's per-edge absorption bound.
         self._precomputed_stencils: PrecomputedMonotoneStencils | None = None
-        if self.qp_optimization_level == "precompute":
-            # Create boundary mask
+        _build_qp_m_matrix_precompute = (
+            self.qp_optimization_level == "precompute"
+            or self.monotonicity_scheme == "joint_socp"
+        )
+        if _build_qp_m_matrix_precompute:
             is_boundary = np.zeros(self.n_points, dtype=bool)
             is_boundary[self.boundary_indices] = True
 
@@ -880,7 +891,11 @@ class HJBGFDMSolver(BaseHJBSolver):
         # Initialize precomputed joint SOCP stencils for monotonicity_scheme="joint_socp"
         # Audit-major Phase 1B: enforce M-matrix + per-edge cone at all interior nodes
         # where the joint SOCP is feasible (paper Theorem `thm:joint_socp_feasibility`).
-        # Boundary buffer where (S1)–(S3) fail uses Phase 2 fallback (mfgarchon defaults).
+        # Boundary buffer where (S1)–(S3) fail uses Phase 2 fallback — combination of:
+        #   (a) PrecomputedMonotoneStencils above for boundary nodes (M-matrix QP)
+        #   (b) default Wendland-Taylor for the rest
+        # This three-tier dispatch (joint_socp > qp_m_matrix precompute > default)
+        # mirrors paper §831 algorithmic prescription.
         self._joint_socp_stencils = None
         if self.monotonicity_scheme == "joint_socp":
             from mfgarchon.alg.numerical.gfdm_components.joint_socp import (
@@ -903,7 +918,8 @@ class HJBGFDMSolver(BaseHJBSolver):
                 f"{stats['n_interior']} interior "
                 f"({stats['n_fast_path']} via Wendland-LSQ fast-path, "
                 f"{stats['n_socp']} via CLARABEL SOCP) in {stats['time_ms']:.1f}ms; "
-                f"infeasible {stats['n_infeasible']} fall back to default Wendland-Taylor"
+                f"SOCP-infeasible {stats['n_infeasible']} fall back to "
+                f"M-matrix QP (Phase 2)"
             )
 
         # Lazy-initialized cache attributes
@@ -1349,22 +1365,27 @@ class HJBGFDMSolver(BaseHJBSolver):
             grad_weights = weights["grad_weights"]  # shape: (d, n_neighbors)
             lap_weights = weights["lap_weights"]  # shape: (n_neighbors,)
 
-            # Override Laplacian weights with precomputed monotone weights if available
-            # This ensures M-matrix property for numerical stability at boundary points
+            # Override Laplacian weights with M-matrix QP precomputed monotone
+            # weights if available. Two activation paths both populate
+            # self._precomputed_stencils:
+            #   (1) qp_m_matrix scheme + precompute application (legacy path)
+            #   (2) joint_socp scheme — applies M-matrix QP at boundary buffer
+            #       nodes where joint SOCP is infeasible (Phase 2 fallback per
+            #       paper §831). The `joint_socp_stencils` override below takes
+            #       priority for SOCP-feasible interior nodes.
             if (
-                self.qp_optimization_level == "precompute"
-                and self._precomputed_stencils is not None
+                self._precomputed_stencils is not None
                 and self._precomputed_stencils.has_stencil(i)
             ):
                 precomputed = self._precomputed_stencils.get_laplacian_weights(i)
                 if precomputed is not None:
                     lap_weights = precomputed[0]  # (weights, neighbor_indices)
-                    # Note: neighbor_indices should match, we only replace weights
 
             # Override BOTH Laplacian and gradient weights with joint SOCP weights at
-            # interior nodes where SOCP is feasible (audit-major Phase 1B). Boundary
-            # buffer nodes where (S1)–(S3) of paper prop:soft_monotonicity fail use
-            # the default Wendland-Taylor weights (Phase 2 fallback per paper §831).
+            # interior nodes where SOCP is feasible (audit-major Phase 1B). This takes
+            # priority over qp_m_matrix precompute. Boundary buffer nodes where SOCP
+            # is infeasible fall back to qp_m_matrix above (or default Wendland-Taylor
+            # if qp_m_matrix precompute also doesn't have a stencil there).
             if (
                 self._joint_socp_stencils is not None
                 and self._joint_socp_stencils.has_stencil(i)
