@@ -222,6 +222,12 @@ class HJBGFDMSolver(BaseHJBSolver):
         since="v0.17.0",
     )
     @deprecated_parameter(
+        param_name="qp_optimization_level",
+        since="v0.18.0",
+        replacement="monotonicity_scheme",
+        removal_blockers=["internal_usage", "equivalence_test", "migration_docs"],
+    )
+    @deprecated_parameter(
         param_name="NiterNewton",
         since="v0.17.0",
         replacement="max_newton_iterations",
@@ -246,8 +252,15 @@ class HJBGFDMSolver(BaseHJBSolver):
         l2errBoundNewton: float | None = None,
         boundary_indices: np.ndarray | None = None,
         boundary_conditions: dict | BoundaryConditions | None = None,
-        # QP optimization level
-        qp_optimization_level: str = "none",  # "none", "auto", or "always"
+        # Monotonicity construction (renamed from qp_optimization_level v0.18.0; Issue #XXXX).
+        # Two orthogonal axes:
+        #   - monotonicity_scheme: WHICH constraint is enforced
+        #   - monotonicity_application: WHEN to enforce it
+        # See docstring for full semantics.
+        monotonicity_scheme: str | None = None,
+        monotonicity_application: str | None = None,
+        # Deprecated alias bundling both axes — will be removed v0.25.0
+        qp_optimization_level: str | None = None,
         qp_usage_target: float = 0.1,  # Unused, kept for backward compatibility
         qp_solver: str = "osqp",  # "osqp" or "scipy"
         qp_warm_start: bool = True,  # Enable QP warm-starting
@@ -297,10 +310,30 @@ class HJBGFDMSolver(BaseHJBSolver):
             boundary_conditions: Dictionary or BoundaryConditions object specifying boundary conditions
             use_monotone_constraints: DEPRECATED - Use qp_optimization_level instead.
                 If explicitly set to True, will override qp_optimization_level.
-            qp_optimization_level: QP optimization level (controls QP behavior):
-                - "none": No QP constraints
-                - "auto": Adaptive QP with M-matrix checking (recommended)
-                - "always": Force QP at every point (debugging/analysis)
+            monotonicity_scheme: Which monotonicity construction to enforce on the GFDM
+                Laplacian (and, for joint_socp, the per-edge cone on the gradient stencil):
+                - "none": no constraints (fastest; no monotonicity guarantee).
+                - "qp_m_matrix": classical M-matrix QP — projects unconstrained
+                  Wendland-Taylor Laplacian weights onto $L_{ij} \\geq 0$ for $j \\neq i$.
+                - "joint_socp": (Phase 1B follow-up) joint SOCP — M-matrix on $-\\Delta_h$
+                  + per-edge cone $\\|D_{ij}\\|_2 \\leq C h_i L_{ij}$, closing the discrete
+                  comparison principle (audit-major contribution).
+                Default: "none".
+                Renamed from `qp_optimization_level` in v0.18.0; legacy bundle still
+                accepted as deprecated alias.
+            monotonicity_application: When the chosen scheme is enforced (only
+                meaningful for non-"none" schemes):
+                - "adaptive": only at nodes where the unconstrained weights violate
+                  the constraint (= legacy "auto"; recommended for qp_m_matrix).
+                - "always": at every node, every solve.
+                - "precompute": cache feasible weights at construction; reuse for all
+                  Picard iterations / time steps. Recommended for joint_socp.
+                Default (None): use scheme-recommended default — "adaptive" for
+                qp_m_matrix, "precompute" for joint_socp.
+            qp_optimization_level: DEPRECATED alias bundling (scheme + application). Will be
+                removed in v0.25.0. Mappings: "none"→(none, —), "auto"→(qp_m_matrix, adaptive),
+                "always"→(qp_m_matrix, always), "precompute"→(qp_m_matrix, precompute).
+                Pass `monotonicity_scheme=` and `monotonicity_application=` instead.
             qp_usage_target: Deprecated parameter, kept for backward compatibility
             qp_solver: QP solver backend (default "osqp"):
                 - "osqp": Use OSQP solver (fast convex QP, 5-10× faster than scipy)
@@ -375,20 +408,116 @@ class HJBGFDMSolver(BaseHJBSolver):
         """
         super().__init__(problem)
 
-        # Store QP optimization level (deprecated values remapped by @deprecated_value)
-        self.qp_optimization_level = qp_optimization_level
+        # --- Resolve (scheme, application) from new API or legacy alias (v0.18.0) ---
+        #
+        # Two orthogonal axes:
+        #   monotonicity_scheme:        WHICH constraint is enforced
+        #     "none" | "qp_m_matrix" | "joint_socp"
+        #   monotonicity_application:   WHEN it is enforced
+        #     "adaptive" | "always" | "precompute"
+        #
+        # Application defaults per scheme (when application=None):
+        #   qp_m_matrix → "adaptive"     (= legacy "auto", recommended runtime check)
+        #   joint_socp  → "precompute"   (audit-major default; weights cached at construction)
+        #   none        → ignored
+        #
+        # Legacy `qp_optimization_level` bundles both axes via these mappings:
+        #   "none"       → (none, ignored)
+        #   "auto"       → (qp_m_matrix, adaptive)
+        #   "always"     → (qp_m_matrix, always)
+        #   "precompute" → (qp_m_matrix, precompute)
+        #
+        # Mutual exclusion: pass either the new (scheme + application) or the legacy alias,
+        # not both.
+        if (
+            monotonicity_scheme is not None or monotonicity_application is not None
+        ) and qp_optimization_level is not None:
+            raise ValueError(
+                "Specify at most one of: (monotonicity_scheme=, monotonicity_application=) "
+                "or qp_optimization_level=. The latter is the deprecated alias (v0.18.0)."
+            )
 
-        # Set method name based on QP optimization level
-        if qp_optimization_level == "none":
-            self.hjb_method_name = "GFDM"
-        elif qp_optimization_level == "auto":
-            self.hjb_method_name = "GFDM-QP"
-        elif qp_optimization_level == "always":
-            self.hjb_method_name = "GFDM-QP-Always"
-        elif qp_optimization_level == "precompute":
-            self.hjb_method_name = "GFDM-Precompute"
+        if monotonicity_scheme is not None or monotonicity_application is not None:
+            # New API path
+            scheme = monotonicity_scheme if monotonicity_scheme is not None else "none"
+            valid_schemes = ("none", "qp_m_matrix", "joint_socp")
+            if scheme not in valid_schemes:
+                raise ValueError(f"monotonicity_scheme must be one of {valid_schemes}; got '{scheme}'.")
+            valid_apps = ("adaptive", "always", "precompute", None)
+            if monotonicity_application not in valid_apps:
+                raise ValueError(
+                    f"monotonicity_application must be one of {valid_apps}; got '{monotonicity_application}'."
+                )
+            # Resolve application via scheme-default if unspecified
+            if monotonicity_application is None:
+                application = {
+                    "none": "ignored",
+                    "qp_m_matrix": "adaptive",
+                    "joint_socp": "precompute",
+                }[scheme]
+            else:
+                application = monotonicity_application
         else:
-            self.hjb_method_name = f"GFDM-{qp_optimization_level}"
+            # Legacy path
+            legacy = qp_optimization_level if qp_optimization_level is not None else "none"
+            mapping = {
+                "none": ("none", "ignored"),
+                "auto": ("qp_m_matrix", "adaptive"),
+                "always": ("qp_m_matrix", "always"),
+                "precompute": ("qp_m_matrix", "precompute"),
+            }
+            if legacy in mapping:
+                scheme, application = mapping[legacy]
+            else:
+                # Unknown legacy value — pass through for solver-internal handling
+                scheme, application = "qp_m_matrix", legacy
+
+        # Canonical storage
+        self.monotonicity_scheme = scheme
+        self.monotonicity_application = application
+
+        # Reconstruct legacy `qp_optimization_level` for backward-compat internal branches
+        # (lines using self.qp_optimization_level == "auto"/"always"/"precompute"/"none"):
+        if scheme == "none":
+            self.qp_optimization_level = "none"
+        elif scheme == "qp_m_matrix":
+            self.qp_optimization_level = application  # adaptive→"auto"-like, etc.
+            # Note: "adaptive" maps to legacy "auto" semantically, but the legacy code
+            # branches check string == "auto", so we need to translate:
+            if application == "adaptive":
+                self.qp_optimization_level = "auto"
+        elif scheme == "joint_socp":
+            # joint_socp precomputes weights at __init__ (per-edge cone + M-matrix
+            # via SOCP); semantically this IS a precompute application. Setting
+            # legacy `qp_optimization_level = "precompute"` selects the per-point
+            # HJB Newton path (line ~2425), matching the qp_m_matrix+precompute
+            # path. Setting it to "none" instead would route through the batch
+            # Hamiltonian path which evaluates H(x,m,p,t) differently and breaks
+            # numerical equivalence with the legacy `precompute_socp_weights +
+            # patch_operator` workflow used in research code.
+            self.qp_optimization_level = "precompute"
+            if application not in ("precompute", "ignored"):
+                warnings.warn(
+                    f"monotonicity_scheme='joint_socp' currently supports only "
+                    f"application='precompute'; got '{application}'. Falling back to "
+                    f"'precompute'. Adaptive/always strategies are tracked for a "
+                    f"follow-up PR.",
+                    stacklevel=2,
+                )
+
+        # Method name
+        if scheme == "none":
+            self.hjb_method_name = "GFDM"
+        elif scheme == "qp_m_matrix":
+            self.hjb_method_name = {
+                "adaptive": "GFDM-QP",
+                "always": "GFDM-QP-Always",
+                "precompute": "GFDM-Precompute",
+            }.get(application, f"GFDM-{application}")
+        elif scheme == "joint_socp":
+            self.hjb_method_name = f"GFDM-JointSOCP-{application}"
+        else:
+            self.hjb_method_name = f"GFDM-{self.qp_optimization_level}"
 
         # Handle backward compatibility (warnings issued by @deprecated_parameter decorators)
         if NiterNewton is not None:
@@ -440,8 +569,8 @@ class HJBGFDMSolver(BaseHJBSolver):
             self.boundary_conditions = self.get_boundary_conditions()
         self.interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
 
-        # QP optimization level (single source of truth for QP control)
-        self.qp_optimization_level = qp_optimization_level
+        # Monotonicity scheme (single source of truth) — already set above (v0.18.0 rename)
+        # self.monotonicity_scheme and self.qp_optimization_level both = resolved monotonicity_scheme
 
         # QP usage target (deprecated, kept for backward compatibility)
         self.qp_usage_target = qp_usage_target
@@ -496,8 +625,6 @@ class HJBGFDMSolver(BaseHJBSolver):
         else:
             # Ensure k_min is at least what's required for Taylor expansion
             if k_min < n_derivatives_required:
-                import warnings
-
                 warnings.warn(
                     f"k_min={k_min} is less than required for Taylor order {taylor_order} "
                     f"in {self.dimension}D (need {n_derivatives_required}). "
@@ -531,8 +658,6 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Check for mutual exclusivity (ghost nodes takes precedence)
         if self._use_ghost_nodes and self._use_local_coordinate_rotation:
-            import warnings
-
             warnings.warn(
                 "Both use_ghost_nodes and use_local_coordinate_rotation are enabled. "
                 "Ghost nodes take precedence and LCR will be disabled for boundary points.",
@@ -735,23 +860,53 @@ class HJBGFDMSolver(BaseHJBSolver):
                 "osqp_failures": 0,
             }
 
-        # Initialize precomputed monotone stencils for "precompute" level
-        # This precomputes M-matrix compliant Laplacian weights at initialization,
-        # eliminating the need for runtime QP optimization.
+        # Initialize precomputed joint SOCP stencils first (joint_socp scheme only).
+        # Audit-major Phase 1B: enforce M-matrix + per-edge cone at all interior nodes
+        # where the joint SOCP is feasible (paper Theorem `thm:joint_socp_feasibility`).
+        self._joint_socp_stencils = None
+        if self.monotonicity_scheme == "joint_socp":
+            from mfgarchon.alg.numerical.gfdm_components.joint_socp import (
+                PrecomputedJointSocpStencils,
+            )
+
+            interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
+            self._joint_socp_stencils = PrecomputedJointSocpStencils(
+                operator=self._gfdm_operator,
+                points=self.collocation_points,
+                interior_indices=interior_indices,
+                delta=delta,
+                cone_constant_C=1.0,  # within $C_\\star \\in [0.5, 1]$ for Wendland C^2
+                eps_pos=0.0,
+            )
+            stats = self._joint_socp_stencils.stats
+            logger.info(
+                f"Precomputed joint SOCP stencils: feasible {stats['n_feasible']}/"
+                f"{stats['n_interior']} interior "
+                f"({stats['n_fast_path']} via Wendland-LSQ fast-path, "
+                f"{stats['n_socp']} via CLARABEL SOCP) in {stats['time_ms']:.1f}ms; "
+                f"SOCP-infeasible {stats['n_infeasible']} fall back to "
+                f"M-matrix QP (Phase 2)"
+            )
+
+        # Initialize precomputed M-matrix QP stencils at boundary nodes.
+        # Activated under both `qp_optimization_level == "precompute"` (legacy
+        # qp_m_matrix scheme) and `monotonicity_scheme == "joint_socp"` (which
+        # internally aliases qp_optimization_level to "precompute" — see above).
+        # SOCP-infeasible interior nodes fall through to bare Wendland-Taylor;
+        # extending the buffer set to cover them was empirically destabilizing
+        # (Lap-only correction creates Lap/Grad inconsistency at those nodes).
         self._precomputed_stencils: PrecomputedMonotoneStencils | None = None
         if self.qp_optimization_level == "precompute":
-            # Create boundary mask
-            is_boundary = np.zeros(self.n_points, dtype=bool)
-            is_boundary[self.boundary_indices] = True
-
+            is_buffer = np.zeros(self.n_points, dtype=bool)
+            is_buffer[self.boundary_indices] = True
             self._precomputed_stencils = PrecomputedMonotoneStencils(
                 operator=self._gfdm_operator,
-                is_boundary=is_boundary,
+                is_boundary=is_buffer,
                 tolerance=1e-6,
             )
             logger.info(
                 f"Precomputed monotone stencils: {self._precomputed_stencils.stats['n_monotonized']}/{self._precomputed_stencils.stats['n_boundary']} "
-                f"boundary points in {self._precomputed_stencils.stats['time_ms']:.1f}ms"
+                f"buffer points in {self._precomputed_stencils.stats['time_ms']:.1f}ms"
             )
 
         # Lazy-initialized cache attributes
@@ -1197,17 +1352,31 @@ class HJBGFDMSolver(BaseHJBSolver):
             grad_weights = weights["grad_weights"]  # shape: (d, n_neighbors)
             lap_weights = weights["lap_weights"]  # shape: (n_neighbors,)
 
-            # Override Laplacian weights with precomputed monotone weights if available
-            # This ensures M-matrix property for numerical stability at boundary points
-            if (
-                self.qp_optimization_level == "precompute"
-                and self._precomputed_stencils is not None
-                and self._precomputed_stencils.has_stencil(i)
-            ):
+            # Override Laplacian weights with M-matrix QP precomputed monotone
+            # weights if available. Two activation paths both populate
+            # self._precomputed_stencils:
+            #   (1) qp_m_matrix scheme + precompute application (legacy path)
+            #   (2) joint_socp scheme — applies M-matrix QP at boundary buffer
+            #       nodes where joint SOCP is infeasible (Phase 2 fallback per
+            #       paper §831). The `joint_socp_stencils` override below takes
+            #       priority for SOCP-feasible interior nodes.
+            if self._precomputed_stencils is not None and self._precomputed_stencils.has_stencil(i):
                 precomputed = self._precomputed_stencils.get_laplacian_weights(i)
                 if precomputed is not None:
                     lap_weights = precomputed[0]  # (weights, neighbor_indices)
-                    # Note: neighbor_indices should match, we only replace weights
+
+            # Override BOTH Laplacian and gradient weights with joint SOCP weights at
+            # interior nodes where SOCP is feasible (audit-major Phase 1B). This takes
+            # priority over qp_m_matrix precompute. Boundary buffer nodes where SOCP
+            # is infeasible fall back to qp_m_matrix above (or default Wendland-Taylor
+            # if qp_m_matrix precompute also doesn't have a stencil there).
+            if self._joint_socp_stencils is not None and self._joint_socp_stencils.has_stencil(i):
+                socp_weights = self._joint_socp_stencils.get_weights_dict(i)
+                if socp_weights is not None:
+                    # Joint SOCP guarantees same neighbor_indices + center as the
+                    # operator's stencil (it uses op.get_derivative_weights to build).
+                    lap_weights = socp_weights["lap_weights"]
+                    grad_weights = socp_weights["grad_weights"]
 
             # Fill gradient matrices
             for dim in range(d):
@@ -1440,7 +1609,7 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         Example:
             # For QP-constrained derivatives (HJB specific):
-            solver = HJBGFDMSolver(problem, points, qp_optimization_level="auto")
+            solver = HJBGFDMSolver(problem, points, monotonicity_scheme="auto")
             derivs = solver.compute_all_derivatives(u, use_qp=True)
 
             # For general GFDM (simpler, no QP):
@@ -1825,8 +1994,28 @@ class HJBGFDMSolver(BaseHJBSolver):
 
         # Lazy initialization: Pre-cache all derivative weights (expensive computation)
         # self._cached_derivative_weights initialized as None in __init__
+        #
+        # Override precedence (joint SOCP > M-matrix QP > default operator weights):
+        # this keeps the per-point HJB Jacobian consistent with the differentiation
+        # matrices `_D_lap` / `_D_grad` (which apply the same precedence in
+        # `_build_derivative_matrices`). v3 research code achieved this by monkey-
+        # patching `_gfdm_operator.get_derivative_weights`; the precomputed-stencil
+        # path replaces that hack with explicit dispatch here.
         if self._cached_derivative_weights is None:
             self._cached_derivative_weights = [self._gfdm_operator.get_derivative_weights(i) for i in range(n)]
+            if self._joint_socp_stencils is not None:
+                for i in range(n):
+                    if self._joint_socp_stencils.has_stencil(i):
+                        socp_w = self._joint_socp_stencils.get_weights_dict(i)
+                        if socp_w is not None:
+                            self._cached_derivative_weights[i] = socp_w
+            if self._precomputed_stencils is not None:
+                for i in range(n):
+                    if self._precomputed_stencils.has_stencil(i):
+                        pre = self._precomputed_stencils.get_laplacian_weights(i)
+                        base = self._cached_derivative_weights[i]
+                        if pre is not None and base is not None:
+                            base["lap_weights"] = pre[0]
 
         # Use LIL format for efficient construction
         jacobian = lil_matrix((n, n))

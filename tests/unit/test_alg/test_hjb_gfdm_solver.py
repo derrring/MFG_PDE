@@ -113,14 +113,23 @@ class TestHJBGFDMSolverInitialization:
         x_coords = np.linspace(bounds[0][0], bounds[1][0], Nx_points)
         collocation_points = x_coords.reshape(-1, 1)
 
-        # Test current QP optimization levels
-        levels = ["none", "auto", "always"]
-        expected_names = ["GFDM", "GFDM-QP", "GFDM-QP-Always"]
-
-        for level, expected_name in zip(levels, expected_names, strict=False):
-            solver = HJBGFDMSolver(problem, collocation_points, qp_optimization_level=level)
+        # Test monotonicity_scheme + monotonicity_application combinations (v0.18.0 API)
+        # Format: (scheme, application, expected_method_name)
+        configs = [
+            ("none", None, "GFDM"),
+            ("qp_m_matrix", "adaptive", "GFDM-QP"),
+            ("qp_m_matrix", "always", "GFDM-QP-Always"),
+        ]
+        for scheme, application, expected_name in configs:
+            solver = HJBGFDMSolver(
+                problem, collocation_points,
+                monotonicity_scheme=scheme,
+                monotonicity_application=application,
+            )
             assert solver.hjb_method_name == expected_name
-            assert solver.qp_optimization_level == level
+            assert solver.monotonicity_scheme == scheme
+            if application is not None:
+                assert solver.monotonicity_application == application
 
 
 class TestHJBGFDMSolverNeighborhoods:

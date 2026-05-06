@@ -161,24 +161,12 @@ from mfgarchon.utils.mfg_logging import get_logger, configure_research_logging
 - Reference code locations: `file_path:line_number`
 - Follow `mfg-research/docs/archon-notes/development/guides/CONSISTENCY_GUIDE.md`
 
-### **Mathematical Typesetting**
-- **Theory docs (.md)**: Full LaTeX using `$...$` delimiters
-- **Docstrings**: UTF-8 math symbols allowed (e.g., `∂u/∂t + H(∇u) = 0`)
-- **Code output/logging**: ASCII only for terminal compatibility
+### **Mathematical Typesetting & Emoji**
 
-### **Text and Symbol Standards** ⚠️ **CRITICAL**
-**NO emojis in Python files** (code comments, docstrings, output):
-```python
-# ✅ GOOD - Plain ASCII
-# Solve the HJB equation using Newton iteration
-print("Convergence: ||u - u_prev|| < 1e-6")
-
-# ❌ BAD - No emojis
-# 🚀 Solve the HJB equation
-print("Convergence: ‖u - u_prev‖ < 1e-6")
-```
-
-**Emoji usage**: ✅ Markdown docs | ❌ Python files, output, docstrings
+**Graduated to `agent_axiom`** (2026-05-01):
+- Markdown LaTeX-only (no Unicode 𝒯/ℝ substitution): `core/00_kernel.md`
+- Python docstring UTF-8 math + log ASCII + no emojis in code: `domains/cs/python.md` § Math symbols and emoji
+- This project follows those rules without local override.
 
 ### **Fail Fast & Surface Problems** ⚠️ **CRITICAL**
 Prioritize surfacing problems early during development:
@@ -590,6 +578,36 @@ When deprecating any API element (parameter, function, class, module):
 - ✅ Equivalence test is mandatory
 - ✅ Pre-commit hook blocks deprecated usage in production code
 - ✅ CI verifies all call sites updated
+
+### **Version Bump Checklist** ⚠️ **MANDATORY**
+
+When bumping the package version, update the following in a single commit:
+
+1. **`pyproject.toml`** — `version = "X.Y.Z"` on line 11. Inline comment on the
+   same line summarizing the bump (e.g., `# vX.Y.Z: <one-line scope>`).
+2. **`CHANGELOG.md`** — promote the `## [Unreleased]` section to
+   `## [X.Y.Z] - YYYY-MM-DD`, then re-add an empty `## [Unreleased]` above it.
+   Use Keep a Changelog categories: `### Added`, `### Changed`,
+   `### Deprecated`, `### Removed (BREAKING)`, `### Fixed`. Reference the PR
+   number; reference the github issue if the change is bug-fix-driven.
+
+**No need to edit**:
+- `mfgarchon/__init__.py` — reads via `importlib.metadata.version("mfgarchon")`,
+  auto-syncs from pyproject at install time.
+- `mfgarchon/workflow/__init__.py:__version__ = "1.0.0"` — independent
+  subpackage version, decoupled from main package by design.
+- Backend version reporting (`numpy_backend.py`, `torch_backend.py`,
+  `numpy_compat.py`) — these report installed *external library* versions
+  (numpy, torch, jax), not mfgarchon's own version.
+- Historical notes in module docstrings that reference past versions
+  (e.g., "prior versions before v0.19.4 maintained...") — keep the historical
+  reference; do not bump.
+
+**Sanity check before commit**:
+```bash
+grep -rn "^version =\|^__version__ =" pyproject.toml mfgarchon/ --include="*.toml" --include="*.py"
+```
+The only line that should change is `pyproject.toml:11`.
 
 ### **Branch Naming** ⚠️ **MANDATORY**
 Always use `<type>/<short-description>` format:

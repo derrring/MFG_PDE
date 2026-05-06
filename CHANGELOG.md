@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.5] - 2026-05-06
+
+### Added
+
+- **Two-axis monotonicity API on `HJBGFDMSolver`** (PR #1030):
+  - `monotonicity_scheme: "none" | "qp_m_matrix" | "joint_socp"` — what kind of
+    constraint to enforce on stencil weights.
+  - `monotonicity_application: "adaptive" | "always" | "precompute" | None` —
+    when/how it is enforced (per-point QP at runtime vs. precomputed at
+    construction).
+  - Replaces the legacy `qp_optimization_level=` bundled parameter; equivalence
+    is bit-identical, covered by 12 tests in
+    `tests/unit/test_alg/test_hjb_gfdm_monotonicity_scheme_rename.py`.
+- **First-class `monotonicity_scheme="joint_socp"` option** — precomputes
+  joint SOCP-constrained weights (M-matrix on $-\Delta_h$ + per-edge cone
+  $\|D_j\|_2 \le C\,h_i\,L_j$) at construction. Includes a Wendland-LSQ
+  fast-path (paper Theorem `thm:joint_socp_feasibility`) and a CLARABEL
+  CVXPY fallback. Replaces the research-side `patch_operator` monkey-patch
+  workflow used through v0.19.4.
+- **New module `mfgarchon/alg/numerical/gfdm_components/joint_socp.py`** with
+  `PrecomputedJointSocpStencils`, mirroring `PrecomputedMonotoneStencils`.
+
+### Deprecated
+
+- **`qp_optimization_level=`** parameter on `HJBGFDMSolver`. Still accepted
+  via `@deprecated_parameter` alias (3 minor versions / 6 months removal
+  timeline per `DEPRECATION_LIFECYCLE_POLICY.md`). Emits `DeprecationWarning`
+  and translates to the new two-axis API internally with bit-identical
+  results.
+
+### Fixed
+
+- **HJB Newton Jacobian now consults precomputed SOCP / M-matrix-QP weights.**
+  The lazy fill of `_cached_derivative_weights` (around line 2006 of
+  `hjb_gfdm.py`) previously read directly from `_gfdm_operator.get_derivative_weights`,
+  bypassing precomputed-stencil overrides — so `_D_lap` / `_D_grad` (used by
+  the batch Hamiltonian path) saw SOCP-corrected weights, but the per-point
+  Newton Jacobian saw bare Wendland-Taylor. This caused a 12× `u_err` gap
+  in the exp08 2D Towel-on-Beach validation between the research-side
+  `patch_operator` workflow and the new first-class `joint_socp` scheme; the
+  fix restores numerical equivalence (`u_err = 2.115` to 4 sig figs at iter 1
+  in both paths).
+- **`monotonicity_scheme="joint_socp"` now aliases internal
+  `qp_optimization_level` to `"precompute"`** (previously `"none"`). The
+  legacy value silently gates HJB Newton path selection: `"none"` selects
+  the batch Hamiltonian path, anything else selects per-point. SOCP weights
+  must be consumed by the per-point path to match the legacy patch_operator
+  workflow.
+
 ## [0.19.4] - 2026-04-18
 
 ### Removed (BREAKING)

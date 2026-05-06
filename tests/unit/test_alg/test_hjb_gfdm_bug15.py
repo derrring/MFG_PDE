@@ -126,12 +126,13 @@ class TestBug15CallableSigma:
             collocation_points,
             delta=0.15,
             taylor_order=2,
-            qp_optimization_level="auto",
+            monotonicity_scheme="qp_m_matrix",  # was qp_optimization_level="auto" pre-v0.18.0
             qp_solver="scipy",  # Use scipy to avoid OSQP dependency
         )
 
         # Verify solver initialized correctly
-        assert solver.qp_optimization_level == "auto"
+        assert solver.monotonicity_scheme == "qp_m_matrix"
+        assert solver.monotonicity_application == "adaptive"
         assert callable(problem.sigma)
 
         # Test _get_sigma_value helper with different point indices
@@ -156,11 +157,13 @@ class TestBug15CallableSigma:
             collocation_points,
             delta=0.15,
             taylor_order=2,
-            qp_optimization_level="always",
+            monotonicity_scheme="qp_m_matrix",  # was qp_optimization_level="always" pre-v0.18.0
+            monotonicity_application="always",
             qp_solver="scipy",
         )
 
-        assert solver.qp_optimization_level == "always"
+        assert solver.monotonicity_scheme == "qp_m_matrix"
+        assert solver.monotonicity_application == "always"
         assert callable(problem.sigma)
 
     def test_numeric_sigma_with_qp(self):
@@ -173,7 +176,7 @@ class TestBug15CallableSigma:
             collocation_points,
             delta=0.15,
             taylor_order=2,
-            qp_optimization_level="auto",
+            monotonicity_scheme="qp_m_matrix",  # was qp_optimization_level="auto" pre-v0.18.0
             qp_solver="scipy",
         )
 
@@ -194,7 +197,7 @@ class TestBug15CallableSigma:
             collocation_points,
             delta=0.15,
             taylor_order=2,
-            qp_optimization_level="auto",
+            monotonicity_scheme="qp_m_matrix",  # was qp_optimization_level="auto" pre-v0.18.0
             qp_solver="scipy",
         )
 
@@ -227,7 +230,7 @@ class TestBug15CallableSigma:
             collocation_points,
             delta=0.15,
             taylor_order=2,
-            qp_optimization_level="none",  # Don't need QP for this test
+            monotonicity_scheme="none",  # Don't need QP for this test (was qp_optimization_level="none")
         )
 
         # Should fall back to 1.0
