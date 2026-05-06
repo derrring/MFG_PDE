@@ -1595,6 +1595,65 @@ class HJBGFDMSolver(BaseHJBSolver):
                 derivatives, self._boundary_handler.boundary_rotations[point_idx]
             )
 
+        # Consistency override: when precomputed monotone weights exist for this
+        # point, override the corresponding derivative entries so the per-point
+        # HJB Newton residual uses the SAME stencil weights as the Jacobian
+        # (which is assembled from `_cached_derivative_weights`, populated with
+        # SOCP / M-matrix-QP weights at __init__).
+        #
+        # Without this override, the slow path above computes derivatives via
+        # bare Wendland-Taylor LSQ (`taylor_data["AtWA_inv"]` etc.), while the
+        # Jacobian uses SOCP-corrected weights. Newton then solves
+        #     J · δu = -r
+        # with J and r assembled from inconsistent stencil weights, converging
+        # to a stationary point of the mongrel system rather than the true
+        # discrete-HJB fixed point. Empirically: 12× u_err discrepancy in the
+        # exp08 step 4 2D Towel-on-Beach validation at N=100 (joint_socp
+        # u_err iter 1 = 48.81 without this fix vs 5.38 with the fix, 9× match
+        # to the qp_m_matrix control on the same setup).
+        #
+        # Precedence (matches `_build_derivative_matrices` / `_cached_derivative_weights`):
+        #   joint SOCP at SOCP-feasible interior > M-matrix QP at boundary > bare W-T.
+        if self._joint_socp_stencils is not None and self._joint_socp_stencils.has_stencil(point_idx):
+            socp = self._joint_socp_stencils.get_weights_dict(point_idx)
+            if socp is not None:
+                L_w = socp["lap_weights"]  # shape (n_neighbors,)
+                D_w = socp["grad_weights"]  # shape (d, n_neighbors)
+                # Override gradient: ∂u/∂x_d (i) = sum_j D_w[d, j] * b_j
+                for d in range(self.dimension):
+                    beta = tuple(1 if k == d else 0 for k in range(self.dimension))
+                    derivatives[beta] = float(D_w[d] @ b)
+                # Override Laplacian sum (= trace of Hessian) via diagonal split.
+                # Preserves bare-WT off-diagonal Hessian entries (e.g. (1,1) in 2D)
+                # while enforcing target_lap = L_w · b on the trace.
+                target_lap = float(L_w @ b)
+                current_lap = sum(
+                    float(derivatives.get(beta, 0.0))
+                    for beta in self.multi_indices
+                    if len(beta) == self.dimension and sum(beta) == 2 and max(beta) == 2
+                )
+                adjustment = (target_lap - current_lap) / self.dimension
+                for d in range(self.dimension):
+                    beta = tuple(2 if k == d else 0 for k in range(self.dimension))
+                    if beta in derivatives:
+                        derivatives[beta] = float(derivatives[beta]) + adjustment
+        elif self._precomputed_stencils is not None and self._precomputed_stencils.has_stencil(point_idx):
+            precomputed = self._precomputed_stencils.get_laplacian_weights(point_idx)
+            if precomputed is not None:
+                L_w = precomputed[0]  # shape (n_neighbors,)
+                # M-matrix QP only corrects the Laplacian; gradient stays bare W-T.
+                target_lap = float(L_w @ b)
+                current_lap = sum(
+                    float(derivatives.get(beta, 0.0))
+                    for beta in self.multi_indices
+                    if len(beta) == self.dimension and sum(beta) == 2 and max(beta) == 2
+                )
+                adjustment = (target_lap - current_lap) / self.dimension
+                for d in range(self.dimension):
+                    beta = tuple(2 if k == d else 0 for k in range(self.dimension))
+                    if beta in derivatives:
+                        derivatives[beta] = float(derivatives[beta]) + adjustment
+
         return derivatives
 
     def compute_all_derivatives(
