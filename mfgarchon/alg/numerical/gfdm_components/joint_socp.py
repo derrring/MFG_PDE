@@ -51,7 +51,7 @@ def wendland_phi31(q: np.ndarray | float) -> np.ndarray | float:
     """
     q = np.asarray(q)
     pos = np.maximum(1.0 - q, 0.0)
-    return (pos ** 4) * (4.0 * q + 1.0)
+    return (pos**4) * (4.0 * q + 1.0)
 
 
 def wendland_stencil_weights(offsets: np.ndarray, delta: float) -> np.ndarray:
@@ -86,7 +86,7 @@ def build_taylor_matrix_1d(offsets: np.ndarray) -> tuple[np.ndarray, list]:
     A = np.zeros((n, 3))
     A[:, 0] = 1.0
     A[:, 1] = offsets
-    A[:, 2] = 0.5 * offsets ** 2
+    A[:, 2] = 0.5 * offsets**2
     return A, multi_indices
 
 
@@ -159,16 +159,17 @@ def solve_joint_socp_at_stencil(
         return {
             "status": "solver_error",
             "message": "cvxpy not installed; cannot run joint SOCP. pip install cvxpy.",
-            "L": None, "D": None, "kappa_max": np.inf, "objective": None,
+            "L": None,
+            "D": None,
+            "kappa_max": np.inf,
+            "objective": None,
         }
 
     n, k = A.shape
     if dimension is None:
         dimension = {3: 1, 6: 2}.get(k)
         if dimension is None:
-            raise ValueError(
-                f"Cannot infer dimension from A.shape[1]={k}; pass dimension= explicitly."
-            )
+            raise ValueError(f"Cannot infer dimension from A.shape[1]={k}; pass dimension= explicitly.")
 
     if dimension == 1:
         e_lap = np.array([0.0, 0.0, 1.0])
@@ -223,7 +224,7 @@ def solve_joint_socp_at_stencil(
                     "via": "wendland_lsq_fast_path",
                 }
         except (np.linalg.LinAlgError, ValueError):
-            pass   # fall through to SOCP
+            pass  # fall through to SOCP
 
     # --- Slow path: cvxpy SOCP ---
     L = cp.Variable(n)
@@ -259,14 +260,21 @@ def solve_joint_socp_at_stencil(
         prob.solve(solver=solver, verbose=False)
     except cp.error.SolverError as e:
         return {
-            "status": "solver_error", "message": str(e),
-            "L": None, "D": None, "kappa_max": np.inf, "objective": None,
+            "status": "solver_error",
+            "message": str(e),
+            "L": None,
+            "D": None,
+            "kappa_max": np.inf,
+            "objective": None,
         }
 
     if prob.status not in ("optimal", "optimal_inaccurate"):
         return {
             "status": "infeasible" if prob.status == "infeasible" else prob.status,
-            "L": None, "D": None, "kappa_max": np.inf, "objective": None,
+            "L": None,
+            "D": None,
+            "kappa_max": np.inf,
+            "objective": None,
         }
 
     L_val = L.value
@@ -300,12 +308,12 @@ def solve_joint_socp_at_stencil(
 class JointSocpStencilData:
     """Precomputed joint SOCP weights for a single point's stencil."""
 
-    L: np.ndarray              # Laplacian weights, shape (n_neighbors,)
-    D: np.ndarray              # Gradient weights, shape (dimension, n_neighbors)
+    L: np.ndarray  # Laplacian weights, shape (n_neighbors,)
+    D: np.ndarray  # Gradient weights, shape (dimension, n_neighbors)
     neighbor_indices: np.ndarray
     center_in_neighbors: int
     kappa_max: float
-    via: str                   # "wendland_lsq_fast_path" | "socp_clarabel"
+    via: str  # "wendland_lsq_fast_path" | "socp_clarabel"
 
 
 class PrecomputedJointSocpStencils:
@@ -355,9 +363,7 @@ class PrecomputedJointSocpStencils:
         eps_pos: float = 0.0,
     ):
         if not _CVXPY_AVAILABLE:
-            raise ImportError(
-                "cvxpy is required for joint SOCP. Install with: pip install cvxpy"
-            )
+            raise ImportError("cvxpy is required for joint SOCP. Install with: pip install cvxpy")
         self._operator = operator
         self._points = np.asarray(points)
         self._interior_indices = np.asarray(interior_indices)
@@ -367,9 +373,7 @@ class PrecomputedJointSocpStencils:
         self._dimension = self._points.shape[1] if self._points.ndim == 2 else 1
 
         if self._dimension not in (1, 2):
-            raise ValueError(
-                f"Joint SOCP currently supports 1D or 2D, got dimension {self._dimension}"
-            )
+            raise ValueError(f"Joint SOCP currently supports 1D or 2D, got dimension {self._dimension}")
 
         self.stencils: dict[int, JointSocpStencilData] = {}
         self.stats = {
@@ -397,8 +401,7 @@ class PrecomputedJointSocpStencils:
                 continue
 
             offsets = self._points[nbr] - self._points[i]
-            offsets_for_taylor = offsets.reshape(-1) if self._dimension == 1 and offsets.ndim == 2 \
-                else offsets
+            offsets_for_taylor = offsets.reshape(-1) if self._dimension == 1 and offsets.ndim == 2 else offsets
             A, _ = build_A(offsets_for_taylor)
 
             if self._dimension == 1:
@@ -413,7 +416,10 @@ class PrecomputedJointSocpStencils:
             h_i = float(np.median(nz)) if len(nz) > 0 else self._delta
 
             res = solve_joint_socp_at_stencil(
-                A, center_in_nbr, h_i, self._C,
+                A,
+                center_in_nbr,
+                h_i,
+                self._C,
                 eps_pos=self._eps_pos,
                 dimension=self._dimension,
                 wendland_w=w_neighbor,

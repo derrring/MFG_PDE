@@ -429,8 +429,9 @@ class HJBGFDMSolver(BaseHJBSolver):
         #
         # Mutual exclusion: pass either the new (scheme + application) or the legacy alias,
         # not both.
-        if (monotonicity_scheme is not None or monotonicity_application is not None) \
-                and qp_optimization_level is not None:
+        if (
+            monotonicity_scheme is not None or monotonicity_application is not None
+        ) and qp_optimization_level is not None:
             raise ValueError(
                 "Specify at most one of: (monotonicity_scheme=, monotonicity_application=) "
                 "or qp_optimization_level=. The latter is the deprecated alias (v0.18.0)."
@@ -441,14 +442,11 @@ class HJBGFDMSolver(BaseHJBSolver):
             scheme = monotonicity_scheme if monotonicity_scheme is not None else "none"
             valid_schemes = ("none", "qp_m_matrix", "joint_socp")
             if scheme not in valid_schemes:
-                raise ValueError(
-                    f"monotonicity_scheme must be one of {valid_schemes}; got '{scheme}'."
-                )
+                raise ValueError(f"monotonicity_scheme must be one of {valid_schemes}; got '{scheme}'.")
             valid_apps = ("adaptive", "always", "precompute", None)
             if monotonicity_application not in valid_apps:
                 raise ValueError(
-                    f"monotonicity_application must be one of {valid_apps}; "
-                    f"got '{monotonicity_application}'."
+                    f"monotonicity_application must be one of {valid_apps}; got '{monotonicity_application}'."
                 )
             # Resolve application via scheme-default if unspecified
             if monotonicity_application is None:
@@ -483,7 +481,7 @@ class HJBGFDMSolver(BaseHJBSolver):
         if scheme == "none":
             self.qp_optimization_level = "none"
         elif scheme == "qp_m_matrix":
-            self.qp_optimization_level = application   # adaptive→"auto"-like, etc.
+            self.qp_optimization_level = application  # adaptive→"auto"-like, etc.
             # Note: "adaptive" maps to legacy "auto" semantically, but the legacy code
             # branches check string == "auto", so we need to translate:
             if application == "adaptive":
@@ -870,15 +868,14 @@ class HJBGFDMSolver(BaseHJBSolver):
             from mfgarchon.alg.numerical.gfdm_components.joint_socp import (
                 PrecomputedJointSocpStencils,
             )
-            interior_indices = np.setdiff1d(
-                np.arange(self.n_points), self.boundary_indices
-            )
+
+            interior_indices = np.setdiff1d(np.arange(self.n_points), self.boundary_indices)
             self._joint_socp_stencils = PrecomputedJointSocpStencils(
                 operator=self._gfdm_operator,
                 points=self.collocation_points,
                 interior_indices=interior_indices,
                 delta=delta,
-                cone_constant_C=1.0,         # within $C_\\star \\in [0.5, 1]$ for Wendland C^2
+                cone_constant_C=1.0,  # within $C_\\star \\in [0.5, 1]$ for Wendland C^2
                 eps_pos=0.0,
             )
             stats = self._joint_socp_stencils.stats
@@ -1363,10 +1360,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             #       nodes where joint SOCP is infeasible (Phase 2 fallback per
             #       paper §831). The `joint_socp_stencils` override below takes
             #       priority for SOCP-feasible interior nodes.
-            if (
-                self._precomputed_stencils is not None
-                and self._precomputed_stencils.has_stencil(i)
-            ):
+            if self._precomputed_stencils is not None and self._precomputed_stencils.has_stencil(i):
                 precomputed = self._precomputed_stencils.get_laplacian_weights(i)
                 if precomputed is not None:
                     lap_weights = precomputed[0]  # (weights, neighbor_indices)
@@ -1376,10 +1370,7 @@ class HJBGFDMSolver(BaseHJBSolver):
             # priority over qp_m_matrix precompute. Boundary buffer nodes where SOCP
             # is infeasible fall back to qp_m_matrix above (or default Wendland-Taylor
             # if qp_m_matrix precompute also doesn't have a stencil there).
-            if (
-                self._joint_socp_stencils is not None
-                and self._joint_socp_stencils.has_stencil(i)
-            ):
+            if self._joint_socp_stencils is not None and self._joint_socp_stencils.has_stencil(i):
                 socp_weights = self._joint_socp_stencils.get_weights_dict(i)
                 if socp_weights is not None:
                     # Joint SOCP guarantees same neighbor_indices + center as the
