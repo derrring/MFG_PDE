@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.6] - 2026-05-06
+
+### Fixed
+
+- **`HJBGFDMSolver.approximate_derivatives` now consults precomputed
+  monotonicity-corrected weights (J/r consistency)** when the slow path is
+  taken. Before this fix, when `monotonicity_scheme="joint_socp"` (or legacy
+  `qp_optimization_level="precompute"`), the per-point HJB Newton path used
+  inconsistent stencil weights:
+    - **Jacobian**: assembled from `_cached_derivative_weights[i]` — populated
+      with SOCP / M-matrix-QP weights at __init__ (PR #1030 fix).
+    - **Residual**: computed by `approximate_derivatives` slow path, which
+      used the bare Wendland-Taylor LSQ (`taylor_data["AtWA_inv"]` etc.),
+      *bypassing* any precomputed monotonicity correction.
+
+  Newton then solved `J · δu = -r` with `J` and `r` derived from different
+  stencil weights, converging to a stationary point of the mongrel system
+  rather than the true discrete-HJB fixed point. Empirically: at the exp08
+  step 4 2D Towel-on-Beach validation N=100, raw `‖U_HJB,centered‖₂` at
+  iter 1 was 244 with the inconsistency vs ~130 after the fix (47%
+  reduction). At N=75 the inconsistency was tolerable (28% of nodes had
+  bare W-T in BOTH J and r since SOCP was infeasible there); at finer h
+  with higher SOCP coverage, the inconsistency dominated.
+
+  The fix overrides gradient and Laplacian-trace entries in the multi-index
+  derivative dict with values computed from the precomputed weights, only
+  for nodes that have a precomputed stencil. Behavior is unchanged for
+  nodes without a precomputed stencil and for `monotonicity_scheme="none"`
+  (which routes through the fast path of `approximate_derivatives`).
+
+### Notes
+
+- This is a correctness fix, orthogonal to the user-visible API. No
+  deprecation, no parameter changes. The 16 equivalence tests for the
+  v0.18.0 `qp_optimization_level` rename continue to pass with bit-identical
+  weights.
+
 ## [0.19.5] - 2026-05-06
 
 ### Added

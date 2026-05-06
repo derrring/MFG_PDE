@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mfgarchon"
-version = "0.19.5"  # v0.19.5: monotonicity_scheme rename + first-class joint_socp scheme (PR #1030)
+version = "0.19.6"  # v0.19.6: J/r consistency fix in approximate_derivatives
 authors = [
     { name = "Jiongyi Wang", email = "jiongyiwang@gmail.com" },
     # et al.
