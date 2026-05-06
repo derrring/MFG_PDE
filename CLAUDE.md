@@ -579,6 +579,36 @@ When deprecating any API element (parameter, function, class, module):
 - ✅ Pre-commit hook blocks deprecated usage in production code
 - ✅ CI verifies all call sites updated
 
+### **Version Bump Checklist** ⚠️ **MANDATORY**
+
+When bumping the package version, update the following in a single commit:
+
+1. **`pyproject.toml`** — `version = "X.Y.Z"` on line 11. Inline comment on the
+   same line summarizing the bump (e.g., `# vX.Y.Z: <one-line scope>`).
+2. **`CHANGELOG.md`** — promote the `## [Unreleased]` section to
+   `## [X.Y.Z] - YYYY-MM-DD`, then re-add an empty `## [Unreleased]` above it.
+   Use Keep a Changelog categories: `### Added`, `### Changed`,
+   `### Deprecated`, `### Removed (BREAKING)`, `### Fixed`. Reference the PR
+   number; reference the github issue if the change is bug-fix-driven.
+
+**No need to edit**:
+- `mfgarchon/__init__.py` — reads via `importlib.metadata.version("mfgarchon")`,
+  auto-syncs from pyproject at install time.
+- `mfgarchon/workflow/__init__.py:__version__ = "1.0.0"` — independent
+  subpackage version, decoupled from main package by design.
+- Backend version reporting (`numpy_backend.py`, `torch_backend.py`,
+  `numpy_compat.py`) — these report installed *external library* versions
+  (numpy, torch, jax), not mfgarchon's own version.
+- Historical notes in module docstrings that reference past versions
+  (e.g., "prior versions before v0.19.4 maintained...") — keep the historical
+  reference; do not bump.
+
+**Sanity check before commit**:
+```bash
+grep -rn "^version =\|^__version__ =" pyproject.toml mfgarchon/ --include="*.toml" --include="*.py"
+```
+The only line that should change is `pyproject.toml:11`.
+
 ### **Branch Naming** ⚠️ **MANDATORY**
 Always use `<type>/<short-description>` format:
 
