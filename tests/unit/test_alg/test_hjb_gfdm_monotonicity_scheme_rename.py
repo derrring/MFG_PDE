@@ -27,6 +27,17 @@ from mfgarchon.core.mfg_problem import MFGProblem
 from mfgarchon.geometry import TensorProductGrid
 from mfgarchon.geometry.boundary import no_flux_bc
 
+# joint_socp requires cvxpy; skip those tests when the optional dep is absent.
+try:
+    import cvxpy  # noqa: F401
+
+    _HAS_CVXPY = True
+except ImportError:
+    _HAS_CVXPY = False
+_requires_cvxpy = pytest.mark.skipif(
+    not _HAS_CVXPY, reason="cvxpy not installed; joint_socp tests skipped"
+)
+
 
 def _problem_2d_quasi_uniform():
     """2D problem with N=11x11 quasi-uniform interior + boundary indices.
@@ -180,6 +191,7 @@ def test_invalid_application_value(setup):
         )
 
 
+@_requires_cvxpy
 def test_default_application_per_scheme(setup):
     """When monotonicity_application=None, scheme-recommended default is used."""
     problem, pts, bdry = setup
@@ -213,6 +225,7 @@ def test_legacy_emits_deprecation_warning(setup):
             f"Expected DeprecationWarning naming qp_optimization_level + monotonicity_scheme; got: {[str(w.message) for w in caught]}"
 
 
+@_requires_cvxpy
 def test_joint_socp_precompute_active(setup):
     """joint_socp with precompute application: PrecomputedJointSocpStencils
     is built at construction; reports feasibility stats."""
@@ -239,6 +252,7 @@ def test_joint_socp_precompute_active(setup):
     assert s.qp_optimization_level == "precompute"
 
 
+@_requires_cvxpy
 def test_joint_socp_weights_satisfy_constraints(setup):
     """Joint SOCP weights at every feasible stencil satisfy:
     (a) 2nd-order Taylor consistency (A^T L = e_lap, A^T D = e_grad)
@@ -288,6 +302,7 @@ def test_joint_socp_weights_satisfy_constraints(setup):
                 f"Cone violated at i={i}, j={j}: kappa={kappa:.4e} > C={C}"
 
 
+@_requires_cvxpy
 def test_joint_socp_unsupported_application_warns(setup):
     """joint_socp with adaptive/always application warns (precompute is the
     only supported strategy in v0.18.0)."""
